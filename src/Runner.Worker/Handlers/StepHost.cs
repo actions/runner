@@ -176,16 +176,35 @@ namespace GitHub.Runner.Worker.Handlers
             // [OPTIONS]
             dockerCommandArgs.Add($"-i");
             dockerCommandArgs.Add($"--workdir {workingDirectory}");
-            foreach (var env in environment)
-            {
-                // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
-                // the value directly in the command
-                dockerCommandArgs.Add($"-e {env.Key}");
+
+            if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) || Container.Os == "windows") {
+                foreach (var env in environment)
+                {
+                    // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
+                    // the value directly in the command
+                    dockerCommandArgs.Add($"-e {env.Key}");
+                }
+            } else {
+                ISet<string> keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var orgenvironment = environment;
+                environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var env in orgenvironment)
+                {
+                    if(keys.Add(env.Key)) {
+                        // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
+                        // the value directly in the command
+                        dockerCommandArgs.Add($"-e {env.Key}");
+                        environment[env.Key] = env.Value;
+                    } else {
+                        var val = env.Value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+                        dockerCommandArgs.Add($"-e {env.Key}=\"{val}\"");
+                    }
+                }
             }
             if (!string.IsNullOrEmpty(PrependPath))
             {
                 // Prepend tool paths to container's PATH
-                var fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}:{Container.ContainerRuntimePath}" : PrependPath;
+                var fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}{(Container.Os == "windows" ? ";" : ":")}{Container.ContainerRuntimePath}" : PrependPath;
                 dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
             }
 
