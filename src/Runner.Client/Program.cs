@@ -1338,13 +1338,7 @@ namespace Runner.Client
                                                     }
                                                 }
                                                 foreach (var webconsoleline in e.record.Value) {
-                                                    if(webconsoleline.StartsWith("##[section]")) {
-                                                        Console.WriteLine("******************************************************************************");
-                                                        Console.WriteLine(webconsoleline.Substring("##[section]".Length));
-                                                        Console.WriteLine("******************************************************************************");
-                                                    } else {
-                                                        WriteLogLine((int)rec.Color, webconsoleline);
-                                                    }
+                                                    WriteLogLine((int)rec.Color, webconsoleline);
                                                 }
                                             }
                                             if(line == "event: timeline") {
@@ -1383,13 +1377,7 @@ namespace Runner.Client
                                                         }
                                                     }
                                                     foreach (var webconsoleline in e2.record.Value) {
-                                                        if(webconsoleline.StartsWith("##[section]")) {
-                                                            Console.WriteLine("******************************************************************************");
-                                                            Console.WriteLine(webconsoleline.Substring("##[section]".Length));
-                                                            Console.WriteLine("******************************************************************************");
-                                                        } else {
-                                                            WriteLogLine((int)timelineRecords[e.timelineId].Color, webconsoleline);
-                                                        }
+                                                        WriteLogLine((int)timelineRecords[e.timelineId].Color, webconsoleline);
                                                     }
                                                     timelineRecords[e.timelineId].Pending.RemoveAt(0);
                                                 }
