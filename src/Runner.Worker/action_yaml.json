@@ -132,7 +132,7 @@
                     "continue-on-error": "boolean-steps-context",
                     "working-directory": "string-steps-context",
                     "shell": {
-                        "type": "non-empty-string",
+                        "type": "string-steps-context",
                         "required": true
                     }
                 }
