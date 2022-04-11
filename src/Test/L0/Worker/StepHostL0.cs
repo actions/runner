@@ -10,6 +10,7 @@ using GitHub.Runner.Worker.Container;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Linq;
 using GitHub.DistributedTask.Pipelines;
+
 namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class StepHostL0
