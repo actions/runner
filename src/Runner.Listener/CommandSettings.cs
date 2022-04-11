@@ -158,6 +158,30 @@ namespace GitHub.Runner.Listener
             return unknowns;
         }
 
+        public string GetCommandName()
+        {
+            string command = string.Empty;
+
+            if (Configure)
+            {
+                command = Constants.Runner.CommandLine.Commands.Configure;
+            }
+            else if (Remove)
+            {
+                command = Constants.Runner.CommandLine.Commands.Remove;
+            }
+            else if (Run)
+            {
+                command = Constants.Runner.CommandLine.Commands.Run;
+            }
+            else if (Warmup)
+            {
+                command = Constants.Runner.CommandLine.Commands.Warmup;
+            }
+            
+            return command;
+        }
+
         //
         // Interactive flags.
         //
