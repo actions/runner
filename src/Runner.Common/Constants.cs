@@ -5,7 +5,6 @@ namespace GitHub.Runner.Common
     public enum WellKnownDirectory
     {
         Bin,
-        ContainerHooks,
         Diag,
         Externals,
         Root,
