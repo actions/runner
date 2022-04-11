@@ -88,17 +88,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Entering();
 
             var responsePath = GenerateResponsePath();
+            context.JobContext.TryGetValue("hook_state", out var hookState);
             var input = new HookInput
             {
                 Command = HookCommand.CleanupJob,
                 ResponseFile = responsePath,
-                Args = new HookArgs
-                {
-                    JobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault().GetHookContainer(),
-                    Services = containers.Where(c => c.IsJobContainer == false).Select(c => c.GetHookContainer()).ToList(),
-                    Network = containers.Where(c => !string.IsNullOrEmpty(c.ContainerNetwork)).FirstOrDefault()?.ContainerNetwork,
-                },
-                State = JsonUtility.FromString<dynamic>(context.JobContext["hook_state"].ToString())                
+                State = JsonUtility.FromString<dynamic>(hookState.ToString())                
             };
             var response = await ExecuteHookScript(context, input);
         }

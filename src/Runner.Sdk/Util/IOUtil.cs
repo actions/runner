@@ -426,8 +426,8 @@ namespace GitHub.Runner.Sdk
 
         public static void CreateEmptyFile(string path)
         {
-            DeleteFile(path);
             Directory.CreateDirectory(Path.GetDirectoryName(path));
+            DeleteFile(path);
             File.Create(path).Dispose();
         }
         /// <summary>

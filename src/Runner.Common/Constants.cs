@@ -212,7 +212,6 @@ namespace GitHub.Runner.Common
             public static readonly string UpdateDirectory = "_update";
             public static readonly string WorkDirectory = "_work";
             public static readonly string WorkerDiagnosticLogPrefix = "Worker_";
-            public static readonly string ContainerHooks  = "_containerhooks";
         }
 
         // Related to definition variables.
