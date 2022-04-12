@@ -1094,6 +1094,9 @@ namespace Runner.Server.Controllers
                             dispatchInputs = new JObject();
                             payloadObject["inputs"] = dispatchInputs;
                         }
+                        // https://github.com/github/feedback/discussions/9092#discussioncomment-2453678
+                        var inputsCtx = new DictionaryContextData();
+                        inputs = inputsCtx;
                         if(workflowInputs != null) {
                             foreach(var input in workflowInputs) {
                                 var inputName = input.Key.AssertString("on.workflow_dispatch.inputs mapping key").Value;
@@ -1106,13 +1109,41 @@ namespace Runner.Server.Controllers
                                     SequenceToken options = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "options" select r.Value.AssertSequence($"on.workflow_dispatch.{inputName}.options")).FirstOrDefault();
                                     var def = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "default" select r.Value).FirstOrDefault()?.AssertString($"on.workflow_dispatch.{inputName}.default")?.ToContextData()?.ToJToken();
                                     if(def == null) {
-                                        def = "";
+                                        switch(type) {
+                                        case "boolean":
+                                            def = "false";
+                                        break;
+                                        default:
+                                            def = "";
+                                        break;
+                                        }
                                     }
                                     if(!dispatchInputs.TryGetValue(inputName, out _)) {
                                         if(required) {
                                             throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
                                         }
                                         dispatchInputs[inputName] = def;
+                                    }
+                                    switch(type) {
+                                    case "boolean":
+                                        // https://github.com/actions/runner/issues/1483#issuecomment-1091025877
+                                        bool result;
+                                        var val = dispatchInputs[inputName].ToString();
+                                        switch(val) {
+                                        case "true":
+                                            result = true;
+                                        break;
+                                        case "false":
+                                            result = false;
+                                        break;
+                                        default:
+                                            throw new Exception($"on.workflow_dispatch.inputs.{inputName}, expected true or false, unexpected value: {val}");
+                                        }
+                                        inputsCtx[inputName] = new BooleanContextData(result);
+                                    break;
+                                    default:
+                                        inputsCtx[inputName] = dispatchInputs[inputName].ToPipelineContextData();
+                                    break;
                                     }
                                 }
                             }
@@ -1122,8 +1153,6 @@ namespace Runner.Server.Controllers
                                 throw new Exception($"This workflow doesn't define input {providedInput.Key}");
                             }
                         }
-                        // https://github.com/github/feedback/discussions/9092#discussioncomment-2453678
-                        inputs = payloadObject["inputs"].ToPipelineContextData();
                     }
                     if(e == "workflow_call") {
                         allowed.Add("inputs");
