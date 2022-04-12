@@ -23,8 +23,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     }
     public class HookArgs
     {
-        public HookContainer JobContainer { get; set; }
-        public IList<HookContainer> Services { get; set; }
+        public Container JobContainer { get; set; }
+        public IList<Container> Services { get; set; }
         public string Network { get; set; }
     }
 
@@ -36,15 +36,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
     public class ResponseContext
     {
-        public HookContainer Container { get; set; }
-        public IList<HookContainer> Services { get; set; }
+        public Container Container { get; set; }
+        public IList<Container> Services { get; set; }
     }
 
     public static class ContainerInfoExtensions
     {
-        public static HookContainer GetHookContainer(this ContainerInfo containerInfo)
+        public static Container GetHookContainer(this ContainerInfo containerInfo)
         {
-            return new HookContainer(containerInfo);
+            return new Container(containerInfo);
         }
     }
 }
