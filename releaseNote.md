@@ -3,9 +3,10 @@
 - Now it's possible to use context evaluation in the `shell` of composite action run steps (#1767)
 
 ## Bugs
-- Fix bug where job would be marked as 'cancelled' after self-hosted runner going offline (#1792)
+- Fix a bug where job would be marked as 'cancelled' after self-hosted runner going offline (#1792)
 - Translate paths in `github` and `runner` contexts when running on a container (#1762)
 - Warn about invalid flags when configuring or running the runner (#1781)
+- Fix a bug where job hooks would use job level working directory (#1809)
 
 ## Misc
 - Allow warnings about actions using Node v12 (#1735)
