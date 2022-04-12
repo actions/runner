@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
-    public class Container
+    public class HookContainer
     {
         public string Id { get; set; }
         public string DisplayName { get; set; }
@@ -20,8 +20,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public IDictionary<string, string> EnvironmentVariables { get; set; }
         public IDictionary<string, string> PortMappings { get; set; }
         public List<MountVolume> MountVolumes { get; set; }
-        public Container() { } // For Json deserializer
-        public Container(ContainerInfo container)
+        public HookContainer() { } // For Json deserializer
+        public HookContainer(ContainerInfo container)
         {
             Id = container.ContainerId;
             DisplayName = container.ContainerDisplayName;
@@ -47,10 +47,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         }
     }
 
-    public class ContainerRegistry
+    public static class ContainerInfoExtensions
     {
-        public string Username { get; set; }
-        public string Password { get; set; }
-        public string ServerUrl { get; set; }
+        public static HookContainer GetHookContainer(this ContainerInfo containerInfo)
+        {
+            return new HookContainer(containerInfo);
+        }
     }
 }

@@ -43,9 +43,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 Command = HookCommand.PrepareJob,
                 ResponseFile = responsePath,
-                Args = new HookArgs
+                Args = new PrepareJobArgs
                 {
-                    JobContainer = jobContainer.GetHookContainer(),
+                    Container = jobContainer.GetHookContainer(),
                     Services = serviceContainers.Select(c => c.GetHookContainer()).ToList(),
                 }
             };            
