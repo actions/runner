@@ -19,12 +19,10 @@ namespace GitHub.Services.WebApi
         public static String ReplaceRouteValues(
             String routeTemplate,
             Dictionary<String, Object> routeValues,
-            bool escapeUri = false,
             bool appendUnusedAsQueryParams = false,
             bool requireExplicitRouteParams = false)
         {
-            RouteReplacementOptions routeReplacementOptions = escapeUri ? RouteReplacementOptions.EscapeUri : 0;
-            routeReplacementOptions |= appendUnusedAsQueryParams ? RouteReplacementOptions.AppendUnusedAsQueryParams : 0;
+            RouteReplacementOptions routeReplacementOptions = appendUnusedAsQueryParams ? RouteReplacementOptions.AppendUnusedAsQueryParams : 0;
             routeReplacementOptions |= requireExplicitRouteParams ? RouteReplacementOptions.RequireExplicitRouteParams : 0;
 
             return ReplaceRouteValues(
@@ -136,11 +134,6 @@ namespace GitHub.Services.WebApi
                 sbResult.Append(sbCurrentPathPart.ToString());
             }
 
-            if (routeReplacementOptions.HasFlag(RouteReplacementOptions.EscapeUri))
-            {
-                sbResult = new StringBuilder(Uri.EscapeUriString(sbResult.ToString()));
-            }
-
             if (routeReplacementOptions.HasFlag(RouteReplacementOptions.AppendUnusedAsQueryParams) && unusedValues.Count > 0)
             {
                 bool isFirst = true;
@@ -221,7 +214,6 @@ namespace GitHub.Services.WebApi
     public enum RouteReplacementOptions
     {
         None = 0,
-        EscapeUri = 1,
         AppendUnusedAsQueryParams = 2,
         RequireExplicitRouteParams = 4,
         WildcardAsQueryParams = 8,

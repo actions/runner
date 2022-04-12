@@ -77,8 +77,6 @@ namespace GitHub.Services.WebApi
             m_client.BaseAddress = baseUrl;
             m_formatter = new VssJsonMediaTypeFormatter();
 
-            SetServicePointOptions();
-
             SetTokenStorageUrlIfNeeded(pipeline);
         }
 
@@ -1149,23 +1147,6 @@ namespace GitHub.Services.WebApi
                 }
             }
         }
-
-        private void SetServicePointOptions()
-        {
-            if (BaseAddress != null)
-            {
-                ServicePoint servicePoint = ServicePointManager.FindServicePoint(BaseAddress);
-                servicePoint.UseNagleAlgorithm = false;
-                servicePoint.SetTcpKeepAlive(
-                    enabled: true,
-                    keepAliveTime: c_keepAliveTime,
-                    keepAliveInterval: c_keepAliveInterval);
-            }
-        }
-
-        // ServicePoint defaults
-        private const int c_keepAliveTime = 30000;
-        private const int c_keepAliveInterval = 5000;
 
         #region IDisposable Support
         private bool m_isDisposed = false;

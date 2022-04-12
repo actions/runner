@@ -363,11 +363,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var uses = default(StringToken);
             var with = default(TemplateToken);
             var workingDir = default(ScalarToken);
-            var path = default(ScalarToken);
-            var clean = default(ScalarToken);
-            var fetchDepth = default(ScalarToken);
-            var lfs = default(ScalarToken);
-            var submodules = default(ScalarToken);
             var shell = default(ScalarToken);
 
             foreach (var stepProperty in step)
@@ -376,10 +371,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 switch (propertyName.Value)
                 {
-                    case PipelineTemplateConstants.Clean:
-                        clean = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Clean}");
-                        break;
-
                     case PipelineTemplateConstants.ContinueOnError:
                         ConvertToStepContinueOnError(context, stepProperty.Value, allowExpressions: true); // Validate early if possible
                         continueOnError = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} {PipelineTemplateConstants.ContinueOnError}");
@@ -388,10 +379,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     case PipelineTemplateConstants.Env:
                         ConvertToStepEnvironment(context, stepProperty.Value, StringComparer.Ordinal, allowExpressions: true); // Validate early if possible
                         env = stepProperty.Value;
-                        break;
-
-                    case PipelineTemplateConstants.FetchDepth:
-                        fetchDepth = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.FetchDepth}");
                         break;
 
                     case PipelineTemplateConstants.Id:
@@ -409,16 +396,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         ifToken = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.If}");
                         break;
 
-                    case PipelineTemplateConstants.Lfs:
-                        lfs = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Lfs}");
-                        break;
-
                     case PipelineTemplateConstants.Name:
                         name = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Name}");
-                        break;
-
-                    case PipelineTemplateConstants.Path:
-                        path = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Path}");
                         break;
 
                     case PipelineTemplateConstants.Run:
@@ -427,10 +406,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                     case PipelineTemplateConstants.Shell:
                         shell = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Shell}");
-                        break;
-
-                    case PipelineTemplateConstants.Submodules:
-                        submodules = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Submodules}");
                         break;
 
                     case PipelineTemplateConstants.TimeoutMinutes:
