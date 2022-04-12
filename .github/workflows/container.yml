@@ -34,7 +34,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - run: |
-        echo "LOWNER<<EOF23"
+        echo "LOWNER<<EOF23" >> $GITHUB_ENV
         echo $(echo "$OWNER" | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
         echo "EOF23" >> $GITHUB_ENV
       shell: bash
