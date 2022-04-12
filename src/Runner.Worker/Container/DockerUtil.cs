@@ -32,13 +32,13 @@ namespace GitHub.Runner.Worker.Container
             return portMappings;
         }
 
-        public static string ParsePathFromConfigEnv(IList<string> configEnvLines)
+        public static string ParsePathFromConfigEnv(IList<string> configEnvLines, StringComparison comparison = StringComparison.Ordinal)
         {
             // Config format is VAR=value per line
             foreach (var line in configEnvLines)
             {
                 var keyValue = line.Split("=", 2);
-                if (keyValue.Length == 2 && string.Equals(keyValue[0], "PATH"))
+                if (keyValue.Length == 2 && string.Equals(keyValue[0], "PATH", comparison))
                 {
                     return keyValue[1];
                 }

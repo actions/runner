@@ -340,9 +340,16 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
-                var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
-                container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
+                List<string> containerEnv;
+                if(container.Os == "windows") {
+                    containerEnv = new List<string>();
+                    var ret = await _dockerManager.DockerExec(executionContext, container.ContainerId, "", "cmd /c set", containerEnv);
+                    container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv, StringComparison.OrdinalIgnoreCase);
+                } else {
+                    var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
+                    containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
+                    container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
+                }
                 executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
             }
             executionContext.Output("##[endgroup]");

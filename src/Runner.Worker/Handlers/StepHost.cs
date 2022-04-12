@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -211,11 +212,24 @@ namespace GitHub.Runner.Worker.Handlers
             // CONTAINER
             dockerCommandArgs.Add($"{Container.ContainerId}");
 
-            // COMMAND
-            dockerCommandArgs.Add(fileName);
+            // windows container seem to ignore the custom path without cmd prefix
+            if(Container?.Os == "windows") {
+                dockerCommandArgs.Add("cmd /c");
+                var pattern = new Regex("[;<>|^\n%]");
+                Func<string, string> escapeCmd = val => pattern.Replace(val, "^$0");
 
-            // [ARG...]
-            dockerCommandArgs.Add(arguments);
+                // COMMAND
+                dockerCommandArgs.Add(escapeCmd(fileName));
+
+                // [ARG...]
+                dockerCommandArgs.Add(escapeCmd(arguments));
+            } else {
+                // COMMAND
+                dockerCommandArgs.Add(fileName);
+
+                // [ARG...]
+                dockerCommandArgs.Add(arguments);
+            }
 
             string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
 
