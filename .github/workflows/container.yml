@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - run: |
-        FROM mcr.microsoft.com/dotnet/sdk:6.0
+        FROM ${{ runner.arch == 'x64' && '--platform linux/amd64' || runner.arch == 'arm64' && '--platform linux/arm64' }} mcr.microsoft.com/dotnet/sdk:6.0
         COPY . ./
         RUN dotnet msbuild src/dir.proj -t:GenerateConstant && dotnet publish src/Runner.Client -c Release --no-self-contained -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 -o /app
         FROM mcr.microsoft.com/dotnet/aspnet:latest
@@ -33,6 +33,13 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    - run: |
+        echo "LOWNER<<EOF23"
+        echo $(echo "$OWNER" | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
+        echo "EOF23" >> $GITHUB_ENV
+      shell: bash
+      env:
+        OWNER: ${{github.repository_owner}}
     -
       name: Build and push
       uses: docker/build-push-action@v2
@@ -40,4 +47,4 @@ jobs:
         context: .
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: ${{github.repository_owner}}/gharun:latest
+        tags: ${{env.LOWNER}}/gharun:latest
