@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - run: |
-        FROM ${{ runner.arch == 'x64' && '--platform linux/amd64' || runner.arch == 'arm64' && '--platform linux/arm64' }} mcr.microsoft.com/dotnet/sdk:6.0
+        FROM ${{ runner.arch == 'x64' && '--platform=linux/amd64' || runner.arch == 'arm64' && '--platform=linux/arm64' }} mcr.microsoft.com/dotnet/sdk:6.0
         COPY . ./
         RUN dotnet msbuild src/dir.proj -t:GenerateConstant && dotnet publish src/Runner.Client -c Release --no-self-contained -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 -o /app
         FROM mcr.microsoft.com/dotnet/aspnet:latest
