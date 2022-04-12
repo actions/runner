@@ -1,8 +1,17 @@
 ## Features
+- Continue-on-error is now possible for the composite action steps (#1763)
+- Now it's possible to use context evaluation in the `shell` of composite action run steps (#1767)
 
 ## Bugs
-- Fixed an issue where websockets failed to successfully close when posting log lines (#1790)
+- Fix bug where job would be marked as 'cancelled' after self-hosted runner going offline (#1792)
+- Translate paths in `github` and `runner` contexts when running on a container (#1762)
+- Warn about invalid flags when configuring or running the runner (#1781)
 
+## Misc
+- Allow warnings about actions using Node v12 (#1735)
+- Better exception handling when runner is configured with invalid Url or token (#1741)
+- Set user agent for websocket requests (#1791)
+- Gracefully handle websocket failures (#1789)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
