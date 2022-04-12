@@ -47,4 +47,4 @@ jobs:
         context: .
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: ${{env.LOWNER}}/gharun:latest
+        tags: ghcr.io/${{env.LOWNER}}/gharun:latest
