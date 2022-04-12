@@ -8,6 +8,7 @@ using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -218,6 +219,46 @@ namespace GitHub.Runner.Worker.Handlers
                           cancellationToken);
         }
 
+        public async Task<int> ExecuteAsync(IExecutionContext context,
+                                            string workingDirectory,
+                                            string fileName,
+                                            string arguments,
+                                            IDictionary<string, string> environment,
+                                            bool requireExitCodeZero,
+                                            Encoding outputEncoding,
+                                            bool killProcessOnCancel,
+                                            bool inheritConsoleHandler,
+                                            CancellationToken cancellationToken)
+        {
+            ArgUtil.NotNull(Container, nameof(Container));
+            ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
+            var containerHookManager = HostContext.GetService<IContainerHookManager>();
+            if (FeatureFlagManager.IsHookFeatureEnabled())
+            {
+                TranslateToContainerPath(environment);
+                await containerHookManager.RunScriptStepOnJobContainerAsync(context,
+                                                                                   Container,
+                                                                                   arguments,
+                                                                                   fileName,
+                                                                                   environment,
+                                                                                   PrependPath,
+                                                                                   workingDirectory);
+                // normally, ExecuteAsync does not take a 'context', so we have to have an exit code. TODO: is this conversion correct?
+                // SucceededWithIssues is a special case, since it is not a failure, but would bubble up as exit code '1', which is failure
+                // do we still use it? it has 0 references
+                return (int)(context.Result ?? 0); 
+            }
+
+            return await ExecuteAsync(workingDirectory,
+                                fileName,
+                                arguments,
+                                environment,
+                                requireExitCodeZero,
+                                outputEncoding,
+                                killProcessOnCancel,
+                                inheritConsoleHandler,
+                                cancellationToken);
+        }
         public async Task<int> ExecuteAsync(string workingDirectory,
                                             string fileName,
                                             string arguments,
@@ -228,10 +269,6 @@ namespace GitHub.Runner.Worker.Handlers
                                             bool inheritConsoleHandler,
                                             CancellationToken cancellationToken)
         {
-            // make sure container exist.
-            ArgUtil.NotNull(Container, nameof(Container));
-            ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
-
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
             string dockerClientPath = dockerManager.DockerPath;
 
@@ -265,12 +302,7 @@ namespace GitHub.Runner.Worker.Handlers
             dockerCommandArgs.Add(arguments);
 
             string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
-
-            // make sure all env are using container path
-            foreach (var envKey in environment.Keys.ToList())
-            {
-                environment[envKey] = this.Container.TranslateToContainerPath(environment[envKey]);
-            }
+            TranslateToContainerPath(environment);
 
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
@@ -294,6 +326,14 @@ namespace GitHub.Runner.Worker.Handlers
                                                          redirectStandardIn: null,
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
+            }
+        }
+
+        private void TranslateToContainerPath(IDictionary<string, string> environment)
+        {
+            foreach (var envKey in environment.Keys.ToList())
+            {
+                environment[envKey] = this.Container.TranslateToContainerPath(environment[envKey]);
             }
         }
     }
