@@ -156,7 +156,8 @@ namespace GitHub.Runner.Worker.Handlers
             string workingDirectory = null;
             if (!Inputs.TryGetValue("workingDirectory", out workingDirectory))
             {
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                // Don't use job level working directories for hooks
+                if (IsActionStep && string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("working-directory", out workingDirectory))
                     {

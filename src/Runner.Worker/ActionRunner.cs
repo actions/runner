@@ -11,7 +11,6 @@ using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Worker.Container;
@@ -190,8 +189,16 @@ namespace GitHub.Runner.Worker
 
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
-            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+            Dictionary<string, string> inputs;
+            if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+            {
+                inputs = EvaluateStepInputs(stepHost);
+            }
+            else
+            {
+                var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+                inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+            }
 
             var userInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, string> input in inputs)
@@ -315,6 +322,15 @@ namespace GitHub.Runner.Worker
             context.Debug($"Set step '{Action.Name}' display name to: '{_displayName}'");
             _didFullyEvaluateDisplayName = didFullyEvaluate;
             return didFullyEvaluate;
+        }
+
+        private Dictionary<String, String> EvaluateStepInputs(IStepHost stepHost)
+        {
+            DictionaryContextData expressionValues = ExecutionContext.GetExpressionValues(stepHost);
+            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions);
+
+            return inputs;
         }
 
         private string GenerateDisplayName(ActionStep action, DictionaryContextData contextData, IExecutionContext context, out bool didFullyEvaluate)

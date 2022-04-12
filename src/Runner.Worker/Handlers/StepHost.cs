@@ -1,19 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
-using GitHub.Services.WebApi;
-using Newtonsoft.Json;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using System.Text.RegularExpressions;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Worker.Handlers
 {

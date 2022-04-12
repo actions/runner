@@ -110,7 +110,7 @@ namespace GitHub.Runner.Common
             public static class CommandLine
             {
                 //if you are adding a new arg, please make sure you update the
-                //validArgs array as well present in the CommandSettings.cs
+                //validOptions dictionary as well present in the CommandSettings.cs
                 public static class Args
                 {
                     public static readonly string Auth = "auth";
@@ -145,7 +145,7 @@ namespace GitHub.Runner.Common
                 }
 
                 //if you are adding a new flag, please make sure you update the
-                //validFlags array as well present in the CommandSettings.cs
+                //validOptions dictionary as well present in the CommandSettings.cs
                 public static class Flags
                 {
                     public static readonly string Check = "check";
@@ -173,6 +173,8 @@ namespace GitHub.Runner.Common
             public static class Features
             {
                 public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
+                public static readonly string Node12Warning = "DistributedTask.AddWarningToNode12Action";
+                public static readonly string UseContainerPathForTemplate = "DistributedTask.UseContainerPathForTemplate";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
@@ -182,6 +184,7 @@ namespace GitHub.Runner.Common
             public static readonly string UnsupportedCommandMessageDisabled = "The `{0}` command is disabled. Please upgrade to using Environment Files or opt into unsecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_COMMANDS` environment variable to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
             public static readonly string UnsupportedStopCommandTokenDisabled = "You cannot use a endToken that is an empty string, the string 'pause-logging', or another workflow command. For more information see: https://docs.github.com/actions/learn-github-actions/workflow-commands-for-github-actions#example-stopping-and-starting-workflow-commands or opt into insecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS` environment variable to `true`.";
             public static readonly string UnsupportedSummarySize = "$GITHUB_STEP_SUMMARY upload aborted, supports content up to a size of {0}k, got {1}k. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
+            public static readonly string Node12DetectedAfterEndOfLife = "Node.js 12 actions are deprecated. Please update the following actions to use Node.js 16: {0}";
         }
 
         public static class RunnerEvent

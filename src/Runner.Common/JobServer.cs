@@ -2,7 +2,9 @@ using GitHub.DistributedTask.WebApi;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -10,6 +12,7 @@ using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Utilities.Internal;
 using Newtonsoft.Json;
 
 namespace GitHub.Runner.Common
@@ -143,8 +146,10 @@ namespace GitHub.Runner.Common
 
         public ValueTask DisposeAsync()
         {
-            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Shutdown", CancellationToken.None);
+            CloseWebSocket(WebSocketCloseStatus.NormalClosure, CancellationToken.None);
+
             GC.SuppressFinalize(this);
+
             return ValueTask.CompletedTask;
         }
 
@@ -169,6 +174,11 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Creating websocket client ..." + feedStreamUrl);
                     this._websocketClient = new ClientWebSocket();
                     this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+                    var userAgentValues = new List<ProductInfoHeaderValue>();
+                    userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
+                    userAgentValues.AddRange(HostContext.UserAgents);
+                    this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x=>x.ToString())));
+
                     this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
                 }
                 else
@@ -248,7 +258,8 @@ namespace GitHub.Runner.Common
                         if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesAttemptedByWebsocket > _minWebsocketFailurePercentageAllowed)
                         {
                             Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
-                            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.InternalServerError, "Shutdown due to failures", cancellationToken);
+                            CloseWebSocket(WebSocketCloseStatus.InternalServerError, cancellationToken);
+
                             // By setting it to null, we will ensure that we never try websocket path again for this job
                             _websocketClient = null;
                         }
@@ -273,6 +284,19 @@ namespace GitHub.Runner.Common
                 {
                     await _taskClient.AppendTimelineRecordFeedAsync(scopeIdentifier, hubName, planId, timelineId, timelineRecordId, stepId, lines, cancellationToken: cancellationToken);
                 }
+            }
+        }
+
+        private void CloseWebSocket(WebSocketCloseStatus closeStatus, CancellationToken cancellationToken)
+        {
+            try
+            {
+                _websocketClient?.CloseOutputAsync(closeStatus, "Closing websocket", cancellationToken);
+            }
+            catch (Exception websocketEx)
+            {
+                // In some cases this might be okay since the websocket might be open yet, so just close and don't trace exceptions
+                Trace.Info($"Failed to close websocket gracefully {websocketEx.GetType().Name}");
             }
         }
 
