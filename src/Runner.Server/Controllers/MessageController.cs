@@ -1895,7 +1895,7 @@ namespace Runner.Server.Controllers
                                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                                     }
                                                     next.DisplayName = _jobdisplayname;
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job ContinueOnError" }), next.TimelineId, next.Id);
+                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job continueOnError" }), next.TimelineId, next.Id);
                                                     templateContext = CreateTemplateContext(matrixJobTraceWriter, contextData);
                                                     next.ContinueOnError = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, null, true).AssertBoolean($"jobs.{jobname}.continue-on-error be a boolean").Value).FirstOrDefault();
                                                     templateContext.Errors.Check();
