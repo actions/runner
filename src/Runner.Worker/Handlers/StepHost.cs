@@ -23,7 +23,8 @@ namespace GitHub.Runner.Worker.Handlers
 
         Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion);
 
-        Task<int> ExecuteAsync(string workingDirectory,
+        Task<int> ExecuteAsync(IExecutionContext context,
+                               string workingDirectory,
                                string fileName,
                                string arguments,
                                IDictionary<string, string> environment,
@@ -32,16 +33,6 @@ namespace GitHub.Runner.Worker.Handlers
                                bool killProcessOnCancel,
                                bool inheritConsoleHandler,
                                string standardInInput,
-                               CancellationToken cancellationToken);
-
-        Task<int> ExecuteAsync(string workingDirectory,
-                               string fileName,
-                               string arguments,
-                               IDictionary<string, string> environment,
-                               bool requireExitCodeZero,
-                               Encoding outputEncoding,
-                               bool killProcessOnCancel,
-                               bool inheritConsoleHandler,
                                CancellationToken cancellationToken);
     }
 
@@ -72,7 +63,8 @@ namespace GitHub.Runner.Worker.Handlers
             return Task.FromResult<string>(preferredVersion);
         }
 
-        public async Task<int> ExecuteAsync(string workingDirectory,
+        public async Task<int> ExecuteAsync(IExecutionContext context,
+                                            string workingDirectory,
                                             string fileName,
                                             string arguments,
                                             IDictionary<string, string> environment,
@@ -105,28 +97,6 @@ namespace GitHub.Runner.Worker.Handlers
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
-        }
-        public async Task<int> ExecuteAsync(string workingDirectory,
-                                            string fileName,
-                                            string arguments,
-                                            IDictionary<string, string> environment,
-                                            bool requireExitCodeZero,
-                                            Encoding outputEncoding,
-                                            bool killProcessOnCancel,
-                                            bool inheritConsoleHandler,
-                                            CancellationToken cancellationToken)
-        {
-            return await ExecuteAsync(workingDirectory: workingDirectory,
-                                                     fileName: fileName,
-                                                     arguments: arguments,
-                                                     environment: environment,
-                                                     requireExitCodeZero: requireExitCodeZero,
-                                                     outputEncoding: outputEncoding,
-                                                     killProcessOnCancel: killProcessOnCancel,
-                                                     inheritConsoleHandler: inheritConsoleHandler,
-                                                     standardInInput: null,
-                                                     cancellationToken: cancellationToken);
-
         }
     }
 
@@ -198,29 +168,6 @@ namespace GitHub.Runner.Worker.Handlers
             return nodeExternal;
         }
 
-        public async Task<int> ExecuteAsync(string workingDirectory,
-                                            string fileName,
-                                            string arguments,
-                                            IDictionary<string, string> environment,
-                                            bool requireExitCodeZero,
-                                            Encoding outputEncoding,
-                                            bool killProcessOnCancel,
-                                            bool inheritConsoleHandler,
-                                            string standardInInput,
-                                            CancellationToken cancellationToken)
-        {
-            // Streaming into stdin is currently not supported on containers, fallback to execute without stdin
-            return await ExecuteAsync(workingDirectory,
-                         fileName,
-                          arguments,
-                          environment,
-                          requireExitCodeZero,
-                          outputEncoding,
-                          killProcessOnCancel,
-                          inheritConsoleHandler,
-                          cancellationToken);
-        }
-
         public async Task<int> ExecuteAsync(IExecutionContext context,
                                             string workingDirectory,
                                             string fileName,
@@ -230,6 +177,7 @@ namespace GitHub.Runner.Worker.Handlers
                                             Encoding outputEncoding,
                                             bool killProcessOnCancel,
                                             bool inheritConsoleHandler,
+                                            string standardInInput,
                                             CancellationToken cancellationToken)
         {
             ArgUtil.NotNull(Container, nameof(Container));
@@ -248,7 +196,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // normally, ExecuteAsync does not take a 'context', so we have to have an exit code. TODO: is this conversion correct?
                 // SucceededWithIssues is a special case, since it is not a failure, but would bubble up as exit code '1', which is failure
                 // do we still use it? it has 0 references
-                return (int)(context.Result ?? 0); 
+                return (int)(context.Result ?? 0);
             }
 
             return await ExecuteAsync(workingDirectory,

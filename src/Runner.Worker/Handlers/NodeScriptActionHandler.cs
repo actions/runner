@@ -134,7 +134,8 @@ namespace GitHub.Runner.Worker.Handlers
                 // Execute the process. Exit code 0 should always be returned.
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
-                Task<int> step = StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                Task<int> step = StepHost.ExecuteAsync(ExecutionContext,
+                                                workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
                                                 fileName: StepHost.ResolvePathForStepHost(file),
                                                 arguments: arguments,
                                                 environment: Environment,
@@ -142,6 +143,7 @@ namespace GitHub.Runner.Worker.Handlers
                                                 outputEncoding: outputEncoding,
                                                 killProcessOnCancel: false,
                                                 inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
+                                                standardInInput: string.Empty,
                                                 cancellationToken: ExecutionContext.CancellationToken);
 
                 // Wait for either the node exit or force finish through ##vso command

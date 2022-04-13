@@ -113,23 +113,28 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Entering();
             var responsePath = GenerateResponsePath();
 
+            context.JobContext.TryGetValue("hook_state", out var hookState);
             var input = new HookInput
             {
                 Command = HookCommand.RunScriptStep,
                 ResponseFile = responsePath,
                 Args = new HookStepArgs
                 {
-                    Container = container,
-                    EntryPointArgs = entryPointArgs,
+                    Container = container.GetHookContainer(),
+                    EntryPointArgs = entryPointArgs.Split(' ').Select(arg => arg.Trim()),
                     EntryPoint = entryPoint,
                     EnvironmentVariables = environmentVariables,
                     PrependPath = prependPath,
                     WorkingDirectory = workingDirectory,
-                }
+                },
+                State = JsonUtility.FromString<dynamic>(hookState.ToString())
             };
 
             var response = await ExecuteHookScript(context, input);
-            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
+            if (response != null) 
+            {
+                context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
+            }
         }
 
         private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input)

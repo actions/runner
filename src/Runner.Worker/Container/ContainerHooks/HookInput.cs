@@ -31,12 +31,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     }
     public class HookStepArgs
     {
-        public string EntryPointArgs { get; set; }
+        public IEnumerable<string> EntryPointArgs { get; set; }
         public string EntryPoint { get; set; }
         public IDictionary<string, string> EnvironmentVariables { get; set; }
         public string PrependPath { get; set; }
         public string WorkingDirectory { get; set; }
-        public ContainerInfo Container { get; internal set; }
+        public HookContainer Container { get; internal set; }
     }
 
     public class PrepareJobArgs
