@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,7 +8,8 @@ using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
-using GitHub.DistributedTask.Pipelines.ContextData;
+using System.IO;
+using System.Threading.Channels;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -19,6 +21,17 @@ namespace GitHub.Runner.Worker.Handlers
         string ResolvePathForStepHost(string path);
 
         Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion);
+
+        Task<int> ExecuteAsync(string workingDirectory,
+                               string fileName,
+                               string arguments,
+                               IDictionary<string, string> environment,
+                               bool requireExitCodeZero,
+                               Encoding outputEncoding,
+                               bool killProcessOnCancel,
+                               bool inheritConsoleHandler,
+                               string standardInInput,
+                               CancellationToken cancellationToken);
 
         Task<int> ExecuteAsync(string workingDirectory,
                                string fileName,
@@ -66,10 +79,17 @@ namespace GitHub.Runner.Worker.Handlers
                                             Encoding outputEncoding,
                                             bool killProcessOnCancel,
                                             bool inheritConsoleHandler,
+                                            string standardInInput,
                                             CancellationToken cancellationToken)
         {
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
+                Channel<string> redirectStandardIn = null;
+                if (standardInInput != null)
+                {
+                    redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
+                    await redirectStandardIn.Writer.WriteAsync(standardInInput, cancellationToken); // TODO: catch and rethrow with hook info
+                }
                 processInvoker.OutputDataReceived += OutputDataReceived;
                 processInvoker.ErrorDataReceived += ErrorDataReceived;
 
@@ -80,10 +100,32 @@ namespace GitHub.Runner.Worker.Handlers
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,
                                                          killProcessOnCancel: killProcessOnCancel,
-                                                         redirectStandardIn: null,
+                                                         redirectStandardIn: redirectStandardIn,
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
+        }
+        public async Task<int> ExecuteAsync(string workingDirectory,
+                                            string fileName,
+                                            string arguments,
+                                            IDictionary<string, string> environment,
+                                            bool requireExitCodeZero,
+                                            Encoding outputEncoding,
+                                            bool killProcessOnCancel,
+                                            bool inheritConsoleHandler,
+                                            CancellationToken cancellationToken)
+        {
+            return await ExecuteAsync(workingDirectory: workingDirectory,
+                                                     fileName: fileName,
+                                                     arguments: arguments,
+                                                     environment: environment,
+                                                     requireExitCodeZero: requireExitCodeZero,
+                                                     outputEncoding: outputEncoding,
+                                                     killProcessOnCancel: killProcessOnCancel,
+                                                     inheritConsoleHandler: inheritConsoleHandler,
+                                                     standardInInput: null,
+                                                     cancellationToken: cancellationToken);
+
         }
     }
 
@@ -163,6 +205,29 @@ namespace GitHub.Runner.Worker.Handlers
                                             Encoding outputEncoding,
                                             bool killProcessOnCancel,
                                             bool inheritConsoleHandler,
+                                            string standardInInput,
+                                            CancellationToken cancellationToken)
+        {
+            // Streaming into stdin is currently not supported on containers, fallback to execute without stdin
+            return await ExecuteAsync(workingDirectory,
+                         fileName,
+                          arguments,
+                          environment,
+                          requireExitCodeZero,
+                          outputEncoding,
+                          killProcessOnCancel,
+                          inheritConsoleHandler,
+                          cancellationToken);
+        }
+
+        public async Task<int> ExecuteAsync(string workingDirectory,
+                                            string fileName,
+                                            string arguments,
+                                            IDictionary<string, string> environment,
+                                            bool requireExitCodeZero,
+                                            Encoding outputEncoding,
+                                            bool killProcessOnCancel,
+                                            bool inheritConsoleHandler,
                                             CancellationToken cancellationToken)
         {
             // make sure container exist.
@@ -221,7 +286,6 @@ namespace GitHub.Runner.Worker.Handlers
                 // Let .NET choose the default.
                 outputEncoding = null;
 #endif
-
                 return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                                                          fileName: dockerClientPath,
                                                          arguments: dockerCommandArgstring,

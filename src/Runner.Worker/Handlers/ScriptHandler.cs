@@ -300,6 +300,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             ExecutionContext.Debug($"{fileName} {arguments}");
 
+            Inputs.TryGetValue("standardInInput", out var standardInInput); // string
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
@@ -315,6 +316,7 @@ namespace GitHub.Runner.Worker.Handlers
                                             outputEncoding: null,
                                             killProcessOnCancel: false,
                                             inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
+                                            standardInInput: standardInInput,
                                             cancellationToken: ExecutionContext.CancellationToken);
 
                 // Error
