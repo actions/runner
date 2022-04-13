@@ -1,0 +1,18 @@
+on: push
+name: actions_checkout_v1
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/checkout@v1
+      with:
+        path: myothercopy
+    - uses: actions/github-script@v6
+      with:
+        script: |
+          var fs = require('fs');
+          var path = require('path');
+          fs.statSync(path.join(process.env.RUNNER_WORKSPACE, 'myothercopy', '.github'));
+          fs.statSync(path.join(process.env.GITHUB_WORKSPACE, '.github'));
+        github-token: none

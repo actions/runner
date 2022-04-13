@@ -9,7 +9,7 @@ const del = require("del");
 
 try {
     const _checkoutref = core.getInput("checkoutref");
-    const _path = core.getInput("path");
+    var _path = core.getInput("path");
     const repository = core.getInput("repository");
     const ref = core.getInput("ref");
     if (repository !== env["GITHUB_REPOSITORY"] || ref !== undefined && ref !== "" && ref !== env["GITHUB_REF"] && ref !== env["GITHUB_SHA"]) {
@@ -17,23 +17,26 @@ try {
     } else {
         core.setOutput("skip", true);
 
-        var submodules = false
-        var nestedSubmodules = false
-        const submodulesString = (core.getInput('submodules') || '').toUpperCase()
+        var submodules = false;
+        var nestedSubmodules = false;
+        const submodulesString = (core.getInput('submodules') || '').toUpperCase();
         if (submodulesString == 'RECURSIVE') {
-            submodules = true
-            nestedSubmodules = true
+            submodules = true;
+            nestedSubmodules = true;
         } else if (submodulesString == 'TRUE') {
-            submodules = true
+            submodules = true;
         }
         const url = env["ACTIONS_RUNTIME_URL"] + "_apis/v1/Message/multipart/" + env["GITHUB_RUN_ID"] + "?submodules=" + (submodules ? "true" : "false") + "&nestedSubmodules=" + (nestedSubmodules ? "true" : "false");
-        var githubWorkspacePath = env["GITHUB_WORKSPACE"]
+        var githubWorkspacePath = env["GITHUB_WORKSPACE"];
         if(_checkoutref.toLowerCase().startsWith("v1")) {
-            githubWorkspacePath = path.join(githubWorkspacePath,  "..")
+            githubWorkspacePath = path.join(githubWorkspacePath,  "..");
+            if(!_path) {
+                _path = path.basename(githubWorkspacePath);
+            }
         }
         const dest = _path !== "" && _path !== undefined ? path.join(githubWorkspacePath, _path) : githubWorkspacePath;
         if(!(dest + path.sep).startsWith(githubWorkspacePath + path.sep)) {
-            throw new Error(`Repository path '${dest}' is not under '${githubWorkspacePath}'`)
+            throw new Error(`Repository path '${dest}' is not under '${githubWorkspacePath}'`);
         }
         var clean = core.getInput("clean");
         if(clean === undefined || clean === "" || clean === "true") {

@@ -124,6 +124,7 @@ jobs:
         gharun -P ubuntu-latest=-self-hosted --parallel 8
         cd ../..
         gharun -W testworkflows/test-setup-node.yml
+        gharun -C testworkflows/actions_checkout_v1
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
