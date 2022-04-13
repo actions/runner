@@ -1,18 +1,13 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
@@ -20,7 +15,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
-using GitHub.Services.WebApi;
+using GitHub.Runner.Worker.Handlers;
 using Newtonsoft.Json;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -115,7 +110,6 @@ namespace GitHub.Runner.Worker
         void UpdateGlobalStepsContext();
 
         void WriteWebhookPayload();
-
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -1198,6 +1192,66 @@ namespace GitHub.Runner.Worker
         public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)
         {
             return new TemplateTraceWriter(context);
+        }
+
+        public static DictionaryContextData GetExpressionValues(this IExecutionContext context, IStepHost stepHost)
+        {
+            if (stepHost is ContainerStepHost)
+            {
+
+                var expressionValues = context.ExpressionValues.Clone() as DictionaryContextData;
+                context.UpdatePathsInExpressionValues("github", expressionValues, stepHost);
+                context.UpdatePathsInExpressionValues("runner", expressionValues, stepHost);
+                return expressionValues;
+            }
+            else
+            {
+                return context.ExpressionValues.Clone() as DictionaryContextData;
+            }
+        }
+
+        private static void UpdatePathsInExpressionValues(this IExecutionContext context, string contextName, DictionaryContextData expressionValues, IStepHost stepHost)
+        {
+            var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
+            context.ResolvePathsInExpressionValuesDictionary(dict, stepHost);
+            expressionValues[contextName] = dict;
+        }
+
+        private static void ResolvePathsInExpressionValuesDictionary(this IExecutionContext context, DictionaryContextData dict, IStepHost stepHost)
+        {
+            foreach (var key in dict.Keys.ToList())
+            {
+                if (dict[key] is StringContextData)
+                {
+                    var value = dict[key].ToString();
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
+                    }
+                }
+                else if (dict[key] is DictionaryContextData)
+                {
+                    var innerDict = dict[key].AssertDictionary("expected dictionary");
+                    context.ResolvePathsInExpressionValuesDictionary(innerDict, stepHost);
+                    var updatedDict = new DictionaryContextData();
+                    foreach (var k in innerDict.Keys.ToList())
+                    {
+                        updatedDict[k] = innerDict[k];
+                    }
+                    dict[key] = updatedDict;
+                }
+                else if (dict[key] is CaseSensitiveDictionaryContextData)
+                {
+                    var innerDict = dict[key].AssertDictionary("expected dictionary");
+                    context.ResolvePathsInExpressionValuesDictionary(innerDict, stepHost);
+                    var updatedDict = new CaseSensitiveDictionaryContextData();
+                    foreach (var k in innerDict.Keys.ToList())
+                    {
+                        updatedDict[k] = innerDict[k];
+                    }
+                    dict[key] = updatedDict;
+                }
+            }
         }
     }
 

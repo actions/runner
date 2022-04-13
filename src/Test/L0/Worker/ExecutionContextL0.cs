@@ -6,6 +6,8 @@ using System.Threading;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Xunit;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -723,6 +725,150 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton(new Mock<IJobServerQueue>().Object);
 
             return hc;
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetExpressionValues_ContainerStepHost()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                const string source = "/home/username/Projects/work/runner/_layout";
+                var containerInfo = new ContainerInfo();
+                containerInfo.ContainerId = "test";
+
+                containerInfo.AddPathTranslateMapping($"{source}/_work", "/__w");
+                containerInfo.AddPathTranslateMapping($"{source}/_temp", "/__t");
+                containerInfo.AddPathTranslateMapping($"{source}/externals", "/__e");
+
+                containerInfo.AddPathTranslateMapping($"{source}/_work/_temp/_github_home", "/github/home");
+                containerInfo.AddPathTranslateMapping($"{source}/_work/_temp/_github_workflow", "/github/workflow");
+
+                foreach (var v in new List<string>() {
+                    $"{source}/_work",
+                    $"{source}/externals",
+                    $"{source}/_work/_temp",
+                    $"{source}/_work/_actions",
+                    $"{source}/_work/_tool",
+                })
+                {
+                    containerInfo.MountVolumes.Add(new MountVolume(v, containerInfo.TranslateToContainerPath(v)));
+                };
+
+                var stepHost = new ContainerStepHost();
+                stepHost.Container = containerInfo;
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                var inputGithubContext = new GitHubContext();
+                var inputeRunnerContext = new RunnerContext();
+
+                // string context data
+                inputGithubContext["action_path"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_actions/owner/composite/main");
+                inputGithubContext["action"] = new StringContextData("__owner_composite");
+                inputGithubContext["api_url"] = new StringContextData("https://api.github.com/custom/path");
+                inputGithubContext["env"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp/_runner_file_commands/set_env_265698aa-7f38-40f5-9316-5c01a3153672");
+                inputGithubContext["path"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp/_runner_file_commands/add_path_265698aa-7f38-40f5-9316-5c01a3153672");
+                inputGithubContext["event_path"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp/_github_workflow/event.json");
+                inputGithubContext["repository"] = new StringContextData("owner/repo-name");
+                inputGithubContext["run_id"] = new StringContextData("2033211332");
+                inputGithubContext["workflow"] = new StringContextData("Name of Workflow");
+                inputGithubContext["workspace"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/step-order/step-order");
+                inputeRunnerContext["temp"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp");
+                inputeRunnerContext["tool_cache"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_tool");
+
+                // dictionary context data
+                var githubEvent = new DictionaryContextData();
+                githubEvent["inputs"] = null;
+                githubEvent["ref"] = new StringContextData("refs/heads/main");
+                githubEvent["repository"] = new DictionaryContextData();
+                githubEvent["sender"] = new DictionaryContextData();
+                githubEvent["workflow"] = new StringContextData(".github/workflows/composite_step_host_translate.yaml");
+
+                inputGithubContext["event"] = githubEvent;
+
+                ec.ExpressionValues["github"] = inputGithubContext;
+                ec.ExpressionValues["runner"] = inputeRunnerContext;
+
+                var ecExpect = new Runner.Worker.ExecutionContext();
+                ecExpect.Initialize(hc);
+
+                var expectedGithubEvent = new DictionaryContextData();
+                expectedGithubEvent["inputs"] = null;
+                expectedGithubEvent["ref"] = new StringContextData("refs/heads/main");
+                expectedGithubEvent["repository"] = new DictionaryContextData();
+                expectedGithubEvent["sender"] = new DictionaryContextData();
+                expectedGithubEvent["workflow"] = new StringContextData(".github/workflows/composite_step_host_translate.yaml");
+                var expectedGithubContext = new GitHubContext();
+                var expectedRunnerContext = new RunnerContext();
+                expectedGithubContext["action_path"] = new StringContextData("/__w/_actions/owner/composite/main");
+                expectedGithubContext["action"] = new StringContextData("__owner_composite");
+                expectedGithubContext["api_url"] = new StringContextData("https://api.github.com/custom/path");
+                expectedGithubContext["env"] = new StringContextData("/__w/_temp/_runner_file_commands/set_env_265698aa-7f38-40f5-9316-5c01a3153672");
+                expectedGithubContext["path"] = new StringContextData("/__w/_temp/_runner_file_commands/add_path_265698aa-7f38-40f5-9316-5c01a3153672");
+                expectedGithubContext["event_path"] = new StringContextData("/github/workflow/event.json");
+                expectedGithubContext["repository"] = new StringContextData("owner/repo-name");
+                expectedGithubContext["run_id"] = new StringContextData("2033211332");
+                expectedGithubContext["workflow"] = new StringContextData("Name of Workflow");
+                expectedGithubContext["workspace"] = new StringContextData("/__w/step-order/step-order");
+                expectedGithubContext["event"] = expectedGithubEvent;
+                expectedRunnerContext["temp"] = new StringContextData("/__w/_temp");
+                expectedRunnerContext["tool_cache"] = new StringContextData("/__w/_tool");
+
+                ecExpect.ExpressionValues["github"] = expectedGithubContext;
+                ecExpect.ExpressionValues["runner"] = expectedRunnerContext;
+
+                var translatedExpressionValues = ec.GetExpressionValues(stepHost);
+
+                foreach (var contextName in new string[] { "github", "runner" })
+                {
+                    var dict = translatedExpressionValues[contextName].AssertDictionary($"expected context github to be a dictionary");
+                    var expectedExpressionValues = ecExpect.ExpressionValues[contextName].AssertDictionary("expect dict");
+                    foreach (var key in dict.Keys.ToList())
+                    {
+                        if (dict[key] is StringContextData)
+                        {
+                            var expect = dict[key].AssertString("expect string");
+                            var outcome = expectedExpressionValues[key].AssertString("expect string");
+                            Assert.Equal(expect.Value, outcome.Value);
+                        }
+                        else if (dict[key] is DictionaryContextData || dict[key] is CaseSensitiveDictionaryContextData)
+                        {
+                            var expectDict = dict[key].AssertDictionary("expect dict");
+                            var actualDict = expectedExpressionValues[key].AssertDictionary("expect dict");
+                            Assert.True(ExpressionValuesAssertEqual(expectDict, actualDict));
+                        }
+                    }
+                }
+            }
+        }
+
+        private bool ExpressionValuesAssertEqual(DictionaryContextData expect, DictionaryContextData actual)
+        {
+            foreach (var key in expect.Keys.ToList())
+            {
+                if (expect[key] is StringContextData)
+                {
+                    var expectValue = expect[key].AssertString("expect string");
+                    var actualValue = actual[key].AssertString("expect string");
+                    if (expectValue.Equals(actualValue))
+                    {
+                        return false;
+                    }
+                }
+                else if (expect[key] is DictionaryContextData || expect[key] is CaseSensitiveDictionaryContextData)
+                {
+                    var expectDict = expect[key].AssertDictionary("expect dict");
+                    var actualDict = actual[key].AssertDictionary("expect dict");
+                    if (!ExpressionValuesAssertEqual(expectDict, actualDict))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
     }
 }
