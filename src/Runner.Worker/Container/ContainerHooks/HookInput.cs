@@ -39,23 +39,17 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public ContainerInfo Container { get; internal set; }
     }
 
-    public class HookResponse
-    {
-        public ResponseContext Context { get; set; }
-        public dynamic State { get; set; }
-    }
-
-    public class ResponseContext
+    public class PrepareJobArgs
     {
         public HookContainer Container { get; set; }
         public IList<HookContainer> Services { get; set; }
+        public string Network { get; set; }
     }
 
-    public static class ContainerInfoExtensions
+    public class ContainerRegistry
     {
-        public static HookContainer GetHookContainer(this ContainerInfo containerInfo)
-        {
-            return new HookContainer(containerInfo);
-        }
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public string ServerUrl { get; set; }
     }
 }

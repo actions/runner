@@ -47,10 +47,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         }
     }
 
-    public class ContainerRegistry
+    public static class ContainerInfoExtensions
     {
-        public string Username { get; set; }
-        public string Password { get; set; }
-        public string ServerUrl { get; set; }
+        public static HookContainer GetHookContainer(this ContainerInfo containerInfo)
+        {
+            return new HookContainer(containerInfo);
+        }
     }
 }

@@ -43,19 +43,22 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 Command = HookCommand.PrepareJob,
                 ResponseFile = responsePath,
-                Args = new HookArgs
+                Args = new PrepareJobArgs
                 {
-                    JobContainer = jobContainer.GetHookContainer(),
+                    Container = jobContainer.GetHookContainer(),
                     Services = serviceContainers.Select(c => c.GetHookContainer()).ToList(),
                 }
             };
 
             var response = await ExecuteHookScript(context, input);
+            // TODO: Should we throw if response.Context is null or just noop?
             context.JobContext.Container["id"] = new StringContextData(response.Context.Container.Id);
             jobContainer.ContainerId = response.Context.Container.Id;
             context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
             jobContainer.ContainerNetwork = response.Context.Container.Network;
             context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
+
+            // TODO: figure out if we need ContainerRuntimePath for anything
             // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
             // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
             // container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
