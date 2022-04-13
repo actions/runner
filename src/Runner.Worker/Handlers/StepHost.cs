@@ -9,6 +9,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using System.IO;
+using System.Threading.Channels;
 
 namespace GitHub.Runner.Worker.Handlers
 {
