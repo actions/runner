@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Text;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Common;
