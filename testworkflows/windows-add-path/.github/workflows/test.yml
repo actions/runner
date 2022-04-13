@@ -1,0 +1,15 @@
+on: push
+name: windows-add-path
+jobs:
+  update-localcheckout:
+    runs-on: self-hosted
+    steps:
+    - run: |
+        echo Hallo Welt %*
+      shell: cmd /c copy {0} myshell.cmd
+    - run: |
+        echo %cd%> %GITHUB_PATH%
+      shell: cmd
+    - run: |
+        This is my shell
+      shell: myshell {0}
