@@ -13,6 +13,7 @@
 - Better exception handling when runner is configured with invalid Url or token (#1741)
 - Set user agent for websocket requests (#1791)
 - Gracefully handle websocket failures (#1789)
+- Capture telemetry when git errors on unsafe repository. (#1823)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
