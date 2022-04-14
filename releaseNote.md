@@ -1,32 +1,18 @@
 ## Features
-
-- Make run.sh|cmd handle update without quitting so containers using them as entrypoints don't exit on update (#1646, #1633, #1708)
-- Add support for Step Summary (#1642, #1667, #1712) 
-- Pass jobId to the actionsDownloadInfo controller (#1639)
-- updated systemd svc.sh to accept custom service file (#1612) 
-- Add ability to specify runner group when creating service (#1675)
-- Prefer node16 over node12 when running internal scripts (#1621) 
-- Sending telemetry about actions usage. (#1688) 
-- Bump node12 version to latest (#1651)
-- Add internal to node version function and use better env var name (#1715)
-- Force JS Actions Node version to 16 if FF is on unless user opted out (#1716)
+- Continue-on-error is now possible for the composite action steps (#1763)
+- Now it's possible to use context evaluation in the `shell` of composite action run steps (#1767)
 
 ## Bugs
-- Fix windows console runner update crash (#1670) 
-- Retry policy for methods GetTenantCredential and GetJITRunnerTokenAsync (#1691)
-- Skip DeleteAgentSession when the acess token has been revoked. (#1692)
-- Repaired hashFiles call so if error was thrown, it was returned to process invoker (#1678)
-- Runner throws null ref exception when new line after EOF is missing (#1687)
-- Lets allow up to 150 characters for services on linux/mac (#1710) 
+- Fix a bug where job would be marked as 'cancelled' after self-hosted runner going offline (#1792)
+- Translate paths in `github` and `runner` contexts when running on a container (#1762)
+- Warn about invalid flags when configuring or running the runner (#1781)
+- Fix a bug where job hooks would use job level working directory (#1809)
 
 ## Misc
-
-- Added examples and aligned language within docs/checks/actions.md (#1664)
-- Problem with debugging on macOS M1 (#1625) 
-- Fix typo in hashFiles.ts. (#1672) 
-- Allow mocked updates for E2E testing (#1654)
-- Move JobTelemetry and StepsTelemetry into GlobalContext. (#1680) 
-- Fix inconsistency of outputs (both canceled and cancelled are used (#1624)
+- Allow warnings about actions using Node v12 (#1735)
+- Better exception handling when runner is configured with invalid Url or token (#1741)
+- Set user agent for websocket requests (#1791)
+- Gracefully handle websocket failures (#1789)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

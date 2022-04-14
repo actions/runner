@@ -7,6 +7,9 @@ using Xunit;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
 using GitHub.Runner.Worker.Container;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using System.Linq;
+using GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {

@@ -71,7 +71,7 @@ namespace GitHub.Runner.Common
 
         // Web console dequeue will start with process queue every 250ms for the first 60*4 times (~60 seconds).
         // Then the dequeue will happen every 500ms.
-        // In this way, customer still can get instance live console output on job start, 
+        // In this way, customer still can get instance live console output on job start,
         // at the same time we can cut the load to server after the build run for more than 60s
         private int _webConsoleLineAggressiveDequeueCount = 0;
         private const int _webConsoleLineAggressiveDequeueLimit = 4 * 60;
@@ -88,6 +88,10 @@ namespace GitHub.Runner.Common
         public void Start(Pipelines.AgentJobRequestMessage jobRequest)
         {
             Trace.Entering();
+
+            var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+
+            _jobServer.InitializeWebsocketClient(serviceEndPoint);
 
             if (_queueInProcess)
             {
@@ -155,6 +159,9 @@ namespace GitHub.Runner.Common
             Trace.Verbose("Draining timeline update queue.");
             await ProcessTimelinesUpdateQueueAsync(runOnce: true);
             Trace.Info("Timeline update queue drained.");
+
+            Trace.Info($"Disposing job server ...");
+            await _jobServer.DisposeAsync();
 
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }
@@ -292,15 +299,7 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
-                                // we will not requeue failed batch, since the web console lines are time sensitive.
-                                if (batch[0].LineNumber.HasValue)
-                                {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber.Value, default(CancellationToken));
-                                }
-                                else
-                                {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), default(CancellationToken));
-                                }
+                                await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, default(CancellationToken));
 
                                 if (_firstConsoleOutputs)
                                 {
@@ -489,8 +488,8 @@ namespace GitHub.Runner.Common
 
                 if (runOnce)
                 {
-                    // continue process timeline records update, 
-                    // we might have more records need update, 
+                    // continue process timeline records update,
+                    // we might have more records need update,
                     // since we just create a new sub-timeline
                     if (pendingSubtimelineUpdate)
                     {
