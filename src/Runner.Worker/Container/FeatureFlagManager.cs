@@ -9,5 +9,10 @@ namespace GitHub.Runner.Worker.Container
         {
             return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath));
         }
+
+        public static bool IsCustomHookFeatureEnabled()
+        {
+            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.CustomHooksPath));
+        }
     }
 }

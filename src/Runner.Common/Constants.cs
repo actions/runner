@@ -197,6 +197,7 @@ namespace GitHub.Runner.Common
             public static readonly string JobStartedStepName = "Set up runner";
             public static readonly string JobCompletedStepName = "Complete runner";
             public static readonly string ContainerHooksPath = "GITHUB_ACTIONS_RUNNER_CONTAINER_HOOKS";
+            public static readonly string CustomHooksPath = "ACTIONS_RUNNER_CONTAINER_HOOK";
         }
 
         public static class Path
