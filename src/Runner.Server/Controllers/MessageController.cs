@@ -4253,7 +4253,7 @@ namespace Runner.Server.Controllers
                                 await writer.WriteLineAsync();
                                 await writer.FlushAsync();
                             }
-                        } catch (OperationCanceledException) {
+                        } catch {
 
                         }
                     }, requestAborted);
