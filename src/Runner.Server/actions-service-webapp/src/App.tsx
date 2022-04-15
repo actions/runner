@@ -18,14 +18,28 @@ function List() {
   var page = Number.parseInt(params["page"] || "0");
   var parentPath = useResolvedPath("..");
   var resolved = resolvePath("..", parentPath.pathname);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   useEffect(() => {
     setJobs([]);
     if(params.page) {
       (async () => {
-        var resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message?page=${encodeURIComponent(page)}&repo=${encodeURIComponent(params.owner + "/" + params.repo)}&runid=${encodeURIComponent(params.runid || "null")}`, { })
-        if(resp.status === 200) {
-          var jobs : IJob[] | null = await resp.json();
-          setJobs(jobs || []);
+        try {
+          setLoading(true);
+          var resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message?page=${encodeURIComponent(page)}&repo=${encodeURIComponent(params.owner + "/" + params.repo)}&runid=${encodeURIComponent(params.runid || "null")}`, { })
+          if(resp.status === 200) {
+            var jobs : IJob[] | null = await resp.json();
+            setJobs(jobs || []);
+          }
+          setError("");
+        } catch(ex) {
+          if(ex instanceof Object) {
+            setError(ex.toString());
+          } else {
+            setError("Unknown Error: " + ex);
+          }
+        } finally {
+          setLoading(false);
         }
       })()
       if(page === 0) {
@@ -114,6 +128,7 @@ function List() {
         };
       }}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{val.workflowname}</span><br/><span style={{fontSize: 12}}>runid:&nbsp;{val.runid} attempt:&nbsp;{val.attempt} result:&nbsp;{val.result}</span></NavLink>
     ))}
+  { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
   </span>);
 };
 
@@ -134,17 +149,31 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
   var resolved = resolvePath("..", parentPath.pathname);
   var params = useParams();
   const [ jobs, setJobs ] = useState<T[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   useEffect(() => {
     setJobs([]);
     if(params.page) {
       (async () => {
-        var resp = await fetch(param.url(params), { })
-        if(resp.status === 200) {
-          var jobs : T[] | null = await resp.json();
-          setJobs(jobs || []);
+        try {
+          setLoading(true);
+          var resp = await fetch(param.url(params), { })
+          if(resp.status === 200) {
+            var jobs : T[] | null = await resp.json();
+            setJobs(jobs || []);
+          }
+          setError("");
+        } catch(ex) {
+          if(ex instanceof Object) {
+            setError(ex.toString());
+          } else {
+            setError("Unknown Error: " + ex);
+          }
+        } finally {
+          setLoading(false);
         }
       })()
-      if(page === 0 && param.eventName) {
+      if((!params.page || params.page === "0") && param.eventName) {
         var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event2?${(param.eventQuery && param.eventQuery(params)) ?? ""}`);
         source.addEventListener(param.eventName, ev => {
           var je = JSON.parse((ev as MessageEvent).data) as T;
@@ -217,6 +246,7 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
       </div>
       
     ))}
+    { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
   </div>);
 };
 
@@ -424,47 +454,23 @@ interface AbortControllerMemo {
 }
 
 const Detail : React.FC<DetailProps> = prop => {
-  // const [chunks, setChunks] = useState<string[][]>([]);
-  // const [content, setContent] = useState<string[]>([]);
   const [content, setContent] = useState<Content>({chunks: [], content: []});
-  // const [loading, setLoading] = useState<boolean>(false);
-  // const [loaded, setLoaded] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   useEffect(() => {
     setContent({chunks: [], content: []});
+    setLoading(false);
   }, [prop.timeline?.id]);
   useEffect(() => {
-    // setLoaded(false);
     if(!prop.timeline) {
       return;
     }
     prop.registerLiveLog(prop.timeline.id || "", lines => {
-      // var movedToChunk : string[] = [];
       setContent(content => {
         if(content.content.length > 500) {
           return {chunks: [...content.chunks, [...content.content]], content: [...lines.map(line => convert.toHtml(line))]};
         }
         return {chunks: [...content.chunks], content: [...content.content, ...lines.map(line => convert.toHtml(line))]};
-        // if(content.content.length > 100) {
-        //   content.chunks.push([...content.content]);
-        //   return {chunks: content.chunks, content: [...lines]};
-        // }
-        // return {chunks: content.chunks, content: [...content.content, ...lines]};
-        // var _content = content || [];
-        // if(_content.length > 100) {
-        //   if(movedToChunk.length === 0) {
-        //     movedToChunk =  [..._content];
-        //     setTimeout(() => {
-        //       setChunks(chunks => {
-        //         return [...chunks, movedToChunk];
-        //       });
-        //     }, 0);
-        //   }
-        //   if(_content.length !== movedToChunk.length) {
-        //     console.log("What happend?");
-        //   }
-        //   return _content.slice(movedToChunk.length);
-        // }
-        // return [...(_content), ...lines.map(line => convert.toHtml(line))];
       });
     });
     return () =>{
@@ -484,43 +490,69 @@ const Detail : React.FC<DetailProps> = prop => {
       const signal = controller?.signal;
       (async () => {
         if(prop.timeline?.log?.id) {
-          var response = await fetch(ghHostApiUrl + "/_apis/v1/Logfiles/" + prop.timeline?.log?.id, { signal });
-          if(response.status !== 200) {
-            // return setContent(["Failed to load Log"]);
-            return setContent(content => ({chunks: [["Failed to load Log"], ...content.chunks], content: content.content}));
-          }
-          const log = await response.text();
-          var lines = log.split(/\r?\n/);
-          var offset = '2021-04-02T15:50:14.6619714Z '.length;
-          var re = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{7}Z /;
-          // setChunks(chunks => [lines.map((currentValue, i) => convert.toHtml(re.test(currentValue) ? /* new Date(currentValue.substring(0, offset - 1)).toUTCString() + " " +  */ /* (i + 1).toString().padStart(5) + " " + */ currentValue.substring(offset) : currentValue)), ...chunks]);
-          // setContent(content => ({chunks: [lines.map((currentValue, i) => convert.toHtml(re.test(currentValue) ? /* new Date(currentValue.substring(0, offset - 1)).toUTCString() + " " +  */ /* (i + 1).toString().padStart(5) + " " + */ currentValue.substring(offset) : currentValue)), ...content.chunks], content: content.content}));
-          var j = 0;
-          if(signal?.aborted) {
-            return;
-          }
-          var registr = setInterval(() => {
-            var i = j;
-            var len = Math.min(lines.length - i * 5000, 5000);
-            if(len <= 0 || signal?.aborted) {
-              clearInterval(registr);
-              return;
+          setLoading(true);
+          try {
+            var response = await fetch(ghHostApiUrl + "/_apis/v1/Logfiles/" + prop.timeline?.log?.id, { signal });
+            if(response.status !== 200 && response.status !== 204) {
+                throw new Error(`Unexpected http error: ${response.status}`);
             }
-            setContent(content => ({chunks: [...content.chunks.slice(0, i), lines.slice(i * 5000, i * 5000 + len).map((currentValue, i) => convert.toHtml(re.test(currentValue) ? /* new Date(currentValue.substring(0, offset - 1)).toUTCString() + " " +  */ /* (i + 1).toString().padStart(5) + " " + */ currentValue.substring(offset) : currentValue)), ...content.chunks.slice(i)], content: content.content}));
-            j++;
-          }, 1000);
-          signal?.addEventListener("abort", () => clearInterval(registr));
-          // setLoaded(true);
-        } else if(prop.timeline?.id && prop.timeline?.timelineId) {
-          var logs = await fetch(ghHostApiUrl + "/_apis/v1/TimeLineWebConsoleLog/" + prop.timeline?.timelineId + "/" + prop.timeline?.id, { signal });
-          if(logs.status === 200) {
-            var missingLines = await logs.json() as ILogline[];
+            const log = await response.text();
+            var lines = log.split(/\r?\n/);
+            var offset = '2021-04-02T15:50:14.6619714Z '.length;
+            var re = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{7}Z /;
+            var j = 0;
             if(signal?.aborted) {
-              return;
+              throw new Error(`Aborted`);
             }
-            // setChunks(chunks => [missingLines.map((currentValue, i) => convert.toHtml(currentValue.line)), ...chunks]);
-            setContent(content => ({chunks: [missingLines.map((currentValue, i) => convert.toHtml(currentValue.line)), ...content.chunks], content: content.content}));
-            // setLoaded(true);
+            var registr = setInterval(() => {
+              var i = j;
+              var len = Math.min(lines.length - i * 5000, 5000);
+              if(len <= 0 || signal?.aborted) {
+                clearInterval(registr);
+                setLoading(false);
+                return;
+              }
+              setContent(content => ({chunks: [...content.chunks.slice(0, i), lines.slice(i * 5000, i * 5000 + len).map((currentValue, i) => convert.toHtml(re.test(currentValue) ? /* new Date(currentValue.substring(0, offset - 1)).toUTCString() + " " +  */ /* (i + 1).toString().padStart(5) + " " + */ currentValue.substring(offset) : currentValue)), ...content.chunks.slice(i)], content: content.content}));
+              if(j === 0) {
+                setLoading(false);
+              }
+              j++;
+            }, 1000);
+            signal?.addEventListener("abort", () => {
+              clearInterval(registr);
+              setLoading(false);
+            });
+            setError("");
+          } catch(ex) {
+            if(ex instanceof Object) {
+              setError(ex.toString());
+            } else {
+              setError("Unknown Error: " + ex);
+            }
+            setLoading(false)
+          }
+        } else if(prop.timeline?.id && prop.timeline?.timelineId) {
+          setLoading(true);
+          try {
+            var logs = await fetch(ghHostApiUrl + "/_apis/v1/TimeLineWebConsoleLog/" + prop.timeline?.timelineId + "/" + prop.timeline?.id, { signal });
+            if(logs.status === 200) {
+              var missingLines = await logs.json() as ILogline[];
+              if(signal?.aborted) {
+                return;
+              }
+              setContent(content => ({chunks: [missingLines.map((currentValue, i) => convert.toHtml(currentValue.line)), ...content.chunks], content: content.content}));
+            } else if(logs.status !== 204) {
+              throw new Error(`Unexpected http error: ${logs.status}`);
+            }
+            setError("");
+          } catch(ex) {
+            if(ex instanceof Object) {
+              setError(ex.toString());
+            } else {
+              setError("Unknown Error: " + ex);
+            }
+          } finally {
+            setLoading(false)
           }
         }
       })();
@@ -528,29 +560,10 @@ const Detail : React.FC<DetailProps> = prop => {
   }, [prop.timeline, prop.render, abortcontroller]);
   return (<span key={prop.timeline?.id} style={{display: (prop.render === undefined || prop.render) ? "block" : "none"}}>
     <MemoChunks chunks={content.chunks}></MemoChunks>
-    {(content.content || [ "Loading..." ]).map((line, i) =>(
+    {(loading ? [ "Loading..." ] : (error && [ error ]) || content.content || [ "Loading..." ]).map((line, i) =>(
       <span key={i} style={{textAlign: 'left', whiteSpace: 'pre-wrap', display: "block", overflow: 'auto', fontFamily: "SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace"}} dangerouslySetInnerHTML={{ __html: line }}/>
     ))}
   </span>);
-  // if(prop.render === undefined || prop.render) {
-  //   return (<span>
-  //     {/* {chunks.flatMap((chunk, j) => chunk.map((line, i) =>(
-  //       <span key={prop.timeline?.id+ "-" + j.toString()  + "-" + i.toString()} style={{textAlign: 'left', whiteSpace: 'pre-wrap', display: "block", overflow: 'auto', fontFamily: "SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace"}} dangerouslySetInnerHTML={{ __html: line }}/>
-  //     )))} */}
-  //     {/* <MemoChunks chunks={chunks}></MemoChunks>
-  //     <b>Name: {prop.timeline?.name}</b><br/>
-  //     {(content || [ "Loading..." ]).map((line, i) =>(
-  //       <span key={prop.timeline?.id + "-" + i.toString()} style={{textAlign: 'left', whiteSpace: 'pre-wrap', display: "block", overflow: 'auto', fontFamily: "SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace"}} dangerouslySetInnerHTML={{ __html: line }}/>
-  //     ))} */}
-
-  //     <MemoChunks chunks={content.chunks}></MemoChunks>
-  //     {(content.content || [ "Loading..." ]).map((line, i) =>(
-  //       <span key={prop.timeline?.id + "-" + i.toString()} style={{textAlign: 'left', whiteSpace: 'pre-wrap', display: "block", overflow: 'auto', fontFamily: "SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace"}} dangerouslySetInnerHTML={{ __html: line }}/>
-  //     ))}
-  //     {/* <b>Result: {prop.timeline?.result}</b><br/> */}
-  //   </span>);
-  // }
-  // return (<></>);
 };
 
 interface IWorkflowRunAttempt {
@@ -597,6 +610,8 @@ function JobPage() {
   const [timeline, setTimeline] = useState<ITimeLine[]>();
   const eventHandler = useMemo<Map<string, (line: string[]) => void>>(() => new Map(), []);
   const [ artifacts, setArtifacts ] = useState<ArtifactResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   useEffect(() => {
     setJob(undefined);
     setTimeline(undefined);
@@ -605,25 +620,23 @@ function JobPage() {
     setArtifacts([]);
     if(!params.id) {
       (async () => {
-        // var runid = 2;
-        // var attempt = 1;
-        // var owner = "ChristopherHX";
-        // var repo = "runner.server";
-        var runid = params.runid;
-        var attempt = 1;
-        var owner = params.owner || "";
-        var repo = params.repo || "";
-        var resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message/workflow/run/${runid}/attempt/${attempt}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`, { })
-        if(resp.status === 200) {
-          var workflowRunAttempt : IWorkflowRunAttempt | null = await resp.json();
-          setWorkflowRunAttempt(workflowRunAttempt || undefined);
-        }
-        resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message/workflow/run/${runid}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`, { })
-        if(resp.status === 200) {
-          var workflowRun : IWorkflowRun | null = await resp.json();
-          setWorkflowRun(workflowRun || undefined);
-        }
-        var artifacts = await listArtifacts(Number.parseInt(runid || "1"));
+        try {
+          setLoading(true);
+          var runid = params.runid;
+          var attempt = 1;
+          var owner = params.owner || "";
+          var repo = params.repo || "";
+          var resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message/workflow/run/${runid}/attempt/${attempt}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`, { })
+          if(resp.status === 200) {
+            var workflowRunAttempt : IWorkflowRunAttempt | null = await resp.json();
+            setWorkflowRunAttempt(workflowRunAttempt || undefined);
+          }
+          resp = await fetch(`${ghHostApiUrl}/_apis/v1/Message/workflow/run/${runid}?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`, { })
+          if(resp.status === 200) {
+            var workflowRun : IWorkflowRun | null = await resp.json();
+            setWorkflowRun(workflowRun || undefined);
+          }
+          var artifacts = await listArtifacts(Number.parseInt(runid || "1"));
           if(artifacts.value !== undefined) {
               for (let i = 0; i < artifacts.count; i++) {
                   const element = artifacts.value[i];
@@ -634,6 +647,16 @@ function JobPage() {
               }
               setArtifacts(_ => artifacts.value);
           }
+          setError("");
+        } catch(ex) {
+          if(ex instanceof Object) {
+            setError(ex.toString());
+          } else {
+            setError("Unknown Error: " + ex);
+          }
+        } finally {
+          setLoading(false);
+        }
       })()
     } else if(params.id) {
       (async () => {
@@ -792,6 +815,7 @@ function JobPage() {
       }
   })()
   }
+    { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
     {(() => {
       if((timeline?.length || 0) > 1) {
         // return (<span style={{width: '100%', height: '100%', overflowY: 'auto'}}>{timeline?.map(timelineEntry => (<Detail key={timelineEntry.id} timeline={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>))}</span>);
