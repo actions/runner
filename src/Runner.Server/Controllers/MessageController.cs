@@ -2858,7 +2858,7 @@ namespace Runner.Server.Controllers
                     }
                 }
                 if(!string.IsNullOrEmpty(OnQueueJobProgram)) {
-                    var startupInfo = new ProcessStartInfo(OnQueueJobProgram, OnQueueJobArgs ?? "") { CreateNoWindow = true, RedirectStandardError = true, RedirectStandardInput = true, RedirectStandardOutput = true, StandardErrorEncoding = Encoding.UTF8, StandardInputEncoding = Encoding.UTF8, StandardOutputEncoding = Encoding.UTF8 };
+                    var startupInfo = new ProcessStartInfo(OnQueueJobProgram, OnQueueJobArgs ?? "") { CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true, StandardErrorEncoding = Encoding.UTF8, StandardOutputEncoding = Encoding.UTF8 };
                     startupInfo.Environment["RUNNER_SERVER_PAYLOAD"] = JsonConvert.SerializeObject(new {
                         ContextData = contextData.ToJToken(),
                         Repository = repo,
@@ -2877,7 +2877,6 @@ namespace Runner.Server.Controllers
                                 proc.Start();
                                 proc.BeginOutputReadLine();
                                 proc.BeginErrorReadLine();
-                                proc.StandardInput.Dispose();
                                 proc.WaitForExit();
                                 matrixJobTraceWriter.Info("OnQueueJob exited with code: {0}", proc.ExitCode);
                             }
