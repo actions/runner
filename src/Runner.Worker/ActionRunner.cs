@@ -11,6 +11,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
+using GitHub.Runner.Worker.Container;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -159,7 +160,10 @@ namespace GitHub.Runner.Worker
             if (ExecutionContext.Global.Container != null)
             {
                 // Make sure required container is already created.
-                ArgUtil.NotNullOrEmpty(ExecutionContext.Global.Container.ContainerId, nameof(ExecutionContext.Global.Container.ContainerId));
+                if (!FeatureFlagManager.IsHookFeatureEnabled())
+                {
+                    ArgUtil.NotNullOrEmpty(ExecutionContext.Global.Container.ContainerId, nameof(ExecutionContext.Global.Container.ContainerId));
+                }
                 var containerStepHost = HostContext.CreateService<IContainerStepHost>();
                 containerStepHost.Container = ExecutionContext.Global.Container;
                 stepHost = containerStepHost;
