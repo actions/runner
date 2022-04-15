@@ -1006,28 +1006,27 @@ namespace Runner.Server.Controllers
                 if(tk == null) {
                     throw new Exception("Your workflow is invalid, missing 'on' property");
                 }
+                Func<HookResponse> skipWorkflow = () => {
+                    if(callingJob == null) {
+                        attempt.Result = TaskResult.Skipped;
+                        _context.SaveChanges();
+                    }
+                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                };
                 MappingToken mappingEvent = null;
                 switch(tk.Type) {
                     case TokenType.String:
                         if(tk.AssertString("on").Value != e) {
                             // Skip, not the right event
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, '{tk.AssertString("str").Value}' isn't is the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
-                            if(callingJob == null) {
-                                attempt.Result = TaskResult.Skipped;
-                                _context.SaveChanges();
-                            }
-                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            return skipWorkflow();
                         }
                         break;
                     case TokenType.Sequence:
                         if((from r in tk.AssertSequence("on") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
                             // Skip, not the right event
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, [{string.Join(',', from r in tk.AssertSequence("seq") select "'" + r.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
-                            if(callingJob == null) {
-                                attempt.Result = TaskResult.Skipped;
-                                _context.SaveChanges();
-                            }
-                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            return skipWorkflow();
                         }
                         break;
                     case TokenType.Mapping:
@@ -1035,11 +1034,7 @@ namespace Runner.Server.Controllers
                         var rawEvent = e2.Value;
                         if(rawEvent == null) {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, [{string.Join(',', from r in tk.AssertMapping("mao") select "'" + r.Key.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
-                            if(callingJob == null) {
-                                attempt.Result = TaskResult.Skipped;
-                                _context.SaveChanges();
-                            }
-                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            return skipWorkflow();
                         }
                         if(e == "schedule") {
                             var crons = e2.Value.AssertSequence("on.schedule.*.cron");
@@ -1296,21 +1291,13 @@ namespace Runner.Server.Controllers
                         if(types != null) {
                             if(!(from t in types select t.AssertString($"on.{event_name}.type.*").Value).Any(t => t == hook?.Action)) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString($"on.{event_name}.type.*").Value + "'")}" }), workflowTimelineId, workflowRecordId);
-                                if(callingJob == null) {
-                                    attempt.Result = TaskResult.Skipped;
-                                    _context.SaveChanges();
-                                }
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                return skipWorkflow();
                             }
                         } else if(e == "pull_request" || e == "pull_request_target"){
                             var prdefaults = new [] { "opened", "synchronize", "synchronized", "reopened" };
                             if(!prdefaults.Any(t => t == hook?.Action)) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger. Requested Action was {hook?.Action}, but require {string.Join(',', from t in prdefaults select "'" + t + "'")}" }), workflowTimelineId, workflowRecordId);
-                                if(callingJob == null) {
-                                    attempt.Result = TaskResult.Skipped;
-                                    _context.SaveChanges();
-                                }
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                return skipWorkflow();
                             }
                         }
                     }
@@ -1332,54 +1319,30 @@ namespace Runner.Server.Controllers
 
                             if(branchesIgnore != null && filter(CompileMinimatch(branchesIgnore), new[] { branch })) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                if(callingJob == null) {
-                                    attempt.Result = TaskResult.Skipped;
-                                    _context.SaveChanges();
-                                }
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                return skipWorkflow();
                             }
                             if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                if(callingJob == null) {
-                                    attempt.Result = TaskResult.Skipped;
-                                    _context.SaveChanges();
-                                }
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                return skipWorkflow();
                             }
                             if((tags != null || tagsIgnore != null) && branches == null && branchesIgnore == null) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of tag filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                if(callingJob == null) {
-                                    attempt.Result = TaskResult.Skipped;
-                                    _context.SaveChanges();
-                                }
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                return skipWorkflow();
                             }
                         } else if(Ref2.StartsWith(rtags) == true) {
                             var tag = Ref2.Substring(rtags.Length);
 
                             if(tagsIgnore != null && filter(CompileMinimatch(tagsIgnore), new[] { tag })) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                if(callingJob == null) {
-                                    attempt.Result = TaskResult.Skipped;
-                                    _context.SaveChanges();
-                                }
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                return skipWorkflow();
                             }
                             if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                if(callingJob == null) {
-                                    attempt.Result = TaskResult.Skipped;
-                                    _context.SaveChanges();
-                                }
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                return skipWorkflow();
                             }
                             if((branches != null || branchesIgnore != null) && tags == null && tagsIgnore == null) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of branch filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                if(callingJob == null) {
-                                    attempt.Result = TaskResult.Skipped;
-                                    _context.SaveChanges();
-                                }
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                return skipWorkflow();
                             }
                         }
                     }
@@ -1387,19 +1350,11 @@ namespace Runner.Server.Controllers
                         var changedFiles = hook.Commits.SelectMany(commit => (commit.Added ?? new List<string>()).Concat(commit.Removed ?? new List<string>()).Concat(commit.Modified ?? new List<string>()));
                         if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter.'" }), workflowTimelineId, workflowRecordId);
-                            if(callingJob == null) {
-                                attempt.Result = TaskResult.Skipped;
-                                _context.SaveChanges();
-                            }
-                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            return skipWorkflow();
                         }
                         if(paths != null && skip(CompileMinimatch(paths), changedFiles)) {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths filter." }), workflowTimelineId, workflowRecordId);
-                            if(callingJob == null) {
-                                attempt.Result = TaskResult.Skipped;
-                                _context.SaveChanges();
-                            }
-                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            return skipWorkflow();
                         }
                     }
                 }
@@ -2100,11 +2055,7 @@ namespace Runner.Server.Controllers
                     }
                     dependentjobgroup = next;
                     if(dependentjobgroup.Count == 0) {
-                        if(callingJob == null) {
-                            attempt.Result = TaskResult.Skipped;
-                            _context.SaveChanges();
-                        }
-                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                        return skipWorkflow();
                     }
                 }
                 dependentjobgroup.ForEach(ji => {
@@ -2156,14 +2107,22 @@ namespace Runner.Server.Controllers
                             workflowTraceWriter.Info("{0}", $"{j.name}");
                         }
                     }
-                    if(callingJob == null) {
-                        attempt.Result = TaskResult.Skipped;
-                        _context.SaveChanges();
-                    }
-                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                    return skipWorkflow();
                 } else {
                     var jobs = dependentjobgroup.ToArray();
                     finished = new CancellationTokenSource();
+                    Action<WorkflowEventArgs> finishAsyncWorkflow = evargs => {
+                        finished.Cancel();
+                        if(callingJob?.Workflowfinish != null) {
+                            callingJob.Workflowfinish.Invoke(callingJob, evargs);
+                        } else {
+                            cancelWorkflows.Remove(runid);
+                            workflowevent?.Invoke(evargs);
+                            attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
+                            _context.SaveChanges();
+                        }
+                        _context.Dispose();
+                    };
                     FinishJobController.JobCompleted withoutlock = e => {
                         var ja = e != null ? jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault() : null;
                         Action<JobItem> updateStatus = job => {
@@ -2205,16 +2164,7 @@ namespace Runner.Server.Controllers
                                         evargs.Success = false;
                                     }
                                 }
-                                finished.Cancel();
-                                if(callingJob?.Workflowfinish != null) {
-                                    callingJob.Workflowfinish.Invoke(callingJob, evargs);
-                                } else {
-                                    cancelWorkflows.Remove(runid);
-                                    workflowevent?.Invoke(evargs);
-                                    attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
-                                    _context.SaveChanges();
-                                    _context.Dispose();
-                                }
+                                finishAsyncWorkflow(evargs);
                             } else {
                                 jobCompleted(e);
                             }
@@ -2380,17 +2330,8 @@ namespace Runner.Server.Controllers
                     } else {
                         Action cancelPendingWorkflow = () => {
                             workflowTraceWriter.Info("{0}", "Workflow was cancelled by another workflow or job, while it was pending in the concurrency group");
-                            finished.Cancel();
                             var evargs = new WorkflowEventArgs { runid = runid, Success = false };
-                            if(callingJob?.Workflowfinish != null) {
-                                callingJob.Workflowfinish.Invoke(callingJob, evargs);
-                            } else {
-                                cancelWorkflows.Remove(runid);
-                                workflowevent?.Invoke(evargs);
-                                attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
-                                _context.SaveChanges();
-                                _context.Dispose();
-                            }
+                            finishAsyncWorkflow(evargs);
                         };
 
                         var key = $"{repository_name}/{group}";
