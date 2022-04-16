@@ -806,7 +806,6 @@ namespace Runner.Server.Controllers
                 _context.SaveChanges();
                 var records = new List<TimelineRecord>{ new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath } };
                 TimelineController.dict[workflowTimelineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(records));
             }
             Guid workflowRecordId = callingJob?.RecordId ?? attempt.TimeLineId;
             if(workflowTimelineId == attempt.TimeLineId) {
@@ -815,6 +814,8 @@ namespace Runner.Server.Controllers
                 if(attempt.Attempt > 1) {
                     workflowRecordId = Guid.NewGuid();
                     new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}" } }));
+                } else {
+                    new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
                 }
             }
             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Initialize Workflow Run {runid}" }), workflowTimelineId, workflowRecordId);
@@ -3779,26 +3780,19 @@ namespace Runner.Server.Controllers
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
-                var writer = new StreamWriter(stream);
-                try
-                {
+                await using(var writer = new StreamWriter(stream) { NewLine = "\n" } ) {
                     List<long> runid = new List<long>();
-                    writer.NewLine = "\n";
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
                     TimeLineWebConsoleLogController.LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
-                        // (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
-                        // Job job;
-                        // if (TimelineController.dict.TryGetValue(timelineId2, out val) && _cache.TryGetValue(val.Item1[0].Id, out job) && runid.Contains(job.runid)) {
+                        if (TimelineController.dict.TryGetValue(timelineId2, out var val) && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
                             chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
-                        // }
+                        }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = (timelineId2, timeline) => {
-                        // (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
-                        // Job job;
-                        // if(TimelineController.dict.TryGetValue(timelineId2, out val) && _cache.TryGetValue(val.Item1[0].Id, out job) && runid.Contains(job.runid)) {
+                        if(TimelineController.dict.TryGetValue(timelineId2, out var val) && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
                             chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
-                        // }
+                        }
                     };
                     MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules) => {
                         if(runid.Contains(_runid)) {
@@ -3807,10 +3801,9 @@ namespace Runner.Server.Controllers
                     };
 
                     FinishJobController.JobCompleted completed = (ev) => {
-                        // Job job;
-                        // if(_cache.TryGetValue(ev.JobId, out job) && runid.Contains(job.runid)) {
+                        if(_cache.TryGetValue(ev.JobId, out Job job) && runid.Contains(job.runid)) {
                             chwriter.WriteAsync(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(ev, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
-                        // }
+                        }
                     };
 
                     Action<MessageController.WorkflowEventArgs> onworkflow = workflow_ => {
@@ -3846,42 +3839,40 @@ namespace Runner.Server.Controllers
 
                         }
                     }, requestAborted);
-                    try {
-                        TimeLineWebConsoleLogController.logfeed += handler;
-                        TimelineController.TimeLineUpdate += handler2;
-                        MessageController.OnRepoDownload += rd;
-                        FinishJobController.OnJobCompleted += completed;
-                        MessageController.workflowevent += onworkflow;
-                        List<HookResponse> responses = new List<HookResponse>();
-                        lock(runid) {
-                            if(workflow.Any()) {
-                                foreach (var w in workflow) {
-                                    HookResponse response = Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments });
-                                    if(response.skipped || response.failed) {
-                                        runid.Remove(response.run_id);
-                                        if(response.failed) {
-                                            chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(new WorkflowEventArgs() { runid = response.run_id, Success = false }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
-                                        }
+                    TimeLineWebConsoleLogController.logfeed += handler;
+                    TimelineController.TimeLineUpdate += handler2;
+                    MessageController.OnRepoDownload += rd;
+                    FinishJobController.OnJobCompleted += completed;
+                    MessageController.workflowevent += onworkflow;
+                    List<HookResponse> responses = new List<HookResponse>();
+                    lock(runid) {
+                        if(workflow.Any()) {
+                            foreach (var w in workflow) {
+                                HookResponse response = Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments });
+                                if(response.skipped || response.failed) {
+                                    runid.Remove(response.run_id);
+                                    if(response.failed) {
+                                        chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(new WorkflowEventArgs() { runid = response.run_id, Success = false }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                                     }
                                 }
                             }
-                            if(runid.Count == 0) {
-                                chwriter.WriteAsync(new KeyValuePair<string, string>(null, null));
-                            }
                         }
+                        if(runid.Count == 0) {
+                            chwriter.WriteAsync(new KeyValuePair<string, string>(null, null));
+                        }
+                    }
 
+                    try {
                         await ping;
+                    } catch(OperationCanceledException) {
+
                     } finally {
                         TimeLineWebConsoleLogController.logfeed -= handler;
                         TimelineController.TimeLineUpdate -= handler2;
                         MessageController.OnRepoDownload -= rd;
                         FinishJobController.OnJobCompleted -= completed;
                         MessageController.workflowevent -= onworkflow;
-                    }
-                } catch (OperationCanceledException) {
-
-                } finally {
-                    await writer.DisposeAsync();
+                    }                    
                 }
             }, "text/event-stream");
         }
@@ -4173,18 +4164,15 @@ namespace Runner.Server.Controllers
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
-                var writer = new StreamWriter(stream);
-                try
-                {
-                    writer.NewLine = "\n";
-                    var queue2 = Channel.CreateUnbounded<KeyValuePair<string,Job>>(new UnboundedChannelOptions { SingleReader = true });
-                    var chwriter = queue2.Writer;
+                await using(var writer = new StreamWriter(stream) { NewLine = "\n" } ) {
+                    var queue = Channel.CreateUnbounded<KeyValuePair<string,Job>>(new UnboundedChannelOptions { SingleReader = true });
+                    var chwriter = queue.Writer;
                     JobEvent handler = (sender, crepo, job) => {
                         if (mfilter.IsMatch(crepo) && (runid == null || runid == job.runid)) {
                             chwriter.WriteAsync(new KeyValuePair<string, Job>(crepo, job));
                         }
                     };
-                    var chreader = queue2.Reader;
+                    var chreader = queue.Reader;
                     var ping = Task.Run(async () => {
                         try {
                             while(!requestAborted.IsCancellationRequested) {
@@ -4194,15 +4182,18 @@ namespace Runner.Server.Controllers
                                 await writer.WriteLineAsync();
                                 await writer.FlushAsync();
                             }
-                        } catch (OperationCanceledException) {
-
+                        } catch(OperationCanceledException) {
+                            
                         }
                     }, requestAborted);
                     jobevent += handler;
-                    await ping;
-                    jobevent -= handler;
-                } finally {
-                    await writer.DisposeAsync();
+                    try {
+                        await ping;
+                    } catch(OperationCanceledException) {
+
+                    } finally {
+                        jobevent -= handler;
+                    }
                 }
             }, "text/event-stream");
         }
@@ -4213,10 +4204,7 @@ namespace Runner.Server.Controllers
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
-                var writer = new StreamWriter(stream);
-                try
-                {
-                    writer.NewLine = "\n";
+                await using(var writer = new StreamWriter(stream) { NewLine = "\n" } ) {
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,object>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
                     JobEvent handler = (sender, crepo, job) => {
@@ -4265,13 +4253,16 @@ namespace Runner.Server.Controllers
                     ownerevent += ownerh;
                     repoevent += repoh;
                     runevent += runh;
-                    await ping;
-                    runevent -= runh;
-                    repoevent -= repoh;
-                    ownerevent -= ownerh;
-                    jobevent -= handler;
-                } finally {
-                    await writer.DisposeAsync();
+                    try {
+                        await ping;
+                    } catch(OperationCanceledException) {
+
+                    } finally {
+                        runevent -= runh;
+                        repoevent -= repoh;
+                        ownerevent -= ownerh;
+                        jobevent -= handler;
+                    }
                 }
             }, "text/event-stream");
         }

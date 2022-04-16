@@ -80,10 +80,7 @@ namespace Runner.Server.Controllers
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
-                var writer = new StreamWriter(stream);
-                try
-                {
-                    writer.NewLine = "\n";
+                await using(var writer = new StreamWriter(stream) { NewLine = "\n" } ) {
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
                     LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
@@ -133,13 +130,15 @@ namespace Runner.Server.Controllers
 
                         }
                     }, requestAborted);
+                    logfeed += handler;
+                    TimelineController.TimeLineUpdate += handler2;
+                    MessageController.OnRepoDownload += rd;
+                    FinishJobController.OnJobCompleted += completed;
+                    MessageController.workflowevent += workflow;
                     try {
-                        logfeed += handler;
-                        TimelineController.TimeLineUpdate += handler2;
-                        MessageController.OnRepoDownload += rd;
-                        FinishJobController.OnJobCompleted += completed;
-                        MessageController.workflowevent += workflow;
                         await ping;
+                    } catch(OperationCanceledException) {
+
                     } finally {
                         logfeed -= handler;
                         TimelineController.TimeLineUpdate -= handler2;
@@ -147,10 +146,6 @@ namespace Runner.Server.Controllers
                         FinishJobController.OnJobCompleted -= completed;
                         MessageController.workflowevent -= workflow;
                     }
-                } catch (OperationCanceledException) {
-
-                } finally {
-                    await writer.DisposeAsync();
                 }
             }, "text/event-stream");
         }
