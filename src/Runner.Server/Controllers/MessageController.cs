@@ -2244,7 +2244,11 @@ namespace Runner.Server.Controllers
                                 try {
                                     for(int i = 0; i < 2; i++) {
                                         try {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
+                                            if(i == 0) {
+                                                await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
+                                            } else {
+                                                await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
+                                            }
                                         } catch {
 
                                         }
