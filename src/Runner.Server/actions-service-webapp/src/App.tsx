@@ -504,7 +504,8 @@ const Detail : React.FC<DetailProps> = prop => {
             if(signal?.aborted) {
               throw new Error(`Aborted`);
             }
-            var registr = setInterval(() => {
+            var callback : () => void
+            var registr = setInterval(callback = () => {
               var i = j;
               var len = Math.min(lines.length - i * 5000, 5000);
               if(len <= 0 || signal?.aborted) {
@@ -513,11 +514,9 @@ const Detail : React.FC<DetailProps> = prop => {
                 return;
               }
               setContent(content => ({chunks: [...content.chunks.slice(0, i), lines.slice(i * 5000, i * 5000 + len).map((currentValue, i) => convert.toHtml(re.test(currentValue) ? /* new Date(currentValue.substring(0, offset - 1)).toUTCString() + " " +  */ /* (i + 1).toString().padStart(5) + " " + */ currentValue.substring(offset) : currentValue)), ...content.chunks.slice(i)], content: content.content}));
-              if(j === 0) {
-                setLoading(false);
-              }
               j++;
             }, 1000);
+            callback();
             signal?.addEventListener("abort", () => {
               clearInterval(registr);
               setLoading(false);
@@ -529,7 +528,8 @@ const Detail : React.FC<DetailProps> = prop => {
             } else {
               setError("Unknown Error: " + ex);
             }
-            setLoading(false)
+          } finally {
+            setLoading(false);
           }
         } else if(prop.timeline?.id && prop.timeline?.timelineId) {
           setLoading(true);
