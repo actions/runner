@@ -2520,29 +2520,9 @@ namespace Runner.Server.Controllers
                 var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                 AddJob(_job);
                 new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
-                if(fileContainerId != -1) {
-                    _context.ArtifactFileContainer.Remove(_context.ArtifactFileContainer.Find(fileContainerId));
-                    _context.SaveChanges();
-                }
                 return cancel => _job;
             };
             try {
-                var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
-                variables.Add("system.github.job", new VariableValue(name, false));
-                variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
-                Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
-                variables.Add("system.phaseDisplayName", new VariableValue(special.Replace($"{workflowname}_{parentId}_{name}", "-"), false));
-                variables.Add("system.runnerGroupName", new VariableValue("misc", false));
-                variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
-                variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
-                variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
-                variables.Add("DistributedTask.EnhancedAnnotations", new VariableValue("true", false));
-                // For actions/upload-artifact@v1, actions/download-artifact@v1
-                variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
-                variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
-                var resp = new ArtifactController(_context, Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
-                fileContainerId = resp.Id;
-                variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
                 // Job permissions
                 TemplateToken jobPermissions = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "permissions" select r).FirstOrDefault().Value ?? workflowPermissions;
                 var calculatedPermissions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -2860,11 +2840,6 @@ namespace Runner.Server.Controllers
                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, contextData);
                     jobConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-concurrency", jobConcurrency, 0, null, true);
                 }
-                if(!isFork) {
-                    foreach(var secr in secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name)) {
-                        variables[secr.Key] = new VariableValue(secr.Value, true);
-                    }
-                }
                 if(!string.IsNullOrEmpty(OnQueueJobProgram)) {
                     var startupInfo = new ProcessStartInfo(OnQueueJobProgram, OnQueueJobArgs ?? "") { CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true, StandardErrorEncoding = Encoding.UTF8, StandardOutputEncoding = Encoding.UTF8 };
                     startupInfo.Environment["RUNNER_SERVER_PAYLOAD"] = JsonConvert.SerializeObject(new {
@@ -2924,7 +2899,22 @@ namespace Runner.Server.Controllers
                         return failJob();
                     }
                 }
-                var job = new Job() { message = (apiUrl) => {
+                var cleanupClone = Clone();
+                string runnerToken = null;
+                var job = new Job() { CleanUp = () => {
+                    if(!string.IsNullOrEmpty(runnerToken)) {
+                        try {
+                            DeleteGithubAppToken(runnerToken);
+                        } catch {
+                            
+                        }
+                    }
+                    if(fileContainerId != -1) {
+                        cleanupClone._context.ArtifactFileContainer.Remove(cleanupClone._context.ArtifactFileContainer.Find(fileContainerId));
+                        cleanupClone._context.SaveChanges();
+                    }
+                    cleanupClone._context.Dispose();
+                } , message = (apiUrl) => {
                     try {
                         var auth = new GitHub.DistributedTask.WebApi.EndpointAuthorization() { Scheme = GitHub.DistributedTask.WebApi.EndpointAuthorizationSchemes.OAuth };
                         var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
@@ -3011,6 +3001,27 @@ namespace Runner.Server.Controllers
                                     break;
                             }
                         }
+                        var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
+                        variables.Add("system.github.job", new VariableValue(name, false));
+                        variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
+                        Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
+                        variables.Add("system.phaseDisplayName", new VariableValue(special.Replace($"{workflowname}_{parentId}_{name}", "-"), false));
+                        variables.Add("system.runnerGroupName", new VariableValue("misc", false));
+                        variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
+                        variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
+                        variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
+                        variables.Add("DistributedTask.EnhancedAnnotations", new VariableValue("true", false));
+                        // For actions/upload-artifact@v1, actions/download-artifact@v1
+                        variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
+                        variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
+                        var resp = new ArtifactController(_context, Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
+                        fileContainerId = resp.Id;
+                        variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
+                        if(!isFork) {
+                            foreach(var secr in secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name)) {
+                                variables[secr.Key] = new VariableValue(secr.Value, true);
+                            }
+                        }
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
                             variables["github_token"] = variables["system.github.token"] = github_token;
                         } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
@@ -3036,6 +3047,7 @@ namespace Runner.Server.Controllers
                                 // id_token is provided by the systemvssconnection, not by github_token
                                 ghappPerm.Remove("id_token");
                                 var response = appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = ghappPerm }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview).GetAwaiter().GetResult();
+                                runnerToken = response.Body.Token;
                                 variables["github_token"] = variables["system.github.token"] = new VariableValue(response.Body.Token, true);
                                 variables["system.github.token.permissions"] = new VariableValue(Newtonsoft.Json.JsonConvert.SerializeObject(calculatedPermissions), false);
                             } catch {

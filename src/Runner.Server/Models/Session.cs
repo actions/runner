@@ -29,6 +29,13 @@ namespace Runner.Server.Models
         public Job Job { get => job; set {
                 if(job != null) {
                     job.SessionId = Guid.Empty;
+                    try {
+                        job.CleanUp?.Invoke();
+                    } catch {
+
+                    } finally {
+                        
+                    }
                 }
                 job = value;
                 if(job == null) {

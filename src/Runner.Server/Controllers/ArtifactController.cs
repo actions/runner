@@ -63,13 +63,32 @@ namespace Runner.Server.Controllers {
             var filecontainer = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt == attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Id == req.ContainerId select fileContainer).Include(f => f.Container).Include(f => f.Files).FirstOrDefault();
             if(filecontainer != null) {
                 var files = filecontainer.Files;
-                filecontainer = new ArtifactFileContainer() { Name = req.Name, Size = req.Size, Container = filecontainer.Container, Files = filecontainer.Files.ToList() };
+                var container = filecontainer.Container;
+                filecontainer = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == req.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).FirstOrDefault();
+                if(filecontainer != null) {
+                    foreach(var rm in from f in _context.Entry(filecontainer).Collection(f => f.Files).Query() where (from of in files select of.FileName.ToLower()).Contains(f.FileName.ToLower()) select f) {
+                        _context.Remove(rm);
+                        try {
+                            System.IO.File.Delete(Path.Combine(_targetFilePath, rm.StoreName));
+                        } catch {
+
+                        }
+                    }
+                    foreach(var file in files) {
+                        file.FileContainer = filecontainer;
+                    }
+                } else {
+                    filecontainer = new ArtifactFileContainer() { Name = req.Name, Size = req.Size, Container = container, Files = files.ToList() };
+                    _context.ArtifactFileContainer.Add(filecontainer);
+                }
                 files.Clear();
-                _context.ArtifactFileContainer.Add(filecontainer);
             } else {
-                var artifactContainer = (from artifact in _context.Artifacts where artifact.Attempt.Attempt == attempt && artifact.Attempt.WorkflowRun.Id == run select artifact).First();
-                filecontainer = new ArtifactFileContainer() { Name = req.Name, Container = artifactContainer };
-                _context.ArtifactFileContainer.Add(filecontainer);
+                filecontainer = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == req.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).FirstOrDefault();
+                if(filecontainer == null) {
+                    var artifactContainer = (from artifact in _context.Artifacts where artifact.Attempt.Attempt == attempt && artifact.Attempt.WorkflowRun.Id == run select artifact).First();
+                    filecontainer = new ArtifactFileContainer() { Name = req.Name, Container = artifactContainer };
+                    _context.ArtifactFileContainer.Add(filecontainer);
+                }
             }
             await _context.SaveChangesAsync();
             return filecontainer;
@@ -87,7 +106,7 @@ namespace Runner.Server.Controllers {
         public async Task<FileStreamResult> PatchContainer(long run, [FromQuery] string artifactName) {
             var req = await FromBody<CreateActionsStorageArtifactParameters>();
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
-            var container = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt == attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name == artifactName select fileContainer).First();
+            var container = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt == attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == artifactName.ToLower() select fileContainer).First();
             container.Size = req.Size;
             await _context.SaveChangesAsync();
             // This sends the size of the artifact container
@@ -99,17 +118,17 @@ namespace Runner.Server.Controllers {
         public async Task<IActionResult> GetContainer(long run, [FromQuery] string artifactName) {
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "-1");
             if(string.IsNullOrEmpty(artifactName)) {
-                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Files.Count > 0 orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).ToList();
+                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).ToList();
                 return await Ok(from e in container select new ArtifactResponse{ name = e.Name, type = "actions_storage", containerId = e.Id, fileContainerResourceUrl = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/container/{e.Id}").ToString() } );
             } else {
-                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Files.Count > 0 && fileContainer.Name == artifactName orderby fileContainer.Container.Attempt.Attempt descending select new ArtifactResponse{ name = fileContainer.Name, type = "actions_storage", containerId = fileContainer.Id, fileContainerResourceUrl = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/container/{fileContainer.Id}").ToString() }).First();
+                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == artifactName.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select new ArtifactResponse{ name = fileContainer.Name, type = "actions_storage", containerId = fileContainer.Id, fileContainerResourceUrl = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/container/{fileContainer.Id}").ToString() }).First();
                 return await Ok(container);
             }
         }
 
         [HttpPut("container/{id}")]
         public async Task<IActionResult> UploadToContainer(long run, int id, [FromQuery] string itemPath) {
-            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && record.FileName == itemPath select record).FirstOrDefault();
+            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && record.FileName.ToLower() == itemPath.ToLower() select record).FirstOrDefault();
             bool created = false;
             if(container == null) {
                 container = new ArtifactRecord() {FileName = itemPath, StoreName = Path.GetRandomFileName(), GZip = Request.Headers.TryGetValue("Content-Encoding", out StringValues v) && v.Contains("gzip"), FileContainer = _context.ArtifactFileContainer.Find(id)} ;
@@ -122,7 +141,9 @@ namespace Runner.Server.Controllers {
             int j = range.IndexOf('/');
             var start = Convert.ToInt64(range.Substring(6, i - 6));
             var end = Convert.ToInt64(range.Substring(i + 1, j - (i + 1)));
+            var size = Convert.ToInt64(range.Substring(j+1));
             using(var targetStream = new FileStream(Path.Combine(_targetFilePath, container.StoreName), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+                targetStream.SetLength(size);
                 targetStream.Seek(start, SeekOrigin.Begin);
                 await Request.Body.CopyToAsync(targetStream);
             }
@@ -133,8 +154,9 @@ namespace Runner.Server.Controllers {
         [AllowAnonymous]
         public async Task<IActionResult> GetFilesFromContainer(int id, [FromQuery] string itemPath) {
             var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id select record).ToList();
-            if(string.IsNullOrEmpty(itemPath) || !container.Any(r => r.FileName == itemPath)) {
+            if(string.IsNullOrEmpty(itemPath) || !container.Any(r => string.Equals(r.FileName, itemPath, StringComparison.OrdinalIgnoreCase))) {
                 var ret = new List<DownloadInfo>();
+                var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var item in container) {
                     int i = -1;
                     while(true) {
@@ -142,7 +164,10 @@ namespace Runner.Server.Controllers {
                         if(i == -1) {
                             break;
                         }
-                        ret.Add(new DownloadInfo { ContainerId = id, path = item.FileName.Substring(0, i), itemType = "folder"});
+                        var folderPath = item.FileName.Substring(0, i);
+                        if(folders.Add(folderPath)) {
+                            ret.Add(new DownloadInfo { ContainerId = id, path = folderPath, itemType = "folder"});
+                        }
                     }
                     
                     ret.Add(new DownloadInfo { ContainerId = id, path = item.FileName, itemType = "file", fileLength = (int)new FileInfo(Path.Combine(_targetFilePath, item.StoreName)).Length, contentLocation = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/artifact/{id}?file={Uri.EscapeDataString(item.FileName)}").ToString() });
@@ -157,10 +182,7 @@ namespace Runner.Server.Controllers {
         [HttpGet("artifact/{id}")]
         [AllowAnonymous]
         public IActionResult GetFileFromContainer(int id, [FromQuery] string file) {
-            // It seems like aspnetcore 5 doesn't unescape the uri component on linux and macOS, while on windows it does!
-            // Try to match both to avoid bugs
-            var unescapedFile = Uri.UnescapeDataString(file);
-            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && (record.FileName == file || record.FileName == unescapedFile) select record).FirstOrDefault();
+            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && (record.FileName.ToLower() == file.ToLower()) select record).FirstOrDefault();
             if(container == null) {
                 throw new Exception($"container is null!, id='{id}', file='{file}'");
             }

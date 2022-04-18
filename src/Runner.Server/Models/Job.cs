@@ -16,6 +16,9 @@ namespace Runner.Server.Models {
             CancelRequest = new CancellationTokenSource();
             Outputs = new List<JobOutput>();
         }
+        [NotMapped]
+        [IgnoreDataMember]
+        public Action CleanUp { get; set; }
         [IgnoreDataMember]
         public WorkflowRunAttempt WorkflowRunAttempt { get; set; }
         public Guid JobId { get; set; }
