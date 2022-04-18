@@ -111,17 +111,10 @@ namespace GitHub.Runner.Worker.Handlers
         {
             // make sure container exist.
             ArgUtil.NotNull(Container, nameof(Container));
-            if (!FeatureFlagManager.IsHookFeatureEnabled())
+            if (!FeatureFlagManager.IsHookFeatureEnabled() || !FeatureFlagManager.IsCustomHookFeatureEnabled())
             {
                 ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
-            }
-            else
-            {
-                if (!FeatureFlagManager.IsCustomHookFeatureEnabled())
-                {
-                    ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
-                }
-            }    
+            }   
 
             // remove double quotes around the path
             path = path.Trim('\"');

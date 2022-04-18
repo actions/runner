@@ -67,8 +67,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                         context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
                         jobContainer.ContainerNetwork = response.Context.Container.Network;
                     }
-
-                    context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
                 }
             
                 // TODO: figure out if we need ContainerRuntimePath for anything
@@ -100,6 +98,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                         context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
                     }
                 }
+            }
+
+            if ((object)response.State != null)
+            {
+                context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
             }
         }
 
