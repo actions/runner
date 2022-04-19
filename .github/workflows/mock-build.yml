@@ -18,29 +18,13 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        runtime: [ linux-x64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
           devScript: ./dev.sh
 
-        - runtime: linux-arm64
-          os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: linux-arm
-          os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: osx-x64
-          os: macOS-latest
-          devScript: ./dev.sh
-
-        - runtime: win-x64
-          os: windows-2019
-          devScript: ./dev
-
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
 
@@ -87,16 +71,16 @@ jobs:
         ${{ matrix.devScript }} package Release
       working-directory: src
 
-    # Upload runner package tar.gz/zip as artifact
-    - name: Publish Artifact
-      if: github.event_name != 'pull_request'
-      uses: actions/upload-artifact@v2
-      with:
-        name: runner-package-${{ matrix.runtime }}
-        path: | 
-          _package
-          _package_trims/trim_externals
-          _package_trims/trim_runtime
-          _package_trims/trim_runtime_externals
-          _layout
-          src
+    # # Upload runner package tar.gz/zip as artifact
+    # - name: Publish Artifact
+    #   if: github.event_name != 'pull_request'
+    #   uses: actions/upload-artifact@v2
+    #   with:
+    #     name: runner-package-${{ matrix.runtime }}
+    #     path: | 
+    #       _package
+    #       _package_trims/trim_externals
+    #       _package_trims/trim_runtime
+    #       _package_trims/trim_runtime_externals
+    #       _layout
+    #       src
