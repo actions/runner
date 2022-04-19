@@ -15,7 +15,7 @@ while :;
 do
     "$DIR"/run-helper.sh $*
     returnCode=$?
-    if [[ $returnCode -eq 2 ]]; then
+    if [[ $returnCode == 1 ]]; then
         echo "Restarting runner..."
     else
         echo "Exiting runner..."
