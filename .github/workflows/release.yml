@@ -101,11 +101,11 @@ jobs:
       working-directory: src
 
     # Run tests
-    #- name: L0
-    #  run: |
-    #    ${{ matrix.devScript }} test
-    #  working-directory: src
-    #  if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+    - name: L0
+      run: |
+        ${{ matrix.devScript }} test
+      working-directory: src
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
 
     # Create runner package tar.gz/zip
     - name: Package Release
