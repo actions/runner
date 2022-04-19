@@ -21,7 +21,7 @@
   "author": "GitHub Actions",
   "license": "MIT",
   "dependencies": {
-    "@actions/glob": "^0.2.0"
+    "@actions/glob": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^12.7.12",

@@ -14,7 +14,11 @@ async function run(): Promise<void> {
 
   console.log(`Match Pattern: ${matchPatterns}`)
 
-  const result = await glob.hashFiles(matchPatterns, {followSymbolicLinks})
+  const result = await glob.hashFiles(
+    matchPatterns,
+    {followSymbolicLinks},
+    true
+  )
   console.error(`__OUTPUT__${result}__OUTPUT__`)
 }
 
