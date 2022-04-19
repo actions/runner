@@ -430,7 +430,7 @@ namespace GitHub.Runner.Listener
                                     }
 #endif
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
