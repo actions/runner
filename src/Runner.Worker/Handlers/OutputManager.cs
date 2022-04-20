@@ -154,6 +154,12 @@ namespace GitHub.Runner.Worker.Handlers
             if (line.Contains("fatal: unsafe repository", StringComparison.OrdinalIgnoreCase))
             {
                 _executionContext.StepTelemetry.ErrorMessages.Add(line);
+                var gitUnsafeDirNotice = new DTWebApi.Issue
+                {
+                    Message = $"You may experience error caused by a recently git safe directory enforcement. For more information see: https://github.blog/changelog/xxx",
+                    Type = DTWebApi.IssueType.Notice,
+                };
+                _executionContext.AddIssue(gitUnsafeDirNotice);
             }
 
             // Regular output

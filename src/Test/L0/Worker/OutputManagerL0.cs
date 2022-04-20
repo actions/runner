@@ -947,6 +947,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Process("fatal: unsafe repository ('/github/workspace' is owned by someone else)");
                 Assert.Contains("fatal: unsafe repository ('/github/workspace' is owned by someone else)", _executionContext.Object.StepTelemetry.ErrorMessages);
+                Assert.Contains(_issues, x => x.Item1.Type == DTWebApi.IssueType.Notice && x.Item1.Message.Contains("You may experience error caused by a recently git safe directory enforcement"));
             }
         }
 
