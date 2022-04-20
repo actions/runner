@@ -266,7 +266,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class CreateStepSummaryCommand : RunnerService, IFileCommandExtension
     {
-        private const int _attachmentSizeLimit = 1024 * 1024;
+        public const int AttachmentSizeLimit = 1024 * 1024;
 
         public string ContextName => "step_summary";
         public string FilePrefix => "step_summary_";
@@ -296,9 +296,9 @@ namespace GitHub.Runner.Worker
                     return;
                 }
 
-                if (fileSize > _attachmentSizeLimit)
+                if (fileSize > AttachmentSizeLimit)
                 {
-                    context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, _attachmentSizeLimit / 1024, fileSize / 1024));
+                    context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, AttachmentSizeLimit / 1024, fileSize / 1024));
                     Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
 
                     return;

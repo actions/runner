@@ -33,7 +33,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hostContext = Setup(featureFlagState: "false"))
             {
                 var stepSummaryFile = Path.Combine(_rootDirectory, "feature-off");
-                
+
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
                 _jobExecutionContext.Complete();
 
@@ -117,7 +117,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hostContext = Setup())
             {
                 var stepSummaryFile = Path.Combine(_rootDirectory, "empty-file");
-                File.WriteAllBytes(stepSummaryFile, new byte[128 * 1024 + 1]);
+                File.WriteAllBytes(stepSummaryFile, new byte[CreateStepSummaryCommand.AttachmentSizeLimit + 1]);
 
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
                 _jobExecutionContext.Complete();
