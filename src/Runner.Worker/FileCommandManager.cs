@@ -15,7 +15,7 @@ namespace GitHub.Runner.Worker
     {
         void InitializeFiles(IExecutionContext context, ContainerInfo container);
         void ProcessFiles(IExecutionContext context, ContainerInfo container);
-    
+
     }
 
     public sealed class FileCommandManager : RunnerService, IFileCommandManager
@@ -57,7 +57,7 @@ namespace GitHub.Runner.Worker
                 TryDeleteFile(newPath);
                 File.Create(newPath).Dispose();
 
-                var pathToSet = container != null ? container.TranslateToContainerPath(newPath) : newPath; 
+                var pathToSet = container != null ? container.TranslateToContainerPath(newPath) : newPath;
                 context.SetGitHubContext(fileCommand.ContextName, pathToSet);
             }
         }
@@ -66,7 +66,7 @@ namespace GitHub.Runner.Worker
         {
             foreach (var fileCommand in _commandExtensions)
             {
-                try 
+                try
                 {
                     fileCommand.ProcessCommand(context, Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + _fileSuffix),container);
                 }
@@ -266,7 +266,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class CreateStepSummaryCommand : RunnerService, IFileCommandExtension
     {
-        private const int _attachmentSizeLimit = 128 * 1024;
+        private const int _attachmentSizeLimit = 1024 * 1024;
 
         public string ContextName => "step_summary";
         public string FilePrefix => "step_summary_";
