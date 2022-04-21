@@ -2906,7 +2906,7 @@ namespace Runner.Server.Controllers
                         try {
                             DeleteGithubAppToken(runnerToken);
                         } catch {
-                            
+
                         }
                     }
                     if(fileContainerId != -1) {
@@ -3907,7 +3907,7 @@ namespace Runner.Server.Controllers
                     return NotFound("No such job found on this server");
                 }
             }
-            var query = from j in _context.Jobs where (repo == null || j.repo == repo) && (runid.Length == 0 || runid.Contains(j.runid)) orderby j.runid descending, j.WorkflowRunAttempt descending, j.RequestId descending select j;
+            var query = from j in _context.Jobs where (repo == null || j.repo.ToLower() == repo.ToLower()) && (runid.Length == 0 || runid.Contains(j.runid)) orderby j.runid descending, j.WorkflowRunAttempt descending, j.RequestId descending select j;
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30).Include(j => j.WorkflowRunAttempt) : query.Include(j => j.WorkflowRunAttempt), true);
         }
 
@@ -3919,13 +3919,13 @@ namespace Runner.Server.Controllers
 
         [HttpGet("repositories")]
         public async Task<IActionResult> GetRepositories([FromQuery] int? page, [FromQuery] string owner) {
-            var query = from j in _context.Set<Repository>() where j.Owner.Name == owner orderby j.Id descending select j;
+            var query = from j in _context.Set<Repository>() where j.Owner.Name.ToLower() == owner.ToLower() orderby j.Id descending select j;
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
         [HttpGet("workflow/runs")]
         public async Task<IActionResult> GetWorkflows([FromQuery] int? page, [FromQuery] string owner, [FromQuery] string repo) {
-            var query = (from j in _context.Set<WorkflowRunAttempt>() where j.Attempt == 1 && j.WorkflowRun.Workflow.Repository.Owner.Name == owner && j.WorkflowRun.Workflow.Repository.Name == repo orderby j.WorkflowRun.Id descending select j).Include(j => j.WorkflowRun).Select(j => new WorkflowRun() { EventName = j.EventName, Ref = j.Ref, Sha = j.Sha, Result = j.Result, FileName = j.WorkflowRun.FileName, DisplayName = j.WorkflowRun.DisplayName, Id = j.WorkflowRun.Id});
+            var query = (from j in _context.Set<WorkflowRunAttempt>() where j.Attempt == 1 && j.WorkflowRun.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower() && j.WorkflowRun.Workflow.Repository.Name.ToLower() == repo.ToLower() orderby j.WorkflowRun.Id descending select j).Include(j => j.WorkflowRun).Select(j => new WorkflowRun() { EventName = j.EventName, Ref = j.Ref, Sha = j.Sha, Result = j.Result, FileName = j.WorkflowRun.FileName, DisplayName = j.WorkflowRun.DisplayName, Id = j.WorkflowRun.Id});
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
@@ -4176,7 +4176,7 @@ namespace Runner.Server.Controllers
         [HttpGet("event")]
         public IActionResult Message(string owner, string repo, [FromQuery] string filter, [FromQuery] long? runid)
         {
-            var mfilter = new Minimatch.Minimatcher(filter ?? (owner + "/" + repo));
+            var mfilter = new Minimatch.Minimatcher(filter ?? (owner + "/" + repo), new Minimatch.Options { NoCase = true });
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
@@ -4225,7 +4225,7 @@ namespace Runner.Server.Controllers
                     var chwriter = queue2.Writer;
                     JobEvent handler = (sender, crepo, job) => {
                         var repoowner = crepo.Split("/", 2);
-                        if((string.IsNullOrEmpty(owner) || owner == repoowner[0]) && (string.IsNullOrEmpty(repo) || repo == repoowner[1]) && (runid == null || runid == job.runid)) {
+                        if((string.IsNullOrEmpty(owner) || owner.ToLower() == repoowner[0].ToLower()) && (string.IsNullOrEmpty(repo) || repo.ToLower() == repoowner[1].ToLower()) && (runid == null || runid == job.runid)) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("job", job));
                         }
                     };
@@ -4235,12 +4235,12 @@ namespace Runner.Server.Controllers
                         }
                     };
                     Action<Repository> repoh = crepo => {
-                        if((string.IsNullOrEmpty(owner) || owner == crepo.Owner.Name) && string.IsNullOrEmpty(repo)) {
+                        if((string.IsNullOrEmpty(owner) || owner.ToLower() == crepo.Owner.Name.ToLower()) && string.IsNullOrEmpty(repo)) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("repo", crepo));
                         }
                     };
                     Action<string, string, WorkflowRun> runh = (cowner, crepo, crun) => {
-                        if((string.IsNullOrEmpty(repo) || repo == crepo) || (string.IsNullOrEmpty(owner) || owner == cowner) && runid == null) {
+                        if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) || (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("workflowrun", crun));
                         }
                     };
