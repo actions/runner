@@ -66,16 +66,20 @@ namespace Runner.Server.Controllers {
                 var container = filecontainer.Container;
                 filecontainer = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == req.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).FirstOrDefault();
                 if(filecontainer != null) {
-                    foreach(var rm in from f in _context.Entry(filecontainer).Collection(f => f.Files).Query() where (from of in files select of.FileName.ToLower()).Contains(f.FileName.ToLower()) select f) {
-                        _context.Remove(rm);
-                        try {
-                            System.IO.File.Delete(Path.Combine(_targetFilePath, rm.StoreName));
-                        } catch {
-
-                        }
-                    }
                     foreach(var file in files) {
-                        file.FileContainer = filecontainer;
+                        var ofile = await (from f in _context.Entry(filecontainer).Collection(f => f.Files).Query() where f.FileName.ToLower() == file.FileName.ToLower() select f).FirstOrDefaultAsync();
+                        if(ofile != null) {
+                            try {
+                                System.IO.File.Delete(Path.Combine(_targetFilePath, ofile.StoreName));
+                            } catch {
+
+                            }
+                            ofile.StoreName = file.StoreName;
+                            ofile.GZip = file.GZip;
+                            _context.Remove(file);
+                        } else {
+                            file.FileContainer = filecontainer;
+                        }
                     }
                 } else {
                     filecontainer = new ArtifactFileContainer() { Name = req.Name, Size = req.Size, Container = container, Files = files.ToList() };
@@ -130,11 +134,15 @@ namespace Runner.Server.Controllers {
         public async Task<IActionResult> UploadToContainer(long run, int id, [FromQuery] string itemPath) {
             var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && record.FileName.ToLower() == itemPath.ToLower() select record).FirstOrDefault();
             bool created = false;
+            var gzip = Request.Headers.TryGetValue("Content-Encoding", out StringValues v) && v.Contains("gzip");
             if(container == null) {
-                container = new ArtifactRecord() {FileName = itemPath, StoreName = Path.GetRandomFileName(), GZip = Request.Headers.TryGetValue("Content-Encoding", out StringValues v) && v.Contains("gzip"), FileContainer = _context.ArtifactFileContainer.Find(id)} ;
+                container = new ArtifactRecord() {FileName = itemPath, StoreName = Path.GetRandomFileName(), GZip = gzip, FileContainer = _context.ArtifactFileContainer.Find(id)} ;
                 _context.ArtifactRecords.Add(container);
                 await _context.SaveChangesAsync();
                 created = true;
+            } else if(container.GZip != gzip) {
+                container.GZip = gzip;
+                await _context.SaveChangesAsync();
             }
             var range = Request.Headers["Content-Range"].ToArray()[0];
             int i = range.IndexOf('-');
