@@ -51,59 +51,50 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var response = await ExecuteHookScript(context, input);
+
             // TODO: Should we throw if response.Context is null or just noop?
-            if (response.Context != null)
+            var containerId = response?.Context?.Container?.Id;
+            if (containerId != null)
             {
-                if (response.Context.Container != null)
-                {
-                    if (response.Context.Container.Id != null)
-                    {
-                        context.JobContext.Container["id"] = new StringContextData(response.Context.Container.Id);
-                        jobContainer.ContainerId = response.Context.Container.Id;
-                    }
-                    
-                    if (response.Context.Container.Network != null)
-                    {
-                        context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
-                        jobContainer.ContainerNetwork = response.Context.Container.Network;
-                    }
-                }
+                context.JobContext.Container["id"] = new StringContextData(containerId);
+                jobContainer.ContainerId = containerId;
+            }
+
+            var containerNetwork = response?.Context?.Container?.Network;       
+            if (containerNetwork != null)
+            {
+                context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
+                jobContainer.ContainerNetwork = response.Context.Container.Network;
+            }
             
-                // TODO: figure out if we need ContainerRuntimePath for anything
-                // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
-                // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
-                // container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
+            // TODO: figure out if we need ContainerRuntimePath for anything
+            // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
+            // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
+            // container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
 
-                if (response.Context.Services != null)
-                {
-                    for (var i = 0; i < response.Context.Services.Count; i++)
-                    {
-                        var container = response.Context.Services[i]; // TODO: Confirm that the order response.Context.Services is the same as serviceContainers
-                        var containerInfo = serviceContainers[i];
-                        containerInfo.ContainerId = container.Id;
-                        containerInfo.ContainerNetwork = container.Network;
-                        var service = new DictionaryContextData()
-                        {
-                            ["id"] = new StringContextData(container.Id),
-                            ["ports"] = new DictionaryContextData(),
-                            ["network"] = new StringContextData(container.Network)
-                        };
-
-                        // TODO: workout port mappings + format
-                        // foreach (var portMapping in containerInfo.UserPortMappings)
-                        // {
-                        //     // TODO: currently the format is ports["80:8080"] = "80:8080", fix this?
-                        //     (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
-                        // }
-                        context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
-                    }
-                }
-            }
-
-            if ((object)response.State != null)
+            for (var i = 0; i < response?.Context?.Services?.Count; i++)
             {
-                context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
+                var container = response.Context.Services[i]; // TODO: Confirm that the order response.Context.Services is the same as serviceContainers
+                var containerInfo = serviceContainers[i];
+                containerInfo.ContainerId = container.Id;
+                containerInfo.ContainerNetwork = container.Network;
+                var service = new DictionaryContextData()
+                {
+                    ["id"] = new StringContextData(container.Id),
+                    ["ports"] = new DictionaryContextData(),
+                    ["network"] = new StringContextData(container.Network)
+                };
+
+                // TODO: workout port mappings + format
+                // foreach (var portMapping in containerInfo.UserPortMappings)
+                // {
+                //     // TODO: currently the format is ports["80:8080"] = "80:8080", fix this?
+                //     (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
+                // }
+                context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
             }
+
+            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
         }
 
         public async Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
