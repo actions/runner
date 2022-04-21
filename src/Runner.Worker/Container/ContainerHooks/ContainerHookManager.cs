@@ -52,7 +52,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             var response = await ExecuteHookScript(context, input);
 
-            // TODO: Should we throw if response.Context is null or just noop?
             var containerId = response?.Context?.Container?.Id;
             if (containerId != null)
             {
