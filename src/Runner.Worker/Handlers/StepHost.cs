@@ -111,7 +111,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             // make sure container exist.
             ArgUtil.NotNull(Container, nameof(Container));
-            if (!FeatureFlagManager.IsHookFeatureEnabled() || !FeatureFlagManager.IsCustomHookFeatureEnabled())
+            if (!FeatureFlagManager.IsHookFeatureEnabled())
             {
                 ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
             }   
