@@ -1,12 +1,13 @@
-﻿namespace GitHub.Runner.Worker.Container
+﻿using System;
+using GitHub.Runner.Common;
+
+namespace GitHub.Runner.Worker.Container
 {
     public class FeatureFlagManager
     {
         public static bool IsHookFeatureEnabled() 
         {
-            // Placeholder method
-            var x = true;
-            return x;
+            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath));
         }
     }
 }
