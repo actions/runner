@@ -66,6 +66,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 context.JobContext.Container["network"] = new StringContextData(containerNetwork);
                 jobContainer.ContainerNetwork = containerNetwork;
             }
+
+            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
             
             // TODO: figure out if we need ContainerRuntimePath for anything
             // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
@@ -93,8 +95,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 // }
                 context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
             }
-
-            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
         }
 
         public async Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
