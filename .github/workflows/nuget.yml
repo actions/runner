@@ -52,7 +52,7 @@ jobs:
     - name: Push to GitHub Packages
       if: ${{ github.server_url == 'https://github.com' && github.event_name == 'push' && github.ref_name == 'main' }}
       run: |
-        dotnet nuget push ./*.nupkg --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate --no-symbols true
+        dotnet nuget push ./*.nupkg --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate --no-symbols
       working-directory: ./src/Runner.Client/nupkg
       continue-on-error: true
   test:
