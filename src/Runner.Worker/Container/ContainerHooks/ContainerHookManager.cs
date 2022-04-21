@@ -63,8 +63,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             var containerNetwork = response?.Context?.Container?.Network;       
             if (containerNetwork != null)
             {
-                context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
-                jobContainer.ContainerNetwork = response.Context.Container.Network;
+                context.JobContext.Container["network"] = new StringContextData(containerNetwork);
+                jobContainer.ContainerNetwork = containerNetwork;
             }
             
             // TODO: figure out if we need ContainerRuntimePath for anything
