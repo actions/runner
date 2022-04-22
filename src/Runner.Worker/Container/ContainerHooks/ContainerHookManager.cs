@@ -51,7 +51,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 }
             };
 
-            var response = await ExecuteHookScript(context, input);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Pre);
 
             var containerId = response?.Context?.Container?.Id;
             if (containerId != null)
@@ -109,7 +109,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 ResponseFile = responsePath,
                 State = hookState
             };
-            var response = await ExecuteHookScript(context, input);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
         }
 
         public async Task ContainerStepAsync(IExecutionContext context)
@@ -123,8 +123,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             Trace.Entering();
             var responsePath = GenerateResponsePath();
-
-            var hookState = GetHookStateInJson(context);
             var input = new HookInput
             {
                 Command = HookCommand.RunScriptStep,
@@ -138,17 +136,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     PrependPath = prependPath,
                     WorkingDirectory = workingDirectory,
                 },
-                State = hookState
+                State = GetHookStateInJson(context)
             };
 
-            var response = await ExecuteHookScript(context, input);
-            if (response != null)
-            {
-                SaveHookState(context, hookState);
-            }
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Main);
+            SaveHookState(context, response.State);
+            
         }
 
-        private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input)
+        private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage)
         {
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
@@ -170,15 +166,16 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                             context.Global.Variables,
                             actionDirectory: scriptDirectory,
                             localActionContainerSetupSteps: null) as ScriptHandler;
-            handler.PrepareExecution(ActionRunStage.Pre); // TODO: find out stage, we only use Start in pre, but double check
+            handler.PrepareExecution(stage); // TODO: find out stage, we only use Start in pre, but double check
 
             IOUtil.CreateEmptyFile(input.ResponseFile);
-            await handler.RunAsync(ActionRunStage.Pre);
+            await handler.RunAsync(stage);
             if (handler.ExecutionContext.Result == TaskResult.Failed)
             {
                 throw new Exception("Hook failed"); // TODO: better exception
             }
 
+            // TODO: consider the case when the responseFile doesn't exist - should we throw or noop on response?
             var response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
             IOUtil.DeleteFile(input.ResponseFile);
             return response;
