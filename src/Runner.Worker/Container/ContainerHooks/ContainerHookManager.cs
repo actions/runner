@@ -201,6 +201,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private static void SaveHookState(IExecutionContext context, JToken hookState)
         {
+            // TODO: consider JTokenContextData
             hookState ??= JToken.Parse("{}");
             context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(hookState));
         }
