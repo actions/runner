@@ -101,7 +101,7 @@ namespace GitHub.Runner.Worker
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             executionContext.Output("Prepare all required actions");
             var result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
-            if (state.ImagesToPull.Count > 0)
+            if (false && state.ImagesToPull.Count > 0)
             {
                 foreach (var imageToPull in result.ImagesToPull)
                 {
@@ -113,7 +113,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            if (result.ImagesToBuild.Count > 0)
+            if (false && result.ImagesToBuild.Count > 0)
             {
                 foreach (var imageToBuild in result.ImagesToBuild)
                 {
