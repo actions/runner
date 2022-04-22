@@ -33,24 +33,40 @@ namespace GitHub.Runner.Worker.Expressions
             string githubWorkspace = workspaceData.Value;
             bool followSymlink = false;
             List<string> patterns = new List<string>();
-            var firstParameter = true;
             foreach (var parameter in Parameters)
             {
                 var parameterString = parameter.Evaluate(context).ConvertToString();
-                if (firstParameter)
+                if (parameterString.StartsWith("--"))
                 {
-                    firstParameter = false;
-                    if (parameterString.StartsWith("--"))
+                    if (string.Equals(parameterString, "--follow-symbolic-links", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (string.Equals(parameterString, "--follow-symbolic-links", StringComparison.OrdinalIgnoreCase))
+                        followSymlink = true;
+                        continue;
+                    }
+                    else if (parameterString.StartsWith("--timeout=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var timeoutSecondsString = parameterString.Split("=")[1];
+                        if (!String.IsNullOrEmpty(timeoutSecondsString))
                         {
-                            followSymlink = true;
-                            continue;
+                            bool parseSuccess = int.TryParse(timeoutSecondsString, out int timoutSeconds);
+                            if (parseSuccess)
+                            {
+                                _hashFileTimeoutSeconds = timoutSeconds;
+                                continue;
+                            }
+                            else
+                            {
+                                throw new ArgumentOutOfRangeException($"Parsing of {timeoutSecondsString} to integer failed, please provide a number-like parameter like '--timeout=600'.");
+                            }
                         }
                         else
                         {
-                            throw new ArgumentOutOfRangeException($"Invalid glob option {parameterString}, avaliable option: '--follow-symbolic-links'.");
+                            throw new ArgumentOutOfRangeException($"Timeout parameter was empty. Please provide a number-like parameter like '--timeout=600'.");
                         }
+                    }
+                    else
+                    {
+                        throw new ArgumentOutOfRangeException($"Invalid glob option {parameterString}, avaliable options: '--follow-symbolic-links', '--timeout=[number]'.");
                     }
                 }
 
