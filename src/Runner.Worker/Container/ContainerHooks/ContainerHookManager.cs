@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task ContainerStepAsync(IExecutionContext context);
-        Task RunScriptStepOnJobContainerAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
+        Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
     }
 
     public class ContainerHookManager : RunnerService, IContainerHookManager
@@ -118,7 +118,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             throw new NotImplementedException();
         }
 
-        public async Task RunScriptStepOnJobContainerAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
+        public async Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
         {
             Trace.Entering();
             var responsePath = GenerateResponsePath();
