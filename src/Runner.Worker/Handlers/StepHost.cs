@@ -136,6 +136,10 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
+            if (FeatureFlagManager.IsHookFeatureEnabled())
+            {
+                throw new NotImplementedException("Decide how to determine node version with container hooks.");
+            }
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
