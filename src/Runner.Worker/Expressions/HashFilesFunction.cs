@@ -13,7 +13,7 @@ namespace GitHub.Runner.Worker.Expressions
 {
     public sealed class HashFilesFunction : Function
     {
-        private const int _hashFileTimeoutSeconds = 120;
+        private int _hashFileTimeoutSeconds = 120;
 
         protected sealed override Object EvaluateCore(
             EvaluationContext context,
