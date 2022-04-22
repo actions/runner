@@ -51,19 +51,29 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var response = await ExecuteHookScript(context, input);
-            // TODO: Should we throw if response.Context is null or just noop?
-            context.JobContext.Container["id"] = new StringContextData(response.Context.Container.Id);
-            jobContainer.ContainerId = response.Context.Container.Id;
-            context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
-            jobContainer.ContainerNetwork = response.Context.Container.Network;
-            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
 
+            var containerId = response?.Context?.Container?.Id;
+            if (containerId != null)
+            {
+                context.JobContext.Container["id"] = new StringContextData(containerId);
+                jobContainer.ContainerId = containerId;
+            }
+
+            var containerNetwork = response?.Context?.Container?.Network;       
+            if (containerNetwork != null)
+            {
+                context.JobContext.Container["network"] = new StringContextData(containerNetwork);
+                jobContainer.ContainerNetwork = containerNetwork;
+            }
+
+            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
+            
             // TODO: figure out if we need ContainerRuntimePath for anything
             // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
             // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
             // container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
 
-            for (var i = 0; i < response.Context.Services.Count; i++)
+            for (var i = 0; i < response?.Context?.Services?.Count; i++)
             {
                 var container = response.Context.Services[i]; // TODO: Confirm that the order response.Context.Services is the same as serviceContainers
                 var containerInfo = serviceContainers[i];
