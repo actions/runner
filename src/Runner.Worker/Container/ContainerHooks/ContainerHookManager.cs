@@ -10,6 +10,7 @@ using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
 using GitHub.Services.WebApi;
+using Newtonsoft.Json.Linq;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
@@ -59,15 +60,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 jobContainer.ContainerId = containerId;
             }
 
-            var containerNetwork = response?.Context?.Container?.Network;       
+            var containerNetwork = response?.Context?.Container?.Network;
             if (containerNetwork != null)
             {
                 context.JobContext.Container["network"] = new StringContextData(containerNetwork);
                 jobContainer.ContainerNetwork = containerNetwork;
             }
 
-            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
-            
+            SaveHookState(context, response.State);
+
             // TODO: figure out if we need ContainerRuntimePath for anything
             // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
             // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
@@ -101,12 +102,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Entering();
 
             var responsePath = GenerateResponsePath();
-            context.JobContext.TryGetValue("hook_state", out var hookState);
+            var hookState = GetHookStateInJson(context);
             var input = new HookInput
             {
                 Command = HookCommand.CleanupJob,
                 ResponseFile = responsePath,
-                State = JsonUtility.FromString<dynamic>(hookState.ToString())
+                State = hookState
             };
             var response = await ExecuteHookScript(context, input);
         }
@@ -123,12 +124,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Entering();
             var responsePath = GenerateResponsePath();
 
-            context.JobContext.TryGetValue("hook_state", out var hookState);
+            var hookState = GetHookStateInJson(context);
             var input = new HookInput
             {
                 Command = HookCommand.RunScriptStep,
                 ResponseFile = responsePath,
-                Args = new HookStepArgs
+                Args = new ScriptStepArgs
                 {
                     Container = container.GetHookContainer(),
                     EntryPointArgs = entryPointArgs.Split(' ').Select(arg => arg.Trim()),
@@ -137,13 +138,13 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     PrependPath = prependPath,
                     WorkingDirectory = workingDirectory,
                 },
-                State = JsonUtility.FromString<dynamic>(hookState.ToString())
+                State = hookState
             };
 
             var response = await ExecuteHookScript(context, input);
-            if (response != null) 
+            if (response != null)
             {
-                context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
+                SaveHookState(context, hookState);
             }
         }
 
@@ -186,6 +187,22 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         private string GenerateResponsePath()
         {
             return $"{Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName)}/{Guid.NewGuid()}.json";
+        }
+
+        private static JToken GetHookStateInJson(IExecutionContext context)
+        {
+            if (context.JobContext.TryGetValue("hook_state", out var hookState))
+            {
+                // TODO: log state read & loaded
+                return JsonUtility.FromString<JToken>(hookState.ToString());
+            }
+            return JToken.Parse("{}");
+        }
+
+        private static void SaveHookState(IExecutionContext context, JToken hookState)
+        {
+            hookState ??= JToken.Parse("{}");
+            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(hookState));
         }
     }
 }
