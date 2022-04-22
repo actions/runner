@@ -111,7 +111,10 @@ namespace GitHub.Runner.Worker.Handlers
         {
             // make sure container exist.
             ArgUtil.NotNull(Container, nameof(Container));
-            ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
+            if (!FeatureFlagManager.IsHookFeatureEnabled())
+            {
+                ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
+            }
 
             // remove double quotes around the path
             path = path.Trim('\"');
@@ -133,6 +136,10 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
+            if (FeatureFlagManager.IsHookFeatureEnabled())
+            {
+                throw new NotImplementedException("Decide how to determine node version with container hooks.");
+            }
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
@@ -181,12 +188,11 @@ namespace GitHub.Runner.Worker.Handlers
                                             CancellationToken cancellationToken)
         {
             ArgUtil.NotNull(Container, nameof(Container));
-            ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
             var containerHookManager = HostContext.GetService<IContainerHookManager>();
             if (FeatureFlagManager.IsHookFeatureEnabled())
             {
                 TranslateToContainerPath(environment);
-                await containerHookManager.RunScriptStepOnJobContainerAsync(context,
+                await containerHookManager.ScriptStepAsync(context,
                                                                                    Container,
                                                                                    arguments,
                                                                                    fileName,
@@ -198,6 +204,8 @@ namespace GitHub.Runner.Worker.Handlers
                 // do we still use it? it has 0 references
                 return (int)(context.Result ?? 0);
             }
+
+            ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
 
             return await ExecuteAsync(workingDirectory,
                                 fileName,
