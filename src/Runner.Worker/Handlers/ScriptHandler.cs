@@ -308,7 +308,8 @@ namespace GitHub.Runner.Worker.Handlers
                 StepHost.ErrorDataReceived += stderrManager.OnDataReceived;
 
                 // Execute
-                int exitCode = await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                int exitCode = await StepHost.ExecuteAsync(ExecutionContext,
+                                            workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
                                             fileName: fileName,
                                             arguments: arguments,
                                             environment: Environment,

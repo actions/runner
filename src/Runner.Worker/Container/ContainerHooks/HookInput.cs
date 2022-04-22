@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
@@ -9,8 +10,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         public HookCommand Command { get; set; }
         public string ResponseFile { get; set; }
-        public dynamic Args { get; set; }
-        public dynamic State { get; set; }
+        public HookArgs Args { get; set; }
+        public JToken State { get; set; }
     }
 
     [JsonConverter(typeof(StringEnumConverter))]
@@ -20,14 +21,28 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         PrepareJob,
         [EnumMember(Value = "cleanup_job")]
         CleanupJob,
+        [EnumMember(Value = "run_script_step")]
+        RunScriptStep,
     }
+    public class HookArgs { }
 
-    public class PrepareJobArgs
+    public class PrepareJobArgs : HookArgs
     {
         public HookContainer Container { get; set; }
         public IList<HookContainer> Services { get; set; }
         public string Network { get; set; }
     }
+
+    public class ScriptStepArgs : HookArgs
+    {
+        public IEnumerable<string> EntryPointArgs { get; set; }
+        public string EntryPoint { get; set; }
+        public IDictionary<string, string> EnvironmentVariables { get; set; }
+        public string PrependPath { get; set; }
+        public string WorkingDirectory { get; set; }
+        public HookContainer Container { get; internal set; }
+    }
+
 
     public class ContainerRegistry
     {
