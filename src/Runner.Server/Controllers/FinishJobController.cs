@@ -39,23 +39,26 @@ namespace Runner.Server.Controllers
         public static event JobStarted OnJobStarted;
 
         public void InvokeJobCompleted(JobCompletedEvent ev) {
-            var job = _context.Jobs.Find(ev.JobId);
-            if(job != null) {
-                if(job.Result != null) {
-                    // Prevent overriding job with a result
-                    return;
+            try {
+                var job = _context.Jobs.Find(ev.JobId);
+                if(job != null) {
+                    if(job.Result != null) {
+                        // Prevent overriding job with a result
+                        return;
+                    }
+                    job.Result = ev.Result;
+                    if(ev.Outputs != null) {
+                        job.Outputs.AddRange(from o in ev.Outputs select new JobOutput { Name = o.Key, Value = o.Value?.Value ?? "" });
+                    }
+                    _context.SaveChanges();
+                    new TimelineController(_context, Configuration).SyncLiveLogsToDb(job.TimeLineId);
                 }
-                job.Result = ev.Result;
-                if(ev.Outputs != null) {
-                    job.Outputs.AddRange(from o in ev.Outputs select new JobOutput { Name = o.Key, Value = o.Value?.Value ?? "" });
-                }
-                _context.SaveChanges();
-                new TimelineController(_context, Configuration).SyncLiveLogsToDb(job.TimeLineId);
+            } finally {
+                Task.Run(() => {
+                    OnJobCompleted?.Invoke(ev);
+                    OnJobCompletedAfter?.Invoke(ev);
+                });
             }
-            Task.Run(() => {
-                OnJobCompleted?.Invoke(ev);
-                OnJobCompletedAfter?.Invoke(ev);
-            });
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
