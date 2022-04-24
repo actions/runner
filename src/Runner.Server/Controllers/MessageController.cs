@@ -818,6 +818,15 @@ namespace Runner.Server.Controllers
                     new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
                 }
             }
+            Action finishWorkflow = () => {
+                if(callingJob == null) {
+                    new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
+                }
+                // Cleanup dummy job for this workflow
+                if(workflowTimelineId == attempt.TimeLineId) {
+                    initializingJobs.Remove(workflowTimelineId, out _);
+                }
+            };
             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Initialize Workflow Run {runid}" }), workflowTimelineId, workflowRecordId);
             string event_name = e;
             string repository_name = repository;
@@ -2119,13 +2128,7 @@ namespace Runner.Server.Controllers
                     finished = new CancellationTokenSource();
                     Action<WorkflowEventArgs> finishAsyncWorkflow = evargs => {
                         finished.Cancel();
-                        if(callingJob == null) {
-                            new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
-                        }
-                        // Cleanup dummy job for this workflow
-                        if(workflowTimelineId == attempt.TimeLineId) {
-                            initializingJobs.Remove(workflowTimelineId, out _);
-                        }
+                        finishWorkflow();
                         // Cleanup dummy jobs, which allows Runner.Client to display the workflowname
                         foreach(var job in jobs) {
                             if(job.Childs != null) {
@@ -2392,9 +2395,7 @@ namespace Runner.Server.Controllers
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
             } finally {
                 if(!asyncProcessing) {
-                    if(callingJob == null) {
-                        new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
-                    }
+                    finishWorkflow();
                     _context.Dispose();
                 }
             }
