@@ -2189,10 +2189,10 @@ namespace Runner.Server.Controllers
                                     }
                                 }
                                 finishAsyncWorkflow(evargs);
-                            } else {
-                                jobCompleted(e);
+                                return;
                             }
                         }
+                        jobCompleted(e);
                     };
                     var channel = Channel.CreateUnbounded<JobCompletedEvent>();
                     Task.Run(async () => {
