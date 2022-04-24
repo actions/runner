@@ -2119,6 +2119,22 @@ namespace Runner.Server.Controllers
                     finished = new CancellationTokenSource();
                     Action<WorkflowEventArgs> finishAsyncWorkflow = evargs => {
                         finished.Cancel();
+                        if(callingJob == null) {
+                            new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
+                        }
+                        // Cleanup dummy job for this workflow
+                        if(workflowTimelineId == attempt.TimeLineId) {
+                            initializingJobs.Remove(workflowTimelineId, out _);
+                        }
+                        // Cleanup dummy jobs, which allows Runner.Client to display the workflowname
+                        foreach(var job in jobs) {
+                            if(job.Childs != null) {
+                                foreach(var ji in job.Childs) {
+                                    initializingJobs.Remove(ji.Id, out _);
+                                }
+                            }
+                            initializingJobs.Remove(job.Id, out _);
+                        }
                         if(callingJob != null) {
                             callingJob.Workflowfinish.Invoke(callingJob, evargs);
                         } else {
@@ -2214,28 +2230,6 @@ namespace Runner.Server.Controllers
                         }
                     }
                     asyncProcessing = true;
-                    Task.Run(async () => {
-                        try {
-                            await Task.Delay(-1, finished.Token);
-                        } catch {
-                        }
-                        if(callingJob == null) {
-                            new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
-                        }
-                        // Cleanup dummy job for this workflow
-                        if(workflowTimelineId == attempt.TimeLineId) {
-                            initializingJobs.Remove(workflowTimelineId, out _);
-                        }
-                        // Cleanup dummy jobs, which allows Runner.Client to display the workflowname
-                        foreach(var job in jobs) {
-                            if(job.Childs != null) {
-                                foreach(var ji in job.Childs) {
-                                    initializingJobs.Remove(ji.Id, out _);
-                                }
-                            }
-                            initializingJobs.Remove(job.Id, out _);
-                        }
-                    });
                     Action runWorkflow = () => {
                         s.Wait();
                         try {
