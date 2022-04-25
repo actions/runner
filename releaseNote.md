@@ -1,9 +1,31 @@
 ## Fixes
-- Problem matcher commands now working again in docker containers, broken as of 3.6.4. New tests added, since this is part of a runner modification.
+- Use backslashs for paths in windows container 
+- Serverurl is invalid for the oidc stub
+- localcheckout emulation of v1 not working correctly
+- `::add-path::` on windows with windows and linux container not working correctly
+- Case sensitive env for linux container on windows
+- Remove section handling from Runner.Client, since it was broken uncolored output
+- Add filetable back to the templatecontext, workflow errors now includes filenames again
+- Rework server send event, scope runner.client log. You no longer see foreign logs from other workflow runs
+- webui faster loading of logs, due to a bug loading logs was delayed for one second
+- Artifacts: files and name are case insensitive
+- Artifacts: Merge previous uploaded artifacts and allow replacing existing files
+- github app token now deleted after job finishs
+- Artifacts: pseudo artifact container deleted after job finishs
+- Artifacts: no longer create pseudo artifact container for reusable workflows
+- owner and repository names are now caseinsensitive
+- Improve entity framework context accesses and livetime management
 
 ## Features
+- Update actions/runner to [v2.290.0](https://github.com/actions/runner/releases/tag/v2.290.0)
+- workflow_dispatch inputs context, based on [Github Feedback](https://github.com/github/feedback/discussions/9092#discussioncomment-2453678) and [Issue Comment](https://github.com/actions/runner/issues/1483#issuecomment-1091025877)
+  boolean workflow_dispatch values of the inputs context are actual booleans values like workflow_call inputs
+- WEBUI Loading / error indicators
 
 ## Breaking Changes
+- Enforce Workflow restrictions based on research of GitHub's limits
+- localcheckout now uses node16 to download the repository from the server, since node12 reaches end of live on 30 April 2022
+- Upgrade .net runtime to .net6, since .net5 reaches end of live on May 08, 2022
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
