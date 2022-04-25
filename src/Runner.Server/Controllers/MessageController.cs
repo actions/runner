@@ -2997,7 +2997,7 @@ namespace Runner.Server.Controllers
                         // For actions/upload-artifact@v1, actions/download-artifact@v1
                         variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                         variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
-                        var resp = new ArtifactController(_context, Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
+                        var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
                         fileContainerId = resp.Id;
                         variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
                         if(!isFork) {
@@ -3078,6 +3078,7 @@ namespace Runner.Server.Controllers
                         if(string.IsNullOrEmpty(group)) {
                             _queueJob();
                         } else {
+                            var clone = Clone();
                             var key = $"{repo}/{group}";
                             while(true) {
                                 ConcurrencyGroup cgroup = concurrencyGroups.GetOrAdd(key, name => new ConcurrencyGroup() { Key = name });
@@ -3086,14 +3087,18 @@ namespace Runner.Server.Controllers
                                         continue;
                                     }
                                     ConcurrencyEntry centry = new ConcurrencyEntry();
+                                    Action finish = () => {
+                                        cgroup.FinishRunning(centry);
+                                        clone._context.Dispose();
+                                    };
                                     centry.Run = () => {
                                         if(job.CancelRequest.IsCancellationRequested) {
                                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
-                                            cgroup.FinishRunning(centry);
+                                            finish();
                                         } else {
                                             FinishJobController.OnJobCompleted += evdata => {
                                                 if(evdata.JobId == job.JobId) {
-                                                    cgroup.FinishRunning(centry);
+                                                    finish();
                                                 }
                                             };
                                             _queueJob();
@@ -3102,7 +3107,8 @@ namespace Runner.Server.Controllers
                                     centry.CancelPending = () => {
                                         TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
                                         job.CancelRequest.Cancel();
-                                        new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                        new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                        clone._context.Dispose();
                                     };
                                     centry.CancelRunning = cancelInProgress => {
                                         if(job.SessionId != Guid.Empty) {
@@ -3113,7 +3119,7 @@ namespace Runner.Server.Controllers
                                             // Keep Job running, since the cancelInProgress is false
                                         } else {
                                             job.CancelRequest.Cancel();
-                                            new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                            new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                         }
                                     };
                                     cgroup.PushEntry(centry, cancelInprogress);
