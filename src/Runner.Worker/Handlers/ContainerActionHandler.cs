@@ -229,7 +229,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (FeatureFlagManager.IsHookFeatureEnabled())
             {
-                await containerHookManager.ContainerStepAsync(ExecutionContext);
+                await containerHookManager.ContainerStepAsync(ExecutionContext, container);
             }
             else
             {

@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task ContainerStepAsync(IExecutionContext context);
+        Task ContainerStepAsync(IExecutionContext context, ContainerInfo container);
         Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
     }
 
@@ -102,21 +102,28 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Entering();
 
             var responsePath = GenerateResponsePath();
-            var hookState = GetHookStateInJson(context);
             var input = new HookInput
             {
                 Command = HookCommand.CleanupJob,
                 ResponseFile = responsePath,
-                State = hookState
+                State = GetHookStateInJson(context),
             };
             var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
         }
 
-        public async Task ContainerStepAsync(IExecutionContext context)
+        public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
         {
             Trace.Entering();
-            await Task.FromResult(0);
-            throw new NotImplementedException();
+            var responsePath = GenerateResponsePath();
+            var hookState = GetHookStateInJson(context);
+            var input = new HookInput
+            {
+                Args =  container.GetHookContainer(),
+                Command = HookCommand.RunContainerStep,
+                ResponseFile = responsePath,
+                State = hookState
+            };
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
         }
 
         public async Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)

@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
-    public class HookContainer
+    public class HookContainer : IHookArgs
     {
         public string Id { get; set; }
         public string DisplayName { get; set; }
@@ -23,27 +23,27 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public HookContainer() { } // For Json deserializer
         public HookContainer(ContainerInfo container)
         {
-            Id = container.ContainerId;
-            DisplayName = container.ContainerDisplayName;
-            Network = container.ContainerNetwork;
-            NetworkAlias = container.ContainerNetworkAlias;
-            Image = container.ContainerImage;
-            Name = container.ContainerName;
-            EntryPointArgs = container.ContainerEntryPointArgs;
-            EntryPoint = container.ContainerEntryPoint;
-            WorkingDirectory = container.ContainerWorkDirectory;
-            CreateOptions = container.ContainerCreateOptions;
-            RuntimePath = container.ContainerRuntimePath;
+            Id = container.ContainerId ?? string.Empty;
+            DisplayName = container.ContainerDisplayName ?? string.Empty;
+            Network = container.ContainerNetwork ?? string.Empty;
+            NetworkAlias = container.ContainerNetworkAlias ?? string.Empty;
+            Image = container.ContainerImage ?? string.Empty;
+            Name = container.ContainerName ?? string.Empty;
+            EntryPointArgs = container.ContainerEntryPointArgs ?? string.Empty;
+            EntryPoint = container.ContainerEntryPoint ?? string.Empty;
+            WorkingDirectory = container.ContainerWorkDirectory ?? string.Empty;
+            CreateOptions = container.ContainerCreateOptions ?? string.Empty;
+            RuntimePath = container.ContainerRuntimePath ?? string.Empty;
             Registry = new ContainerRegistry
             {
-                Username = container.RegistryAuthUsername,
-                Password = container.RegistryAuthPassword,
-                ServerUrl = container.RegistryServer,
+                Username = container.RegistryAuthUsername ?? string.Empty,
+                Password = container.RegistryAuthPassword ?? string.Empty,
+                ServerUrl = container.RegistryServer ?? string.Empty,
             };
 
-            EnvironmentVariables = container.ContainerEnvironmentVariables;
+            EnvironmentVariables = container.ContainerEnvironmentVariables ?? new Dictionary<string, string>();
             PortMappings = new Dictionary<string, string>(container.PortMappings.Select(mapping => new KeyValuePair<string, string>(mapping.HostPort, mapping.ContainerPort)));
-            MountVolumes = container.MountVolumes;
+            MountVolumes = container.MountVolumes ?? new List<MountVolume>();
         }
     }
 
