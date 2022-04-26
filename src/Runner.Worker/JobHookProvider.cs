@@ -63,6 +63,9 @@ namespace GitHub.Runner.Worker
                 ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(hookData.Path, Trace, prependPath)
             };
 
+            // Copy in workflow's global environment var definitions
+            var environment = new Dictionary<string, string>(executionContext.Global.EnvironmentVariables);
+
             // Create the handler
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             var handler = handlerFactory.Create(
@@ -71,7 +74,7 @@ namespace GitHub.Runner.Worker
                             stepHost,
                             new ScriptActionExecutionData(),
                             inputs,
-                            environment: new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
+                            environment: environment,
                             executionContext.Global.Variables,
                             actionDirectory: scriptDirectory,
                             localActionContainerSetupSteps: null);
