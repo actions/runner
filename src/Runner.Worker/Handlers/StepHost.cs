@@ -136,10 +136,27 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
+            // Optimistically use the default
+            string nodeExternal = preferredVersion;
+
             if (FeatureFlagManager.IsHookFeatureEnabled())
             {
-                throw new NotImplementedException("Decide how to determine node version with container hooks.");
+                if (Container.IsAlpine)
+                {
+                    if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
+                    {
+                        var os = Constants.Runner.Platform.ToString();
+                        var arch = Constants.Runner.PlatformArchitecture.ToString();
+                        var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
+                        throw new NotSupportedException(msg);
+                    }
+                    nodeExternal = $"{preferredVersion}_alpine";
+                    executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+                }
+                executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
+                return nodeExternal;
             }
+
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
@@ -148,7 +165,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             var output = new List<string>();
             var execExitCode = await dockerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
-            string nodeExternal;
             if (execExitCode == 0)
             {
                 foreach (var line in output)
@@ -169,8 +185,6 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
             }
-            // Optimistically use the default
-            nodeExternal = preferredVersion;
             executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
             return nodeExternal;
         }
