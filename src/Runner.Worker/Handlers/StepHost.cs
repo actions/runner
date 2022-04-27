@@ -143,15 +143,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 if (Container.IsAlpine)
                 {
-                    if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
-                    {
-                        var os = Constants.Runner.Platform.ToString();
-                        var arch = Constants.Runner.PlatformArchitecture.ToString();
-                        var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
-                        throw new NotSupportedException(msg);
-                    }
-                    nodeExternal = $"{preferredVersion}_alpine";
-                    executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+                    nodeExternal = CheckPlatformForAlpineContainer(executionContext, preferredVersion);
                 }
                 executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
                 return nodeExternal;
@@ -172,15 +164,7 @@ namespace GitHub.Runner.Worker.Handlers
                     executionContext.Debug(line);
                     if (line.ToLower().Contains("alpine"))
                     {
-                        if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
-                        {
-                            var os = Constants.Runner.Platform.ToString();
-                            var arch = Constants.Runner.PlatformArchitecture.ToString();
-                            var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
-                            throw new NotSupportedException(msg);
-                        }
-                        nodeExternal = $"{preferredVersion}_alpine";
-                        executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+                        nodeExternal = CheckPlatformForAlpineContainer(executionContext, preferredVersion);
                         return nodeExternal;
                     }
                 }
@@ -299,6 +283,21 @@ namespace GitHub.Runner.Worker.Handlers
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
+        }
+
+        private string CheckPlatformForAlpineContainer(IExecutionContext executionContext, string preferredVersion)
+        {
+            string nodeExternal = preferredVersion;
+            if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
+            {
+                var os = Constants.Runner.Platform.ToString();
+                var arch = Constants.Runner.PlatformArchitecture.ToString();
+                var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
+                throw new NotSupportedException(msg);
+            }
+            nodeExternal = $"{preferredVersion}_alpine";
+            executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+            return nodeExternal;
         }
 
         private void TranslateToContainerPath(IDictionary<string, string> environment)
