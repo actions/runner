@@ -55,7 +55,7 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
-            if (FeatureFlagManager.IsHookFeatureEnabled(executionContext)) 
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext)) 
             {
                 // Initialize the containers
                 containers.ForEach(container => UpdateRegistryAuthForGitHubToken(executionContext, container));
@@ -114,7 +114,7 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
             
-            if (FeatureFlagManager.IsHookFeatureEnabled(executionContext)) 
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext)) 
             {
                 await _containerHookManager.CleanupJobAsync(executionContext, containers);
                 return;

@@ -50,7 +50,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
-                if (!FeatureFlagManager.IsHookFeatureEnabled(ExecutionContext))
+                if (!FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext))
                 {
                     ExecutionContext.Output($"##[group]Building docker image");
                     ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
@@ -227,7 +227,7 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEnvironmentVariables[variable.Key] = container.TranslateToContainerPath(variable.Value);
             }
 
-            if (FeatureFlagManager.IsHookFeatureEnabled(ExecutionContext))
+            if (FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext))
             {
                 await containerHookManager.ContainerStepAsync(ExecutionContext, container);
             }
