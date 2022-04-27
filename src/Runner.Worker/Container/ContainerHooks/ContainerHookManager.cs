@@ -67,6 +67,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 jobContainer.ContainerNetwork = containerNetwork;
             }
 
+            jobContainer.IsAlpine = response.IsAlpine;
+
             SaveHookState(context, response.State);
 
             // TODO: figure out if we need ContainerRuntimePath for anything
