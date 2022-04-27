@@ -111,7 +111,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             // make sure container exist.
             ArgUtil.NotNull(Container, nameof(Container));
-            if (!FeatureFlagManager.IsHookFeatureEnabled(executionContext))
+            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext))
             {
                 ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
             }
@@ -139,7 +139,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Optimistically use the default
             string nodeExternal = preferredVersion;
 
-            if (FeatureFlagManager.IsHookFeatureEnabled(executionContext))
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext))
             {
                 if (Container.IsAlpine)
                 {
@@ -187,7 +187,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(Container, nameof(Container));
             var containerHookManager = HostContext.GetService<IContainerHookManager>();
-            if (FeatureFlagManager.IsHookFeatureEnabled(context))
+            if (FeatureFlagManager.IsContainerHooksEnabled(context))
             {
                 TranslateToContainerPath(environment);
                 await containerHookManager.ScriptStepAsync(context,
