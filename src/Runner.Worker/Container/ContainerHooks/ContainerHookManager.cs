@@ -67,7 +67,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 jobContainer.ContainerNetwork = containerNetwork;
             }
 
-            jobContainer.IsAlpine = response.Alpine;
+            jobContainer.IsAlpine = response.IsAlpine;
 
             SaveHookState(context, response.State);
 
