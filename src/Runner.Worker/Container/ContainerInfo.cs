@@ -161,15 +161,16 @@ namespace GitHub.Runner.Worker.Container
                 foreach (var mapping in _pathMappings.Concat(_osPathMappings[Os]))
                 {
                     if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                        if (string.Equals(path, mapping.HostPath, StringComparison.OrdinalIgnoreCase))
+                        var hostPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                        var mHostPath = mapping.HostPath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                        if (string.Equals(hostPath, mHostPath, StringComparison.OrdinalIgnoreCase))
                         {
                             return mapping.ContainerPath;
                         }
 
-                        if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                            path.StartsWith(mapping.HostPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                        if (hostPath.StartsWith(mHostPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                         {
-                            return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length).Replace(Os == "windows" ? Path.AltDirectorySeparatorChar : Path.DirectorySeparatorChar, Os == "windows" ? Path.DirectorySeparatorChar : Path.AltDirectorySeparatorChar);
+                            return mapping.ContainerPath + hostPath.Remove(0, mHostPath.Length).Replace(Os == "windows" ? Path.AltDirectorySeparatorChar : Path.DirectorySeparatorChar, Os == "windows" ? Path.DirectorySeparatorChar : Path.AltDirectorySeparatorChar);
                         }
                     } else {
                         if (string.Equals(path, mapping.HostPath))
@@ -195,15 +196,18 @@ namespace GitHub.Runner.Worker.Container
                 foreach (var mapping in _pathMappings.Concat(_osPathMappings[Os]))
                 {
                     if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                        if (string.Equals(path, mapping.ContainerPath, StringComparison.OrdinalIgnoreCase))
+                        var comp = Os == "windows" ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+                        var containerPath = Os == "windows" ? path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) : path;
+                        var mContainerPath = Os == "windows" ? mapping.ContainerPath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) : mapping.ContainerPath;
+                        if (string.Equals(containerPath, mContainerPath, comp))
                         {
-                            return mapping.HostPath;
+                            return mapping.HostPath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
                         }
 
-                        if (path.StartsWith(mapping.ContainerPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                            path.StartsWith(mapping.ContainerPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                        if (Os == "windows" ? containerPath.StartsWith(mContainerPath + Path.DirectorySeparatorChar, comp) :
+                            containerPath.StartsWith(mContainerPath + Path.AltDirectorySeparatorChar, comp))
                         {
-                            return mapping.HostPath + path.Remove(0, mapping.ContainerPath.Length);
+                            return (mapping.HostPath + containerPath.Remove(0, mContainerPath.Length)).Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
                         }
                     } else {
                         if (string.Equals(path, mapping.ContainerPath))
