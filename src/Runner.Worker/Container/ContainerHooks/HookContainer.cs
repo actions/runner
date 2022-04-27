@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
@@ -16,34 +17,39 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public string WorkingDirectory { get; set; }
         public string CreateOptions { get; private set; }
         public string RuntimePath { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public ContainerRegistry Registry { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public IDictionary<string, string> EnvironmentVariables { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public IDictionary<string, string> PortMappings { get; set; }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public List<MountVolume> MountVolumes { get; set; }
         public HookContainer() { } // For Json deserializer
         public HookContainer(ContainerInfo container)
         {
-            Id = container.ContainerId ?? string.Empty;
-            DisplayName = container.ContainerDisplayName ?? string.Empty;
-            Network = container.ContainerNetwork ?? string.Empty;
-            NetworkAlias = container.ContainerNetworkAlias ?? string.Empty;
-            Image = container.ContainerImage ?? string.Empty;
-            Name = container.ContainerName ?? string.Empty;
-            EntryPointArgs = container.ContainerEntryPointArgs ?? string.Empty;
-            EntryPoint = container.ContainerEntryPoint ?? string.Empty;
-            WorkingDirectory = container.ContainerWorkDirectory ?? string.Empty;
-            CreateOptions = container.ContainerCreateOptions ?? string.Empty;
-            RuntimePath = container.ContainerRuntimePath ?? string.Empty;
+            Id = container.ContainerId;
+            DisplayName = container.ContainerDisplayName;
+            Network = container.ContainerNetwork;
+            NetworkAlias = container.ContainerNetworkAlias;
+            Image = container.ContainerImage;
+            Name = container.ContainerName;
+            EntryPointArgs = container.ContainerEntryPointArgs;
+            EntryPoint = container.ContainerEntryPoint;
+            WorkingDirectory = container.ContainerWorkDirectory;
+            CreateOptions = container.ContainerCreateOptions;
+            RuntimePath = container.ContainerRuntimePath;
             Registry = new ContainerRegistry
             {
-                Username = container.RegistryAuthUsername ?? string.Empty,
-                Password = container.RegistryAuthPassword ?? string.Empty,
-                ServerUrl = container.RegistryServer ?? string.Empty,
+                Username = container.RegistryAuthUsername,
+                Password = container.RegistryAuthPassword,
+                ServerUrl = container.RegistryServer,
             };
 
-            EnvironmentVariables = container.ContainerEnvironmentVariables ?? new Dictionary<string, string>();
+            EnvironmentVariables = container.ContainerEnvironmentVariables;
             PortMappings = new Dictionary<string, string>(container.PortMappings.Select(mapping => new KeyValuePair<string, string>(mapping.HostPort, mapping.ContainerPort)));
-            MountVolumes = container.MountVolumes ?? new List<MountVolume>();
+            MountVolumes = container.MountVolumes;
         }
     }
 
