@@ -23,7 +23,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public IDictionary<string, string> EnvironmentVariables { get; set; }
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public IDictionary<string, string> PortMappings { get; set; }
-
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public List<MountVolume> MountVolumes { get; set; }
         public HookContainer() { } // For Json deserializer
