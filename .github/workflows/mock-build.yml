@@ -1,0 +1,86 @@
+name: Runner CI with _layout and src uploaded
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - main
+    - releases/*
+    paths-ignore:
+    - '**.md'
+  pull_request:
+    branches:
+    - '*'
+    paths-ignore:
+    - '**.md'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        runtime: [ linux-x64 ]
+        include:
+        - runtime: linux-x64
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+
+    # Build runner layout
+    - name: Build & Layout Release
+      run: |
+        ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
+      working-directory: src
+
+    # Check runtime/externals hash
+    - name: Compute/Compare runtime and externals Hash
+      shell: bash
+      run: |
+        echo "Current dotnet runtime hash result: $DOTNET_RUNTIME_HASH"
+        echo "Current Externals hash result: $EXTERNALS_HASH"
+
+        NeedUpdate=0
+        if [ "$EXTERNALS_HASH" != "$(cat ./src/Misc/contentHash/externals/${{ matrix.runtime }})" ] ;then
+          echo Hash mismatch, Update ./src/Misc/contentHash/externals/${{ matrix.runtime }} to $EXTERNALS_HASH
+          NeedUpdate=1
+        fi
+
+        if [ "$DOTNET_RUNTIME_HASH" != "$(cat ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }})" ] ;then
+          echo Hash mismatch, Update ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }} to $DOTNET_RUNTIME_HASH
+          NeedUpdate=1
+        fi
+
+        exit $NeedUpdate
+      env:
+        DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
+        EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
+
+    # Run tests
+    - name: L0
+      run: |
+        ${{ matrix.devScript }} test
+      working-directory: src
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+
+    # Create runner package tar.gz/zip
+    - name: Package Release
+      if: github.event_name != 'pull_request'
+      run: |
+        ${{ matrix.devScript }} package Release
+      working-directory: src
+
+    # # Upload runner package tar.gz/zip as artifact
+    # - name: Publish Artifact
+    #   if: github.event_name != 'pull_request'
+    #   uses: actions/upload-artifact@v2
+    #   with:
+    #     name: runner-package-${{ matrix.runtime }}
+    #     path: | 
+    #       _package
+    #       _package_trims/trim_externals
+    #       _package_trims/trim_runtime
+    #       _package_trims/trim_runtime_externals
+    #       _layout
+    #       src
