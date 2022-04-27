@@ -229,7 +229,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // We do not not the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
-                resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
+                resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(ExecutionContext, scriptFilePath).Replace("\"", "\\\"")}";
             }
             else
             {
@@ -309,7 +309,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Execute
                 int exitCode = await StepHost.ExecuteAsync(ExecutionContext,
-                                            workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                                            workingDirectory: StepHost.ResolvePathForStepHost(ExecutionContext, workingDirectory),
                                             fileName: fileName,
                                             arguments: arguments,
                                             environment: Environment,

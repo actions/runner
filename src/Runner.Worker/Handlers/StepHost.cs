@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Handlers
         event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
-        string ResolvePathForStepHost(string path);
+        string ResolvePathForStepHost(IExecutionContext executionContext, string path);
 
         Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion);
 
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker.Handlers
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
-        public string ResolvePathForStepHost(string path)
+        public string ResolvePathForStepHost(IExecutionContext executionContext, string path)
         {
             return path;
         }
@@ -107,11 +107,11 @@ namespace GitHub.Runner.Worker.Handlers
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
-        public string ResolvePathForStepHost(string path)
+        public string ResolvePathForStepHost(IExecutionContext executionContext, string path)
         {
             // make sure container exist.
             ArgUtil.NotNull(Container, nameof(Container));
-            if (!FeatureFlagManager.IsHookFeatureEnabled())
+            if (!FeatureFlagManager.IsHookFeatureEnabled(executionContext))
             {
                 ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
             }
@@ -139,7 +139,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Optimistically use the default
             string nodeExternal = preferredVersion;
 
-            if (FeatureFlagManager.IsHookFeatureEnabled())
+            if (FeatureFlagManager.IsHookFeatureEnabled(executionContext))
             {
                 if (Container.IsAlpine)
                 {
@@ -187,7 +187,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(Container, nameof(Container));
             var containerHookManager = HostContext.GetService<IContainerHookManager>();
-            if (FeatureFlagManager.IsHookFeatureEnabled())
+            if (FeatureFlagManager.IsHookFeatureEnabled(context))
             {
                 TranslateToContainerPath(environment);
                 await containerHookManager.ScriptStepAsync(context,
