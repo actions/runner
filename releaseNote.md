@@ -1,18 +1,12 @@
 ## Features
-- Continue-on-error is now possible for the composite action steps (#1763)
-- Now it's possible to use context evaluation in the `shell` of composite action run steps (#1767)
+- Relaxed naming requirements for dockerfiles (e.g. `Dockerfile.test` can now be built) (#1738)
 
 ## Bugs
-- Fix a bug where job would be marked as 'cancelled' after self-hosted runner going offline (#1792)
-- Translate paths in `github` and `runner` contexts when running on a container (#1762)
-- Warn about invalid flags when configuring or running the runner (#1781)
-- Fix a bug where job hooks would use job level working directory (#1809)
+- Fixed a bug where windows path separators were used in generated folders (#1617)
+- Fixed runner package corruption, it will close https://github.com/actions/runner/issues/1812
 
 ## Misc
-- Allow warnings about actions using Node v12 (#1735)
-- Better exception handling when runner is configured with invalid Url or token (#1741)
-- Set user agent for websocket requests (#1791)
-- Gracefully handle websocket failures (#1789)
+- Relaxed Actions Summary size limit to 1MiB (#1839)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
