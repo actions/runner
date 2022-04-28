@@ -101,11 +101,11 @@ jobs:
       working-directory: src
 
     # Run tests
-    - name: L0
-      run: |
-        ${{ matrix.devScript }} test
-      working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+    #- name: L0
+    #  run: |
+    #    ${{ matrix.devScript }} test
+    #  working-directory: src
+    #  if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
 
     # Create runner package tar.gz/zip
     - name: Package Release
@@ -260,6 +260,17 @@ jobs:
           console.log(releaseNote)
           core.setOutput('version', runnerVersion);
           core.setOutput('note', releaseNote);
+
+    - name: Validate Packages HASH
+      working-directory: _package
+      run: |
+        ls -l
+        echo "${{needs.build.outputs.win-x64-sha}}  actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip" | shasum -a 256 -c
+        echo "${{needs.build.outputs.osx-x64-sha}}  actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
+        echo "${{needs.build.outputs.linux-x64-sha}}  actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
+        echo "${{needs.build.outputs.linux-arm-sha}}  actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
+        echo "${{needs.build.outputs.linux-arm64-sha}}  actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
+
     # Create GitHub release
     - uses: actions/create-release@master
       id: createRelease

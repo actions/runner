@@ -151,6 +151,11 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
+            if (line.Contains("fatal: unsafe repository", StringComparison.OrdinalIgnoreCase))
+            {
+                _executionContext.StepTelemetry.ErrorMessages.Add(line);
+            }
+
             // Regular output
             _executionContext.Output(line);
         }
