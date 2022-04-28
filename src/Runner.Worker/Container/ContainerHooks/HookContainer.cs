@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
-    public class HookContainer : IHookArgs
+    public class HookContainer : HookArgs
     {
         public string Id { get; set; }
         public string DisplayName { get; set; }

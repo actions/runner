@@ -10,7 +10,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         public HookCommand Command { get; set; }
         public string ResponseFile { get; set; }
-        public IHookArgs Args { get; set; }
+        public HookArgs Args { get; set; }
         public JToken State { get; set; }
     }
 
@@ -26,16 +26,16 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         [EnumMember(Value = "run_container_step")]
         RunContainerStep,
     }
-    public interface IHookArgs { }
+    public class HookArgs { }
 
-    public class PrepareJobArgs : IHookArgs
+    public class PrepareJobArgs : HookArgs
     {
         public HookContainer Container { get; set; }
         public IList<HookContainer> Services { get; set; }
         public string Network { get; set; }
     }
 
-    public class ScriptStepArgs : IHookArgs
+    public class ScriptStepArgs : HookArgs
     {
         public IEnumerable<string> EntryPointArgs { get; set; }
         public string EntryPoint { get; set; }
