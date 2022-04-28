@@ -8,6 +8,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
@@ -38,6 +39,7 @@ namespace GitHub.Runner.Worker.Handlers
             AddInputsToEnvironment();
 
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            var containerHookManager = HostContext.GetService<IContainerHookManager>();
 
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
@@ -48,24 +50,26 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
-
-                ExecutionContext.Output($"##[group]Building docker image");
-                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
-                var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await dockerManager.DockerBuild(
-                    ExecutionContext,
-                    ExecutionContext.GetGitHubContext("workspace"),
-                    dockerFile,
-                    Directory.GetParent(dockerFile).FullName,
-                    imageName);
-                ExecutionContext.Output("##[endgroup]");
-
-                if (buildExitCode != 0)
+                if (!FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext))
                 {
-                    throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
-                }
+                    ExecutionContext.Output($"##[group]Building docker image");
+                    ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
+                    var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
+                    var buildExitCode = await dockerManager.DockerBuild(
+                        ExecutionContext,
+                        ExecutionContext.GetGitHubContext("workspace"),
+                        dockerFile,
+                        Directory.GetParent(dockerFile).FullName,
+                        imageName);
+                    ExecutionContext.Output("##[endgroup]");
 
-                Data.Image = imageName;
+                    if (buildExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
+                    }
+
+                    Data.Image = imageName;
+                }
             }
             else
             {
@@ -223,14 +227,21 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEnvironmentVariables[variable.Key] = container.TranslateToContainerPath(variable.Value);
             }
 
-            using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
-            using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
+            if (FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext))
             {
-                var runExitCode = await dockerManager.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
-                ExecutionContext.Debug($"Docker Action run completed with exit code {runExitCode}");
-                if (runExitCode != 0)
+                await containerHookManager.ContainerStepAsync(ExecutionContext, container);
+            }
+            else
+            {
+                using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
+                using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
                 {
-                    ExecutionContext.Result = TaskResult.Failed;
+                    var runExitCode = await dockerManager.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
+                    ExecutionContext.Debug($"Docker Action run completed with exit code {runExitCode}");
+                    if (runExitCode != 0)
+                    {
+                        ExecutionContext.Result = TaskResult.Failed;
+                    }
                 }
             }
 #endif

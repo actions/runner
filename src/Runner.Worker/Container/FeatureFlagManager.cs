@@ -5,9 +5,10 @@ namespace GitHub.Runner.Worker.Container
 {
     public class FeatureFlagManager
     {
-        public static bool IsHookFeatureEnabled() 
+        public static bool IsContainerHooksEnabled(IExecutionContext executionContext) 
         {
-            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath));
+            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)); // TODO: renenable feature flag before merge, &&
+                    // ((executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.AllowRunnerContainerHooks)) ?? true);
         }
     }
 }

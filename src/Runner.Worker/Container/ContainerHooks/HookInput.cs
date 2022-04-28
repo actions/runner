@@ -23,6 +23,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         CleanupJob,
         [EnumMember(Value = "run_script_step")]
         RunScriptStep,
+        [EnumMember(Value = "run_container_step")]
+        RunContainerStep,
     }
     public class HookArgs { }
 

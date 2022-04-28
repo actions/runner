@@ -101,7 +101,7 @@ namespace GitHub.Runner.Worker.Handlers
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid
             // file name character on Linux.
-            string arguments = StepHost.ResolvePathForStepHost(StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
+            string arguments = StepHost.ResolvePathForStepHost(ExecutionContext, StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
 
 #if OS_WINDOWS
             // It appears that node.exe outputs UTF8 when not in TTY mode.
@@ -135,8 +135,8 @@ namespace GitHub.Runner.Worker.Handlers
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
                 Task<int> step = StepHost.ExecuteAsync(ExecutionContext,
-                                                workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
-                                                fileName: StepHost.ResolvePathForStepHost(file),
+                                                workingDirectory: StepHost.ResolvePathForStepHost(ExecutionContext, workingDirectory),
+                                                fileName: StepHost.ResolvePathForStepHost(ExecutionContext, file),
                                                 arguments: arguments,
                                                 environment: Environment,
                                                 requireExitCodeZero: false,

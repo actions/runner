@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Handlers
         event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
-        string ResolvePathForStepHost(string path);
+        string ResolvePathForStepHost(IExecutionContext executionContext, string path);
 
         Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion);
 
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker.Handlers
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
-        public string ResolvePathForStepHost(string path)
+        public string ResolvePathForStepHost(IExecutionContext executionContext, string path)
         {
             return path;
         }
@@ -107,11 +107,11 @@ namespace GitHub.Runner.Worker.Handlers
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
-        public string ResolvePathForStepHost(string path)
+        public string ResolvePathForStepHost(IExecutionContext executionContext, string path)
         {
             // make sure container exist.
             ArgUtil.NotNull(Container, nameof(Container));
-            if (!FeatureFlagManager.IsHookFeatureEnabled())
+            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext))
             {
                 ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
             }
@@ -136,10 +136,19 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            if (FeatureFlagManager.IsHookFeatureEnabled())
+            // Optimistically use the default
+            string nodeExternal = preferredVersion;
+
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext))
             {
-                throw new NotImplementedException("Decide how to determine node version with container hooks.");
+                if (Container.IsAlpine)
+                {
+                    nodeExternal = CheckPlatformForAlpineContainer(executionContext, preferredVersion);
+                }
+                executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
+                return nodeExternal;
             }
+
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
@@ -148,7 +157,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             var output = new List<string>();
             var execExitCode = await dockerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
-            string nodeExternal;
             if (execExitCode == 0)
             {
                 foreach (var line in output)
@@ -156,21 +164,11 @@ namespace GitHub.Runner.Worker.Handlers
                     executionContext.Debug(line);
                     if (line.ToLower().Contains("alpine"))
                     {
-                        if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
-                        {
-                            var os = Constants.Runner.Platform.ToString();
-                            var arch = Constants.Runner.PlatformArchitecture.ToString();
-                            var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
-                            throw new NotSupportedException(msg);
-                        }
-                        nodeExternal = $"{preferredVersion}_alpine";
-                        executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+                        nodeExternal = CheckPlatformForAlpineContainer(executionContext, preferredVersion);
                         return nodeExternal;
                     }
                 }
             }
-            // Optimistically use the default
-            nodeExternal = preferredVersion;
             executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
             return nodeExternal;
         }
@@ -189,7 +187,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(Container, nameof(Container));
             var containerHookManager = HostContext.GetService<IContainerHookManager>();
-            if (FeatureFlagManager.IsHookFeatureEnabled())
+            if (FeatureFlagManager.IsContainerHooksEnabled(context))
             {
                 TranslateToContainerPath(environment);
                 await containerHookManager.ScriptStepAsync(context,
@@ -285,6 +283,21 @@ namespace GitHub.Runner.Worker.Handlers
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
+        }
+
+        private string CheckPlatformForAlpineContainer(IExecutionContext executionContext, string preferredVersion)
+        {
+            string nodeExternal = preferredVersion;
+            if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
+            {
+                var os = Constants.Runner.Platform.ToString();
+                var arch = Constants.Runner.PlatformArchitecture.ToString();
+                var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
+                throw new NotSupportedException(msg);
+            }
+            nodeExternal = $"{preferredVersion}_alpine";
+            executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+            return nodeExternal;
         }
 
         private void TranslateToContainerPath(IDictionary<string, string> environment)

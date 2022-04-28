@@ -101,7 +101,7 @@ namespace GitHub.Runner.Worker
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             executionContext.Output("Prepare all required actions");
             var result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
-            if (!FeatureFlagManager.IsHookFeatureEnabled())
+            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext))
             {
                 if (state.ImagesToPull.Count > 0)
                 {

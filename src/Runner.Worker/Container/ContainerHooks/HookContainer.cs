@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
-    public class HookContainer
+    public class HookContainer : HookArgs
     {
         public string Id { get; set; }
         public string DisplayName { get; set; }
@@ -16,9 +17,13 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public string WorkingDirectory { get; set; }
         public string CreateOptions { get; private set; }
         public string RuntimePath { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public ContainerRegistry Registry { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public IDictionary<string, string> EnvironmentVariables { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public IDictionary<string, string> PortMappings { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public List<MountVolume> MountVolumes { get; set; }
         public HookContainer() { } // For Json deserializer
         public HookContainer(ContainerInfo container)
