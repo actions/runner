@@ -2,7 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -27,7 +31,9 @@ namespace GitHub.Runner.Listener
 
     public sealed class MessageListener : RunnerService, IMessageListener
     {
-        // private long? _lastMessageId;
+#if !USE_BROKER
+        private long? _lastMessageId;
+#endif
         private RunnerSettings _settings;
         private ITerminal _term;
         private IRunnerServer _runnerServer;
@@ -209,6 +215,36 @@ namespace GitHub.Runner.Listener
         }
 
 #if USE_BROKER
+        [DataContract]
+        public sealed class MessageRef
+        {
+            [DataMember(Name = "url")]
+            public string Url { get; set; }
+            [DataMember(Name = "token")]
+            public string Token { get; set; }
+            [DataMember(Name = "scopeId")]
+            public string ScopeId { get; set; }
+            [DataMember(Name = "planType")]
+            public string PlanType { get; set; }
+            [DataMember(Name = "planGroup")]
+            public string PlanGroup { get; set; }
+            [DataMember(Name = "instanceRefs")]
+            public InstanceRef[] InstanceRefs { get; set; }
+            [DataMember(Name = "labels")]
+            public string[] Labels { get; set; }
+        }
+
+        [DataContract]
+        public sealed class InstanceRef
+        {
+            [DataMember(Name = "name")]
+            public string Name { get; set; }
+            [DataMember(Name = "instanceType")]
+            public string InstanceType { get; set; }
+            [DataMember(Name = "attempt")]
+            public int Attempt { get; set; }
+        }
+
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
         {
             Trace.Entering();
@@ -226,11 +262,34 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     message = await _brokerServer.GetMessageAsync(_session, _settings, null/*_lastMessageId*/, token);
-
                     _term.WriteLine($"{DateTime.UtcNow:u}: {message}");
-                    if (message != null)
+                    if (!string.IsNullOrEmpty(message))
                     {
-                        // todo: _lastMessageId = message.MessageId;
+                        var messageRef = StringUtil.ConvertFromJson<MessageRef>(message);
+                        var client = new HttpClient();
+                        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", messageRef.Token);
+                        var response = await client.GetAsync(messageRef.Url, token);
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var content = default(string);
+                            try
+                            {
+                                content = await response.Content.ReadAsStringAsync();
+                            }
+                            catch
+                            {
+                            }
+
+                            var error = $"HTTP {(int)response.StatusCode} {Enum.GetName(typeof(HttpStatusCode), response.StatusCode)}";
+                            if (!string.IsNullOrEmpty(content))
+                            {
+                                error = $"{error}: {content}";
+                            }
+                            throw new Exception(error);
+                        }
+
+                        var fullMessage = await response.Content.ReadAsStringAsync();
+                        return StringUtil.ConvertFromJson<TaskAgentMessage>(fullMessage);
                     }
 
                     if (encounteringError) //print the message once only if there was an error
