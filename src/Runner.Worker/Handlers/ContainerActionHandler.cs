@@ -133,7 +133,14 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     if (!string.IsNullOrEmpty(arg))
                     {
-                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{arg.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+                        if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
+                        {
+                            container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{arg.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+                        }
+                        else
+                        {
+                            container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{arg.Replace("\"", "\\\"")}\"";
+                        }
                     }
                     else
                     {

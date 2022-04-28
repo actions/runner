@@ -135,7 +135,14 @@ namespace GitHub.Runner.Worker.Container
                 }
                 else
                 {
-                    dockerOptions.Add($"-e \"{env.Key}={env.Value.Replace("\"", "\\\"")}\"");
+                    if (context.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
+                    {
+                        dockerOptions.Add($"-e \"{env.Key}={env.Value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
+                    }
+                    else
+                    {
+                        dockerOptions.Add($"-e \"{env.Key}={env.Value.Replace("\"", "\\\"")}\"");
+                    }
                 }
             }
 
@@ -156,12 +163,28 @@ namespace GitHub.Runner.Worker.Container
                 if (String.IsNullOrEmpty(volume.SourceVolumePath))
                 {
                     // Anonymous docker volume
-                    volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+
+                    if (context.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
+                    {
+                        volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+                    }
+                    else
+                    {
+                        volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    }
                 }
                 else
                 {
                     // Named Docker volume / host bind mount
-                    volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+
+                    if (context.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
+                    {
+                        volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\\", "\\\\").Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+                    }
+                    else
+                    {
+                        volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    }
                 }
                 if (volume.ReadOnly)
                 {
@@ -232,12 +255,27 @@ namespace GitHub.Runner.Worker.Container
                 if (String.IsNullOrEmpty(volume.SourceVolumePath))
                 {
                     // Anonymous docker volume
-                    volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+
+                    if (context.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
+                    {
+                        volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+                    }
+                    else
+                    {
+                        volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    }
                 }
                 else
                 {
                     // Named Docker volume / host bind mount
-                    volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    if (context.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
+                    {
+                        volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\\", "\\\\").Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+                    }
+                    else
+                    {
+                        volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    }
                 }
                 if (volume.ReadOnly)
                 {

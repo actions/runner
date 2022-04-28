@@ -229,7 +229,15 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // We do not not the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
-                resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
+
+                if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
+                {
+                    resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\\", "\\\\").Replace("\"", "\\\"")}";
+                }
+                else
+                {
+                    resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
+                }
             }
             else
             {
@@ -240,7 +248,15 @@ namespace GitHub.Runner.Worker.Handlers
                 }
                 scriptFilePath = Inputs["path"];
                 ArgUtil.NotNullOrEmpty(scriptFilePath, "path");
-                resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
+                if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
+                {
+                    resolvedScriptPath = Inputs["path"].Replace("\\", "\\\\").Replace("\"", "\\\"");
+                }
+                else
+                {
+                    resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
+
+                }
             }
 
             // Format arg string with script path
@@ -287,7 +303,15 @@ namespace GitHub.Runner.Worker.Handlers
                 // launch `node macOSRunInvoker.js shell args` instead of `shell args` to avoid macOS SIP remove `DYLD_INSERT_LIBRARIES` when launch process
                 string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
                 string macOSRunInvoker = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "macos-run-invoker.js");
-                arguments = $"\"{macOSRunInvoker.Replace("\"", "\\\"")}\" \"{fileName.Replace("\"", "\\\"")}\" {arguments}";
+
+                if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+                {
+                    arguments = $"\"{macOSRunInvoker.Replace("\\", "\\\\").Replace("\"", "\\\"")}\" \"{fileName.Replace("\\", "\\\\").Replace("\"", "\\\"")}\" {arguments}";
+                }
+                else 
+                {
+                    arguments = $"\"{macOSRunInvoker.Replace("\"", "\\\"")}\" \"{fileName.Replace("\"", "\\\"")}\" {arguments}";
+                }
                 fileName = node;
             }
 #endif
