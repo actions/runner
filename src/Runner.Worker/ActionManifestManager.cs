@@ -485,6 +485,10 @@ namespace GitHub.Runner.Worker
                         {
                             foreach (var step in compositeActionsExecutionDataSteps)
                             {
+                                if (step.Reference.Type != Pipelines.ActionSourceType.Script)
+                                {
+                                    continue;
+                                }
                                 var mapping = step.Inputs.AssertMapping("inputs");
                                 var foundShell = false;
                                 foreach (var pair in mapping)
