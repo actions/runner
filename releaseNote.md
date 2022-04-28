@@ -3,7 +3,7 @@
 
 ## Bugs
 - Fixed a bug where windows path separators were used in generated folders (#1617)
-- Fixed runner package corruption, it will close https://github.com/actions/runner/issues/1812
+- Fixed an issue where runner's invoked via `run.sh` or `run.cmd` did not properly restart after update (#1812). This fix applies to all future updates after installing this version
 
 ## Misc
 - Relaxed Actions Summary size limit to 1MiB (#1839)
