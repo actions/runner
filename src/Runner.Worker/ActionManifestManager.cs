@@ -10,9 +10,6 @@ using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using YamlDotNet.Core;
-using YamlDotNet.Core.Events;
-using System.Globalization;
 using System.Linq;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -483,9 +480,31 @@ namespace GitHub.Runner.Worker
                     }
                     else
                     {
+                        var compositeActionsExecutionDataSteps = steps.Cast<Pipelines.ActionStep>().ToList();
+                        if (defaultsToken == null)
+                        {
+                            foreach (var step in compositeActionsExecutionDataSteps)
+                            {
+                                var mapping = step.Inputs.AssertMapping("inputs");
+                                var foundShell = false;
+                                foreach (var pair in mapping)
+                                {
+                                    // Expression key
+                                    if (pair.Key is StringToken && pair.Key.AssertString("inputs key").Value.Equals("shell"))
+                                    {
+                                        foundShell = true;
+                                        break;
+                                    }
+                                }
+                                if (!foundShell)
+                                {
+                                    throw new TemplateValidationException("Composite action must set the default shell, or the shell parameter in each step is required.");
+                                }
+                            }
+                        }
                         return new CompositeActionExecutionData()
                         {
-                            Steps = steps.Cast<Pipelines.ActionStep>().ToList(),
+                            Steps = compositeActionsExecutionDataSteps,
                             PreSteps = new List<Pipelines.ActionStep>(),
                             PostSteps = new Stack<Pipelines.ActionStep>(),
                             InitCondition = "always()",

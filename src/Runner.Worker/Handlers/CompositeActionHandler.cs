@@ -167,7 +167,6 @@ namespace GitHub.Runner.Worker.Handlers
 
                 if (Data.CompositeDefaults != null && Data.CompositeDefaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
                 {
-
                     var defaultsToken = Data.CompositeDefaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
                     var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
                     var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsToken.Value, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
