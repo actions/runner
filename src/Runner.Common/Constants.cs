@@ -86,7 +86,7 @@ namespace GitHub.Runner.Common
             public static class CommandLine
             {
                 //if you are adding a new arg, please make sure you update the
-                //validArgs array as well present in the CommandSettings.cs
+                //validOptions dictionary as well present in the CommandSettings.cs
                 public static class Args
                 {
                     public static readonly string Auth = "auth";
@@ -121,7 +121,7 @@ namespace GitHub.Runner.Common
                 }
 
                 //if you are adding a new flag, please make sure you update the
-                //validFlags array as well present in the CommandSettings.cs
+                //validOptions dictionary as well present in the CommandSettings.cs
                 public static class Flags
                 {
                     public static readonly string Check = "check";
