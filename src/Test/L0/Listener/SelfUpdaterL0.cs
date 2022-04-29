@@ -301,6 +301,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
+#if !X64
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
@@ -375,6 +376,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
             }
         }
+#endif
 
         [Fact]
         [Trait("Level", "L0")]
@@ -440,6 +442,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
+#if !X64
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
@@ -525,7 +528,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
             }
         }
+#endif
 
+#if !X64
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
@@ -618,6 +623,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
             }
         }
+#endif
 
         [Fact]
         [Trait("Level", "L0")]
