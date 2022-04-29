@@ -1,5 +1,4 @@
 ## Features
-- Relaxed naming requirements for dockerfiles (e.g. `Dockerfile.test` can now be built) (#1738)
 
 ## Bugs
 - Fixed a bug where windows path separators were used in generated folders (#1617)
