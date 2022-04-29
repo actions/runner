@@ -150,7 +150,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             var response = await ExecuteHookScript(context, input, ActionRunStage.Main);
             SaveHookState(context, response.State);
-            
         }
 
         private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage)
@@ -192,7 +191,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private string GenerateResponsePath()
         {
-            return $"{Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName)}/{Guid.NewGuid()}.json";
+            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName, $"{Guid.NewGuid()}.json");
         }
 
         private static JToken GetHookStateInJson(IExecutionContext context)
