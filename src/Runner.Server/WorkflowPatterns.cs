@@ -46,6 +46,9 @@ namespace Runner.Server {
                         errors.Add(pos++, "Unexpected empty brackets '[]'");
                         break;
                     }
+                    Func<char, char, char, bool> validChar = (a, b, test) => {
+                        return test >= a && test <= b;
+                    };
                     var startPos = pos;
                     while(pos < pattern.Length && pattern[pos] != ']') {
                         switch(pattern[pos]) {
@@ -63,7 +66,7 @@ namespace Runner.Server {
                                 break;
                             }
                             Func<char, char, bool> validRange = (a, b) => {
-                                return pattern[pos - 1] >= a && pattern[pos - 1] <= b && pattern[pos + 1] >= a && pattern[pos + 1] <= b && pattern[pos - 1] <= pattern[pos + 1];
+                                return validChar(a, b, pattern[pos - 1]) && validChar(a, b, pattern[pos + 1]) && pattern[pos - 1] <= pattern[pos + 1];
                             };
                             if(!validRange('A', 'z') && !validRange('0', '9')) {
                                 errors.Add(pos++, "Ranges can only include a-z, A-Z, A-z, and 0-9");
@@ -73,6 +76,10 @@ namespace Runner.Server {
                             pos += 2;
                             break;
                             default:
+                            if(!validChar('A', 'z', pattern[pos]) && !validChar('0', '9', pattern[pos])) {
+                                errors.Add(pos++, "Ranges can only include a-z, A-Z and 0-9");
+                                break;
+                            }
                             rpattern.Append(Regex.Escape(pattern[pos].ToString()));
                             pos++;
                             break;
