@@ -232,6 +232,9 @@ namespace Runner.Server.Controllers
                 resultMemory = null;
                 var templateContext = evaluationContext.State as TemplateContext;
                 var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
+                if(executionContext.Cancelled.IsCancellationRequested) {
+                    return false;
+                }
                 if(Parameters?.Any() ?? false) {
                     foreach(var parameter in Parameters) {
                         var s = parameter.Evaluate(evaluationContext).ConvertToString();
@@ -246,7 +249,7 @@ namespace Runner.Server.Controllers
                     }
                     return true;
                 }
-                return !executionContext.Cancelled.IsCancellationRequested && executionContext.JobContext.Success;
+                return executionContext.JobContext.Success;
             }
         }
 
@@ -257,6 +260,9 @@ namespace Runner.Server.Controllers
                 resultMemory = null;
                 var templateContext = evaluationContext.State as TemplateContext;
                 var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
+                if(executionContext.Cancelled.IsCancellationRequested) {
+                    return false;
+                }
                 if(Parameters?.Any() ?? false) {
                     foreach(var parameter in Parameters) {
                         var s = parameter.Evaluate(evaluationContext).ConvertToString();
@@ -269,7 +275,7 @@ namespace Runner.Server.Controllers
                     }
                     return false;
                 }
-                return !executionContext.Cancelled.IsCancellationRequested && executionContext.JobContext.Failure;
+                return executionContext.JobContext.Failure;
             }
         }
         public sealed class CancelledFunction : Function
