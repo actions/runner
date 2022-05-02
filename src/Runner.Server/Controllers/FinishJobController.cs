@@ -40,23 +40,40 @@ namespace Runner.Server.Controllers
 
         public void InvokeJobCompleted(JobCompletedEvent ev) {
             try {
-                var job = _context.Jobs.Find(ev.JobId);
-                if(job != null) {
-                    if(job.Result != null) {
-                        // Prevent overriding job with a result
-                        return;
+                {
+                    var job = _cache.Get<Job>(ev.JobId);
+                    if(job != null) {
+                        Session session;
+                        if(_cache.TryGetValue(job.SessionId, out session)) {
+                            session.Job = null;
+                        }
                     }
-                    job.Result = ev.Result;
-                    if(ev.Outputs != null) {
-                        job.Outputs.AddRange(from o in ev.Outputs select new JobOutput { Name = o.Key, Value = o.Value?.Value ?? "" });
+                }
+                {
+                    var job = _context.Jobs.Find(ev.JobId);
+                    if(job != null) {
+                        if(job.Result != null) {
+                            // Prevent overriding job with a result
+                            return;
+                        }
+                        job.Result = ev.Result;
+                        if(ev.Outputs != null) {
+                            job.Outputs.AddRange(from o in ev.Outputs select new JobOutput { Name = o.Key, Value = o.Value?.Value ?? "" });
+                        } else {
+                            ev.Outputs = new Dictionary<String, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                        }
+                        _context.SaveChanges();
+                        new TimelineController(_context, Configuration).SyncLiveLogsToDb(job.TimeLineId);
                     }
-                    _context.SaveChanges();
-                    new TimelineController(_context, Configuration).SyncLiveLogsToDb(job.TimeLineId);
                 }
             } finally {
                 Task.Run(() => {
-                    OnJobCompleted?.Invoke(ev);
-                    OnJobCompletedAfter?.Invoke(ev);
+                    try {
+                        OnJobCompleted?.Invoke(ev);
+                        OnJobCompletedAfter?.Invoke(ev);
+                    } finally {
+                        _cache.Remove(ev.JobId);
+                    }
                 });
             }
         }
@@ -67,14 +84,6 @@ namespace Runner.Server.Controllers
         {
             var jevent = await FromBody<JobEvent>();
             if (jevent is JobCompletedEvent ev) {
-                var job = _cache.Get<Job>(ev.JobId);
-                if(job != null) {
-                    _cache.Remove(ev.JobId);
-                    Session session;
-                    if(_cache.TryGetValue(job.SessionId, out session)) {
-                        session.Job = null;
-                    }
-                }
                 InvokeJobCompleted(ev);
                 return Ok();
             } else if (jevent is JobAssignedEvent a) {
