@@ -457,32 +457,37 @@ namespace Runner.Server.Controllers
             }
         }
 
-        KeyValuePair<string, Minimatch.Minimatcher>[] CompileMinimatch(SequenceToken sequence) {
-            return (from item in sequence select new KeyValuePair<string,Minimatch.Minimatcher>(item.AssertString("pattern").Value, new Minimatch.Minimatcher(item.AssertString("pattern").Value))).ToArray();
+        KeyValuePair<string, WorkflowPattern>[] CompilePatterns(SequenceToken sequence) {
+            return (from item in sequence select new KeyValuePair<string, WorkflowPattern>(item.AssertString("pattern").Value, new WorkflowPattern(item.AssertString("pattern").Value))).ToArray();
         }
 
-        bool skip(KeyValuePair<string, Minimatch.Minimatcher>[] sequence, IEnumerable<string> input) {
+        bool skip(KeyValuePair<string, WorkflowPattern>[] sequence, IEnumerable<string> input, GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter = null) {
             
             return sequence != null && sequence.Length > 0 && !input.Any(file => {
                 bool matched = false;
                 foreach (var item in sequence) {
-                    var pattern = item.Key;
-                    if(item.Value.IsMatch(file) && !(pattern.StartsWith("!**") && file.EndsWith(pattern.Substring(3))) || pattern.StartsWith("**") && file.EndsWith(pattern.Substring(2))) {
-                        matched = true;
-                    } else if(pattern.StartsWith("!")) {
-                        matched = false;
+                    if(item.Value.Regex.IsMatch(file)) {
+                        var pattern = item.Key;
+                        if(item.Value.Negative) {
+                            matched = false;
+                            traceWriter?.Info("{0} excluded by pattern {1}", file, pattern);
+                        } else {
+                            matched = true;
+                            traceWriter?.Info("{0} included by pattern {1}", file, pattern);
+                        }
                     }
                 }
                 return matched;
             });
         }
 
-        bool filter(KeyValuePair<string, Minimatch.Minimatcher>[] sequence, IEnumerable<string> input) {
+        bool filter(KeyValuePair<string, WorkflowPattern>[] sequence, IEnumerable<string> input, GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter = null) {
             return sequence != null && sequence.Length > 0 && input.All(file => {
                 foreach (var item in sequence)
                 {
-                    var pattern = item.Key;
-                    if(item.Value.IsMatch(file) && !(pattern.StartsWith("!**") && file.EndsWith(pattern.Substring(3))) || pattern.StartsWith("**") && file.EndsWith(pattern.Substring(2))) {
+                    if(item.Value.Regex.IsMatch(file) ^ item.Value.Negative) {
+                        var pattern = item.Key;
+                        traceWriter?.Info("{0} ignored by pattern {1}", file, pattern);
                         return true;
                     }
                 }
@@ -1334,11 +1339,11 @@ namespace Runner.Server.Controllers
                         if(Ref2.StartsWith(heads) == true) {
                             var branch = Ref2.Substring(heads.Length);
 
-                            if(branchesIgnore != null && filter(CompileMinimatch(branchesIgnore), new[] { branch })) {
+                            if(branchesIgnore != null && filter(CompilePatterns(branchesIgnore), new[] { branch }, workflowTraceWriter)) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                 return skipWorkflow();
                             }
-                            if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
+                            if(branches != null && skip(CompilePatterns(branches), new[] { branch }, workflowTraceWriter)) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                 return skipWorkflow();
                             }
@@ -1349,11 +1354,11 @@ namespace Runner.Server.Controllers
                         } else if(Ref2.StartsWith(rtags) == true) {
                             var tag = Ref2.Substring(rtags.Length);
 
-                            if(tagsIgnore != null && filter(CompileMinimatch(tagsIgnore), new[] { tag })) {
+                            if(tagsIgnore != null && filter(CompilePatterns(tagsIgnore), new[] { tag }, workflowTraceWriter)) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                 return skipWorkflow();
                             }
-                            if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
+                            if(tags != null && skip(CompilePatterns(tags), new[] { tag }, workflowTraceWriter)) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                 return skipWorkflow();
                             }
@@ -1365,11 +1370,11 @@ namespace Runner.Server.Controllers
                     }
                     if(hook.Commits != null) {
                         var changedFiles = hook.Commits.SelectMany(commit => (commit.Added ?? new List<string>()).Concat(commit.Removed ?? new List<string>()).Concat(commit.Modified ?? new List<string>()));
-                        if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
+                        if(pathsIgnore != null && filter(CompilePatterns(pathsIgnore), changedFiles, workflowTraceWriter)) {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter.'" }), workflowTimelineId, workflowRecordId);
                             return skipWorkflow();
                         }
-                        if(paths != null && skip(CompileMinimatch(paths), changedFiles)) {
+                        if(paths != null && skip(CompilePatterns(paths), changedFiles, workflowTraceWriter)) {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths filter." }), workflowTimelineId, workflowRecordId);
                             return skipWorkflow();
                         }
@@ -4169,7 +4174,7 @@ namespace Runner.Server.Controllers
         [HttpGet("event")]
         public IActionResult Message(string owner, string repo, [FromQuery] string filter, [FromQuery] long? runid)
         {
-            var mfilter = new Minimatch.Minimatcher(filter ?? (owner + "/" + repo), new Minimatch.Options { NoCase = true });
+            var mfilter = new WorkflowPattern(filter ?? (owner + "/" + repo), RegexOptions.IgnoreCase);
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
@@ -4177,7 +4182,7 @@ namespace Runner.Server.Controllers
                     var queue = Channel.CreateUnbounded<KeyValuePair<string,Job>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue.Writer;
                     JobEvent handler = (sender, crepo, job) => {
-                        if (mfilter.IsMatch(crepo) && (runid == null || runid == job.runid)) {
+                        if (mfilter.Regex.IsMatch(crepo) && (runid == null || runid == job.runid)) {
                             chwriter.WriteAsync(new KeyValuePair<string, Job>(crepo, job));
                         }
                     };
