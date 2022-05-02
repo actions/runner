@@ -302,8 +302,6 @@ namespace Runner.Server.Controllers
             public string name {get;set;}
             public string DisplayName {get;set;}
             public ISet<string> Needs {get;set;}
-            public AgentJobRequestMessage message {get;set;}
-
             public FinishJobController.JobCompleted OnJobEvaluatable { get;set;}
 
             public Func<GitHub.DistributedTask.ObjectTemplating.ITraceWriter, bool> EvaluateIf { get;set;}
@@ -349,46 +347,6 @@ namespace Runner.Server.Controllers
 
             [EnumMember]
             Skipped = 4,
-        }
-
-        private class TraceWriter : GitHub.DistributedTask.ObjectTemplating.ITraceWriter, GitHub.DistributedTask.Expressions2.ITraceWriter
-        {
-            public void Error(string format, params object[] args)
-            {
-                try {
-                    Console.Error.WriteLine(format, args);
-                } catch {
-                    Console.Error.WriteLine("%s", format);
-                }
-            }
-
-            public void Info(string format, params object[] args)
-            {
-                try {
-                    Console.Out.WriteLine(format, args);
-                } catch {
-                    Console.Out.WriteLine("%s", format);
-                }
-            }
-
-            public void Info(string message)
-            {
-                Console.Out.WriteLine(message);
-            }
-
-            public void Verbose(string format, params object[] args)
-            {
-                try {
-                    Console.Out.WriteLine(format, args);
-                } catch {
-                    Console.Out.WriteLine("%s", format);
-                }
-            }
-
-            public void Verbose(string message)
-            {
-                Console.Out.WriteLine(message);
-            }
         }
 
         private class TraceWriter2 : GitHub.DistributedTask.ObjectTemplating.ITraceWriter, GitHub.DistributedTask.Expressions2.ITraceWriter
