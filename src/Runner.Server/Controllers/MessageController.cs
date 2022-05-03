@@ -1262,6 +1262,7 @@ namespace Runner.Server.Controllers
                     var paths = extractFilter("paths");
                     var pathsIgnore = extractFilter("paths-ignore");
                     var types = extractFilter("types");
+                    var fworkflows = extractFilter("workflows");
 
                     if(branches != null && branchesIgnore != null) {
                         throw new Exception("branches and branches-ignore shall not be used at the same time");
@@ -1335,13 +1336,18 @@ namespace Runner.Server.Controllers
                     if(hook.Commits != null) {
                         var changedFiles = hook.Commits.SelectMany(commit => (commit.Added ?? new List<string>()).Concat(commit.Removed ?? new List<string>()).Concat(commit.Modified ?? new List<string>()));
                         if(pathsIgnore != null && filter(CompilePatterns(pathsIgnore), changedFiles, workflowTraceWriter)) {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter.'" }), workflowTimelineId, workflowRecordId);
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter." }), workflowTimelineId, workflowRecordId);
                             return skipWorkflow();
                         }
                         if(paths != null && skip(CompilePatterns(paths), changedFiles, workflowTraceWriter)) {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths filter." }), workflowTimelineId, workflowRecordId);
                             return skipWorkflow();
                         }
+                    }
+                    var fworkflowName = hook.Workflow?.Name;
+                    if(fworkflowName != null && fworkflows != null && skip(CompilePatterns(fworkflows), new[] { fworkflowName }, workflowTraceWriter)) {
+                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to workflows filter." }), workflowTimelineId, workflowRecordId);
+                        return skipWorkflow();
                     }
                 }
                 workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? fileRelativePath;
@@ -3455,6 +3461,10 @@ namespace Runner.Server.Controllers
             public string ref_type { get; set; }
             public string Sha { get; set; }
             public Release Release { get; set; }
+            public WebhookWorkflow Workflow  { get; set; }
+        }
+        public class WebhookWorkflow {
+            public string Name { get; set; }
         }
         public class Release {
             public string tag_name { get; set; }
