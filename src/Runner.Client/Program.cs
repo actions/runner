@@ -1456,6 +1456,10 @@ namespace Runner.Client
                                                 hasErrors |= !_workflow.Success;
                                                 hasAny = true;
                                             }
+                                            if(line == "event: job") {
+                                                var job = JsonConvert.DeserializeObject<Job>(data);
+                                                jobs.Add(job);
+                                            }
                                             if(line == "event: finish") {
                                                 var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
                                                 await printFinishJob(ev);
