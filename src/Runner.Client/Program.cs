@@ -531,7 +531,7 @@ namespace Runner.Client
                 description: "Secrets for your workflow.");
             var environmentSecretFileOpt = new Option<string[]>(
                 "--environment-secret-file",
-                description: "Environment Secrets with name name for your workflow, name=filename.yml");
+                description: "Environment Secrets with name name for your workflow, name=filename.yml.");
             var jobOpt = new Option<string>(
                 new[] {"-j", "--job"},
                 description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with `--workflow <workflow>` to run exact one job.");
@@ -608,19 +608,19 @@ namespace Runner.Client
                 description: "Do not inject localcheckout into your workflows, always use the original actions/checkout.");
             var artifactOutputDirOpt = new Option<string>(
                 "--artifact-output-dir",
-                description: "Output folder for all artifacts produced by this runs");
+                description: "Output folder for all artifacts produced by this runs.");
             var logOutputDirOpt = new Option<string>(
                 "--log-output-dir",
-                description: "Output folder for all logs produced by this runs");
+                description: "Output folder for all logs produced by this runs.");
             var repositoryOpt = new Option<string>(
                 "--repository",
-                description: "Custom github.repository");
+                description: "Custom github.repository.");
             var shaOpt = new Option<string>(
                 "--sha",
-                description: "Custom github.sha");
+                description: "Custom github.sha.");
             var refOpt = new Option<string>(
                 "--ref",
-                description: "Custom github.ref");
+                description: "Custom github.ref.");
             var workflowInputsOpt = new Option<string[]>(
                 new[] {"-i", "--input"},
                 description: "Inputs to add to the payload. E.g. `--input name=value`");
