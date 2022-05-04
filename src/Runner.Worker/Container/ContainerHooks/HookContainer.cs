@@ -12,7 +12,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public string NetworkAlias { get; set; }
         public string Image { get; set; }
         public string Name { get; set; }
-        public string EntryPointArgs { get; set; }
+        public List<string> EntryPointArgs { get; set; }
         public string EntryPoint { get; set; }
         public string WorkingDirectory { get; set; }
         public string CreateOptions { get; private set; }
@@ -34,7 +34,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             NetworkAlias = container.ContainerNetworkAlias;
             Image = container.ContainerImage;
             Name = container.ContainerName;
-            EntryPointArgs = container.ContainerEntryPointArgs;
+            EntryPointArgs = container.ContainerEntryPointArgs.Split(' ').Select(arg => arg.Trim()).ToList();
             EntryPoint = container.ContainerEntryPoint;
             WorkingDirectory = container.ContainerWorkDirectory;
             CreateOptions = container.ContainerCreateOptions;
