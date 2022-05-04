@@ -304,7 +304,7 @@ namespace GitHub.Runner.Worker.Handlers
                 string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
                 string macOSRunInvoker = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "macos-run-invoker.js");
 
-                if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+                if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.EnhancedRunnerEscaping) ?? false)
                 {
                     arguments = $"\"{macOSRunInvoker.Replace("\\", "\\\\").Replace("\"", "\\\"")}\" \"{fileName.Replace("\\", "\\\\").Replace("\"", "\\\"")}\" {arguments}";
                 }
