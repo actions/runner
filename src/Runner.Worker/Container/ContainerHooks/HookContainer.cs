@@ -25,6 +25,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public IDictionary<string, string> PortMappings { get; set; }
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public IEnumerable<MountVolume> MountVolumes { get; set; }
+        public IEnumerable<string> ContainerEnv { get; set; }
         public HookContainer() { } // For Json deserializer
         public HookContainer(ContainerInfo container)
         {
@@ -49,6 +50,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             EnvironmentVariables = container.ContainerEnvironmentVariables;
             PortMappings = new Dictionary<string, string>(container.PortMappings.Select(mapping => new KeyValuePair<string, string>(mapping.HostPort, mapping.ContainerPort)));
             MountVolumes = container.MountVolumes;
+            ContainerEnv = container.ContainerEnv;
         }
     }
 
