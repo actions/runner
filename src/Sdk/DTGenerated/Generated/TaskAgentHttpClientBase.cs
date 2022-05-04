@@ -717,6 +717,7 @@ namespace GitHub.DistributedTask.WebApi
             object userState = null,
             CancellationToken cancellationToken = default)
         {
+            System.Console.WriteLine("TaskAgentHttpClientBase.CreateAgentSessionAsync");
             HttpMethod httpMethod = new HttpMethod("POST");
             Guid locationId = new Guid("134e239e-2df3-4794-a6f6-24f1f19ec8dc");
             object routeValues = new { poolId = poolId };

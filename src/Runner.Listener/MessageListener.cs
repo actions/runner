@@ -125,6 +125,7 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     Trace.Info("Connecting to the Runner Server...");
+                    Trace.Info("Connecting to the Runner Server...");
                     await _runnerServer.ConnectAsync(new Uri(serverUrl), creds);
                     Trace.Info("VssConnection created");
 

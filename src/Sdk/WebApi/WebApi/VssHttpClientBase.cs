@@ -390,6 +390,7 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            System.Console.WriteLine("VssHttpClientBase.SendAsync 1");
             return SendAsync<T>(method, null, locationId, routeValues, version, content, queryParameters, userState, cancellationToken);
         }
 
@@ -404,6 +405,7 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            System.Console.WriteLine("VssHttpClientBase.SendAsync 2");
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, additionalHeaders, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -422,6 +424,7 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            System.Console.WriteLine("VssHttpClientBase.SendAsync 3");
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, additionalHeaders, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -455,6 +458,7 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            System.Console.WriteLine("VssHttpClientBase.SendAsync 4");
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -473,6 +477,7 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            System.Console.WriteLine("VssHttpClientBase.SendAsync 5");
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -501,6 +506,7 @@ namespace GitHub.Services.WebApi
             CancellationToken cancellationToken = default(CancellationToken),
             String mediaType = c_jsonMediaType)
         {
+            System.Console.WriteLine("VssHttpClientBase.CreateRequestMessageAsync 1");
             return CreateRequestMessageAsync(method, null, locationId, routeValues, version, content, queryParameters, userState, cancellationToken, mediaType);
         }
 
@@ -526,6 +532,7 @@ namespace GitHub.Services.WebApi
             CancellationToken cancellationToken = default(CancellationToken),
             String mediaType = c_jsonMediaType)
         {
+            System.Console.WriteLine("VssHttpClientBase.CreateRequestMessageAsync 2");
             // Lookup the location
             ApiResourceLocation location = await GetResourceLocationAsync(locationId, userState, cancellationToken).ConfigureAwait(false);
             if (location == null)
@@ -555,6 +562,7 @@ namespace GitHub.Services.WebApi
             IEnumerable<KeyValuePair<String, String>> queryParameters = null,
             String mediaType = c_jsonMediaType)
         {
+            System.Console.WriteLine("VssHttpClientBase.CreateRequestMessageAsync 3");
             return CreateRequestMessage(method, null, location, routeValues, version, content, queryParameters, mediaType);
         }
 
@@ -578,6 +586,7 @@ namespace GitHub.Services.WebApi
             IEnumerable<KeyValuePair<String, String>> queryParameters = null,
             String mediaType = c_jsonMediaType)
         {
+            System.Console.WriteLine("VssHttpClientBase.CreateRequestMessageAsync 4");
             CheckForDisposed();
             // Negotiate the request version to send
             ApiResourceVersion requestVersion = NegotiateRequestVersion(location, version);
@@ -749,6 +758,7 @@ namespace GitHub.Services.WebApi
             //from deadlocking...
             using (HttpResponseMessage response = await this.SendAsync(message, userState, cancellationToken).ConfigureAwait(false))
             {
+                System.Console.WriteLine("VssHttpClientBase.SendAsync 6");
                 return await ReadContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -802,6 +812,7 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            System.Console.WriteLine("VssHttpClientBase.SendAsync 7");
             // the default in httpClient for HttpCompletionOption is ResponseContentRead so that is what we do here
             return this.SendAsync(
                 message,
@@ -816,6 +827,7 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            System.Console.WriteLine("VssHttpClientBase.SendAsync 8");
             CheckForDisposed();
             if (message.Headers.UserAgent != null)
             {
@@ -851,6 +863,7 @@ namespace GitHub.Services.WebApi
                 //ConfigureAwait(false) enables the continuation to be run outside
                 //any captured SyncronizationContext (such as ASP.NET's) which keeps things
                 //from deadlocking...
+                System.Console.WriteLine($"VssHttpClientBase.SendAsync 8: Calling Client.SendAsync {message}");
                 HttpResponseMessage response = await Client.SendAsync(message, completionOption, cancellationToken).ConfigureAwait(false);
 
                 // Inject delay or failure for testing

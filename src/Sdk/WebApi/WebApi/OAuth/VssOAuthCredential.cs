@@ -121,6 +121,7 @@ namespace GitHub.Services.OAuth
             Uri serverUrl, 
             IHttpResponse response)
         {
+            System.Console.WriteLine("VssOAuthCredential.OnCreateTokenProvider");
             return new VssOAuthTokenProvider(this, serverUrl);
         }
 
