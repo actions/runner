@@ -93,11 +93,13 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 };
 
                 // TODO: workout port mappings + format
-                // foreach (var portMapping in containerInfo.UserPortMappings)
-                // {
-                //     // TODO: currently the format is ports["80:8080"] = "80:8080", fix this?
-                //     (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
-                // }
+                container.PortMappings = new Dictionary<string, string>();
+                foreach (var portMapping in containerInfo.UserPortMappings)
+                {
+                    // TODO: currently the format is ports["80:8080"] = "80:8080", fix this?
+                    (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
+                    container.PortMappings.Add(portMapping);
+                }
                 context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
             }
         }
