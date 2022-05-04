@@ -1431,14 +1431,10 @@ namespace Runner.Server.Controllers
                             var jobitem = new JobItem() { name = jobname, Id = Guid.NewGuid() };
                             dependentjobgroup.Add(jobitem);
 
-                            var needs = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "needs" select r).FirstOrDefault().Value;
+                            var needs = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "needs" select r).FirstOrDefault().Value?.AssertScalarOrSequence("jobs.{jobname}.needs");
                             List<string> neededJobs = new List<string>();
                             if (needs != null) {
-                                if(needs is SequenceToken sq) {
-                                    neededJobs.AddRange(from need in sq select need.AssertString($"jobs.{jobname}.needs.*").Value);
-                                } else {
-                                    neededJobs.Add(needs.AssertString($"jobs.{jobname}.needs").Value);
-                                }
+                                neededJobs.AddRange(from need in needs select need.AssertString($"jobs.{jobname}.needs.*").Value);
                             }
                             var contextData = createContext(jobname);
                             
@@ -2723,15 +2719,10 @@ namespace Runner.Server.Controllers
                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, contextData);
                     var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.RunsOn, runsOn, 0, null, true);
                     templateContext.Errors.Check();
-                    runsOn = eval;
-
-                    if(runsOn is SequenceToken seq2) {
-                        foreach(var t in seq2) {
-                            runsOnMap.Add(t.AssertString($"jobs.{name}.runs-on member must be a str").Value.ToLowerInvariant());
-                        }
-                    } else {
-                        runsOnMap.Add(runsOn.AssertString($"jobs.{name}.runs-on must be a str or array of string").Value.ToLowerInvariant());
-                    }
+                    runsOnMap.UnionWith(from t in eval.AssertScalarOrSequence($"jobs.{name}.runs-on") select t.AssertString($"jobs.{name}.runs-on.*").Value);
+                }
+                if(runsOnMap.Count <= 0) {
+                    throw new Exception($"jobs.{name}.runs-on empty set of runner labels");
                 }
 
                 // Jobcontainer
