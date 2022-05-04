@@ -65,7 +65,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     }
                     else
                     {
-                        throw new Exception("A runner version could not be parsed. Please check the redirect location of 'https://github.com/actions/runner/releases/latest'")
+                        throw new Exception("A runner version could not be parsed. Please check the redirect location of 'https://github.com/actions/runner/releases/latest'");
                     }
                 }
             }
