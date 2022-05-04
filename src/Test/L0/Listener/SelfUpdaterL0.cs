@@ -50,7 +50,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "https://github.com/actions/runner/releases/latest"));
                 if (response.StatusCode == System.Net.HttpStatusCode.Redirect)
                 {
-                    var redirect = await response.Content.ReadAsStringAsync();
+                    var redirect = response.Headers.Location.ToString();
                     Regex regex = new Regex(@"/runner/releases/tag/v(?<version>\d+\.\d+\.\d+)");
                     var match = regex.Match(redirect);
                     if (match.Success)
