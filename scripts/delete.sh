@@ -12,7 +12,7 @@ set -e
 #
 # Usage:
 #     export RUNNER_CFG_PAT=<yourPAT>
-#     ./delete.sh <scope> <name>
+#     ./delete.sh <scope> [<name>]
 #
 #      scope required  repo (:owner/:repo) or org (:organization)
 #      name  optional  defaults to hostname.  name to delete
