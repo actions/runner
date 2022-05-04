@@ -13,6 +13,10 @@ using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Listener.Check;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace GitHub.Runner.Listener
 {
@@ -449,7 +453,37 @@ namespace GitHub.Runner.Listener
                                 {
                                     Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
                                     var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
-                                    jobDispatcher.Run(jobMessage, runOnce);
+                                    jobDispatcher.Run(Guid.Empty, jobMessage, runOnce);
+                                    if (runOnce)
+                                    {
+                                        Trace.Info("One time used runner received job message.");
+                                        runOnceJobReceived = true;
+                                    }
+                                }
+                            }
+                            // Broker flow
+                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (autoUpdateInProgress || runOnceJobReceived)
+                                {
+                                    skipMessageDeletion = true;
+                                    Trace.Info($"Skip message deletion for job request message '{message.MessageId}'.");
+                                }
+                                else
+                                {
+                                    var messageRef = StringUtil.ConvertFromJson<MessageRef>(message.Body);
+
+                                    // Create connection
+                                    var credMgr = HostContext.GetService<ICredentialManager>();
+                                    var creds = credMgr.LoadCredentials();
+
+                                    // todo: add retries
+                                    var runServer = HostContext.CreateService<IRunServer>();
+                                    await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.ScopeId, messageRef.HostId, messageRef.PlanType, messageRef.PlanGroup, messageRef.PlanId, messageRef.InstanceRefs);
+
+                                    // todo: Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
+                                    jobDispatcher.Run(messageRef.HostId, jobMessage, runOnce);
                                     if (runOnce)
                                     {
                                         Trace.Info("One time used runner received job message.");

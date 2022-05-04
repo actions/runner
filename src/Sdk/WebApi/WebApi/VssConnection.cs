@@ -100,6 +100,7 @@ namespace GitHub.Services.WebApi
             IDictionary<String, String> parameters,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            // System.Console.WriteLine("VssConnection.ConnectAsync");
             CheckForDisposed();
             // Set the connectMode on the credential's FederatedPrompt
             if (Credentials.Federated != null && Credentials.Federated.Prompt != null)

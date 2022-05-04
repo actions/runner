@@ -88,6 +88,7 @@ namespace GitHub.Services.Common
             IHttpResponse response,
             IssuedToken failedToken)
         {
+            // System.Console.WriteLine("IssuedTokenCredential.CreateTokenProvider");
             if (response != null && !IsAuthenticationChallenge(response))
             {
                 throw new InvalidOperationException();

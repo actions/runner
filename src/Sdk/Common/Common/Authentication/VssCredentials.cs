@@ -218,6 +218,7 @@ namespace GitHub.Services.Common
             IHttpResponse webResponse,
             IssuedToken failedToken)
         {
+            // System.Console.WriteLine("VssCredential.CreateTokenProvider");
             ArgumentUtility.CheckForNull(serverUrl, "serverUrl");
 
             IssuedTokenProvider tokenProvider = null;
@@ -272,11 +273,13 @@ namespace GitHub.Services.Common
                 {
                     if (m_federatedCredential != null)
                     {
+                        // System.Console.WriteLine($"VssCredentials.TryGetTokenProvider: Using federated credential");
                         m_currentProvider = m_federatedCredential.CreateTokenProvider(serverUrl, null, null);
                     }
 
                     if (m_currentProvider != null)
                     {
+                        // System.Console.WriteLine($"VssCredentials.TryGetTokenProvider: Issued token provider created");
                         VssHttpEventSource.Log.IssuedTokenProviderCreated(VssTraceActivity.Current, m_currentProvider);
                     }
                 }

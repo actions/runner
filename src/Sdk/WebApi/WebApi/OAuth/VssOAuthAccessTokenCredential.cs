@@ -60,6 +60,7 @@ namespace GitHub.Services.OAuth
             Uri serverUrl,
             IHttpResponse response)
         {
+            // System.Console.WriteLine("VssOAuthAccessTokenCredential.OnCreateTokenProvider");
             return new VssOAuthAccessTokenProvider(this, serverUrl, null);
         }
 
