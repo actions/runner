@@ -881,6 +881,7 @@ namespace GitHub.Services.WebApi
         [Obsolete("Use VssHttpClientBase.HandleResponseAsync instead")]
         protected virtual void HandleResponse(HttpResponseMessage response)
         {
+            System.Console.WriteLine("VssHttpClientBase.HandleResponse 1");
 
         }
 
@@ -888,6 +889,7 @@ namespace GitHub.Services.WebApi
             HttpResponseMessage response,
             CancellationToken cancellationToken)
         {
+            System.Console.WriteLine($"VssHttpClientBase.HandleResponse 2 status code {response.StatusCode} headers {response.Headers}");
             response.Trace();
             VssHttpEventSource.Log.HttpRequestStop(VssTraceActivity.Current, response);
 
@@ -899,6 +901,7 @@ namespace GitHub.Services.WebApi
             }
             else if (ShouldThrowError(response))
             {
+                System.Console.WriteLine("VssHttpClientBase.HandleResponse: Should throw error");
                 Exception exToThrow = null;
                 if (IsJsonResponse(response))
                 {
@@ -922,6 +925,7 @@ namespace GitHub.Services.WebApi
                     {
                         message = response.ReasonPhrase;
                     }
+                    System.Console.WriteLine($"VssHttpClientBase.HandleResponse: Exception message {message}");
                     exToThrow = new VssServiceResponseException(response.StatusCode, message, exToThrow);
                 }
 

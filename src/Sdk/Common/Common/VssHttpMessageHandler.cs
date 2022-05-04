@@ -249,7 +249,7 @@ namespace GitHub.Services.Common
                     }
                     else
                     {
-                        System.Console.WriteLine("VssHttpMessageHandler.SendAsync: Auth challenge");
+                        System.Console.WriteLine($"VssHttpMessageHandler.SendAsync: Auth challenge. Response status code {response.StatusCode}; headers {response.Headers}");
                         // In the case of a Windows token, only apply it to the web proxy if it
                         // returned a 407 Proxy Authentication Required. If we didn't get this
                         // status code back, then the proxy (if there is one) is clearly working fine,
@@ -491,8 +491,8 @@ namespace GitHub.Services.Common
             HttpClientHandler httpClientHandler = handler as HttpClientHandler;
             if (httpClientHandler != null)
             {
-                System.Console.WriteLine($"VssHttpMessageHandler.ApplySettings: Default credentials = {defaultCredentials}");
-                httpClientHandler.AllowAutoRedirect = settings.AllowAutoRedirect;
+                System.Console.WriteLine($"VssHttpMessageHandler.ApplySettings: Default credentials = {defaultCredentials} AllowAutoRedirect = {settings.AllowAutoRedirect}");
+                httpClientHandler.AllowAutoRedirect = true; //settings.AllowAutoRedirect;
                 httpClientHandler.ClientCertificateOptions = ClientCertificateOption.Manual;
                 //Setting httpClientHandler.UseDefaultCredentials to false in .Net Core, clears httpClientHandler.Credentials if
                 //credentials is already set to defaultcredentials. Therefore httpClientHandler.Credentials must be 
