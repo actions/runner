@@ -146,6 +146,7 @@ namespace Runner.Client
             public string Ref { get; set; }
             public string Sha { get; set; }
             public string[] EnvironmentSecretFiles { get; set; }
+            public string[] Inputs { get; internal set; }
         }
 
         class WorkflowEventArgs {
@@ -620,6 +621,9 @@ namespace Runner.Client
             var refOpt = new Option<string>(
                 "--ref",
                 description: "Custom github.ref");
+            var workflowInputsOpt = new Option<string[]>(
+                new[] {"-i", "--input"},
+                description: "Inputs to add to the payload. E.g. `--input name=value`");
             var rootCommand = new RootCommand
             {
                 workflowOption,
@@ -1205,6 +1209,14 @@ namespace Runner.Client
                                     } else if(parameters.NoDefaultPayload) {
                                         payloadContent = new JObject();
                                     }
+                                    if(parameters.Inputs?.Length > 0) {
+                                        var inputs = new JObject();
+                                        payloadContent["inputs"] = inputs;
+                                        foreach(var input in parameters.Inputs) {
+                                            var kv = input.Split('=', 2);
+                                            inputs[kv[0]] = kv[1];
+                                        }
+                                    }
                                     mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
                                     if(parameters.EnvironmentSecretFiles?.Length > 0) {
                                         foreach(var opt in parameters.EnvironmentSecretFiles) {
@@ -1619,6 +1631,7 @@ namespace Runner.Client
                 parameters.Repository = bindingContext.ParseResult.GetValueForOption(repositoryOpt);
                 parameters.Sha = bindingContext.ParseResult.GetValueForOption(shaOpt);
                 parameters.Ref = bindingContext.ParseResult.GetValueForOption(refOpt);
+                parameters.Inputs = bindingContext.ParseResult.GetValueForOption(workflowInputsOpt);
                 return parameters;
             });
 
@@ -1634,6 +1647,9 @@ namespace Runner.Client
                     if(!opt.Aliases.Contains("--event")) {
                         cmd.AddOption(opt);
                     }
+                }
+                if(ev == "workflow_dispatch") {
+                    cmd.AddOption(workflowInputsOpt);
                 }
             }
             var startserver = new Command("startserver", "Starts a server listening on the supplied address or selects a random free http address.");
