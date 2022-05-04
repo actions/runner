@@ -1067,7 +1067,7 @@ namespace Runner.Server.Controllers
                         allowed.Add("inputs");
                         // Validate inputs and apply defaults
                         var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
-                        List<string> validInputs = new List<string>();
+                        ISet<string> validInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                         var dispatchInputs = payloadObject["inputs"] as JObject;
                         if(dispatchInputs == null) {
                             dispatchInputs = new JObject();
@@ -1097,17 +1097,20 @@ namespace Runner.Server.Controllers
                                         break;
                                         }
                                     }
-                                    if(!dispatchInputs.TryGetValue(inputName, out _)) {
+                                    
+                                    var actualInputName = (from di in dispatchInputs.Properties() where string.Equals(di.Name, inputName, StringComparison.OrdinalIgnoreCase) select di.Name).FirstOrDefault();
+                                    if(actualInputName == null) {
                                         if(required) {
                                             throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
                                         }
                                         dispatchInputs[inputName] = def;
+                                        actualInputName = inputName;
                                     }
                                     switch(type) {
                                     case "boolean":
                                         // https://github.com/actions/runner/issues/1483#issuecomment-1091025877
                                         bool result;
-                                        var val = dispatchInputs[inputName].ToString();
+                                        var val = dispatchInputs[actualInputName].ToString();
                                         switch(val) {
                                         case "true":
                                             result = true;
@@ -1118,10 +1121,10 @@ namespace Runner.Server.Controllers
                                         default:
                                             throw new Exception($"on.workflow_dispatch.inputs.{inputName}, expected true or false, unexpected value: {val}");
                                         }
-                                        inputsCtx[inputName] = new BooleanContextData(result);
+                                        inputsCtx[actualInputName] = new BooleanContextData(result);
                                     break;
                                     default:
-                                        inputsCtx[inputName] = dispatchInputs[inputName].ToPipelineContextData();
+                                        inputsCtx[actualInputName] = dispatchInputs[actualInputName].ToPipelineContextData();
                                     break;
                                     }
                                 }
@@ -1140,7 +1143,7 @@ namespace Runner.Server.Controllers
                         // Validate inputs and apply defaults
                         var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.inputs") : null;
                         workflowOutputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "outputs" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.outputs") : null;
-                        List<string> validInputs = new List<string>();
+                        ISet<string> validInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                         inputs = callingJob?.Inputs ?? new DictionaryContextData();
                         if(workflowInputs != null) {
                             foreach(var input in workflowInputs) {
