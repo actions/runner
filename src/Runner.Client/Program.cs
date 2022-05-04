@@ -406,20 +406,29 @@ namespace Runner.Client
             return b2.ToString();
         }
 
+        private static bool forceColor = false;
         private static void WriteLogLine(int color, string tag, string message) {
-            Console.ResetColor();
-            Console.ForegroundColor = (ConsoleColor)color;
-            Console.Write("[" + tag + "] ");
-            Console.ResetColor();
-            Console.WriteLine(message);
+            if(forceColor) {
+                Console.WriteLine($"\x1b[{(int)color + 30}m[{tag}]\x1b[0m {message}");
+            } else {
+                Console.ResetColor();
+                Console.ForegroundColor = (ConsoleColor)color;
+                Console.Write("[" + tag + "] ");
+                Console.ResetColor();
+                Console.WriteLine(message);
+            }
         }
 
         private static void WriteLogLine(int color, string message) {
-            Console.ResetColor();
-            Console.ForegroundColor = (ConsoleColor)color;
-            Console.Write("|");
-            Console.ResetColor();
-            Console.WriteLine(message);
+            if(forceColor) {
+                Console.WriteLine($"\x1b[{(int)color + 30}m|\x1b[0m {message}");
+            } else {
+                Console.ResetColor();
+                Console.ForegroundColor = (ConsoleColor)color;
+                Console.Write("|");
+                Console.ResetColor();
+                Console.WriteLine(message);
+            }
         }
 
         private delegate Task LoadEntries(ref TimeLineEntry entry, List<Job> jobs, Guid id);
@@ -432,6 +441,21 @@ namespace Runner.Client
             }
             protected override Parameters GetBoundValue(BindingContext bindingContext) => bind.Invoke(bindingContext);
         }
+
+        private static bool? GetEnvironmentBoolean(string name, bool? defMismatch = null) {
+            var val = System.Environment.GetEnvironmentVariable(name);
+            if(val == null) {
+                return null;
+            }
+            if(string.Equals(val, "True", StringComparison.OrdinalIgnoreCase) || string.Equals(val, "Y", StringComparison.OrdinalIgnoreCase) || string.Equals(val, "1", StringComparison.OrdinalIgnoreCase)) {
+                return true;
+            }
+            if(string.Equals(val, "False", StringComparison.OrdinalIgnoreCase) || string.Equals(val, "N", StringComparison.OrdinalIgnoreCase) || string.Equals(val, "0", StringComparison.OrdinalIgnoreCase)) {
+                return false;
+            }
+            return defMismatch;
+        }
+        
         static int Main(string[] args)
         {
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
@@ -439,6 +463,8 @@ namespace Runner.Client
             }
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
+            // dotnet doesn't enable color on github actions, but we are still able to emit ansi color codes
+            forceColor = GetEnvironmentBoolean("NO_COLOR", true) != true && (GetEnvironmentBoolean("FORCE_COLOR", true) == true || GetEnvironmentBoolean("GITHUB_ACTIONS") == true);
             
             //$content = Get-Content <path to raw https://github.com/github/docs/blob/main/content/actions/reference/events-that-trigger-workflows.md>
             //$content -match "#### ``.*``"
