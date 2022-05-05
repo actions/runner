@@ -463,33 +463,6 @@ namespace GitHub.Runner.Listener
                             }
                             else if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
                             {
-
-                                // var messageRef = StringUtil.ConvertFromJson<MessageRef>(message.Body);
-                                // var client = new HttpClient();
-                                // client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", messageRef.Token);
-                                // var response = await client.GetAsync(messageRef.Url, token);
-                                // if (!response.IsSuccessStatusCode)
-                                // {
-                                //     var content = default(string);
-                                //     try
-                                //     {
-                                //         content = await response.Content.ReadAsStringAsync();
-                                //     }
-                                //     catch
-                                //     {
-                                //     }
-
-                                //     var error = $"HTTP {(int)response.StatusCode} {Enum.GetName(typeof(HttpStatusCode), response.StatusCode)}";
-                                //     if (!string.IsNullOrEmpty(content))
-                                //     {
-                                //         error = $"{error}: {content}";
-                                //     }
-                                //     throw new Exception(error);
-                                // }
-
-                                // var fullMessage = await response.Content.ReadAsStringAsync();
-                                // return StringUtil.ConvertFromJson<TaskAgentMessage>(fullMessage);
-
                                 if (autoUpdateInProgress || runOnceJobReceived)
                                 {
                                     skipMessageDeletion = true;
@@ -497,8 +470,18 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
-                                    Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
-                                    var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
+                                    var messageRef = StringUtil.ConvertFromJson<MessageRef>(message.Body);
+
+                                    // Create connection
+                                    var credMgr = HostContext.GetService<ICredentialManager>();
+                                    var creds = credMgr.LoadCredentials();
+
+                                    // todo: add retries
+                                    var runServer = HostContext.CreateService<IRunServer>();
+                                    await runServer.ConnectAsync(new Uri(messageRef.Url), creds);
+                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.ScopeId, messageRef.PlanType, messageRef.PlanGroup, messageRef.PlanId, StringUtil.ConvertToJson(messageRef.InstanceRefs, Newtonsoft.Json.Formatting.None));
+
+                                    // todo: Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
                                     {
@@ -644,11 +627,14 @@ Examples:
             [DataMember(Name = "token")]
             public string Token { get; set; }
             [DataMember(Name = "scopeId")]
-            public string ScopeId { get; set; }
+            public Guid ScopeId { get; set; }
             [DataMember(Name = "planType")]
             public string PlanType { get; set; }
             [DataMember(Name = "planGroup")]
+
             public string PlanGroup { get; set; }
+            [DataMember(Name = "planId")]
+            public Guid PlanId { get; set; }
             [DataMember(Name = "instanceRefs")]
             public InstanceRef[] InstanceRefs { get; set; }
             [DataMember(Name = "labels")]
