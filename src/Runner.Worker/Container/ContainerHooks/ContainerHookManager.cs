@@ -195,10 +195,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
                 IOUtil.DeleteFile(input.ResponseFile);
+                Trace.Info("Response file successfully processed and deleted");
             }
             else
             {
-                Trace.Info("Response file not found for command 'PrepareJob'");
+                Trace.Info($"Response file not found for command '{input.Command}'");
             }
             return response;
         }
