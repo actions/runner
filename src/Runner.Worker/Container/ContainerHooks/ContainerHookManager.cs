@@ -191,10 +191,14 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
 
             HookResponse response = null;
-            if (!string.IsNullOrEmpty(input.ResponseFile))
+            if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
             {
                 response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
                 IOUtil.DeleteFile(input.ResponseFile);
+            }
+            else
+            {
+                Trace.Info("Response file not found for command 'PrepareJob'");
             }
             return response;
         }
