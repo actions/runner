@@ -159,6 +159,7 @@ namespace Runner.Client
             public ConsoleColor Color {get;set;}
             public Guid RecordId {get;set;}
             public List<WebConsoleEvent> Pending {get;set;}
+            public string JobName {get;set;}
             public string WorkflowName {get;set;}
         }
 
@@ -1490,7 +1491,7 @@ namespace Runner.Client
                                             }
                                             if(line == "event: workflow") {
                                                 var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(data);
-                                                var rec = (from r in timelineRecords where r.Value.TimeLine?[0]?.Id == r.Key select r.Value).FirstOrDefault();
+                                                var rec = (from j in jobs where j.runid == _workflow.runid && j.JobId == j.TimeLineId select (from r in timelineRecords where r.Value.TimeLine?[0]?.Id == j.TimeLineId select r.Value).FirstOrDefault()).FirstOrDefault();
                                                 if(rec != null) {
                                                     WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Workflow {_workflow.runid} Completed with Status: {(_workflow.Success ? "Success" : "Failure")}");
                                                 } else {
