@@ -27,6 +27,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 
@@ -698,6 +699,45 @@ namespace GitHub.DistributedTask.WebApi
                 httpMethod,
                 locationId,
                 version: new ApiResourceVersion(5.1, 1),
+                queryParameters: queryParams,
+                userState: userState,
+                cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// [Preview API]
+        /// </summary>
+        /// <param name="scopeId"></param>
+        /// <param name="planType"></param>
+        /// <param name="planGroup"></param>
+        /// <param name="planId"></param>
+        /// <param name="instanceRefsJson"></param>
+        /// <param name="userState"></param>
+        /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public virtual Task<AgentJobRequestMessage> GetJobMessageAsync(
+            Guid scopeId,
+            string planType,
+            string planGroup,
+            Guid planId,
+            string instanceRefsJson,
+            object userState = null,
+            CancellationToken cancellationToken = default)
+        {
+            HttpMethod httpMethod = new HttpMethod("GET");
+            Guid locationId = new Guid("25adab70-1379-4186-be8e-b643061ebe3a");
+
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+            queryParams.Add("scopeId", scopeId.ToString());
+            queryParams.Add("planType", planType);
+            queryParams.Add("planGroup", planGroup);
+            queryParams.Add("planId", planId.ToString());
+            queryParams.Add("instanceRefsJson", instanceRefsJson);
+
+            return SendAsync<AgentJobRequestMessage>(
+                httpMethod,
+                locationId,
+                version: new ApiResourceVersion(6.0, 1),
                 queryParameters: queryParams,
                 userState: userState,
                 cancellationToken: cancellationToken);

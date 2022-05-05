@@ -13,6 +13,10 @@ using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Listener.Check;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace GitHub.Runner.Listener
 {
@@ -457,6 +461,52 @@ namespace GitHub.Runner.Listener
                                     }
                                 }
                             }
+                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
+                            {
+
+                                // var messageRef = StringUtil.ConvertFromJson<MessageRef>(message.Body);
+                                // var client = new HttpClient();
+                                // client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", messageRef.Token);
+                                // var response = await client.GetAsync(messageRef.Url, token);
+                                // if (!response.IsSuccessStatusCode)
+                                // {
+                                //     var content = default(string);
+                                //     try
+                                //     {
+                                //         content = await response.Content.ReadAsStringAsync();
+                                //     }
+                                //     catch
+                                //     {
+                                //     }
+
+                                //     var error = $"HTTP {(int)response.StatusCode} {Enum.GetName(typeof(HttpStatusCode), response.StatusCode)}";
+                                //     if (!string.IsNullOrEmpty(content))
+                                //     {
+                                //         error = $"{error}: {content}";
+                                //     }
+                                //     throw new Exception(error);
+                                // }
+
+                                // var fullMessage = await response.Content.ReadAsStringAsync();
+                                // return StringUtil.ConvertFromJson<TaskAgentMessage>(fullMessage);
+
+                                if (autoUpdateInProgress || runOnceJobReceived)
+                                {
+                                    skipMessageDeletion = true;
+                                    Trace.Info($"Skip message deletion for job request message '{message.MessageId}'.");
+                                }
+                                else
+                                {
+                                    Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
+                                    var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
+                                    jobDispatcher.Run(jobMessage, runOnce);
+                                    if (runOnce)
+                                    {
+                                        Trace.Info("One time used runner received job message.");
+                                        runOnceJobReceived = true;
+                                    }
+                                }
+                            }
                             else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
@@ -584,6 +634,36 @@ Examples:
     _term.WriteLine($@" Configure a runner to run as a service:");
     _term.WriteLine($@"  .{separator}config.{ext} --url <url> --token <token> --runasservice");
 #endif
+        }
+
+        [DataContract]
+        public sealed class MessageRef
+        {
+            [DataMember(Name = "url")]
+            public string Url { get; set; }
+            [DataMember(Name = "token")]
+            public string Token { get; set; }
+            [DataMember(Name = "scopeId")]
+            public string ScopeId { get; set; }
+            [DataMember(Name = "planType")]
+            public string PlanType { get; set; }
+            [DataMember(Name = "planGroup")]
+            public string PlanGroup { get; set; }
+            [DataMember(Name = "instanceRefs")]
+            public InstanceRef[] InstanceRefs { get; set; }
+            [DataMember(Name = "labels")]
+            public string[] Labels { get; set; }
+        }
+
+        [DataContract]
+        public sealed class InstanceRef
+        {
+            [DataMember(Name = "name")]
+            public string Name { get; set; }
+            [DataMember(Name = "instanceType")]
+            public string InstanceType { get; set; }
+            [DataMember(Name = "attempt")]
+            public int Attempt { get; set; }
         }
     }
 }

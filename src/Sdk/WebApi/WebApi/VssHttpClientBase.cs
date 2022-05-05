@@ -765,6 +765,7 @@ namespace GitHub.Services.WebApi
 
         protected async Task<T> ReadContentAsAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default(CancellationToken))
         {
+            System.Console.WriteLine($"VssHttpClientBase.ReadContentAsAsync {response.Headers}");
             CheckForDisposed();
             Boolean isJson = IsJsonResponse(response);
             bool mismatchContentType = false;
@@ -776,17 +777,20 @@ namespace GitHub.Services.WebApi
                     !typeof(Byte[]).GetTypeInfo().IsAssignableFrom(typeof(T).GetTypeInfo()) &&
                     !typeof(JObject).GetTypeInfo().IsAssignableFrom(typeof(T).GetTypeInfo()))
                 {
+                    System.Console.WriteLine("VssHttpClientBase.ReadContentAsAsync: isJson 1");
                     // expect it to come back wrapped, if it isn't it is a bug!
                     var wrapper = await ReadJsonContentAsync<VssJsonCollectionWrapper<T>>(response, cancellationToken).ConfigureAwait(false);
                     return wrapper.Value;
                 }
                 else if (isJson)
                 {
+                    System.Console.WriteLine("VssHttpClientBase.ReadContentAsAsync: isJson 2");
                     return await ReadJsonContentAsync<T>(response, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (JsonReaderException)
             {
+                System.Console.WriteLine("VssHttpClientBase.ReadContentAsAsync: mismatchContentType");
                 // We thought the content was JSON but failed to parse. 
                 // In this case, do nothing and utilize the HandleUnknownContentType call below
                 mismatchContentType = true;
