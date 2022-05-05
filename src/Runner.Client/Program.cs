@@ -408,7 +408,20 @@ namespace Runner.Client
         }
 
         private static bool forceColor = false;
+        private static bool isGithubActions = false;
+
+        private static string escapeWorkflowCommands(string source) {
+            if(isGithubActions) {
+                // Add a Zero Width Space to escape the workflow command
+                // Without this github actions interprets these commands
+                return source.Replace("##[", "##​[");
+            }
+            return source;
+        }
+
         private static void WriteLogLine(int color, string tag, string message) {
+            tag = escapeWorkflowCommands(tag);
+            message = escapeWorkflowCommands(message);
             if(forceColor) {
                 Console.WriteLine($"\x1b[{(int)color + 30}m[{tag}]\x1b[0m {message}");
             } else {
@@ -421,6 +434,7 @@ namespace Runner.Client
         }
 
         private static void WriteLogLine(int color, string message) {
+            message = escapeWorkflowCommands(message);
             if(forceColor) {
                 Console.WriteLine($"\x1b[{(int)color + 30}m|\x1b[0m {message}");
             } else {
@@ -465,7 +479,8 @@ namespace Runner.Client
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = Encoding.UTF8;
             // dotnet doesn't enable color on github actions, but we are still able to emit ansi color codes
-            forceColor = GetEnvironmentBoolean("NO_COLOR", true) != true && (GetEnvironmentBoolean("FORCE_COLOR", true) == true || GetEnvironmentBoolean("GITHUB_ACTIONS") == true);
+            isGithubActions = GetEnvironmentBoolean("GITHUB_ACTIONS") == true;
+            forceColor = GetEnvironmentBoolean("NO_COLOR", true) != true && (GetEnvironmentBoolean("FORCE_COLOR", true) == true || isGithubActions);
             
             //$content = Get-Content <path to raw https://github.com/github/docs/blob/main/content/actions/reference/events-that-trigger-workflows.md>
             //$content -match "#### ``.*``"
