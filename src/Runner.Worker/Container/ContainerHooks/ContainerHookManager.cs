@@ -115,6 +115,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = GetHookStateInJson(context),
             };
             var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
+            if (response != null)
+            {
+                SaveHookState(context, response.State);
+            }
         }
 
         public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
@@ -130,6 +134,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = hookState
             };
             var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
+            if (response != null)
+            {
+                SaveHookState(context, response.State);
+            }
         }
 
         public async Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
