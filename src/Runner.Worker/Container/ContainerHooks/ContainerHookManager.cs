@@ -52,6 +52,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var response = await ExecuteHookScript(context, input, ActionRunStage.Pre);
+            if (response == null)
+            {
+                return;
+            }
 
             var containerId = response?.Context?.Container?.Id;
             if (containerId != null)
@@ -149,7 +153,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var response = await ExecuteHookScript(context, input, ActionRunStage.Main);
-            SaveHookState(context, response.State);
+            if (response != null)
+            {
+                SaveHookState(context, response.State);
+            }
         }
 
         private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage)
@@ -183,9 +190,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 throw new Exception("Hook failed"); // TODO: better exception
             }
 
-            // TODO: consider the case when the responseFile doesn't exist - should we throw or noop on response?
-            var response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
-            IOUtil.DeleteFile(input.ResponseFile);
+            HookResponse response = null;
+            if (!string.IsNullOrEmpty(input.ResponseFile))
+            {
+                response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
+                IOUtil.DeleteFile(input.ResponseFile);
+            }
             return response;
         }
 
