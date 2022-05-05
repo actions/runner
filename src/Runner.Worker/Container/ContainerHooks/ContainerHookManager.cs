@@ -92,7 +92,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     ["network"] = new StringContextData(container.Network)
                 };
 
-                // TODO: workout port mappings + format
                 container.PortMappings = new Dictionary<string, string>();
                 foreach (var portMapping in containerInfo.UserPortMappings)
                 {
