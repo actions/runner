@@ -414,9 +414,10 @@ namespace Runner.Client
             if(isGithubActions) {
                 // Add a Zero Width Space to escape the workflow command
                 // Without this github actions interprets these commands
-                return source.Replace("##[", "##​[");
+                return source.Replace("##[", "#​#​[​");
             }
-            return source;
+            // Otherwise revert that again, e.g running Runner.Client tests locally
+            return source.Replace("#​#​[​", "##[");
         }
 
         private static void WriteLogLine(int color, string tag, string message) {
