@@ -387,7 +387,7 @@ namespace Runner.Server.Controllers
 
             public void Info(string format, params object[] args)
             {
-                if(verbosity <= 1) {
+                if(verbosity <= 2) {
                     try {
                         Callback(args?.Length > 0 ? string.Format(format, args) : format);
                     } catch {
@@ -398,13 +398,13 @@ namespace Runner.Server.Controllers
 
             public void Info(string message)
             {
-                if(verbosity <= 1) {
+                if(verbosity <= 2) {
                     Callback(message);
                 }
             }
             public void Verbose(string format, params object[] args)
             {
-                if(verbosity <= 0) {
+                if(verbosity <= 1) {
                     try {
                         Callback(args?.Length > 0 ? string.Format(format, args) : format);
                     } catch {
@@ -414,6 +414,13 @@ namespace Runner.Server.Controllers
             }
 
             public void Verbose(string message)
+            {
+                if(verbosity <= 1) {
+                    Callback(message);
+                }
+            }
+
+            public void Trace(string message)
             {
                 if(verbosity <= 0) {
                     Callback(message);
@@ -796,14 +803,15 @@ namespace Runner.Server.Controllers
                     initializingJobs.Remove(workflowTimelineId, out _);
                 }
             };
-            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Initialize Workflow Run {runid}" }), workflowTimelineId, workflowRecordId);
+            var workflowTraceWriter = new TraceWriter2(line => {
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
+            }, Verbosity);
+            workflowTraceWriter.Info($"Initialize Workflow Run {runid}");
             string event_name = e;
             string repository_name = repository;
             MappingToken workflowOutputs = null;
             var jobsctx = new DictionaryContextData();
-            var workflowTraceWriter = new TraceWriter2(line => {
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
-            }, Verbosity);
+
             var workflowname = fileRelativePath;
             Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
                 var effective_event = callingJob?.Event ?? event_name;
@@ -943,7 +951,7 @@ namespace Runner.Server.Controllers
                     // Get the file ID
                     var fileId = templateContext.GetFileId(fileRelativePath);
 
-                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ "Parsing Workflow..." }), workflowTimelineId, workflowRecordId);
+                    workflowTraceWriter.Trace("Parsing Workflow...");
 
                     // Read the file
                     var fileContent = content ?? System.IO.File.ReadAllText(fileRelativePath);
@@ -1002,14 +1010,14 @@ namespace Runner.Server.Controllers
                     case TokenType.String:
                         if(tk.AssertString("on").Value != e) {
                             // Skip, not the right event
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, '{tk.AssertString("str").Value}' isn't is the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
+                            workflowTraceWriter.Info($"Skipping the Workflow, '{tk.AssertString("str").Value}' isn't is the requested event '{e}'");
                             return skipWorkflow();
                         }
                         break;
                     case TokenType.Sequence:
                         if((from r in tk.AssertSequence("on") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
                             // Skip, not the right event
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, [{string.Join(',', from r in tk.AssertSequence("seq") select "'" + r.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
+                            workflowTraceWriter.Info($"Skipping the Workflow, [{string.Join(',', from r in tk.AssertSequence("seq") select "'" + r.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'");
                             return skipWorkflow();
                         }
                         break;
@@ -1017,7 +1025,7 @@ namespace Runner.Server.Controllers
                         var e2 = (from r in tk.AssertMapping("on") where r.Key.AssertString(e).Value == e select r).FirstOrDefault();
                         var rawEvent = e2.Value;
                         if(rawEvent == null) {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, [{string.Join(',', from r in tk.AssertMapping("mao") select "'" + r.Key.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
+                            workflowTraceWriter.Info($"Skipping the Workflow, [{string.Join(',', from r in tk.AssertMapping("mao") select "'" + r.Key.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'");
                             return skipWorkflow();
                         }
                         if(e == "schedule") {
@@ -1157,7 +1165,7 @@ namespace Runner.Server.Controllers
                                     var defassertMessage = $"on.workflow_call.inputs.{inputName}.default";
                                     var rawdef = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "default" select r.Value).FirstOrDefault();
                                     if(rawdef != null) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Evaluate {defassertMessage}" }), workflowTimelineId, workflowRecordId);
+                                        workflowTraceWriter.Info($"Evaluate {defassertMessage}");
                                         var contextData = createContext("");
                                         var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext.FileTable, contextData);
                                         rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-input-context", rawdef, 0, null, true);
@@ -1252,7 +1260,7 @@ namespace Runner.Server.Controllers
                             }
                             sb.Append(prop);
                         }
-                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"The following event properties are invalid: {sb.ToString()}, please remove them from {e}" }), workflowTimelineId, workflowRecordId);
+                        workflowTraceWriter.Info($"The following event properties are invalid: {sb.ToString()}, please remove them from {e}");
                     }
 
                     // Offical github action server ignores the filter on non push / pull_request (workflow_run) events
@@ -1280,13 +1288,13 @@ namespace Runner.Server.Controllers
                     if(hook?.Action != null) {
                         if(types != null) {
                             if(!(from t in types select t.AssertString($"on.{event_name}.type.*").Value).Any(t => t == hook?.Action)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString($"on.{event_name}.type.*").Value + "'")}" }), workflowTimelineId, workflowRecordId);
+                                workflowTraceWriter.Info($"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString($"on.{event_name}.type.*").Value + "'")}");
                                 return skipWorkflow();
                             }
                         } else if(e == "pull_request" || e == "pull_request_target"){
                             var prdefaults = new [] { "opened", "synchronize", "synchronized", "reopened" };
                             if(!prdefaults.Any(t => t == hook?.Action)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger. Requested Action was {hook?.Action}, but require {string.Join(',', from t in prdefaults select "'" + t + "'")}" }), workflowTimelineId, workflowRecordId);
+                                workflowTraceWriter.Info($"Skipping Workflow, due to default types filter of the {e} trigger. Requested Action was {hook?.Action}, but require {string.Join(',', from t in prdefaults select "'" + t + "'")}");
                                 return skipWorkflow();
                             }
                         }
@@ -1308,30 +1316,30 @@ namespace Runner.Server.Controllers
                             var branch = Ref2.Substring(heads.Length);
 
                             if(branchesIgnore != null && filter(CompilePatterns(branchesIgnore), new[] { branch }, workflowTraceWriter)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                workflowTraceWriter.Info($"Skipping Workflow, due to branches-ignore filter. github.ref='{Ref2}'");
                                 return skipWorkflow();
                             }
                             if(branches != null && skip(CompilePatterns(branches), new[] { branch }, workflowTraceWriter)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                workflowTraceWriter.Info($"Skipping Workflow, due to branches filter. github.ref='{Ref2}'");
                                 return skipWorkflow();
                             }
                             if((tags != null || tagsIgnore != null) && branches == null && branchesIgnore == null) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of tag filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                workflowTraceWriter.Info($"Skipping Workflow, due to existense of tag filter. github.ref='{Ref2}'");
                                 return skipWorkflow();
                             }
                         } else if(Ref2.StartsWith(rtags) == true) {
                             var tag = Ref2.Substring(rtags.Length);
 
                             if(tagsIgnore != null && filter(CompilePatterns(tagsIgnore), new[] { tag }, workflowTraceWriter)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                workflowTraceWriter.Info($"Skipping Workflow, due to tags-ignore filter. github.ref='{Ref2}'");
                                 return skipWorkflow();
                             }
                             if(tags != null && skip(CompilePatterns(tags), new[] { tag }, workflowTraceWriter)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                workflowTraceWriter.Info($"Skipping Workflow, due to tags filter. github.ref='{Ref2}'");
                                 return skipWorkflow();
                             }
                             if((branches != null || branchesIgnore != null) && tags == null && tagsIgnore == null) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of branch filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                workflowTraceWriter.Info($"Skipping Workflow, due to existense of branch filter. github.ref='{Ref2}'");
                                 return skipWorkflow();
                             }
                         }
@@ -1339,23 +1347,23 @@ namespace Runner.Server.Controllers
                     if(hook.Commits != null) {
                         var changedFiles = hook.Commits.SelectMany(commit => (commit.Added ?? new List<string>()).Concat(commit.Removed ?? new List<string>()).Concat(commit.Modified ?? new List<string>()));
                         if(pathsIgnore != null && filter(CompilePatterns(pathsIgnore), changedFiles, workflowTraceWriter)) {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter." }), workflowTimelineId, workflowRecordId);
+                            workflowTraceWriter.Info($"Skipping Workflow, due to paths-ignore filter.");
                             return skipWorkflow();
                         }
                         if(paths != null && skip(CompilePatterns(paths), changedFiles, workflowTraceWriter)) {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths filter." }), workflowTimelineId, workflowRecordId);
+                            workflowTraceWriter.Info($"Skipping Workflow, due to paths filter.");
                             return skipWorkflow();
                         }
                     }
                     var fworkflowName = hook.Workflow?.Name;
                     if(fworkflowName != null && fworkflows != null && skip(CompilePatterns(fworkflows), new[] { fworkflowName }, workflowTraceWriter)) {
-                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to workflows filter." }), workflowTimelineId, workflowRecordId);
+                        workflowTraceWriter.Info($"Skipping Workflow, due to workflows filter.");
                         return skipWorkflow();
                     }
                 }
                 workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? fileRelativePath;
-                if(callingJob == null)  {
-                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), workflowTimelineId, workflowRecordId);
+                if(callingJob == null) {
+                    workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
                     if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
                         attempt.WorkflowRun.DisplayName = workflowname;
                         _context.SaveChanges();
@@ -2143,9 +2151,9 @@ namespace Runner.Server.Controllers
                             ji.Status = e.Result;
                             ji.Completed = true;
                             updateStatus(ji);
-                            workflowTraceWriter.Verbose("{0}", $"{ji.DisplayName} ({ji.name}) completed");
+                            workflowTraceWriter.Trace($"{ji.DisplayName} ({ji.name}) completed");
                             if(jobs.All(j => j.Completed)) {
-                                workflowTraceWriter.Verbose("{0}", $"All jobs completed");
+                                workflowTraceWriter.Trace($"All jobs completed");
                                 FinishJobController.OnJobCompletedAfter -= workflowcomplete;
                                 var workflow = jobs.ToList();
                                 var evargs = new WorkflowEventArgs { runid = runid, Success = workflow?.All(job => job.ContinueOnError || job.Status == TaskResult.Succeeded || job.Status == TaskResult.SucceededWithIssues || job.Status == TaskResult.Skipped) ?? false };
@@ -2224,10 +2232,10 @@ namespace Runner.Server.Controllers
                                         return;
                                     }
                                     if(workflowContext.ForceCancellationToken?.IsCancellationRequested == true) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ "Workflow Force Cancellation: Requested" }), workflowTimelineId, workflowRecordId);
+                                        workflowTraceWriter.Info("Workflow Force Cancellation: Requested");
                                         foreach(var job2 in jobs) {
                                             if(job2.Status == null) {
-                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Force cancelling {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
+                                                workflowTraceWriter.Info($"Force cancelling {job2.DisplayName ?? job2.name}");
                                                 var ji = job2;
                                                 // cancel pseudo job e.g. workflow_call
                                                 ji.Cancel.Cancel();
@@ -2238,25 +2246,25 @@ namespace Runner.Server.Controllers
                                                     // No check for sessionid, since we do force cancellation
                                                     new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                                 }
-                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Force cancelled {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
+                                                workflowTraceWriter.Info($"Force cancelled {job2.DisplayName ?? job2.name}");
                                             }
                                         }
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ "Workflow Force Cancellation: Done" }), workflowTimelineId, workflowRecordId);
+                                        workflowTraceWriter.Info("Workflow Force Cancellation: Done");
                                         return;
                                     } else if(workflowContext.CancellationToken.IsCancellationRequested) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ "Workflow Cancellation: Requested" }), workflowTimelineId, workflowRecordId);
+                                        workflowTraceWriter.Info("Workflow Cancellation: Requested");
                                         foreach(var job2 in jobs) {
                                             if(job2.Status == null && job2.EvaluateIf != null) {
-                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Reevaluate Condition of {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
+                                                workflowTraceWriter.Info($"Reevaluate Condition of {job2.DisplayName ?? job2.name}");
                                                 bool ifResult;
                                                 try {
                                                     ifResult = job2.EvaluateIf(workflowTraceWriter);
                                                 } catch(Exception ex) {
                                                     ifResult = false;
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Exception while evaluating if expression of {job2.DisplayName ?? job2.name}: {ex.Message}, Stacktrace: {ex.StackTrace}" }), workflowTimelineId, workflowRecordId);
+                                                    workflowTraceWriter.Info($"Exception while evaluating if expression of {job2.DisplayName ?? job2.name}: {ex.Message}, Stacktrace: {ex.StackTrace}");
                                                 }
                                                 if(!ifResult) {
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Cancelling {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
+                                                    workflowTraceWriter.Info($"Cancelling {job2.DisplayName ?? job2.name}");
                                                     var ji = job2;
                                                     // cancel pseudo job e.g. workflow_call
                                                     ji.Cancel.Cancel();
@@ -2268,13 +2276,13 @@ namespace Runner.Server.Controllers
                                                             new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                                         }
                                                     }
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Cancelled {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
+                                                    workflowTraceWriter.Info($"Cancelled {job2.DisplayName ?? job2.name}");
                                                 } else {
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skip Cancellation of {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
+                                                    workflowTraceWriter.Info($"Skip Cancellation of {job2.DisplayName ?? job2.name}");
                                                 }
                                             }
                                         }
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ "Workflow Cancellation: Done" }), workflowTimelineId, workflowRecordId);
+                                        workflowTraceWriter.Info("Workflow Cancellation: Done");
                                     }
                                 }
                             } finally {
