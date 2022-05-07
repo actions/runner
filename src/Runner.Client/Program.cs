@@ -1508,10 +1508,14 @@ namespace Runner.Client
                                             if(line == "event: workflow") {
                                                 var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(data);
                                                 var rec = (from j in jobs where j.runid == _workflow.runid && j.JobId == j.TimeLineId select (from r in timelineRecords where r.Value.TimeLine?[0]?.Id == j.TimeLineId select r.Value).FirstOrDefault()).FirstOrDefault();
+                                                TaskResult result = TaskResult.Failed;
+                                                if(_workflow.Success) {
+                                                    result = TaskResult.Succeeded;
+                                                }
                                                 if(rec != null) {
-                                                    WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Workflow {_workflow.runid} Completed with Status: {(_workflow.Success ? "Success" : "Failure")}");
+                                                    WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Workflow {_workflow.runid} Completed with Status: {result.ToString()}");
                                                 } else {
-                                                    Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
+                                                    Console.WriteLine($"Workflow {_workflow.runid} finished with status {result.ToString()}");
                                                 }
                                                 hasErrors |= !_workflow.Success;
                                                 hasAny = true;
