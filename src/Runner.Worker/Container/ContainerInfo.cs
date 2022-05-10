@@ -16,7 +16,6 @@ namespace GitHub.Runner.Worker.Container
         private List<PortMapping> _portMappings;
         private IDictionary<string, string> _environmentVariables;
         private List<PathMapping> _pathMappings = new List<PathMapping>();
-        private List<string> _containerEnv;
 
         public ContainerInfo()
         {
@@ -155,19 +154,6 @@ namespace GitHub.Runner.Worker.Container
                 }
 
                 return _portMappings;
-            }
-        }
-
-        public List<string> ContainerEnv
-        {
-            get
-            {
-                if (_containerEnv == null)
-                {
-                    _containerEnv = new List<string>();
-                }
-
-                return _containerEnv;
             }
         }
 

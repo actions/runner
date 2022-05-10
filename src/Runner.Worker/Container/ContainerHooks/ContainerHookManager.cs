@@ -73,11 +73,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             SaveHookState(context, response.State);
 
-            var containerEnv = response?.Context?.Container?.ContainerEnv;
-            if (containerEnv != null)
-            {
-                jobContainer.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv.ToList());
-            }
+            var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
+            var containerEnv = await _dockerManager.DockerInspect(context, jobContainer?.ContainerId, configEnvFormat);
+            jobContainer.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
 
             for (var i = 0; i < response?.Context?.Services?.Count; i++)
             {
