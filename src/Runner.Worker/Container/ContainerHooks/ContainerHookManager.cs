@@ -27,12 +27,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         private const string ResponseFolderName = "_hook_responses";
         private string HookIndexPath;
-        private IDockerCommandManager _dockerManager;
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             HookIndexPath = $"{Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)}";
-            _dockerManager = HostContext.GetService<IDockerCommandManager>();
         }
 
         public async Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)
@@ -72,10 +70,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             jobContainer.IsAlpine = response.IsAlpine;
 
             SaveHookState(context, response.State);
-
-            var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
-            var containerEnv = await _dockerManager.DockerInspect(context, jobContainer?.ContainerId, configEnvFormat);
-            jobContainer.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
 
             for (var i = 0; i < response?.Context?.Services?.Count; i++)
             {
