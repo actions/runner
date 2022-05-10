@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -82,7 +84,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        internal static string GetDefaultShellForScript(string path, Common.Tracing trace, string prependPath)
+        internal static string GetDefaultShellForScript(string path, Common.Tracing trace, string prependPath, IHostContext hostContext = null)
         {
             var format = "{0} {1}";
             switch (Path.GetExtension(path))
@@ -94,8 +96,14 @@ namespace GitHub.Runner.Worker.Handlers
                 case ".ps1":
                     var pathToPowershell = WhichUtil.Which("pwsh", false, trace, prependPath) ?? WhichUtil.Which("powershell", true, trace, prependPath);
                     return string.Format(format, pathToPowershell, _defaultArguments["powershell"]);
+                case ".js":
+                    if (hostContext == null)
+                    {
+                        throw new ArgumentException($"Cannot determine node version because {nameof(hostContext)} is null.");
+                    }
+                    return Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}";
                 default:
-                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh' or '.ps1'.");
+                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh', '.ps1' or '.js'.");
             }
         }
     }

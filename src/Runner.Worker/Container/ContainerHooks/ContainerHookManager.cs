@@ -169,11 +169,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
+            var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
             Dictionary<string, string> inputs = new()
             {
                 ["standardInInput"] = JsonUtility.ToString(input),
                 ["path"] = HookIndexPath,
-                ["shell"] = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}" // TODO: fix hardcoded node path
+                ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(HookIndexPath, Trace, prependPath)
             };
 
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
