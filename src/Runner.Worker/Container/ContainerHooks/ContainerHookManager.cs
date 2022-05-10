@@ -129,6 +129,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 ResponseFile = responsePath,
                 State = hookState
             };
+            var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
             var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
             if (response == null)
             {
@@ -157,7 +158,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = GetHookStateInJson(context)
             };
 
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Main);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Main, prependPath);
             if (response == null)
             {
                 return;
@@ -167,9 +168,14 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage)
         {
+            var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
+            return await ExecuteHookScript(context, input, stage, prependPath);
+        }
+
+        private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath)
+        {
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
-            var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
             Dictionary<string, string> inputs = new()
             {
                 ["standardInInput"] = JsonUtility.ToString(input),
