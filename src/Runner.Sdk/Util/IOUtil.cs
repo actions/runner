@@ -430,6 +430,7 @@ namespace GitHub.Runner.Sdk
             DeleteFile(path);
             File.Create(path).Dispose();
         }
+
         /// <summary>
         /// Recursively enumerates a directory without following directory reparse points.
         /// </summary>
