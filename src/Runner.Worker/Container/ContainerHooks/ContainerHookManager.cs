@@ -187,7 +187,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                             context.Global.Variables,
                             actionDirectory: scriptDirectory,
                             localActionContainerSetupSteps: null) as ScriptHandler;
-            handler.PrepareExecution(stage); // TODO: find out stage, we only use Start in pre, but double check
+            handler.PrepareExecution(stage);
 
             IOUtil.CreateEmptyFile(input.ResponseFile);
             await handler.RunAsync(stage);
