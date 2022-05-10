@@ -75,11 +75,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             SaveHookState(context, response.State);
 
-            // TODO: figure out if we need ContainerRuntimePath for anything
-            // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
-            // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
-            // container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
-
             for (var i = 0; i < response?.Context?.Services?.Count; i++)
             {
                 var container = response.Context.Services[i]; // TODO: Confirm that the order response.Context.Services is the same as serviceContainers
@@ -93,12 +88,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     ["network"] = new StringContextData(container.Network)
                 };
 
-                // TODO: workout port mappings + format
-                // foreach (var portMapping in containerInfo.UserPortMappings)
-                // {
-                //     // TODO: currently the format is ports["80:8080"] = "80:8080", fix this?
-                //     (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
-                // }
+                container.PortMappings = new Dictionary<string, string>();
+                foreach (var portMapping in containerInfo.UserPortMappings)
+                {
+                    (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
+                    container.PortMappings.Add(portMapping);
+                }
                 context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
             }
         }
