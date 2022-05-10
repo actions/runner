@@ -51,7 +51,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 }
             };
 
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Pre);
+            var prependPath = GetPrependPath(context);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Pre, prependPath);
             if (response == null)
             {
                 return;
@@ -109,7 +110,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 ResponseFile = responsePath,
                 State = GetHookStateInJson(context),
             };
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
+            var prependPath = GetPrependPath(context);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Post, prependPath);
             if (response == null)
             {
                 return;
@@ -129,8 +131,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 ResponseFile = responsePath,
                 State = hookState
             };
-            var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
+            var prependPath = GetPrependPath(context);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Post, prependPath);
             if (response == null)
             {
                 return;
@@ -164,12 +166,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 return;
             }
             SaveHookState(context, response.State);
-        }
-
-        private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage)
-        {
-            var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
-            return await ExecuteHookScript(context, input, stage, prependPath);
         }
 
         private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath)
@@ -220,6 +216,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         private string GenerateResponsePath()
         {
             return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName, $"{Guid.NewGuid()}.json");
+        }
+
+        private string GetPrependPath(IExecutionContext context)
+        {
+            return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());;
         }
 
         private static JToken GetHookStateInJson(IExecutionContext context)
