@@ -230,6 +230,7 @@ namespace GitHub.Services.Common
 
                     traceInfo?.TraceResponseContentTime();
 
+                    // System.Console.WriteLine($"VssHttpMessageHandler.SendAsync: Creating response wrapper");
                     responseWrapper = new HttpResponseMessageWrapper(response);
 
                     if (!this.Credentials.IsAuthenticationChallenge(responseWrapper))
@@ -295,6 +296,7 @@ namespace GitHub.Services.Common
                         }
 
                         // Now invoke the provider and await the result
+                        // System.Console.WriteLine($"VssHttpMessageHandler.SendAsync: Calling GetTokenAsync");
                         token = await provider.GetTokenAsync(token, tokenSource.Token).ConfigureAwait(false);
 
                         // I always see 0 here, but the method above could take more time so keep for now

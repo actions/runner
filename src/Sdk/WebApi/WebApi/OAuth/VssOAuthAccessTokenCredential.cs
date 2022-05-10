@@ -60,7 +60,7 @@ namespace GitHub.Services.OAuth
             Uri serverUrl,
             IHttpResponse response)
         {
-            // System.Console.WriteLine("VssOAuthAccessTokenCredential.OnCreateTokenProvider");
+            // System.Console.WriteLine($"VssOAuthAccessTokenCredential.OnCreateTokenProvider");
             return new VssOAuthAccessTokenProvider(this, serverUrl, null);
         }
 
@@ -72,6 +72,7 @@ namespace GitHub.Services.OAuth
                 Uri signInUrl) 
                 : base(credential, serverUrl, signInUrl)
             { 
+                // System.Console.WriteLine($"VssOAuthAccessTokenProvider.ctor");
             }
 
             public override Boolean GetTokenIsInteractive
