@@ -52,6 +52,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var response = await ExecuteHookScript(context, input, ActionRunStage.Pre);
+            if (response == null)
+            {
+                return;
+            }
 
             var containerId = response?.Context?.Container?.Id;
             if (containerId != null)
@@ -71,11 +75,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             SaveHookState(context, response.State);
 
-            // TODO: figure out if we need ContainerRuntimePath for anything
-            // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
-            // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
-            // container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
-
             for (var i = 0; i < response?.Context?.Services?.Count; i++)
             {
                 var container = response.Context.Services[i]; // TODO: Confirm that the order response.Context.Services is the same as serviceContainers
@@ -89,12 +88,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     ["network"] = new StringContextData(container.Network)
                 };
 
-                // TODO: workout port mappings + format
-                // foreach (var portMapping in containerInfo.UserPortMappings)
-                // {
-                //     // TODO: currently the format is ports["80:8080"] = "80:8080", fix this?
-                //     (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
-                // }
+                container.PortMappings = new Dictionary<string, string>();
+                foreach (var portMapping in containerInfo.UserPortMappings)
+                {
+                    (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
+                    container.PortMappings.Add(portMapping);
+                }
                 context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
             }
         }
@@ -111,6 +110,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = GetHookStateInJson(context),
             };
             var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
+            if (response == null)
+            {
+                return;
+            }
+            SaveHookState(context, response.State);
         }
 
         public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
@@ -126,6 +130,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = hookState
             };
             var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
+            if (response == null)
+            {
+                return;
+            }
+            SaveHookState(context, response.State);
         }
 
         public async Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
@@ -149,8 +158,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var response = await ExecuteHookScript(context, input, ActionRunStage.Main);
+            if (response == null)
+            {
+                return;
+            }
             SaveHookState(context, response.State);
-            
         }
 
         private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage)
@@ -184,15 +196,23 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 throw new Exception("Hook failed"); // TODO: better exception
             }
 
-            // TODO: consider the case when the responseFile doesn't exist - should we throw or noop on response?
-            var response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
-            IOUtil.DeleteFile(input.ResponseFile);
+            HookResponse response = null;
+            if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
+            {
+                response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
+                IOUtil.DeleteFile(input.ResponseFile);
+                Trace.Info("Response file successfully processed and deleted");
+            }
+            else
+            {
+                Trace.Info($"Response file not found for command '{input.Command}'");
+            }
             return response;
         }
 
         private string GenerateResponsePath()
         {
-            return $"{Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName)}/{Guid.NewGuid()}.json";
+            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName, $"{Guid.NewGuid()}.json");
         }
 
         private static JToken GetHookStateInJson(IExecutionContext context)

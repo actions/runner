@@ -12,7 +12,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public string NetworkAlias { get; set; }
         public string Image { get; set; }
         public string Name { get; set; }
-        public string EntryPointArgs { get; set; }
+        public IEnumerable<string> EntryPointArgs { get; set; }
         public string EntryPoint { get; set; }
         public string WorkingDirectory { get; set; }
         public string CreateOptions { get; private set; }
@@ -24,7 +24,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public IDictionary<string, string> PortMappings { get; set; }
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public List<MountVolume> MountVolumes { get; set; }
+        public IEnumerable<MountVolume> MountVolumes { get; set; }
         public HookContainer() { } // For Json deserializer
         public HookContainer(ContainerInfo container)
         {
@@ -34,7 +34,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             NetworkAlias = container.ContainerNetworkAlias;
             Image = container.ContainerImage;
             Name = container.ContainerName;
-            EntryPointArgs = container.ContainerEntryPointArgs;
+            EntryPointArgs = container.ContainerEntryPointArgs.Split(' ').Select(arg => arg.Trim());
             EntryPoint = container.ContainerEntryPoint;
             WorkingDirectory = container.ContainerWorkDirectory;
             CreateOptions = container.ContainerCreateOptions;
