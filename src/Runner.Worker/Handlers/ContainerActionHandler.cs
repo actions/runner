@@ -75,10 +75,6 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 throw new InvalidOperationException($"'{Data.Image}' should be either '[path]/Dockerfile' or 'docker://image[:tag]'.");
             }
-            else
-            {
-                throw new InvalidOperationException($"'{Data.Image}' should be either '[path]/Dockerfile' or 'docker://image[:tag]'.");
-            }
 
             string type = Action.Type == Pipelines.ActionSourceType.Repository ? "Dockerfile" : "DockerHub";
             // Set extra telemetry base on the current context.
