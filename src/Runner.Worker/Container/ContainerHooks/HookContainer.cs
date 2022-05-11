@@ -34,7 +34,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             NetworkAlias = container.ContainerNetworkAlias;
             Image = container.ContainerImage;
             Name = container.ContainerName;
-            EntryPointArgs = container.ContainerEntryPointArgs.Split(' ').Select(arg => arg.Trim());
+            EntryPointArgs = container.ContainerEntryPointArgs?.Split(' ').Select(arg => arg.Trim()) ?? new List<string>();
             EntryPoint = container.ContainerEntryPoint;
             WorkingDirectory = container.ContainerWorkDirectory;
             CreateOptions = container.ContainerCreateOptions;
