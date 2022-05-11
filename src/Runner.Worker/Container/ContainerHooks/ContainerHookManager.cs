@@ -193,9 +193,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             await handler.RunAsync(stage);
             if (handler.ExecutionContext.Result == TaskResult.Failed)
             {
-                throw new Exception("Hook failed"); // TODO: better exception
+                throw new Exception($"Hook command {input.Command} failed"); // TODO: better exception
             }
-
+            Trace.Info($"Hook command {input.Command} successfully executed");
+            
             HookResponse response = null;
             if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
             {
