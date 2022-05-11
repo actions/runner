@@ -103,7 +103,8 @@
           },
           "with": "job-with",
           "secrets": "job-secrets",
-          "permissions": "permissions"
+          "permissions": "permissions",
+          "concurrency": "job-concurrency"
         }
       }
     },

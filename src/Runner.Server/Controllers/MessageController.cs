@@ -559,7 +559,7 @@ namespace Runner.Server.Controllers
                 }
             }
         }
-        private static ConcurrentDictionary<string, ConcurrencyGroup> concurrencyGroups = new ConcurrentDictionary<string, ConcurrencyGroup>();
+        private static ConcurrentDictionary<string, ConcurrencyGroup> concurrencyGroups = new ConcurrentDictionary<string, ConcurrencyGroup>(StringComparer.OrdinalIgnoreCase);
 
         private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null) {
             string owner_name = repository.Split('/', 2)[0];
@@ -734,6 +734,7 @@ namespace Runner.Server.Controllers
             public string WorkflowRepo {get;set;}
             public string WorkflowPath {get;set;}
             public int Depth {get;set;}
+            public TemplateToken JobConcurrency { get; set; }
         }
 
         private static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, IList<string> fileTable, DictionaryContextData contextData = null, ExecutionContext exctx = null) {
@@ -2292,22 +2293,14 @@ namespace Runner.Server.Controllers
                         FinishJobController.OnJobCompletedAfter += workflowcomplete;
                         workflowcomplete(null);
                     };
-                    string group = null;
-                    bool cancelInprogress = false;
-                    if(workflowConcurrency != null) {
-                        if(workflowConcurrency is StringToken stkn) {
-                            group = stkn.Value;
-                        } else {
-                            var cmapping = workflowConcurrency.AssertMapping("concurrency must be a string or mapping");
-                            group = (from r in cmapping where r.Key.AssertString("concurrency mapping key").Value == "group" select r).FirstOrDefault().Value?.AssertString("concurrency.group")?.Value;
-                            cancelInprogress = (from r in cmapping where r.Key.AssertString("concurrency mapping key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean("concurrency.cancel-in-progress")?.Value ?? cancelInprogress;
-                        }
-                        var concurrencyGroupNameLength = System.Text.Encoding.UTF8.GetByteCount(group ?? "");
-                        if(MaxConcurrencyGroupNameLength >= 0 && concurrencyGroupNameLength > MaxConcurrencyGroupNameLength) {
-                            throw new Exception($"The specified concurrency group name with length {concurrencyGroupNameLength} exceeds the maximum allowed length of {MaxConcurrencyGroupNameLength}");
-                        }
+                    var jobConcurrency = callingJob?.JobConcurrency?.ToConcurrency(maxConcurrencyGroupNameLength: MaxConcurrencyGroupNameLength);
+                    var concurrency = workflowConcurrency?.ToConcurrency(maxConcurrencyGroupNameLength: MaxConcurrencyGroupNameLength);
+                    if(string.Equals(jobConcurrency?.Group, concurrency?.Group, StringComparison.OrdinalIgnoreCase)) {
+                        // Seems like if both have the same group, then jobConcurrency is discarded.
+                        // Observed by adding cancel-in-progress: true to the resuable workflow, while only providing the group of the caller
+                        jobConcurrency = null;
                     }
-                    if(string.IsNullOrEmpty(group)) {
+                    if(string.IsNullOrEmpty(jobConcurrency?.Group) && string.IsNullOrEmpty(concurrency?.Group)) {
                         runWorkflow();
                     } else {
                         Action cancelPendingWorkflow = () => {
@@ -2316,20 +2309,30 @@ namespace Runner.Server.Controllers
                             finishAsyncWorkflow(evargs);
                         };
 
-                        var key = $"{repository_name}/{group}";
-                        while(true) {
-                            ConcurrencyGroup cgroup = concurrencyGroups.GetOrAdd(key, name => new ConcurrencyGroup() { Key = name });
-                            lock(cgroup) {
-                                if(concurrencyGroups.TryGetValue(key, out var _cgroup) && cgroup != _cgroup) {
-                                    continue;
+                        Action<Concurrency, Action<ConcurrencyGroup>> addToConcurrencyGroup = (concurrency, action) => {
+                            var key = $"{repository_name}/{concurrency.Group}";
+                            while(true) {
+                                ConcurrencyGroup cgroup = concurrencyGroups.GetOrAdd(key, name => new ConcurrencyGroup() { Key = name });
+                                lock(cgroup) {
+                                    if(concurrencyGroups.TryGetValue(key, out var _cgroup) && cgroup != _cgroup) {
+                                        continue;
+                                    }
+                                    action(cgroup);
+                                    break;
                                 }
+                            }
+                        };
+                        Func<Concurrency, Action, Action<ConcurrencyGroup>> processConcurrency = (c, then) => {
+                            return cgroup => {
+                                var group = c.Group;
+                                var cancelInprogress = c.CancelInProgress;
                                 ConcurrencyEntry centry = new ConcurrencyEntry();
                                 centry.Run = async () => {
                                     if(workflowContext.CancellationToken.IsCancellationRequested) {
-                                        workflowTraceWriter.Info("{0}", $"Workflow was cancelled, while it was pending in the concurrency group");
+                                        workflowTraceWriter.Info("{0}", $"Workflow was cancelled, while it was pending in the concurrency group: {group}");
                                     } else {
                                         workflowTraceWriter.Info("{0}", $"Starting Workflow run by concurrency group: {group}");
-                                        runWorkflow();
+                                        then();
                                         try {
                                             await Task.Delay(-1, finished.Token);
                                         } catch {
@@ -2344,10 +2347,36 @@ namespace Runner.Server.Controllers
                                         cancellationToken.Cancel();
                                     }
                                 };
+                                workflowTraceWriter.Info("{0}", $"Adding Workflow to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}");
                                 cgroup.PushEntry(centry, cancelInprogress);
-                                workflowTraceWriter.Info("{0}", $"Workflow was added to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}");
+                            };
+                        };
+                        // Needed to avoid a deadlock between caller and reusable workflow
+                        var prerunCancel = new CancellationTokenSource();
+                        Task.Run(async () => {
+                            try {
+                                await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
+                            } catch {
+
                             }
-                            break;
+                            if(!prerunCancel.Token.IsCancellationRequested && !finished.Token.IsCancellationRequested) {
+                                workflowTraceWriter.Info("{0}", $"Prerun cancellation");
+                                cancelPendingWorkflow();
+                            }
+                        });
+                        if(string.IsNullOrEmpty(jobConcurrency?.Group) || string.IsNullOrEmpty(concurrency?.Group)) {
+                            var con = string.IsNullOrEmpty(jobConcurrency?.Group) ? concurrency : jobConcurrency;
+                            addToConcurrencyGroup(con, processConcurrency(con, () => {
+                                prerunCancel.Cancel();
+                                runWorkflow();
+                            }));
+                        } else {
+                            addToConcurrencyGroup(jobConcurrency, processConcurrency(jobConcurrency, () => {
+                                addToConcurrencyGroup(concurrency, processConcurrency(concurrency, () => {
+                                    prerunCancel.Cancel();
+                                    runWorkflow();
+                                }));
+                            }));
                         }
                     }
                 }
@@ -2559,6 +2588,12 @@ namespace Runner.Server.Controllers
                         }
                     }
                 }
+                var jobConcurrency = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "concurrency" select r).FirstOrDefault().Value;
+                if(jobConcurrency != null) {
+                    matrixJobTraceWriter.Info("{0}", $"Evaluate job concurrency");
+                    var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, contextData);
+                    jobConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-concurrency", jobConcurrency, 0, null, true);
+                }
                 var rawSteps = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "steps" select r).FirstOrDefault().Value?.AssertSequence($"jobs.{name}.steps");
                 if(rawSteps == null) {
                     var rawUses = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "uses" select r).FirstOrDefault().Value?.AssertString($"jobs.{name}.uses");
@@ -2651,7 +2686,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo, Depth = (callingJob?.Depth ?? 0) + 1};
+                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value);
                                 var sjob = selectedJob?.StartsWith(name + "/") == true ? selectedJob.Substring(name.Length + 1) : null;
                                 clone.ConvertYaml2(filename, filecontent, repo, GitServerUrl, ghook, hook, "workflow_call", sjob, false, null, null, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: fjobs, secretsProvider: reuseableSecretsProvider);
@@ -2802,12 +2837,6 @@ namespace Runner.Server.Controllers
                     jobDefaults.Add(defaultToken);
                 }
 
-                var jobConcurrency = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "concurrency" select r).FirstOrDefault().Value;
-                if(jobConcurrency != null) {
-                    matrixJobTraceWriter.Info("{0}", $"Evaluate job concurrency");
-                    var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, contextData);
-                    jobConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-concurrency", jobConcurrency, 0, null, true);
-                }
                 if(!string.IsNullOrEmpty(OnQueueJobProgram)) {
                     var startupInfo = new ProcessStartInfo(OnQueueJobProgram, OnQueueJobArgs ?? "") { CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true, StandardErrorEncoding = Encoding.UTF8, StandardOutputEncoding = Encoding.UTF8 };
                     startupInfo.Environment["RUNNER_SERVER_PAYLOAD"] = JsonConvert.SerializeObject(new {
@@ -3107,8 +3136,8 @@ namespace Runner.Server.Controllers
                                             new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                         }
                                     };
+                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Adding Job to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}" }), job.TimeLineId, job.JobId);
                                     cgroup.PushEntry(centry, cancelInprogress);
-                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was added to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}" }), job.TimeLineId, job.JobId);
                                 }
                                 break;
                             }
