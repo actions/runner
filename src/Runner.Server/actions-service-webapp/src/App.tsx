@@ -2,6 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { Link, Navigate, NavLink, Route, Routes, useParams, Params, useResolvedPath, resolvePath } from 'react-router-dom';
 import Convert from 'ansi-to-html'; 
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
+import rehypeRaw from 'rehype-raw';
+import rehypeHighlight from 'rehype-highlight';
+
 var convert = new Convert({
   newline: true,
   escapeXML: true
@@ -718,6 +724,24 @@ function JobPage() {
       }
     }
   }, [job?.jobId, job?.timeLineId, workflowRunAttempt?.timeLineId, eventHandler]);
+  const [summaries, setSummaries] = useState<string[]>([])
+  useEffect(() => {
+    setSummaries([]);
+    var signal = new AbortController();
+    (async() => {
+      for(var summary of artifacts.filter(artifact => artifact.files !== undefined && /Attachment_[^_]+_[^_]+_Checks\.Step\.Summary/.test(artifact.name)).flatMap((container: ArtifactResponse) => (container.files || []).filter(f => f.itemType === "file").map(file => file.contentLocation))) {
+        if(signal.signal.aborted) return;
+        var resp = await fetch(summary, { signal: signal.signal })
+        if(signal.signal.aborted) return;
+        if(resp.status === 200) {
+          var text = await resp.text();
+          if(signal.signal.aborted) return;
+          setSummaries((text => summaries => [...summaries, text])(text));
+        }
+      }
+    })();
+    return () => signal.abort();
+  }, [artifacts]);
   return ( <span style={{width: '100%', height: '100%', overflowY: 'auto'}}>
     <h1>{workflowRun ? workflowRun.fileName : job ? (job?.result ? job.name + " completed with result: " + job.result : job?.name) : ""}</h1>
     {(() => {
@@ -825,7 +849,10 @@ function JobPage() {
       }
       return (<Detail timeline={(timeline || [null])[0]} render={true} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>)
     })()
-  }</span>);
+  }
+  {<h2>{summaries.length > 0 && "Comment summary"}</h2>}
+  {summaries.map((content, i) => <ReactMarkdown className='markdown-body' key={"summary-"+ i} remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeHighlight, rehypeRaw]} >{content}</ReactMarkdown>)}
+  </span>);
 }
 
 interface IOwner {
