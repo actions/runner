@@ -407,6 +407,12 @@ namespace Runner.Client
             return b2.ToString();
         }
 
+        private static string GetForceCancelWorkflowUrl(string baseUrl, long runid) {
+            var b2 = new UriBuilder(baseUrl);
+            b2.Path = $"_apis/v1/Message/forceCancelWorkflow/{runid}";
+            return b2.ToString();
+        }
+
         private static bool forceColor = false;
         private static bool isGithubActions = false;
 
@@ -756,7 +762,6 @@ namespace Runner.Client
                 Console.CancelKeyPress += (s, e) => {
                     if(cancelWorkflow != null) {
                         e.Cancel = true;
-                        Console.WriteLine($"CTRL+C received Cancel Running Jobs");
                         cancelWorkflow.Invoke();
                         return;
                     }
@@ -1293,8 +1298,17 @@ namespace Runner.Client
                                 bool hasAny = false;
                                 // Track if we are receiving duplicated finish jobs
                                 List<Job> jobs = new List<Job>();
-                                cancelWorkflow = () => {
+                                var forceCancelWorkflow = () => {
                                     cancelWorkflow = null;
+                                    Console.WriteLine($"CTRL+C received Force Cancel Running Jobs");
+                                    var runIds = (from j in jobs.ToArray() select j.runid).ToHashSet();
+                                    foreach(var runId in runIds) {
+                                        client.PostAsync(GetForceCancelWorkflowUrl(b.ToString(), runId), null, CancellationToken.None);
+                                    }
+                                };
+                                cancelWorkflow = () => {
+                                    cancelWorkflow = forceCancelWorkflow;
+                                    Console.WriteLine($"CTRL+C received Cancel Running Jobs");
                                     var runIds = (from j in jobs.ToArray() select j.runid).ToHashSet();
                                     foreach(var runId in runIds) {
                                         client.PostAsync(GetCancelWorkflowUrl(b.ToString(), runId), null, CancellationToken.None);
@@ -1319,7 +1333,7 @@ namespace Runner.Client
                                                     jobs.Add(_job);
                                                     // Cancel Workflows started after we cancelled the whole thing
                                                     if(cancelWorkflow == null && _job?.runid != null) {
-                                                        client.PostAsync(GetCancelWorkflowUrl(b.ToString(), _job.runid), null, CancellationToken.None);
+                                                        client.PostAsync(GetForceCancelWorkflowUrl(b.ToString(), _job.runid), null, CancellationToken.None);
                                                     }
                                                 }
                                                 _rec.WorkflowName = _job?.workflowname;
