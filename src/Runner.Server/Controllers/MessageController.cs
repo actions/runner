@@ -3008,6 +3008,7 @@ namespace Runner.Server.Controllers
                         variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
                         variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
                         variables.Add("DistributedTask.EnhancedAnnotations", new VariableValue("true", false));
+                        variables.Add("DistributedTask.UploadStepSummary", new VariableValue("true", false));
                         // For actions/upload-artifact@v1, actions/download-artifact@v1
                         variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                         variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));

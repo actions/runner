@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
+using GitHub.Actions.Pipelines.WebApi;
 
 namespace Runner.Server.Controllers
 {
@@ -69,10 +70,15 @@ namespace Runner.Server.Controllers
 
         [HttpPut("{scopeIdentifier}/{hubName}/{planId}/{timelineId}/attachments/{recordId}/{type}/{name}")]
         public async Task<IActionResult> PutAttachment(Guid timelineId, Guid recordId, string type, string name) {
-            var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "diagnosticlogs");
-            Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
-            Directory.CreateDirectory(_targetFilePath);
-            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, special.Replace($"{timelineId}_{recordId}_{type}_{name}.attachment", "-")), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+            var jobInfo = (from j in _context.Jobs where j.TimeLineId == timelineId select new { j.runid, j.Attempt }).FirstOrDefault();
+            var artifacts = new ArtifactController(_context, Configuration);
+            var fname = $"Attachment_{timelineId}_{recordId}_{type}";
+            var container = await artifacts.CreateContainer(jobInfo.runid, jobInfo.Attempt, new CreateActionsStorageArtifactParameters() { Name = fname });
+            var record = new ArtifactRecord() {FileName = Path.Join(fname, name), StoreName = Path.GetRandomFileName(), GZip = false, FileContainer = container} ;
+            _context.ArtifactRecords.Add(record);
+            await _context.SaveChangesAsync();
+            var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
+            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, record.StoreName), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
                 await Request.Body.CopyToAsync(targetStream);
             }
             return await Ok(new TaskAttachment(type, name) { RecordId = recordId, TimelineId = timelineId });
