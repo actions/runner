@@ -567,7 +567,7 @@ namespace GitHub.Runner.Worker
             {
                 if (!string.IsNullOrEmpty(logMessage))
                 {
-                    long logLineNumber = Write(WellKnownTags.Error, logMessage);
+                    long logLineNumber = Write(WellKnownTags.Error, logMessage) - 1;
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
 
@@ -582,7 +582,7 @@ namespace GitHub.Runner.Worker
             {
                 if (!string.IsNullOrEmpty(logMessage))
                 {
-                    long logLineNumber = Write(WellKnownTags.Warning, logMessage);
+                    long logLineNumber = Write(WellKnownTags.Warning, logMessage) - 1;
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
 
@@ -597,7 +597,7 @@ namespace GitHub.Runner.Worker
             {
                 if (!string.IsNullOrEmpty(logMessage))
                 {
-                    long logLineNumber = Write(WellKnownTags.Notice, logMessage);
+                    long logLineNumber = Write(WellKnownTags.Notice, logMessage) - 1;
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
 
