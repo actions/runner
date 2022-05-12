@@ -51,7 +51,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 }
             };
 
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Pre);
+            var prependPath = GetPrependPath(context);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Pre, prependPath);
             if (response == null)
             {
                 return;
@@ -109,7 +110,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 ResponseFile = responsePath,
                 State = GetHookStateInJson(context),
             };
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
+            var prependPath = GetPrependPath(context);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Post, prependPath);
             if (response == null)
             {
                 return;
@@ -129,7 +131,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 ResponseFile = responsePath,
                 State = hookState
             };
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Post);
+            var prependPath = GetPrependPath(context);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Post, prependPath);
             if (response == null)
             {
                 return;
@@ -157,7 +160,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = GetHookStateInJson(context)
             };
 
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Main);
+            var response = await ExecuteHookScript(context, input, ActionRunStage.Main, prependPath);
             if (response == null)
             {
                 return;
@@ -165,7 +168,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             SaveHookState(context, response.State);
         }
 
-        private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage)
+        private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath)
         {
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
@@ -173,7 +176,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 ["standardInInput"] = JsonUtility.ToString(input),
                 ["path"] = HookIndexPath,
-                ["shell"] = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}" // TODO: fix hardcoded node path
+                ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(HookIndexPath, Trace, prependPath, HostContext)
             };
 
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
@@ -213,6 +216,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         private string GenerateResponsePath()
         {
             return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName, $"{Guid.NewGuid()}.json");
+        }
+
+        private string GetPrependPath(IExecutionContext context)
+        {
+            return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());;
         }
 
         private static JToken GetHookStateInJson(IExecutionContext context)
