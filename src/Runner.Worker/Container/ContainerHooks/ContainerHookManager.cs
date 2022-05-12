@@ -193,20 +193,20 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             await handler.RunAsync(stage);
             if (handler.ExecutionContext.Result == TaskResult.Failed)
             {
-                throw new Exception($"Hook command '{input.Command}' failed"); // TODO: better exception
+                throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully."); // TODO: better exception
             }
-            Trace.Info($"Hook command '{input.Command}' successfully executed");
+            Trace.Info($"The hook script at '{HookIndexPath}' running command '{input.Command}' executed successfully.");
 
             HookResponse response = null;
             if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
             {
                 response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
                 IOUtil.DeleteFile(input.ResponseFile);
-                Trace.Info("Response file successfully processed and deleted");
+                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
             }
             else
             {
-                Trace.Info($"Response file not found for command '{input.Command}'");
+                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
             }
             return response;
         }
