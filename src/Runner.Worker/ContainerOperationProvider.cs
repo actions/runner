@@ -192,7 +192,7 @@ namespace GitHub.Runner.Worker
             {
                 Trace.Info($"User provided port: {port.Value}");
             }
-            foreach (var mount in container.MountVolumes.Where(v => !string.IsNullOrEmpty(v.UserProvidedValue)))
+            foreach (var mount in container.UserMountVolumes)
             {
                 Trace.Info($"User provided volume: {mount.UserProvidedValue}");
                 if (string.Equals(mount.SourceVolumePath, "/", StringComparison.OrdinalIgnoreCase))
