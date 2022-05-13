@@ -68,7 +68,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 foreach (var volume in container.Volumes)
                 {
-                    MountVolumes.Add(new MountVolume(volume, true));
+                    MountVolumes.Add(new MountVolume(volume, isUserProvided: true));
                 }
             }
 
