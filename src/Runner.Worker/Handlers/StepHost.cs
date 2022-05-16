@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker.Handlers
                 if (standardInInput != null)
                 {
                     redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                    await redirectStandardIn.Writer.WriteAsync(standardInInput, cancellationToken); // TODO: catch and rethrow with hook info
+                    await redirectStandardIn.Writer.WriteAsync(standardInInput, cancellationToken);
                 }
                 processInvoker.OutputDataReceived += OutputDataReceived;
                 processInvoker.ErrorDataReceived += ErrorDataReceived;
@@ -197,9 +197,6 @@ namespace GitHub.Runner.Worker.Handlers
                                                                                    environment,
                                                                                    PrependPath,
                                                                                    workingDirectory);
-                // normally, ExecuteAsync does not take a 'context', so we have to have an exit code. TODO: is this conversion correct?
-                // SucceededWithIssues is a special case, since it is not a failure, but would bubble up as exit code '1', which is failure
-                // do we still use it? it has 0 references
                 return (int)(context.Result ?? 0);
             }
 

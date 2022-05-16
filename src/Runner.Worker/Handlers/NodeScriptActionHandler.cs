@@ -143,7 +143,7 @@ namespace GitHub.Runner.Worker.Handlers
                                                 outputEncoding: outputEncoding,
                                                 killProcessOnCancel: false,
                                                 inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
-                                                standardInInput: string.Empty,
+                                                standardInInput: null,
                                                 cancellationToken: ExecutionContext.CancellationToken);
 
                 // Wait for either the node exit or force finish through ##vso command

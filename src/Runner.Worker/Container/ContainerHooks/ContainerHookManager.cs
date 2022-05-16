@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -27,6 +27,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         private const string ResponseFolderName = "_hook_responses";
         private string HookIndexPath;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -61,13 +62,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             jobContainer.IsAlpine = (bool) response.IsAlpine;
 
             var containerId = response?.Context?.Container?.Id;
+
+            var containerId = response.Context?.Container?.Id;
             if (containerId != null)
             {
                 context.JobContext.Container["id"] = new StringContextData(containerId);
                 jobContainer.ContainerId = containerId;
             }
 
-            var containerNetwork = response?.Context?.Container?.Network;
+            var containerNetwork = response.Context?.Container?.Network;
             if (containerNetwork != null)
             {
                 context.JobContext.Container["network"] = new StringContextData(containerNetwork);
@@ -76,9 +79,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             SaveHookState(context, response.State);
 
-            for (var i = 0; i < response?.Context?.Services?.Count; i++)
+            for (var i = 0; i < response.Context?.Services?.Count; i++)
             {
-                var container = response.Context.Services[i]; // TODO: Confirm that the order response.Context.Services is the same as serviceContainers
+                var container = response.Context.Services[i];
                 var containerInfo = serviceContainers[i];
                 containerInfo.ContainerId = container.Id;
                 containerInfo.ContainerNetwork = container.Network;
@@ -111,12 +114,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = GetHookStateInJson(context),
             };
             var prependPath = GetPrependPath(context);
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Post, prependPath);
-            if (response == null)
-            {
-                return;
-            }
-            SaveHookState(context, response.State);
+            await ExecuteHookScript(context, input, ActionRunStage.Post, prependPath);
         }
 
         public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
@@ -137,7 +135,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 return;
             }
-            SaveHookState(context, response.State);
+            SaveHookState(context, response.State, input);
         }
 
         public async Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
@@ -165,7 +163,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 return;
             }
-            SaveHookState(context, response.State);
+            SaveHookState(context, response.State, input);
         }
 
         private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath)
@@ -241,17 +239,21 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             if (context.JobContext.TryGetValue("hook_state", out var hookState))
             {
-                // TODO: log state read & loaded
                 return JsonUtility.FromString<JToken>(hookState.ToString());
             }
-            return JToken.Parse("{}");
+            return null;
         }
 
-        private static void SaveHookState(IExecutionContext context, JToken hookState)
+        private void SaveHookState(IExecutionContext context, JToken hookState, HookInput input)
         {
             // TODO: consider JTokenContextData
-            hookState ??= JToken.Parse("{}");
+            if (hookState == null)
+            {
+                Trace.Info($"No 'state' property found in response file for '{input.Command}'. Context variable 'hook_state' will not be updated.");
+                return;
+            }
             context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(hookState));
+            Trace.Info($"Context variable 'hook_state' updated successfully for '{input.Command}' with data found in 'state' property of the response file.");
         }
     }
 }
