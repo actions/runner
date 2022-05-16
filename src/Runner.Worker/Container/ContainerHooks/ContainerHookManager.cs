@@ -58,6 +58,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 return;
             }
 
+            jobContainer.IsAlpine = (bool)response.IsAlpine;
+
             var containerId = response?.Context?.Container?.Id;
             if (containerId != null)
             {
@@ -71,8 +73,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 context.JobContext.Container["network"] = new StringContextData(containerNetwork);
                 jobContainer.ContainerNetwork = containerNetwork;
             }
-            
-            jobContainer.IsAlpine = (bool)response.IsAlpine;
 
             SaveHookState(context, response.State);
 
@@ -198,7 +198,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 throw new Exception("Hook failed"); // TODO: better exception
             }
-            var response = GetAndValidateResponse(input);
+            var response = GetResponse(input);
             return response;
         }
 
@@ -212,7 +212,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());;
         }
 
-        private HookResponse GetAndValidateResponse(HookInput input)
+        private HookResponse GetResponse(HookInput input)
         {
             HookResponse response = null;
             if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
