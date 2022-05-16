@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -62,8 +62,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             jobContainer.IsAlpine = (bool) response.IsAlpine;
 
             var containerId = response?.Context?.Container?.Id;
-
-            var containerId = response.Context?.Container?.Id;
             if (containerId != null)
             {
                 context.JobContext.Container["id"] = new StringContextData(containerId);
@@ -77,7 +75,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 jobContainer.ContainerNetwork = containerNetwork;
             }
 
-            SaveHookState(context, response.State);
+            SaveHookState(context, response.State, input);
 
             for (var i = 0; i < response.Context?.Services?.Count; i++)
             {
@@ -220,12 +218,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
 
                 // IsAlpine is mandatory for prepare_job hook
-                if (input.Command == HookCommand.PrepareJob)
+                if (input.Command == HookCommand.PrepareJob && response.IsAlpine == null)
                 {
-                    if (response.IsAlpine == null)
-                    {
-                        throw new Exception("Expected field 'isAlpine' was not returned. Please contact your self hosted runner administrator.");
-                    }
+                    throw new Exception("Expected field 'isAlpine' was not returned. Please contact your self hosted runner administrator.");
                 }
             }
             else
