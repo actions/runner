@@ -71,8 +71,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 context.JobContext.Container["network"] = new StringContextData(containerNetwork);
                 jobContainer.ContainerNetwork = containerNetwork;
             }
-
-            jobContainer.IsAlpine = response.IsAlpine;
+            
+            if (response.IsAlpine == null)
+            {
+                throw new Exception("Expected field 'alpine' was not returned. Please contact your self hosted runner administrator.");
+            }
+            jobContainer.IsAlpine = (bool)response.IsAlpine;
 
             SaveHookState(context, response.State);
 
