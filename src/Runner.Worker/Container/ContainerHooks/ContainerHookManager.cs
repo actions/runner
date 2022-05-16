@@ -196,7 +196,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             await handler.RunAsync(stage);
             if (handler.ExecutionContext.Result == TaskResult.Failed)
             {
-                throw new Exception("Hook failed"); // TODO: better exception
+                throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully."); // TODO: better exception
             }
             var response = GetResponse(input);
             return response;
@@ -219,7 +219,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
                 IOUtil.DeleteFile(input.ResponseFile);
-                Trace.Info("Response file successfully processed and deleted");
+                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
 
                 // IsAlpine is mandatory for prepare_job hook
                 if (input.Command == HookCommand.PrepareJob)
@@ -232,7 +232,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
             else
             {
-                Trace.Info($"Response file not found for command '{input.Command}'");
+                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
             }
             return response;
         }
