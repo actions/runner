@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker.Handlers
                 if (standardInInput != null)
                 {
                     redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                    await redirectStandardIn.Writer.WriteAsync(standardInInput, cancellationToken); // TODO: catch and rethrow with hook info
+                    await redirectStandardIn.Writer.WriteAsync(standardInInput, cancellationToken);
                 }
                 processInvoker.OutputDataReceived += OutputDataReceived;
                 processInvoker.ErrorDataReceived += ErrorDataReceived;
