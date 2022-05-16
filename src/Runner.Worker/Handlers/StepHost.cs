@@ -197,9 +197,6 @@ namespace GitHub.Runner.Worker.Handlers
                                                                                    environment,
                                                                                    PrependPath,
                                                                                    workingDirectory);
-                // normally, ExecuteAsync does not take a 'context', so we have to have an exit code. TODO: is this conversion correct?
-                // SucceededWithIssues is a special case, since it is not a failure, but would bubble up as exit code '1', which is failure
-                // do we still use it? it has 0 references
                 return (int)(context.Result ?? 0);
             }
 
