@@ -675,7 +675,7 @@ namespace GitHub.Runner.Worker
             return snapshot;
         }
 
-        private void ValidateJobContainer(JobContainer container)
+        private static void ValidateJobContainer(JobContainer container)
         {
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.FailJobsWithoutJobContainer)) && container == null)
             {
