@@ -285,8 +285,11 @@ namespace GitHub.Runner.Worker
             container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
 
             container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
-            container.ContainerEntryPoint = "tail";
-            container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext))
+            {
+                container.ContainerEntryPoint = "tail";
+                container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+            } 
         }
 
         private async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
