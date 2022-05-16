@@ -58,7 +58,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 return;
             }
 
-            jobContainer.IsAlpine = (bool)response.IsAlpine;
+            jobContainer.IsAlpine = (bool) response.IsAlpine;
 
             var containerId = response?.Context?.Container?.Id;
             if (containerId != null)
