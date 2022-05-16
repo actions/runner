@@ -72,10 +72,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 jobContainer.ContainerNetwork = containerNetwork;
             }
             
-            if (response.IsAlpine == null)
-            {
-                throw new Exception("Expected field 'alpine' was not returned. Please contact your self hosted runner administrator.");
-            }
             jobContainer.IsAlpine = (bool)response.IsAlpine;
 
             SaveHookState(context, response.State);
@@ -202,18 +198,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 throw new Exception("Hook failed"); // TODO: better exception
             }
-
-            HookResponse response = null;
-            if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
-            {
-                response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
-                IOUtil.DeleteFile(input.ResponseFile);
-                Trace.Info("Response file successfully processed and deleted");
-            }
-            else
-            {
-                Trace.Info($"Response file not found for command '{input.Command}'");
-            }
+            var response = GetAndValidateResponse(input);
             return response;
         }
 
@@ -225,6 +210,31 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         private string GetPrependPath(IExecutionContext context)
         {
             return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());;
+        }
+
+        private HookResponse GetAndValidateResponse(HookInput input)
+        {
+            HookResponse response = null;
+            if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
+            {
+                response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
+                IOUtil.DeleteFile(input.ResponseFile);
+                Trace.Info("Response file successfully processed and deleted");
+
+                // IsAlpine is mandatory for prepare_job hook
+                if (input.Command == HookCommand.PrepareJob)
+                {
+                    if (response.IsAlpine == null)
+                    {
+                        throw new Exception("Expected field 'alpine' was not returned. Please contact your self hosted runner administrator.");
+                    }
+                }
+            }
+            else
+            {
+                Trace.Info($"Response file not found for command '{input.Command}'");
+            }
+            return response;
         }
 
         private static JToken GetHookStateInJson(IExecutionContext context)
