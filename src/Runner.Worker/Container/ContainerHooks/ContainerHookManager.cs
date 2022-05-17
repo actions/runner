@@ -211,22 +211,26 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         private HookResponse GetResponse(HookInput input)
         {
             HookResponse response = null;
-            if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
-            {
-                response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
-                IOUtil.DeleteFile(input.ResponseFile);
-                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
 
-                // IsAlpine is mandatory for prepare_job hook
-                if (input.Command == HookCommand.PrepareJob && response.IsAlpine == null)
-                {
-                    throw new Exception("Expected field 'isAlpine' was not returned. Please contact your self hosted runner administrator.");
-                }
-            }
-            else
+            if (string.IsNullOrEmpty(input.ResponseFile) || !File.Exists(input.ResponseFile))
             {
                 Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
+                if (input.Command == HookCommand.PrepareJob)
+                {
+                    throw new Exception($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
+                }           
             }
+
+            response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
+            IOUtil.DeleteFile(input.ResponseFile);
+            Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
+
+            // IsAlpine is mandatory for prepare_job hook
+            if (input.Command == HookCommand.PrepareJob && response.IsAlpine == null)
+            {
+                throw new Exception("Expected field 'isAlpine' was not returned. Please contact your self hosted runner administrator.");
+            }
+
             return response;
         }
 
