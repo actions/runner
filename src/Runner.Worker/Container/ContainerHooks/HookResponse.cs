@@ -7,7 +7,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         public ResponseContext Context { get; set; }
         public JToken State { get; set; }
-        public bool IsAlpine { get; set; }
+        public bool? IsAlpine { get; set; }
     }
 
     public class ResponseContext

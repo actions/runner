@@ -59,9 +59,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 return;
             }
 
-            SaveHookState(context, response.State, input);
+            jobContainer.IsAlpine = (bool) response.IsAlpine;
 
-            var containerId = response.Context?.Container?.Id;
+            var containerId = response?.Context?.Container?.Id;
             if (containerId != null)
             {
                 context.JobContext.Container["id"] = new StringContextData(containerId);
@@ -75,7 +75,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 jobContainer.ContainerNetwork = containerNetwork;
             }
 
-            jobContainer.IsAlpine = response.IsAlpine;
+            SaveHookState(context, response.State, input);
 
             for (var i = 0; i < response.Context?.Services?.Count; i++)
             {
@@ -194,19 +194,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully."); // TODO: better exception
             }
-            Trace.Info($"The hook script at '{HookIndexPath}' running command '{input.Command}' executed successfully.");
-
-            HookResponse response = null;
-            if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
-            {
-                response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
-                IOUtil.DeleteFile(input.ResponseFile);
-                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
-            }
-            else
-            {
-                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
-            }
+            var response = GetResponse(input);
             return response;
         }
 
@@ -215,9 +203,37 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName, $"{Guid.NewGuid()}.json");
         }
 
-        private static string GetPrependPath(IExecutionContext context)
+        private string GetPrependPath(IExecutionContext context)
         {
             return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());;
+        }
+
+        private HookResponse GetResponse(HookInput input)
+        {
+            HookResponse response = null;
+
+            if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
+            {
+                response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
+                IOUtil.DeleteFile(input.ResponseFile);
+                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
+
+                // IsAlpine is mandatory for prepare_job hook
+                if (input.Command == HookCommand.PrepareJob && response.IsAlpine == null)
+                {
+                    throw new Exception("The property 'isAlpine' is required but was not found in the response file.");
+                }
+            }
+            else
+            {
+                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
+                if (input.Command == HookCommand.PrepareJob)
+                {
+                    throw new Exception($"Response file is required but not found for the hook script at '{HookIndexPath}' running command '{input.Command}'");
+                }
+            }
+
+            return response;
         }
 
         private static JToken GetHookStateInJson(IExecutionContext context)
