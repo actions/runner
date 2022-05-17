@@ -100,7 +100,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-
                 // Arrange: Create a job request message.
                 TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
                 TimelineReference timeline = new TimelineReference();
@@ -760,6 +759,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 stepHost.Container = containerInfo;
 
                 var ec = new Runner.Worker.ExecutionContext();
+
                 ec.Initialize(hc);
 
                 var inputGithubContext = new GitHubContext();

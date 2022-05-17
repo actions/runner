@@ -8,7 +8,7 @@ namespace GitHub.Runner.Worker.Container
         public static bool IsContainerHooksEnabled(IExecutionContext executionContext)
         {
             return string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)) && 
-            ((executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.AllowRunnerContainerHooks)) ?? false);
+            ((executionContext.Global?.Variables.GetBoolean(Constants.Runner.Features.AllowRunnerContainerHooks)) ?? false);
         }
     }
 }
