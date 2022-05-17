@@ -229,7 +229,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
                 if (input.Command == HookCommand.PrepareJob)
                 {
-                    throw new Exception($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
+                    throw new Exception($"Response file is required but not found for the hook script at '{HookIndexPath}' running command '{input.Command}'");
                 }
             }
 
