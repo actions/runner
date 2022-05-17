@@ -1,8 +1,12 @@
 ## Features
+- Relaxed naming requirements for dockerfiles (e.g. `Dockerfile.test` can now be built) (#1738)
 
 ## Bugs
-- Fixed an issue where websockets failed to successfully close when posting log lines (#1790)
+- Fixed a bug where windows path separators were used in generated folders (#1617)
+- Fixed an issue where runner's invoked via `run.sh` or `run.cmd` did not properly restart after update (#1812). This fix applies to all future updates after installing this version
 
+## Misc
+- Relaxed Actions Summary size limit to 1MiB (#1839)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
