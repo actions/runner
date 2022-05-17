@@ -211,7 +211,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         private HookResponse GetResponse(HookInput input)
         {
             HookResponse response = null;
-            
+
             if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
             {
                 response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
@@ -221,7 +221,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 // IsAlpine is mandatory for prepare_job hook
                 if (input.Command == HookCommand.PrepareJob && response.IsAlpine == null)
                 {
-                    throw new Exception("Expected field 'isAlpine' was not returned. Please contact your self hosted runner administrator.");
+                    throw new Exception("The property 'isAlpine' is required but was not found in the response file.");
                 }
             }
             else
