@@ -447,7 +447,7 @@ namespace Runner.Client
             } else {
                 Console.ResetColor();
                 Console.ForegroundColor = (ConsoleColor)color;
-                Console.Write("|");
+                Console.Write("| ");
                 Console.ResetColor();
                 Console.WriteLine(message);
             }
