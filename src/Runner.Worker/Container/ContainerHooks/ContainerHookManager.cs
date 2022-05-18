@@ -25,7 +25,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
     public class ContainerHookManager : RunnerService, IContainerHookManager
     {
-        private const string ResponseFolderName = "_hook_responses";
+        private const string ResponseFolderName = "_runner_hook_responses";
         private string HookIndexPath;
 
         public override void Initialize(IHostContext hostContext)
