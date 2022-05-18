@@ -831,11 +831,9 @@ namespace Runner.Server.Controllers
                         try {
                             JobStatus jobstatus = JobStatus.Pending;
                             var description = status?.ToString() ?? "Pending";
-                            if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues) {
+                            // Skipped jobs don't block required checks: so Skipped => Success https://github.com/github/docs/commit/66b433088115a579b7f1d774aa1ee852fc5ec2b
+                            if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues || status == TaskResult.Skipped) {
                                 jobstatus = JobStatus.Success;
-                            }
-                            if(status == TaskResult.Skipped) {
-                                jobstatus = JobStatus.Pending;
                             }
                             if(status == TaskResult.Failed || status == TaskResult.Abandoned || status == TaskResult.Canceled) {
                                 jobstatus = JobStatus.Failure;
