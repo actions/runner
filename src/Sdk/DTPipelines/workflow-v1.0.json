@@ -7,11 +7,17 @@
       "description": "Workflow file",
       "mapping": {
         "properties": {
-          "on": "workflow-on",
+          "on": {
+            "type": "workflow-on",
+            "required": true
+          },
           "name": "string",
           "defaults": "workflow-defaults",
           "env": "workflow-env",
-          "jobs": "jobs",
+          "jobs": {
+            "type": "jobs",
+            "required": true
+          },
           "permissions": "permissions",
           "concurrency": "workflow-concurrency"
         }
