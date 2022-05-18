@@ -2008,7 +2008,7 @@ namespace Runner.Server.Controllers
                         workflowEnvironment.Add(actionPair.Value);
                         break;
                         case "permissions":
-                        workflowPermissions = actionPair.Value;
+                        workflowPermissions = actionPair.Value.AssertPermissionsValues("permissions");
                         break;
                         case "concurrency":
                         {
@@ -2522,7 +2522,7 @@ namespace Runner.Server.Controllers
             };
             try {
                 // Job permissions
-                TemplateToken jobPermissions = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "permissions" select r).FirstOrDefault().Value ?? workflowPermissions;
+                TemplateToken jobPermissions = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "permissions" select r).FirstOrDefault().Value?.AssertPermissionsValues($"jobs.{name}") ?? workflowPermissions;
                 var calculatedPermissions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 bool isFork = false;
                 {
@@ -2596,7 +2596,7 @@ namespace Runner.Server.Controllers
                 if(rawSteps == null) {
                     var rawUses = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "uses" select r).FirstOrDefault().Value?.AssertString($"jobs.{name}.uses");
                     var rawWith = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "with" select r).FirstOrDefault().Value?.AssertMapping($"jobs.{name}.with");
-                    var rawSecrets = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "secrets" select r).FirstOrDefault().Value;
+                    var rawSecrets = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "secrets" select r).FirstOrDefault().Value?.AssertJobSecrets($"jobs.{name}.secrets");
                     var uses = rawUses;
                     RepositoryPathReference reference = null;
                     if (uses.Value.StartsWith("./") || uses.Value.StartsWith(".\\"))
