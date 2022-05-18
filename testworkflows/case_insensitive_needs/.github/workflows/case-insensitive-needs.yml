@@ -1,11 +1,11 @@
 on: push
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - run: echo Hi
   test2:
     needs: Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - run: echo Hi
