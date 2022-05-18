@@ -1735,17 +1735,17 @@ namespace Runner.Server.Controllers
                                         }
                                         {
                                             int i = 0;
-                                            Func<IEnumerable<string>, string> defaultDisplayName = item => {
-                                                var displayname = new StringBuilder(jobname);
+                                            Func<IEnumerable<string>, string> defaultDisplaySuffix = item => {
+                                                var displaySuffix = new StringBuilder();
                                                 int z = 0;
                                                 foreach (var mk in item) {
-                                                    displayname.Append(z++ == 0 ? " (" : ", ");
-                                                    displayname.Append(mk);
+                                                    displaySuffix.Append(z++ == 0 ? "(" : ", ");
+                                                    displaySuffix.Append(mk);
                                                 }
                                                 if(z > 0) {
-                                                    displayname.Append( ")");
+                                                    displaySuffix.Append( ")");
                                                 }
-                                                return displayname.ToString();
+                                                return displaySuffix.ToString();
                                             };
                                             var usesJob = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "uses" select r).FirstOrDefault().Value != null;
                                             if(usesJob) {
@@ -1759,7 +1759,7 @@ namespace Runner.Server.Controllers
                                                     }
                                                 }
                                             }
-                                            Func<string, Dictionary<string, TemplateToken>, Func<bool, Job>> act = (displayname, item) => {
+                                            Func<string, Dictionary<string, TemplateToken>, Func<bool, Job>> act = (displaySuffix, item) => {
                                                 int c = i++;
                                                 strategyctx["job-index"] = new NumberContextData((double)(c));
                                                 DictionaryContextData matrixContext = null;
@@ -1816,7 +1816,8 @@ namespace Runner.Server.Controllers
                                                     }
                                                 }
                                                 var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid() } : jobitem;
-                                                var _prejobdisplayname = displayname;
+                                                Func<string, string> defJobName = jobname => string.IsNullOrEmpty(displaySuffix) ? jobname : $"{jobname} {displaySuffix}";
+                                                var _prejobdisplayname = defJobName(jobname);
                                                 if(callingJob?.Name != null) {
                                                     _prejobdisplayname = callingJob.Name + " / " + _prejobdisplayname;
                                                 }
@@ -1841,7 +1842,7 @@ namespace Runner.Server.Controllers
                                                     jobitem.Childs?.Add(next);
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job name" }), next.TimelineId, next.Id);
                                                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, contextData);
-                                                    var _jobdisplayname = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, null, true).AssertString($"jobs.{jobname}.name must be a string").Value).FirstOrDefault() ?? displayname;
+                                                    var _jobdisplayname = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value is StringToken token ? defJobName(token.Value) : GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, null, true).AssertString($"jobs.{jobname}.name must be a string").Value).FirstOrDefault() ?? defJobName(jobname);
                                                     templateContext.Errors.Check();
                                                     if(callingJob?.Name != null) {
                                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
@@ -1942,7 +1943,7 @@ namespace Runner.Server.Controllers
                                                         cancelAll(cancelreqmsg);
                                                         return;
                                                     }
-                                                    var j = act(defaultDisplayName(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                                                    var j = act(defaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                                                     if(j != null) {
                                                         jobs.Enqueue(j);
                                                     }
@@ -1953,7 +1954,7 @@ namespace Runner.Server.Controllers
                                                     cancelAll(cancelreqmsg);
                                                     return;
                                                 }
-                                                var j = act(defaultDisplayName(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                                                var j = act(defaultDisplaySuffix(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                                                 if(j != null) {
                                                     jobs.Enqueue(j);
                                                 }
