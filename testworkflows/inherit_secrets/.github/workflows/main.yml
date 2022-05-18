@@ -1,0 +1,9 @@
+on:
+  push:
+jobs:
+  test1:
+    uses: ./.github/workflows/x.yml
+    secrets: inherit
+  test2:
+    uses: ./.github/workflows/y.yml
+    secrets: inherit

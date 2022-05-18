@@ -1,0 +1,10 @@
+on:
+  workflow_call:
+    secrets:
+      test: {}
+
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+    - run: exit ${{secrets.misc == 'topSecretVal' && '0' || '1'}}

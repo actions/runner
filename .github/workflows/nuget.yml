@@ -135,6 +135,7 @@ jobs:
         gharun -W testworkflows/test-setup-node.yml
         gharun -C testworkflows/actions_checkout_v1
         gharun -C testworkflows/case_insensitive_needs
+        gharun -C testworkflows/inherit_secrets -s misc=topSecretVal
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
