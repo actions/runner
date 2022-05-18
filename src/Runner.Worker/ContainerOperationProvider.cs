@@ -55,7 +55,7 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
-            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext)) 
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext))
             {
                 // Initialize the containers
                 containers.ForEach(container => UpdateRegistryAuthForGitHubToken(executionContext, container));
@@ -63,7 +63,7 @@ namespace GitHub.Runner.Worker
                 await _containerHookManager.PrepareJobAsync(executionContext, containers);
                 return;
             }
-            await AssertCompatibleOS(executionContext);            
+            await AssertCompatibleOS(executionContext);
 
             // Clean up containers left by previous runs
             executionContext.Output("##[group]Clean up resources from previous jobs");
@@ -113,8 +113,8 @@ namespace GitHub.Runner.Worker
 
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
-            
-            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext)) 
+
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext))
             {
                 await _containerHookManager.CleanupJobAsync(executionContext, containers);
                 return;
@@ -289,7 +289,7 @@ namespace GitHub.Runner.Worker
             {
                 container.ContainerEntryPoint = "tail";
                 container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
-            } 
+            }
         }
 
         private async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
@@ -300,11 +300,11 @@ namespace GitHub.Runner.Worker
 
             if (!string.IsNullOrEmpty(container.ContainerId))
             {
-                if(!container.IsJobContainer)
+                if (!container.IsJobContainer)
                 {
                     // Print logs for service container jobs (not the "action" job itself b/c that's already logged).
                     executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
-                    
+
                     int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
                     if (logsExitCode != 0)
                     {
@@ -488,7 +488,7 @@ namespace GitHub.Runner.Worker
 
         private async Task AssertCompatibleOS(IExecutionContext executionContext)
         {
-                   // Check whether we are inside a container.
+            // Check whether we are inside a container.
             // Our container feature requires to map working directory from host to the container.
             // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
 #if OS_WINDOWS
