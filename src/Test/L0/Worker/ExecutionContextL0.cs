@@ -759,7 +759,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 stepHost.Container = containerInfo;
 
                 var ec = new Runner.Worker.ExecutionContext();
-
                 ec.Initialize(hc);
 
                 var inputGithubContext = new GitHubContext();
