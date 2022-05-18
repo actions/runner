@@ -1,0 +1,25 @@
+
+on:
+  workflow_dispatch:
+    inputs:
+      misc: {}
+      si: {}
+      xdef:
+        default: defval
+      bdef:
+        type: boolean
+        default: false
+      bdef2:
+        type: boolean
+        default: true
+      bdef3:
+        type: boolean
+      bval:
+        type: boolean
+      bval2:
+        type: boolean
+jobs:
+  a: 
+    runs-on: self-hosted
+    steps:
+    - run: exit ${{ github.inputs.misc == 'myInput' && github.inputs.si == 'UdHe' && github.inputs.xdef == 'defval' && github.inputs.bdef == 'false' && github.inputs.bdef2 == 'true' && github.inputs.bdef3 == 'false' && github.inputs.bval == 'true' && github.inputs.bval2 == 'false' && '0' || '1' }}
