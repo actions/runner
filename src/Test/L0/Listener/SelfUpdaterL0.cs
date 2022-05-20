@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !(OS_OSX && ARM64)
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -795,3 +796,4 @@ namespace GitHub.Runner.Common.Tests.Listener
         }
     }
 }
+#endif
