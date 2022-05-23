@@ -18,8 +18,21 @@ on:
         type: boolean
       bval2:
         type: boolean
+      defchoice:
+        type: choice
+        options:
+        - val1
+        - val2
+        - val3
+      defchoice2:
+        type: choice
+        options:
+        - val1
+        - val2
+        - val3
+        default: val3
 jobs:
   a: 
     runs-on: self-hosted
     steps:
-    - run: exit ${{ github.event.inputs.misc == 'myInput' && github.event.inputs.si == 'UdHe' && github.event.inputs.xdef == 'defval' && github.event.inputs.bdef == 'false' && github.event.inputs.bdef2 == 'true' && github.event.inputs.bdef3 == 'false' && github.event.inputs.bval == 'true' && github.event.inputs.bval2 == 'false' && '0' || '1' }}
+    - run: exit ${{ github.event.inputs.misc == 'myInput' && github.event.inputs.si == 'UdHe' && github.event.inputs.xdef == 'defval' && github.event.inputs.bdef == 'false' && github.event.inputs.bdef2 == 'true' && github.event.inputs.bdef3 == 'false' && github.event.inputs.bval == 'true' && github.event.inputs.bval2 == 'false' && github.event.inputs.defchoice == 'val1' && github.event.inputs.defchoice2 == 'val3' && '0' || '1' }}
