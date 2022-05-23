@@ -138,6 +138,7 @@ jobs:
         gharun -C testworkflows/inherit_secrets -s misc=topSecretVal
         gharun -C testworkflows/reusablesCaseInsensitive
         gharun -C testworkflows/workflow_dispatch workflow_dispatch -i misc=myInput -i si=UdHe -i bval=true -i bval2=false
+        gharun -C testworkflows/workflow_dispatch workflow_dispatch -i Misc=myInput -i SI=UdHe -i bVal=true -i BVAL2=false
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
