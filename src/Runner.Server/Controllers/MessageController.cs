@@ -1483,7 +1483,8 @@ namespace Runner.Server.Controllers
                                     var jobrecord = new TimelineRecord{ Id = jobitem.Id, Name = jobitem.name };
                                     TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                     var jobTraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
-                                    var _jobdisplayname = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value.ToString()).FirstOrDefault() ?? jobitem.name;
+                                    var jobNameToken = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value).FirstOrDefault();
+                                    var _jobdisplayname = jobNameToken?.ToString() ?? jobitem.name;
                                     if(callingJob?.Name != null) {
                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                     }
@@ -1739,8 +1740,10 @@ namespace Runner.Server.Controllers
                                                 var displaySuffix = new StringBuilder();
                                                 int z = 0;
                                                 foreach (var mk in item) {
-                                                    displaySuffix.Append(z++ == 0 ? "(" : ", ");
-                                                    displaySuffix.Append(mk);
+                                                    if(!string.IsNullOrEmpty(mk)) {
+                                                        displaySuffix.Append(z++ == 0 ? "(" : ", ");
+                                                        displaySuffix.Append(mk);
+                                                    }
                                                 }
                                                 if(z > 0) {
                                                     displaySuffix.Append( ")");
@@ -1817,10 +1820,7 @@ namespace Runner.Server.Controllers
                                                 }
                                                 var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid() } : jobitem;
                                                 Func<string, string> defJobName = jobname => string.IsNullOrEmpty(displaySuffix) ? jobname : $"{jobname} {displaySuffix}";
-                                                var _prejobdisplayname = defJobName(jobname);
-                                                if(callingJob?.Name != null) {
-                                                    _prejobdisplayname = callingJob.Name + " / " + _prejobdisplayname;
-                                                }
+                                                var _prejobdisplayname = defJobName(_jobdisplayname);
                                                 if(jobTotal > 1) {
                                                     next.TimelineId = Guid.NewGuid();
                                                     // For Runner.Client to show the workflowname
@@ -1842,10 +1842,13 @@ namespace Runner.Server.Controllers
                                                     jobitem.Childs?.Add(next);
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job name" }), next.TimelineId, next.Id);
                                                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, contextData);
-                                                    var _jobdisplayname = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value is StringToken token ? defJobName(token.Value) : GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, null, true).AssertString($"jobs.{jobname}.name must be a string").Value).FirstOrDefault() ?? defJobName(jobname);
-                                                    templateContext.Errors.Check();
-                                                    if(callingJob?.Name != null) {
-                                                        _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
+                                                    var _jobdisplayname = _prejobdisplayname;
+                                                    if(jobNameToken != null && !(jobNameToken is StringToken)) {
+                                                        _jobdisplayname = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", jobNameToken, 0, null, true).AssertString($"jobs.{jobname}.name must be a string").Value;
+                                                        templateContext.Errors.Check();
+                                                        if(callingJob?.Name != null) {
+                                                            _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
+                                                        }
                                                     }
                                                     next.DisplayName = _jobdisplayname;
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job continueOnError" }), next.TimelineId, next.Id);
