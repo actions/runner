@@ -707,20 +707,12 @@ namespace GitHub.DistributedTask.WebApi
         /// <summary>
         /// [Preview API]
         /// </summary>
-        /// <param name="scopeId"></param>
-        /// <param name="planType"></param>
-        /// <param name="planGroup"></param>
-        /// <param name="planId"></param>
-        /// <param name="instanceRefsJson"></param>
+        /// <param name="id">Message ID</param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public virtual Task<Pipelines.AgentJobRequestMessage> GetJobMessageAsync(
-            Guid scopeId,
-            string planType,
-            string planGroup,
-            Guid planId,
-            string instanceRefsJson,
+            string id,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -728,11 +720,7 @@ namespace GitHub.DistributedTask.WebApi
             Guid locationId = new Guid("25adab70-1379-4186-be8e-b643061ebe3a");
 
             List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
-            queryParams.Add("scopeId", scopeId.ToString());
-            queryParams.Add("planType", planType);
-            queryParams.Add("planGroup", planGroup);
-            queryParams.Add("planId", planId.ToString());
-            queryParams.Add("instanceRefsJson", instanceRefsJson);
+            queryParams.Add("id", id);
 
             return SendAsync<Pipelines.AgentJobRequestMessage>(
                 httpMethod,

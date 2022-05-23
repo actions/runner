@@ -453,7 +453,7 @@ namespace GitHub.Runner.Listener
                                 {
                                     Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
                                     var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
-                                    jobDispatcher.Run(Guid.Empty, jobMessage, runOnce);
+                                    jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
                                     {
                                         Trace.Info("One time used runner received job message.");
@@ -480,10 +480,9 @@ namespace GitHub.Runner.Listener
                                     // todo: add retries
                                     var runServer = HostContext.CreateService<IRunServer>();
                                     await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.ScopeId, messageRef.HostId, messageRef.PlanType, messageRef.PlanGroup, messageRef.PlanId, messageRef.InstanceRefs);
+                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.Id);
 
-                                    // todo: Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
-                                    jobDispatcher.Run(messageRef.HostId, jobMessage, runOnce);
+                                    jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
                                     {
                                         Trace.Info("One time used runner received job message.");

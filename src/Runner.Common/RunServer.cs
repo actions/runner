@@ -1,14 +1,14 @@
-﻿using GitHub.DistributedTask.WebApi;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Runner.Common.Util;
-using GitHub.Services.WebApi;
-using GitHub.Services.Common;
-using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Common
 {
@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
     {
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
-        Task<AgentJobRequestMessage> GetJobMessageAsync(Guid scopeId, Guid hostId, string planType, string planGroup, Guid planId, IList<InstanceRef> instanceRefsJson);
+        Task<AgentJobRequestMessage> GetJobMessageAsync(string id);
     }
 
     public sealed class RunServer : RunnerService, IRunServer
@@ -28,7 +28,6 @@ namespace GitHub.Runner.Common
 
         public async Task ConnectAsync(Uri serverUrl, VssCredentials credentials)
         {
-            // System.Console.WriteLine("RunServer.ConnectAsync");
             _connection = await EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(100));
             _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();
             _hasConnection = true;
@@ -36,7 +35,6 @@ namespace GitHub.Runner.Common
 
         private async Task<VssConnection> EstablishVssConnection(Uri serverUrl, VssCredentials credentials, TimeSpan timeout)
         {
-            // System.Console.WriteLine("EstablishVssConnection");
             Trace.Info($"EstablishVssConnection");
             Trace.Info($"Establish connection with {timeout.TotalSeconds} seconds timeout.");
             int attemptCount = 5;
@@ -69,52 +67,10 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public Task<AgentJobRequestMessage> GetJobMessageAsync(
-            Guid scopeId,
-            Guid hostId,
-            string planType,
-            string planGroup,
-            Guid planId,
-            IList<InstanceRef> instanceRefsJson)
+        public Task<AgentJobRequestMessage> GetJobMessageAsync(string id)
         {
-            // System.Console.WriteLine("RunServer.GetMessageAsync");
             CheckConnection();
-            return _taskAgentClient.GetJobMessageAsync(scopeId, hostId, planType, planGroup, planId, StringUtil.ConvertToJson(instanceRefsJson, Newtonsoft.Json.Formatting.None));
+            return _taskAgentClient.GetJobMessageAsync(id);
         }
-    }
-
-    // todo: move to SDK?
-    [DataContract]
-    public sealed class MessageRef
-    {
-        [DataMember(Name = "url")]
-        public string Url { get; set; }
-        [DataMember(Name = "token")]
-        public string Token { get; set; }
-        [DataMember(Name = "scopeId")]
-        public Guid ScopeId { get; set; }
-        [DataMember(Name = "hostId")]
-        public Guid HostId { get; set; }
-        [DataMember(Name = "planType")]
-        public string PlanType { get; set; }
-        [DataMember(Name = "planGroup")]
-        public string PlanGroup { get; set; }
-        [DataMember(Name = "planId")]
-        public Guid PlanId { get; set; }
-        [DataMember(Name = "instanceRefs")]
-        public InstanceRef[] InstanceRefs { get; set; }
-        [DataMember(Name = "labels")]
-        public string[] Labels { get; set; }
-    }
-
-    [DataContract]
-    public sealed class InstanceRef
-    {
-        [DataMember(Name = "name")]
-        public string Name { get; set; }
-        [DataMember(Name = "instanceType")]
-        public string InstanceType { get; set; }
-        [DataMember(Name = "attempt")]
-        public int Attempt { get; set; }
     }
 }
