@@ -55,7 +55,7 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
-            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext))
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 // Initialize the containers
                 containers.ForEach(container => UpdateRegistryAuthForGitHubToken(executionContext, container));
@@ -114,7 +114,7 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
 
-            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext))
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 await _containerHookManager.CleanupJobAsync(executionContext, containers);
                 return;
@@ -284,7 +284,7 @@ namespace GitHub.Runner.Worker
             container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
 
             container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
-            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext))
+            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 container.ContainerEntryPoint = "tail";
                 container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";

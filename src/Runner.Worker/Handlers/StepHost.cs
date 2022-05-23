@@ -111,8 +111,9 @@ namespace GitHub.Runner.Worker.Handlers
         {
             // make sure container exist.
             ArgUtil.NotNull(Container, nameof(Container));
-            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext))
+            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global?.Variables))
             {
+                // TODO: Remove nullcheck with executionContext.Global? by setting up ExecutionContext.Global at GitHub.Runner.Common.Tests.Worker.ExecutionContextL0.GetExpressionValues_ContainerStepHost
                 ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
             }
 
@@ -139,7 +140,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Optimistically use the default
             string nodeExternal = preferredVersion;
 
-            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext))
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 if (Container.IsAlpine)
                 {
@@ -187,7 +188,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(Container, nameof(Container));
             var containerHookManager = HostContext.GetService<IContainerHookManager>();
-            if (FeatureFlagManager.IsContainerHooksEnabled(context))
+            if (FeatureFlagManager.IsContainerHooksEnabled(context.Global.Variables))
             {
                 TranslateToContainerPath(environment);
                 await containerHookManager.ScriptStepAsync(context,

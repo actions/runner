@@ -7,10 +7,10 @@ namespace GitHub.Runner.Worker.Container
 {
     public class FeatureFlagManager
     {
-        public static bool IsContainerHooksEnabled(IExecutionContext executionContext)
+        public static bool IsContainerHooksEnabled(Variables variables)
         {
             var hookExecutablePath = Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath);
-            var isContainerHookFeatureFlagSet = executionContext.Global?.Variables.GetBoolean(Constants.Runner.Features.AllowRunnerContainerHooks) ?? false;
+            var isContainerHookFeatureFlagSet = variables?.GetBoolean(Constants.Runner.Features.AllowRunnerContainerHooks) ?? false;
 
             if (isContainerHookFeatureFlagSet && !string.IsNullOrEmpty(hookExecutablePath))
             {

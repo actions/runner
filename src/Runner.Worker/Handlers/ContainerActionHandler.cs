@@ -51,7 +51,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // ensure docker file exist
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
-                if (!FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext))
+                if (!FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
                 {
                     ExecutionContext.Output($"##[group]Building docker image");
                     ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
@@ -224,7 +224,7 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEnvironmentVariables[variable.Key] = container.TranslateToContainerPath(variable.Value);
             }
 
-            if (FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext))
+            if (FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
             {
                 await containerHookManager.ContainerStepAsync(ExecutionContext, container);
             }
