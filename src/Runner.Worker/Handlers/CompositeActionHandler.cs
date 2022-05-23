@@ -11,6 +11,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -89,6 +90,11 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.StepTelemetry.StepCount = steps.Count;
             }
             ExecutionContext.StepTelemetry.Type = "composite";
+
+            if (ExecutionContext.JobContext.Container != null)
+            {
+                ExecutionContext.StepTelemetry.IsContainerHook = FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables);
+            }
 
             try
             {
