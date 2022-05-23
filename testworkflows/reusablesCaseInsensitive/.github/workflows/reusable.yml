@@ -1,0 +1,12 @@
+on:
+  workflow_call:
+    inputs:
+      me:
+        type: string
+    secrets:
+      mytoken: {}
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+    - run: exit ${{inputs.Me != 'mesc' && secrets.MyToken == 'testData' && 1 || 0}}

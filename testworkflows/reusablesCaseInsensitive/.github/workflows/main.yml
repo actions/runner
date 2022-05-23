@@ -1,0 +1,9 @@
+on:
+  push:
+jobs:
+  main:
+    uses: ./.github/workflows/reusable.yml
+    with:
+      ME: mesc
+    secrets:
+      mytOken: testData
