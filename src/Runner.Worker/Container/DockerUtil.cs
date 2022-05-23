@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Worker.Container
@@ -18,7 +17,7 @@ namespace GitHub.Runner.Worker.Container
             string pattern = $"^(?<{targetPort}>\\d+)/(?<{proto}>\\w+) -> (?<{host}>.+):(?<{hostPort}>\\d+)$";
 
             List<PortMapping> portMappings = new List<PortMapping>();
-            foreach (var line in portMappingLines)
+            foreach(var line in portMappingLines)
             {
                 Match m = Regex.Match(line, pattern, RegexOptions.None, TimeSpan.FromSeconds(1));
                 if (m.Success)
@@ -61,16 +60,6 @@ namespace GitHub.Runner.Worker.Container
                 return nameSplit[0];
             }
             return "";
-        }
-
-        public static bool IsDockerfile(string image)
-        {
-            if (image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-            var imageWithoutPath = image.Split('/').Last();
-            return imageWithoutPath.StartsWith("Dockerfile.") || imageWithoutPath.StartsWith("dockerfile.") || imageWithoutPath.EndsWith("Dockerfile") || imageWithoutPath.EndsWith("dockerfile");
         }
     }
 }

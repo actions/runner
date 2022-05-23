@@ -34,6 +34,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             return hc;
         }
 
+#if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -110,5 +111,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("node16", nodeVersion);
             }
         }
+#endif
     }
 }
