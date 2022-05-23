@@ -105,7 +105,7 @@ The `prepare_job` hook is called when a job is started. We pass in any job or se
 - Start the job container
 - Start the service containers
 - Write to the response file some information we need
-  - Optional: if the container is alpine, otherwise we assume x64
+  - Required: if the container is alpine, otherwise x64
   - Optional: any context fields you want to set on the job context, otherwise they will be unavailable for users to use
 - Return 0 when the health checks have succeeded and the job/service containers are started
 
