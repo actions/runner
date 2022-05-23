@@ -146,13 +146,12 @@ namespace GitHub.Runner.Worker
             {
                 Trace.Info($"User provided port: {port.Value}");
             }
-            foreach (var volume in container.UserMountVolumes)
+            foreach (var mount in container.UserMountVolumes)
             {
-                Trace.Info($"User provided volume: {volume.Value}");
-                var mount = new MountVolume(volume.Value);
+                Trace.Info($"User provided volume: {mount.UserProvidedValue}");
                 if (string.Equals(mount.SourceVolumePath, "/", StringComparison.OrdinalIgnoreCase))
                 {
-                    executionContext.Warning($"Volume mount {volume.Value} is going to mount '/' into the container which may cause file ownership change in the entire file system and cause Actions Runner to lose permission to access the disk.");
+                    executionContext.Warning($"Volume mount {mount.UserProvidedValue} is going to mount '/' into the container which may cause file ownership change in the entire file system and cause Actions Runner to lose permission to access the disk.");
                 }
             }
 

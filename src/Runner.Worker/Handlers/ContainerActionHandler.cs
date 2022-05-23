@@ -46,8 +46,9 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Data.Image = Data.Image.Substring("docker://".Length);
             }
-            else if (DockerUtil.IsDockerfile(Data.Image))
+            else if (Data.Image.EndsWith("Dockerfile") || Data.Image.EndsWith("dockerfile"))
             {
+                // ensure docker file exist
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
                 if (!FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext))
@@ -70,10 +71,6 @@ namespace GitHub.Runner.Worker.Handlers
 
                     Data.Image = imageName;
                 }
-            }
-            else
-            {
-                throw new InvalidOperationException($"'{Data.Image}' should be either '[path]/Dockerfile' or 'docker://image[:tag]'.");
             }
 
             string type = Action.Type == Pipelines.ActionSourceType.Repository ? "Dockerfile" : "DockerHub";
