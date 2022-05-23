@@ -108,7 +108,6 @@ namespace GitHub.Services.Common
             TaskScheduler scheduler,
             IVssCredentialPrompt credentialPrompt)
         {
-            // System.Console.WriteLine($"VssCredentials.ctor");
             this.PromptType = promptType;
 
             if (promptType == CredentialPromptType.PromptIfNeeded && scheduler == null)
@@ -151,7 +150,6 @@ namespace GitHub.Services.Common
         {
             get
             {
-                // System.Console.WriteLine($"VssCredentials.get_PromptType");
                 return m_promptType;
             }
             set
@@ -172,7 +170,6 @@ namespace GitHub.Services.Common
         {
             get
             {
-                // System.Console.WriteLine($"VssCredentials.get_Federated");
                 return m_federatedCredential;
             }
         }
@@ -187,7 +184,6 @@ namespace GitHub.Services.Common
         {
             get
             {
-                // System.Console.WriteLine($"VssCredentials.get_Storage");
                 return m_credentialStorage;
             }
             set
@@ -207,7 +203,6 @@ namespace GitHub.Services.Common
         /// </summary>
         internal virtual bool TryGetValidAdalToken(IVssCredentialPrompt prompt)
         {
-            // System.Console.WriteLine($"VssCredentials.TryGetValidAdalToken");
             return false;
         }
 
@@ -223,7 +218,6 @@ namespace GitHub.Services.Common
             IHttpResponse webResponse,
             IssuedToken failedToken)
         {
-            // System.Console.WriteLine("VssCredential.CreateTokenProvider");
             ArgumentUtility.CheckForNull(serverUrl, "serverUrl");
 
             IssuedTokenProvider tokenProvider = null;
@@ -269,7 +263,6 @@ namespace GitHub.Services.Common
             Uri serverUrl,
             out IssuedTokenProvider provider)
         {
-            // System.Console.WriteLine($"VssCredentials.TryGetTokenProvider");
             ArgumentUtility.CheckForNull(serverUrl, "serverUrl");
 
             lock (m_thisLock)
@@ -279,13 +272,11 @@ namespace GitHub.Services.Common
                 {
                     if (m_federatedCredential != null)
                     {
-                        // System.Console.WriteLine($"VssCredentials.TryGetTokenProvider: Using federated credential");
                         m_currentProvider = m_federatedCredential.CreateTokenProvider(serverUrl, null, null);
                     }
 
                     if (m_currentProvider != null)
                     {
-                        // System.Console.WriteLine($"VssCredentials.TryGetTokenProvider: Issued token provider created");
                         VssHttpEventSource.Log.IssuedTokenProviderCreated(VssTraceActivity.Current, m_currentProvider);
                     }
                 }
@@ -303,7 +294,6 @@ namespace GitHub.Services.Common
         /// <returns>True if this is an token authentication redirect, false otherwise</returns>
         internal bool IsAuthenticationChallenge(IHttpResponse webResponse)
         {
-            // System.Console.WriteLine($"VssCredentials.IsAuthenticationChallenge");
             if (webResponse == null)
             {
                 return false;
@@ -323,7 +313,6 @@ namespace GitHub.Services.Common
             Uri serviceLocation,
             string identityProvider)
         {
-            // System.Console.WriteLine($"VssCredentials.SignOut");
             // Remove the token in the storage and the current token provider. Note that we don't
             // call InvalidateToken here because we want to remove the whole token not just its value
             if ((m_currentProvider != null) && (m_currentProvider.CurrentToken != null))
@@ -360,7 +349,6 @@ namespace GitHub.Services.Common
             string token,
             IDictionary<string, string> attributes)
         {
-            // System.Console.WriteLine($"VssCredentials.WriteAuthorizationToken");
             int i = 0;
             for (int j = 0; j < token.Length; i++, j += 128)
             {
@@ -372,7 +360,6 @@ namespace GitHub.Services.Common
 
         protected static string ReadAuthorizationToken(IDictionary<string, string> attributes)
         {
-            // System.Console.WriteLine($"VssCredentials.ReadAuthorizationToken");
             string authTokenCountValue;
             if (attributes.TryGetValue("AuthTokenSegmentCount", out authTokenCountValue))
             {

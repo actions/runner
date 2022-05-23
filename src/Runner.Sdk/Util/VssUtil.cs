@@ -36,7 +36,6 @@ namespace GitHub.Runner.Sdk
 
         public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials, IEnumerable<DelegatingHandler> additionalDelegatingHandler = null, TimeSpan? timeout = null)
         {
-            // System.Console.WriteLine("VssUtil.CreateConnection");
             VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
 
             int maxRetryRequest;

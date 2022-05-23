@@ -40,12 +40,6 @@ namespace GitHub.Runner.Listener.Configuration
             return creds;
         }
 
-#if USE_BROKER
-        public VssCredentials LoadCredentials()
-        {
-            return new VssCredentials();
-        }
-#else
         public VssCredentials LoadCredentials()
         {
             IConfigurationStore store = HostContext.GetService<IConfigurationStore>();
@@ -75,7 +69,6 @@ namespace GitHub.Runner.Listener.Configuration
 
             return creds;
         }
-#endif
     }
 
     [DataContract]

@@ -18,7 +18,6 @@ namespace GitHub.Services.Common
 
         public override bool IsAuthenticationChallenge(IHttpResponse webResponse)
         {
-            // System.Console.WriteLine($"FederatedCredential.IsAuthenticationChallenge");
             if (webResponse == null)
             {
                 return false;

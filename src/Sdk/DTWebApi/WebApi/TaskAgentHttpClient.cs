@@ -64,7 +64,6 @@ namespace GitHub.DistributedTask.WebApi
             Guid lockToken,
             DateTime finishTime,
             TaskResult result,
-            Guid targetHostId,
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -75,7 +74,7 @@ namespace GitHub.DistributedTask.WebApi
                 Result = result,
             };
 
-            return UpdateAgentRequestAsync(poolId, requestId, lockToken, request, targetHostId, userState, cancellationToken);
+            return UpdateAgentRequestAsync(poolId, requestId, lockToken, request, userState, cancellationToken);
         }
 
         public Task<List<TaskAgent>> GetAgentsAsync(
@@ -153,7 +152,6 @@ namespace GitHub.DistributedTask.WebApi
             CancellationToken cancellationToken = default(CancellationToken),
             Func<HttpResponseMessage, CancellationToken, Task<T>> processResponse = null)
         {
-            // System.Console.WriteLine("TaskAgentHttpClient.SendAsync 1");
             return SendAsync<T>(method, null, locationId, routeValues, version, content, queryParameters, userState, cancellationToken, processResponse);
         }
 
@@ -172,7 +170,6 @@ namespace GitHub.DistributedTask.WebApi
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, additionalHeaders, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
-                // System.Console.WriteLine("TaskAgentHttpClient.SendAsync 2");
                 return await SendAsync<T>(requestMessage, userState, cancellationToken, processResponse).ConfigureAwait(false);
             }
         }
@@ -183,7 +180,6 @@ namespace GitHub.DistributedTask.WebApi
             CancellationToken cancellationToken = default(CancellationToken),
             Func<HttpResponseMessage, CancellationToken, Task<T>> processResponse = null)
         {
-            // System.Console.WriteLine("TaskAgentHttpClient.SendAsync 3");
             if (processResponse == null)
             {
                 processResponse = ReadContentAsAsync<T>;

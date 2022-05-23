@@ -390,7 +390,6 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // System.Console.WriteLine("VssHttpClientBase.SendAsync 1");
             return SendAsync<T>(method, null, locationId, routeValues, version, content, queryParameters, userState, cancellationToken);
         }
 
@@ -405,7 +404,6 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // System.Console.WriteLine("VssHttpClientBase.SendAsync 2");
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, additionalHeaders, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -424,7 +422,6 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // System.Console.WriteLine("VssHttpClientBase.SendAsync 3");
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, additionalHeaders, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -458,7 +455,6 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // System.Console.WriteLine("VssHttpClientBase.SendAsync 4");
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -477,7 +473,6 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // System.Console.WriteLine("VssHttpClientBase.SendAsync 5");
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = await CreateRequestMessageAsync(method, locationId, routeValues, version, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -506,7 +501,6 @@ namespace GitHub.Services.WebApi
             CancellationToken cancellationToken = default(CancellationToken),
             String mediaType = c_jsonMediaType)
         {
-            // System.Console.WriteLine("VssHttpClientBase.CreateRequestMessageAsync 1");
             return CreateRequestMessageAsync(method, null, locationId, routeValues, version, content, queryParameters, userState, cancellationToken, mediaType);
         }
 
@@ -532,7 +526,6 @@ namespace GitHub.Services.WebApi
             CancellationToken cancellationToken = default(CancellationToken),
             String mediaType = c_jsonMediaType)
         {
-            // System.Console.WriteLine("VssHttpClientBase.CreateRequestMessageAsync 2");
             // Lookup the location
             ApiResourceLocation location = await GetResourceLocationAsync(locationId, userState, cancellationToken).ConfigureAwait(false);
             if (location == null)
@@ -562,7 +555,6 @@ namespace GitHub.Services.WebApi
             IEnumerable<KeyValuePair<String, String>> queryParameters = null,
             String mediaType = c_jsonMediaType)
         {
-            // System.Console.WriteLine("VssHttpClientBase.CreateRequestMessageAsync 3");
             return CreateRequestMessage(method, null, location, routeValues, version, content, queryParameters, mediaType);
         }
 
@@ -586,7 +578,6 @@ namespace GitHub.Services.WebApi
             IEnumerable<KeyValuePair<String, String>> queryParameters = null,
             String mediaType = c_jsonMediaType)
         {
-            // System.Console.WriteLine("VssHttpClientBase.CreateRequestMessageAsync 4");
             CheckForDisposed();
             // Negotiate the request version to send
             ApiResourceVersion requestVersion = NegotiateRequestVersion(location, version);
@@ -758,14 +749,12 @@ namespace GitHub.Services.WebApi
             //from deadlocking...
             using (HttpResponseMessage response = await this.SendAsync(message, userState, cancellationToken).ConfigureAwait(false))
             {
-                // System.Console.WriteLine("VssHttpClientBase.SendAsync 6");
                 return await ReadContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
             }
         }
 
         protected async Task<T> ReadContentAsAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default(CancellationToken))
         {
-            // System.Console.WriteLine($"VssHttpClientBase.ReadContentAsAsync {response.Headers}");
             CheckForDisposed();
             Boolean isJson = IsJsonResponse(response);
             bool mismatchContentType = false;
@@ -777,20 +766,17 @@ namespace GitHub.Services.WebApi
                     !typeof(Byte[]).GetTypeInfo().IsAssignableFrom(typeof(T).GetTypeInfo()) &&
                     !typeof(JObject).GetTypeInfo().IsAssignableFrom(typeof(T).GetTypeInfo()))
                 {
-                    // System.Console.WriteLine("VssHttpClientBase.ReadContentAsAsync: isJson 1");
                     // expect it to come back wrapped, if it isn't it is a bug!
                     var wrapper = await ReadJsonContentAsync<VssJsonCollectionWrapper<T>>(response, cancellationToken).ConfigureAwait(false);
                     return wrapper.Value;
                 }
                 else if (isJson)
                 {
-                    // System.Console.WriteLine("VssHttpClientBase.ReadContentAsAsync: isJson 2");
                     return await ReadJsonContentAsync<T>(response, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (JsonReaderException)
             {
-                // System.Console.WriteLine("VssHttpClientBase.ReadContentAsAsync: mismatchContentType");
                 // We thought the content was JSON but failed to parse. 
                 // In this case, do nothing and utilize the HandleUnknownContentType call below
                 mismatchContentType = true;
@@ -816,7 +802,6 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // System.Console.WriteLine("VssHttpClientBase.SendAsync 7");
             // the default in httpClient for HttpCompletionOption is ResponseContentRead so that is what we do here
             return this.SendAsync(
                 message,
@@ -831,7 +816,6 @@ namespace GitHub.Services.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // System.Console.WriteLine("VssHttpClientBase.SendAsync 8");
             CheckForDisposed();
             if (message.Headers.UserAgent != null)
             {
@@ -867,7 +851,6 @@ namespace GitHub.Services.WebApi
                 //ConfigureAwait(false) enables the continuation to be run outside
                 //any captured SyncronizationContext (such as ASP.NET's) which keeps things
                 //from deadlocking...
-                // System.Console.WriteLine($"VssHttpClientBase.SendAsync 8: Calling Client.SendAsync {message}");
                 HttpResponseMessage response = await Client.SendAsync(message, completionOption, cancellationToken).ConfigureAwait(false);
 
                 // Inject delay or failure for testing
@@ -885,7 +868,6 @@ namespace GitHub.Services.WebApi
         [Obsolete("Use VssHttpClientBase.HandleResponseAsync instead")]
         protected virtual void HandleResponse(HttpResponseMessage response)
         {
-            // System.Console.WriteLine("VssHttpClientBase.HandleResponse 1");
 
         }
 
@@ -893,7 +875,6 @@ namespace GitHub.Services.WebApi
             HttpResponseMessage response,
             CancellationToken cancellationToken)
         {
-            // System.Console.WriteLine($"VssHttpClientBase.HandleResponse 2 status code {response.StatusCode} headers {response.Headers}");
             response.Trace();
             VssHttpEventSource.Log.HttpRequestStop(VssTraceActivity.Current, response);
 
@@ -905,7 +886,6 @@ namespace GitHub.Services.WebApi
             }
             else if (ShouldThrowError(response))
             {
-                // System.Console.WriteLine("VssHttpClientBase.HandleResponse: Should throw error");
                 Exception exToThrow = null;
                 if (IsJsonResponse(response))
                 {
@@ -929,7 +909,6 @@ namespace GitHub.Services.WebApi
                     {
                         message = response.ReasonPhrase;
                     }
-                    // System.Console.WriteLine($"VssHttpClientBase.HandleResponse: Exception message {message}");
                     exToThrow = new VssServiceResponseException(response.StatusCode, message, exToThrow);
                 }
 

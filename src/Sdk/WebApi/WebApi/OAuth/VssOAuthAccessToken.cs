@@ -75,7 +75,6 @@ namespace GitHub.Services.OAuth
 
         internal override void ApplyTo(IHttpRequest request)
         {
-            // System.Console.WriteLine($"VssOAuthAccessToken.ApplyTo: Bearer {m_value}");
             request.Headers.SetValue(Common.Internal.HttpHeaders.Authorization, $"Bearer {m_value}");
         }
 

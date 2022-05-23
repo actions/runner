@@ -54,7 +54,6 @@ namespace GitHub.Services.OAuth
             VssOAuthTokenParameters tokenParameters = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // todo: qqq
             VssTraceActivity traceActivity = VssTraceActivity.Current;
             using (HttpClient client = new HttpClient(CreateMessageHandler(this.AuthorizationUrl)))
             {

@@ -103,23 +103,17 @@ namespace GitHub.Services.OAuth
         /// <returns>True if the web response indicates an authorization challenge; otherwise, false</returns>
         public override Boolean IsAuthenticationChallenge(IHttpResponse webResponse)
         {
-            // System.Console.WriteLine($"VssOAuthCredential.IsAuthenticationChallenge");
             if (webResponse == null)
             {
-                // System.Console.WriteLine($"VssOAuthCredential.IsAuthenticationChallenge: webResponse is null");
                 return false;
             }
 
             if (webResponse.StatusCode == HttpStatusCode.Found ||
                 webResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
-                // System.Console.WriteLine($"VssOAuthCredential.IsAuthenticationChallenge: found or unauthorized");
-                var result = webResponse.Headers.GetValues(Common.Internal.HttpHeaders.WwwAuthenticate).Any(x => x.IndexOf("Bearer", StringComparison.OrdinalIgnoreCase) >= 0);
-                // System.Console.WriteLine($"VssOAuthCredential.IsAuthenticationChallenge: {result}");
-                return result;
+                return webResponse.Headers.GetValues(Common.Internal.HttpHeaders.WwwAuthenticate).Any(x => x.IndexOf("Bearer", StringComparison.OrdinalIgnoreCase) >= 0);
             }
 
-            // System.Console.WriteLine($"VssOAuthCredential.IsAuthenticationChallenge: false");
             return false;
         }
 
@@ -127,7 +121,6 @@ namespace GitHub.Services.OAuth
             Uri serverUrl, 
             IHttpResponse response)
         {
-            // System.Console.WriteLine($"VssOAuthCredential.OnCreateTokenProvider");
             return new VssOAuthTokenProvider(this, serverUrl);
         }
 

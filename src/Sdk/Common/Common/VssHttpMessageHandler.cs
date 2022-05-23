@@ -49,7 +49,6 @@ namespace GitHub.Services.Common
             VssHttpRequestSettings settings,
             HttpMessageHandler innerHandler)
         {
-            // System.Console.WriteLine("VssHttpMessageHandler.ctor");
             this.Credentials = credentials;
             this.Settings = settings;
             this.ExpectContinue = settings.ExpectContinue;
@@ -123,7 +122,6 @@ namespace GitHub.Services.Common
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            // System.Console.WriteLine("VssHttpMessageHandler.SendAsync");
             VssTraceActivity traceActivity = VssTraceActivity.Current;
 
             var traceInfo = VssHttpMessageHandlerTraceInfo.GetTraceInfo(request);
@@ -132,7 +130,6 @@ namespace GitHub.Services.Common
             if (!m_appliedClientCertificatesToTransportHandler &&
                 request.RequestUri.Scheme == "https")
             {
-                // System.Console.WriteLine("VssHttpMessageHandler.SendAsync: !appliedClientCertificatesToTransportHandler");
                 HttpClientHandler httpClientHandler = m_transportHandler as HttpClientHandler;
                 if (httpClientHandler != null &&
                     this.Settings.ClientCertificateManager != null &&
@@ -147,7 +144,6 @@ namespace GitHub.Services.Common
             if (!m_appliedServerCertificateValidationCallbackToTransportHandler &&
                 request.RequestUri.Scheme == "https")
             {
-                // System.Console.WriteLine("VssHttpMessageHandler.SendAsync: !appliedServerCertificateValidationCallbackToTransportHandler");
                 HttpClientHandler httpClientHandler = m_transportHandler as HttpClientHandler;
                 if (httpClientHandler != null &&
                     this.Settings.ServerCertificateValidationCallback != null)
@@ -169,7 +165,6 @@ namespace GitHub.Services.Common
             IssuedTokenProvider provider;
             if (this.Credentials.TryGetTokenProvider(request.RequestUri, out provider))
             {
-                // System.Console.WriteLine("VssHttpMessageHandler.SendAsync: Got token provider from credentials");
                 token = provider.CurrentToken;
             }
 
@@ -230,7 +225,6 @@ namespace GitHub.Services.Common
 
                     traceInfo?.TraceResponseContentTime();
 
-                    // System.Console.WriteLine($"VssHttpMessageHandler.SendAsync: Creating response wrapper");
                     responseWrapper = new HttpResponseMessageWrapper(response);
 
                     if (!this.Credentials.IsAuthenticationChallenge(responseWrapper))
@@ -238,7 +232,6 @@ namespace GitHub.Services.Common
                         // Validate the token after it has been successfully authenticated with the server.
                         if (provider != null)
                         {
-                            // System.Console.WriteLine("VssHttpMessageHandler.SendAsync: Validating token");
                             provider.ValidateToken(token, responseWrapper);
                         }
 
@@ -250,7 +243,6 @@ namespace GitHub.Services.Common
                     }
                     else
                     {
-                        // System.Console.WriteLine($"VssHttpMessageHandler.SendAsync: Auth challenge. Response status code {response.StatusCode}; headers {response.Headers}");
                         // In the case of a Windows token, only apply it to the web proxy if it
                         // returned a 407 Proxy Authentication Required. If we didn't get this
                         // status code back, then the proxy (if there is one) is clearly working fine,
@@ -296,7 +288,6 @@ namespace GitHub.Services.Common
                         }
 
                         // Now invoke the provider and await the result
-                        // System.Console.WriteLine($"VssHttpMessageHandler.SendAsync: Calling GetTokenAsync");
                         token = await provider.GetTokenAsync(token, tokenSource.Token).ConfigureAwait(false);
 
                         // I always see 0 here, but the method above could take more time so keep for now
@@ -441,7 +432,6 @@ namespace GitHub.Services.Common
                     activity != VssTraceActivity.Empty &&
                     !request.Headers.Contains(HttpHeaders.TfsSessionHeader))
                 {
-                    // System.Console.WriteLine($"VssHttpMessageHandler.ApplyHeaders: Activity ID {activity.Id}");
                     request.Headers.Add(HttpHeaders.TfsSessionHeader, activity.Id.ToString("D"));
                 }
 
@@ -462,16 +452,13 @@ namespace GitHub.Services.Common
             ICredentials credentialsToken = token as ICredentials;
             if (credentialsToken != null)
             {
-                // System.Console.WriteLine("VssHttpMessageHandler.ApplyToken: Credentials token != null");
                 if (applyICredentialsToWebProxy)
                 {
-                    // System.Console.WriteLine("VssHttpMessageHandler.ApplyToken: Apply credentials to web proxy");
                     HttpClientHandler httpClientHandler = m_transportHandler as HttpClientHandler;
 
                     if (httpClientHandler != null &&
                         httpClientHandler.Proxy != null)
                     {
-                        // System.Console.WriteLine("VssHttpMessageHandler.ApplyToken: Setting proxy crednetials");
                         httpClientHandler.Proxy.Credentials = credentialsToken;
                     }
                 }
@@ -480,7 +467,6 @@ namespace GitHub.Services.Common
             }
             else
             {
-                // System.Console.WriteLine("VssHttpMessageHandler.ApplyToken: Applying credentials to request");
                 token.ApplyTo(new HttpRequestMessageWrapper(request));
             }
         }
@@ -493,8 +479,7 @@ namespace GitHub.Services.Common
             HttpClientHandler httpClientHandler = handler as HttpClientHandler;
             if (httpClientHandler != null)
             {
-                // System.Console.WriteLine($"VssHttpMessageHandler.ApplySettings: Default credentials = {defaultCredentials} AllowAutoRedirect = {settings.AllowAutoRedirect}");
-                httpClientHandler.AllowAutoRedirect = true; //settings.AllowAutoRedirect;
+                httpClientHandler.AllowAutoRedirect = settings.AllowAutoRedirect;
                 httpClientHandler.ClientCertificateOptions = ClientCertificateOption.Manual;
                 //Setting httpClientHandler.UseDefaultCredentials to false in .Net Core, clears httpClientHandler.Credentials if
                 //credentials is already set to defaultcredentials. Therefore httpClientHandler.Credentials must be 
@@ -565,7 +550,6 @@ namespace GitHub.Services.Common
                 Uri uri,
                 String authType)
             {
-                // System.Console.WriteLine($"CredentialWrapper.GetCredential: InnerCredentials = {InnerCredentials}");
                 return InnerCredentials != null ? InnerCredentials.GetCredential(uri, authType) : null;
             }
         }

@@ -379,7 +379,6 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="requestId"></param>
         /// <param name="lockToken"></param>
         /// <param name="request"></param>
-        /// <param name="targetHostId"></param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -388,7 +387,6 @@ namespace GitHub.DistributedTask.WebApi
             long requestId,
             Guid lockToken,
             TaskAgentJobRequest request,
-            Guid targetHostId,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -399,7 +397,6 @@ namespace GitHub.DistributedTask.WebApi
 
             List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
             queryParams.Add("lockToken", lockToken.ToString());
-            queryParams.Add("targetHostId", targetHostId.ToString());
 
             return SendAsync<TaskAgentJobRequest>(
                 httpMethod,
@@ -720,7 +717,6 @@ namespace GitHub.DistributedTask.WebApi
         [EditorBrowsable(EditorBrowsableState.Never)]
         public virtual Task<Pipelines.AgentJobRequestMessage> GetJobMessageAsync(
             Guid scopeId,
-            Guid hostId,
             string planType,
             string planGroup,
             Guid planId,
@@ -733,7 +729,6 @@ namespace GitHub.DistributedTask.WebApi
 
             List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
             queryParams.Add("scopeId", scopeId.ToString());
-            queryParams.Add("hostId", hostId.ToString());
             queryParams.Add("planType", planType);
             queryParams.Add("planGroup", planGroup);
             queryParams.Add("planId", planId.ToString());
@@ -762,7 +757,6 @@ namespace GitHub.DistributedTask.WebApi
             object userState = null,
             CancellationToken cancellationToken = default)
         {
-            // System.Console.WriteLine("TaskAgentHttpClientBase.CreateAgentSessionAsync");
             HttpMethod httpMethod = new HttpMethod("POST");
             Guid locationId = new Guid("134e239e-2df3-4794-a6f6-24f1f19ec8dc");
             object routeValues = new { poolId = poolId };
