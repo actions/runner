@@ -166,9 +166,9 @@ namespace GitHub.Runner.Common.Tests
                 string binDir = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/bin");
 
 #if OS_WINDOWS
-                string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node12\bin\node");
+                string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node16\bin\node");
 #else
-                string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node12/bin/node");
+                string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node16/bin/node");
 #endif
                 string hashFilesScript = Path.Combine(binDir, "hashFiles");
                 var hashResult = string.Empty;
@@ -228,9 +228,9 @@ namespace GitHub.Runner.Common.Tests
                 string binDir = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/bin");
 
 #if OS_WINDOWS
-                string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node12\bin\node");
+                string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node16\bin\node");
 #else
-                string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node12/bin/node");
+                string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node16/bin/node");
 #endif
                 string hashFilesScript = Path.Combine(binDir, "hashFiles");
                 var hashResult = string.Empty;
