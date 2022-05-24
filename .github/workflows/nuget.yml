@@ -105,7 +105,7 @@ jobs:
         gharun -W testworkflows/testhashfiles.yml
         gharun -W testworkflows/dumpcontexts.yml
         cd testworkflows/environment-test
-        gharun -W sample.yml --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
+        gharun -W sample.yml --environment-secret-file prod=prod.secrets --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
         cd ../..
         gharun -W testworkflows/dumpcontexts.yml --list
         ${{matrix.image && 'echo "Skipping additional testcases" && exit 0' || ''}}

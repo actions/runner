@@ -1,3 +1,6 @@
+Secret1: |
+  This value will be discarded without a crash
+SECRET2: Dummy
 secret1: |
   My multiline secret
   it's yaml

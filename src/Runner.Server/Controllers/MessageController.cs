@@ -3773,7 +3773,7 @@ namespace Runner.Server.Controllers
 
             var workflow = (from f in form.Files where f.Name != "event" && !(f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets") select new KeyValuePair<string, string>(f.FileName, new StreamReader(f.OpenReadStream()).ReadToEnd())).ToArray();
             var des = new DeserializerBuilder().Build();
-            var secretsEnvironments = (from f in form.Files where f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets" select (f.FileName.Substring(0, f.FileName.Length - 8), des.Deserialize<IDictionary<string, string>>(new StreamReader(f.OpenReadStream())))).ToDictionary(kv => kv.Item1, kv => (IDictionary<string, string>) new Dictionary<string, string>(kv.Item2, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+            var secretsEnvironments = (from f in form.Files where f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets" select (f.FileName.Substring(0, f.FileName.Length - 8), des.Deserialize<IDictionary<string, string>>(new StreamReader(f.OpenReadStream())))).ToOrdinalIgnoreCaseDictionary(kv => kv.Item1, kv => (IDictionary<string, string>) kv.Item2.ToOrdinalIgnoreCaseDictionary());
             if(!secretsEnvironments.ContainsKey("") && secrets?.Length > 0) {
                 var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 LoadEnvSec(secrets, (k, v) => dict[k] = v);

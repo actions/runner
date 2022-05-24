@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace Runner.Server {
@@ -57,6 +58,22 @@ namespace Runner.Server {
                 default:
                 return token.AssertMapping(objectDescription);
             }
+        }
+
+        public static Dictionary<string, TSource> ToOrdinalIgnoreCaseDictionary<TSource>(this IEnumerable<KeyValuePair<string, TSource>> source) {
+            var ret = new Dictionary<string, TSource>(StringComparer.OrdinalIgnoreCase);
+            foreach(var kv in source) {
+                ret[kv.Key] = kv.Value;
+            }
+            return ret;
+        }
+
+        public static Dictionary<string, TValue> ToOrdinalIgnoreCaseDictionary<TSource, TValue>(this IEnumerable<TSource> source, Func<TSource, string> keySelector, Func<TSource, TValue> valueSelector) {
+            var ret = new Dictionary<string, TValue>(StringComparer.OrdinalIgnoreCase);
+            foreach(var kv in source) {
+                ret[keySelector(kv)] = valueSelector(kv);
+            }
+            return ret;
         }
     }
 }
