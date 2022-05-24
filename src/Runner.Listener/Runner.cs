@@ -471,7 +471,7 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
-                                    var messageRef = StringUtil.ConvertFromJson<MessageRef>(message.Body);
+                                    var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
 
                                     // Create connection
                                     var credMgr = HostContext.GetService<ICredentialManager>();
@@ -480,7 +480,7 @@ namespace GitHub.Runner.Listener
                                     // todo: add retries
                                     var runServer = HostContext.CreateService<IRunServer>();
                                     await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.Id);
+                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId);
 
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
