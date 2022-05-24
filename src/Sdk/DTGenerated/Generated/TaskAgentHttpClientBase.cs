@@ -707,26 +707,24 @@ namespace GitHub.DistributedTask.WebApi
         /// <summary>
         /// [Preview API]
         /// </summary>
-        /// <param name="id">Message ID</param>
+        /// <param name="messageId"></param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
         public virtual Task<Pipelines.AgentJobRequestMessage> GetJobMessageAsync(
-            string id,
+            string messageId,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("GET");
             Guid locationId = new Guid("25adab70-1379-4186-be8e-b643061ebe3a");
-
-            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
-            queryParams.Add("id", id);
+            object routeValues = new { messageId = messageId };
 
             return SendAsync<Pipelines.AgentJobRequestMessage>(
                 httpMethod,
                 locationId,
+                routeValues: routeValues,
                 version: new ApiResourceVersion(6.0, 1),
-                queryParameters: queryParams,
                 userState: userState,
                 cancellationToken: cancellationToken);
         }
