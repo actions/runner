@@ -666,8 +666,15 @@ namespace GitHub.Runner.Listener
             {
                 try
                 {
+#if USE_BROKER
+                    if (!firstJobRequestRenewed.Task.IsCompleted)
+                    {
+                        // fire first renew succeed event.
+                        firstJobRequestRenewed.TrySetResult(0);
+                    }
+#else
                     request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, orchestrationId, token);
-                    Trace.Info($"Successfully renew job request {requestId}, job is valid till {request.LockedUntil.Value}");
+                    Trace.Info($"Successfully renew job request {requestId}, job is valid till {request?.LockedUntil.Value}");
 
                     if (!firstJobRequestRenewed.Task.IsCompleted)
                     {
@@ -677,6 +684,7 @@ namespace GitHub.Runner.Listener
                         // Update settings if the runner name has been changed server-side
                         UpdateAgentNameIfNeeded(request.ReservedAgent?.Name);
                     }
+#endif
 
                     if (encounteringError > 0)
                     {

@@ -817,6 +817,7 @@ namespace GitHub.Runner.Worker
                                     {
                                         // Something else bad happened, let's go to our retry logic
                                         response.EnsureSuccessStatusCode();
+                                        throw new Exception("Unexpected response code: " + response.StatusCode);
                                     }
                                 }
                             }

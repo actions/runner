@@ -2,7 +2,7 @@
 
 ###############################################################################
 #  
-#  ./dev.sh build/layout/test/package [Debug/Release]
+#  ./dev.sh build/layout/test/package [Debug/Release] [linux-x64|linux-x86|linux-arm64|linux-arm|osx-x64|win-x64|win-x86] [use-broker]
 #
 ###############################################################################
 
@@ -11,6 +11,7 @@ set -e
 DEV_CMD=$1
 DEV_CONFIG=$2
 DEV_TARGET_RUNTIME=$3
+DEV_USE_BROKER=$4
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYOUT_DIR="$SCRIPT_DIR/../_layout"
@@ -87,6 +88,13 @@ elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
     fi
 fi
 
+if [ -n "$DEV_USE_BROKER" ]; then
+    USE_BROKER='-p:USE_BROKER="true"'
+else
+    USE_BROKER=''
+fi
+
+
 function failed()
 {
     local error=${1:-Undefined error}
@@ -120,13 +128,13 @@ function heading()
 function build ()
 {
     heading "Building ..."
-    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed build
+    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" $USE_BROKER ./dir.proj || failed build
 }
 
 function layout ()
 {
     heading "Create layout ..."
-    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed build
+    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" $USE_BROKER ./dir.proj || failed build
 
     #change execution flag to allow running with sudo
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
