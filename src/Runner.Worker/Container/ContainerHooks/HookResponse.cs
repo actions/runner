@@ -12,7 +12,14 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
     public class ResponseContext
     {
-        public HookContainer Container { get; set; }
-        public IList<HookContainer> Services { get; set; }
+        public ResponseContainer Container { get; set; }
+        public IList<ResponseContainer> Services { get; set; } = new List<ResponseContainer>();
+    }
+
+    public class ResponseContainer
+    {
+        public string Id { get; set; }
+        public string Network { get; set; }
+        public IList<string> Ports { get; set; }
     }
 }
