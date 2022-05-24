@@ -114,7 +114,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
     {
-        private const int _maxIssueCount = 10;
+        private const int _maxIssueCount = 100;
         private const int _throttlingDelayReportThreshold = 10 * 1000; // Don't report throttling with less than 10 seconds delay
         private const int _maxIssueMessageLength = 4096; // Don't send issue with huge message since we can't forward them from actions to check annotation.
         private const int _maxIssueCountInTelemetry = 3; // Only send the first 3 issues to telemetry
