@@ -91,7 +91,7 @@ jobs:
         $obj | ConvertTo-Json -Depth 20 | Set-Content  "_layout/bin/appsettings.json"
     - name: Test
       shell: bash
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
       run: |
         pushd _layout/bin
         ./Runner.Server${{ matrix.exeSuffix }} --urls http://localhost:5000 &
