@@ -146,7 +146,8 @@ namespace Runner.Client
             public string Ref { get; set; }
             public string Sha { get; set; }
             public string[] EnvironmentSecretFiles { get; set; }
-            public string[] Inputs { get; internal set; }
+            public string[] Inputs { get; set; }
+            public string RunnerDirectory { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -246,8 +247,8 @@ namespace Runner.Client
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
             file = dotnet;
 #endif
-            var agentname = $"Agent-{Guid.NewGuid().ToString()}";
-            string tmpdir = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "Agents", agentname);
+            var agentname = Path.GetRandomFileName();
+            string tmpdir = Path.Combine(Path.GetFullPath(parameters.RunnerDirectory), agentname);
             Directory.CreateDirectory(tmpdir);
             try {
                 int attempt = 1;
@@ -276,7 +277,7 @@ namespace Runner.Client
                             runnerEnv["RUNNER_CONTAINER_KEEP"] = "1";
                         }
 
-                        var arguments = $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host";
+                        var arguments = $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                         arguments = $"\"{runner}\" {arguments}";
 #endif
@@ -630,6 +631,10 @@ namespace Runner.Client
             var keepRunnerDirectoryOpt = new Option<bool>(
                 "--keep-runner-directory",
                 description: "Skip deleting temporary runner directories.");
+            var runnerDirectoryOpt = new Option<string>(
+                "--runner-directory",
+                getDefaultValue: () => Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "a"),
+                description: "Custom runner directory, can be used to avoid filepath length constraints");
             var noSharedToolCacheOpt = new Option<bool>(
                 "--no-shared-toolcache",
                 description: "Do not share toolcache between runners, a shared toolcache may cause workflow failures.");
@@ -702,6 +707,7 @@ namespace Runner.Client
                 parallelOpt,
                 noCopyGitDirOpt,
                 keepRunnerDirectoryOpt,
+                runnerDirectoryOpt,
                 noSharedToolCacheOpt,
                 noReuseOpt,
                 gitServerUrlOpt,
@@ -1682,6 +1688,7 @@ namespace Runner.Client
                 parameters.parallel = bindingContext.ParseResult.GetValueForOption(parallelOpt);
                 parameters.NoCopyGitDir = bindingContext.ParseResult.GetValueForOption(noCopyGitDirOpt);
                 parameters.KeepRunnerDirectory = bindingContext.ParseResult.GetValueForOption(keepRunnerDirectoryOpt);
+                parameters.RunnerDirectory = bindingContext.ParseResult.GetValueForOption(runnerDirectoryOpt);
                 parameters.NoSharedToolcache = bindingContext.ParseResult.GetValueForOption(noSharedToolCacheOpt);
                 parameters.NoReuse = bindingContext.ParseResult.GetValueForOption(noReuseOpt);
                 parameters.GitServerUrl = bindingContext.ParseResult.GetValueForOption(gitServerUrlOpt);
