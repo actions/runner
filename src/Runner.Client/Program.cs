@@ -746,6 +746,14 @@ namespace Runner.Client
                         }
                     }
                 }
+                if(parameters.Inputs?.Length > 0) {
+                    foreach(var input in parameters.Inputs) {
+                        var kv = input.Split('=', 2);
+                        if(kv?.Length != 2) {
+                            errors.Add($"Invalid Argument for `--input`: `{input}`, missing `=`");
+                        }
+                    }
+                }
                 if(errors.Count > 0) {
                     foreach(var error in errors) {
                         Console.Error.WriteLine(error);
