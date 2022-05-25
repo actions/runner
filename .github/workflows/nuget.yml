@@ -104,6 +104,10 @@ jobs:
         gharun -W testworkflows/testlocalcheckout.yml
         gharun -W testworkflows/testhashfiles.yml
         gharun -W testworkflows/dumpcontexts.yml
+        gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets
+        gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets
+        gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets.yaml
+        gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets.yaml
         cd testworkflows/environment-test
         gharun -W sample.yml --environment-secret-file prod=prod.secrets --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
         cd ../..
@@ -115,8 +119,6 @@ jobs:
         gharun -W testworkflows/issue70/main.yml
         gharun -W testworkflows/called.yml -e testworkflows/called_workflow_dispatch_event.json --env "input_x=Hello World 2" workflow_dispatch
         gharun -W testworkflows/called.yml --env "input_x=Hello World" workflow_dispatch
-        gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets
-        gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets
         gharun --workflow testworkflows/test_template_runs_on.yml --workflow testworkflows/called_template_runs_on.yml
         gharun --workflow testworkflows/test_template_runs_on2.yml --workflow testworkflows/called_template_runs_on.yml -P self-hosted,testsystem=-self-hosted
         gharun --workflow testworkflows/test_template_runs_on3.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,self-hosted,testsystem=-self-hosted

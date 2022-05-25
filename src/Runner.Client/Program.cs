@@ -1053,8 +1053,8 @@ namespace Runner.Client
                                             workflowsToDispose.Add(workflow);
                                             var name = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
                                             mp.Add(new StreamContent(workflow), name, name);
-                                        } catch {
-                                            Console.WriteLine($"Failed to read file: {w}");
+                                        } catch(Exception ex) {
+                                            Console.WriteLine($"Failed to read file: {w}, Details: {ex.Message}");
                                             return 1;
                                         }
                                     }
@@ -1063,16 +1063,18 @@ namespace Runner.Client
                                     List<string> wsecrets = new List<string>();
                                     try {
                                         wenv.AddRange(Util.ReadEnvFile(parameters.envFile));
-                                    } catch {
+                                    } catch(Exception ex) {
                                         if(parameters.envFile != ".env") {
-                                            Console.WriteLine($"Failed to read file: {parameters.envFile}");
+                                            Console.WriteLine($"Failed to read file: {parameters.envFile}, Details: {ex.Message}");
+                                            return 1;
                                         }
                                     }
                                     try {
                                         wsecrets.AddRange(Util.ReadEnvFile(parameters.secretFile));
-                                    } catch {
+                                    } catch(Exception ex) {
                                         if(parameters.secretFile != ".secrets") {
-                                            Console.WriteLine($"Failed to read file: {parameters.secretFile}");
+                                            Console.WriteLine($"Failed to read file: {parameters.secretFile}, Details: {ex.Message}");
+                                            return 1;
                                         }
                                     }
                                     if(parameters.job != null) {
@@ -1250,8 +1252,8 @@ namespace Runner.Client
                                             } else {
                                                 payloadContent.Merge(obj, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
                                             }
-                                        } catch {
-                                            Console.WriteLine($"Failed to read file: {parameters.payload}");
+                                        } catch(Exception ex) {
+                                            Console.WriteLine($"Failed to read file: {parameters.payload}, Details: {ex.Message}");
                                             return 1;
                                         }
                                     } else if(parameters.NoDefaultPayload) {
@@ -1271,16 +1273,10 @@ namespace Runner.Client
                                             var subopt = opt.Split('=', 2);
                                             string name = subopt.Length == 2 ? subopt[0] : "";
                                             string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
-                                            if(filename.EndsWith(".yml") || filename.EndsWith(".yaml")) {
-                                                var envfile = File.OpenRead(filename);
-                                                workflowsToDispose.Add(envfile);
-                                                mp.Add(new StreamContent(envfile), "actions-environment-secrets", $"{name}.secrets");
-                                            } else {
-                                                var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
-                                                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                                Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
-                                                mp.Add(new StringContent(ser.Serialize(dict)), "actions-environment-secrets", $"{name}.secrets");
-                                            }
+                                            var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
+                                            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
+                                            mp.Add(new StringContent(ser.Serialize(dict)), "actions-environment-secrets", $"{name}.secrets");
                                         }
                                     }
                                     b.Query = query.ToQueryString().ToString().TrimStart('?');

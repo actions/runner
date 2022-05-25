@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using YamlDotNet.Serialization;
 
 namespace Runner.Client {
     public class Util {
@@ -14,6 +15,13 @@ namespace Runner.Client {
         }
         public static void ReadEnvFile(string filePath, Action<string, string> SetEnvironmentVariable) {
             var text = File.ReadAllText(filePath) ?? string.Empty;
+            if(filePath.EndsWith(".yml") || filePath.EndsWith(".yaml")) {
+                var des = new DeserializerBuilder().Build();
+                foreach(var kv in des.Deserialize<IDictionary<string, string>>(text)) {
+                    SetEnvironmentVariable(kv.Key, kv.Value);
+                }
+                return;
+            }
             var index = 0;
             var line = ReadLine(text, ref index);
             while (line != null)
