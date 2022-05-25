@@ -71,18 +71,15 @@ namespace GitHub.Runner.Common
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
 
-// #if X86
-//             public static readonly Architecture PlatformArchitecture = Architecture.X86;
-// #elif X64
-//             public static readonly Architecture PlatformArchitecture = Architecture.X64;
-// #elif ARM
-//             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
-// #elif ARM64            
-//             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
-// #endif
-
-    // TODO: remove this shit and uncomment previous code
-    public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#if X86
+            public static readonly Architecture PlatformArchitecture = Architecture.X86;
+#elif X64
+            public static readonly Architecture PlatformArchitecture = Architecture.X64;
+#elif ARM
+            public static readonly Architecture PlatformArchitecture = Architecture.Arm;
+#elif ARM64            
+            public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#endif
 
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);
 
