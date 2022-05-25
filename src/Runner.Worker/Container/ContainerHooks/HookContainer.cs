@@ -9,14 +9,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public string Id { get; set; }
         public string DisplayName { get; set; }
         public string Network { get; set; }
-        public string NetworkAlias { get; set; }
         public string Image { get; set; }
-        public string Name { get; set; }
         public IEnumerable<string> EntryPointArgs { get; set; }
         public string EntryPoint { get; set; }
         public string WorkingDirectory { get; set; }
         public string CreateOptions { get; private set; }
-        public string RuntimePath { get; set; }
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public ContainerRegistry Registry { get; set; }
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -32,14 +29,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Id = container.ContainerId;
             DisplayName = container.ContainerDisplayName;
             Network = container.ContainerNetwork;
-            NetworkAlias = container.ContainerNetworkAlias;
             Image = container.ContainerImage;
-            Name = container.ContainerName;
             EntryPointArgs = container.ContainerEntryPointArgs?.Split(' ').Select(arg => arg.Trim()) ?? new List<string>();
             EntryPoint = container.ContainerEntryPoint;
             WorkingDirectory = container.ContainerWorkDirectory;
             CreateOptions = container.ContainerCreateOptions;
-            RuntimePath = container.ContainerRuntimePath;
             Registry = new ContainerRegistry
             {
                 Username = container.RegistryAuthUsername,
