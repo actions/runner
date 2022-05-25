@@ -128,7 +128,14 @@ namespace GitHub.Runner.Worker.Handlers
 
             var output = new List<string>();
             var execExitCode = await dockerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
-            string nodeExternal;
+            
+            string nodeExternal = preferredVersion;
+            if (executionContext.Global.EnvironmentVariables != null)
+            {
+                executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Variables.Agent.ForcedActionsNodeVersion, out var nodeVersionOut);
+                nodeExternal = nodeVersionOut == "16" ?  "node16" : preferredVersion;
+            }
+
             if (execExitCode == 0)
             {
                 foreach (var line in output)
@@ -150,7 +157,6 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
             // Optimistically use the default
-            nodeExternal = preferredVersion;
             executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
             return nodeExternal;
         }

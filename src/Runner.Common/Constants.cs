@@ -71,15 +71,18 @@ namespace GitHub.Runner.Common
             public static readonly OSPlatform Platform = OSPlatform.Windows;
 #endif
 
-#if X86
-            public static readonly Architecture PlatformArchitecture = Architecture.X86;
-#elif X64
-            public static readonly Architecture PlatformArchitecture = Architecture.X64;
-#elif ARM
-            public static readonly Architecture PlatformArchitecture = Architecture.Arm;
-#elif ARM64            
-            public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
-#endif
+// #if X86
+//             public static readonly Architecture PlatformArchitecture = Architecture.X86;
+// #elif X64
+//             public static readonly Architecture PlatformArchitecture = Architecture.X64;
+// #elif ARM
+//             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
+// #elif ARM64            
+//             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+// #endif
+
+    // TODO: remove this shit and uncomment previous code
+    public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
 
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);
 
@@ -238,6 +241,7 @@ namespace GitHub.Runner.Common
 
                 // Set this env var to "node12" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
                 public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION"; 
+                public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION"; 
             }
 
             public static class System

@@ -56,6 +56,39 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData("node16", "16", "node16")]
+        [InlineData("node12", "16", "node16")]
+        [InlineData("node16", "12", "node16")]
+        [InlineData("node12", "12", "node12")]
+        [InlineData("node16", "", "node16")]
+        [InlineData("node12", "", "node12")]
+
+        public async Task DetermineNodeRuntimeVersionInContainerForcedAsync(string preferredVersion, string forcedNodeVersion, string expectedNodeVersion)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+                _ec.Object.Global.EnvironmentVariables.Add( Constants.Variables.Agent.ForcedActionsNodeVersion,forcedNodeVersion);
+
+                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                               .ReturnsAsync(0);
+
+                // Act.
+                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, preferredVersion);
+
+                // Assert.
+                Assert.Equal(expectedNodeVersion, nodeVersion);
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
