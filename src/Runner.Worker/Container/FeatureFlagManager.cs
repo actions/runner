@@ -10,7 +10,7 @@ namespace GitHub.Runner.Worker.Container
         public static bool IsContainerHooksEnabled(Variables variables)
         {
             var hookExecutablePath = Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath);
-            var isContainerHookFeatureFlagSet = variables?.GetBoolean(Constants.Runner.Features.AllowRunnerContainerHooks) ?? false;
+            var isContainerHookFeatureFlagSet = variables?.GetBoolean(Constants.Runner.Features.AllowRunnerContainerHooks) ?? true;
 
             if (isContainerHookFeatureFlagSet && !string.IsNullOrEmpty(hookExecutablePath))
             {
