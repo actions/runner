@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using GitHub.Runner.Common;
 
-namespace GitHub.Runner.Worker.Container
+namespace GitHub.Runner.Worker
 {
     public class FeatureFlagManager
     {
