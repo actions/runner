@@ -19,7 +19,7 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64, osx-arm64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -45,6 +45,10 @@ jobs:
           scriptSuffix: .sh
           elevate: "sudo "
 
+        - runtime: osx-arm64
+          os: macOS-latest
+          devScript: ./dev.sh
+
         - runtime: win-x64
           os: windows-2019
           devScript: ./dev
@@ -53,7 +57,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     # Build runner layout
     - name: Build & Layout Release
@@ -87,7 +91,7 @@ jobs:
         $obj | ConvertTo-Json -Depth 20 | Set-Content  "_layout/bin/appsettings.json"
     - name: Test
       shell: bash
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
       run: |
         pushd _layout/bin
         ./Runner.Server${{ matrix.exeSuffix }} --urls http://localhost:5000 &
@@ -127,7 +131,7 @@ jobs:
         kill $serverpid
         popd
     - name: Test cache
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
       shell: bash
       run: |
         pushd _layout/bin

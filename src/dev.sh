@@ -17,7 +17,7 @@ LAYOUT_DIR="$SCRIPT_DIR/../_layout"
 DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="6.0.201"
+DOTNETSDK_VERSION="6.0.300"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 RUNNER_VERSION=$(cat runnerversion)
 
@@ -49,6 +49,12 @@ elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
     fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
     RUNTIME_ID='osx-x64'
+    if command -v uname > /dev/null; then
+        CPU_NAME=$(uname -m)
+        case $CPU_NAME in
+            arm64) RUNTIME_ID="osx-arm64";;
+        esac
+    fi
 fi
 
 if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
@@ -58,7 +64,7 @@ fi
 # Make sure current platform support publish the dotnet runtime
 # Windows can publish win-x86/x64
 # Linux can publish linux-x64/arm/arm64
-# OSX can publish osx-x64
+# OSX can publish osx-x64/arm64
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') ]]; then
         echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
@@ -70,7 +76,7 @@ elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
        exit 1
     fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
-    if [[ ("$RUNTIME_ID" != 'osx-x64') ]]; then
+    if [[ ("$RUNTIME_ID" != 'osx-x64') && ("$RUNTIME_ID" != 'osx-arm64') ]]; then
        echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
        exit 1
     fi
