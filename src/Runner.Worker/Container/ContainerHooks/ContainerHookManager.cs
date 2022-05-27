@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var prependPath = GetPrependPath(context);
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Pre, prependPath);
+            var response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
             jobContainer.IsAlpine = response.IsAlpine.Value;
             SaveHookState(context, response.State, input);
             UpdateJobContext(context, jobContainer, serviceContainers, response);
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = GetHookStateInJson(context),
             };
             var prependPath = GetPrependPath(context);
-            await ExecuteHookScript(context, input, ActionRunStage.Post, prependPath);
+            await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Post, prependPath);
         }
 
         public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
@@ -87,7 +87,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = hookState
             };
             var prependPath = GetPrependPath(context);
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Post, prependPath);
+            var response = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Post, prependPath);
             if (response == null)
             {
                 return;
@@ -115,7 +115,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = GetHookStateInJson(context)
             };
 
-            var response = await ExecuteHookScript(context, input, ActionRunStage.Main, prependPath);
+            var response = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Main, prependPath);
             if (response == null)
             {
                 return;
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             SaveHookState(context, response.State, input);
         }
 
-        private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath)
+        private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T: HookResponse
         {
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
@@ -153,7 +153,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully."); // TODO: better exception
             }
-            var response = GetResponse(input);
+            var response = GetResponse<T>(input);
             return response;
         }
 
@@ -167,21 +167,16 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>()); ;
         }
 
-        private HookResponse GetResponse(HookInput input)
+        private T GetResponse<T>(HookInput input) where T: HookResponse
         {
-            HookResponse response = null;
+            T response = null;
 
             if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
             {
-                response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
+                response = IOUtil.LoadObject<T>(input.ResponseFile);
                 IOUtil.DeleteFile(input.ResponseFile);
                 Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
-
-                // IsAlpine is mandatory for prepare_job hook
-                if (input.Command == HookCommand.PrepareJob && response.IsAlpine == null)
-                {
-                    throw new Exception("The property 'isAlpine' is required but was not found in the response file.");
-                }
+                response?.Validate();
             }
             else
             {
@@ -216,7 +211,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Info($"Context variable 'hook_state' updated successfully for '{input.Command}' with data found in 'state' property of the response file.");
         }
 
-        private void UpdateJobContext(IExecutionContext context, ContainerInfo jobContainer, List<ContainerInfo> serviceContainers, HookResponse response)
+        private void UpdateJobContext(IExecutionContext context, ContainerInfo jobContainer, List<ContainerInfo> serviceContainers, PrepareJobResponse response)
         {
             if (response.Context == null)
             {
