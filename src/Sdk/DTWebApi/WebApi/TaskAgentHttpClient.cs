@@ -141,6 +141,24 @@ namespace GitHub.DistributedTask.WebApi
             return ReplaceAgentAsync(poolId, agent.Id, agent, userState, cancellationToken);
         }
 
+        public Task<Pipelines.AgentJobRequestMessage> GetJobMessageAsync(
+            string messageId,
+            object userState = null,
+            CancellationToken cancellationToken = default)
+        {
+            HttpMethod httpMethod = new HttpMethod("GET");
+            Guid locationId = new Guid("25adab70-1379-4186-be8e-b643061ebe3a");
+            object routeValues = new { messageId = messageId };
+
+            return SendAsync<Pipelines.AgentJobRequestMessage>(
+                httpMethod,
+                locationId,
+                routeValues: routeValues,
+                version: new ApiResourceVersion(1.0, 1),
+                userState: userState,
+                cancellationToken: cancellationToken);
+        }
+
         protected Task<T> SendAsync<T>(
             HttpMethod method,
             Guid locationId,
