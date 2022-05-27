@@ -1,11 +1,11 @@
 ## Features
+- Added a pre-release package for the `macOS-arm64` architecture
+  - Note that this packages is pre-release status and may not work with all existing actions
 
 ## Bugs
-- Fixed a bug where windows path separators were used in generated folders (#1617)
-- Fixed an issue where runner's invoked via `run.sh` or `run.cmd` did not properly restart after update (#1812). This fix applies to all future updates after installing this version
+- Fixed an issue where live console logs would fail to close (#1903)
 
 ## Misc
-- Relaxed Actions Summary size limit to 1MiB (#1839)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
