@@ -46,7 +46,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public HookContainer Container { get; internal set; }
     }
 
-
     public class ContainerRegistry
     {
         public string Username { get; set; }
