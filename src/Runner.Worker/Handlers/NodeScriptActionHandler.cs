@@ -102,6 +102,11 @@ namespace GitHub.Runner.Worker.Handlers
                 Data.NodeVersion = "node16";
             }
 #endif
+            string nodeVersionOut = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
+            if(nodeVersionOut == "16" && Data.NodeVersion != "node16")
+            {
+                Data.NodeVersion = "node16";
+            }
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 

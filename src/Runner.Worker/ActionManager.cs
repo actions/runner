@@ -400,12 +400,6 @@ namespace GitHub.Runner.Worker
                     {
                         var nodeAction = definition.Data.Execution as NodeJSActionExecutionData;
                         
-                        string nodeVersionOut = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
-                        if(nodeVersionOut == "16" && nodeAction.NodeVersion != "node16")
-                        {
-                            nodeAction.NodeVersion = "node16";
-                        }
-
                         Trace.Info($"Action pre node.js file: {nodeAction.Pre ?? "N/A"}.");
                         Trace.Info($"Action node.js file: {nodeAction.Script}.");
                         Trace.Info($"Action post node.js file: {nodeAction.Post ?? "N/A"}.");
