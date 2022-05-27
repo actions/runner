@@ -131,7 +131,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 ["standardInInput"] = JsonUtility.ToString(input),
                 ["path"] = HookIndexPath,
-                ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(HookIndexPath, Trace, prependPath, HostContext)
+                ["shell"] = HostContext.GetDefaultShellForScript(HookIndexPath, Trace, prependPath)
             };
 
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
