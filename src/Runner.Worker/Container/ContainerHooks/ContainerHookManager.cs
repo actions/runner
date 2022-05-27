@@ -54,50 +54,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             var prependPath = GetPrependPath(context);
             var response = await ExecuteHookScript(context, input, ActionRunStage.Pre, prependPath);
-            if (response == null)
-            {
-                return;
-            }
-
             jobContainer.IsAlpine = response.IsAlpine.Value;
-
-            var containerId = response?.Context?.Container?.Id;
-            if (containerId != null)
-            {
-                context.JobContext.Container["id"] = new StringContextData(containerId);
-                jobContainer.ContainerId = containerId;
-            }
-
-            var containerNetwork = response.Context?.Container?.Network;
-            if (containerNetwork != null)
-            {
-                context.JobContext.Container["network"] = new StringContextData(containerNetwork);
-                jobContainer.ContainerNetwork = containerNetwork;
-            }
-
             SaveHookState(context, response.State, input);
-
-            for (var i = 0; i < response.Context?.Services?.Count; i++)
-            {
-                var container = response.Context.Services[i];
-                var containerInfo = serviceContainers[i];
-                containerInfo.ContainerId = container.Id;
-                containerInfo.ContainerNetwork = container.Network;
-                var service = new DictionaryContextData()
-                {
-                    ["id"] = new StringContextData(container.Id),
-                    ["ports"] = new DictionaryContextData(),
-                    ["network"] = new StringContextData(container.Network)
-                };
-
-                container.PortMappings = new Dictionary<string, string>();
-                foreach (var portMapping in containerInfo.UserPortMappings)
-                {
-                    (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
-                    container.PortMappings.Add(portMapping);
-                }
-                context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
-            }
+            UpdateJobContext(context, jobContainer, serviceContainers, response);
         }
 
         public async Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
@@ -122,7 +81,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             var hookState = GetHookStateInJson(context);
             var input = new HookInput
             {
-                Args =  container.GetHookContainer(),
+                Args = container.GetHookContainer(),
                 Command = HookCommand.RunContainerStep,
                 ResponseFile = responsePath,
                 State = hookState
@@ -205,7 +164,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private string GetPrependPath(IExecutionContext context)
         {
-            return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());;
+            return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>()); ;
         }
 
         private HookResponse GetResponse(HookInput input)
@@ -255,6 +214,51 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
             context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(hookState));
             Trace.Info($"Context variable 'hook_state' updated successfully for '{input.Command}' with data found in 'state' property of the response file.");
+        }
+
+        private void UpdateJobContext(IExecutionContext context, ContainerInfo jobContainer, List<ContainerInfo> serviceContainers, HookResponse response)
+        {
+            if (response.Context == null)
+            {
+                Trace.Info($"The response file does not contain a context. The fields 'jobContext.Container' and 'jobContext.Services' will not be set.");
+                return;
+            }
+
+            var containerId = response.Context.Container?.Id;
+            if (containerId != null)
+            {
+                context.JobContext.Container["id"] = new StringContextData(containerId);
+                jobContainer.ContainerId = containerId;
+            }
+
+            var containerNetwork = response.Context.Container?.Network;
+            if (containerNetwork != null)
+            {
+                context.JobContext.Container["network"] = new StringContextData(containerNetwork);
+                jobContainer.ContainerNetwork = containerNetwork;
+            }
+
+            for (var i = 0; i < response.Context.Services.Count; i++)
+            {
+                var responseContainerInfo = response.Context.Services[i];
+                var globalContainerInfo = serviceContainers[i];
+                globalContainerInfo.ContainerId = responseContainerInfo.Id;
+                globalContainerInfo.ContainerNetwork = responseContainerInfo.Network;
+
+                var service = new DictionaryContextData()
+                {
+                    ["id"] = new StringContextData(responseContainerInfo.Id),
+                    ["ports"] = new DictionaryContextData(),
+                    ["network"] = new StringContextData(responseContainerInfo.Network)
+                };
+
+                globalContainerInfo.AddPortMappings(DockerUtil.ParseDockerPort(responseContainerInfo.Ports));
+                foreach (var portMapping in globalContainerInfo.UserPortMappings)
+                {
+                    (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
+                }
+                context.JobContext.Services[globalContainerInfo.ContainerNetworkAlias] = service;
+            }
         }
     }
 }

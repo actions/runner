@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
@@ -10,19 +9,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public string DisplayName { get; set; }
         public string Network { get; set; }
         public string Image { get; set; }
-        public IEnumerable<string> EntryPointArgs { get; set; }
+        public IEnumerable<string> EntryPointArgs { get; set; } = new List<string>();
         public string EntryPoint { get; set; }
         public string WorkingDirectory { get; set; }
         public string CreateOptions { get; private set; }
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public ContainerRegistry Registry { get; set; }
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public IDictionary<string, string> EnvironmentVariables { get; set; }
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public IDictionary<string, string> PortMappings { get; set; }
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public IEnumerable<MountVolume> SystemMountVolumes { get; set; }
-        public IEnumerable<MountVolume> UserMountVolumes { get; set; }
+        public IDictionary<string, string> EnvironmentVariables { get; set; } = new Dictionary<string, string>();
+        public IEnumerable<string> PortMappings { get; set; } = new List<string>();
+        public IEnumerable<MountVolume> SystemMountVolumes { get; set; } = new List<MountVolume>();
+        public IEnumerable<MountVolume> UserMountVolumes { get; set; } = new List<MountVolume>();
         public HookContainer() { } // For Json deserializer
         public HookContainer(ContainerInfo container)
         {
@@ -40,9 +35,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 Password = container.RegistryAuthPassword,
                 ServerUrl = container.RegistryServer,
             };
-
             EnvironmentVariables = container.ContainerEnvironmentVariables;
-            PortMappings = new Dictionary<string, string>(container.PortMappings.Select(mapping => new KeyValuePair<string, string>(mapping.HostPort, mapping.ContainerPort)));
+            PortMappings = container.UserPortMappings.Select(p => p.Value).ToList();
             SystemMountVolumes = container.SystemMountVolumes;
             UserMountVolumes = container.UserMountVolumes;
         }
