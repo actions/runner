@@ -8,7 +8,7 @@ using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Worker.Handlers
 {
-    internal class ScriptHandlerHelpers
+    internal static class ScriptHandlerHelpers
     {
         private static readonly Dictionary<string, string> _defaultArguments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -84,7 +84,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        internal static string GetDefaultShellForScript(string path, Common.Tracing trace, string prependPath, IHostContext hostContext = null)
+        internal static string GetDefaultShellForScript(this IHostContext hostContext, string path, Common.Tracing trace, string prependPath)
         {
             var format = "{0} {1}";
             switch (Path.GetExtension(path))
@@ -97,7 +97,6 @@ namespace GitHub.Runner.Worker.Handlers
                     var pathToPowershell = WhichUtil.Which("pwsh", false, trace, prependPath) ?? WhichUtil.Which("powershell", true, trace, prependPath);
                     return string.Format(format, pathToPowershell, _defaultArguments["powershell"]);
                 case ".js":
-                    ArgUtil.NotNull(hostContext, nameof(hostContext));
                     return Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}";
                 default:
                     throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh', '.ps1' or '.js'.");

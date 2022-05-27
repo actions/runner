@@ -60,7 +60,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> inputs = new()
             {
                 ["path"] = hookData.Path,
-                ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(hookData.Path, Trace, prependPath)
+                ["shell"] = HostContext.GetDefaultShellForScript(hookData.Path, Trace, prependPath)
             };
 
             // Create the handler
