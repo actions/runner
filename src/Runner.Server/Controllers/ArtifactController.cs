@@ -59,12 +59,12 @@ namespace Runner.Server.Controllers {
             Directory.CreateDirectory(_targetFilePath);
         }
 
-        public async Task<ArtifactFileContainer> CreateContainer(long run, long attempt, CreateActionsStorageArtifactParameters req) {
+        public async Task<ArtifactFileContainer> CreateContainer(long run, long attempt, CreateActionsStorageArtifactParameters req, long artifactsMinAttempt = -1) {
             var filecontainer = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt == attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Id == req.ContainerId select fileContainer).Include(f => f.Container).Include(f => f.Files).FirstOrDefault();
             if(filecontainer != null) {
                 var files = filecontainer.Files;
                 var container = filecontainer.Container;
-                filecontainer = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == req.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).FirstOrDefault();
+                filecontainer = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == req.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).FirstOrDefault();
                 if(filecontainer != null) {
                     foreach(var file in files) {
                         var ofile = await (from f in _context.Entry(filecontainer).Collection(f => f.Files).Query() where f.FileName.ToLower() == file.FileName.ToLower() select f).FirstOrDefaultAsync();
@@ -87,7 +87,7 @@ namespace Runner.Server.Controllers {
                 }
                 files.Clear();
             } else {
-                filecontainer = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == req.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).FirstOrDefault();
+                filecontainer = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == req.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).FirstOrDefault();
                 if(filecontainer == null) {
                     var artifactContainer = (from artifact in _context.Artifacts where artifact.Attempt.Attempt == attempt && artifact.Attempt.WorkflowRun.Id == run select artifact).First();
                     filecontainer = new ArtifactFileContainer() { Name = req.Name, Container = artifactContainer };
@@ -102,7 +102,8 @@ namespace Runner.Server.Controllers {
         public async Task<FileStreamResult> CreateContainer(long run) {
             var req = await FromBody<CreateActionsStorageArtifactParameters>();
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
-            var filecontainer = await CreateContainer(run, attempt, req);
+            var artifactsMinAttempt = Int64.Parse(User.FindFirst("artifactsMinAttempt")?.Value ?? "-1");
+            var filecontainer = await CreateContainer(run, attempt, req, artifactsMinAttempt);
             return await Ok(new ArtifactResponse { name = req.Name, type = "actions_storage", containerId = filecontainer.Id, fileContainerResourceUrl = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/container/{filecontainer.Id}").ToString() } );
         }
 
@@ -110,7 +111,8 @@ namespace Runner.Server.Controllers {
         public async Task<FileStreamResult> PatchContainer(long run, [FromQuery] string artifactName) {
             var req = await FromBody<CreateActionsStorageArtifactParameters>();
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
-            var container = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt == attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == artifactName.ToLower() select fileContainer).First();
+            var artifactsMinAttempt = Int64.Parse(User.FindFirst("artifactsMinAttempt")?.Value ?? "-1");
+            var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && fileContainer.Container.Attempt.Attempt <= attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == artifactName.ToLower() select fileContainer).First();
             container.Size = req.Size;
             await _context.SaveChangesAsync();
             // This sends the size of the artifact container
@@ -121,11 +123,12 @@ namespace Runner.Server.Controllers {
         [AllowAnonymous]
         public async Task<IActionResult> GetContainer(long run, [FromQuery] string artifactName) {
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "-1");
+            var artifactsMinAttempt = Int64.Parse(User.FindFirst("artifactsMinAttempt")?.Value ?? "-1");
             if(string.IsNullOrEmpty(artifactName)) {
-                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).ToList();
+                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).ToList();
                 return await Ok(from e in container select new ArtifactResponse{ name = e.Name, type = "actions_storage", containerId = e.Id, fileContainerResourceUrl = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/container/{e.Id}").ToString() } );
             } else {
-                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == artifactName.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select new ArtifactResponse{ name = fileContainer.Name, type = "actions_storage", containerId = fileContainer.Id, fileContainerResourceUrl = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/container/{fileContainer.Id}").ToString() }).First();
+                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == artifactName.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select new ArtifactResponse{ name = fileContainer.Name, type = "actions_storage", containerId = fileContainer.Id, fileContainerResourceUrl = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/container/{fileContainer.Id}").ToString() }).First();
                 return await Ok(container);
             }
         }

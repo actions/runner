@@ -15,6 +15,7 @@ namespace Runner.Server.Models
         [IgnoreDataMember]
         public WorkflowRun WorkflowRun { get; set; }
         public int Attempt { get; set; }
+        public int ArtifactsMinAttempt { get; set; }
         public string EventName { get; set; }
         public string EventPayload { get; set; }
         public string Workflow { get; set; }

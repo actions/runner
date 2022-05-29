@@ -2936,6 +2936,7 @@ namespace Runner.Server.Controllers
                                 new Claim("ref", Ref),
                                 new Claim("defaultRef", "refs/heads/" + (ghook?.repository?.default_branch ?? "main")),
                                 new Claim("attempt", attempt.Attempt.ToString()),
+                                new Claim("artifactsMinAttempt", attempt.ArtifactsMinAttempt.ToString()),
                                 new Claim("localcheckout", localcheckout ? "actions/checkout" : ""),
                             }),
                             Expires = DateTime.UtcNow.AddMinutes(timeoutMinutes + 10),
@@ -3961,11 +3962,11 @@ namespace Runner.Server.Controllers
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
-        private void RerunWorkflow(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false) {
+        private void RerunWorkflow(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false, bool resetArtifacts = true) {
             var clone = Clone();
-            Task.Run(() => clone.RerunWorkflow2(runid, finishedJobs, onLatestCommit));
+            Task.Run(() => clone.RerunWorkflow2(runid, finishedJobs, onLatestCommit, resetArtifacts));
         }
-        private void RerunWorkflow2(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false) {
+        private void RerunWorkflow2(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false, bool resetArtifacts = true) {
             string latestWorkflow = null;
             var run = (from r in _context.Set<WorkflowRun>() where r.Id == runid select r).First();
             var lastAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt descending select a).First();
@@ -4011,8 +4012,8 @@ namespace Runner.Server.Controllers
             }
             var firstAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt ascending select a).First();
 
-            long attempt = lastAttempt.Attempt + 1;
-            var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt, WorkflowRun = run, EventPayload = lastAttempt.EventPayload, EventName = lastAttempt.EventName, Workflow = latestWorkflow ?? lastAttempt.Workflow, Ref = lastAttempt.Ref, Sha = latestSha ?? lastAttempt.Sha, StatusCheckSha = lastAttempt.StatusCheckSha, TimeLineId = firstAttempt.TimeLineId };
+            int attempt = lastAttempt.Attempt + 1;
+            var _attempt = new WorkflowRunAttempt() { Attempt = attempt, WorkflowRun = run, EventPayload = lastAttempt.EventPayload, EventName = lastAttempt.EventName, Workflow = latestWorkflow ?? lastAttempt.Workflow, Ref = lastAttempt.Ref, Sha = latestSha ?? lastAttempt.Sha, StatusCheckSha = lastAttempt.StatusCheckSha, TimeLineId = firstAttempt.TimeLineId, ArtifactsMinAttempt = resetArtifacts ? attempt : lastAttempt.ArtifactsMinAttempt };
             _context.Artifacts.Add(new ArtifactContainer() { Attempt = _attempt } );
             _context.SaveChanges();
             var e = lastAttempt.EventName;
@@ -4095,7 +4096,7 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            RerunWorkflow(job.runid, finishedJobs, onLatestCommit);
+            RerunWorkflow(job.runid, finishedJobs, onLatestCommit, false);
         }
 
         [HttpPost("rerunworkflow/{id}")]
@@ -4122,7 +4123,7 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            RerunWorkflow(id, finishedJobs.ToDictionary(kv => kv.Key, kv => kv.Value.Where(j => j.Result == TaskResult.Succeeded).ToList()), onLatestCommit);
+            RerunWorkflow(id, finishedJobs.ToDictionary(kv => kv.Key, kv => kv.Value.Where(j => j.Result == TaskResult.Succeeded).ToList()), onLatestCommit, false);
         }
 
         [HttpPost("cancel/{id}")]
