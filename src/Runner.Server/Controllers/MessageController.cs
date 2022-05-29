@@ -4106,7 +4106,7 @@ namespace Runner.Server.Controllers
         [HttpPost("rerunFailed/{id}")]
         public void RerunFailedJobs(long id, [FromQuery] bool onLatestCommit) {
             var finishedJobs = new Dictionary<string, List<Job>>(StringComparer.OrdinalIgnoreCase);
-            foreach(var _job in (from j in _context.Jobs where j.runid == id && j.Result == TaskResult.Succeeded select j).Include(z => z.Outputs).Include(z => z.WorkflowRunAttempt)) {
+            foreach(var _job in (from j in _context.Jobs where j.runid == id select j).Include(z => z.Outputs).Include(z => z.WorkflowRunAttempt)) {
                 if(!finishedJobs.TryAdd(_job.WorkflowIdentifier, new List<Job> { _job })) {
                     bool found = false;
                     for(int i = 0; i < finishedJobs[_job.WorkflowIdentifier].Count; i++) {
@@ -4122,7 +4122,7 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            RerunWorkflow(id, finishedJobs, onLatestCommit);
+            RerunWorkflow(id, finishedJobs.ToDictionary(kv => kv.Key, kv => kv.Value.Where(j => j.Result == TaskResult.Succeeded).ToList()), onLatestCommit);
         }
 
         [HttpPost("cancel/{id}")]
