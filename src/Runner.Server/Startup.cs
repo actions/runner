@@ -107,27 +107,23 @@ namespace Runner.Server
 #else
             var sqlitecon = Configuration.GetConnectionString("sqlite");
 #endif
-            if(string.IsNullOrEmpty(sqlitecon)) {
+            bool useSqlite = sqlitecon?.Length > 0;
+            if(!useSqlite) {
                 services.AddHostedService<CleanUpArtifactsAndCache>();
             }
             Action<DbContextOptionsBuilder> optionsAction = conf => {
-                if(sqlitecon?.Length > 0) {
+                if(useSqlite) {
                     conf.UseSqlite(sqlitecon);
-                }
-                else {
+                } else {
                     conf.UseInMemoryDatabase("Agents");
                 }
             };
             services.AddDbContext<SqLiteDb>(optionsAction, ServiceLifetime.Scoped, ServiceLifetime.Singleton);
             
-            try {
+            if(useSqlite) {
                 var b = new DbContextOptionsBuilder<SqLiteDb>();
                 optionsAction(b);
                 new SqLiteDb(b.Options).Database.Migrate();
-            } catch (Exception ex) {
-                Console.WriteLine(ex.Message);
-                Console.WriteLine(ex.StackTrace);
-                // This always throws, if using the InMemory Database
             }
             var sessionCookieLifetime = Configuration.GetValue("SessionCookieLifetimeMinutes", 60);
             services.AddSingleton<IAuthorizationHandler, DevModeOrAuthenticatedUser>();
