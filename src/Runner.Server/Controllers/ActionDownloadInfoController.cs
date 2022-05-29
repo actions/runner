@@ -37,6 +37,8 @@ namespace Runner.Server.Controllers
             public string ZipbalUrl { get => ZipballUrl; set => ZipballUrl = value; }
             public string TarballUrl { get; set; }
             public string ZipballUrl { get; set; }
+            public string GitApiServerUrl { get; set; }
+            public string GITHUB_TOKEN { get; set; }
         }
 
         public ActionDownloadInfoController(IConfiguration configuration) : base(configuration)
@@ -132,59 +134,81 @@ namespace Runner.Server.Controllers
         {
             var localcheckout = User.FindFirst("localcheckout")?.Value ?? "";
             ActionReferenceList reflist = await FromBody<ActionReferenceList>();
-            var actions = new Dictionary<string, ActionDownloadInfo>();
-            foreach (var item in reflist.Actions) {
-                foreach(var downloadUrl in downloadUrls) {
+            var repository = User.FindFirst("repository")?.Value;
+            var defGhToken = await CreateGithubAppToken(repository);
+            try {
+                var actions = new Dictionary<string, ActionDownloadInfo>();
+                foreach (var item in reflist.Actions) {
                     var islocalcheckout = string.Equals(item.NameWithOwner, localcheckout, StringComparison.OrdinalIgnoreCase);
+                    var name = $"{item.NameWithOwner}@{item.Ref}";
                     if(islocalcheckout && (item.Ref == BuildConstants.Source.CommitHash || !item.Ref.StartsWith(BuildConstants.Source.CommitHash)) ) {
-                        actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.tar.gz" : $"_apis/v1/ActionDownloadInfo/localcheckout?format=tarball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.zip"  : $"_apis/v1/ActionDownloadInfo/localcheckout?format=zipball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };                    
+                        actions[name] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.tar.gz" : $"_apis/v1/ActionDownloadInfo/localcheckout?format=tarball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.zip"  : $"_apis/v1/ActionDownloadInfo/localcheckout?format=zipball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };                    
                     } else {
-                        var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref };
-                        actions[$"{item.NameWithOwner}@{item.Ref}"] = downloadinfo;
-                        // Allow access to the original action
-                        if(islocalcheckout && item.NameWithOwner == localcheckout && item.Ref.StartsWith(BuildConstants.Source.CommitHash)) {
-                            item.Ref = item.Ref.Substring(BuildConstants.Source.CommitHash.Length);
-                        }
-                        downloadinfo.TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, item.Ref);
-                        downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, item.Ref);
-                        // TODO: How to check on github if url is valid?, maybe use GITHUB_TOKEN?
-                        // var client = new HttpClient();
-                        // if((await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.TarballUrl))).IsSuccessStatusCode && (await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.ZipballUrl))).IsSuccessStatusCode) {
-                            var repository = User.FindFirst("repository")?.Value;
-                            string ghtoken = null;
-                            if(AllowPrivateActionAccess && repository != null && item.NameWithOwner != repository) {
-                                ghtoken = await CreateGithubAppToken(item.NameWithOwner);
+                        ActionDownloadInfo defDownloadInfo = null;
+                        foreach(var downloadUrl in downloadUrls) {
+                            try {
+                                var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref };
+                                // Allow access to the original action
+                                if(islocalcheckout && item.NameWithOwner == localcheckout && item.Ref.StartsWith(BuildConstants.Source.CommitHash)) {
+                                    item.Ref = item.Ref.Substring(BuildConstants.Source.CommitHash.Length);
+                                }
+                                downloadinfo.TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, item.Ref);
+                                downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, item.Ref);
+                                if(defDownloadInfo == null) {
+                                    defDownloadInfo = downloadinfo;
+                                }
+                                string ghtoken = null;
+                                if(!string.IsNullOrEmpty(downloadUrl.GitApiServerUrl) && downloadUrl.GitApiServerUrl != GitApiServerUrl) {
+                                    ghtoken = downloadUrl.GITHUB_TOKEN;
+                                    // Without an dummy Token we would expose our GITHUB_TOKEN to https://github.com if no token is provided
+                                    downloadinfo.Authentication = new ActionDownloadAuthentication() { Token = !string.IsNullOrEmpty(ghtoken) ? ghtoken : "dummy-token" };
+                                } else {
+                                    if(AllowPrivateActionAccess && repository != null && item.NameWithOwner != repository) {
+                                        ghtoken = await CreateGithubAppToken(item.NameWithOwner);
+                                        if(!string.IsNullOrEmpty(ghtoken)) {
+                                            downloadinfo.Authentication = new ActionDownloadAuthentication() { Token = ghtoken };
+                                        }
+                                    }
+                                    if(ghtoken == null) {
+                                        ghtoken = defGhToken ?? GITHUB_TOKEN;
+                                    }
+                                }
+                                var client = new HttpClient();
+                                client.DefaultRequestHeaders.Add("accept", "application/json");
+                                client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                                 if(!string.IsNullOrEmpty(ghtoken)) {
-                                    downloadinfo.Authentication = new ActionDownloadAuthentication() { Token = ghtoken };
+                                    client.DefaultRequestHeaders.Add("Authorization", $"token {ghtoken}");
                                 }
-                            }
-                            if(ghtoken == null) {
-                                ghtoken = await CreateGithubAppToken(repository) ?? GITHUB_TOKEN;
-                            }
-                            var client = new HttpClient();
-                            client.DefaultRequestHeaders.Add("accept", "application/json");
-                            client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                            if(!string.IsNullOrEmpty(ghtoken)) {
-                                client.DefaultRequestHeaders.Add("Authorization", $"token {ghtoken}");
-                            }
-                            var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{item.NameWithOwner}/commits"));
-                            urlBuilder.Query = $"?sha={Uri.EscapeDataString(item.Ref)}&page=1&limit=1&per_page=1";
-                            var res = await client.GetAsync(urlBuilder.ToString());
-                            if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                                var content = await res.Content.ReadAsStringAsync();
-                                var o = JsonConvert.DeserializeObject<MessageController.GitCommit[]>(content)[0];
-                                if(!string.IsNullOrEmpty(o.Sha)) {
-                                    downloadinfo.ResolvedSha = o.Sha;
-                                    downloadinfo.TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, o.Sha);
-                                    downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, o.Sha);
+                                var urlBuilder = new UriBuilder(new Uri(new Uri((!string.IsNullOrEmpty(downloadUrl.GitApiServerUrl) ? downloadUrl.GitApiServerUrl : GitApiServerUrl) + "/"), $"repos/{item.NameWithOwner}/commits"));
+                                urlBuilder.Query = $"?sha={Uri.EscapeDataString(item.Ref)}&page=1&limit=1&per_page=1";
+                                var res = await client.GetAsync(urlBuilder.ToString());
+                                if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                                    var content = await res.Content.ReadAsStringAsync();
+                                    var o = JsonConvert.DeserializeObject<MessageController.GitCommit[]>(content)[0];
+                                    if(!string.IsNullOrEmpty(o.Sha)) {
+                                        downloadinfo.ResolvedSha = o.Sha;
+                                        downloadinfo.TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, o.Sha);
+                                        downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, o.Sha);
+                                    }
+                                    actions[name] = downloadinfo;
+                                    break;
                                 }
+                            } catch {
+                                // TODO log exceptions to workflow, job or audit log
                             }
-                            break;
-                        // }
+                        }
+                        if(defDownloadInfo != null) {
+                            // Fallback to default download info, old behavior
+                            actions.TryAdd(name, defDownloadInfo);
+                        }
                     }
                 }
+                return await Ok(new ActionDownloadInfoCollection() {Actions = actions });
+            } finally {
+                if(defGhToken != null) {
+                    DeleteGithubAppToken(defGhToken);
+                }
             }
-            return await Ok(new ActionDownloadInfoCollection() {Actions = actions });
-        }        
+        }
     }
 }

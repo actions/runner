@@ -148,6 +148,8 @@ namespace Runner.Client
             public string[] EnvironmentSecretFiles { get; set; }
             public string[] Inputs { get; set; }
             public string RunnerDirectory { get; set; }
+            public bool GitHubConnect { get; set; }
+            public string GitHubConnectToken { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -653,10 +655,16 @@ namespace Runner.Client
                 description: "Url to github graphql api. ( e.g https://api.github.com/graphql )");
             var gitTarballUrlOpt = new Option<string>(
                 "--git-tarball-url",
-                description: "Url to github or gitea tarball api url, defaults to `<git-api-server-url>/repos/{0}/tarball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+                description: "Url to github or gitea tarball api url, defaults to `<git-server-url>/{0}/archive/{1}.tar.gz`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
             var gitZipballUrlOpt = new Option<string>(
                 "--git-zipball-url",
-                description: "Url to github or gitea zipball api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+                description: "Url to github or gitea zipball api url, defaults to `<git-server-url>/{0}/archive/{1}.zip`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+             var githubConnectOpt = new Option<bool>(
+                "--github-connect",
+                description: "Allow all actions from https://github.com with an GHES instance.");
+            var githubConnectTokenOpt = new Option<string>(
+                "--github-connect-token",
+                description: "Provide an optional Personal Access Token for https://github.com.");
             var remoteCheckoutOpt = new Option<bool>(
                 "--remote-checkout",
                 description: "Do not inject localcheckout into your workflows, always use the original actions/checkout.");
@@ -715,6 +723,8 @@ namespace Runner.Client
                 gitGraphQlOpt,
                 gitTarballUrlOpt,
                 gitZipballUrlOpt,
+                githubConnectOpt,
+                githubConnectTokenOpt,
                 remoteCheckoutOpt,
                 artifactOutputDirOpt,
                 logOutputDirOpt,
@@ -857,17 +867,28 @@ namespace Runner.Client
                             serverconfig["ConnectionStrings"] = connectionopts;
                             
                             serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.server } } });
-                            serverconfig["Runner.Server"] = JObject.FromObject(new { 
+                            var rsconfig = new { 
                                 GitServerUrl = parameters.GitServerUrl,
                                 GitApiServerUrl = parameters.GitApiServerUrl,
                                 GitGraphQlServerUrl = parameters.GitGraphQlServerUrl,
                                 ActionDownloadUrls = new [] {
                                     new {
-                                        TarballUrl = parameters.GitTarballUrl ?? parameters.GitApiServerUrl + "/repos/{0}/tarball/{1}",
-                                        ZipballUrl = parameters.GitZipballUrl ?? parameters.GitApiServerUrl + "/repos/{0}/zipball/{1}",
+                                        TarballUrl = parameters.GitTarballUrl ?? parameters.GitServerUrl + "/{0}/archive/{1}.tar.gz",
+                                        ZipballUrl = parameters.GitZipballUrl ?? parameters.GitServerUrl + "/{0}/archive/{1}.zip",
+                                        GitApiServerUrl = "",
+                                        GITHUB_TOKEN = "",
                                     }
-                                }
-                            });
+                                }.ToList()
+                            };
+                            if(parameters.GitHubConnect) {
+                                rsconfig.ActionDownloadUrls.Add(new {
+                                    TarballUrl = "https://github.com/{0}/archive/{1}.tar.gz",
+                                    ZipballUrl = "https://github.com/{0}/archive/{1}.zip",
+                                    GitApiServerUrl = "https://api.github.com",
+                                    GITHUB_TOKEN = parameters.GitHubConnectToken,
+                                });
+                            }
+                            serverconfig["Runner.Server"] = JObject.FromObject(rsconfig);
                             await File.WriteAllTextAsync(serverconfigfileName, serverconfig.ToString());
                             using (AnonymousPipeServerStream pipeServer =
                                 new AnonymousPipeServerStream(PipeDirection.In,
@@ -1702,6 +1723,8 @@ namespace Runner.Client
                 }
                 parameters.GitTarballUrl = bindingContext.ParseResult.GetValueForOption(gitTarballUrlOpt);
                 parameters.GitZipballUrl = bindingContext.ParseResult.GetValueForOption(gitZipballUrlOpt);
+                parameters.GitHubConnect = bindingContext.ParseResult.GetValueForOption(githubConnectOpt);
+                parameters.GitHubConnectToken = bindingContext.ParseResult.GetValueForOption(githubConnectTokenOpt);
                 parameters.RemoteCheckout = bindingContext.ParseResult.GetValueForOption(remoteCheckoutOpt);
                 parameters.ArtifactOutputDir = bindingContext.ParseResult.GetValueForOption(artifactOutputDirOpt);
                 parameters.LogOutputDir = bindingContext.ParseResult.GetValueForOption(logOutputDirOpt);
