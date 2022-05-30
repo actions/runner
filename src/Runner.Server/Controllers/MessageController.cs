@@ -166,7 +166,7 @@ namespace Runner.Server.Controllers
                     if(mapping.Count != othermapping.Count) {
                         return false;
                     }
-                    Dictionary<string, TemplateToken> dictionary = new Dictionary<string, TemplateToken>();
+                    Dictionary<string, TemplateToken> dictionary = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                     if (mapping.Count > 0)
                     {
                         foreach (var pair in mapping)
@@ -1529,7 +1529,7 @@ namespace Runner.Server.Controllers
                                             return;
                                         }
                                         var rawstrategy = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "strategy" select r).FirstOrDefault().Value;
-                                        var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
+                                        var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase) };
                                         var includematrix = new List<Dictionary<string, TemplateToken>> { };
                                         SequenceToken include = null;
                                         SequenceToken exclude = null;
@@ -1562,7 +1562,7 @@ namespace Runner.Server.Controllers
                                                             {
                                                                 foreach (var n in val)
                                                                 {
-                                                                    var ndict = new Dictionary<string, TemplateToken>(mel);
+                                                                    var ndict = new Dictionary<string, TemplateToken>(mel, StringComparer.OrdinalIgnoreCase);
                                                                     ndict.Add(key, n);
                                                                     next.Add(ndict);
                                                                 }
@@ -1575,7 +1575,7 @@ namespace Runner.Server.Controllers
                                                 {
                                                     foreach (var item in exclude)
                                                     {
-                                                        var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.exclude.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.exclude.* mapping key").Value, k => k.Value);
+                                                        var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.exclude.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.exclude.* mapping key").Value, k => k.Value, StringComparer.OrdinalIgnoreCase);
                                                         flatmatrix.RemoveAll(dict =>
                                                         {
                                                             foreach (var item in map)
@@ -1599,7 +1599,7 @@ namespace Runner.Server.Controllers
                                             if(flatmatrix.Count == 0) {
                                                 jobTraceWriter.Info("{0}", $"Matrix is empty, adding an empty entry");
                                                 // Fix empty matrix after exclude
-                                                flatmatrix.Add(new Dictionary<string, TemplateToken>());
+                                                flatmatrix.Add(new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase));
                                             }
                                         }
                                         // Enforce job matrix limit of github
@@ -1611,7 +1611,7 @@ namespace Runner.Server.Controllers
                                         var keys = flatmatrix.First().Keys.ToArray();
                                         if (include != null) {
                                             foreach (var item in include) {
-                                                var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.include.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.include.* mapping key").Value, k => k.Value);
+                                                var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.include.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.include.* mapping key").Value, k => k.Value, StringComparer.OrdinalIgnoreCase);
                                                 bool matched = false;
                                                 if(keys.Length > 0) {
                                                     flatmatrix.ForEach(dict => {
@@ -1637,8 +1637,8 @@ namespace Runner.Server.Controllers
                                         }
 
                                         // Filter matrix from cli
-                                        if(jobname == selectedJob && _matrix?.Length > 0) {
-                                            var mdict = new Dictionary<string, TemplateToken>();
+                                        if(selectedJob != null && (string.Equals(jobname, selectedJob, StringComparison.OrdinalIgnoreCase) || selectedJob.StartsWith(jobname + "/", StringComparison.OrdinalIgnoreCase)) && _matrix?.Length > 0) {
+                                            var mdict = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             foreach(var m_ in _matrix) {
                                                 var i = m_.IndexOf(":");
                                                 var templateContext = CreateTemplateContext(jobTraceWriter, workflowContext.FileTable, contextData);
@@ -1783,7 +1783,7 @@ namespace Runner.Server.Controllers
                                                             // Allow rerunning one reusable workflow
                                                             // If the rerun is requested discard all child results
                                                             Array.ForEach(finishedJobs.ToArray(), fjobs => {
-                                                                if(fjobs.Key.StartsWith(jobname + "/")) {
+                                                                if(fjobs.Key.StartsWith(jobname + "/", StringComparison.OrdinalIgnoreCase)) {
                                                                     finishedJobs.Remove(fjobs.Key);
                                                                 }
                                                             });
@@ -1797,7 +1797,7 @@ namespace Runner.Server.Controllers
                                                                     _next.NoStatusCheck = true;
                                                                     jobitem.Childs?.Add(_next);
                                                                     return b => {
-                                                                        var jevent = new JobCompletedEvent(_next.RequestId, _next.Id, fjob.Result.Value, fjob.Outputs.ToDictionary(o => o.Name, o => new VariableValue(o.Value, false)));
+                                                                        var jevent = new JobCompletedEvent(_next.RequestId, _next.Id, fjob.Result.Value, fjob.Outputs.ToDictionary(o => o.Name, o => new VariableValue(o.Value, false), StringComparer.OrdinalIgnoreCase));
                                                                         workflowcomplete(jevent);
                                                                         return fjob;
                                                                     };
@@ -2034,7 +2034,7 @@ namespace Runner.Server.Controllers
                 if(selectedJob != null) {
                     List<JobItem> next = new List<JobItem>();
                     dependentjobgroup.RemoveAll(j => {
-                        if(j.name == selectedJob || selectedJob.StartsWith(j.name + "/")) {
+                        if(string.Equals(j.name, selectedJob, StringComparison.OrdinalIgnoreCase) || selectedJob.StartsWith(j.name + "/", StringComparison.OrdinalIgnoreCase)) {
                             next.Add(j);
                             return true;
                         }
@@ -2679,9 +2679,9 @@ namespace Runner.Server.Controllers
                                         }
                                         Array.ForEach(finishedJobs.ToArray(), fjobs => {
                                             foreach(var djob in dependentjobgroup) {
-                                                if(djob.Dependencies != null && (fjobs.Key == djob.name || fjobs.Key.StartsWith(djob.name + "/"))) {
+                                                if(djob.Dependencies != null && (string.Equals(fjobs.Key, djob.name, StringComparison.OrdinalIgnoreCase) || fjobs.Key.StartsWith(djob.name + "/", StringComparison.OrdinalIgnoreCase))) {
                                                     foreach(var dep in djob.Dependencies) {
-                                                        if(dep.Key == name) {
+                                                        if(string.Equals(dep.Key, name, StringComparison.OrdinalIgnoreCase)) {
                                                             finishedJobs.Remove(fjobs.Key);
                                                             return;
                                                         }
@@ -2692,8 +2692,8 @@ namespace Runner.Server.Controllers
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                 }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency};
-                                var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value);
-                                var sjob = selectedJob?.StartsWith(name + "/") == true ? selectedJob.Substring(name.Length + 1) : null;
+                                var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+                                var sjob = selectedJob?.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase) == true ? selectedJob.Substring(name.Length + 1) : null;
                                 clone.ConvertYaml2(filename, filecontent, repo, GitServerUrl, ghook, hook, "workflow_call", sjob, false, null, null, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: fjobs, secretsProvider: reuseableSecretsProvider);
                             };
                             if((reference.RepositoryType == PipelineConstants.SelfAlias || localcheckout && reference.Name == repo && (("refs/heads/" + reference.Ref) == Ref || ("refs/tags/" + reference.Ref) == Ref) || reference.Ref == Sha) && workflows != null && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content)) {
@@ -4123,7 +4123,7 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            RerunWorkflow(id, finishedJobs.ToDictionary(kv => kv.Key, kv => kv.Value.Where(j => j.Result == TaskResult.Succeeded).ToList()), onLatestCommit, false);
+            RerunWorkflow(id, finishedJobs.ToDictionary(kv => kv.Key, kv => kv.Value.Where(j => j.Result == TaskResult.Succeeded).ToList(), StringComparer.OrdinalIgnoreCase), onLatestCommit, false);
         }
 
         [HttpPost("cancel/{id}")]

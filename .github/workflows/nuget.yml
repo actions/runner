@@ -112,6 +112,7 @@ jobs:
         gharun -W sample.yml --environment-secret-file prod=prod.secrets --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
         cd ../..
         gharun -W testworkflows/dumpcontexts.yml --list
+        gharun -C testworkflows/case-insensitive-keys-matrix
         ${{matrix.image && 'echo "Skipping additional testcases" && exit 0' || ''}}
         gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
         gharun -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1

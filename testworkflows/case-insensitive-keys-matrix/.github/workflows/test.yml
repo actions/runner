@@ -1,0 +1,38 @@
+on: push
+jobs:
+  testa:
+    strategy:
+      matrix:
+        Hello: [a, b]
+        exclude:
+        - hello: a
+        include:
+        - hello: b
+          test: 0
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v3
+    - run: echo '${{tojson(matrix)}}'
+    - run: exit ${{ strategy.job-index == 0 && strategy.job-total == 1 && matrix.test == 0 && matrix.hello == 'b' && '0' || '1'}}
+  testb:
+    strategy:
+      matrix:
+        Hello:
+        - misc: val
+          mKd: key
+        - mIsc: val2
+          mKd: key3
+        exclude:
+        - hello:
+            mIsC: val
+            mKD: key
+        include:
+        - hello:
+            MIsc: val2
+            MKd: key3
+          ok: false
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v3
+    - run: echo '${{tojson(matrix)}}'
+    - run: exit ${{ strategy.job-index == 0 && strategy.job-total == 1 && matrix.hello.misc == 'val2' && matrix.hello.mkd == 'key3' && !matrix.ok && '0' || '1'}}
