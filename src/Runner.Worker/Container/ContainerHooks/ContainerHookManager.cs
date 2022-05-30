@@ -76,7 +76,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 Command = HookCommand.CleanupJob,
                 ResponseFile = responsePath,
-                State = GetHookState(context),
+                State = context.Global.ContainerHookState,
             };
             var prependPath = GetPrependPath(context);
             try
@@ -93,7 +93,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             Trace.Entering();
             var responsePath = GenerateResponsePath();
-            var hookState = GetHookState(context);
+            var hookState = context.Global.ContainerHookState;
             var input = new HookInput
             {
                 Args = container.GetHookContainer(),
@@ -134,7 +134,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     PrependPath = prependPath,
                     WorkingDirectory = workingDirectory,
                 },
-                State = GetHookState(context)
+                State = context.Global.ContainerHookState
             };
 
             PrepareJobResponse response;
@@ -220,25 +220,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             return response;
         }
 
-        private static JToken GetHookState(IExecutionContext context)
-        {
-            if (context.JobContext.TryGetValue("hook_state", out var hookState))
-            {
-                return JsonUtility.FromString<JToken>(hookState.ToString());
-            }
-            return null;
-        }
-
         private void SaveHookState(IExecutionContext context, JToken hookState, HookInput input)
         {
-            // TODO: consider JTokenContextData
             if (hookState == null)
             {
-                Trace.Info($"No 'state' property found in response file for '{input.Command}'. Context variable 'hook_state' will not be updated.");
+                Trace.Info($"No 'state' property found in response file for '{input.Command}'. Global variable for 'ContainerHookState' will not be updated.");
                 return;
             }
-            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(hookState));
-            Trace.Info($"Context variable 'hook_state' updated successfully for '{input.Command}' with data found in 'state' property of the response file.");
+            context.Global.ContainerHookState = hookState;
+            Trace.Info($"Global variable 'ContainerHookState' updated successfully for '{input.Command}' with data found in 'state' property of the response file.");
         }
 
         private void UpdateJobContext(IExecutionContext context, ContainerInfo jobContainer, List<ContainerInfo> serviceContainers, PrepareJobResponse response)
