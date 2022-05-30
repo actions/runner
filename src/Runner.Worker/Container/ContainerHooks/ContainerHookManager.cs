@@ -53,7 +53,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var prependPath = GetPrependPath(context);
-            var response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            PrepareJobResponse response;
+            try
+            {
+                response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
+            }
             jobContainer.IsAlpine = response.IsAlpine.Value;
             SaveHookState(context, response.State, input);
             UpdateJobContext(context, jobContainer, serviceContainers, response);
@@ -68,17 +76,24 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 Command = HookCommand.CleanupJob,
                 ResponseFile = responsePath,
-                State = GetHookStateInJson(context),
+                State = GetHookState(context),
             };
             var prependPath = GetPrependPath(context);
-            await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Post, prependPath);
+            try
+            {
+                await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
+            }
         }
 
         public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
         {
             Trace.Entering();
             var responsePath = GenerateResponsePath();
-            var hookState = GetHookStateInJson(context);
+            var hookState = GetHookState(context);
             var input = new HookInput
             {
                 Args = container.GetHookContainer(),
@@ -87,7 +102,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = hookState
             };
             var prependPath = GetPrependPath(context);
-            var response = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Post, prependPath);
+            PrepareJobResponse response;
+            try
+            {
+                response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
+            }
             if (response == null)
             {
                 return;
@@ -112,10 +135,18 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     PrependPath = prependPath,
                     WorkingDirectory = workingDirectory,
                 },
-                State = GetHookStateInJson(context)
+                State = GetHookState(context)
             };
 
-            var response = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Main, prependPath);
+            PrepareJobResponse response;
+            try
+            {
+                response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
+            }
             if (response == null)
             {
                 return;
@@ -190,7 +221,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             return response;
         }
 
-        private static JToken GetHookStateInJson(IExecutionContext context)
+        private static JToken GetHookState(IExecutionContext context)
         {
             if (context.JobContext.TryGetValue("hook_state", out var hookState))
             {
