@@ -33,7 +33,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         public HookContainer Container { get; set; }
         public IList<HookContainer> Services { get; set; }
-        public string Network { get; set; }
     }
 
     public class ScriptStepArgs : HookArgs
@@ -43,7 +42,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public IDictionary<string, string> EnvironmentVariables { get; set; }
         public string PrependPath { get; set; }
         public string WorkingDirectory { get; set; }
-        public HookContainer Container { get; internal set; }
     }
 
     public class ContainerRegistry

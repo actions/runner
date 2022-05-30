@@ -128,7 +128,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 ResponseFile = responsePath,
                 Args = new ScriptStepArgs
                 {
-                    Container = container.GetHookContainer(),
                     EntryPointArgs = entryPointArgs.Split(' ').Select(arg => arg.Trim()),
                     EntryPoint = entryPoint,
                     EnvironmentVariables = environmentVariables,
