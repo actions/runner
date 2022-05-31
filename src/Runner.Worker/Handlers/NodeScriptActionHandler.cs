@@ -94,6 +94,14 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
+#if OS_OSX
+            if (string.Equals(Data.NodeVersion, "node12", StringComparison.OrdinalIgnoreCase) &&
+                Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
+            {
+                ExecutionContext.Output($"The node12 is not supported on macOS ARM64 platform. Use node16 instead.");
+                Data.NodeVersion = "node16";
+            }
+#endif
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 

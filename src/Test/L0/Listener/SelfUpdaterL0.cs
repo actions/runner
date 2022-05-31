@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if !(OS_OSX && ARM64)
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -50,9 +51,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, "https://github.com/actions/runner/releases/latest"));
                 if (response.StatusCode == System.Net.HttpStatusCode.Redirect)
                 {
-                    var redirect = await response.Content.ReadAsStringAsync();
+                    var redirectUrl = response.Headers.Location.ToString();
                     Regex regex = new Regex(@"/runner/releases/tag/v(?<version>\d+\.\d+\.\d+)");
-                    var match = regex.Match(redirect);
+                    var match = regex.Match(redirectUrl);
                     if (match.Success)
                     {
                         latestVersion = match.Groups["version"].Value;
@@ -62,6 +63,10 @@ namespace GitHub.Runner.Common.Tests.Listener
 #else
                         _packageUrl = $"https://github.com/actions/runner/releases/download/v{latestVersion}/actions-runner-{BuildConstants.RunnerPackage.PackageName}-{latestVersion}.zip";
 #endif
+                    }
+                    else
+                    {
+                        throw new Exception("The latest runner version could not be determined so a download URL could not be generated for it. Please check the location header of the redirect response of 'https://github.com/actions/runner/releases/latest'");
                     }
                 }
             }
@@ -791,3 +796,4 @@ namespace GitHub.Runner.Common.Tests.Listener
         }
     }
 }
+#endif
