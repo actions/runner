@@ -3,6 +3,7 @@ api-ms-win-core-console-l1-2-0.dll
 api-ms-win-core-datetime-l1-1-0.dll
 api-ms-win-core-debug-l1-1-0.dll
 api-ms-win-core-errorhandling-l1-1-0.dll
+api-ms-win-core-fibers-l1-1-0.dll
 api-ms-win-core-file-l1-1-0.dll
 api-ms-win-core-file-l1-2-0.dll
 api-ms-win-core-file-l2-1-0.dll
@@ -70,7 +71,7 @@ Microsoft.VisualBasic.dll
 Microsoft.Win32.Primitives.dll
 Microsoft.Win32.Registry.dll
 mscordaccore.dll
-mscordaccore_amd64_amd64_6.0.21.52210.dll
+mscordaccore_amd64_amd64_6.0.522.21309.dll
 mscordbi.dll
 mscorlib.dll
 mscorrc.debug.dll
