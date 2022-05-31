@@ -221,6 +221,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 }
             }
 
+            if (response == null)
+            {
+                throw new Exception($"Response file is required but not found for the hook script at '{HookIndexPath}' running command '{input.Command}'");
+            }
             return response;
         }
 
