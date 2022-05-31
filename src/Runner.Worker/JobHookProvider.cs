@@ -18,8 +18,8 @@ namespace GitHub.Runner.Worker
 
     public class JobHookData
     {
-        public string Path {get; private set;}
-        public ActionRunStage Stage {get; private set;}
+        public string Path { get; private set; }
+        public ActionRunStage Stage { get; private set; }
 
         public JobHookData(ActionRunStage stage, string path)
         {

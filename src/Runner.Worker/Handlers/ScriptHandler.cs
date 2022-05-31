@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -202,14 +201,32 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else
             {
-                var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
-                shellCommand = parsed.shellCommand;
-                // For non-ContainerStepHost, the command must be located on the host by Which
-                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
-                argFormat = $"{parsed.shellArgs}".TrimStart();
-                if (string.IsNullOrEmpty(argFormat))
+                // For these shells, we want to use system binaries
+                var systemShells = new string[] { "bash", "sh", "powershell", "pwsh" };
+                if (!IsActionStep && systemShells.Contains(shell))
                 {
-                    argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+                    shellCommand = shell;
+                    commandPath = WhichUtil.Which(shell, !isContainerStepHost, Trace, prependPath);
+                    if (shell == "bash")
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat("sh");
+                    }
+                    else
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shell);
+                    }
+                }
+                else
+                {
+                    var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
+                    shellCommand = parsed.shellCommand;
+                    // For non-ContainerStepHost, the command must be located on the host by Which
+                    commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
+                    argFormat = $"{parsed.shellArgs}".TrimStart();
+                    if (string.IsNullOrEmpty(argFormat))
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+                    }
                 }
             }
 
