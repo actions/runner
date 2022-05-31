@@ -37,14 +37,13 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public async Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)
         {
             Trace.Entering();
-            var responsePath = GenerateResponsePath();
             var jobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault();
             var serviceContainers = containers.Where(c => c.IsJobContainer == false).ToList();
 
             var input = new HookInput
             {
                 Command = HookCommand.PrepareJob,
-                ResponseFile = responsePath,
+                ResponseFile = GenerateResponsePath(),
                 Args = new PrepareJobArgs
                 {
                     Container = jobContainer.GetHookContainer(),
@@ -71,12 +70,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public async Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
         {
             Trace.Entering();
-
-            var responsePath = GenerateResponsePath();
             var input = new HookInput
             {
                 Command = HookCommand.CleanupJob,
-                ResponseFile = responsePath,
+                ResponseFile = GenerateResponsePath(),
                 State = context.Global.ContainerHookState,
             };
             var prependPath = GetPrependPath(context);
@@ -94,13 +91,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
         {
             Trace.Entering();
-            var responsePath = GenerateResponsePath();
             var hookState = context.Global.ContainerHookState;
             var input = new HookInput
             {
                 Args = container.GetHookContainer(),
                 Command = HookCommand.RunContainerStep,
-                ResponseFile = responsePath,
+                ResponseFile = GenerateResponsePath(),
                 State = hookState
             };
             var prependPath = GetPrependPath(context);
@@ -124,11 +120,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public async Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
         {
             Trace.Entering();
-            var responsePath = GenerateResponsePath();
             var input = new HookInput
             {
                 Command = HookCommand.RunScriptStep,
-                ResponseFile = responsePath,
+                ResponseFile = GenerateResponsePath(),
                 Args = new ScriptStepArgs
                 {
                     EntryPointArgs = entryPointArgs.Split(' ').Select(arg => arg.Trim()),
@@ -203,24 +198,24 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private T GetResponse<T>(HookInput input) where T: HookResponse
         {
-            T response = null;
-
-            if (string.IsNullOrEmpty(input.ResponseFile) || !File.Exists(input.ResponseFile))
+            if (!File.Exists(input.ResponseFile))
             {
                 Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
                 if (input.Command == HookCommand.PrepareJob)
                 {
                     throw new Exception($"Response file is required but not found for the hook script at '{HookIndexPath}' running command '{input.Command}'");
                 }
+                return null;
             }
 
-            response = IOUtil.LoadObject<T>(input.ResponseFile);
+            T response = IOUtil.LoadObject<T>(input.ResponseFile);
+            Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was processed successfully");
             IOUtil.DeleteFile(input.ResponseFile);
-            Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
+            Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was deleted successfully");
             
             if (input.Command == HookCommand.PrepareJob && response == null)
             {
-                throw new Exception($"Response file is required but not found for the hook script at '{HookIndexPath}' running command '{input.Command}'");
+                throw new Exception($"Response object is required but not found in response file located at '{input.ResponseFile}' running command '{input.Command}'");
             }
             response?.Validate();
             return response;
