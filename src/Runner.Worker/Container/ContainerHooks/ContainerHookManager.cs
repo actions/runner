@@ -205,14 +205,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             T response = null;
 
-            if (!string.IsNullOrEmpty(input.ResponseFile) && File.Exists(input.ResponseFile))
-            {
-                response = IOUtil.LoadObject<T>(input.ResponseFile);
-                IOUtil.DeleteFile(input.ResponseFile);
-                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
-                response?.Validate();
-            }
-            else
+            if (string.IsNullOrEmpty(input.ResponseFile) || !File.Exists(input.ResponseFile))
             {
                 Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
                 if (input.Command == HookCommand.PrepareJob)
@@ -221,10 +214,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 }
             }
 
+            response = IOUtil.LoadObject<T>(input.ResponseFile);
+            IOUtil.DeleteFile(input.ResponseFile);
+            Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' successfully processed and deleted.");
+            
             if (input.Command == HookCommand.PrepareJob && response == null)
             {
                 throw new Exception($"Response file is required but not found for the hook script at '{HookIndexPath}' running command '{input.Command}'");
             }
+            response?.Validate();
             return response;
         }
 
