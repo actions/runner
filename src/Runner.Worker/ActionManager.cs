@@ -399,7 +399,6 @@ namespace GitHub.Runner.Worker
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.NodeJS)
                     {
                         var nodeAction = definition.Data.Execution as NodeJSActionExecutionData;
-                        
                         Trace.Info($"Action pre node.js file: {nodeAction.Pre ?? "N/A"}.");
                         Trace.Info($"Action node.js file: {nodeAction.Script}.");
                         Trace.Info($"Action post node.js file: {nodeAction.Post ?? "N/A"}.");
