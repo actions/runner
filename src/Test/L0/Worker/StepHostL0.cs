@@ -55,7 +55,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("node12", nodeVersion);
             }
         }
-        
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
