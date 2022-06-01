@@ -262,7 +262,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Format arg string with script path
-            var arguments = string.Format(argFormat, $"\"{resolvedScriptPath}\"");
+            var arguments = string.Format(argFormat, resolvedScriptPath);
 
             // Fix up and write the script
             contents = ScriptHandlerHelpers.FixUpScriptContents(shellCommand, contents);
