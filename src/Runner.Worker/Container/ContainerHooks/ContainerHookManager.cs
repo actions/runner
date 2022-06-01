@@ -268,7 +268,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     ["network"] = new StringContextData(responseContainerInfo.Network)
                 };
 
-                globalContainerInfo.AddPortMappings(DockerUtil.ParseDockerPort(responseContainerInfo.Ports));
+                globalContainerInfo.AddPortMappings(responseContainerInfo.Ports);
                 foreach (var portMapping in globalContainerInfo.UserPortMappings)
                 {
                     (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
