@@ -8,6 +8,7 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -102,7 +103,7 @@ namespace GitHub.Runner.Worker.Handlers
                 Data.NodeVersion = "node16";
             }
 #endif
-            string nodeVersionOut = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
+            string nodeVersionOut = NodeUtil.GetNodeVersion();
             if (nodeVersionOut == "node16" && Data.NodeVersion != "node16")
             {
                 Data.NodeVersion = "node16";
