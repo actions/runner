@@ -16,15 +16,8 @@ namespace GitHub.Runner.Common.Util
         public static string GetInternalNodeVersion()
         {
             var forcedInternalNodeVersion = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion);
-            var forcedNodeVersion = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
-
-            var isForcedNodeVersion = !string.IsNullOrEmpty(forcedNodeVersion) && BuiltInNodeVersions.Contains(forcedNodeVersion);
             var isForcedInternalNodeVersion = !string.IsNullOrEmpty(forcedInternalNodeVersion) && BuiltInNodeVersions.Contains(forcedInternalNodeVersion);
 
-            if (isForcedNodeVersion)
-            {
-                return forcedNodeVersion;
-            }
             if (isForcedInternalNodeVersion)
             {
                 return forcedInternalNodeVersion;

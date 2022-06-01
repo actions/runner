@@ -103,7 +103,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 #endif
             string nodeVersionOut = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
-            if(nodeVersionOut == "16" && Data.NodeVersion != "node16")
+            if (nodeVersionOut == "node16" && Data.NodeVersion != "node16")
             {
                 Data.NodeVersion = "node16";
             }
