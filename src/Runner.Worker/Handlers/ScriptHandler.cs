@@ -8,6 +8,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
@@ -217,6 +218,11 @@ namespace GitHub.Runner.Worker.Handlers
             if (!string.IsNullOrEmpty(shellCommand) && IsActionStep)
             {
                 ExecutionContext.StepTelemetry.Action = shellCommand;
+            }
+
+            if (ExecutionContext.JobContext.Container != null)
+            {
+                ExecutionContext.StepTelemetry.IsContainerHook = FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables);
             }
 
             // No arg format was given, shell must be a built-in
