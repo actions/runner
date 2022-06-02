@@ -90,6 +90,7 @@ namespace GitHub.Runner.Common
                 public static class Args
                 {
                     public static readonly string Auth = "auth";
+                    public static readonly string JitConfig = "jitconfig";
                     public static readonly string Labels = "labels";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string Name = "name";
