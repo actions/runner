@@ -74,12 +74,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             EntryPoint = container.ContainerEntryPoint;
             WorkingDirectory = container.ContainerWorkDirectory;
             CreateOptions = container.ContainerCreateOptions;
-            Registry = new ContainerRegistry
+            if (!string.IsNullOrEmpty(container.RegistryAuthUsername))
             {
-                Username = container.RegistryAuthUsername,
-                Password = container.RegistryAuthPassword,
-                ServerUrl = container.RegistryServer,
-            };
+                Registry = new ContainerRegistry
+                {
+                    Username = container.RegistryAuthUsername,
+                    Password = container.RegistryAuthPassword,
+                    ServerUrl = container.RegistryServer,
+                };
+            }
             EnvironmentVariables = container.ContainerEnvironmentVariables;
             PortMappings = container.UserPortMappings.Select(p => p.Value).ToList();
             SystemMountVolumes = container.SystemMountVolumes;
