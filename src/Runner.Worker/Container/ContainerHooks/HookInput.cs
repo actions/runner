@@ -27,9 +27,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         [EnumMember(Value = "run_container_step")]
         RunContainerStep,
     }
-    public class HookArgs
-    {
-    }
+    public class HookArgs { }
 
     public class PrepareJobArgs : HookArgs
     {

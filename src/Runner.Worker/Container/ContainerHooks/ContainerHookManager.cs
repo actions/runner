@@ -159,7 +159,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             SaveHookState(context, response.State, input);
         }
 
-        private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T: HookResponse
+        private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T : HookResponse
         {
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
@@ -203,7 +203,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>()); ;
         }
 
-        private T GetResponse<T>(HookInput input) where T: HookResponse
+        private T GetResponse<T>(HookInput input) where T : HookResponse
         {
             if (!File.Exists(input.ResponseFile))
             {
@@ -219,7 +219,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was processed successfully");
             IOUtil.DeleteFile(input.ResponseFile);
             Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was deleted successfully");
-            
+
             if (input.Command == HookCommand.PrepareJob && response == null)
             {
                 throw new Exception($"Response object is required but not found in response file located at '{input.ResponseFile}' running command '{input.Command}'");

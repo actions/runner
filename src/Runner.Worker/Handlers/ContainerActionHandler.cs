@@ -41,6 +41,7 @@ namespace GitHub.Runner.Worker.Handlers
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
             var containerHookManager = HostContext.GetService<IContainerHookManager>();
             string dockerFile = null;
+
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
             {
