@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -269,9 +269,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 };
 
                 globalContainerInfo.AddPortMappings(responseContainerInfo.Ports);
-                foreach (var portMapping in globalContainerInfo.UserPortMappings)
+                foreach (var portMapping in responseContainerInfo.Ports)
                 {
-                    (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
+                    (service["ports"] as DictionaryContextData)[portMapping.Key] = new StringContextData(portMapping.Value);
                 }
                 context.JobContext.Services[globalContainerInfo.ContainerNetworkAlias] = service;
             }
