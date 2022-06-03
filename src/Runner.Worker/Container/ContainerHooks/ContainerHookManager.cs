@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task ContainerStepAsync(IExecutionContext context, ContainerInfo container);
+        Task ContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile);
         Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
     }
 
@@ -88,17 +88,24 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
         }
 
-        public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
+        public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile)
         {
             Trace.Entering();
             var hookState = context.Global.ContainerHookState;
+            var inputContainer = container.GetHookContainer();
+            if (!string.IsNullOrEmpty(dockerFile))
+            {
+                inputContainer.Dockerfile = dockerFile;
+                inputContainer.Image = null;
+            }
             var input = new HookInput
             {
-                Args = container.GetHookContainer(),
+                Args = inputContainer,
                 Command = HookCommand.RunContainerStep,
                 ResponseFile = GenerateResponsePath(),
                 State = hookState
             };
+
             var prependPath = GetPrependPath(context);
             PrepareJobResponse response;
             try
@@ -152,7 +159,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             SaveHookState(context, response.State, input);
         }
 
-        private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T: HookResponse
+        private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T : HookResponse
         {
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
@@ -196,7 +203,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>()); ;
         }
 
-        private T GetResponse<T>(HookInput input) where T: HookResponse
+        private T GetResponse<T>(HookInput input) where T : HookResponse
         {
             if (!File.Exists(input.ResponseFile))
             {
@@ -212,7 +219,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was processed successfully");
             IOUtil.DeleteFile(input.ResponseFile);
             Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was deleted successfully");
-            
+
             if (input.Command == HookCommand.PrepareJob && response == null)
             {
                 throw new Exception($"Response object is required but not found in response file located at '{input.ResponseFile}' running command '{input.Command}'");

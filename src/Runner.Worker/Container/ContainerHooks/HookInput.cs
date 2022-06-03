@@ -54,6 +54,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     public class HookContainer : HookArgs
     {
         public string Image { get; set; }
+        public string Dockerfile { get; set; }
         public IEnumerable<string> EntryPointArgs { get; set; } = new List<string>();
         public string EntryPoint { get; set; }
         public string WorkingDirectory { get; set; }
@@ -71,12 +72,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             EntryPoint = container.ContainerEntryPoint;
             WorkingDirectory = container.ContainerWorkDirectory;
             CreateOptions = container.ContainerCreateOptions;
-            Registry = new ContainerRegistry
+            if (!string.IsNullOrEmpty(container.RegistryAuthUsername))
             {
-                Username = container.RegistryAuthUsername,
-                Password = container.RegistryAuthPassword,
-                ServerUrl = container.RegistryServer,
-            };
+                Registry = new ContainerRegistry
+                {
+                    Username = container.RegistryAuthUsername,
+                    Password = container.RegistryAuthPassword,
+                    ServerUrl = container.RegistryServer,
+                };
+            }
             EnvironmentVariables = container.ContainerEnvironmentVariables;
             PortMappings = container.UserPortMappings.Select(p => p.Value).ToList();
             SystemMountVolumes = container.SystemMountVolumes;
