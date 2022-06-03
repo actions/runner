@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task ContainerStepAsync(IExecutionContext context, ContainerInfo container);
+        Task ContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile);
         Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
     }
 
@@ -88,17 +88,24 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
         }
 
-        public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container)
+        public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile)
         {
             Trace.Entering();
             var hookState = context.Global.ContainerHookState;
+            var inputContainer = container.GetHookContainer();
+            if (!string.IsNullOrEmpty(dockerFile))
+            {
+                inputContainer.Dockerfile = dockerFile;
+                inputContainer.Image = null;
+            }
             var input = new HookInput
             {
-                Args = container.GetHookContainer(),
+                Args = inputContainer,
                 Command = HookCommand.RunContainerStep,
                 ResponseFile = GenerateResponsePath(),
                 State = hookState
             };
+
             var prependPath = GetPrependPath(context);
             PrepareJobResponse response;
             try

@@ -40,7 +40,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
             var containerHookManager = HostContext.GetService<IContainerHookManager>();
-
+            string dockerFile = null;
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
             {
@@ -49,7 +49,7 @@ namespace GitHub.Runner.Worker.Handlers
             else if (Data.Image.EndsWith("Dockerfile") || Data.Image.EndsWith("dockerfile"))
             {
                 // ensure docker file exist
-                var dockerFile = Path.Combine(ActionDirectory, Data.Image);
+                dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
                 if (!FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
                 {
@@ -226,7 +226,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
             {
-                await containerHookManager.ContainerStepAsync(ExecutionContext, container);
+                await containerHookManager.ContainerStepAsync(ExecutionContext, container, dockerFile);
             }
             else
             {

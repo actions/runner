@@ -27,7 +27,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         [EnumMember(Value = "run_container_step")]
         RunContainerStep,
     }
-    public class HookArgs { }
+    public class HookArgs
+    {
+    }
 
     public class PrepareJobArgs : HookArgs
     {
@@ -54,6 +56,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     public class HookContainer : HookArgs
     {
         public string Image { get; set; }
+        public string Dockerfile { get; set; }
         public IEnumerable<string> EntryPointArgs { get; set; } = new List<string>();
         public string EntryPoint { get; set; }
         public string WorkingDirectory { get; set; }
