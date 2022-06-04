@@ -75,5 +75,17 @@ namespace Runner.Server {
             }
             return ret;
         }
+
+        public static string PrefixIfNotNull(this string name, string seperator, string prefix) {
+            return prefix != null ? prefix + seperator + name : name;
+        }
+
+        public static string PrefixJobNameIfNotNull(this string name, string parentName) {
+            return name.PrefixIfNotNull(" / ", parentName);
+        }
+
+        public static string PrefixJobIdIfNotNull(this string name, string parentId) {
+            return name.PrefixIfNotNull("/", parentId);
+        }
     }
 }

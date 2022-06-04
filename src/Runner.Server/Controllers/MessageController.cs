@@ -1513,10 +1513,7 @@ namespace Runner.Server.Controllers
                                     TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                     var jobTraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
                                     var jobNameToken = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value).FirstOrDefault();
-                                    var _jobdisplayname = jobNameToken?.ToString() ?? jobitem.name;
-                                    if(callingJob?.Name != null) {
-                                        _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
-                                    }
+                                    var _jobdisplayname = (jobNameToken?.ToString() ?? jobitem.name)?.PrefixJobNameIfNotNull(callingJob?.Name);
                                     jobrecord.Name = _jobdisplayname;
                                     jobitem.DisplayName = _jobdisplayname;
                                     // For Runner.Client to show the workflowname
@@ -1544,7 +1541,7 @@ namespace Runner.Server.Controllers
                                         return PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
                                     };
                                     Action<TaskResult> sendFinishJob = result => {
-                                        var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
+                                        var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = jobitem.name.PrefixJobIdIfNotNull(callingJob?.Id), name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                         AddJob(_job);
                                         new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = result, RequestId = jobitem.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                     };
@@ -1732,7 +1729,7 @@ namespace Runner.Server.Controllers
                                         if(jobTotal > 1) {
                                             jobitem.Childs = new List<JobItem>();
                                             jobitem.NoStatusCheck = true;
-                                            var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
+                                            var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = jobitem.name.PrefixJobIdIfNotNull(callingJob?.Id), name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                             var clone = Clone();
                                             Task.Run(async () => {
                                                 try {
@@ -1873,11 +1870,8 @@ namespace Runner.Server.Controllers
                                                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, contextData);
                                                     var _jobdisplayname = _prejobdisplayname;
                                                     if(jobNameToken != null && !(jobNameToken is StringToken)) {
-                                                        _jobdisplayname = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", jobNameToken, 0, null, true).AssertString($"jobs.{jobname}.name must be a string").Value;
+                                                        _jobdisplayname = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", jobNameToken, 0, null, true).AssertString($"jobs.{jobname}.name must be a string").Value?.PrefixJobNameIfNotNull(callingJob?.Name);
                                                         templateContext.Errors.Check();
-                                                        if(callingJob?.Name != null) {
-                                                            _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
-                                                        }
                                                     }
                                                     next.DisplayName = _jobdisplayname;
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job continueOnError" }), next.TimelineId, next.Id);
@@ -2548,7 +2542,7 @@ namespace Runner.Server.Controllers
             int fileContainerId = -1;
             Func<Func<bool, Job>> failJob = () => {
                 var jid = jobId;
-                var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
+                var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = name.PrefixJobIdIfNotNull(parentId), name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                 AddJob(_job);
                 new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                 return cancel => _job;
@@ -2667,7 +2661,7 @@ namespace Runner.Server.Controllers
                             };
                         }
                     }
-                    var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
+                    var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = name.PrefixJobIdIfNotNull(parentId), name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                     AddJob(_job);
                     return cancel => {
                         if(cancel) {
@@ -2717,7 +2711,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency};
+                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value, StringComparer.OrdinalIgnoreCase);
                                 var sjob = selectedJob?.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase) == true ? selectedJob.Substring(name.Length + 1) : null;
                                 clone.ConvertYaml2(filename, filecontent, repo, GitServerUrl, ghook, hook, "workflow_call", sjob, false, null, null, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: fjobs, secretsProvider: reuseableSecretsProvider);
@@ -3093,7 +3087,7 @@ namespace Runner.Server.Controllers
                         Console.WriteLine($"Internal Error: {ex.Message}, {ex.StackTrace}");
                         return null;
                     }
-                }, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = requestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
+                }, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = name.PrefixJobIdIfNotNull(parentId), name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = requestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                 AddJob(job);
                 //ConcurrencyGroup
                 string group = null;
