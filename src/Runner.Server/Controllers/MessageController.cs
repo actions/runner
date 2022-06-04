@@ -4006,9 +4006,9 @@ namespace Runner.Server.Controllers
                     if(!string.IsNullOrEmpty(!string.IsNullOrEmpty(GITHUB_TOKEN) ? GITHUB_TOKEN : githubAppToken)) {
                         client.DefaultRequestHeaders.Add("Authorization", $"token {(!string.IsNullOrEmpty(GITHUB_TOKEN) ? GITHUB_TOKEN : githubAppToken)}");
                     }
-                    var cres = client.GetAsync(new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{repository_name}/commits")) { Query = $"?sha={Uri.EscapeDataString(lastAttempt.Ref ?? "")}&page=1&limit=1&per_page=1" }.ToString()).GetAwaiter().GetResult();;
+                    var cres = client.GetAsync(new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{repository_name}/commits")) { Query = $"?sha={Uri.EscapeDataString(lastAttempt.Ref ?? "")}&page=1&limit=1&per_page=1" }.ToString()).GetAwaiter().GetResult();
                     if(cres.IsSuccessStatusCode) {
-                        var content = cres.Content.ReadAsStringAsync().GetAwaiter().GetResult();;
+                        var content = cres.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                         var o = JsonConvert.DeserializeObject<GitCommit[]>(content)[0];
                         latestSha = o.Sha;
                     }
