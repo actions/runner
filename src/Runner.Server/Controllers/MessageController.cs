@@ -155,64 +155,90 @@ namespace Runner.Server.Controllers
                 throw new NotImplementedException();
             }
         }
+        private static Exception UnexpectedTemplateTokenType(TemplateToken token) {
+            return new NotSupportedException($"Unexpected {nameof(TemplateToken)} type '{token.Type}'");
+        }
         private static bool TemplateTokenEqual(TemplateToken token, TemplateToken other) {
-            if (token.Type != other.Type) {
-                return false;
-            } else {
-                switch(token.Type) {
-                    case TokenType.Mapping:
-                    var mapping = token as MappingToken;
-                    var othermapping = other as MappingToken;
-                    if(mapping.Count != othermapping.Count) {
-                        return false;
-                    }
-                    Dictionary<string, TemplateToken> dictionary = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
-                    if (mapping.Count > 0)
-                    {
-                        foreach (var pair in mapping)
-                        {
-                            var keyLiteral = pair.Key.AssertString("dictionary context data key");
-                            var key = keyLiteral.Value;
-                            var value = pair.Value;
-                            dictionary.Add(key, value);
-                        }
-                        foreach (var pair in othermapping)
-                        {
-                            var keyLiteral = pair.Key.AssertString("dictionary context data key");
-                            var key = keyLiteral.Value;
-                            var value = pair.Value;
-                            TemplateToken otherv;
-                            if(!dictionary.TryGetValue(key, out otherv) || !TemplateTokenEqual(value, otherv)) {
-                                return false;
-                            }
-                        }
-                    }
-                    return true;
-
-                case TokenType.Sequence:
-                    var sequence = token as SequenceToken;
-                    var otherseq = other as SequenceToken;
-                    if(sequence.Count != otherseq.Count) {
-                        return false;
-                    }
-                    
-                    return sequence.SequenceEqual(otherseq, new Equality());
-
+            switch(token.Type) {
+            case TokenType.Null:
+            case TokenType.Boolean:
+            case TokenType.Number:
+            case TokenType.String:
+                switch(other.Type) {
                 case TokenType.Null:
-                    return true;
-
                 case TokenType.Boolean:
-                    return (token as BooleanToken).Value == (other as BooleanToken).Value;
-
                 case TokenType.Number:
-                    return (token as NumberToken).Value == (other as NumberToken).Value;
-
                 case TokenType.String:
-                    return (token as StringToken).Value == (other as StringToken).Value;
-
+                    return EvaluationResult.CreateIntermediateResult(null, token).AbstractEqual(EvaluationResult.CreateIntermediateResult(null, other));
+                case TokenType.Mapping:
+                case TokenType.Sequence:
+                    return false;
                 default:
-                    throw new NotSupportedException($"Unexpected {nameof(TemplateToken)} type '{token.Type}'");
+                    throw UnexpectedTemplateTokenType(other);
                 }
+            case TokenType.Mapping:
+                switch(other.Type) {
+                case TokenType.Mapping:
+                    break;
+                case TokenType.Null:
+                case TokenType.Boolean:
+                case TokenType.Number:
+                case TokenType.String:
+                case TokenType.Sequence:
+                    return false;
+                default:
+                    throw UnexpectedTemplateTokenType(other);
+                }
+                var mapping = token as MappingToken;
+                var othermapping = other as MappingToken;
+                if(mapping.Count != othermapping.Count) {
+                    return false;
+                }
+                Dictionary<string, TemplateToken> dictionary = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
+                if (mapping.Count > 0)
+                {
+                    foreach (var pair in mapping)
+                    {
+                        var keyLiteral = pair.Key.AssertString("dictionary context data key");
+                        var key = keyLiteral.Value;
+                        var value = pair.Value;
+                        dictionary.Add(key, value);
+                    }
+                    foreach (var pair in othermapping)
+                    {
+                        var keyLiteral = pair.Key.AssertString("dictionary context data key");
+                        var key = keyLiteral.Value;
+                        var value = pair.Value;
+                        TemplateToken otherv;
+                        if(!dictionary.TryGetValue(key, out otherv) || !TemplateTokenEqual(value, otherv)) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+
+            case TokenType.Sequence:
+                switch(other.Type) {
+                case TokenType.Sequence:
+                    break;
+                case TokenType.Null:
+                case TokenType.Boolean:
+                case TokenType.Number:
+                case TokenType.String:
+                case TokenType.Mapping:
+                    return false;
+                default:
+                    throw UnexpectedTemplateTokenType(other);
+                }
+                var sequence = token as SequenceToken;
+                var otherseq = other as SequenceToken;
+                if(sequence.Count != otherseq.Count) {
+                    return false;
+                }
+                return sequence.SequenceEqual(otherseq, new Equality());
+
+            default:
+                throw UnexpectedTemplateTokenType(token);
             }
         }
 

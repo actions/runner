@@ -1,0 +1,41 @@
+on: push
+jobs:
+  _0:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        a:
+        - a # excluded by A
+        - b
+        - 0 # excluded by null
+        - '' # excluded by null
+        - null # excluded by null
+        - false # excluded by null
+        exclude:
+        - A: A
+        - A: null
+    steps:
+    - run: echo "'${{ matrix.A }}' = 'b'"
+    - run: exit ${{ matrix.A == 'B' && '0' || '1' }}
+  _1:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        a:
+        - b
+        - # excluded by complex object with mismatched case and abstract equality
+          a0: a 
+          a1: 0
+          a2: ''
+          a3: null
+          4: false
+        exclude:
+        - A:
+            A0: A 
+            A1: 0
+            A2: 0
+            A3: 0
+            4: 0
+    steps:
+    - run: echo "'${{ matrix.A }}' = 'b'"
+    - run: exit ${{ matrix.A == 'B' && '0' || '1' }}
