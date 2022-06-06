@@ -32,11 +32,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             base.Initialize(hostContext);
             HookIndexPath = $"{Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)}";
-
-            if (!File.Exists(HookIndexPath))
-            {
-                throw new Exception($"File not found at '{HookIndexPath}'. Set {Constants.Hooks.ContainerHooksPath} to the path of an existing file.");
-            }
+            ValidateHookExecutable();
         }
 
         public async Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)
@@ -206,6 +202,20 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         private string GetPrependPath(IExecutionContext context)
         {
             return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>()); ;
+        }
+
+        private void ValidateHookExecutable()
+        {
+            if (!string.IsNullOrEmpty(HookIndexPath) && !File.Exists(HookIndexPath))
+            {
+                throw new Exception($"File not found at '{HookIndexPath}'. Set {Constants.Hooks.ContainerHooksPath} to the path of an existing file.");
+            }
+
+            var supportedHookExtensions = new string[] { ".js", ".sh", ".ps1" };
+            if (!supportedHookExtensions.Any(extension => HookIndexPath.EndsWith(extension)))
+            {
+                throw new Exception($"Invalid file extension at '{HookIndexPath}'. {Constants.Hooks.ContainerHooksPath} must be a path to a file with one of the following extensions: {string.Join(", ", supportedHookExtensions)}");
+            }
         }
 
         private T GetResponse<T>(HookInput input) where T : HookResponse
