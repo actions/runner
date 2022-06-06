@@ -32,6 +32,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             base.Initialize(hostContext);
             HookIndexPath = $"{Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)}";
+
+            if (!File.Exists(HookIndexPath))
+            {
+                throw new Exception($"File not found at '{HookIndexPath}'. Set {Constants.Hooks.ContainerHooksPath} to the path of an existing file.");
+            }
         }
 
         public async Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)

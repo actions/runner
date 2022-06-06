@@ -14,10 +14,6 @@ namespace GitHub.Runner.Worker
 
             if (isContainerHookFeatureFlagSet && !string.IsNullOrEmpty(hookExecutablePath))
             {
-                if (!File.Exists(hookExecutablePath))
-                {
-                    throw new Exception($"File not found at '{hookExecutablePath}'. Set {Constants.Hooks.ContainerHooksPath} to the path of an existing file.");
-                }
                 var supportedHookExtensions = new string[] { ".js", ".sh", ".ps1" };
                 if (!supportedHookExtensions.Any(extension => hookExecutablePath.EndsWith(extension)))
                 {
