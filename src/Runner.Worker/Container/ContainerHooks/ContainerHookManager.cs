@@ -19,8 +19,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task ContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile);
-        Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
+        Task RunContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile);
+        Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
         string GetContainerHookData();
     }
 
@@ -90,7 +90,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
         }
 
-        public async Task ContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile)
+        public async Task RunContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile)
         {
             Trace.Entering();
             var hookState = context.Global.ContainerHookState;
@@ -126,7 +126,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             SaveHookState(context, response.State, input);
         }
 
-        public async Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
+        public async Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
         {
             Trace.Entering();
             var input = new HookInput

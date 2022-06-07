@@ -228,7 +228,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
             {
-                await containerHookManager.ContainerStepAsync(ExecutionContext, container, dockerFile);
+                await containerHookManager.RunContainerStepAsync(ExecutionContext, container, dockerFile);
             }
             else
             {

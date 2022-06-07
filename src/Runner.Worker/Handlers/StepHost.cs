@@ -191,7 +191,7 @@ namespace GitHub.Runner.Worker.Handlers
             if (FeatureFlagManager.IsContainerHooksEnabled(context.Global.Variables))
             {
                 TranslateToContainerPath(environment);
-                await containerHookManager.ScriptStepAsync(context,
+                await containerHookManager.RunScriptStepAsync(context,
                                                                                    Container,
                                                                                    arguments,
                                                                                    fileName,
