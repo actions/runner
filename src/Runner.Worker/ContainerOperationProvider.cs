@@ -55,10 +55,9 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
-            bool isContainerHooksEnabled = FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables);
-            executionContext.StepTelemetry.IsContainerHook = isContainerHooksEnabled;
-            if (isContainerHooksEnabled)
+            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
+                executionContext.StepTelemetry.ContainerHookData = _containerHookManager.GetContainerHookData();
                 // Initialize the containers
                 containers.ForEach(container => UpdateRegistryAuthForGitHubToken(executionContext, container));
                 containers.ForEach(container => MountWellKnownDirectories(executionContext, container));
@@ -117,9 +116,9 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(containers, nameof(containers));
 
             bool isContainerHooksEnabled = FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables);
-            executionContext.StepTelemetry.IsContainerHook = isContainerHooksEnabled;
             if (isContainerHooksEnabled)
             {
+                executionContext.StepTelemetry.ContainerHookData = _containerHookManager.GetContainerHookData();
                 await _containerHookManager.CleanupJobAsync(executionContext, containers);
                 return;
             }

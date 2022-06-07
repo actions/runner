@@ -12,6 +12,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -93,7 +94,8 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (ExecutionContext.JobContext.Container != null)
             {
-                ExecutionContext.StepTelemetry.IsContainerHook = FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables);
+                var containerHookManager = HostContext.GetService<IContainerHookManager>();
+                ExecutionContext.StepTelemetry.ContainerHookData = containerHookManager.GetContainerHookData();
             }
 
             try

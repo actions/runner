@@ -9,6 +9,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -86,7 +87,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (ExecutionContext.JobContext.Container != null)
             {
-                ExecutionContext.StepTelemetry.IsContainerHook = FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables);
+                ExecutionContext.StepTelemetry.ContainerHookData = HostContext.GetService<IContainerHookManager>().GetContainerHookData();
             }
 
             ArgUtil.NotNullOrEmpty(target, nameof(target));

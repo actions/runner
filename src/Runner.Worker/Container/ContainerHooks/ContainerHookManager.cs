@@ -21,6 +21,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task ContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile);
         Task ScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
+        string GetContainerHookData();
     }
 
     public class ContainerHookManager : RunnerService, IContainerHookManager
@@ -158,6 +159,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 return;
             }
             SaveHookState(context, response.State, input);
+        }
+
+        public string GetContainerHookData()
+        {
+            return JsonUtility.ToString(new { HookIndexPath });
         }
 
         private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T : HookResponse

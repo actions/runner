@@ -82,7 +82,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
             }
             ExecutionContext.StepTelemetry.Type = type;
-            ExecutionContext.StepTelemetry.IsContainerHook = FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables);
+            ExecutionContext.StepTelemetry.ContainerHookData = containerHookManager.GetContainerHookData();
 
             // run container
             var container = new ContainerInfo(HostContext)
