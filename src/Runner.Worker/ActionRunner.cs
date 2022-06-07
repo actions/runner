@@ -160,7 +160,7 @@ namespace GitHub.Runner.Worker
             {
                 // Make sure required container is already created
                 // Container hooks do not necesseraly set 'ContainerId'
-                if (!FeatureFlagManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
+                if (!FeatureManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
                 {
                     ArgUtil.NotNullOrEmpty(ExecutionContext.Global.Container.ContainerId, nameof(ExecutionContext.Global.Container.ContainerId));
                 }

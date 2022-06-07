@@ -55,7 +55,7 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
-            if (FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables))
+            if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 executionContext.StepTelemetry.ContainerHookData = _containerHookManager.GetContainerHookData();
                 // Initialize the containers
@@ -115,7 +115,7 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
 
-            bool isContainerHooksEnabled = FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables);
+            bool isContainerHooksEnabled = FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables);
             if (isContainerHooksEnabled)
             {
                 executionContext.StepTelemetry.ContainerHookData = _containerHookManager.GetContainerHookData();
@@ -287,7 +287,7 @@ namespace GitHub.Runner.Worker
             container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
 
             container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
-            if (!FeatureFlagManager.IsContainerHooksEnabled(executionContext.Global.Variables))
+            if (!FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 container.ContainerEntryPoint = "tail";
                 container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";

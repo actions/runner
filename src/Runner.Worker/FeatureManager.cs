@@ -5,7 +5,7 @@ using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker
 {
-    public class FeatureFlagManager
+    public class FeatureManager
     {
         public static bool IsContainerHooksEnabled(Variables variables)
         {
