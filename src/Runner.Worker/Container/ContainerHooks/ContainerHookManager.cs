@@ -33,7 +33,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             base.Initialize(hostContext);
             HookIndexPath = $"{Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)}";
-            ValidateHookExecutable();
         }
 
         public async Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)
@@ -168,6 +167,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T : HookResponse
         {
+            ValidateHookExecutable();
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
             Dictionary<string, string> inputs = new()
@@ -194,7 +194,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             await handler.RunAsync(stage);
             if (handler.ExecutionContext.Result == TaskResult.Failed)
             {
-                throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully."); // TODO: better exception
+                throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully.");
             }
             var response = GetResponse<T>(input);
             return response;
