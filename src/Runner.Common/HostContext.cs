@@ -13,6 +13,7 @@ using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Logging;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
@@ -640,6 +641,30 @@ namespace GitHub.Runner.Common
         {
             var handlerFactory = context.GetService<IHttpClientHandlerFactory>();
             return handlerFactory.CreateClientHandler(context.WebProxy);
+        }
+
+        public static string GetDefaultShellForScript(this IHostContext hostContext, string path, Common.Tracing trace, string prependPath)
+        {
+            switch (Path.GetExtension(path))
+            {
+                case ".sh":
+                    // use 'sh' args but prefer bash
+                    if (WhichUtil.Which("bash", false, trace, prependPath) != null)
+                    {
+                        return "bash";
+                    }
+                    return "sh";
+                case ".ps1":
+                    if (WhichUtil.Which("pwsh", false, trace, prependPath) != null)
+                    {
+                        return "pwsh";
+                    }
+                    return "powershell";
+                case ".js":
+                    return Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}";
+                default:
+                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh', '.ps1' or '.js'.");
+            }
         }
     }
 

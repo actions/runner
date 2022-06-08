@@ -83,46 +83,5 @@ namespace GitHub.Runner.Worker.Handlers
                 throw new ArgumentException($"Failed to parse COMMAND [..ARGS] from {shellOption}");
             }
         }
-
-        internal static string GetDefaultShellNameForScript(string path, Common.Tracing trace, string prependPath)
-        {
-            switch (Path.GetExtension(path))
-            {
-                case ".sh":
-                    // use 'sh' args but prefer bash
-                    if (WhichUtil.Which("bash", false, trace, prependPath) != null)
-                    {
-                        return "bash";
-                    }
-                    return "sh";
-                case ".ps1":
-                    if (WhichUtil.Which("pwsh", false, trace, prependPath) != null)
-                    {
-                        return "pwsh";
-                    }
-                    return "powershell";
-                default:
-                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh', '.ps1' or '.js'.");
-            }
-        }
-
-        internal static string GetDefaultShellForScript(this IHostContext hostContext, string path, Common.Tracing trace, string prependPath)
-        {
-            var format = "{0} {1}";
-            switch (Path.GetExtension(path))
-            {
-                case ".sh":
-                    // use 'sh' args but prefer bash
-                    var pathToShell = WhichUtil.Which("bash", false, trace, prependPath) ?? WhichUtil.Which("sh", true, trace, prependPath);
-                    return string.Format(format, pathToShell, _defaultArguments["sh"]);
-                case ".ps1":
-                    var pathToPowershell = WhichUtil.Which("pwsh", false, trace, prependPath) ?? WhichUtil.Which("powershell", true, trace, prependPath);
-                    return string.Format(format, pathToPowershell, _defaultArguments["powershell"]);
-                case ".js":
-                    return Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}";
-                default:
-                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh', '.ps1' or '.js'.");
-            }
-        }
     }
 }
