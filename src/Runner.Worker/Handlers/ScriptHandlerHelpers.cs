@@ -15,8 +15,8 @@ namespace GitHub.Runner.Worker.Handlers
             ["cmd"] = "/D /E:ON /V:OFF /S /C \"CALL \"{0}\"\"",
             ["pwsh"] = "-command \". '{0}'\"",
             ["powershell"] = "-command \". '{0}'\"",
-            ["bash"] = "--noprofile --norc -e -o pipefail {0}",
-            ["sh"] = "-e {0}",
+            ["bash"] = "--noprofile --norc -e -o pipefail '{0}'",
+            ["sh"] = "-e '{0}'",
             ["python"] = "{0}"
         };
 
@@ -81,6 +81,28 @@ namespace GitHub.Runner.Worker.Handlers
             else
             {
                 throw new ArgumentException($"Failed to parse COMMAND [..ARGS] from {shellOption}");
+            }
+        }
+
+        internal static string GetDefaultShellNameForScript(string path, Common.Tracing trace, string prependPath)
+        {
+            switch (Path.GetExtension(path))
+            {
+                case ".sh":
+                    // use 'sh' args but prefer bash
+                    if (WhichUtil.Which("bash", false, trace, prependPath) != null)
+                    {
+                        return "bash";
+                    }
+                    return "sh";
+                case ".ps1":
+                    if (WhichUtil.Which("pwsh", false, trace, prependPath) != null)
+                    {
+                        return "pwsh";
+                    }
+                    return "powershell";
+                default:
+                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh', '.ps1' or '.js'.");
             }
         }
 
