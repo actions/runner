@@ -202,14 +202,32 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else
             {
-                var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
-                shellCommand = parsed.shellCommand;
-                // For non-ContainerStepHost, the command must be located on the host by Which
-                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
-                argFormat = $"{parsed.shellArgs}".TrimStart();
-                if (string.IsNullOrEmpty(argFormat))
+                // For these shells, we want to use system binaries
+                var systemShells = new string[] { "bash", "sh", "powershell", "pwsh" };
+                if (!IsActionStep && systemShells.Contains(shell))
                 {
-                    argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+                    shellCommand = shell;
+                    commandPath = WhichUtil.Which(shell, !isContainerStepHost, Trace, prependPath);
+                    if (shell == "bash")
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat("sh");
+                    }
+                    else
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shell);
+                    }
+                }
+                else
+                {
+                    var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
+                    shellCommand = parsed.shellCommand;
+                    // For non-ContainerStepHost, the command must be located on the host by Which
+                    commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
+                    argFormat = $"{parsed.shellArgs}".TrimStart();
+                    if (string.IsNullOrEmpty(argFormat))
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+                    }
                 }
             }
 
@@ -229,7 +247,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // We do not not the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
-                resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
+                resolvedScriptPath = StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"");
             }
             else
             {
