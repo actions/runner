@@ -776,6 +776,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 inputGithubContext["run_id"] = new StringContextData("2033211332");
                 inputGithubContext["workflow"] = new StringContextData("Name of Workflow");
                 inputGithubContext["workspace"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/step-order/step-order");
+                inputGithubContext["job_name"] = new StringContextData("Name of Job");
                 inputeRunnerContext["temp"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp");
                 inputeRunnerContext["tool_cache"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_tool");
 
@@ -814,6 +815,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 expectedGithubContext["workflow"] = new StringContextData("Name of Workflow");
                 expectedGithubContext["workspace"] = new StringContextData("/__w/step-order/step-order");
                 expectedGithubContext["event"] = expectedGithubEvent;
+                expectedGithubContext["job_name"] = new StringContextData("Name of Job");
                 expectedRunnerContext["temp"] = new StringContextData("/__w/_temp");
                 expectedRunnerContext["tool_cache"] = new StringContextData("/__w/_tool");
 
