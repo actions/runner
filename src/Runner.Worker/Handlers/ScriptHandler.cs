@@ -325,7 +325,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             ExecutionContext.Debug($"{fileName} {arguments}");
 
-            Inputs.TryGetValue("standardInInput", out var standardInInput); // string
+            Inputs.TryGetValue("standardInInput", out var standardInInput);
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
