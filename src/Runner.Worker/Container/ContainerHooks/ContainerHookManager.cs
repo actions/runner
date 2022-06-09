@@ -18,9 +18,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     public interface IContainerHookManager : IRunnerService
     {
         Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task RunContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile);
         Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
+        Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         string GetContainerHookData();
     }
 
@@ -61,19 +61,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
             SaveHookState(context, response.State, input);
             UpdateJobContext(context, jobContainer, serviceContainers, response);
-        }
-
-        public async Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
-        {
-            Trace.Entering();
-            var input = new HookInput
-            {
-                Command = HookCommand.CleanupJob,
-                ResponseFile = GenerateResponsePath(),
-                State = context.Global.ContainerHookState,
-            };
-            var prependPath = GetPrependPath(context);
-            await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
         }
 
         public async Task RunContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile)
@@ -128,6 +115,19 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 return;
             }
             SaveHookState(context, response.State, input);
+        }
+
+        public async Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
+        {
+            Trace.Entering();
+            var input = new HookInput
+            {
+                Command = HookCommand.CleanupJob,
+                ResponseFile = GenerateResponsePath(),
+                State = context.Global.ContainerHookState,
+            };
+            var prependPath = GetPrependPath(context);
+            await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
         }
 
         public string GetContainerHookData()
