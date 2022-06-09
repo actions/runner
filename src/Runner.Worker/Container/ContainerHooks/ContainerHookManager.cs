@@ -54,15 +54,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             var prependPath = GetPrependPath(context);
             PrepareJobResponse response;
-            try
-            {
-                response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
-            }
+            response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
             jobContainer.IsAlpine = response.IsAlpine.Value;
             SaveHookState(context, response.State, input);
             UpdateJobContext(context, jobContainer, serviceContainers, response);
@@ -78,15 +70,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = context.Global.ContainerHookState,
             };
             var prependPath = GetPrependPath(context);
-            try
-            {
-                await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
-            }
+            await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
         }
 
         public async Task RunContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile)
@@ -109,15 +93,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
             var prependPath = GetPrependPath(context);
             PrepareJobResponse response;
-            try
-            {
-                response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
-            }
+            response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
             if (response == null)
             {
                 return;
@@ -144,15 +120,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             PrepareJobResponse response;
-            try
-            {
-                response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
-            }
+            response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+
             if (response == null)
             {
                 return;
@@ -167,37 +136,46 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T : HookResponse
         {
-            ValidateHookExecutable();
-            var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
-            var stepHost = HostContext.CreateService<IDefaultStepHost>();
-            Dictionary<string, string> inputs = new()
+            try
             {
-                ["standardInInput"] = JsonUtility.ToString(input),
-                ["path"] = HookIndexPath,
-                ["shell"] = HostContext.GetDefaultShellForScript(HookIndexPath, Trace, prependPath)
-            };
+                ValidateHookExecutable();
+                var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
+                var stepHost = HostContext.CreateService<IDefaultStepHost>();
 
-            var handlerFactory = HostContext.GetService<IHandlerFactory>();
-            var handler = handlerFactory.Create(
-                            context,
-                            null,
-                            stepHost,
-                            new ScriptActionExecutionData(),
-                            inputs,
-                            environment: new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
-                            context.Global.Variables,
-                            actionDirectory: scriptDirectory,
-                            localActionContainerSetupSteps: null) as ScriptHandler;
-            handler.PrepareExecution(stage);
+                Dictionary<string, string> inputs = new()
+                {
+                    ["standardInInput"] = JsonUtility.ToString(input),
+                    ["path"] = HookIndexPath,
+                    ["shell"] = HostContext.GetDefaultShellForScript(HookIndexPath, Trace, prependPath)
+                };
 
-            IOUtil.CreateEmptyFile(input.ResponseFile);
-            await handler.RunAsync(stage);
-            if (handler.ExecutionContext.Result == TaskResult.Failed)
-            {
-                throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully.");
+                var handlerFactory = HostContext.GetService<IHandlerFactory>();
+                var handler = handlerFactory.Create(
+                                context,
+                                null,
+                                stepHost,
+                                new ScriptActionExecutionData(),
+                                inputs,
+                                environment: new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
+                                context.Global.Variables,
+                                actionDirectory: scriptDirectory,
+                                localActionContainerSetupSteps: null) as ScriptHandler;
+                handler.PrepareExecution(stage);
+
+                IOUtil.CreateEmptyFile(input.ResponseFile);
+                await handler.RunAsync(stage);
+                if (handler.ExecutionContext.Result == TaskResult.Failed)
+                {
+                    throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully");
+                }
+                var response = GetResponse<T>(input);
+                return response;
             }
-            var response = GetResponse<T>(input);
-            return response;
+            catch (Exception ex)
+            {
+                Trace.Error(ex);
+                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
+            }
         }
 
         private string GenerateResponsePath()
