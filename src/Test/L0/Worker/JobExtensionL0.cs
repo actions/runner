@@ -216,7 +216,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task JobExtensionBuildFailsWithoutContainerIfRequired()
         {
-            Environment.SetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer, "1");
+            Environment.SetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer, "true");
             using (TestHostContext hc = CreateTestContext())
             {
                 var jobExtension = new JobExtension();
