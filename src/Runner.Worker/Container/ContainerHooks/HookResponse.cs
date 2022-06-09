@@ -6,7 +6,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
     public class HookResponse
     {
-        public JToken State { get; set; }
+        public JObject State { get; set; }
         public virtual void Validate(HookInput input) { }
     }
     public class PrepareJobResponse : HookResponse

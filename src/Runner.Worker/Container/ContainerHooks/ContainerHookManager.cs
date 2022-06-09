@@ -230,7 +230,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             return response;
         }
 
-        private void SaveHookState(IExecutionContext context, JToken hookState, HookInput input)
+        private void SaveHookState(IExecutionContext context, JObject hookState, HookInput input)
         {
             if (hookState == null)
             {

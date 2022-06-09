@@ -12,7 +12,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public HookCommand Command { get; set; }
         public string ResponseFile { get; set; }
         public HookArgs Args { get; set; }
-        public JToken State { get; set; }
+        public JObject State { get; set; }
     }
 
     [JsonConverter(typeof(StringEnumConverter))]
