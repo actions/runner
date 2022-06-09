@@ -57,6 +57,7 @@ namespace GitHub.Runner.Sdk
                 settings.SendTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
             }
 
+            settings.AllowAutoRedirect = true;
 
             // Remove Invariant from the list of accepted languages.
             //
