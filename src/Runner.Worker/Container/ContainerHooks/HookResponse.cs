@@ -4,21 +4,21 @@ using Newtonsoft.Json.Linq;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
-    public abstract class HookResponse
+    public class HookResponse
     {
         public JToken State { get; set; }
-        public virtual void Validate() { }
+        public virtual void Validate(HookInput input) { }
     }
     public class PrepareJobResponse : HookResponse
     {
         public ResponseContext Context { get; set; }
         public bool? IsAlpine { get; set; }
 
-        public override void Validate()
+        public override void Validate(HookInput input)
         {
-            if (IsAlpine == null)
+            bool hasJobContainer = ((PrepareJobArgs)input.Args).Container != null;
+            if (hasJobContainer && IsAlpine == null)
             {
-                // IsAlpine is mandatory for prepare_job hook
                 throw new Exception("The property 'isAlpine' is required but was not found in the response file.");
             }
         }

@@ -38,7 +38,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public async Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)
         {
             Trace.Entering();
-            var jobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault();
+            var jobContainer = containers.Where(c => c.IsJobContainer).SingleOrDefault();
             var serviceContainers = containers.Where(c => !c.IsJobContainer).ToList();
 
             var input = new HookInput
@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 ResponseFile = GenerateResponsePath(),
                 Args = new PrepareJobArgs
                 {
-                    Container = jobContainer.GetHookContainer(),
+                    Container = jobContainer?.GetHookContainer(),
                     Services = serviceContainers.Select(c => c.GetHookContainer()).ToList(),
                 }
             };
@@ -55,7 +55,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             var prependPath = GetPrependPath(context);
             PrepareJobResponse response;
             response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
-            jobContainer.IsAlpine = response.IsAlpine.Value;
+            if (jobContainer != null)
+            {
+                jobContainer.IsAlpine = response.IsAlpine.Value;
+            }
             SaveHookState(context, response.State, input);
             UpdateJobContext(context, jobContainer, serviceContainers, response);
         }
@@ -204,10 +207,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private T GetResponse<T>(HookInput input) where T : HookResponse
         {
+            var requireIsAlpine = input.Command == HookCommand.PrepareJob && ((PrepareJobArgs)input.Args).Container != null;
             if (!File.Exists(input.ResponseFile))
             {
                 Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
-                if (input.Command == HookCommand.PrepareJob)
+                if (requireIsAlpine)
                 {
                     throw new Exception($"Response file is required but not found for the hook script at '{HookIndexPath}' running command '{input.Command}'");
                 }
@@ -218,12 +222,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was processed successfully");
             IOUtil.DeleteFile(input.ResponseFile);
             Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was deleted successfully");
-
-            if (input.Command == HookCommand.PrepareJob && response == null)
+            if (response == null && requireIsAlpine)
             {
-                throw new Exception($"Response object is required but not found in response file located at '{input.ResponseFile}' running command '{input.Command}'");
+                throw new Exception($"Response file could not be read at '{HookIndexPath}' running command '{input.Command}'");
             }
-            response?.Validate();
+            response?.Validate(input);
             return response;
         }
 
