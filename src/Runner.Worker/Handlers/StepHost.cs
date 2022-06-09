@@ -202,27 +202,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
-
-            return await ExecuteAsync(workingDirectory,
-                                fileName,
-                                arguments,
-                                environment,
-                                requireExitCodeZero,
-                                outputEncoding,
-                                killProcessOnCancel,
-                                inheritConsoleHandler,
-                                cancellationToken);
-        }
-        public async Task<int> ExecuteAsync(string workingDirectory,
-                                            string fileName,
-                                            string arguments,
-                                            IDictionary<string, string> environment,
-                                            bool requireExitCodeZero,
-                                            Encoding outputEncoding,
-                                            bool killProcessOnCancel,
-                                            bool inheritConsoleHandler,
-                                            CancellationToken cancellationToken)
-        {
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
             string dockerClientPath = dockerManager.DockerPath;
 
