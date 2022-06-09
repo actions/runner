@@ -679,7 +679,7 @@ namespace GitHub.Runner.Worker
         {
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer)) && container == null)
             {
-                throw new ArgumentException("Jobs without a job container are forbidden on this  runner, please add a 'container:' to your job or contact your self-hosted runner administrator.");
+                throw new ArgumentException("Jobs without a job container are forbidden on this runner, please add a 'container:' to your job or contact your self-hosted runner administrator.");
             }
         }
     }
