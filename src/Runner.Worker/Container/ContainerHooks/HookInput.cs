@@ -54,6 +54,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public bool IsRequireAlpineInResponse() => false;
         public ContainerStepArgs(ContainerInfo container) : base(container) { }
     }
+    public class CleanupJobArgs : IHookArgs
+    {
+        public bool IsRequireAlpineInResponse() => false;
+    }
 
     public class ContainerRegistry
     {

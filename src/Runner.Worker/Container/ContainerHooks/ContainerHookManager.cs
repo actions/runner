@@ -123,7 +123,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             {
                 Command = HookCommand.CleanupJob,
                 ResponseFile = GenerateResponsePath(),
-                State = context.Global.ContainerHookState,
+                Args = new CleanupJobArgs(),
+                State = context.Global.ContainerHookState
             };
             var prependPath = GetPrependPath(context);
             await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
@@ -174,7 +175,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             catch (Exception ex)
             {
                 Trace.Error(ex);
-                throw new Exception($"Custom container implementation failed with error: {ex.Message}. Please contact your self hosted runner administrator.");
+                throw new Exception($"Custom container implementation failed with error: {ex.Message} Please contact your self hosted runner administrator.", ex);
             }
         }
 
