@@ -11,7 +11,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         public HookCommand Command { get; set; }
         public string ResponseFile { get; set; }
-        public HookArgs Args { get; set; }
+        public IHookArgs Args { get; set; }
         public JObject State { get; set; }
     }
 
@@ -27,21 +27,32 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         [EnumMember(Value = "run_container_step")]
         RunContainerStep,
     }
-    public class HookArgs { }
+    public interface IHookArgs
+    {
+        bool IsRequireAlpineInResponse();
+    }
 
-    public class PrepareJobArgs : HookArgs
+    public class PrepareJobArgs : IHookArgs
     {
         public HookContainer Container { get; set; }
         public IList<HookContainer> Services { get; set; }
+        public bool IsRequireAlpineInResponse() => Container != null;
     }
 
-    public class ScriptStepArgs : HookArgs
+    public class ScriptStepArgs : IHookArgs
     {
         public IEnumerable<string> EntryPointArgs { get; set; }
         public string EntryPoint { get; set; }
         public IDictionary<string, string> EnvironmentVariables { get; set; }
         public string PrependPath { get; set; }
         public string WorkingDirectory { get; set; }
+        public bool IsRequireAlpineInResponse() => false;
+    }
+
+    public class ContainerStepArgs : HookContainer, IHookArgs
+    {
+        public bool IsRequireAlpineInResponse() => false;
+        public ContainerStepArgs(ContainerInfo container) : base(container) { }
     }
 
     public class ContainerRegistry
@@ -51,7 +62,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public string ServerUrl { get; set; }
     }
 
-    public class HookContainer : HookArgs
+    public class HookContainer
     {
         public string Image { get; set; }
         public string Dockerfile { get; set; }

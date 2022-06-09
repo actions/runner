@@ -66,15 +66,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             Trace.Entering();
             var hookState = context.Global.ContainerHookState;
-            var inputContainer = container.GetHookContainer();
+            var containerStepArgs = new ContainerStepArgs(container);
             if (!string.IsNullOrEmpty(dockerFile))
             {
-                inputContainer.Dockerfile = dockerFile;
-                inputContainer.Image = null;
+                containerStepArgs.Dockerfile = dockerFile;
+                containerStepArgs.Image = null;
             }
             var input = new HookInput
             {
-                Args = inputContainer,
+                Args = containerStepArgs,
                 Command = HookCommand.RunContainerStep,
                 ResponseFile = GenerateResponsePath(),
                 State = hookState
@@ -198,11 +198,10 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private T GetResponse<T>(HookInput input) where T : HookResponse
         {
-            var requireIsAlpine = input.Command == HookCommand.PrepareJob && ((PrepareJobArgs)input.Args).Container != null;
             if (!File.Exists(input.ResponseFile))
             {
                 Trace.Info($"Response file for the hook script at '{HookScriptPath}' running command '{input.Command}' not found.");
-                if (requireIsAlpine)
+                if (input.Args.IsRequireAlpineInResponse())
                 {
                     throw new Exception($"Response file is required but not found for the hook script at '{HookScriptPath}' running command '{input.Command}'");
                 }
@@ -213,7 +212,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Info($"Response file for the hook script at '{HookScriptPath}' running command '{input.Command}' was processed successfully");
             IOUtil.DeleteFile(input.ResponseFile);
             Trace.Info($"Response file for the hook script at '{HookScriptPath}' running command '{input.Command}' was deleted successfully");
-            if (response == null && requireIsAlpine)
+            if (response == null && input.Args.IsRequireAlpineInResponse())
             {
                 throw new Exception($"Response file could not be read at '{HookScriptPath}' running command '{input.Command}'");
             }
