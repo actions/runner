@@ -53,8 +53,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var prependPath = GetPrependPath(context);
-            PrepareJobResponse response;
-            response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            var response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
             if (jobContainer != null)
             {
                 jobContainer.IsAlpine = response.IsAlpine.Value;
@@ -82,7 +81,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var prependPath = GetPrependPath(context);
-            var response  = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
+            var response = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
             if (response == null)
             {
                 return;
@@ -179,15 +178,9 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
         }
 
-        private string GenerateResponsePath()
-        {
-            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName, $"{Guid.NewGuid()}.json");
-        }
+        private string GenerateResponsePath() => Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName, $"{Guid.NewGuid()}.json");
 
-        private string GetPrependPath(IExecutionContext context)
-        {
-            return string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>()); ;
-        }
+        private static string GetPrependPath(IExecutionContext context) => string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
 
         private void ValidateHookExecutable()
         {
