@@ -154,7 +154,7 @@ namespace GitHub.DistributedTask.WebApi
                 httpMethod,
                 locationId,
                 routeValues: routeValues,
-                version: new ApiResourceVersion(1.0, 1),
+                version: new ApiResourceVersion(6.0, 1),
                 userState: userState,
                 cancellationToken: cancellationToken);
         }
