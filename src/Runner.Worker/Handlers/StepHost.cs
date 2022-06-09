@@ -193,11 +193,11 @@ namespace GitHub.Runner.Worker.Handlers
                 TranslateToContainerPath(environment);
                 await containerHookManager.RunScriptStepAsync(context,
                                                                                    Container,
-                                                                                   arguments,
+                                                                                   workingDirectory,                                                                                   
                                                                                    fileName,
+                                                                                   arguments,
                                                                                    environment,
-                                                                                   PrependPath,
-                                                                                   workingDirectory);
+                                                                                   PrependPath);
                 return (int)(context.Result ?? 0);
             }
 

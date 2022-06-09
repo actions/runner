@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task RunContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile);
-        Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string arguments, string fileName, IDictionary<string, string> environment, string prependPath, string workingDirectory);
+        Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string workingDirectory, string fileName, string arguments,  IDictionary<string, string> environment, string prependPath);
         Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         string GetContainerHookData();
     }
@@ -89,7 +89,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             SaveHookState(context, response.State, input);
         }
 
-        public async Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string entryPointArgs, string entryPoint, IDictionary<string, string> environmentVariables, string prependPath, string workingDirectory)
+        public async Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string workingDirectory, string entryPoint, string entryPointArgs,  IDictionary<string, string> environmentVariables, string prependPath)
         {
             Trace.Entering();
             var input = new HookInput
