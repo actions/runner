@@ -1,22 +1,18 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Listener.Configuration;
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using GitHub.Services.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
-using System.Linq;
 using GitHub.Runner.Listener.Check;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Sdk;
+using GitHub.Services.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Listener
 {
@@ -326,6 +322,7 @@ namespace GitHub.Runner.Listener
 
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
+                bool skipSessionDeletion = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -501,6 +498,14 @@ namespace GitHub.Runner.Listener
                                     Trace.Info($"Skip message deletion for cancellation message '{message.MessageId}'.");
                                 }
                             }
+                            else if (string.Equals(message.MessageType, Pipelines.HostedRunnerShutdownMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            {
+                                var HostedRunnerShutdownMessage = JsonUtility.FromString<Pipelines.HostedRunnerShutdownMessage>(message.Body);
+                                skipMessageDeletion = true;
+                                skipSessionDeletion = true;
+                                Trace.Info($"Service requests the hosted runner to shutdown. Reason: '{HostedRunnerShutdownMessage.Reason}'.");
+                                return Constants.Runner.ReturnCode.Success;
+                            }
                             else
                             {
                                 Trace.Error($"Received message {message.MessageId} with unsupported message type {message.MessageType}.");
@@ -534,15 +539,18 @@ namespace GitHub.Runner.Listener
                         await jobDispatcher.ShutdownAsync();
                     }
 
-                    try
+                    if (!skipSessionDeletion)
                     {
-                        await _listener.DeleteSessionAsync();
-                    }
-                    catch (Exception ex) when (runOnce)
-                    {
-                        // ignore exception during delete session for ephemeral runner since the runner might already be deleted from the server side
-                        // and the delete session call will ends up with 401.
-                        Trace.Info($"Ignore any exception during DeleteSession for an ephemeral runner. {ex}");
+                        try
+                        {
+                            await _listener.DeleteSessionAsync();
+                        }
+                        catch (Exception ex) when (runOnce)
+                        {
+                            // ignore exception during delete session for ephemeral runner since the runner might already be deleted from the server side
+                            // and the delete session call will ends up with 401.
+                            Trace.Info($"Ignore any exception during DeleteSession for an ephemeral runner. {ex}");
+                        }
                     }
 
                     messageQueueLoopTokenSource.Dispose();
