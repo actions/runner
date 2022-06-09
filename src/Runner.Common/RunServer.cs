@@ -75,18 +75,20 @@ namespace GitHub.Runner.Common
 
         private async Task<AgentJobRequestMessage> RequestJobMessageAsync(string id)
         {
-            var retryTimeLimit = TimeSpan.FromMinutes(5);
-            var remainingTime = retryTimeLimit;
+            var remainingTime = TimeSpan.FromMinutes(5);
             while (true)
             {
                 try
                 {
                     return await _taskAgentClient.GetJobMessageAsync(id);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Trace.Error("Catch exception during get next message.");
+                    Trace.Error(ex);
+                    
                     // todo: ask about correct exceptions to handle retriable and non-retrieable cases
-                    if(IsRetriableStatusCode(_taskAgentClient.LastResponseContext.HttpStatusCode) && (remainingTime > TimeSpan.Zero))
+                    if (IsRetriableStatusCode(_taskAgentClient.LastResponseContext.HttpStatusCode) && (remainingTime > TimeSpan.Zero))
                     {
                         var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
                         Trace.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
@@ -104,7 +106,7 @@ namespace GitHub.Runner.Common
 
         private bool IsRetriableStatusCode(System.Net.HttpStatusCode statusCode)
         {
-            return statusCode == System.Net.HttpStatusCode.BadGateway || 
+            return statusCode == System.Net.HttpStatusCode.BadGateway ||
             statusCode == System.Net.HttpStatusCode.InternalServerError;
         }
     }
