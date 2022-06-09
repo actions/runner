@@ -27,12 +27,12 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     public class ContainerHookManager : RunnerService, IContainerHookManager
     {
         private const string ResponseFolderName = "_runner_hook_responses";
-        private string HookIndexPath;
+        private string HookScriptPath;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            HookIndexPath = $"{Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)}";
+            HookScriptPath = $"{Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)}";
         }
 
         public async Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)
@@ -132,7 +132,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         public string GetContainerHookData()
         {
-            return JsonUtility.ToString(new { HookIndexPath });
+            return JsonUtility.ToString(new { HookScriptPath });
         }
 
         private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T : HookResponse
@@ -140,14 +140,14 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             try
             {
                 ValidateHookExecutable();
-                var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
+                var scriptDirectory = Path.GetDirectoryName(HookScriptPath);
                 var stepHost = HostContext.CreateService<IDefaultStepHost>();
 
                 Dictionary<string, string> inputs = new()
                 {
                     ["standardInInput"] = JsonUtility.ToString(input),
-                    ["path"] = HookIndexPath,
-                    ["shell"] = HostContext.GetDefaultShellForScript(HookIndexPath, Trace, prependPath)
+                    ["path"] = HookScriptPath,
+                    ["shell"] = HostContext.GetDefaultShellForScript(HookScriptPath, Trace, prependPath)
                 };
 
                 var handlerFactory = HostContext.GetService<IHandlerFactory>();
@@ -167,7 +167,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 await handler.RunAsync(stage);
                 if (handler.ExecutionContext.Result == TaskResult.Failed)
                 {
-                    throw new Exception($"The hook script at '{HookIndexPath}' running command '{input.Command}' did not execute successfully");
+                    throw new Exception($"The hook script at '{HookScriptPath}' running command '{input.Command}' did not execute successfully");
                 }
                 var response = GetResponse<T>(input);
                 return response;
@@ -191,15 +191,15 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private void ValidateHookExecutable()
         {
-            if (!string.IsNullOrEmpty(HookIndexPath) && !File.Exists(HookIndexPath))
+            if (!string.IsNullOrEmpty(HookScriptPath) && !File.Exists(HookScriptPath))
             {
-                throw new FileNotFoundException($"File not found at '{HookIndexPath}'. Set {Constants.Hooks.ContainerHooksPath} to the path of an existing file.");
+                throw new FileNotFoundException($"File not found at '{HookScriptPath}'. Set {Constants.Hooks.ContainerHooksPath} to the path of an existing file.");
             }
 
             var supportedHookExtensions = new string[] { ".js", ".sh", ".ps1" };
-            if (!supportedHookExtensions.Any(extension => HookIndexPath.EndsWith(extension)))
+            if (!supportedHookExtensions.Any(extension => HookScriptPath.EndsWith(extension)))
             {
-                throw new ArgumentOutOfRangeException($"Invalid file extension at '{HookIndexPath}'. {Constants.Hooks.ContainerHooksPath} must be a path to a file with one of the following extensions: {string.Join(", ", supportedHookExtensions)}");
+                throw new ArgumentOutOfRangeException($"Invalid file extension at '{HookScriptPath}'. {Constants.Hooks.ContainerHooksPath} must be a path to a file with one of the following extensions: {string.Join(", ", supportedHookExtensions)}");
             }
         }
 
@@ -208,21 +208,21 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             var requireIsAlpine = input.Command == HookCommand.PrepareJob && ((PrepareJobArgs)input.Args).Container != null;
             if (!File.Exists(input.ResponseFile))
             {
-                Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' not found.");
+                Trace.Info($"Response file for the hook script at '{HookScriptPath}' running command '{input.Command}' not found.");
                 if (requireIsAlpine)
                 {
-                    throw new Exception($"Response file is required but not found for the hook script at '{HookIndexPath}' running command '{input.Command}'");
+                    throw new Exception($"Response file is required but not found for the hook script at '{HookScriptPath}' running command '{input.Command}'");
                 }
                 return null;
             }
 
             T response = IOUtil.LoadObject<T>(input.ResponseFile);
-            Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was processed successfully");
+            Trace.Info($"Response file for the hook script at '{HookScriptPath}' running command '{input.Command}' was processed successfully");
             IOUtil.DeleteFile(input.ResponseFile);
-            Trace.Info($"Response file for the hook script at '{HookIndexPath}' running command '{input.Command}' was deleted successfully");
+            Trace.Info($"Response file for the hook script at '{HookScriptPath}' running command '{input.Command}' was deleted successfully");
             if (response == null && requireIsAlpine)
             {
-                throw new Exception($"Response file could not be read at '{HookIndexPath}' running command '{input.Command}'");
+                throw new Exception($"Response file could not be read at '{HookScriptPath}' running command '{input.Command}'");
             }
             response?.Validate(input);
             return response;
