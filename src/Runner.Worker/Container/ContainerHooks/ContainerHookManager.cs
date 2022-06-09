@@ -73,7 +73,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = context.Global.ContainerHookState,
             };
             var prependPath = GetPrependPath(context);
-            await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
         }
 
         public async Task RunContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile)
@@ -95,8 +95,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var prependPath = GetPrependPath(context);
-            PrepareJobResponse response;
-            response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            var response  = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
             if (response == null)
             {
                 return;
@@ -122,8 +121,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = context.Global.ContainerHookState
             };
 
-            PrepareJobResponse response;
-            response = await ExecuteHookScript<PrepareJobResponse>(context, input, ActionRunStage.Pre, prependPath);
+            var response = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
 
             if (response == null)
             {
