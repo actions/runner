@@ -39,7 +39,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         {
             Trace.Entering();
             var jobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault();
-            var serviceContainers = containers.Where(c => c.IsJobContainer == false).ToList();
+            var serviceContainers = containers.Where(c => !c.IsJobContainer).ToList();
 
             var input = new HookInput
             {
