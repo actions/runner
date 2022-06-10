@@ -179,7 +179,7 @@ This hook will **always** be called if you have container hooks enabled, even if
         "password": "bar",
         "serverUrl": "https://index.docker.io/v1"
       },
-      "portMappings": { "80": "801" }
+      "portMappings": [ "8080:80/tcp", "8080:80/udp" ]
     },
     "services": [
       {
