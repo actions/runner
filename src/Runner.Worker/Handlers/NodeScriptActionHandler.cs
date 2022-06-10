@@ -85,11 +85,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
             ExecutionContext.StepTelemetry.Type = Data.NodeVersion;
 
-            if (ExecutionContext.JobContext.Container != null)
-            {
-                ExecutionContext.StepTelemetry.ContainerHookData = HostContext.GetService<IContainerHookManager>().GetContainerHookData();
-            }
-
             ArgUtil.NotNullOrEmpty(target, nameof(target));
             target = Path.Combine(ActionDirectory, target);
             ArgUtil.File(target, nameof(target));

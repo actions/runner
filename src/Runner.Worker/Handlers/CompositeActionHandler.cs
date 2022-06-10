@@ -92,12 +92,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
             ExecutionContext.StepTelemetry.Type = "composite";
 
-            if (ExecutionContext.JobContext.Container != null)
-            {
-                var containerHookManager = HostContext.GetService<IContainerHookManager>();
-                ExecutionContext.StepTelemetry.ContainerHookData = containerHookManager.GetContainerHookData();
-            }
-
             try
             {
                 // Inputs of the composite step

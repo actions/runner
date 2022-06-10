@@ -239,11 +239,6 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.StepTelemetry.Action = shellCommand;
             }
 
-            if (ExecutionContext.JobContext.Container != null)
-            {
-                ExecutionContext.StepTelemetry.ContainerHookData = HostContext.GetService<IContainerHookManager>().GetContainerHookData();
-            }
-
             // No arg format was given, shell must be a built-in
             if (string.IsNullOrEmpty(argFormat) || !argFormat.Contains("{0}"))
             {

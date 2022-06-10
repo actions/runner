@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -140,6 +140,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             try
             {
                 ValidateHookExecutable();
+                context.StepTelemetry.ContainerHookData = GetContainerHookData();
                 var scriptDirectory = Path.GetDirectoryName(HookScriptPath);
                 var stepHost = HostContext.CreateService<IDefaultStepHost>();
 
@@ -149,7 +150,6 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     ["path"] = HookScriptPath,
                     ["shell"] = HostContext.GetDefaultShellForScript(HookScriptPath, prependPath)
                 };
-
                 var handlerFactory = HostContext.GetService<IHandlerFactory>();
                 var handler = handlerFactory.Create(
                                 context,

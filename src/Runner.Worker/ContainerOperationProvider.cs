@@ -57,7 +57,6 @@ namespace GitHub.Runner.Worker
             executionContext.RegisterPostJobStep(postJobStep);
             if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
-                executionContext.StepTelemetry.ContainerHookData = _containerHookManager.GetContainerHookData();
                 // Initialize the containers
                 containers.ForEach(container => UpdateRegistryAuthForGitHubToken(executionContext, container));
                 containers.Where(container => container.IsJobContainer).ForEach(container => MountWellKnownDirectories(executionContext, container));
@@ -117,7 +116,6 @@ namespace GitHub.Runner.Worker
 
             if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
-                executionContext.StepTelemetry.ContainerHookData = _containerHookManager.GetContainerHookData();
                 await _containerHookManager.CleanupJobAsync(executionContext, containers);
                 return;
             }
