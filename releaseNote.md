@@ -1,11 +1,11 @@
 ## Features
-- Added a pre-release package for the `macOS-arm64` architecture
-  - Note that this packages is pre-release status and may not work with all existing actions
-
+- Allow self-hosted runner admins to fail jobs that don't have a job container (#1895)
+- Experimental: Self-hosted runner admins can now use custom scripts to integrate with containerisation tools like Kubernetes or Podman (#1853)
 ## Bugs
-- Fixed an issue where live console logs would fail to close (#1903)
+- Fixed an issue where a Job Hook would fail to execute if the shell path contains a space on Windows (#1826)
 
 ## Misc
+- Handle new `HostedRunnerShutdownMessage` to shutdown hosted runners faster (#1922)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
