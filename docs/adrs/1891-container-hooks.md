@@ -521,7 +521,7 @@ Arg Fields:
   "username": **Optional** the username
   "password": **Optional** the password
   "serverUrl": **Optional** the registry url
-"portMappings": **Optional** a key value hash of source:target ports to map into the container
+"portMappings": **Optional** an array of source:target ports to map into the container
 ```
   
 </details>
