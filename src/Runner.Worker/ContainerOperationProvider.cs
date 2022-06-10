@@ -115,8 +115,7 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
 
-            bool isContainerHooksEnabled = FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables);
-            if (isContainerHooksEnabled)
+            if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 executionContext.StepTelemetry.ContainerHookData = _containerHookManager.GetContainerHookData();
                 await _containerHookManager.CleanupJobAsync(executionContext, containers);
