@@ -226,7 +226,7 @@ jobContainer: **Optional** An Object containing information about the specified 
     "username": **Optional** the username
     "password": **Optional** the password
     "serverUrl": **Optional** the registry url
-  "portMappings": **Optional** a key value hash of source:target ports to map into the container
+  "portMappings": **Optional** an array of source:target ports to map into the container
  
 "services": an array of service containers to spin up
   "contextName": **Required** the name of the service in the Job context
