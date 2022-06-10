@@ -6,16 +6,16 @@ namespace GitHub.Services.Common
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
 
-    public static class RetryHelper<T>
+    public static class RetriesHelper<T>
     {
         public static async Task<T> RetryWithTimeoutAsync(
             Func<Task<T>> retriableAction,
             TimeSpan minBackoff,
             TimeSpan maxBackoff,
-            int maxTimeout = 5
+            int maxTimeoutMinutes = 5
         )
         {
-            var remainingTime = TimeSpan.FromMinutes(maxTimeout);
+            var remainingTime = TimeSpan.FromMinutes(maxTimeoutMinutes);
             while (true)
             {
                 try
