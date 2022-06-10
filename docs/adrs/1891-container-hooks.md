@@ -188,7 +188,7 @@ This hook will **always** be called if you have container hooks enabled, even if
         "createOptions": "--cpus 1",
         "environmentVariables": {},
         "mountVolumes": [],
-        "portMappings": { "80": "801" },
+        "portMappings": [ "8080:80/tcp", "8080:80/udp" ]
         "registry": {
           "username": "foo",
           "password": "bar",
