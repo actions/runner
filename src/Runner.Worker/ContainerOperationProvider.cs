@@ -35,9 +35,9 @@ namespace GitHub.Runner.Worker
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
         {
             Trace.Entering();
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            if (!(Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux) || (Constants.Runner.Platform.Equals(Constants.OSPlatform.Windows) && Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))))
             {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
+                throw new NotSupportedException("Container operations are only supported on Linux or 64 bit Windows server runners");
             }
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             List<ContainerInfo> containers = data as List<ContainerInfo>;
@@ -255,18 +255,33 @@ namespace GitHub.Runner.Worker
 
                 var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
                 Directory.CreateDirectory(tempHomeDirectory);
+#if OS_WINDOWS
+                container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "C:\\ghhome"));
+                container.AddPathTranslateMapping(tempHomeDirectory, "C:\\ghhome");
+#else
                 container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
                 container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
+#endif
                 container.ContainerEnvironmentVariables["HOME"] = container.TranslateToContainerPath(tempHomeDirectory);
 
                 var tempWorkflowDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_workflow");
                 Directory.CreateDirectory(tempWorkflowDirectory);
+#if OS_WINDOWS
+                container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "C:\\ghworkflow"));
+                container.AddPathTranslateMapping(tempWorkflowDirectory, "C:\\ghworkflow");
+#else
                 container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
                 container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
+#endif
 
                 container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
+#if OS_WINDOWS
+                //container.ContainerEntryPoint = "ping";
+                container.ContainerEntryPointArgs = "\"ping\" \"-t\" \"localhost\"";
+#else
                 container.ContainerEntryPoint = "tail";
                 container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+#endif
             }
 
             container.ContainerId = await _dockerManager.DockerCreate(executionContext, container);

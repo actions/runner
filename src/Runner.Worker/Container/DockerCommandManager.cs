@@ -162,6 +162,12 @@ namespace GitHub.Runner.Worker.Container
                 {
                     // Named Docker volume / host bind mount
                     volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+#if OS_WINDOWS
+                    if (!Directory.Exists(volume.SourceVolumePath))
+                    {
+                        Directory.CreateDirectory(volume.SourceVolumePath);
+                    }
+#endif
                 }
                 if (volume.ReadOnly)
                 {
@@ -333,9 +339,9 @@ namespace GitHub.Runner.Worker.Container
                 }
             };
 
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            if (!(Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux) || (Constants.Runner.Platform.Equals(Constants.OSPlatform.Windows) && Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))))
             {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
+                throw new NotSupportedException("Container operations are only supported on Linux or 64 bit Windows server runners");
             }
             return await processInvoker.ExecuteAsync(
                             workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
@@ -395,9 +401,9 @@ namespace GitHub.Runner.Worker.Container
             processInvoker.ErrorDataReceived += stderrDataReceived;
 
 
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            if (!(Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux) || (Constants.Runner.Platform.Equals(Constants.OSPlatform.Windows) && Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))))
             {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
+                throw new NotSupportedException("Container operations are only supported on Linux or 64 bit Windows server runners");
             }
             return await processInvoker.ExecuteAsync(
                 workingDirectory: context.GetGitHubContext("workspace"),
@@ -426,9 +432,9 @@ namespace GitHub.Runner.Worker.Container
                 context.Output(message.Data);
             };
 
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            if (!(Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux) || (Constants.Runner.Platform.Equals(Constants.OSPlatform.Windows) && Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))))
             {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
+                throw new NotSupportedException("Container operations are only supported on Linux or 64 bit Windows server runners");
             }
             return await processInvoker.ExecuteAsync(
                 workingDirectory: workingDirectory ?? context.GetGitHubContext("workspace"),
