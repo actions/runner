@@ -643,8 +643,9 @@ namespace GitHub.Runner.Common
             return handlerFactory.CreateClientHandler(context.WebProxy);
         }
 
-        public static string GetDefaultShellForScript(this IHostContext hostContext, string path, Common.Tracing trace, string prependPath)
+        public static string GetDefaultShellForScript(this IHostContext hostContext, string path, string prependPath)
         {
+            var trace = hostContext.GetTrace(nameof(GetDefaultShellForScript));
             switch (Path.GetExtension(path))
             {
                 case ".sh":

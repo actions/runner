@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -60,7 +60,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> inputs = new()
             {
                 ["path"] = hookData.Path,
-                ["shell"] = HostContext.GetDefaultShellForScript(hookData.Path, Trace, prependPath)
+                ["shell"] = HostContext.GetDefaultShellForScript(hookData.Path, prependPath)
             };
 
             // Create the handler

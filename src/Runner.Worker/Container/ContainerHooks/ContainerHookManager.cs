@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -147,7 +147,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 {
                     ["standardInInput"] = JsonUtility.ToString(input),
                     ["path"] = HookScriptPath,
-                    ["shell"] = HostContext.GetDefaultShellForScript(HookScriptPath, Trace, prependPath)
+                    ["shell"] = HostContext.GetDefaultShellForScript(HookScriptPath, prependPath)
                 };
 
                 var handlerFactory = HostContext.GetService<IHandlerFactory>();
