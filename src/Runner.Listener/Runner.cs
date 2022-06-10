@@ -13,10 +13,12 @@ using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Listener.Check;
 using System.Collections.Generic;
+using GitHub.DistributedTask.Pipelines;
 using System.Runtime.Serialization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Listener
 {
@@ -480,7 +482,12 @@ namespace GitHub.Runner.Listener
                                     // todo: add retries
                                     var runServer = HostContext.CreateService<IRunServer>();
                                     await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId);
+
+                                    Func<Task<AgentJobRequestMessage>> getJobRequestMessageAsync = async() => {
+                                        return await runServer.GetJobMessageAsync(messageRef.RunnerRequestId);
+                                    };
+
+                                    var jobMessage = await RetryHelper<AgentJobRequestMessage>.RetryWithTimeoutAsync(getJobRequestMessageAsync, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
 
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)

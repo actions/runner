@@ -70,38 +70,7 @@ namespace GitHub.Runner.Common
         public Task<AgentJobRequestMessage> GetJobMessageAsync(string id)
         {
             CheckConnection();
-            return RequestJobMessageAsync(id);
-        }
-
-        private async Task<AgentJobRequestMessage> RequestJobMessageAsync(string id)
-        {
-            var remainingTime = TimeSpan.FromMinutes(5);
-            while (true)
-            {
-                try
-                {
-                    return await _taskAgentClient.GetJobMessageAsync(id);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error("Catch exception during get next message.");
-                    Trace.Error(ex);
-                    
-                    // todo: ask about correct exceptions to handle retriable and non-retrieable cases
-                    if (IsRetriableStatusCode(_taskAgentClient.LastResponseContext.HttpStatusCode) && (remainingTime > TimeSpan.Zero))
-                    {
-                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
-                        Trace.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
-                        remainingTime -= backOff;
-                        await Task.Delay(backOff);
-                    }
-                    else
-                    {
-                        Trace.Info($"Non-retriable exception: {_taskAgentClient.LastResponseContext.Exception.Message}");
-                        throw;
-                    }
-                }
-            }
+            return _taskAgentClient.GetJobMessageAsync(id);
         }
 
         private bool IsRetriableStatusCode(System.Net.HttpStatusCode statusCode)
