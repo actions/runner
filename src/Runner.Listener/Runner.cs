@@ -475,7 +475,6 @@ namespace GitHub.Runner.Listener
                                     var credMgr = HostContext.GetService<ICredentialManager>();
                                     var creds = credMgr.LoadCredentials();
 
-                                    // todo: add retries https://github.com/github/actions-broker/issues/49
                                     var runServer = HostContext.CreateService<IRunServer>();
                                     await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
                                     Pipelines.AgentJobRequestMessage jobMessage = null;
