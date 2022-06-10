@@ -485,7 +485,7 @@ The `run_container_step` is called once per container action in your job and exp
         }
       ],
       "registry": null,
-      "portMappings": { "80": "801" }
+      "portMappings": [ "8080:80/tcp", "8080:80/udp" ]
     },
   }
 ```
