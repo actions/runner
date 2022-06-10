@@ -1,6 +1,6 @@
 ## Features
 - Allow self-hosted runner admins to fail jobs that don't have a job container (#1895)
-- Experimental: Self-hosted runner admins can now use custom scripts to integrate with containerisation tools like Kubernetes or Podman (#1853)
+- Experimental: Self-hosted runner admins can now use scripts to customize the container invocation in the runner (#1853)
 ## Bugs
 - Fixed an issue where a Job Hook would fail to execute if the shell path contains a space on Windows (#1826)
 
