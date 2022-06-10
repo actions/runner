@@ -72,11 +72,5 @@ namespace GitHub.Runner.Common
             CheckConnection();
             return _taskAgentClient.GetJobMessageAsync(id);
         }
-
-        private bool IsRetriableStatusCode(System.Net.HttpStatusCode statusCode)
-        {
-            return statusCode == System.Net.HttpStatusCode.BadGateway ||
-            statusCode == System.Net.HttpStatusCode.InternalServerError;
-        }
     }
 }
