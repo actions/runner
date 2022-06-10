@@ -70,7 +70,37 @@ namespace GitHub.Runner.Common
         public Task<AgentJobRequestMessage> GetJobMessageAsync(string id)
         {
             CheckConnection();
-            return _taskAgentClient.GetJobMessageAsync(id);
+            return RequestJobMessageAsync(id);
+        }
+
+        private async Task<AgentJobRequestMessage> RequestJobMessageAsync(string id)
+        {
+            var remainingRetryLimitTime = TimeSpan.FromMinutes(5);
+            while (true)
+            {
+                try
+                {
+                    return await _taskAgentClient.GetJobMessageAsync(id);;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error("Catch exception during get full job message");
+                    Trace.Error(ex);
+
+                    if (remainingRetryLimitTime > TimeSpan.Zero)
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
+                        Trace.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
+                        remainingRetryLimitTime -= backOff;
+                        await Task.Delay(backOff);
+                    }
+                    else
+                    {
+                        Trace.Info("Retry time limit exceeded. Abandoning getting message");
+                        throw;
+                    }
+                }
+            }
         }
     }
 }
