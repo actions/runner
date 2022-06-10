@@ -57,6 +57,10 @@ namespace GitHub.Runner.Sdk
                 settings.SendTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
             }
 
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_ALLOW_REDIRECT")))
+            {
+                settings.AllowAutoRedirect = true;
+            }
 
             // Remove Invariant from the list of accepted languages.
             //

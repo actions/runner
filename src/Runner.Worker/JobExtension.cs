@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
@@ -206,6 +207,7 @@ namespace GitHub.Runner.Worker
                     // Evaluate the job container
                     context.Debug("Evaluating job container");
                     var container = templateEvaluator.EvaluateJobContainer(message.JobContainer, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
+                    ValidateJobContainer(container);
                     if (container != null)
                     {
                         jobContext.Global.Container = new Container.ContainerInfo(HostContext, container);
@@ -671,6 +673,14 @@ namespace GitHub.Runner.Worker
 
             Trace.Info($"Total accessible running process: {snapshot.Count}.");
             return snapshot;
+        }
+
+        private static void ValidateJobContainer(JobContainer container)
+        {
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer)) && container == null)
+            {
+                throw new ArgumentException("Jobs without a job container are forbidden on this runner, please add a 'container:' to your job or contact your self-hosted runner administrator.");
+            }
         }
     }
 }

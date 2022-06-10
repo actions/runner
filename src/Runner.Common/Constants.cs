@@ -229,6 +229,7 @@ namespace GitHub.Runner.Common
                 //
                 public static readonly string AllowUnsupportedCommands = "ACTIONS_ALLOW_UNSECURE_COMMANDS";
                 public static readonly string AllowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
+                public static readonly string RequireJobContainer = "ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
                 public static readonly string AllowActionsUseUnsecureNodeVersion = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
