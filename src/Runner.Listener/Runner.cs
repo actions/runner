@@ -13,6 +13,11 @@ using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Sdk;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Runtime.Serialization;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Listener
 {
@@ -477,7 +482,12 @@ namespace GitHub.Runner.Listener
                                     // todo: add retries https://github.com/github/actions-broker/issues/49
                                     var runServer = HostContext.CreateService<IRunServer>();
                                     await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId);
+
+                                    Func<Task<AgentJobRequestMessage>> getJobRequestMessageAsync = async() => {
+                                        return await runServer.GetJobMessageAsync(messageRef.RunnerRequestId);
+                                    };
+
+                                    var jobMessage = await RetryHelper<AgentJobRequestMessage>.RetryWithTimeoutAsync(getJobRequestMessageAsync, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
 
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
