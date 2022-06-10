@@ -60,7 +60,7 @@ namespace GitHub.Runner.Worker
                 executionContext.StepTelemetry.ContainerHookData = _containerHookManager.GetContainerHookData();
                 // Initialize the containers
                 containers.ForEach(container => UpdateRegistryAuthForGitHubToken(executionContext, container));
-                containers.ForEach(container => MountWellKnownDirectories(executionContext, container));
+                containers.Where(container => container.IsJobContainer).ForEach(container => MountWellKnownDirectories(executionContext, container));
                 await _containerHookManager.PrepareJobAsync(executionContext, containers);
                 return;
             }
