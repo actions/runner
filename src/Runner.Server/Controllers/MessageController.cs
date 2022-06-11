@@ -1108,7 +1108,7 @@ namespace Runner.Server.Controllers
                         }
                         // https://github.com/github/feedback/discussions/9092#discussioncomment-2453678
                         var inputsCtx = new DictionaryContextData();
-                        // inputs = inputsCtx; // Disabled as of 23 May 2022, it is unknown if and when it is available on github.com
+                        inputs = inputsCtx; // Released https://github.blog/changelog/2022-06-10-github-actions-inputs-unified-across-manual-and-reusable-workflows/
                         if(workflowInputs != null) {
                             foreach(var input in workflowInputs) {
                                 var inputName = input.Key.AssertString("on.workflow_dispatch.inputs mapping key").Value;
