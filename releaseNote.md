@@ -1,49 +1,10 @@
 ## Changes
-* Improve job names in https://github.com/ChristopherHX/runner.server/pull/78
-* Test call workflow with different case of inputs in https://github.com/ChristopherHX/runner.server/pull/81
-* Test for case insensitive workflow_dispatch inputs in https://github.com/ChristopherHX/runner.server/pull/82
-* Default for choice input in https://github.com/ChristopherHX/runner.server/pull/79
-* Fix crash duplicated environment secrets in https://github.com/ChristopherHX/runner.server/pull/83
-* Feature yaml env and secret file in https://github.com/ChristopherHX/runner.server/pull/84
-* Runner.Client validate input value in https://github.com/ChristopherHX/runner.server/pull/86
-* Allow custom runner base directory, shorten path in https://github.com/ChristopherHX/runner.server/pull/87
-* Add github connect support / instance chaining in https://github.com/ChristopherHX/runner.server/pull/90
-* rerun failed, ignore succeeded in previous rerun in https://github.com/ChristopherHX/runner.server/pull/91
-* Fix database error for InMemory db during start in https://github.com/ChristopherHX/runner.server/pull/93
-* Fix rerun artifacts in https://github.com/ChristopherHX/runner.server/pull/92
-* Replace more case sensitive comparsions in https://github.com/ChristopherHX/runner.server/pull/94
-
-## Fixes
-- Fix bugs in concurrency implementation 
-  - groups are case insensitive, `main` and `Main` are the same group
-  - if a reusable workflow cancells itself workflow cancellation works
-  - add support for concurrency of uses jobs
-- Missing job completed status in Runner.Client
-- Improve container path handling on windows
-- Remove Minimatch dependency fix pattern matching
-  - Pattern matching is now more verbose
-- Fix success and failure functions one or more args 
-  - Always return false if cancelled
-- Add on.workflow_run.workflows filter support
-- Fix inputs are caseinsensitive
-
-## Features
-- Update actions/runner to [v2.292.0](https://github.com/actions/runner/releases/tag/v2.292.0)
-- job / step summary in webui and downloadable as special named artifact
-- `secrets: inherit` is now supported for reusable workflows
-- Add `--input` option workflow_dispatch subcommand
+- match cache keys case insensitive
 
 ## Breaking Changes
-- workflow_dispatch inputs context disabled, based on [Github Feedback](https://github.com/github/feedback/discussions/9092#discussioncomment-2453678) and [Issue Comment](https://github.com/actions/runner/issues/1483#issuecomment-1091025877)
-  boolean workflow_dispatch values of the inputs context are actual booleans values like workflow_call inputs
-- Changed non expression job.name match github, this changes required check names
-- Validate permissions and jobs.*.secrets text value
-- Based on github docs skipped => success, skipped required checks are no longer pending
-- Upload attachments as artifact, you can now download ACTIONS_RUNNER_DEBUG logs as an artifact this may cause collisions with your artifacts
-- `Runner.Client` / `gharun` ctrl-c behavior changed, depends on how often you press it
-  1. cancel workflows
-  2. force cancel workflows, ignore jobs.*.if and don't wait for finish ( NEW )
-  3. kill Agents and server
+- workflow_dispatch inputs context enabled again, based on [Github Feedback](https://github.com/github/feedback/discussions/9092#discussioncomment-2453678) and [Issue Comment](https://github.com/actions/runner/issues/1483#issuecomment-1091025877)
+  boolean workflow_dispatch values of the inputs context are actual booleans values like workflow_call inputs. This feature is released now the same way as implemented in 3.8.0.
+  - You can no longer detect a reusable workflow by `${{ inputs != null }}`, if it is called via workflow_dispatch.
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
