@@ -66,14 +66,14 @@ namespace Runner.Server.Controllers {
             var repository = User.FindFirst("repository");
             foreach(var cref in reference.Value != defaultRef.Value ? new [] { reference.Value, defaultRef.Value } : new [] { reference.Value }) {
                 foreach (var item in a) {
-                    var record = (from rec in _context.Caches where rec.Repo == repository.Value && rec.Ref == cref && rec.Key == item orderby rec.LastUpdated descending select rec).FirstOrDefault();
+                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.Value.ToLower() && rec.Ref == cref && rec.Key.ToLower() == item.ToLower() orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null) {
                         return await Ok(new ArtifactCacheEntry{ cacheKey = item, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = new Uri(new Uri(ServerUrl), $"_apis/artifactcache/get/{record.Id}").ToString() });
                     }
                 }
                 CacheRecord partialMatch = null;
                 foreach (var item in a.Skip(1)) {
-                    var record = (from rec in _context.Caches where rec.Repo == repository.Value && rec.Ref == cref && rec.Key.StartsWith(item) orderby rec.LastUpdated descending select rec).FirstOrDefault();
+                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.Value.ToLower() && rec.Ref == cref && rec.Key.ToLower().StartsWith(item.ToLower()) orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null && (partialMatch == null || record.LastUpdated > partialMatch.LastUpdated)) {
                         partialMatch = record;
                     }
