@@ -70,28 +70,38 @@ namespace GitHub.Runner.Common
         public Task<AgentJobRequestMessage> GetJobMessageAsync(string id)
         {
             CheckConnection();
-            return RequestJobMessageAsync(id);
+            var jobMessage = RetryRequestWithTimeout(async () =>
+                                                    {
+                                                        return await _taskAgentClient.GetJobMessageAsync(id);
+                                                    },
+                                                    TimeSpan.FromSeconds(5),
+                                                    TimeSpan.FromSeconds(15),
+                                                    TimeSpan.FromMinutes(5));
+            return jobMessage;
         }
 
-        private async Task<AgentJobRequestMessage> RequestJobMessageAsync(string id)
+        private async Task<AgentJobRequestMessage> RetryRequestWithTimeout(Func<Task<AgentJobRequestMessage>> func,
+            TimeSpan minBackoff,
+            TimeSpan maxBackoff,
+            TimeSpan maxTimeoutMinutes)
         {
-            var remainingRetryLimitTime = TimeSpan.FromMinutes(5);
+            var currentRetryTime = TimeSpan.Zero;
             while (true)
             {
                 try
                 {
-                    return await _taskAgentClient.GetJobMessageAsync(id);;
+                    return await func();
                 }
                 catch (Exception ex)
                 {
                     Trace.Error("Catch exception during get full job message");
                     Trace.Error(ex);
 
-                    if (remainingRetryLimitTime > TimeSpan.Zero)
+                    if (currentRetryTime < maxTimeoutMinutes)
                     {
-                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(minBackoff, maxBackoff);
                         Trace.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
-                        remainingRetryLimitTime -= backOff;
+                        currentRetryTime += backOff;
                         await Task.Delay(backOff);
                     }
                     else
