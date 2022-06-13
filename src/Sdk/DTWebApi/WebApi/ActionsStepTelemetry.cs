@@ -56,5 +56,8 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public int? ExecutionTimeInSeconds { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string ContainerHookData { get; set; }
     }
 }

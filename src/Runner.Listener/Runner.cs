@@ -458,6 +458,35 @@ namespace GitHub.Runner.Listener
                                     }
                                 }
                             }
+                            // Broker flow
+                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (autoUpdateInProgress || runOnceJobReceived)
+                                {
+                                    skipMessageDeletion = true;
+                                    Trace.Info($"Skip message deletion for job request message '{message.MessageId}'.");
+                                }
+                                else
+                                {
+                                    var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
+
+                                    // Create connection
+                                    var credMgr = HostContext.GetService<ICredentialManager>();
+                                    var creds = credMgr.LoadCredentials();
+
+                                    // todo: add retries https://github.com/github/actions-broker/issues/49
+                                    var runServer = HostContext.CreateService<IRunServer>();
+                                    await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId);
+
+                                    jobDispatcher.Run(jobMessage, runOnce);
+                                    if (runOnce)
+                                    {
+                                        Trace.Info("One time used runner received job message.");
+                                        runOnceJobReceived = true;
+                                    }
+                                }
+                            }
                             else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);

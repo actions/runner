@@ -90,6 +90,7 @@ namespace GitHub.Runner.Worker.Container
         public string RegistryAuthUsername { get; set; }
         public string RegistryAuthPassword { get; set; }
         public bool IsJobContainer { get; set; }
+        public bool IsAlpine { get; set; }
 
         public IDictionary<string, string> ContainerEnvironmentVariables
         {
@@ -232,6 +233,14 @@ namespace GitHub.Runner.Worker.Container
             }
         }
 
+        public void AddPortMappings(IDictionary<string, string> portMappings)
+        {
+            foreach (var pair in portMappings)
+            {
+                PortMappings.Add(new PortMapping(pair.Key, pair.Value));
+            }
+        }
+
         public void AddPathTranslateMapping(string hostCommonPath, string containerCommonPath)
         {
             _pathMappings.Insert(0, new PathMapping(hostCommonPath, containerCommonPath));
@@ -322,6 +331,12 @@ namespace GitHub.Runner.Worker.Container
 
     public class PortMapping
     {
+        public PortMapping(string hostPort, string containerPort)
+        {
+            this.HostPort = hostPort;
+            this.ContainerPort = containerPort;
+        }
+
         public PortMapping(string hostPort, string containerPort, string protocol)
         {
             this.HostPort = hostPort;

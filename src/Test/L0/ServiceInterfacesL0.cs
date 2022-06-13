@@ -2,6 +2,7 @@
 using GitHub.Runner.Listener.Check;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 using GitHub.Runner.Worker.Handlers;
 using System;
 using System.Collections.Generic;
@@ -68,7 +69,8 @@ namespace GitHub.Runner.Common.Tests
                 typeof(IStep),
                 typeof(IStepHost),
                 typeof(IDiagnosticLogManager),
-                typeof(IEnvironmentContextData)
+                typeof(IEnvironmentContextData),
+                typeof(IHookArgs),                
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,
