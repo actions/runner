@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
     {
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
-        Task<AgentJobRequestMessage> GetJobMessageAsync(string id);
+        Task<AgentJobRequestMessage> GetJobMessageAsync(string id, CancellationToken token);
     }
 
     public sealed class RunServer : RunnerService, IRunServer
@@ -67,23 +67,25 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public Task<AgentJobRequestMessage> GetJobMessageAsync(string id)
+        public Task<AgentJobRequestMessage> GetJobMessageAsync(string id, CancellationToken cancellationToken)
         {
             CheckConnection();
-            var jobMessage = RetryRequestWithTimeout<AgentJobRequestMessage>(async () =>
+            var jobMessage = RetryRequest<AgentJobRequestMessage>(async () =>
                                                     {
-                                                        return await _taskAgentClient.GetJobMessageAsync(id);
-                                                    });
+                                                        return await _taskAgentClient.GetJobMessageAsync(id, cancellationToken);
+                                                    }, cancellationToken);
             return jobMessage;
         }
 
-        private async Task<T> RetryRequestWithTimeout<T>(Func<Task<T>> func,
-            int maxTimeoutMinutes = 5)
+        private async Task<T> RetryRequest<T>(Func<Task<T>> func,
+                                                        CancellationToken cancellationToken,
+                                                        int maxRetryAttempts = 5
+                                                        )
         {
-            var currentRetryTime = TimeSpan.Zero;
-            var maxRetryTime = TimeSpan.FromMinutes(maxTimeoutMinutes);
+            var currentRetryAttempt = 1;
             while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     return await func();
@@ -93,16 +95,16 @@ namespace GitHub.Runner.Common
                     Trace.Error("Catch exception during get full job message");
                     Trace.Error(ex);
 
-                    if (currentRetryTime < maxRetryTime)
+                    if (currentRetryAttempt < maxRetryAttempts)
                     {
                         var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
                         Trace.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
-                        currentRetryTime += backOff;
-                        await Task.Delay(backOff);
+                        currentRetryAttempt++;
+                        await Task.Delay(backOff, cancellationToken);
                     }
                     else
                     {
-                        Trace.Info("Retry time limit exceeded. Abandoning getting message");
+                        Trace.Info("Retry attempt limit exceeded. Abandoning getting message");
                         throw;
                     }
                 }

@@ -476,7 +476,7 @@ namespace GitHub.Runner.Listener
 
                                     var runServer = HostContext.CreateService<IRunServer>();
                                     await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId);
+                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, HostContext.RunnerShutdownToken);
 
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
