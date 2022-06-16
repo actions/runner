@@ -78,12 +78,12 @@ namespace GitHub.Runner.Common
         }
 
         private async Task<T> RetryRequest<T>(Func<Task<T>> func,
-                                                        CancellationToken cancellationToken,
-                                                        int maxRetryAttemptsCount = 5
-                                                        )
+                                              CancellationToken cancellationToken,
+                                              int maxRetryAttemptsCount = 5
+                                             )
         {
             var retryCount = 0;
-            do
+            while (true)
             {
                 retryCount++;
                 cancellationToken.ThrowIfCancellationRequested();
@@ -99,10 +99,7 @@ namespace GitHub.Runner.Common
                     Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxRetryAttemptsCount - retryCount} attempt left.");
                     await Task.Delay(backOff, cancellationToken);
                 }
-            } while (retryCount < maxRetryAttemptsCount);
-            
-            Trace.Error("Code should be unreachable.");
-            return default;
+            }
         }
     }
 }
