@@ -101,7 +101,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                     EntryPointArgs = entryPointArgs.Split(' ').Select(arg => arg.Trim()),
                     EntryPoint = entryPoint,
                     EnvironmentVariables = environmentVariables,
-                    PrependPath = prependPath,
+                    PrependPath = context.Global.PrependPath.Reverse<string>(),
                     WorkingDirectory = workingDirectory,
                 },
                 State = context.Global.ContainerHookState
