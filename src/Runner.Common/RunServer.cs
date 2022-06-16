@@ -98,7 +98,7 @@ namespace GitHub.Runner.Common
                     if (currentRetryAttempt < maxRetryAttempts)
                     {
                         var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
-                        Trace.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
+                        Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxRetryAttempts - currentRetryAttempt} attempt left.");
                         currentRetryAttempt++;
                         await Task.Delay(backOff, cancellationToken);
                     }
