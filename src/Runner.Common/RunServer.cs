@@ -79,36 +79,30 @@ namespace GitHub.Runner.Common
 
         private async Task<T> RetryRequest<T>(Func<Task<T>> func,
                                                         CancellationToken cancellationToken,
-                                                        int maxRetryAttempts = 5
+                                                        int maxRetryAttemptsCount = 5
                                                         )
         {
-            var currentRetryAttempt = 1;
-            while (true)
+            var retryCount = 0;
+            while (retryCount < maxRetryAttemptsCount)
             {
+                retryCount++;
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     return await func();
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (retryCount < maxRetryAttemptsCount)
                 {
                     Trace.Error("Catch exception during get full job message");
                     Trace.Error(ex);
-
-                    if (currentRetryAttempt < maxRetryAttempts)
-                    {
-                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
-                        Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxRetryAttempts - currentRetryAttempt} attempt left.");
-                        currentRetryAttempt++;
-                        await Task.Delay(backOff, cancellationToken);
-                    }
-                    else
-                    {
-                        Trace.Info("Retry attempt limit exceeded. Abandoning getting message");
-                        throw;
-                    }
+                    var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
+                    Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxRetryAttemptsCount - retryCount} attempt left.");
+                    await Task.Delay(backOff, cancellationToken);
                 }
             }
+            
+            Trace.Error("Code should be unreachable.");
+            return default;
         }
     }
 }
