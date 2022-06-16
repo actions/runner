@@ -174,8 +174,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             }
             catch (Exception ex)
             {
-                Trace.Error(ex);
-                throw new Exception($"Custom container implementation failed with error: {ex.Message} Please contact your self hosted runner administrator.", ex);
+                throw new Exception($"Executing the custom container implementation failed. Please contact your self hosted runner administrator.", ex);
             }
         }
 
