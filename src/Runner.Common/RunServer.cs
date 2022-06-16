@@ -83,7 +83,7 @@ namespace GitHub.Runner.Common
                                                         )
         {
             var retryCount = 0;
-            while (retryCount < maxRetryAttemptsCount)
+            do
             {
                 retryCount++;
                 cancellationToken.ThrowIfCancellationRequested();
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Common
                     Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxRetryAttemptsCount - retryCount} attempt left.");
                     await Task.Delay(backOff, cancellationToken);
                 }
-            }
+            } while (retryCount < maxRetryAttemptsCount);
             
             Trace.Error("Code should be unreachable.");
             return default;
