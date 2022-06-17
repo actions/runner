@@ -13,11 +13,6 @@ namespace GitHub.Runner.Common.Util
         public static readonly ReadOnlyCollection<string> BuiltInNodeVersions = new(new[] { "node12", "node16" });
 #endif
 
-        public static string GetNodeVersion()
-        {
-            return System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
-        }
-
         public static string GetInternalNodeVersion()
         {
             var forcedInternalNodeVersion = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion);
