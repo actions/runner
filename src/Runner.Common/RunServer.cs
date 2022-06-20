@@ -91,6 +91,7 @@ namespace GitHub.Runner.Common
                 {
                     return await func();
                 }
+                // TODO: Add handling of non-retriable exceptions: https://github.com/github/actions-broker/issues/122
                 catch (Exception ex) when (retryCount < maxRetryAttemptsCount)
                 {
                     Trace.Error("Catch exception during get full job message");
