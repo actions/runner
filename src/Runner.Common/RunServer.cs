@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
     {
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
-        Task<AgentJobRequestMessage> GetJobMessageAsync(string id);
+        Task<AgentJobRequestMessage> GetJobMessageAsync(string id, CancellationToken token);
     }
 
     public sealed class RunServer : RunnerService, IRunServer
@@ -67,10 +67,40 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public Task<AgentJobRequestMessage> GetJobMessageAsync(string id)
+        public Task<AgentJobRequestMessage> GetJobMessageAsync(string id, CancellationToken cancellationToken)
         {
             CheckConnection();
-            return _taskAgentClient.GetJobMessageAsync(id);
+            var jobMessage = RetryRequest<AgentJobRequestMessage>(async () =>
+                                                    {
+                                                        return await _taskAgentClient.GetJobMessageAsync(id, cancellationToken);
+                                                    }, cancellationToken);
+            return jobMessage;
+        }
+
+        private async Task<T> RetryRequest<T>(Func<Task<T>> func,
+                                              CancellationToken cancellationToken,
+                                              int maxRetryAttemptsCount = 5
+                                             )
+        {
+            var retryCount = 0;
+            while (true)
+            {
+                retryCount++;
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    return await func();
+                }
+                // TODO: Add handling of non-retriable exceptions: https://github.com/github/actions-broker/issues/122
+                catch (Exception ex) when (retryCount < maxRetryAttemptsCount)
+                {
+                    Trace.Error("Catch exception during get full job message");
+                    Trace.Error(ex);
+                    var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
+                    Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxRetryAttemptsCount - retryCount} attempt left.");
+                    await Task.Delay(backOff, cancellationToken);
+                }
+            }
         }
     }
 }
