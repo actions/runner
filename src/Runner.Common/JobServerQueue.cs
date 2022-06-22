@@ -299,7 +299,11 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
-                                await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, default(CancellationToken));
+                                // Give at most 60s for each request. 
+                                using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
+                                {
+                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
+                                }
 
                                 if (_firstConsoleOutputs)
                                 {
