@@ -8,6 +8,7 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Container.ContainerHooks;
 
@@ -104,6 +105,12 @@ namespace GitHub.Runner.Worker.Handlers
                 Data.NodeVersion = "node16";
             }
 #endif
+            string forcedNodeVersion = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
+
+            if (forcedNodeVersion == "node16" && Data.NodeVersion != "node16")
+            {
+                Data.NodeVersion = "node16";
+            }
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 
