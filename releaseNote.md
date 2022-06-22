@@ -1,11 +1,11 @@
 ## Features
-- Allow self-hosted runner admins to fail jobs that don't have a job container (#1895)
-- Experimental: Self-hosted runner admins can now use scripts to customize the container invocation in the runner (#1853)
+- Added support for a JIT runner config (#1925)
+- Added `ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION` env option to force actions to run on a specific node version (#1913)
 ## Bugs
-- Fixed an issue where a Job Hook would fail to execute if the shell path contains a space on Windows (#1826)
+- Fixed a bug where container hooks passed in path as a string rather then an array of strings (#1948)
 
 ## Misc
-- Handle new `HostedRunnerShutdownMessage` to shutdown hosted runners faster (#1922)
+- Minor cleanup of error messages when running container hooks (#1949)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
