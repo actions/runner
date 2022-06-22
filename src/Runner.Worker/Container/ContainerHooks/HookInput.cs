@@ -44,7 +44,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public IEnumerable<string> EntryPointArgs { get; set; }
         public string EntryPoint { get; set; }
         public IDictionary<string, string> EnvironmentVariables { get; set; }
-        public string PrependPath { get; set; }
+        public IEnumerable<string> PrependPath { get; set; }
         public string WorkingDirectory { get; set; }
         public bool IsRequireAlpineInResponse() => false;
     }
