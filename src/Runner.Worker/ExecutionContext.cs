@@ -1226,7 +1226,7 @@ namespace GitHub.Runner.Worker
                     var value = dict[key].ToString();
                     if (!string.IsNullOrEmpty(value))
                     {
-                        dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
+                        dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(context, value));
                     }
                 }
                 else if (dict[key] is DictionaryContextData)
