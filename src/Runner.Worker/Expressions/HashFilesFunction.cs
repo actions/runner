@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Threading;
 using System.Collections.Generic;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Worker.Container;
 
 namespace GitHub.Runner.Worker.Expressions
 {
@@ -28,6 +29,14 @@ namespace GitHub.Runner.Worker.Expressions
             ArgUtil.NotNull(githubContext, nameof(githubContext));
             githubContext.TryGetValue(PipelineTemplateConstants.Workspace, out var workspace);
             var workspaceData = workspace as StringContextData;
+            ArgUtil.NotNull(workspaceData, nameof(workspaceData));
+
+            templateContext.ExpressionValues.TryGetValue(PipelineTemplateConstants.Runner, out var runnerContextData);
+            ArgUtil.NotNull(runnerContextData, nameof(runnerContextData));
+            var runnerContext = runnerContextData as DictionaryContextData;
+            ArgUtil.NotNull(runnerContext, nameof(runnerContext));
+            runnerContext.TryGetValue(PipelineTemplateConstants.HostWorkspace, out var hostWorkspace);
+            var hostWorkspaceData = hostWorkspace as StringContextData;
             ArgUtil.NotNull(workspaceData, nameof(workspaceData));
 
             string githubWorkspace = workspaceData.Value;
@@ -91,6 +100,11 @@ namespace GitHub.Runner.Worker.Expressions
                 env["followSymbolicLinks"] = "true";
             }
             env["patterns"] = string.Join(Environment.NewLine, patterns);
+
+            var containerInfo = new ContainerInfo();
+            containerInfo.AddPathTranslateMapping(hostWorkspaceData.Value, "/__w");
+            githubWorkspace = containerInfo.TranslateToHostPath(githubWorkspace);
+
 
             using (var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(_hashFileTimeoutSeconds)))
             {

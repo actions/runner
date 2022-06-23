@@ -1355,6 +1355,10 @@ namespace GitHub.Runner.Worker
         {
             foreach (var key in dict.Keys.ToList())
             {
+                if (key == PipelineTemplateConstants.HostWorkspace)
+                {
+                    continue;
+                }
                 if (dict[key] is StringContextData)
                 {
                     var value = dict[key].ToString();
