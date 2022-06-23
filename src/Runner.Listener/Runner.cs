@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -190,6 +192,30 @@ namespace GitHub.Runner.Listener
                     }
 
                     return Constants.Runner.ReturnCode.Success;
+                }
+
+                var base64JitConfig = command.GetJitConfig();
+                if (!string.IsNullOrEmpty(base64JitConfig))
+                {
+                    try
+                    {
+                        var decodedJitConfig = Encoding.UTF8.GetString(Convert.FromBase64String(base64JitConfig));
+                        var jitConfig = StringUtil.ConvertFromJson<Dictionary<string, string>>(decodedJitConfig);
+                        foreach (var config in jitConfig)
+                        {
+                            var configFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), config.Key);
+                            var configContent = Encoding.UTF8.GetString(Convert.FromBase64String(config.Value));
+                            File.WriteAllText(configFile, configContent, Encoding.UTF8);
+                            File.SetAttributes(configFile, File.GetAttributes(configFile) | FileAttributes.Hidden);
+                            Trace.Info($"Save {configContent.Length} chars to '{configFile}'.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error(ex);
+                        _term.WriteError(ex.Message);
+                        return Constants.Runner.ReturnCode.TerminatedError;
+                    }
                 }
 
                 RunnerSettings settings = configManager.LoadSettings();
@@ -474,10 +500,9 @@ namespace GitHub.Runner.Listener
                                     var credMgr = HostContext.GetService<ICredentialManager>();
                                     var creds = credMgr.LoadCredentials();
 
-                                    // todo: add retries https://github.com/github/actions-broker/issues/49
                                     var runServer = HostContext.CreateService<IRunServer>();
                                     await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId);
+                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
 
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
