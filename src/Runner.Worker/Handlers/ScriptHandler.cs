@@ -8,6 +8,8 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
@@ -202,14 +204,32 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else
             {
-                var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
-                shellCommand = parsed.shellCommand;
-                // For non-ContainerStepHost, the command must be located on the host by Which
-                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
-                argFormat = $"{parsed.shellArgs}".TrimStart();
-                if (string.IsNullOrEmpty(argFormat))
+                // For these shells, we want to use system binaries
+                var systemShells = new string[] { "bash", "sh", "powershell", "pwsh" };
+                if (!IsActionStep && systemShells.Contains(shell))
                 {
-                    argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+                    shellCommand = shell;
+                    commandPath = WhichUtil.Which(shell, !isContainerStepHost, Trace, prependPath);
+                    if (shell == "bash")
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat("sh");
+                    }
+                    else
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shell);
+                    }
+                }
+                else
+                {
+                    var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
+                    shellCommand = parsed.shellCommand;
+                    // For non-ContainerStepHost, the command must be located on the host by Which
+                    commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
+                    argFormat = $"{parsed.shellArgs}".TrimStart();
+                    if (string.IsNullOrEmpty(argFormat))
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+                    }
                 }
             }
 
@@ -229,7 +249,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // We do not not the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
-                resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
+                resolvedScriptPath = StepHost.ResolvePathForStepHost(ExecutionContext, scriptFilePath).Replace("\"", "\\\"");
             }
             else
             {
@@ -300,6 +320,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             ExecutionContext.Debug($"{fileName} {arguments}");
 
+            Inputs.TryGetValue("standardInInput", out var standardInInput);
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
@@ -307,7 +328,8 @@ namespace GitHub.Runner.Worker.Handlers
                 StepHost.ErrorDataReceived += stderrManager.OnDataReceived;
 
                 // Execute
-                int exitCode = await StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
+                int exitCode = await StepHost.ExecuteAsync(ExecutionContext,
+                                            workingDirectory: StepHost.ResolvePathForStepHost(ExecutionContext, workingDirectory),
                                             fileName: fileName,
                                             arguments: arguments,
                                             environment: Environment,
@@ -315,6 +337,7 @@ namespace GitHub.Runner.Worker.Handlers
                                             outputEncoding: null,
                                             killProcessOnCancel: false,
                                             inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
+                                            standardInInput: standardInInput,
                                             cancellationToken: ExecutionContext.CancellationToken);
 
                 // Error

@@ -3,10 +3,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Worker.Handlers
 {
-    internal class ScriptHandlerHelpers
+    internal static class ScriptHandlerHelpers
     {
         private static readonly Dictionary<string, string> _defaultArguments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -79,23 +81,6 @@ namespace GitHub.Runner.Worker.Handlers
             else
             {
                 throw new ArgumentException($"Failed to parse COMMAND [..ARGS] from {shellOption}");
-            }
-        }
-
-        internal static string GetDefaultShellForScript(string path, Common.Tracing trace, string prependPath)
-        {
-            var format = "{0} {1}";
-            switch (Path.GetExtension(path))
-            {
-                case ".sh":
-                    // use 'sh' args but prefer bash
-                    var pathToShell = WhichUtil.Which("bash", false, trace, prependPath) ?? WhichUtil.Which("sh", true, trace, prependPath);
-                    return string.Format(format, pathToShell, _defaultArguments["sh"]);
-                case ".ps1":
-                    var pathToPowershell = WhichUtil.Which("pwsh", false, trace, prependPath) ?? WhichUtil.Which("powershell", true, trace, prependPath);
-                    return string.Format(format, pathToPowershell, _defaultArguments["powershell"]);
-                default:
-                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh' or '.ps1'.");
             }
         }
     }

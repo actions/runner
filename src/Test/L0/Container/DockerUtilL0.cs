@@ -144,48 +144,5 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             var actual = DockerUtil.ParseRegistryHostnameFromImageName(input);
             Assert.Equal(expected, actual);
         }
-
-        [Theory]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        [InlineData("dockerhub/repo", false)]
-        [InlineData("debian:latest", false)]
-        [InlineData("something/dockerfileimage", false)]
-        [InlineData("ghcr.io/docker/dockerfile", true)] // should be false but might break the current workflows
-        [InlineData("Dockerfile", true)]
-        [InlineData("Dockerfile.", true)]
-        [InlineData(".Dockerfile", true)]
-        [InlineData(".Dockerfile.", false)]
-        [InlineData("dockerfile", true)]
-        [InlineData("dockerfile.", true)]
-        [InlineData(".dockerfile", true)]
-        [InlineData(".dockerfile.", false)]
-        [InlineData("Dockerfile.test", true)]
-        [InlineData("test.Dockerfile", true)]
-        [InlineData("docker/dockerfile:latest", false)]
-        [InlineData("/some/path/dockerfile:latest", false)]
-        [InlineData("dockerfile:latest", false)]
-        [InlineData("Dockerfile:latest", false)]
-        [InlineData("dockerfile-latest", false)]
-        [InlineData("Dockerfile-latest", false)]
-        [InlineData("dockerfile.latest", true)]
-        [InlineData("Dockerfile.latest", true)]
-        [InlineData("../dockerfile/dockerfileone", false)]
-        [InlineData("../Dockerfile/dockerfileone", false)]
-        [InlineData("../dockerfile.test", true)]
-        [InlineData("../Dockerfile.test", true)]
-        [InlineData("./dockerfile/image", false)]
-        [InlineData("./Dockerfile/image", false)]
-        [InlineData("example/Dockerfile.test", true)]
-        [InlineData("./example/Dockerfile.test", true)]
-        [InlineData("example/test.dockerfile", true)]
-        [InlineData("./example/test.dockerfile", true)]
-        [InlineData("docker://Dockerfile", false)]
-        [InlineData("docker://ubuntu:latest", false)]
-        public void IsDockerfile(string input, bool expected)
-        {
-            var actual = DockerUtil.IsDockerfile(input);
-            Assert.Equal(expected, actual);
-        }
     }
 }

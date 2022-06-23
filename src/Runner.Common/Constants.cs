@@ -90,6 +90,7 @@ namespace GitHub.Runner.Common
                 public static class Args
                 {
                     public static readonly string Auth = "auth";
+                    public static readonly string JitConfig = "jitconfig";
                     public static readonly string Labels = "labels";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string Name = "name";
@@ -151,6 +152,7 @@ namespace GitHub.Runner.Common
                 public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
                 public static readonly string Node12Warning = "DistributedTask.AddWarningToNode12Action";
                 public static readonly string UseContainerPathForTemplate = "DistributedTask.UseContainerPathForTemplate";
+                public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks"; 
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
@@ -196,6 +198,7 @@ namespace GitHub.Runner.Common
         {
             public static readonly string JobStartedStepName = "Set up runner";
             public static readonly string JobCompletedStepName = "Complete runner";
+            public static readonly string ContainerHooksPath = "ACTIONS_RUNNER_CONTAINER_HOOKS";
         }
 
         public static class Path
@@ -227,6 +230,7 @@ namespace GitHub.Runner.Common
                 //
                 public static readonly string AllowUnsupportedCommands = "ACTIONS_ALLOW_UNSECURE_COMMANDS";
                 public static readonly string AllowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
+                public static readonly string RequireJobContainer = "ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
                 public static readonly string AllowActionsUseUnsecureNodeVersion = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
@@ -238,6 +242,7 @@ namespace GitHub.Runner.Common
 
                 // Set this env var to "node12" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
                 public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION"; 
+                public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION"; 
             }
 
             public static class System
