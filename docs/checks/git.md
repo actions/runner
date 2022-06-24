@@ -20,11 +20,26 @@ The test also set environment variable `GIT_TRACE=1` and `GIT_CURL_VERBOSE=1` be
 
 ## How to fix the issue?
 
-### 1. Check the common network issue
+### 1. fatal: unable to access 'https://github.com/actions/checkout/': The requested URL returned error: 400
+
+Check your global/system git config for any unexpected auth headers
+
+For example:
+
+```
+$ git config --global --list | grep extraheader
+http.extraheader=AUTHORIZATION: unexpected_auth_header
+
+$ git config --system --list | grep extraheader
+```
+
+The following command can be used to remove the above value: `git config --global --unset http.extraheader`
+
+### 2. Check the common network issue
   
   > Please check the [network doc](./network.md)
 
-### 2. SSL certificate related issue
+### 3. SSL certificate related issue
 
   If you are seeing `SSL Certificate problem:` in the log, it means the `git` can't connect to the GitHub server due to SSL handshake failure.
   > Please check the [SSL cert doc](./sslcert.md)
