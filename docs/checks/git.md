@@ -28,7 +28,7 @@ For example:
 
 ```
 $ git config --global --list | grep extraheader
-http.extraheader=AUTHORIZATION: malformed_auth_header
+http.extraheader=AUTHORIZATION: unexpected_auth_header
 
 $ git config --system --list | grep extraheader
 ```
