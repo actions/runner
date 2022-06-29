@@ -20,11 +20,15 @@ The test also set environment variable `GIT_TRACE=1` and `GIT_CURL_VERBOSE=1` be
 
 ## How to fix the issue?
 
-### 1. fatal: unable to access 'https://github.com/actions/checkout/': The requested URL returned error: 400
+### 1. Check global and system git config
 
-Check your global/system git config for any unexpected auth headers
+If you are having issues connecting to the server, check your global and system git config for any unexpected authentication headers. You might be seeing an error like:
 
-For example:
+```
+fatal: unable to access 'https://github.com/actions/checkout/': The requested URL returned error: 400
+```
+
+The following commands can be used to check for unexpected authentication headers:
 
 ```
 $ git config --global --list | grep extraheader
