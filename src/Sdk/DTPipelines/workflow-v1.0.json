@@ -125,7 +125,8 @@
     "job-with-entry": {
       "context": [
         "github",
-        "needs"
+        "needs",
+        "inputs"
       ],
       "one-of": [
         "boolean",
@@ -152,6 +153,7 @@
       "context": [
         "github",
         "needs",
+        "inputs",
         "secrets"
       ],
       "string": {}
