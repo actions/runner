@@ -77,6 +77,7 @@ namespace Runner.Server.Controllers
         private int MaxDifferentReferencedWorkflows { get; }
         private int MaxWorkflowFileSize { get; }
         private int MaxConcurrencyGroupNameLength { get; }
+        private bool MergedInputs { get; set; }
         private bool DisableNoCI { get; }
         private string OnQueueJobProgram { get; }
         private string OnQueueJobArgs { get; }
@@ -122,6 +123,7 @@ namespace Runner.Server.Controllers
             MaxDifferentReferencedWorkflows = configuration.GetSection("Runner.Server").GetValue<int>("MaxDifferentReferencedWorkflows", 20);
             MaxWorkflowFileSize = configuration.GetSection("Runner.Server").GetValue<int>("MaxWorkflowFileSize", 512 * 1024);
             MaxConcurrencyGroupNameLength = configuration.GetSection("Runner.Server").GetValue<int>("MaxConcurrencyGroupNameLength", 400);
+            MergedInputs = configuration.GetSection("Runner.Server").GetValue<bool>("MergedInputs", true);
             _cache = memoryCache;
             _context = context;
         }
@@ -747,6 +749,7 @@ namespace Runner.Server.Controllers
             public string WorkflowName {get;set;}
             public string Name {get;set;}
             public string Event {get;set;}
+            public PipelineContextData DispatchInputs {get;set;}
             public PipelineContextData Inputs {get;set;}
             public CancellationToken? CancellationToken {get;set;}
             public CancellationToken? ForceCancellationToken {get;set;}
@@ -754,7 +757,8 @@ namespace Runner.Server.Controllers
             // Set by the called workflow to indicate whether to clean cached job dependencies
             public bool RanJob {get;set;}
             public Dictionary<string, string> Permissions { get; set; }
-            public List<string> ProvidedSecrets { get; set; }
+            public ISet<string> ProvidedInputs { get; set; }
+            public ISet<string> ProvidedSecrets { get; set; }
 
             public string WorkflowRef {get;set;}
             public string WorkflowRepo {get;set;}
@@ -1224,7 +1228,7 @@ namespace Runner.Server.Controllers
                                     }
                                     var inputsDict = inputs.AssertDictionary("dict");
                                     var assertMessage = $"This workflow requires that the input: {inputName}, to have type {type}";
-                                    if(inputsDict.TryGetValue(inputName, out var val)) {
+                                    if(callingJob?.ProvidedInputs?.Contains(inputName) == true && inputsDict.TryGetValue(inputName, out var val)) {
                                         switch(type) {
                                         case "string":
                                             val.AssertString(assertMessage);
@@ -1244,14 +1248,16 @@ namespace Runner.Server.Controllers
                                 }
                             }
                         }
-                        foreach(var providedInput in inputs.AssertDictionary("")) {
-                            if(!validInputs.Contains(providedInput.Key)) {
-                                throw new Exception($"This workflow doesn't define input {providedInput.Key}");
+                        if(callingJob?.ProvidedInputs != null) {
+                            foreach(var name in callingJob.ProvidedInputs) {
+                                if(!validInputs.Contains(name)) {
+                                    throw new Exception($"This workflow doesn't define input {name}");
+                                }
                             }
                         }
                         // Validate secrets
                         var workflowSecrets = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.secrets") : null;
-                        List<string> validSecrets = new List<string> { };
+                        ISet<string> validSecrets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                         if(workflowSecrets != null) {
                             foreach(var secret in workflowSecrets) {
                                 var secretName = secret.Key.AssertString("on.workflow_call.secrets mapping key").Value;
@@ -1261,10 +1267,10 @@ namespace Runner.Server.Controllers
                                 var secretMapping = secret.Value?.AssertMapping($"on.workflow_call.secrets.{secretName}");
                                 if(secretMapping != null) {
                                     var workflowCallSecretsMappingKey = $"on.workflow_call.secrets.{secretName} mapping key";
-                                    validSecrets.Add(secretName.ToLowerInvariant());
+                                    validSecrets.Add(secretName);
                                     bool required = (from r in secretMapping where r.Key.AssertString(workflowCallSecretsMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_call.secrets.{secretName}.required").Value).FirstOrDefault();
                                     
-                                    if(callingJob?.ProvidedSecrets != null && !callingJob.ProvidedSecrets.Any(s => s.ToLowerInvariant() == secretName.ToLowerInvariant()) && required) {
+                                    if((callingJob?.ProvidedSecrets == null || !callingJob.ProvidedSecrets.Contains(secretName)) && required) {
                                         throw new Exception($"This workflow requires the secret: {secretName}, but no such secret were provided");
                                     }
                                 }
@@ -1272,7 +1278,7 @@ namespace Runner.Server.Controllers
                         }
                         if(callingJob?.ProvidedSecrets != null) {
                             foreach(var name in callingJob.ProvidedSecrets) {
-                                if(!validSecrets.Contains(name.ToLowerInvariant())) {
+                                if(!validSecrets.Contains(name)) {
                                     throw new Exception($"This workflow doesn't define secret {name}");
                                 }
                             }
@@ -2692,7 +2698,15 @@ namespace Runner.Server.Controllers
                                 // Inherit secrets: https://github.com/github/docs/blob/5ffcd4d90f2529fbe383b51edb3a39db4a1528de/content/actions/using-workflows/reusing-workflows.md#using-inputs-and-secrets-in-a-reusable-workflow
                                 bool inheritSecrets = rawSecrets?.Type == TokenType.String && rawSecrets.AssertString($"jobs.{name}.secrets").Value == "inherit";
                                 var reuseableSecretsProvider = inheritSecrets ? secretsProvider : new ReusableWorkflowSecretsProvider(ji, secretsProvider, rawSecrets?.AssertMapping($"jobs.{name}.secrets"), contextData, workflowContext);
-                                var callerJob = new CallingJob() { Name = displayname, Event = wevent, Inputs = eval?.ToContextData(), Workflowfinish = (callerJob, e) => {
+                                // Based on https://github.com/actions/runner/issues/1976#issuecomment-1172940227, dispatchInputs are merged into the workflow_call inputs context
+                                var dispatchInputs = MergedInputs ? callingJob?.DispatchInputs ?? contextData["inputs"]?.AssertDictionary("") ?? new DictionaryContextData() : new DictionaryContextData();
+                                var mergedInputs = dispatchInputs.Clone().AssertDictionary("");
+                                if(eval != null) {
+                                    foreach(var kv in eval.ToContextData().AssertDictionary("")) {
+                                        mergedInputs[kv.Key] = kv.Value;
+                                    }
+                                }
+                                var callerJob = new CallingJob() { Name = displayname, Event = wevent, DispatchInputs = dispatchInputs, Inputs = mergedInputs, Workflowfinish = (callerJob, e) => {
                                     if(callerJob.RanJob) {
                                         if(callingJob != null) {
                                             callingJob.RanJob = true;
@@ -2711,7 +2725,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency};
+                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value, StringComparer.OrdinalIgnoreCase);
                                 var sjob = selectedJob?.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase) == true ? selectedJob.Substring(name.Length + 1) : null;
                                 clone.ConvertYaml2(filename, filecontent, repo, GitServerUrl, ghook, hook, "workflow_call", sjob, false, null, null, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: fjobs, secretsProvider: reuseableSecretsProvider);
