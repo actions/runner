@@ -1,0 +1,6 @@
+on: push
+jobs:
+  test2:
+    uses: ./testworkflows/called_template_runs_on.yml
+    with:
+      runs-on: '["Self-Hosted", "Testsystem","testSYStem2"]'
