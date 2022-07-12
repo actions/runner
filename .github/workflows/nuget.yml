@@ -124,6 +124,9 @@ jobs:
         gharun --workflow testworkflows/test_template_runs_on.yml --workflow testworkflows/called_template_runs_on.yml
         gharun --workflow testworkflows/test_template_runs_on2.yml --workflow testworkflows/called_template_runs_on.yml -P self-hosted,testsystem=-self-hosted
         gharun --workflow testworkflows/test_template_runs_on3.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,self-hosted,testsystem=-self-hosted
+        gharun --workflow testworkflows/test_template_runs_on3.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,SELF-HOSTED,testsystem=-self-hosted
+        gharun --workflow testworkflows/test_template_runs_on4.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,self-hosted,testsystem=-self-hosted
+        gharun --workflow testworkflows/test_template_runs_on4.yml --workflow testworkflows/called_template_runs_on.yml -P Testsystem2,SELF-hosted,TESTSYSTEM=-self-hosted
         gharun -W testworkflows/skippedjob.yml
         gharun --workflow testworkflows/test_with_required_secret.yml --workflow testworkflows/called_with_required_secret.yml
         gharun -W testworkflows/job-continue-on-error.yml
