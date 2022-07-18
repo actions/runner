@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###############################################################################
-#  
+#
 #  ./dev.sh build/layout/test/package [Debug/Release]
 #
 ###############################################################################
@@ -43,6 +43,9 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     if [[ "$PROCESSOR_ARCHITECTURE" == 'x86' ]]; then
         RUNTIME_ID='win-x86'
     fi
+    if [[ "$PROCESSOR_ARCHITECTURE" == 'AMD64' ]]; then
+        RUNTIME_ID='win-arm64'
+    fi
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
     RUNTIME_ID="linux-x64"
     if command -v uname > /dev/null; then
@@ -67,11 +70,11 @@ if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
 fi
 
 # Make sure current platform support publish the dotnet runtime
-# Windows can publish win-x86/x64
+# Windows can publish win-x86/x64/arm64
 # Linux can publish linux-x64/arm/arm64
 # OSX can publish osx-x64/arm64
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
-    if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') ]]; then
+    if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') && ("$RUNTIME_ID" != 'win-arm64') ]]; then
         echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
         exit 1
     fi
@@ -191,7 +194,7 @@ function runtest ()
         ulimit -n 1024
     fi
 
-    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests" 
+    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests"
 }
 
 function package ()
@@ -232,7 +235,7 @@ function package ()
     popd > /dev/null
 
     runner_trim_externals_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noexternals"
-    heading "Packaging ${runner_trim_externals_pkg_name} (Trimmed)" 
+    heading "Packaging ${runner_trim_externals_pkg_name} (Trimmed)"
 
     PACKAGE_TRIM_EXTERNALS_DIR="$PACKAGE_TRIMS_DIR/trim_externals"
     mkdir -p "$PACKAGE_TRIM_EXTERNALS_DIR"
@@ -252,7 +255,7 @@ function package ()
     popd > /dev/null
 
     runner_trim_runtime_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noruntime"
-    heading "Packaging ${runner_trim_runtime_pkg_name} (Trimmed)" 
+    heading "Packaging ${runner_trim_runtime_pkg_name} (Trimmed)"
 
     PACKAGE_TRIM_RUNTIME_DIR="$PACKAGE_TRIMS_DIR/trim_runtime"
     mkdir -p "$PACKAGE_TRIM_RUNTIME_DIR"
@@ -272,7 +275,7 @@ function package ()
     popd > /dev/null
 
     runner_trim_runtime_externals_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noruntime-noexternals"
-    heading "Packaging ${runner_trim_runtime_externals_pkg_name} (Trimmed)" 
+    heading "Packaging ${runner_trim_runtime_externals_pkg_name} (Trimmed)"
 
     PACKAGE_TRIM_RUNTIME_EXTERNALS_DIR="$PACKAGE_TRIMS_DIR/trim_runtime_externals"
     mkdir -p "$PACKAGE_TRIM_RUNTIME_EXTERNALS_DIR"
@@ -293,7 +296,7 @@ function package ()
 }
 
 if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet") ]]; then
-    
+
     # Download dotnet SDK to ../_dotnetsdk directory
     heading "Ensure Dotnet SDK"
 

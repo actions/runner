@@ -24,6 +24,9 @@
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Windows' AND '$(PackageRuntime)' == 'win-x86'">
     <DefineConstants>$(DefineConstants);X86</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'Windows' AND '$(PackageRuntime)' == 'win-arm64'">
+    <DefineConstants>$(DefineConstants);ARM64</DefineConstants>
+  </PropertyGroup>
 
   <PropertyGroup Condition="'$(BUILD_OS)' == 'OSX' AND '$(PackageRuntime)' == 'osx-x64'">
     <DefineConstants>$(DefineConstants);X64</DefineConstants>

@@ -134,6 +134,16 @@ if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
     fi
 fi
 
+# Download the external tools only for Windows.
+if [[ "$PACKAGERUNTIME" == "win-arm64" ]]; then
+    # todo testing, these are unofficial node builds
+    acquireExternalTool "https://unofficial-builds.nodejs.org/download/release/v16.2.0/win-arm64/node.exe" node16/bin
+    acquireExternalTool "https://unofficial-builds.nodejs.org/download/release/v16.2.0/win-arm64/node.lib" node16/bin
+    if [[ "$PRECACHE" != "" ]]; then
+        acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
+    fi
+fi
+
 # Download the external tools only for OSX.
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir
