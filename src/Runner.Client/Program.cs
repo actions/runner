@@ -1485,6 +1485,7 @@ namespace Runner.Client
                                                     var record = e.timeline.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
                                                     if(record != null && record.Result.HasValue) {
                                                         var rec = timelineRecords[e.timelineId];
+                                                        rec.RecordId = Guid.Empty;
                                                         WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"{record.Result.Value.ToString()}: {record.Name}");
                                                     }
                                                 }

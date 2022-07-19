@@ -6,6 +6,7 @@ namespace Runner.Server.Models {
         public string Key {get;set;}
         public string Repo {get;set;}
         public string Ref {get;set;}
+        public string Version {get;set;}
         public string Storage {get;set;}
         public DateTime LastUpdated {get;set;}
     }
