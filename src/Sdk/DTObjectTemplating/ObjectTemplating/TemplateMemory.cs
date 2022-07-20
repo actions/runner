@@ -220,6 +220,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     case TokenType.Sequence:
                     case TokenType.Mapping:
                     case TokenType.InsertExpression:
+                    case TokenType.IfExpression:
+                    case TokenType.ElseIfExpression:
+                    case TokenType.ElseExpression:
+                    case TokenType.EachExpression:
                         // Min object size is good enough. Allows for base + a few fields.
                         checked
                         {

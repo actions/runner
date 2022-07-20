@@ -386,7 +386,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 {
                     // Mapping end, closing an "insert" mapping insertion
                     if (mappingState.IsEnd &&
-                        m_current.Parent is InsertExpressionState)
+                        (m_current.Parent is InsertExpressionState || m_current.Parent is ConditionalExpressionState || m_current.Parent is EachExpressionState) )
                     {
                         m_current.Remove();
                         m_current = m_current.Parent; // Skip to the expression end
@@ -394,7 +394,28 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     // Normal mapping start
                     else if (mappingState.IsStart)
                     {
-                        break;
+                        if(expand && mappingState.Parent is SequenceState && mappingState.Value.Count == 1 && (mappingState.Value[0].Key.Type == TokenType.IfExpression || mappingState.Value[0].Key.Type == TokenType.ElseExpression || mappingState.Value[0].Key.Type == TokenType.ElseIfExpression)) {
+                            mappingState.Remove();
+                            m_current = ReaderState.CreateState(mappingState.Parent, mappingState.Value[0].Key, m_context);
+                        } else if(expand && mappingState.Parent is SequenceState && mappingState.Value.Count == 1 && mappingState.Value[0].Key.Type == TokenType.EachExpression) {
+                            mappingState.Remove();
+                            m_current = ReaderState.CreateState(mappingState.Parent, mappingState.Value[0].Key, m_context);
+                            var eachExpressionState = m_current as EachExpressionState;
+                            eachExpressionState.Content = mappingState.Value[0].Value;
+                            if(m_context.ExpressionValues.ContainsKey(eachExpressionState.Value.Variable)) {
+                                m_context.Error(eachExpressionState.Value, TemplateStrings.ValueAlreadyDefined(eachExpressionState.Value.Variable));
+                                m_current.Remove();
+                                m_current = eachExpressionState.ToStringToken();
+                                // throw new ArgumentException($"The idenfifier '{eachExpressionState.Value.Variable}' has already been defined within the current scope");
+                            } else {
+                                eachExpressionState.Sequence = new BasicExpressionToken(null, null, null, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _).AssertSequence("seq");
+                                if(!eachExpressionState.IsEnd) {
+                                    m_current = eachExpressionState.MoveNext(m_context);
+                                }
+                            }
+                        } else {
+                            break;
+                        }
                     }
                     // Normal mapping end
                     else if (mappingState.IsEnd)
@@ -415,6 +436,23 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         m_current.Remove();
                         m_current = m_current.Parent; // Skip to the expression end
+                    }
+                    else if (sequenceState.IsEnd &&
+                        m_current.Parent is ConditionalExpressionState)
+                    {
+                        m_current.Remove();
+                        m_current = m_current.Parent; // Skip to the expression end
+                    }
+                    else if (sequenceState.IsEnd &&
+                        m_current.Parent is EachExpressionState eachExpressionState)
+                    {
+                        m_current.Remove();
+                        if(eachExpressionState.IsEnd) {
+                            m_current = m_current.Parent; // Skip to the expression end
+                            m_context.ExpressionValues.Remove(eachExpressionState.Value.Variable);
+                        } else {
+                            m_current = eachExpressionState.MoveNext(m_context);
+                        }
                     }
                     // Normal sequence start
                     else if (sequenceState.IsStart)
@@ -462,6 +500,81 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         m_context.Error(insertExpressionState.Value, TemplateStrings.DirectiveNotAllowed(insertExpressionState.Value.Directive));
                         m_current.Remove();
                         m_current = insertExpressionState.ToStringToken();
+                    }
+                    else
+                    {
+                        UnexpectedState();
+                    }
+                }
+                else if (m_current is ConditionalExpressionState conditionalExpressionState)
+                {
+                    // Mapping key, beginning an "insert" mapping insertion
+                    // For example:
+                    //   - job: a
+                    //     variables:
+                    //       ${{ insert }}: ${{ parameters.jobVariables }}
+                    if (conditionalExpressionState.IsStart &&
+                        ((m_current.Parent is MappingState parentMappingState &&
+                        parentMappingState.IsKey) || 
+                        m_current.Parent is SequenceState))
+                    {
+                        if (expand)
+                        {
+                            StartIfInsertion();
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    // Expression end
+                    else if (conditionalExpressionState.IsEnd)
+                    {
+                        EndExpression();
+                    }
+                    // Not allowed
+                    else if (conditionalExpressionState.IsStart)
+                    {
+                        m_context.Error(conditionalExpressionState.Value, TemplateStrings.DirectiveNotAllowed(conditionalExpressionState.Value.Directive));
+                        m_current.Remove();
+                        m_current = conditionalExpressionState.ToStringToken();
+                    }
+                    else
+                    {
+                        UnexpectedState();
+                    }
+                }
+                else if (m_current is EachExpressionState eachExpressionState)
+                {
+                    // Mapping key, beginning an "each" mapping insertion
+                    // For example:
+                    //   - job: a
+                    //     variables:
+                    //       ${{ insert }}: ${{ parameters.jobVariables }}
+                    if (eachExpressionState.IsStart &&
+                        m_current.Parent is MappingState parentMappingState &&
+                        parentMappingState.IsKey)
+                    {
+                        if (expand)
+                        {
+                            StartIfInsertion();
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    // Expression end
+                    else if (eachExpressionState.IsEnd)
+                    {
+                        EndExpression();
+                    }
+                    // Not allowed
+                    else if (eachExpressionState.IsStart)
+                    {
+                        m_context.Error(eachExpressionState.Value, TemplateStrings.DirectiveNotAllowed(eachExpressionState.Value.Directive));
+                        m_current.Remove();
+                        m_current = eachExpressionState.ToStringToken();
                     }
                     else
                     {
@@ -703,6 +816,135 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
         }
 
+        private void StartIfInsertion()
+        {
+            // The template looks like:
+            //
+            //   jobs:
+            //   - job: a
+            //     variables:
+            //       ${{ if (github.event_name == 'push') }}: ${{ parameters.jobVariables }}
+            //
+            // The current state looks like:
+            //
+            //   MappingState       // The document starts with a mapping
+            //
+            //   SequenceState      // The "jobs" sequence
+            //
+            //   MappingState       // The "job" mapping
+            //
+            //   MappingState       // The "variables" mapping
+            //
+            //   ConditionalExpressionState  // m_current
+
+            var expressionState = m_current as ConditionalExpressionState;
+            var parentMappingState = expressionState.Parent as MappingState;
+            var parentSequenceState = expressionState.Parent as SequenceState;
+            bool skip = false;
+            bool metastate = false;
+            if(expressionState.Value.Type == TokenType.IfExpression || (parentMappingState != null && parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip) || parentSequenceState != null && parentSequenceState.IfExpressionResults.TryGetValue(parentSequenceState.Index - 1, out skip)) && skip) {
+                metastate = skip = expressionState.Value.Type == TokenType.ElseExpression ? false : !new BasicExpressionToken(null, null, null, expressionState.Value.Condition).EvaluateTemplateToken(m_context, out _).AssertBoolean("bool").Value;
+            } else {
+                skip = true;
+                metastate = false;
+            }
+            if(parentSequenceState == null) {
+                parentMappingState.IfExpressionResults[parentMappingState.Index] = metastate;
+                var nestedValue = parentMappingState.Value[parentMappingState.Index].Value;
+                var nestedMapping = nestedValue as MappingToken;
+                var removeBytes = 0;
+                if (skip)
+                {
+                    nestedMapping = null;
+                }
+                else if (nestedMapping != null)
+                {
+                    // Intentionally empty
+                }
+                else if (nestedValue is BasicExpressionToken basicExpression)
+                {
+                    // The expression should evaluate to a mapping
+                    try
+                    {
+                        nestedMapping = basicExpression.EvaluateMappingToken(expressionState.Context, out removeBytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        m_context.Error(basicExpression, ex);
+                        nestedMapping = null;
+                    }
+                }
+                else
+                {
+                    m_context.Error(nestedValue, TemplateStrings.ExpectedMapping());
+                    nestedMapping = null;
+                }
+
+                // Move to the nested first key
+                if (nestedMapping?.Count > 0)
+                {
+                    m_current = expressionState.Next(nestedMapping, removeBytes);
+                }
+                // Move to the expression end
+                else
+                {
+                    if (removeBytes > 0)
+                    {
+                        m_memory.SubtractBytes(removeBytes);
+                    }
+
+                    expressionState.End();
+                }
+            } else {
+                parentSequenceState.IfExpressionResults[parentSequenceState.Index] = metastate;
+                var nestedValue = (parentSequenceState.Value[parentSequenceState.Index] as MappingToken)[0].Value;
+                var nestedSequence = nestedValue as SequenceToken;
+                var removeBytes = 0;
+                if (skip)
+                {
+                    nestedSequence = null;
+                }
+                else if (nestedSequence != null)
+                {
+                    // Intentionally empty
+                }
+                else if (nestedValue is BasicExpressionToken basicExpression)
+                {
+                    // The expression should evaluate to a mapping
+                    try
+                    {
+                        nestedSequence = basicExpression.EvaluateSequenceToken(expressionState.Context, out removeBytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        m_context.Error(basicExpression, ex);
+                        nestedSequence = null;
+                    }
+                }
+                else
+                {
+                    m_context.Error(nestedValue, TemplateStrings.ExpectedMapping());
+                    nestedSequence = null;
+                }
+
+                // Move to the nested first key
+                if (nestedSequence?.Count > 0)
+                {
+                    m_current = expressionState.Next(nestedSequence, removeBytes);
+                }
+                // Move to the expression end
+                else
+                {
+                    if (removeBytes > 0)
+                    {
+                        m_memory.SubtractBytes(removeBytes);
+                    }
+
+                    expressionState.End();
+                }
+            }
+        }
+
         private void EndExpression()
         {
             // End of document
@@ -734,8 +976,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // Move to the next key or mapping end
                 m_current.Remove();
                 var parentMappingState = m_current.Parent as MappingState;
-                parentMappingState.Next().Remove(); // Skip the value
-                m_current = parentMappingState.Next();
+                if(parentMappingState != null) {
+                    parentMappingState.Next().Remove(); // Skip the value
+                    m_current = parentMappingState.Next();
+                } else {
+                    var parentSequenceState = m_current.Parent as SequenceState;
+                    m_current = parentSequenceState.Next();
+                }
             }
         }
 
@@ -786,7 +1033,23 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         }
 
                         return new InsertExpressionState(parent, value as InsertExpressionToken, context);
+                    case TokenType.IfExpression:
+                    case TokenType.ElseIfExpression:
+                    case TokenType.ElseExpression:
+                        if (removeBytes > 0)
+                        {
+                            throw new InvalidOperationException($"Unexpected {nameof(removeBytes)}");
+                        }
 
+                        return new ConditionalExpressionState(parent, value as ConditionalExpressionToken, context);
+                    case TokenType.EachExpression:
+                        if (removeBytes > 0)
+                        {
+                            throw new InvalidOperationException($"Unexpected {nameof(removeBytes)}");
+                        }
+
+                        return new EachExpressionState(parent, value as EachExpressionToken, context);
+                    
                     default:
                         throw new NotSupportedException($"Unexpected {nameof(ReaderState)} type: {value?.GetType().Name}");
                 }
@@ -877,6 +1140,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 m_removeBytes = removeBytes;
             }
 
+            public Dictionary<int, bool> IfExpressionResults { get; } = new Dictionary<int, bool>();
+
             /// <summary>
             /// Indicates whether the state represents the sequence-start event
             /// </summary>
@@ -961,6 +1226,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 context.Memory.IncrementDepth();
                 m_removeBytes = removeBytes;
             }
+
+            public Dictionary<int, bool> IfExpressionResults { get; } = new Dictionary<int, bool>();
 
             /// <summary>
             /// Indicates whether the state represents the mapping-start event
@@ -1199,6 +1466,170 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 result.AppendLine($"{GetType().Name}:");
                 result.AppendLine($"  IsStart: {IsStart}");
                 return result.ToString();
+            }
+        }
+
+        private sealed class ConditionalExpressionState : ReaderState<ConditionalExpressionToken>
+        {
+            public ConditionalExpressionState(
+                ReaderState parent,
+                ConditionalExpressionToken expression,
+                TemplateContext context)
+                : base(parent, expression, context)
+            {
+                Context.Memory.AddBytes(expression);
+                Context.Memory.IncrementDepth();
+            }
+
+            /// <summary>
+            /// Indicates whether entering or leaving the expression
+            /// </summary>
+            public Boolean IsStart { get; private set; } = true;
+
+            /// <summary>
+            /// Indicates whether leaving the expression
+            /// </summary>
+            public Boolean IsEnd => !IsStart;
+
+            public ReaderState Next(
+                MappingToken value,
+                Int32 removeBytes = 0)
+            {
+                // Adjust the state
+                IsStart = false;
+
+                // Create the nested state
+                var nestedState = CreateState(this, value, Context, removeBytes) as MappingState;
+                return nestedState.Next(); // Skip the mapping start
+            }
+
+            public ReaderState Next(
+                SequenceToken value,
+                Int32 removeBytes = 0)
+            {
+                // Adjust the state
+                IsStart = false;
+
+                // Create the nested state
+                var nestedState = CreateState(this, value, Context, removeBytes) as SequenceState;
+                return nestedState.Next(); // Skip the sequence start
+            }
+
+            public ReaderState End()
+            {
+                IsStart = false;
+                return this;
+            }
+
+            /// <summary>
+            /// This happens when the expression is not allowed
+            /// </summary>
+            public ReaderState ToStringToken()
+            {
+                var literal = new StringToken(Value.FileId, Value.Line, Value.Column, Value.ToString());
+                return CreateState(Parent, literal, Context);
+            }
+
+            public override void Remove()
+            {
+                Context.Memory.SubtractBytes(Value);
+                Context.Memory.DecrementDepth();
+            }
+
+            public override String ToString()
+            {
+                var result = new StringBuilder();
+                result.AppendLine($"{GetType().Name}:");
+                result.AppendLine($"  IsStart: {IsStart}");
+                return result.ToString();
+            }
+        }
+
+        private sealed class EachExpressionState : ReaderState<EachExpressionToken>
+        {
+            public EachExpressionState(
+                ReaderState parent,
+                EachExpressionToken expression,
+                TemplateContext context)
+                : base(parent, expression, context)
+            {
+                Context.Memory.AddBytes(expression);
+                Context.Memory.IncrementDepth();
+                i = 0;
+            }
+
+            public TemplateToken Content { get; set; }
+            public SequenceToken Sequence { get; set; }
+
+            /// <summary>
+            /// Indicates whether entering or leaving the expression
+            /// </summary>
+            public Boolean IsStart => i == 0 && !IsEnd;
+
+            /// <summary>
+            /// Indicates whether leaving the expression
+            /// </summary>
+            public Boolean IsEnd => i >= (Sequence?.Count ?? 0);
+
+            private int i;
+
+            public ReaderState Next(
+                MappingToken value,
+                Int32 removeBytes = 0)
+            {
+                // Adjust the state
+                i++;//IsStart = false;
+
+                // Create the nested state
+                var nestedState = CreateState(this, value, Context, removeBytes) as MappingState;
+                return nestedState.Next(); // Skip the mapping start
+            }
+
+            public ReaderState Next(
+                SequenceToken value,
+                Int32 removeBytes = 0)
+            {
+                // Adjust the state
+                i++;//IsStart = false;
+
+                // Create the nested state
+                var nestedState = CreateState(this, value, Context, removeBytes) as SequenceState;
+                return nestedState.Next(); // Skip the sequence start
+            }
+
+            public ReaderState End()
+            {
+                i = Sequence?.Count ?? 0;
+                return this;
+            }
+
+            /// <summary>
+            /// This happens when the expression is not allowed
+            /// </summary>
+            public ReaderState ToStringToken()
+            {
+                var literal = new StringToken(Value.FileId, Value.Line, Value.Column, Value.ToString());
+                return CreateState(Parent, literal, Context);
+            }
+
+            public override void Remove()
+            {
+                Context.Memory.SubtractBytes(Value);
+                Context.Memory.DecrementDepth();
+            }
+
+            public override String ToString()
+            {
+                var result = new StringBuilder();
+                result.AppendLine($"{GetType().Name}:");
+                result.AppendLine($"  IsStart: {IsStart}");
+                return result.ToString();
+            }
+
+            public ReaderState MoveNext(TemplateContext context)
+            {
+                context.ExpressionValues[Value.Variable] = Sequence[i];
+                return Next(Content.Clone() as SequenceToken);
             }
         }
 

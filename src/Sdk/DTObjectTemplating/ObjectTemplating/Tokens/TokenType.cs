@@ -19,5 +19,9 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         internal const Int32 Number = 6;
 
         internal const Int32 Null = 7;
+        internal const Int32 IfExpression = 8;
+        internal const Int32 ElseIfExpression = 9;
+        internal const Int32 ElseExpression = 10;
+        internal const Int32 EachExpression = 11;
     }
 }
