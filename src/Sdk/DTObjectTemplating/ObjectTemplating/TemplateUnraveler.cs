@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -417,7 +418,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
                                 m_current = eachExpressionState.ToStringToken();
                                 // throw new ArgumentException($"The idenfifier '{eachExpressionState.Value.Variable}' has already been defined within the current scope");
                             } else {
-                                eachExpressionState.Sequence = new BasicExpressionToken(null, null, null, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _).AssertSequence("seq");
+                                var res = new BasicExpressionToken(null, null, null, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _);
+                                eachExpressionState.Sequence = res as SequenceToken;
+                                eachExpressionState.Mapping = res as MappingToken;
                                 if(!eachExpressionState.IsEnd) {
                                     m_current = eachExpressionState.MoveNext(m_context);
                                 }
@@ -566,7 +569,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         if (expand)
                         {
-                            eachExpressionState.Sequence = new BasicExpressionToken(null, null, null, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _).AssertSequence("seq");
+                            var res = new BasicExpressionToken(null, null, null, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _);
+                            eachExpressionState.Sequence = res as SequenceToken;
+                            eachExpressionState.Mapping = res as MappingToken;
                             if(!eachExpressionState.IsEnd) {
                                 m_current = eachExpressionState.InsertMoveNext(m_context);
                             }
@@ -1572,16 +1577,17 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
             public TemplateToken Content { get; set; }
             public SequenceToken Sequence { get; set; }
+            public MappingToken Mapping { get; set; }
 
             /// <summary>
             /// Indicates whether entering or leaving the expression
             /// </summary>
-            public Boolean IsStart => Sequence == null || i == 0 && !IsEnd;
+            public Boolean IsStart => Sequence == null && Mapping == null || i == 0 && !IsEnd;
 
             /// <summary>
             /// Indicates whether leaving the expression
             /// </summary>
-            public Boolean IsEnd => Sequence != null && i >= (Sequence?.Count ?? 0);
+            public Boolean IsEnd => (Sequence != null || Mapping != null) && i >= (Sequence?.Count ?? Mapping?.Count ?? 0);
 
             private int i;
 
@@ -1611,7 +1617,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
             public ReaderState End()
             {
-                i = Sequence?.Count ?? 0;
+                i = Sequence?.Count ?? Mapping?.Count ?? 0;
                 return this;
             }
 
@@ -1638,15 +1644,25 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 return result.ToString();
             }
 
+            private static PipelineContextData convert(KeyValuePair<ScalarToken, TemplateToken>? kv) {
+                if(kv == null) {
+                    return null;
+                }
+                var contextData = new DictionaryContextData();
+                contextData["Key"] = kv.Value.Key.ToContextData();
+                contextData["Value"] = kv.Value.Value.ToContextData();
+                return contextData;
+            }
+
             public ReaderState MoveNext(TemplateContext context)
             {
-                context.ExpressionValues[Value.Variable] = Sequence[i];
+                context.ExpressionValues[Value.Variable] = Sequence?[i]?.ToContextData() ?? convert(Mapping?[i]);
                 return Next(Content.Clone() as SequenceToken);
             }
 
             public ReaderState InsertMoveNext(TemplateContext context)
             {
-                context.ExpressionValues[Value.Variable] = Sequence[i];
+                context.ExpressionValues[Value.Variable] = Sequence?[i]?.ToContextData() ?? convert(Mapping?[i]);
                 var expressionState = this;
                 var parentMappingState = expressionState.Parent as MappingState;
                 var nestedValue = parentMappingState.Value[parentMappingState.Index].Value.Clone();
