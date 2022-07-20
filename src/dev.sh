@@ -43,7 +43,7 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     if [[ "$PROCESSOR_ARCHITECTURE" == 'x86' ]]; then
         RUNTIME_ID='win-x86'
     fi
-    if [[ "$PROCESSOR_ARCHITECTURE" == 'ARM64' ]] || [["$PROCESSOR_ARCHITECTURE" == 'AMD64' ]]; then
+    if [[ "$PROCESSOR_ARCHITECTURE" == 'ARM64' ]] || [[ "$PROCESSOR_ARCHITECTURE" == 'AMD64' ]]; then
         RUNTIME_ID='win-arm64'
     fi
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
