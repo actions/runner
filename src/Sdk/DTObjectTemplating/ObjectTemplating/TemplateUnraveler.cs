@@ -386,18 +386,27 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 {
                     // Mapping end, closing an "insert" mapping insertion
                     if (mappingState.IsEnd &&
-                        (m_current.Parent is InsertExpressionState || m_current.Parent is ConditionalExpressionState || m_current.Parent is EachExpressionState) )
+                        (m_current.Parent is InsertExpressionState || m_current.Parent is ConditionalExpressionState) )
                     {
                         m_current.Remove();
                         m_current = m_current.Parent; // Skip to the expression end
+                    } else if (mappingState.IsEnd &&
+                        m_current.Parent is EachExpressionState eachexpr )
+                    {
+                        m_current.Remove();
+                        if(eachexpr.IsEnd) {
+                            m_current = m_current.Parent; // Skip to the expression end
+                        } else {
+                            m_current = eachexpr.InsertMoveNext(m_context);
+                        }
                     }
                     // Normal mapping start
                     else if (mappingState.IsStart)
                     {
-                        if(expand && mappingState.Parent is SequenceState && mappingState.Value.Count == 1 && (mappingState.Value[0].Key.Type == TokenType.IfExpression || mappingState.Value[0].Key.Type == TokenType.ElseExpression || mappingState.Value[0].Key.Type == TokenType.ElseIfExpression)) {
+                        if(expand && mappingState.Parent is SequenceState && mappingState.Value.Count == 1 && (mappingState.Value[0].Key.Type == TokenType.IfExpression || mappingState.Value[0].Key.Type == TokenType.ElseExpression || mappingState.Value[0].Key.Type == TokenType.ElseIfExpression) && mappingState.Value[0].Value.Type == TokenType.Sequence ) {
                             mappingState.Remove();
                             m_current = ReaderState.CreateState(mappingState.Parent, mappingState.Value[0].Key, m_context);
-                        } else if(expand && mappingState.Parent is SequenceState && mappingState.Value.Count == 1 && mappingState.Value[0].Key.Type == TokenType.EachExpression) {
+                        } else if(expand && mappingState.Parent is SequenceState && mappingState.Value.Count == 1 && mappingState.Value[0].Key.Type == TokenType.EachExpression && mappingState.Value[0].Value.Type == TokenType.Sequence) {
                             mappingState.Remove();
                             m_current = ReaderState.CreateState(mappingState.Parent, mappingState.Value[0].Key, m_context);
                             var eachExpressionState = m_current as EachExpressionState;
@@ -551,13 +560,16 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     //   - job: a
                     //     variables:
                     //       ${{ insert }}: ${{ parameters.jobVariables }}
-                    if (eachExpressionState.IsStart &&
+                    if (!eachExpressionState.IsEnd &&
                         m_current.Parent is MappingState parentMappingState &&
                         parentMappingState.IsKey)
                     {
                         if (expand)
                         {
-                            StartIfInsertion();
+                            eachExpressionState.Sequence = new BasicExpressionToken(null, null, null, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _).AssertSequence("seq");
+                            if(!eachExpressionState.IsEnd) {
+                                m_current = eachExpressionState.InsertMoveNext(m_context);
+                            }
                         }
                         else
                         {
@@ -1564,12 +1576,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
             /// <summary>
             /// Indicates whether entering or leaving the expression
             /// </summary>
-            public Boolean IsStart => i == 0 && !IsEnd;
+            public Boolean IsStart => Sequence == null || i == 0 && !IsEnd;
 
             /// <summary>
             /// Indicates whether leaving the expression
             /// </summary>
-            public Boolean IsEnd => i >= (Sequence?.Count ?? 0);
+            public Boolean IsEnd => Sequence != null && i >= (Sequence?.Count ?? 0);
 
             private int i;
 
@@ -1630,6 +1642,55 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 context.ExpressionValues[Value.Variable] = Sequence[i];
                 return Next(Content.Clone() as SequenceToken);
+            }
+
+            public ReaderState InsertMoveNext(TemplateContext context)
+            {
+                context.ExpressionValues[Value.Variable] = Sequence[i];
+                var expressionState = this;
+                var parentMappingState = expressionState.Parent as MappingState;
+                var nestedValue = parentMappingState.Value[parentMappingState.Index].Value.Clone();
+                var nestedMapping = nestedValue as MappingToken;
+                var removeBytes = 0;
+                if (nestedMapping != null)
+                {
+                    // Intentionally empty
+                }
+                else if (nestedValue is BasicExpressionToken basicExpression)
+                {
+                    // The expression should evaluate to a mapping
+                    try
+                    {
+                        nestedMapping = basicExpression.EvaluateMappingToken(expressionState.Context, out removeBytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        Context.Error(basicExpression, ex);
+                        nestedMapping = null;
+                    }
+                }
+                else
+                {
+                    Context.Error(nestedValue, TemplateStrings.ExpectedMapping());
+                    nestedMapping = null;
+                }
+
+                // Move to the nested first key
+                if (nestedMapping?.Count > 0)
+                {
+                    return expressionState.Next(nestedMapping, removeBytes);
+                }
+                // Move to the expression end
+                else
+                {
+                    if (removeBytes > 0)
+                    {
+                        this.Context.Memory.SubtractBytes(removeBytes);
+                    }
+
+                    expressionState.End();
+                    return this;
+                }
             }
         }
 
