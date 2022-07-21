@@ -67,6 +67,7 @@ namespace GitHub.DistributedTask.Pipelines
     public enum StepType
     {
         [DataMember]
+        Task = 1,
         Action = 4,
     }
 }
