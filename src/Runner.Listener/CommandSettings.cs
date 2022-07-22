@@ -39,7 +39,6 @@ namespace GitHub.Runner.Listener
                     Constants.Runner.CommandLine.Flags.RunAsService,
                     Constants.Runner.CommandLine.Flags.Unattended,
                     Constants.Runner.CommandLine.Args.Auth,
-                    Constants.Runner.CommandLine.Args.JitConfig,
                     Constants.Runner.CommandLine.Args.Labels,
                     Constants.Runner.CommandLine.Args.MonitorSocketAddress,
                     Constants.Runner.CommandLine.Args.Name,
@@ -64,6 +63,7 @@ namespace GitHub.Runner.Listener
                 new string[]
                 {
                     Constants.Runner.CommandLine.Flags.Once,
+                    Constants.Runner.CommandLine.Args.JitConfig,
                     Constants.Runner.CommandLine.Args.StartupType
                 },
             // valid warmup flags and args
