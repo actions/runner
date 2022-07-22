@@ -17,11 +17,14 @@ namespace GitHub.Runner.Worker
     public sealed class TempDirectoryManager : RunnerService, ITempDirectoryManager
     {
         private string _tempDirectory;
+        private RunnerSettings _settings;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            _settings = configurationStore.GetSettings();
         }
 
         public void InitializeTempDirectory(IExecutionContext jobContext)
@@ -47,15 +50,22 @@ namespace GitHub.Runner.Worker
 
         public void CleanupTempDirectory()
         {
-            ArgUtil.NotNullOrEmpty(_tempDirectory, nameof(_tempDirectory));
-            Trace.Info($"Cleaning runner temp folder: {_tempDirectory}");
-            try
+            if (!_settings.SkipTempDirectoryCleanup)
             {
-                IOUtil.DeleteDirectory(_tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: CancellationToken.None);
+                ArgUtil.NotNullOrEmpty(_tempDirectory, nameof(_tempDirectory));
+                Trace.Info($"Cleaning runner temp folder: {_tempDirectory}");
+                try
+                {
+                    IOUtil.DeleteDirectory(_tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error(ex);
+                }
             }
-            catch (Exception ex)
+            else
             {
-                Trace.Error(ex);
+                Trace.Info($"Skipped cleaning up runner temp folder: {_tempDirectory}");
             }
         }
     }
