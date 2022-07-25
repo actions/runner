@@ -97,7 +97,7 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-#if OS_OSX or OS_WINDOWS
+#if OS_OSX || OS_WINDOWS
             if (string.Equals(Data.NodeVersion, "node12", StringComparison.OrdinalIgnoreCase) &&
                 Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
             {
