@@ -44,6 +44,10 @@ jobs:
           os: windows-2019
           devScript: ./dev
 
+        - runtime: win-arm64
+          os: windows-latest
+          devScript: ./dev
+
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -97,7 +101,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: runner-package-${{ matrix.runtime }}
-        path: | 
+        path: |
           _package
           _package_trims/trim_externals
           _package_trims/trim_runtime
