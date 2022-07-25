@@ -31,9 +31,17 @@ elif [[ $returnCode == 2 ]]; then
     "$DIR"/safe_sleep.sh 5
     exit 2
 elif [[ $returnCode == 3 ]]; then
+    FILE=update.finished
+    for i in {0..30} do
+        if test -f "$FILE"; then
+            echo "$FILE exists."
+            break
+        fi
+        "$DIR"/safe_sleep.sh 1
+    done
     # Sleep 5 seconds to wait for the runner update process finish
     echo "Runner listener exit because of updating, re-launch runner in 5 seconds"
-    "$DIR"/safe_sleep.sh 5
+    # "$DIR"/safe_sleep.sh 5
     exit 2
 elif [[ $returnCode == 4 ]]; then
     # Sleep 5 seconds to wait for the ephemeral runner update process finish
