@@ -84,7 +84,7 @@ jobs:
     # Run tests
     - name: L0
       run: |
-        ${{ matrix.devScript }} test
+        ${{ matrix.devScript }} test Debug ${{ matrix.runtime }}
       working-directory: src
       if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
 
