@@ -316,7 +316,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             if (String.IsNullOrEmpty(result.Image))
             {
-                context.Error(value, "Container image cannot be empty");
+                return null;
             }
 
             return result;
