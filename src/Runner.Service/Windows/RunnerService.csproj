@@ -11,7 +11,8 @@
     <AssemblyName>RunnerService</AssemblyName>
     <SignAssembly>false</SignAssembly>
     <DelaySign>false</DelaySign>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion Condition=" '$(Platform)' == 'ARM' ">v4.8</TargetFrameworkVersion>
+    <TargetFrameworkVersion Condition=" '$(Platform)' != 'ARM' ">v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
@@ -61,7 +62,10 @@
       <DependentUpon>Resource.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Condition=" '$(Platform)' == 'ARM' ">
+    <None Include="AppARM.config" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(Platform)' != 'ARM' ">
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
