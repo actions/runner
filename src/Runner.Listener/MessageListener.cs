@@ -228,7 +228,7 @@ namespace GitHub.Runner.Listener
                         continuousError = 0;
                     }
                 }
-                catch (OperationCanceledException) when (_getMessagesTokenSource.Token.IsCancellationRequested)
+                catch (OperationCanceledException) when (_getMessagesTokenSource.Token.IsCancellationRequested && !token.IsCancellationRequested)
                 {
                     Trace.Info("Get messages has been cancelled using local token source. Continue to get messages with new status.");
                     continue;
