@@ -38,6 +38,7 @@ elif [[ $returnCode == 3 ]]; then
     for i in {0..30} do
         if test -f "$FILE"; then
             echo "Update finished successfully."
+            rm "$FILE"
             break
         fi
         "$DIR"/safe_sleep.sh 1

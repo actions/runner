@@ -181,6 +181,8 @@ fi
 date "+[%F %T-%4N] Update succeed" >> "$logfile"
 
 touch update.finished
+date "+[%F %T-%4N] update.finished file creation succeed" >> "$logfile"
+
 # rename the update log file with %logfile%.succeed/.failed/succeedneedrestart
 # runner service host can base on the log file name determin the result of the runner update
 date "+[%F %T-%4N] Rename $logfile to be $logfile.succeed" >> "$logfile" 2>&1
