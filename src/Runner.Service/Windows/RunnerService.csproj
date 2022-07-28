@@ -11,7 +11,7 @@
     <AssemblyName>RunnerService</AssemblyName>
     <SignAssembly>false</SignAssembly>
     <DelaySign>false</DelaySign>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
