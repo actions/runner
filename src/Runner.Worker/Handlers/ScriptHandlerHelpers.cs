@@ -59,7 +59,7 @@ namespace GitHub.Runner.Worker.Handlers
                     break;
                 case "powershell":
                 case "pwsh":
-                    var prepend = "$ErrorActionPreference = 'stop'";
+                    var prepend = "$ErrorActionPreference = 'stop'\n$ErrorView = 'NormalView'";
                     var append = @"if ((Test-Path -LiteralPath variable:\LASTEXITCODE)) { exit $LASTEXITCODE }";
                     contents = $"{prepend}{Environment.NewLine}{contents}{Environment.NewLine}{append}";
                     break;
