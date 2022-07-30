@@ -1,10 +1,13 @@
 ## Changes
-- match cache keys case insensitive
+- Allow inputs context in more places (#102)
+  - like in the with and secrets blocks of reusable workflows
+- Merge inputs of dispatch and workflow_call context (#103) 
+  - in workflow_call you also get the workflow_dispatch inputs in the inputs context
+  - if both have the same name only the workflow_call input is passed to the reusable workflow
+- Cache service no longer returns cache with another version / archive format
+- In some cases a step completed message might have been printed twice
 
 ## Breaking Changes
-- workflow_dispatch inputs context enabled again, based on [Github Feedback](https://github.com/github/feedback/discussions/9092#discussioncomment-2453678) and [Issue Comment](https://github.com/actions/runner/issues/1483#issuecomment-1091025877)
-  boolean workflow_dispatch values of the inputs context are actual booleans values like workflow_call inputs. This feature is released now the same way as implemented in 3.8.0.
-  - You can no longer detect a reusable workflow by `${{ inputs != null }}`, if it is called via workflow_dispatch.
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
