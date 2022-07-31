@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Runner.Server.Models;
 
@@ -10,9 +11,10 @@ using Runner.Server.Models;
 namespace Runner.Server.Migrations
 {
     [DbContext(typeof(SqLiteDb))]
-    partial class SqLiteDbModelSnapshot : ModelSnapshot
+    [Migration("20220721205157_AzureDevops")]
+    partial class AzureDevops
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.3");
@@ -594,59 +596,6 @@ namespace Runner.Server.Migrations
                     b.ToTable("Logs");
                 });
 
-            modelBuilder.Entity("Runner.Server.Models.TimelineIssue", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Category")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Data")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool?>("IsInfrastructureIssue")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Message")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("RecordId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RecordId");
-
-                    b.ToTable("TimelineIssues");
-                });
-
-            modelBuilder.Entity("Runner.Server.Models.TimelineVariable", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("RecordId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RecordId");
-
-                    b.ToTable("TimelineVariables");
-                });
-
             modelBuilder.Entity("Runner.Server.Models.Workflow", b =>
                 {
                     b.Property<int>("Id")
@@ -912,24 +861,6 @@ namespace Runner.Server.Migrations
                         .HasForeignKey("RefId");
 
                     b.Navigation("Ref");
-                });
-
-            modelBuilder.Entity("Runner.Server.Models.TimelineIssue", b =>
-                {
-                    b.HasOne("GitHub.DistributedTask.WebApi.TimelineRecord", "Record")
-                        .WithMany()
-                        .HasForeignKey("RecordId");
-
-                    b.Navigation("Record");
-                });
-
-            modelBuilder.Entity("Runner.Server.Models.TimelineVariable", b =>
-                {
-                    b.HasOne("GitHub.DistributedTask.WebApi.TimelineRecord", "Record")
-                        .WithMany()
-                        .HasForeignKey("RecordId");
-
-                    b.Navigation("Record");
                 });
 
             modelBuilder.Entity("Runner.Server.Models.Workflow", b =>

@@ -30,6 +30,9 @@ using System.Security.Claims;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
+using Microsoft.AspNetCore.Authorization.Policy;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Runner.Server
 {
@@ -73,6 +76,8 @@ namespace Runner.Server
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.TryAddSingleton<IPolicyEvaluator, DisableAuthenticationPolicyEvaluator>();
+
             services.AddControllers(options => {
                 // options.InputFormatters.Add(new LogFormatter());
             }).AddNewtonsoftJson();
@@ -214,9 +219,26 @@ namespace Runner.Server
             });
         }
 
+        public class DisableAuthenticationPolicyEvaluator : IPolicyEvaluator
+        {
+            public async Task<AuthenticateResult> AuthenticateAsync(AuthorizationPolicy policy, HttpContext context)
+            {
+                // Always pass authentication.
+                var authenticationTicket = new AuthenticationTicket(new ClaimsPrincipal(), new AuthenticationProperties(), JwtBearerDefaults.AuthenticationScheme);
+                return await Task.FromResult(AuthenticateResult.Success(authenticationTicket));
+            }
+
+            public async Task<PolicyAuthorizationResult> AuthorizeAsync(AuthorizationPolicy policy, AuthenticateResult authenticationResult, HttpContext context, object resource)
+            {
+                // Always pass authorization
+                return await Task.FromResult(PolicyAuthorizationResult.Success());
+            }
+        }
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime lifetime)
         {
+            app.UseHttpLogging();
             var pipe = Environment.GetEnvironmentVariable("RUNNER_CLIENT_PIPE");
             if(pipe != null) {
                 lifetime.ApplicationStarted.Register(() => {

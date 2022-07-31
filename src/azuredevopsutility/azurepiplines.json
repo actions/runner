@@ -1,0 +1,36 @@
+﻿{
+  "version": "pipelines-v1.0",
+
+  "definitions": {
+
+    "workflow-root": {
+      "description": "Workflow file",
+      "mapping": {
+        "loose-key-type": "workflow-key",
+        "loose-value-type": "workflow-value",
+        "properties": {
+          "parameters": "any"
+        }
+      }
+    },
+
+    "workflow-key": {
+      "context": [
+        "parameters",
+        "variables"
+      ],
+      "string": {}
+    },
+
+    "workflow-value": {
+      "context": [
+        "parameters",
+        "variables"
+      ],
+      "one-of": [
+        "boolean", "mapping", "null", "number", "sequence", "string"
+      ]
+    }
+
+  }
+}

@@ -205,7 +205,10 @@ namespace Runner.Server.Controllers
                         }
                     }
                 } finally {
-                    await webSocket.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.Empty, "", System.Threading.CancellationToken.None);    
+                    if((webSocket.State & (System.Net.WebSockets.WebSocketState.Open | System.Net.WebSockets.WebSocketState.CloseReceived | System.Net.WebSockets.WebSocketState.CloseSent)) != System.Net.WebSockets.WebSocketState.None )
+                    {
+                        await webSocket.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.Empty, "", System.Threading.CancellationToken.None);    
+                    }
                 }
             }
             else

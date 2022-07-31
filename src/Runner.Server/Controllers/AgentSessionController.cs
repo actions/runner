@@ -40,13 +40,11 @@ namespace Runner.Server.Controllers
         {
             var session = await FromBody<TaskAgentSession>();
             session.SessionId = Guid.NewGuid();
-            session.UseFipsEncryption = true;
             var aes = Aes.Create();
             Agent agent = Agent.GetAgent(_cache, _context, poolId, session.Agent.Id);
             if(agent == null) {
                 return NotFound();
             }
-            await _context.Entry(agent).Reference(a => a.TaskAgent).TargetEntry.Collection(a => a.Labels).LoadAsync();
             Session _session = _cache.Set(session.SessionId, new Session() {
                 TaskAgentSession = session,
                 Agent = agent,
@@ -57,10 +55,18 @@ namespace Runner.Server.Controllers
             //     Encrypted = false,
             //     Value = aes.Key
             // };
-            session.EncryptionKey = new TaskAgentSessionKey() {
-                Encrypted = true,
-                Value = _session.Agent.PublicKey.Encrypt(aes.Key, RSAEncryptionPadding.OaepSHA256)
-            };
+            if(agent.Capabilities?.Count > 0) {
+                session.EncryptionKey = new TaskAgentSessionKey() {
+                    Encrypted = true,
+                    Value = _session.Agent.PublicKey.Encrypt(aes.Key, RSAEncryptionPadding.OaepSHA1)
+                };
+            } else {
+                session.UseFipsEncryption = true;
+                session.EncryptionKey = new TaskAgentSessionKey() {
+                    Encrypted = true,
+                    Value = _session.Agent.PublicKey.Encrypt(aes.Key, RSAEncryptionPadding.OaepSHA256)
+                };
+            }
 
             _session.Timer = new System.Timers.Timer();
             _session.Timer.AutoReset = false;

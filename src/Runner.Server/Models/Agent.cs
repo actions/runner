@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
@@ -30,10 +31,16 @@ namespace Runner.Server.Models
         public Guid ClientId { get; set; }
         public byte[] Exponent { get; set; }
         public byte[] Modulus { get; set; }
+        public IList<Capability> Capabilities { get; set; } = new List<Capability>();
 
         public static Agent GetAgent(IMemoryCache cache, SqLiteDb db, int poolId, int id)
         {
-            var ret = db.Agents.Include(a => a.TaskAgent).Include(a => a.TaskAgent.Labels).Include(a => a.Pool).Where(a => a.Id == id).FirstOrDefault();
+            var ret = db.Agents.Include(a => a.TaskAgent).Include(a => a.TaskAgent.Labels).Include(a => a.Capabilities).Include(a => a.Pool).Where(a => a.Id == id).FirstOrDefault();
+            if(ret?.TaskAgent != null) {
+                foreach(var cap in ret.Capabilities) {
+                    (cap.System ? ret.TaskAgent.SystemCapabilities : ret.TaskAgent.UserCapabilities).Add(cap.Name, cap.Value);
+                }
+            }
             return ret;
         }
 
@@ -45,6 +52,16 @@ namespace Runner.Server.Models
             _agent.ClientId = agent.Authorization.ClientId;
             _agent.TaskAgent = agent;
             _agent.Pool = Pool.GetPoolById(cache, db, poolId);
+            if(agent.SystemCapabilities?.Any() ?? false) {
+                foreach(var kv in agent.SystemCapabilities) {
+                    _agent.Capabilities.Add(new Capability() { Name = kv.Key, Value = kv.Value, System = true });
+                }
+            }
+            if(agent.UserCapabilities?.Any() ?? false) {
+                foreach(var kv in agent.UserCapabilities) {
+                    _agent.Capabilities.Add(new Capability() { Name = kv.Key, Value = kv.Value });
+                }
+            }
             db.Agents.Add(_agent);
             return _agent;
         }

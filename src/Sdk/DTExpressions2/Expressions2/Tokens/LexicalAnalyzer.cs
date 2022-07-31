@@ -74,6 +74,8 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
                 case '\'':
                     token = ReadStringToken();
                     break;
+#if false
+// These are not supported in azure devops
                 case '!':   // "!" and "!="
                 case '>':   // ">" and ">="
                 case '<':   // "<" and "<="
@@ -82,6 +84,7 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
                 case '|':   // "||"
                     token = ReadOperator();
                     break;
+#endif
                 default:
                     if (c == '.')
                     {

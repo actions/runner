@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.Expressions2.Sdk;
-using GitHub.DistributedTask.Expressions2.Sdk.Functions;
+using GitHub.DistributedTask.Expressions2.Sdk.Functions.v1;
 
 namespace GitHub.DistributedTask.Expressions2
 {
@@ -9,13 +9,30 @@ namespace GitHub.DistributedTask.Expressions2
     {
         static ExpressionConstants()
         {
+            AddFunction<And>("and", 2, Int32.MaxValue);
+            AddFunction<Coalesce>("coalesce", 2, Int32.MaxValue);
             AddFunction<Contains>("contains", 2, 2);
+            AddFunction<ContainsValue>("containsvalue", 2, 2);
+            AddFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.ToJson>("converttojson", 1, 1);
             AddFunction<EndsWith>("endsWith", 2, 2);
-            AddFunction<Format>("format", 1, Byte.MaxValue);
-            AddFunction<Join>("join", 1, 2);
-            AddFunction<StartsWith>("startsWith", 2, 2);
-            AddFunction<ToJson>("toJson", 1, 1);
-            AddFunction<FromJson>("fromJson", 1, 1);
+            AddFunction<Equal>("eq", 2, 2);
+            AddFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.Format>("format", 2, Int32.MaxValue);
+            AddFunction<GreaterThanOrEqual>("ge", 2, 2);
+            AddFunction<GreaterThan>("gt", 2, 2);
+            AddFunction<In>("in", 1, Int32.MaxValue);
+            AddFunction<Join>("join", 2, 2);
+            AddFunction<LessThanOrEqual>("le", 2, 2);
+            AddFunction<Length>("length", 1, 1);
+            AddFunction<Lower>("lower", 1, 1);
+            AddFunction<LessThan>("lt", 2, 2);
+            AddFunction<NotEqual>("ne", 2, 2);
+            AddFunction<Not>("not", 1, 1);
+            AddFunction<NotIn>("notin", 1, Int32.MaxValue);
+            AddFunction<Or>("or", 2, Int32.MaxValue);
+            AddFunction<Replace>("replace", 3, 3);
+            AddFunction<StartsWith>("startsWith", 3, 3);
+            AddFunction<Upper>("upper", 1, 1);
+            AddFunction<Xor>("xor", 2, 2);
         }
 
         private static void AddFunction<T>(String name, Int32 minParameters, Int32 maxParameters)

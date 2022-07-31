@@ -1,0 +1,5 @@
+jobs:
+  - job: test
+    displayName: Hello World
+    steps:
+    - template: test.yml
