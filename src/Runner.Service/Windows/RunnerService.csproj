@@ -11,10 +11,14 @@
     <AssemblyName>RunnerService</AssemblyName>
     <SignAssembly>false</SignAssembly>
     <DelaySign>false</DelaySign>
-    <TargetFrameworkVersion Condition=" '$(Platform)' == 'ARM' ">v4.8</TargetFrameworkVersion>
-    <TargetFrameworkVersion Condition=" '$(Platform)' != 'ARM' ">v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(PackageRuntime)' == 'win-arm64' ">
+      <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+  </PropertyGroup>
+    <PropertyGroup Condition=" '$(PackageRuntime)' != 'win-arm64' ">
+      <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
