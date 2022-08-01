@@ -132,10 +132,7 @@ namespace GitHub.Runner.Listener
                 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_EXECUTE_UPDATE_SCRIPT")))
                 {
                     string flagFile = "update.finished";
-                    if (File.Exists(flagFile))
-                    {
-                        File.Delete(flagFile);
-                    }
+                    IOUtil.DeleteFile(flagFile);
                     // kick off update script
                     Process invokeScript = new Process();
 #if OS_WINDOWS
