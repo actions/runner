@@ -22,7 +22,7 @@ if %ERRORLEVEL% EQU 2 (
 )
 
 if %ERRORLEVEL% EQU 3 (
-  # Wait for 30 seconds or for flag file to exists for the runner update process finish
+  rem Wait for 30 seconds or for flag file to exists for the ephemeral runner update process finish
   echo "Runner listener exit because of updating, re-launch runner after successful update"
   SET FILE=update.finished
   FOR /L %%G IN (1,1,30) DO (
@@ -37,9 +37,17 @@ if %ERRORLEVEL% EQU 3 (
 )
 
 if %ERRORLEVEL% EQU 4 (
-  rem Sleep 5 seconds to wait for the ephemeral runner update process finish
-  echo "Runner listener exit because of updating, re-launch ephemeral runner in 5 seconds"
-  ping 127.0.0.1 -n 6 -w 1000 >NUL
+  rem Wait for 30 seconds or for flag file to exists for the runner update process finish
+  echo "Runner listener exit because of updating, re-launch runner after successful update"
+  SET FILE=update.finished
+  FOR /L %%G IN (1,1,30) DO (
+    IF EXIST %FILE% (
+      echo "Update finished successfully."
+      del %FILE%
+      exit /b 1
+    )
+    ping 127.0.0.1 -n 2 -w 1000 >NUL
+  )
   exit /b 1
 )
 

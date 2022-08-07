@@ -45,9 +45,18 @@ elif [[ $returnCode == 3 ]]; then
     done
     exit 2
 elif [[ $returnCode == 4 ]]; then
-    # Sleep 5 seconds to wait for the ephemeral runner update process finish
-    echo "Runner listener exit because of updating, re-launch ephemeral runner in 5 seconds"
-    "$DIR"/safe_sleep.sh 5
+    # Wait for 30 seconds or for flag file to exists for the ephemeral runner update process finish
+    echo "Runner listener exit because of updating, re-launch runner after successful update"
+
+    FILE=update.finished
+    for i in {0..30} do
+        if test -f "$FILE"; then
+            echo "Update finished successfully."
+            rm "$FILE"
+            break
+        fi
+        "$DIR"/safe_sleep.sh 1
+    done
     exit 2
 else
     echo "Exiting with unknown error code: ${returnCode}"
