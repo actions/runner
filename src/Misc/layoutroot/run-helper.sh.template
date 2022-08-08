@@ -17,6 +17,8 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+updateFile="update.finished"
 "$DIR"/bin/Runner.Listener run $*
 
 returnCode=$?
@@ -33,12 +35,10 @@ elif [[ $returnCode == 2 ]]; then
 elif [[ $returnCode == 3 ]]; then
     # Wait for 30 seconds or for flag file to exists for the runner update process finish
     echo "Runner listener exit because of updating, re-launch runner after successful update"
-
-    FILE=update.finished
     for i in {0..30} do
-        if test -f "$FILE"; then
+        if test -f "$updateFile"; then
             echo "Update finished successfully."
-            rm "$FILE"
+            rm "$updateFile"
             break
         fi
         "$DIR"/safe_sleep.sh 1
@@ -47,12 +47,10 @@ elif [[ $returnCode == 3 ]]; then
 elif [[ $returnCode == 4 ]]; then
     # Wait for 30 seconds or for flag file to exists for the ephemeral runner update process finish
     echo "Runner listener exit because of updating, re-launch runner after successful update"
-
-    FILE=update.finished
     for i in {0..30} do
-        if test -f "$FILE"; then
+        if test -f "$updateFile"; then
             echo "Update finished successfully."
-            rm "$FILE"
+            rm "$updateFile"
             break
         fi
         "$DIR"/safe_sleep.sh 1

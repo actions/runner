@@ -1,5 +1,5 @@
 @echo off
-
+SET UPDATEFILE=update.finished
 "%~dp0\bin\Runner.Listener.exe" run %*
 
 rem using `if %ERRORLEVEL% EQU N` insterad of `if ERRORLEVEL N`
@@ -25,7 +25,7 @@ if %ERRORLEVEL% EQU 3 (
   rem Wait for 30 seconds or for flag file to exists for the ephemeral runner update process finish
   echo "Runner listener exit because of updating, re-launch runner after successful update"
   FOR /L %%G IN (1,1,30) DO (
-    IF EXIST "update.finished" (
+    IF EXIST %UPDATEFILE% (
       echo "Update finished successfully."
       del %FILE%
       exit /b 1
@@ -39,7 +39,7 @@ if %ERRORLEVEL% EQU 4 (
   rem Wait for 30 seconds or for flag file to exists for the runner update process finish
   echo "Runner listener exit because of updating, re-launch runner after successful update"
   FOR /L %%G IN (1,1,30) DO (
-    IF EXIST "update.finished" (
+    IF EXIST %UPDATEFILE% (
       echo "Update finished successfully."
       del %FILE%
       exit /b 1
