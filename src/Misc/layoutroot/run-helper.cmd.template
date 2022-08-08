@@ -21,16 +21,11 @@ if %ERRORLEVEL% EQU 2 (
   exit /b 1
 )
 
-rem cmd validates the syntax of all lines, even if they are not run (e.g. they are in an if block with a 'false' condition)
-rem The line IF EXIST %UPDATE_FILE% triggers a syntax error if %UPDATE_FILE%, even if we did not enter its if block
-
-SET UPDATE_FILE=update.finished
-
 if %ERRORLEVEL% EQU 3 (
   rem Wait for 30 seconds or for flag file to exists for the ephemeral runner update process finish
   echo "Runner listener exit because of updating, re-launch runner after successful update"
   FOR /L %%G IN (1,1,30) DO (
-    IF EXIST %UPDATE_FILE% (
+    IF EXIST "update.finished" (
       echo "Update finished successfully."
       del %FILE%
       exit /b 1
@@ -44,7 +39,7 @@ if %ERRORLEVEL% EQU 4 (
   rem Wait for 30 seconds or for flag file to exists for the runner update process finish
   echo "Runner listener exit because of updating, re-launch runner after successful update"
   FOR /L %%G IN (1,1,30) DO (
-    IF EXIST %UPDATE_FILE% (
+    IF EXIST "update.finished" (
       echo "Update finished successfully."
       del %FILE%
       exit /b 1
