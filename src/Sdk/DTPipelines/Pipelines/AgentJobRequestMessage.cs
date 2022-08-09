@@ -42,7 +42,8 @@ namespace GitHub.DistributedTask.Pipelines
             IList<String> fileTable,
             TemplateToken jobOutputs,
             IList<TemplateToken> defaults,
-            ActionsEnvironmentReference actionsEnvironment)
+            ActionsEnvironmentReference actionsEnvironment
+            string dataWorkflowFilePathRaw)
         {
             this.MessageType = JobRequestMessageTypes.PipelineAgentJobRequest;
             this.Plan = plan;
@@ -56,6 +57,7 @@ namespace GitHub.DistributedTask.Pipelines
             this.Workspace = workspaceOptions;
             this.JobOutputs = jobOutputs;
             this.ActionsEnvironment = actionsEnvironment;
+            this.DataWorkflowFilePathRaw = dataWorkflowFilePathRaw;
             m_variables = new Dictionary<String, VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
             m_maskHints = new List<MaskHint>(maskHints);
             m_steps = new List<JobStep>(steps);
@@ -179,13 +181,6 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public WorkspaceOptions Workspace
-        {
-            get;
-            private set;
-        }
-
-        [DataMember(EmitDefaultValue = false)]
-        public string JobWorkflowRef
         {
             get;
             private set;
