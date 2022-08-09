@@ -184,6 +184,20 @@ namespace GitHub.DistributedTask.Pipelines
             private set;
         }
 
+        [DataMember(EmitDefaultValue = false)]
+        public string JobWorkflowRef
+        {
+            get;
+            private set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string DataWorkflowFilePathRaw
+        {
+            get;
+            private set;
+        }
+
         /// <summary>
         /// Gets the collection of mask hints
         /// </summary>
