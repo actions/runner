@@ -42,7 +42,7 @@ namespace GitHub.DistributedTask.Pipelines
             IList<String> fileTable,
             TemplateToken jobOutputs,
             IList<TemplateToken> defaults,
-            ActionsEnvironmentReference actionsEnvironment
+            ActionsEnvironmentReference actionsEnvironment,
             string dataWorkflowFilePathRaw)
         {
             this.MessageType = JobRequestMessageTypes.PipelineAgentJobRequest;
