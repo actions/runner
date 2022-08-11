@@ -316,8 +316,9 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    if (!string.IsNullOrWhiteSpace(message.DataWorkflowFilePathRaw)) {
-                        context.Output($"uses: {message.DataWorkflowFilePathRaw}");
+                    if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
+                    {
+                        context.Output($"uses: {workflowFileFullPath.Value}");
                         var inputs = message.ContextData["inputs"].AssertDictionary("inputs");
                         if (inputs.Any()) {
                             context.Output("with:");
