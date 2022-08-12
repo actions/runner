@@ -318,12 +318,13 @@ namespace GitHub.Runner.Worker
 
                     if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
                     {
-                        context.Output($"uses: {workflowFileFullPath.Value}");
-                        var inputs = message.ContextData["inputs"].AssertDictionary("inputs");
-                        if (inputs.Any()) {
-                            context.Output("with:");
-                            foreach(var input in inputs) {
-                                context.Output($"  {input.Key}: {input.Value}");
+                        if (message.ContextData.TryGetValue("inputs", out var pipelineContextData)) {
+                            var inputs = pipelineContextData.AssertDictionary("inputs");
+                            if (inputs.Any()) {
+                                context.Output("with:");
+                                foreach(var input in inputs) {
+                                    context.Output($"  {input.Key}: {input.Value}");
+                                }
                             }
                         }
                         
