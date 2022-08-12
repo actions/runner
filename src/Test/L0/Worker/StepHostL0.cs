@@ -10,6 +10,7 @@ using GitHub.Runner.Worker.Container;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Linq;
 using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -24,6 +25,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
             _ec.Setup(x => x.Global).Returns(new GlobalContext { WriteDebug = true });
+            _ec.Object.Global.Variables = new Variables(hc, new Dictionary<string, VariableValue>());
             var trace = hc.GetTrace();
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
 

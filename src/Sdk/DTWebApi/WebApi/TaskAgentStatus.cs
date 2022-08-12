@@ -10,5 +10,8 @@ namespace GitHub.DistributedTask.WebApi
 
         [EnumMember]
         Online = 2,
+
+        [EnumMember]
+        Busy = 3,
     }
 }

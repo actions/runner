@@ -11,6 +11,8 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -264,7 +266,11 @@ namespace GitHub.Runner.Worker.Handlers
 #endif
                     foreach (var pair in dict)
                     {
-                        envContext[pair.Key] = pair.Value;
+                        // Skip global env, otherwise we merge an outdated global env
+                        if (ExecutionContext.StepEnvironmentOverrides.Contains(pair.Key))
+                        {
+                            envContext[pair.Key] = pair.Value;
+                        }
                     }
                 }
 
@@ -273,11 +279,13 @@ namespace GitHub.Runner.Worker.Handlers
                     if (step is IActionRunner actionStep)
                     {
                         // Evaluate and merge embedded-step env
+                        step.ExecutionContext.StepEnvironmentOverrides.AddRange(ExecutionContext.StepEnvironmentOverrides);
                         var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
                         var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var env in actionEnvironment)
                         {
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                            step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
                         }
                     }
                 }
