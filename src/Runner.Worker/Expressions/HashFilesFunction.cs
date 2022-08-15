@@ -48,10 +48,10 @@ namespace GitHub.Runner.Worker.Expressions
                         var timeoutSecondsString = parameterString.Split("=")[1];
                         if (!String.IsNullOrEmpty(timeoutSecondsString))
                         {
-                            bool parseSuccess = int.TryParse(timeoutSecondsString, out int timoutSeconds);
-                            if (parseSuccess)
+                            bool parsingSuccess = int.TryParse(timeoutSecondsString, out int timeoutSeconds);
+                            if (parsingSuccess)
                             {
-                                _hashFileTimeoutSeconds = timoutSeconds;
+                                _hashFileTimeoutSeconds = timeoutSeconds;
                                 continue;
                             }
                             else
