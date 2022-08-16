@@ -531,7 +531,7 @@ namespace GitHub.Runner.Worker
                 };
             }
 
-            throw new NotSupportedException(nameof(ConvertRuns));
+            throw new NotSupportedException("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12' or 'node16'.");
         }
 
         private void ConvertInputs(
