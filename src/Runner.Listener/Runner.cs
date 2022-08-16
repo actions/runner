@@ -1,18 +1,20 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Listener.Configuration;
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using GitHub.Services.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
-using System.Linq;
 using GitHub.Runner.Listener.Check;
-using System.Collections.Generic;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Sdk;
+using GitHub.Services.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Listener
 {
@@ -192,6 +194,30 @@ namespace GitHub.Runner.Listener
                     return Constants.Runner.ReturnCode.Success;
                 }
 
+                var base64JitConfig = command.GetJitConfig();
+                if (!string.IsNullOrEmpty(base64JitConfig))
+                {
+                    try
+                    {
+                        var decodedJitConfig = Encoding.UTF8.GetString(Convert.FromBase64String(base64JitConfig));
+                        var jitConfig = StringUtil.ConvertFromJson<Dictionary<string, string>>(decodedJitConfig);
+                        foreach (var config in jitConfig)
+                        {
+                            var configFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), config.Key);
+                            var configContent = Encoding.UTF8.GetString(Convert.FromBase64String(config.Value));
+                            File.WriteAllText(configFile, configContent, Encoding.UTF8);
+                            File.SetAttributes(configFile, File.GetAttributes(configFile) | FileAttributes.Hidden);
+                            Trace.Info($"Save {configContent.Length} chars to '{configFile}'.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error(ex);
+                        _term.WriteError(ex.Message);
+                        return Constants.Runner.ReturnCode.TerminatedError;
+                    }
+                }
+
                 RunnerSettings settings = configManager.LoadSettings();
 
                 var store = HostContext.GetService<IConfigurationStore>();
@@ -322,6 +348,7 @@ namespace GitHub.Runner.Listener
 
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
+                bool skipSessionDeletion = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -332,6 +359,8 @@ namespace GitHub.Runner.Listener
                     Task<bool> selfUpdateTask = null;
                     bool runOnceJobReceived = false;
                     jobDispatcher = HostContext.CreateService<IJobDispatcher>();
+
+                    jobDispatcher.JobStatus += _listener.OnJobStatus;
 
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
@@ -457,6 +486,34 @@ namespace GitHub.Runner.Listener
                                     }
                                 }
                             }
+                            // Broker flow
+                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (autoUpdateInProgress || runOnceJobReceived)
+                                {
+                                    skipMessageDeletion = true;
+                                    Trace.Info($"Skip message deletion for job request message '{message.MessageId}'.");
+                                }
+                                else
+                                {
+                                    var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
+
+                                    // Create connection
+                                    var credMgr = HostContext.GetService<ICredentialManager>();
+                                    var creds = credMgr.LoadCredentials();
+
+                                    var runServer = HostContext.CreateService<IRunServer>();
+                                    await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+
+                                    jobDispatcher.Run(jobMessage, runOnce);
+                                    if (runOnce)
+                                    {
+                                        Trace.Info("One time used runner received job message.");
+                                        runOnceJobReceived = true;
+                                    }
+                                }
+                            }
                             else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
@@ -467,6 +524,14 @@ namespace GitHub.Runner.Listener
                                 {
                                     Trace.Info($"Skip message deletion for cancellation message '{message.MessageId}'.");
                                 }
+                            }
+                            else if (string.Equals(message.MessageType, Pipelines.HostedRunnerShutdownMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            {
+                                var HostedRunnerShutdownMessage = JsonUtility.FromString<Pipelines.HostedRunnerShutdownMessage>(message.Body);
+                                skipMessageDeletion = true;
+                                skipSessionDeletion = true;
+                                Trace.Info($"Service requests the hosted runner to shutdown. Reason: '{HostedRunnerShutdownMessage.Reason}'.");
+                                return Constants.Runner.ReturnCode.Success;
                             }
                             else
                             {
@@ -498,18 +563,22 @@ namespace GitHub.Runner.Listener
                 {
                     if (jobDispatcher != null)
                     {
+                        jobDispatcher.JobStatus -= _listener.OnJobStatus;
                         await jobDispatcher.ShutdownAsync();
                     }
 
-                    try
+                    if (!skipSessionDeletion)
                     {
-                        await _listener.DeleteSessionAsync();
-                    }
-                    catch (Exception ex) when (runOnce)
-                    {
-                        // ignore exception during delete session for ephemeral runner since the runner might already be deleted from the server side
-                        // and the delete session call will ends up with 401.
-                        Trace.Info($"Ignore any exception during DeleteSession for an ephemeral runner. {ex}");
+                        try
+                        {
+                            await _listener.DeleteSessionAsync();
+                        }
+                        catch (Exception ex) when (runOnce)
+                        {
+                            // ignore exception during delete session for ephemeral runner since the runner might already be deleted from the server side
+                            // and the delete session call will ends up with 401.
+                            Trace.Info($"Ignore any exception during DeleteSession for an ephemeral runner. {ex}");
+                        }
                     }
 
                     messageQueueLoopTokenSource.Dispose();
@@ -561,7 +630,7 @@ Config Options:
  --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
- --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`
+ --pat                  GitHub personal access token with repo scope. Used for checking network connectivity when executing `.{separator}run.{ext} --check`
  --disableupdate        Disable self-hosted runner automatic update to the latest released version`
  --ephemeral            Configure the runner to only take one job and then let the service un-configure the runner after the job finishes (default false)");
 

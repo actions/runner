@@ -8,6 +8,9 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -33,6 +36,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
             AddPrependPathToEnvironment();
+
 
             // expose context to environment
             foreach (var context in ExecutionContext.ExpressionValues)
@@ -94,6 +98,20 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
+#if OS_OSX
+            if (string.Equals(Data.NodeVersion, "node12", StringComparison.OrdinalIgnoreCase) &&
+                Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
+            {
+                ExecutionContext.Output($"The node12 is not supported on macOS ARM64 platform. Use node16 instead.");
+                Data.NodeVersion = "node16";
+            }
+#endif
+            string forcedNodeVersion = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
+
+            if (forcedNodeVersion == "node16" && Data.NodeVersion != "node16")
+            {
+                Data.NodeVersion = "node16";
+            }
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 
@@ -101,7 +119,7 @@ namespace GitHub.Runner.Worker.Handlers
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid
             // file name character on Linux.
-            string arguments = StepHost.ResolvePathForStepHost(StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
+            string arguments = StepHost.ResolvePathForStepHost(ExecutionContext, StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
 
 #if OS_WINDOWS
             // It appears that node.exe outputs UTF8 when not in TTY mode.
@@ -134,14 +152,16 @@ namespace GitHub.Runner.Worker.Handlers
                 // Execute the process. Exit code 0 should always be returned.
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
-                Task<int> step = StepHost.ExecuteAsync(workingDirectory: StepHost.ResolvePathForStepHost(workingDirectory),
-                                                fileName: StepHost.ResolvePathForStepHost(file),
+                Task<int> step = StepHost.ExecuteAsync(ExecutionContext,
+                                                workingDirectory: StepHost.ResolvePathForStepHost(ExecutionContext, workingDirectory),
+                                                fileName: StepHost.ResolvePathForStepHost(ExecutionContext, file),
                                                 arguments: arguments,
                                                 environment: Environment,
                                                 requireExitCodeZero: false,
                                                 outputEncoding: outputEncoding,
                                                 killProcessOnCancel: false,
                                                 inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
+                                                standardInInput: null,
                                                 cancellationToken: ExecutionContext.CancellationToken);
 
                 // Wait for either the node exit or force finish through ##vso command

@@ -23,6 +23,7 @@ namespace GitHub.Runner.Listener
         Task DeleteSessionAsync();
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
+        void OnJobStatus(object sender, JobStatusEventArgs e);
     }
 
     public sealed class MessageListener : RunnerService, IMessageListener
@@ -38,6 +39,8 @@ namespace GitHub.Runner.Listener
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new Dictionary<string, int>();
+        private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
+        private CancellationTokenSource _getMessagesTokenSource;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -170,6 +173,23 @@ namespace GitHub.Runner.Listener
             }
         }
 
+        public void OnJobStatus(object sender, JobStatusEventArgs e)
+        {
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
+            {
+                Trace.Info("Received job status event. JobState: {0}", e.Status);
+                runnerStatus = e.Status;
+                try
+                {
+                    _getMessagesTokenSource?.Cancel();
+                } 
+                catch (ObjectDisposedException)
+                {
+                    Trace.Info("_getMessagesTokenSource is already disposed.");
+                }
+            }
+        }
+
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
         {
             Trace.Entering();
@@ -184,12 +204,14 @@ namespace GitHub.Runner.Listener
             {
                 token.ThrowIfCancellationRequested();
                 TaskAgentMessage message = null;
+                _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
                 {
                     message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 _session.SessionId,
                                                                 _lastMessageId,
-                                                                token);
+                                                                runnerStatus,
+                                                                _getMessagesTokenSource.Token);
 
                     // Decrypt the message body if the session is using encryption
                     message = DecryptMessage(message);
@@ -205,6 +227,11 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                         continuousError = 0;
                     }
+                }
+                catch (OperationCanceledException) when (_getMessagesTokenSource.Token.IsCancellationRequested && !token.IsCancellationRequested)
+                {
+                    Trace.Info("Get messages has been cancelled using local token source. Continue to get messages with new status.");
+                    continue;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -260,6 +287,10 @@ namespace GitHub.Runner.Listener
                         Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
                         await HostContext.Delay(_getNextMessageRetryInterval, token);
                     }
+                }
+                finally 
+                {
+                    _getMessagesTokenSource.Dispose();
                 }
 
                 if (message == null)

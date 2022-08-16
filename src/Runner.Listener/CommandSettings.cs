@@ -63,6 +63,7 @@ namespace GitHub.Runner.Listener
                 new string[]
                 {
                     Constants.Runner.CommandLine.Flags.Once,
+                    Constants.Runner.CommandLine.Args.JitConfig,
                     Constants.Runner.CommandLine.Args.StartupType
                 },
             // valid warmup flags and args
@@ -211,6 +212,12 @@ namespace GitHub.Runner.Listener
                 description: "How would you like to authenticate?",
                 defaultValue: defaultValue,
                 validator: Validators.AuthSchemeValidator);
+        }
+
+        public string GetJitConfig()
+        {
+            return GetArg(
+                name: Constants.Runner.CommandLine.Args.JitConfig);
         }
 
         public string GetRunnerName()

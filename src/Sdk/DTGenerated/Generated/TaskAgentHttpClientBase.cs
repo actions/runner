@@ -457,6 +457,7 @@ namespace GitHub.DistributedTask.WebApi
             int poolId,
             Guid sessionId,
             long? lastMessageId = null,
+            TaskAgentStatus? status = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -469,6 +470,10 @@ namespace GitHub.DistributedTask.WebApi
             if (lastMessageId != null)
             {
                 queryParams.Add("lastMessageId", lastMessageId.Value.ToString(CultureInfo.InvariantCulture));
+            }
+            if (status != null)
+            {
+                queryParams.Add("status", status.Value.ToString());
             }
 
             return SendAsync<TaskAgentMessage>(

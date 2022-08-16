@@ -27,6 +27,7 @@ namespace GitHub.Runner.Listener
         bool Cancel(JobCancelMessage message);
         Task WaitAsync(CancellationToken token);
         Task ShutdownAsync();
+        event EventHandler<JobStatusEventArgs> JobStatus;
     }
 
     // This implementation of IJobDispatcher is not thread safe.
@@ -54,6 +55,8 @@ namespace GitHub.Runner.Listener
         private TimeSpan _channelTimeout;
 
         private TaskCompletionSource<bool> _runOnceJobCompleted = new TaskCompletionSource<bool>();
+
+        public event EventHandler<JobStatusEventArgs> JobStatus;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -335,6 +338,11 @@ namespace GitHub.Runner.Listener
             Busy = true;
             try
             {
+                if (JobStatus != null)
+                {
+                    JobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Busy));
+                }
+
                 if (previousJobDispatch != null)
                 {
                     Trace.Verbose($"Make sure the previous job request {previousJobDispatch.JobId} has successfully finished on worker.");
@@ -650,6 +658,11 @@ namespace GitHub.Runner.Listener
             finally
             {
                 Busy = false;
+                
+                if (JobStatus != null)
+                {
+                    JobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Online));
+                }
             }
         }
 
