@@ -67,6 +67,8 @@ namespace GitHub.Runner.Worker
 
         bool IsEmbedded { get; }
 
+        List<string> StepEnvironmentOverrides { get; }
+
         ExecutionContext Root { get; }
 
         // Initialize
@@ -236,6 +238,8 @@ namespace GitHub.Runner.Worker
                 return ExpressionValues["job"] as JobContext;
             }
         }
+
+        public List<string> StepEnvironmentOverrides { get; } = new List<string>();
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -1226,7 +1230,7 @@ namespace GitHub.Runner.Worker
                     var value = dict[key].ToString();
                     if (!string.IsNullOrEmpty(value))
                     {
-                        dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
+                        dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(context, value));
                     }
                 }
                 else if (dict[key] is DictionaryContextData)

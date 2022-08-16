@@ -275,12 +275,6 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            if (!context.Global.Variables.GetBoolean("DistributedTask.UploadStepSummary") ?? true)
-            {
-                Trace.Info("Step Summary is disabled; skipping attachment upload");
-                return;
-            }
-
             if (String.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
                 Trace.Info($"Step Summary file ({filePath}) does not exist; skipping attachment upload");

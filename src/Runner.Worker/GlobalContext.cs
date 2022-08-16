@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
+using Newtonsoft.Json.Linq;
 
 namespace GitHub.Runner.Worker
 {
@@ -23,5 +24,6 @@ namespace GitHub.Runner.Worker
         public StepsContext StepsContext { get; set; }
         public Variables Variables { get; set; }
         public bool WriteDebug { get; set; }
+        public JObject ContainerHookState { get; set; }
     }
 }

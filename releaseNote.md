@@ -1,11 +1,11 @@
 ## Features
-- Added a pre-release package for the `macOS-arm64` architecture
-  - Note that this packages is pre-release status and may not work with all existing actions
-
+- GHES: Support connecting to GitHub Enterprise Server Actions Service on a subdomain 
 ## Bugs
-- Fixed an issue where live console logs would fail to close (#1903)
-
+- Fixed a bug where GITHUB_ENV would not update correctly between composite action steps (#1794)
+- Fixed runner update bug caused by `update.sh|cmd` running too long (#2044) 
 ## Misc
+- Bump Newtonsoft.Json from 11.0.2 to 13.0.1 (#2012)
+- Change a periodic token expiry log message level from `WARNING` to `VERBOSE` (#2021)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
