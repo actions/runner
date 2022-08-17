@@ -1159,6 +1159,8 @@ namespace GitHub.Runner.Worker
         public ActionExecutionData Execution { get; set; }
 
         public Dictionary<String, String> Deprecated { get; set; }
+
+        public Dictionary<String, bool> Required { get; set; }
     }
 
     public enum ActionExecutionType

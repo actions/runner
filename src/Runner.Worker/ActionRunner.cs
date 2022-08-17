@@ -216,6 +216,10 @@ namespace GitHub.Runner.Worker
                     if (!inputs.ContainsKey(key))
                     {
                         inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
+                        if (inputs.Required?.TryGetValue(key) && !inputs[key])
+                        {
+                            ExecutionContext.Error(String.Format("Input '{0}' is required and was not provided.", input.Key));
+                        }
                     }
                 }
             }
