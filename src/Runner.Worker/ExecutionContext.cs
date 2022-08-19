@@ -369,6 +369,7 @@ namespace GitHub.Runner.Worker
             child.StepTelemetry.StepId = recordId;
             child.StepTelemetry.Stage = stage.ToString();
             child.StepTelemetry.IsEmbedded = isEmbedded;
+            child.StepTelemetry.StepContextName = child.GetFullyQualifiedContextName();;
 
             return child;
         }

@@ -31,6 +31,9 @@ namespace GitHub.DistributedTask.WebApi
         public Guid StepId { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public string StepContextName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public bool? HasRunsStep { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
