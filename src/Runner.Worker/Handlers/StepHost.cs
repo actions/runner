@@ -216,7 +216,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
                 // the value directly in the command
-                dockerCommandArgs.Add($"-e \"{env.Key.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
+                dockerCommandArgs.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
             }
             if (!string.IsNullOrEmpty(PrependPath))
             {

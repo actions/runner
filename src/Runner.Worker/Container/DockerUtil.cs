@@ -17,7 +17,7 @@ namespace GitHub.Runner.Worker.Container
             string pattern = $"^(?<{targetPort}>\\d+)/(?<{proto}>\\w+) -> (?<{host}>.+):(?<{hostPort}>\\d+)$";
 
             List<PortMapping> portMappings = new List<PortMapping>();
-            foreach(var line in portMappingLines)
+            foreach (var line in portMappingLines)
             {
                 Match m = Regex.Match(line, pattern, RegexOptions.None, TimeSpan.FromSeconds(1));
                 if (m.Success)
@@ -60,6 +60,29 @@ namespace GitHub.Runner.Worker.Container
                 return nameSplit[0];
             }
             return "";
+        }
+
+        public static string CreateEscapedOption(string flag, string key)
+        {
+            if (String.IsNullOrEmpty(key))
+            {
+                return "";
+            }
+            return $"{flag} \"{EscapeString(key)}\"";
+        }
+
+        public static string CreateEscapedOption(string flag, string key, string value)
+        {
+            if (String.IsNullOrEmpty(key))
+            {
+                return "";
+            }
+            return $"{flag} \"{EscapeString(key)}={EscapeString(value)}\"";
+        }
+
+        private static string EscapeString(string value)
+        {
+            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
     }
 }

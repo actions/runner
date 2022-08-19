@@ -131,11 +131,11 @@ namespace GitHub.Runner.Worker.Container
             {
                 if (String.IsNullOrEmpty(env.Value))
                 {
-                    dockerOptions.Add($"-e \"{env.Key.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
+                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
                 }
                 else
                 {
-                    dockerOptions.Add($"-e \"{env.Key.Replace("\\", "\\\\").Replace("\"", "\\\"")}={env.Value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
+                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key, env.Value));
                 }
             }
 
@@ -202,7 +202,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
                 // the value directly in the command
-                dockerOptions.Add($"-e \"{env.Key.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
+                dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
             }
 
             // Watermark for GitHub Action environment

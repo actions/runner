@@ -144,5 +144,59 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             var actual = DockerUtil.ParseRegistryHostnameFromImageName(input);
             Assert.Equal(expected, actual);
         }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData("", "")]
+        [InlineData("HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #")]
+        public void CreateEscapedOption_keyOnly(string input, string escaped)
+        {
+            var flag = "--example";
+            var actual = DockerUtil.CreateEscapedOption(flag, input);
+            string expected;
+            if (String.IsNullOrEmpty(input))
+            {
+                expected = "";
+            }
+            else
+            {
+                expected = $"{flag} \"{escaped}\"";
+            }
+            Assert.Equal(expected, actual);
+        }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData("HOME", "", "HOME", "")]
+        [InlineData("HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"alpine:3.8 sh -c id #", "HOME \"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"\"alpine:3.8 sh -c id #", "HOME \"\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"\\\"alpine:3.8 sh -c id #", "HOME \"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #")]
+        public void CreateEscapedOption_keyValue(string keyInput, string valueInput, string escapedKey, string escapedValue)
+        {
+            var flag = "--example";
+            var actual = DockerUtil.CreateEscapedOption(flag, keyInput, valueInput);
+            string expected;
+            if (String.IsNullOrEmpty(keyInput))
+            {
+                expected = "";
+            }
+            else
+            {
+                expected = $"{flag} \"{escapedKey}={escapedValue}\"";
+            }
+            Assert.Equal(expected, actual);
+        }
     }
 }
