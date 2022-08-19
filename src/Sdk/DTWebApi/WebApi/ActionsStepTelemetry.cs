@@ -61,6 +61,12 @@ namespace GitHub.DistributedTask.WebApi
         public int? ExecutionTimeInSeconds { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public DateTime? StartTime { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public DateTime? FinishTime { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string ContainerHookData { get; set; }
     }
 }

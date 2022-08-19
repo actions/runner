@@ -369,7 +369,7 @@ namespace GitHub.Runner.Worker
             child.StepTelemetry.StepId = recordId;
             child.StepTelemetry.Stage = stage.ToString();
             child.StepTelemetry.IsEmbedded = isEmbedded;
-            child.StepTelemetry.StepContextName = child.GetFullyQualifiedContextName();;
+            child.StepTelemetry.StepContextName = child.GetFullyQualifiedContextName(); ;
 
             return child;
         }
@@ -960,6 +960,8 @@ namespace GitHub.Runner.Worker
                         _record.StartTime != null)
                     {
                         StepTelemetry.ExecutionTimeInSeconds = (int)Math.Ceiling((_record.FinishTime - _record.StartTime)?.TotalSeconds ?? 0);
+                        StepTelemetry.StartTime = _record.StartTime;
+                        StepTelemetry.FinishTime = _record.FinishTime;
                     }
 
                     if (!IsEmbedded &&
