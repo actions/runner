@@ -331,7 +331,7 @@ namespace GitHub.Runner.Worker
                             }
                         }
 
-                         if (!string.IsNullOrWhiteSpace(message.JobDisplayName)) {
+                        if (!string.IsNullOrWhiteSpace(message.JobDisplayName)) {
                             context.Output($"Complete job name: {message.JobDisplayName}");
                         }
                     }
