@@ -324,7 +324,7 @@ namespace GitHub.Runner.Worker
                             var inputs = pipelineContextData.AssertDictionary("inputs");
                             if (inputs.Any()) 
                             {
-                                context.Output($"##[group] inputs");
+                                context.Output($"##[group] Inputs");
                                 foreach (var input in inputs) 
                                 {
                                     context.Output($"  {input.Key}: {input.Value}");
