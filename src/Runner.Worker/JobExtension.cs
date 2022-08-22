@@ -325,7 +325,7 @@ namespace GitHub.Runner.Worker
                             if (inputs.Any()) 
                             {
                                 context.Output($"##[group] inputs");
-                                foreach(var input in inputs) 
+                                foreach (var input in inputs) 
                                 {
                                     context.Output($"  {input.Key}: {input.Value}");
                                 }
