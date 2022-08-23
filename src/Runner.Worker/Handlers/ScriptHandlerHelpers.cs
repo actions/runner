@@ -1,10 +1,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using GitHub.Runner.Sdk;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Worker.Handlers
 {
-    internal class ScriptHandlerHelpers
+    internal static class ScriptHandlerHelpers
     {
         private static readonly Dictionary<string, string> _defaultArguments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

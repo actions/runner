@@ -15,7 +15,7 @@ namespace GitHub.Runner.Worker
     {
         void InitializeFiles(IExecutionContext context, ContainerInfo container);
         void ProcessFiles(IExecutionContext context, ContainerInfo container);
-    
+
     }
 
     public sealed class FileCommandManager : RunnerService, IFileCommandManager
@@ -57,7 +57,7 @@ namespace GitHub.Runner.Worker
                 TryDeleteFile(newPath);
                 File.Create(newPath).Dispose();
 
-                var pathToSet = container != null ? container.TranslateToContainerPath(newPath) : newPath; 
+                var pathToSet = container != null ? container.TranslateToContainerPath(newPath) : newPath;
                 context.SetGitHubContext(fileCommand.ContextName, pathToSet);
             }
         }
@@ -66,7 +66,7 @@ namespace GitHub.Runner.Worker
         {
             foreach (var fileCommand in _commandExtensions)
             {
-                try 
+                try
                 {
                     fileCommand.ProcessCommand(context, Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + _fileSuffix),container);
                 }
@@ -266,7 +266,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class CreateStepSummaryCommand : RunnerService, IFileCommandExtension
     {
-        private const int _attachmentSizeLimit = 128 * 1024;
+        public const int AttachmentSizeLimit = 1024 * 1024;
 
         public string ContextName => "step_summary";
         public string FilePrefix => "step_summary_";
@@ -275,12 +275,6 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            if (!context.Global.Variables.GetBoolean("DistributedTask.UploadStepSummary") ?? true)
-            {
-                Trace.Info("Step Summary is disabled; skipping attachment upload");
-                return;
-            }
-
             if (String.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
                 Trace.Info($"Step Summary file ({filePath}) does not exist; skipping attachment upload");
@@ -296,9 +290,9 @@ namespace GitHub.Runner.Worker
                     return;
                 }
 
-                if (fileSize > _attachmentSizeLimit)
+                if (fileSize > AttachmentSizeLimit)
                 {
-                    context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, _attachmentSizeLimit / 1024, fileSize / 1024));
+                    context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, AttachmentSizeLimit / 1024, fileSize / 1024));
                     Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
 
                     return;
