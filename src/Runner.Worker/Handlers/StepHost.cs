@@ -193,7 +193,7 @@ namespace GitHub.Runner.Worker.Handlers
                 TranslateToContainerPath(environment);
                 await containerHookManager.RunScriptStepAsync(context,
                                                                                    Container,
-                                                                                   workingDirectory,                                                                                   
+                                                                                   workingDirectory,
                                                                                    fileName,
                                                                                    arguments,
                                                                                    environment,
@@ -216,7 +216,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
                 // the value directly in the command
-                dockerCommandArgs.Add($"-e {env.Key}");
+                dockerCommandArgs.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
             }
             if (!string.IsNullOrEmpty(PrependPath))
             {
