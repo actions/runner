@@ -68,7 +68,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    fileCommand.ProcessCommand(context, Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + _fileSuffix),container);
+                    fileCommand.ProcessCommand(context, Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + _fileSuffix), container);
                 }
                 catch (Exception ex)
                 {
@@ -118,7 +118,7 @@ namespace GitHub.Runner.Worker
             if (File.Exists(filePath))
             {
                 var lines = File.ReadAllLines(filePath, Encoding.UTF8);
-                foreach(var line in lines)
+                foreach (var line in lines)
                 {
                     if (line == string.Empty)
                     {
@@ -312,7 +312,9 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                var attachmentName = context.Id.ToString();
+                var attachmentName = !context.IsEmbedded 
+                    ? context.Id.ToString() 
+                    : context.EmbeddedId.ToString();
 
                 Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
                 // Attachments must be added to the parent context (job), not the current context (step)
