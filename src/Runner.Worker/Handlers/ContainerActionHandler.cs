@@ -161,7 +161,7 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     if (!string.IsNullOrEmpty(arg))
                     {
-                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{arg.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" {DockerUtil.EscapeString(arg)}";
                     }
                     else
                     {

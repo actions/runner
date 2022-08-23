@@ -178,7 +178,7 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
                     // the value directly in the command
-                    dockerCommandArgs.Add($"-e {env.Key}");
+                    dockerCommandArgs.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
                 }
             } else {
                 ISet<string> keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -189,11 +189,10 @@ namespace GitHub.Runner.Worker.Handlers
                     if(keys.Add(env.Key)) {
                         // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
                         // the value directly in the command
-                        dockerCommandArgs.Add($"-e {env.Key}");
+                        dockerCommandArgs.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
                         environment[env.Key] = env.Value;
                     } else {
-                        var val = env.Value.Replace("\\", "\\\\").Replace("\"", "\\\"");
-                        dockerCommandArgs.Add($"-e {env.Key}=\"{val}\"");
+                        dockerCommandArgs.Add(DockerUtil.CreateEscapedOption("-e", env.Key, env.Value));
                     }
                 }
             }
