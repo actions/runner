@@ -318,7 +318,7 @@ namespace GitHub.Runner.Worker
 
                     if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
                     {
-                        context.Output($"uses: {workflowFileFullPath.Value}");
+                        context.Output($"Uses: {workflowFileFullPath.Value}");
                         if (message.ContextData.TryGetValue("inputs", out var pipelineContextData))
                         {
                             var inputs = pipelineContextData.AssertDictionary("inputs");
