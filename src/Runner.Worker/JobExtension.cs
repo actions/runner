@@ -297,6 +297,29 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
+                    {
+                        context.Output($"Uses: {workflowFileFullPath.Value}");
+                        if (message.ContextData.TryGetValue("inputs", out var pipelineContextData))
+                        {
+                            var inputs = pipelineContextData.AssertDictionary("inputs");
+                            if (inputs.Any()) 
+                            {
+                                context.Output($"##[group] Inputs");
+                                foreach (var input in inputs) 
+                                {
+                                    context.Output($"  {input.Key}: {input.Value}");
+                                }
+                                context.Output("##[endgroup]");
+                            }
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(message.JobDisplayName)) 
+                        {
+                            context.Output($"Complete job name: {message.JobDisplayName}");
+                        }
+                    }
+
                     var intraActionStates = new Dictionary<Guid, Dictionary<string, string>>();
                     foreach (var preStep in prepareResult.PreStepTracker)
                     {
