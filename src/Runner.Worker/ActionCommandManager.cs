@@ -585,6 +585,8 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, ContainerInfo container)
         {
+            ValidateLinesAndColumns(command, context);
+        
             command.Properties.TryGetValue(IssueCommandProperties.File, out string file);
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
