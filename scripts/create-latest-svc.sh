@@ -8,7 +8,7 @@ set -e
 # Configures it as a service more secure
 # Should be used on VMs and not containers
 # Works on OSX and Linux
-# Assumes x64 arch
+# Determines file to download correctly for arm64 or x64 arch
 # See EXAMPLES below
 
 flags_found=false
@@ -127,11 +127,13 @@ if [ "null" == "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to ge
 #---------------------------------------
 echo
 echo "Downloading latest runner ..."
+runner_arch=x64
+[ "$(uname -m)" == "arm64" ] && runner_arch=arm64;
 
 # For the GHES Alpha, download the runner from github.com
 latest_version_label=$(curl -s -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
 latest_version=$(echo ${latest_version_label:1})
-runner_file="actions-runner-${runner_plat}-x64-${latest_version}.tar.gz"
+runner_file="actions-runner-${runner_plat}-${runner_arch}-${latest_version}.tar.gz"
 
 if [ -f "${runner_file}" ]; then
     echo "${runner_file} exists. skipping download."
