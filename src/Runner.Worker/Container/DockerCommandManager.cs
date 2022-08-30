@@ -32,6 +32,7 @@ namespace GitHub.Runner.Worker.Container
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs);
         Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options);
+        Task<List<string>> DockerInspectLogs(IExecutionContext context, string dockerContainerId);
         Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId);
         Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password);
     }
@@ -350,6 +351,11 @@ namespace GitHub.Runner.Worker.Container
         public async Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)
         {
             return await ExecuteDockerCommandAsync(context, "inspect", $"{options} {dockerObject}");
+        }
+
+        public async Task<List<string>> DockerInspectLogs(IExecutionContext context, string dockerContainerId)
+        {
+            return await ExecuteDockerCommandAsync(context, "logs", $"{dockerContainerId}");
         }
 
         public async Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId)

@@ -101,7 +101,8 @@ namespace GitHub.Runner.Worker
             executionContext.Output("##[group]Waiting for all services to be ready");
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
-                await ContainerHealthcheck(executionContext, container);
+                var healthcheck = await Healthcheck(executionContext, container);
+                await ContainerHealthcheckLogs(executionContext, container, healthcheck);
             }
             executionContext.Output("##[endgroup]");
         }
@@ -395,14 +396,13 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
-        {
+        private async Task<string> Healthcheck(IExecutionContext executionContext, ContainerInfo container){
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
             string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             if (string.IsNullOrEmpty(serviceHealth))
             {
                 // Container has no HEALTHCHECK
-                return;
+                return String.Empty;
             }
             var retryCount = 0;
             while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
@@ -413,12 +413,20 @@ namespace GitHub.Runner.Worker
                 serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
                 retryCount++;
             }
+            return serviceHealth;
+        }
+
+        private async Task ContainerHealthcheckLogs(IExecutionContext executionContext, ContainerInfo container, string serviceHealth)
+        {
+    
             if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
             {
                 executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
             }
             else
             {
+                List<string> dockerLogs = await _dockerManager.DockerInspectLogs(context: executionContext, dockerContainerId: container.ContainerId);
+                dockerLogs.ForEach(log => executionContext.Output(log));
                 throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
             }
         }
