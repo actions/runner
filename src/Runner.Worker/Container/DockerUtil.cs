@@ -77,7 +77,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 return "";
             }
-            return $"{flag} \"{EscapeString(key)}={EscapeString(value)}\"";
+            return $"{flag} \"{EscapeString(key)}={value.Replace("\"", "\\\"")}\"";
         }
 
         private static string EscapeString(string value)

@@ -178,11 +178,11 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         [InlineData("HOME", "", "HOME", "")]
         [InlineData("HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #")]
         [InlineData("HOME \"alpine:3.8 sh -c id #", "HOME \"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #", "HOME \\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #")]
         [InlineData("HOME \"\"alpine:3.8 sh -c id #", "HOME \"\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"\\\"alpine:3.8 sh -c id #", "HOME \"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #", "HOME \\\\\"\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"\\\"alpine:3.8 sh -c id #", "HOME \"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\"alpine:3.8 sh -c id #")]
         public void CreateEscapedOption_keyValue(string keyInput, string valueInput, string escapedKey, string escapedValue)
         {
             var flag = "--example";
