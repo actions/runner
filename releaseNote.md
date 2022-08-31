@@ -1,9 +1,6 @@
 ## Bugs
-- Avoid key based command injection via Docker command arguments (#2062)
+- Fixed an issue where job and service container envs were corrupted (#2091)
 ## Misc
-- Added step context name and start/finish time in step telemetry (#2069)
-- Improved error logs when there is a missing 'using' token configuration in the metadata file  (#2052)
-- Added full job name and nested workflow details in log (#2049)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
