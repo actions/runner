@@ -107,6 +107,7 @@ namespace GitHub.Runner.Worker.Container
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
         {
             IList<string> dockerOptions = new List<string>();
+            IDictionary<string, string> environment = new Dictionary<string, string>();
             // OPTIONS
             dockerOptions.Add($"--name {container.ContainerDisplayName}");
             dockerOptions.Add($"--label {DockerInstanceLabel}");
@@ -135,7 +136,8 @@ namespace GitHub.Runner.Worker.Container
                 }
                 else
                 {
-                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key, env.Value));
+                    environment.Add(env.Key, env.Value);
+                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
                 }
             }
 
@@ -183,7 +185,7 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"{container.ContainerEntryPointArgs}");
 
             var optionsString = string.Join(" ", dockerOptions);
-            List<string> outputStrings = await ExecuteDockerCommandAsync(context, "create", optionsString);
+            List<string> outputStrings = await ExecuteDockerCommandAsync(context, "create", optionsString, environment);
 
             return outputStrings.FirstOrDefault();
         }
@@ -444,6 +446,11 @@ namespace GitHub.Runner.Worker.Container
 
         private async Task<List<string>> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options)
         {
+            return await ExecuteDockerCommandAsync(context, command, options, null);
+        }
+
+        private async Task<List<string>> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, IDictionary<string, string> environment)
+        {
             string arg = $"{command} {options}".Trim();
             context.Command($"{DockerPath} {arg}");
 
@@ -470,7 +477,7 @@ namespace GitHub.Runner.Worker.Container
                             workingDirectory: context.GetGitHubContext("workspace"),
                             fileName: DockerPath,
                             arguments: arg,
-                            environment: null,
+                            environment: environment,
                             requireExitCodeZero: true,
                             outputEncoding: null,
                             cancellationToken: CancellationToken.None);
