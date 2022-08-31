@@ -23,24 +23,30 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IExecutionContext> _ec;
         private Mock<IDockerCommandManager> _dockerManager;
         private Mock<IContainerHookManager> _containerHookManager;
-
         private ContainerOperationProvider containerOperationProvider;
+
+        private Mock<IJobServerQueue> serverQueue;
+
+        private Mock<IPagingLogger> pagingLogger;
 
         private List<string> healthyDockerStatus = new List<string> { "healthy" };
         private List<string> dockerLogs = new List<string> { "log1", "log2", "log3" };
+
+        private ContainerInfo containerInfo;
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         public async void Healthchecktest_healthyDocker()
         {
+            //Arrange
             Setup();
-
-            var containerInfo = new ContainerInfo() { ContainerImage = "ubuntu:16.04" };
-
             _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(healthyDockerStatus));
+
+            //Act
             var result = await containerOperationProvider.Healthcheck(_ec.Object, containerInfo);
 
+            //Assert
             _dockerManager.Verify(dm => dm.DockerInspectLogs(It.IsAny<IExecutionContext>(), It.IsAny<string>()), Times.Never());
 
         }
@@ -50,12 +56,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public async void Healthchecktest_dockerError()
         {
+            //Arrange
             Setup();
-
-            var containerInfo = new ContainerInfo() { ContainerImage = "ubuntu:16.04", ContainerId = "1234" };
-
             _dockerManager.Setup(x => x.DockerInspectLogs(_ec.Object, containerInfo.ContainerId)).Returns(Task.FromResult(dockerLogs));
 
+            //Act
+            //Asert
             await Assert.ThrowsAsync<InvalidOperationException>(() => containerOperationProvider.ContainerHealthcheckLogs(_ec.Object, containerInfo, "error"));
 
         }
@@ -65,32 +71,41 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public async void Healthchecktest_dockerError_inspectLogs()
         {
+            //Arrange
             Setup();
-
-            var containerInfo = new ContainerInfo() { ContainerImage = "ubuntu:16.04", ContainerId = "1234" };
-
             _dockerManager.Setup(x => x.DockerInspectLogs(_ec.Object, containerInfo.ContainerId)).Returns(Task.FromResult(dockerLogs));
 
             try
             {
+                //Act
                 await containerOperationProvider.ContainerHealthcheckLogs(_ec.Object, containerInfo, "error");
 
             }
             catch (InvalidOperationException)
             {
-                //TODO validate the log message written to the _ec
+
+                //Assert
+                _ec.Verify(pL => pL.Write(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(3));
+
             }
 
         }
 
         private void Setup([CallerMemberName] string testName = "")
         {
+            containerInfo = new ContainerInfo() { ContainerImage = "ubuntu:16.04" };
             _hc = new TestHostContext(this, "name");
             _ec = new Mock<IExecutionContext>();
+            serverQueue = new Mock<IJobServerQueue>();
+            pagingLogger = new Mock<IPagingLogger>();
 
             _dockerManager = new Mock<IDockerCommandManager>();
             _containerHookManager = new Mock<IContainerHookManager>();
             containerOperationProvider = new ContainerOperationProvider();
+
+            _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
+            _hc.SetSingleton<IJobServerQueue>(serverQueue.Object);
+            _hc.SetSingleton<IPagingLogger>(pagingLogger.Object);
 
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
             _hc.SetSingleton<IContainerHookManager>(_containerHookManager.Object);
