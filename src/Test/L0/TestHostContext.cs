@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using GitHub.DistributedTask.Logging;
 using System.Net.Http.Headers;
 using GitHub.Runner.Sdk;
-
+using GitHub.Runner.Worker.Container;
 namespace GitHub.Runner.Common.Tests
 {
     public sealed class TestHostContext : IHostContext, IDisposable
@@ -26,6 +26,7 @@ namespace GitHub.Runner.Common.Tests
         private string _suiteName;
         private string _testName;
         private Tracing _trace;
+
         private AssemblyLoadContext _loadContext;
         private string _tempDirectoryRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("D"));
         private StartupType _startupType;

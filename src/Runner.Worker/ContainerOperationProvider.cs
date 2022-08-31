@@ -396,7 +396,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task<string> Healthcheck(IExecutionContext executionContext, ContainerInfo container){
+        public async Task<string> Healthcheck(IExecutionContext executionContext, ContainerInfo container){
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
             string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             if (string.IsNullOrEmpty(serviceHealth))
@@ -416,7 +416,7 @@ namespace GitHub.Runner.Worker
             return serviceHealth;
         }
 
-        private async Task ContainerHealthcheckLogs(IExecutionContext executionContext, ContainerInfo container, string serviceHealth)
+        public async Task ContainerHealthcheckLogs(IExecutionContext executionContext, ContainerInfo container, string serviceHealth)
         {
     
             if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
