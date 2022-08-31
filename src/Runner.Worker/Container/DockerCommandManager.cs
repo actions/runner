@@ -107,6 +107,7 @@ namespace GitHub.Runner.Worker.Container
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
         {
             IList<string> dockerOptions = new List<string>();
+            IDictionary<string, string> environment = new Dictionary<string, string>();
             // OPTIONS
             dockerOptions.Add($"--name {container.ContainerDisplayName}");
             dockerOptions.Add($"--label {DockerInstanceLabel}");
@@ -135,7 +136,8 @@ namespace GitHub.Runner.Worker.Container
                 }
                 else
                 {
-                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key, env.Value));
+                    environment.Add(env.Key, env.Value);
+                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
                 }
             }
 
@@ -183,7 +185,7 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"{container.ContainerEntryPointArgs}");
 
             var optionsString = string.Join(" ", dockerOptions);
-            List<string> outputStrings = await ExecuteDockerCommandAsync(context, "create", optionsString);
+            List<string> outputStrings = await ExecuteDockerCommandAsync(context, "create", optionsString, environment);
 
             return outputStrings.FirstOrDefault();
         }
@@ -471,6 +473,42 @@ namespace GitHub.Runner.Worker.Container
                             fileName: DockerPath,
                             arguments: arg,
                             environment: null,
+                            requireExitCodeZero: true,
+                            outputEncoding: null,
+                            cancellationToken: CancellationToken.None);
+
+            return output;
+        }
+
+        private async Task<List<string>> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, IDictionary<string, string> environment)
+        {
+            string arg = $"{command} {options}".Trim();
+            context.Command($"{DockerPath} {arg}");
+
+            List<string> output = new List<string>();
+            var processInvoker = HostContext.CreateService<IProcessInvoker>();
+            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+            {
+                if (!string.IsNullOrEmpty(message.Data))
+                {
+                    output.Add(message.Data);
+                    context.Output(message.Data);
+                }
+            };
+
+            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+            {
+                if (!string.IsNullOrEmpty(message.Data))
+                {
+                    context.Output(message.Data);
+                }
+            };
+
+            await processInvoker.ExecuteAsync(
+                            workingDirectory: context.GetGitHubContext("workspace"),
+                            fileName: DockerPath,
+                            arguments: arg,
+                            environment: environment,
                             requireExitCodeZero: true,
                             outputEncoding: null,
                             cancellationToken: CancellationToken.None);
