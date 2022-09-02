@@ -165,6 +165,19 @@ namespace GitHub.Runner.Worker
             }
             return result;
         }
+
+        public DictionaryContextData ToVarsContext()
+        {
+            var result = new DictionaryContextData();
+            foreach (var variable in _variables.Values)
+            {
+                if (!variable.Secret)
+                {
+                    result[variable.Name] = new StringContextData(variable.Value);
+                }
+            }
+            return result;
+        }
     }
 
     public sealed class Variable

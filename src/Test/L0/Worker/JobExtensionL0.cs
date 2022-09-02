@@ -1,5 +1,6 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -426,6 +427,39 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
                 Assert.Equal(0, _jobEc.PostJobSteps.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task EnsureNonSecretVariablesAreAddedToEnv()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                _message.Variables["VARIABLE_1"] = "value_1";
+                _message.Variables["VARIABLE_2"] = "value_2";
+                List<IStep> result = await jobExtension.InitializeJob(_jobEc, _message);
+
+                Assert.Equal("value_1", _jobEc.Global.EnvironmentVariables["VARIABLE_1"]);
+                Assert.Equal("value_2", _jobEc.Global.EnvironmentVariables["VARIABLE_2"]);
+
+#if OS_WINDOWS
+                var envContext = _jobEc.ExpressionValues["env"] as DictionaryContextData;
+#else
+                var envContext = _jobEc.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif  
+                var expectValue = envContext["VARIABLE_1"].AssertString("expect string");
+                Assert.Equal("value_1", expectValue);
+
+                expectValue = envContext["VARIABLE_2"].AssertString("expect string");
+                Assert.Equal("value_2",expectValue);
             }
         }
     }

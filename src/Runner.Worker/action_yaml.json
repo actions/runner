@@ -169,7 +169,8 @@
                 "inputs",
                 "job",
                 "runner",
-                "env"
+                "env",
+                "vars"
             ],
             "string": {}
         },
@@ -180,6 +181,7 @@
                 "matrix",
                 "job",
                 "runner",
+                "vars",
                 "hashFiles(1,255)"
             ],
             "string": {}
@@ -199,6 +201,7 @@
                 "job",
                 "runner",
                 "env",
+                "vars",
                 "hashFiles(1,255)"
             ],
             "string": {}
@@ -213,6 +216,7 @@
                 "job",
                 "runner",
                 "env",
+                "vars",
                 "hashFiles(1,255)"
             ],
             "boolean": {}
@@ -227,6 +231,7 @@
                 "job",
                 "runner",
                 "env",
+                "vars",
                 "hashFiles(1,255)"
             ],
             "mapping": {
@@ -244,6 +249,7 @@
               "job",
               "runner",
               "env",
+              "vars",
               "always(0,0)",
               "failure(0,0)",
               "cancelled(0,0)",
@@ -262,6 +268,7 @@
                 "job",
                 "runner",
                 "env",
+                "vars",
                 "hashFiles(1,255)"
             ],
             "mapping": {

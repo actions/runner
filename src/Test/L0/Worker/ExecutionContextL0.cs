@@ -844,6 +844,48 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ActionVariables_AddedToVarsContext()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                jobRequest.Variables["VARIABLE_1"] = "value1";
+                jobRequest.Variables["VARIABLE_2"] = "value2";
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                var expected = new DictionaryContextData();
+                expected["VARIABLE_1"] = new StringContextData("value1");
+                expected["VARIABLE_2"] = new StringContextData("value1");
+                
+                Assert.True(ExpressionValuesAssertEqual(expected, jobContext.ExpressionValues["vars"] as DictionaryContextData));
+            }
+        }
+
         private bool ExpressionValuesAssertEqual(DictionaryContextData expect, DictionaryContextData actual)
         {
             foreach (var key in expect.Keys.ToList())
