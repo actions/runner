@@ -61,7 +61,7 @@ namespace Runner.Server.Controllers
                     return issue;
                 }));
                 foreach(var variable in from item in _context.TimelineVariables where item.Record == record select item) {
-                    record.Variables.Add(variable.Name, new VariableValue { Value = variable.Value });
+                    record.Variables[variable.Name] = new VariableValue { Value = variable.Value };
                 }
             }
             return await Ok(l, true);
@@ -192,13 +192,22 @@ namespace Runner.Server.Controllers
             }));
             records = MergeTimelineRecords(records);
             foreach(var r in records) {
-                foreach (var item in r.Variables)
+                var stored = (from va in _context.TimelineVariables where va.Record == r select va).ToDictionary(kv => kv.Name, kv => kv, StringComparer.OrdinalIgnoreCase);
+                foreach(var item in r.Variables)
                 {
-                    _context.TimelineVariables.Add(new TimelineVariable() { Record = r , Name = item.Key, Value = item.Value.Value });
+                    if(stored.TryGetValue(item.Key, out var entry)) {
+                        entry.Value = item.Value.Value;
+                    } else {
+                        _context.TimelineVariables.Add(new TimelineVariable() { Record = r , Name = item.Key, Value = item.Value.Value });
+                    }
                 }
-                foreach (var item in r.Issues)
+                var storedIssues = (from va in _context.TimelineIssues where va.Record == r select va).ToDictionary(kv => kv.Message + kv.Data, kv => kv);
+                foreach(var item in r.Issues)
                 {
-                    _context.TimelineIssues.Add(new TimelineIssue() { Record = r , Category = item.Category, Data = JsonConvert.SerializeObject(item.Data), IsInfrastructureIssue = item.IsInfrastructureIssue, Message = item.Message, Type = item.Type });
+                    var data = JsonConvert.SerializeObject(item.Data);
+                    if(!storedIssues.ContainsKey(item.Message + data)) {
+                        _context.TimelineIssues.Add(new TimelineIssue() { Record = r , Category = item.Category, Data = data, IsInfrastructureIssue = item.IsInfrastructureIssue, Message = item.Message, Type = item.Type });
+                    }
                 }
             }
             Task.Run(() => TimeLineUpdate?.Invoke(timelineId, records));

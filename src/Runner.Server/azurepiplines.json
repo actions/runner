@@ -1,0 +1,70 @@
+﻿{
+  "version": "pipelines-v1.0",
+
+  "definitions": {
+
+    "workflow-root": {
+      "description": "Workflow file",
+      "mapping": {
+        "loose-key-type": "workflow-key",
+        "loose-value-type": "workflow-value",
+        "properties": {
+          "parameters": "any"
+        }
+      }
+    },
+
+    "workflow-key": {
+      "context": [
+        "parameters",
+        "variables"
+      ],
+      "string": {}
+    },
+
+    "workflow-value": {
+      "context": [
+        "parameters",
+        "variables"
+      ],
+      "one-of": [
+        "boolean", "mapping", "null", "number", "sequence", "string"
+      ]
+    },
+
+    "variable-result": {
+      "context": [
+        "variables",
+        "dependencies",
+        "stageDependencies"
+      ],
+      "string": {}
+    },
+
+    "job-if-result": {
+      "context": [
+        "variables",
+        "dependencies",
+        "stageDependencies",
+        "Always(0,0)",
+        "Canceled(0,0)",
+        "Succeeded(0,MAX)",
+        "SucceededOrFailed(0,MAX)",
+        "Failed(0,MAX)"
+      ],
+      "boolean": {}
+    },
+    "stage-if-result": {
+      "context": [
+        "variables",
+        "dependencies",
+        "Always(0,0)",
+        "Canceled(0,0)",
+        "Succeeded(0,MAX)",
+        "SucceededOrFailed(0,MAX)",
+        "Failed(0,MAX)"
+      ],
+      "boolean": {}
+    }
+  }
+}

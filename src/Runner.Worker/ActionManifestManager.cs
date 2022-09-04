@@ -86,7 +86,7 @@ namespace GitHub.Runner.Worker
                 var fileContent = File.ReadAllText(manifestFile);
                 using (var stringReader = new StringReader(fileContent))
                 {
-                    var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
+                    var yamlObjectReader = new YamlObjectReader(fileId, stringReader, executionContext.Global.Variables.GetBoolean("system.runner.server.yaml.anchors") == true, executionContext.Global.Variables.GetBoolean("system.runner.server.yaml.fold") == true, executionContext.Global.Variables.GetBoolean("system.runner.server.yaml.merge") == true);
                     token = TemplateReader.Read(templateContext, "action-root", yamlObjectReader, fileId, out _);
                 }
 
@@ -308,6 +308,12 @@ namespace GitHub.Runner.Worker
             IExecutionContext executionContext,
             IDictionary<string, PipelineContextData> extraExpressionValues = null)
         {
+            var schema = _actionManifestSchema;
+            if(executionContext.Global.Variables.TryGetValue("system.runner.server.composite_schema", out var composite_schema)) {
+                var objectReader = new JsonObjectReader(null, composite_schema);
+                schema = TemplateSchema.Load(objectReader);
+            }
+
             var result = new TemplateContext
             {
                 CancellationToken = CancellationToken.None,
@@ -316,7 +322,7 @@ namespace GitHub.Runner.Worker
                     maxDepth: 100,
                     maxEvents: 1000000,
                     maxBytes: 10 * 1024 * 1024),
-                Schema = _actionManifestSchema,
+                Schema = schema,
                 TraceWriter = executionContext.ToTemplateTraceWriter(),
             };
 
@@ -418,7 +424,12 @@ namespace GitHub.Runner.Worker
                         preIfToken = run.Value.AssertString("pre-if");
                         break;
                     case "steps":
-                        var stepsToken = run.Value.AssertSequence("steps");
+                        templateContext.ExpressionValues.Remove("env");
+                        templateContext.ExpressionValues.Remove("steps");
+                        templateContext.ExpressionValues.Remove("job");
+                        var evaluatedSteps = TemplateEvaluator.Evaluate(templateContext, "composite-steps", run.Value, 0, null);
+                        templateContext.Errors.Check();
+                        var stepsToken = evaluatedSteps.AssertSequence("steps");
                         steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
                         templateContext.Errors.Check();
                         break;

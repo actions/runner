@@ -35,7 +35,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         internal static Boolean IsValidExpression(
             String expression,
             String[] allowedContext,
-            out Exception ex)
+            out Exception ex,
+            bool azureDevops = false)
         {
             // Create dummy named values and functions
             var namedValues = new List<INamedValueInfo>();
@@ -67,7 +68,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             ExpressionNode root = null;
             try
             {
-                root = new ExpressionParser().CreateTree(expression, null, namedValues, functions) as ExpressionNode;
+                root = new ExpressionParser() { DTExpressionsV1 = azureDevops }.CreateTree(expression, null, namedValues, functions) as ExpressionNode;
 
                 result = true;
                 ex = null;

@@ -8,6 +8,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal sealed class ReferenceNameBuilder
     {
+        private bool azureDevops;
+        public ReferenceNameBuilder(bool azureDevops = false) {
+            this.azureDevops = azureDevops;
+        }
+
         internal void AppendSegment(String value)
         {
             if (String.IsNullOrEmpty(value))
@@ -68,13 +73,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var suffix = default(String);
             while (true)
             {
-                if (attempt == 1)
+                if (attempt == 1 && !azureDevops)
                 {
                     suffix = String.Empty;
                 }
                 else if (attempt < 1000)
                 {
-                    suffix = String.Format(CultureInfo.InvariantCulture, "_{0}", attempt);
+                    suffix = azureDevops ? attempt.ToString() : String.Format(CultureInfo.InvariantCulture, "_{0}", attempt);
                 }
                 else
                 {

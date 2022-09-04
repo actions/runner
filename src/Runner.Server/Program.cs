@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -49,6 +50,7 @@ namespace Runner.Server
                             config.Sources.Clear();
                             config.Properties.Clear();
                             config.Add(new JsonStreamConfigurationSource() { Stream = File.OpenRead(RUNNER_SERVER_APP_JSON_SETTINGS_FILE) });
+                            config.Add(new EnvironmentVariablesConfigurationSource() { Prefix = "RUNNER_SERVER_" } );
                         });
                     }
                 });

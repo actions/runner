@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
@@ -1170,6 +1171,10 @@ namespace GitHub.Runner.Worker
                 traceWriter = context.ToTemplateTraceWriter();
             }
             var schema = PipelineTemplateSchemaFactory.GetSchema();
+            if(context.Global.Variables.TryGetValue("system.runner.server.workflow_schema", out var workflow_schema)) {
+                var objectReader = new JsonObjectReader(null, workflow_schema);
+                schema = TemplateSchema.Load(objectReader);
+            }
             return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
             {
                 MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly

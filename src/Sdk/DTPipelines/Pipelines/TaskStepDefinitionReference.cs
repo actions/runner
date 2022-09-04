@@ -19,6 +19,6 @@ namespace GitHub.DistributedTask.Pipelines
         public string Name { get; set; }
         [DataMember]
         public string Version { get; set; }
-        
+        public string RawNameAndVersion { get; set; }
     }
 }

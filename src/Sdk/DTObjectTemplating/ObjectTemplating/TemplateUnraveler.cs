@@ -418,11 +418,21 @@ namespace GitHub.DistributedTask.ObjectTemplating
                                 m_current = eachExpressionState.ToStringToken();
                                 // throw new ArgumentException($"The idenfifier '{eachExpressionState.Value.Variable}' has already been defined within the current scope");
                             } else {
-                                var res = new BasicExpressionToken(null, null, null, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _);
-                                eachExpressionState.Sequence = res as SequenceToken;
-                                eachExpressionState.Mapping = res as MappingToken;
-                                if(!eachExpressionState.IsEnd) {
-                                    m_current = eachExpressionState.MoveNext(m_context);
+                                try {
+                                    var res = new BasicExpressionToken(eachExpressionState.Value.FileId, eachExpressionState.Value.Line, eachExpressionState.Value.Column, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _);
+                                    eachExpressionState.Sequence = res as SequenceToken;
+                                    eachExpressionState.Mapping = res as MappingToken;
+                                    if(eachExpressionState.Sequence == null && eachExpressionState.Mapping == null) {
+                                        m_context.Error(eachExpressionState.Value, $"Expected a sequence, or a mapping, got: {res?.ToString() ?? "null"}");
+                                        m_current.Remove();
+                                        m_current = eachExpressionState.ToStringToken();
+                                    } else if(!eachExpressionState.IsEnd) {
+                                        m_current = eachExpressionState.MoveNext(m_context);
+                                    }
+                                } catch(Exception ex) {
+                                    m_context.Error(eachExpressionState.Value, ex.Message);
+                                    m_current.Remove();
+                                    m_current = eachExpressionState.ToStringToken();
                                 }
                             }
                         } else {
@@ -532,7 +542,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         if (expand)
                         {
-                            StartIfInsertion();
+                            try {
+                                StartIfInsertion();
+                            } catch(Exception ex) {
+                                m_context.Error(conditionalExpressionState.Value, ex.Message);
+                                m_current.Remove();
+                                m_current = conditionalExpressionState.ToStringToken();
+                            }
                         }
                         else
                         {
@@ -569,11 +585,21 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         if (expand)
                         {
-                            var res = new BasicExpressionToken(null, null, null, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _);
-                            eachExpressionState.Sequence = res as SequenceToken;
-                            eachExpressionState.Mapping = res as MappingToken;
-                            if(!eachExpressionState.IsEnd) {
-                                m_current = eachExpressionState.InsertMoveNext(m_context);
+                            try {
+                                var res = new BasicExpressionToken(eachExpressionState.Value.FileId, eachExpressionState.Value.Line, eachExpressionState.Value.Column, eachExpressionState.Value.Collection).EvaluateTemplateToken(m_context, out _);
+                                eachExpressionState.Sequence = res as SequenceToken;
+                                eachExpressionState.Mapping = res as MappingToken;
+                                if(eachExpressionState.Sequence == null && eachExpressionState.Mapping == null) {
+                                    m_context.Error(eachExpressionState.Value, $"Expected a sequence, or a mapping, got: {res?.ToString() ?? "null"}");
+                                    m_current.Remove();
+                                    m_current = eachExpressionState.ToStringToken();
+                                } else if(!eachExpressionState.IsEnd) {
+                                    m_current = eachExpressionState.InsertMoveNext(m_context);
+                                }
+                            } catch(Exception ex) {
+                                m_context.Error(eachExpressionState.Value, ex.Message);
+                                m_current.Remove();
+                                m_current = eachExpressionState.ToStringToken();
                             }
                         }
                         else
@@ -860,7 +886,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             bool skip = false;
             bool metastate = false;
             if(expressionState.Value.Type == TokenType.IfExpression || (parentMappingState != null && parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip) || parentSequenceState != null && parentSequenceState.IfExpressionResults.TryGetValue(parentSequenceState.Index - 1, out skip)) && skip) {
-                metastate = skip = expressionState.Value.Type == TokenType.ElseExpression ? false : !new BasicExpressionToken(null, null, null, expressionState.Value.Condition).EvaluateTemplateToken(m_context, out _).AssertBoolean("bool").Value;
+                metastate = skip = expressionState.Value.Type == TokenType.ElseExpression ? false : !new BasicExpressionToken(expressionState.Value.FileId, expressionState.Value.Line, expressionState.Value.Column, expressionState.Value.Condition).EvaluateTemplateToken(m_context, out _).AssertBoolean("bool").Value;
             } else {
                 skip = true;
                 metastate = false;

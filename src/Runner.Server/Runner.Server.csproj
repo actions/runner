@@ -41,4 +41,10 @@
     <None Include="appsettings*.json" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="azurepiplines.json">
+        <LogicalName>azurepiplines.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

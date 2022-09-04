@@ -15,6 +15,12 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             node.Container = this;
         }
 
+        public void SetParameter(int i, ExpressionNode node)
+        {
+            m_parameters[i] = node;
+            node.Container = this;
+        }
+
         private readonly List<ExpressionNode> m_parameters = new List<ExpressionNode>();
     }
 }

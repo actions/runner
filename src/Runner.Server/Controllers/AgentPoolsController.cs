@@ -18,7 +18,7 @@ namespace Runner.Server.Controllers
     [ApiController]
     [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagementRead")]
     public class AgentPoolsController : VssControllerBase
     {
 
@@ -42,7 +42,6 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet]
-        [Authorize(AuthenticationSchemes = "Bearer")]
         public Task<FileStreamResult> Get(string poolName = "", string properties = "", string poolType = "")
         {
             return Ok((from pool in db.Pools.Include(a => a.TaskAgentPool).AsEnumerable() select pool.TaskAgentPool).ToList());

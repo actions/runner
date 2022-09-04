@@ -9,9 +9,10 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
 {
     internal sealed class LexicalAnalyzer
     {
-        public LexicalAnalyzer(String expression)
+        public LexicalAnalyzer(String expression, bool dtExpressionsV1)
         {
             m_expression = expression;
+            DTExpressionsV1 = dtExpressionsV1;
         }
 
         public IEnumerable<Token> UnclosedTokens => m_unclosedTokens;
@@ -44,6 +45,10 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
                     // Logical grouping
                     else
                     {
+                        if(DTExpressionsV1) {
+                            // These are not supported in azure devops
+                            goto default;
+                        }
                         token = CreateToken(TokenKind.StartGroup, c, m_index++);
                     }
                     break;
@@ -74,17 +79,18 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
                 case '\'':
                     token = ReadStringToken();
                     break;
-#if false
-// These are not supported in azure devops
                 case '!':   // "!" and "!="
                 case '>':   // ">" and ">="
                 case '<':   // "<" and "<="
                 case '=':   // "=="
                 case '&':   // "&&"
                 case '|':   // "||"
+                    if(DTExpressionsV1) {
+                        // These are not supported in azure devops
+                        goto default;
+                    }
                     token = ReadOperator();
                     break;
-#endif
                 default:
                     if (c == '.')
                     {
@@ -487,6 +493,7 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
         }
 
         private readonly String m_expression; // Raw expression string
+        public bool DTExpressionsV1 { get; private set; }
         private readonly Stack<Token> m_unclosedTokens = new Stack<Token>(); // Unclosed start tokens
         private Int32 m_index; // Index of raw expression string
         private Token m_lastToken;

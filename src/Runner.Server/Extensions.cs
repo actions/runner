@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace Runner.Server {
     public static class Extension {
@@ -87,5 +88,34 @@ namespace Runner.Server {
         public static string PrefixJobIdIfNotNull(this string name, string parentId) {
             return name.PrefixIfNotNull("/", parentId);
         }
+
+        public static IDictionary<string, string> Merge(this IDictionary<string, string> dict, IDictionary<string, string> other) {
+            var ret = dict == null ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) : new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
+            if(other != null) {
+                foreach(var kv in other) {
+                    ret[kv.Key] = kv.Value;
+                }
+            }
+            return ret;
+        }
+
+        // public static DictionaryContextData EvalEnvBlocks(this IEnumerable<TemplateToken> blocks, DictionaryContextData contextData) {
+        //     if(!contextData.ContainsKey("secrets")) {
+        //         contextData["secrets"] = null;
+        //     }
+        //     var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
+        //     var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-env", actionPair.Value, 0, null, true);
+        //     // Best effort, don't check for errors
+        //     // templateContext.Errors.Check();
+        //     // Best effort, make global env available this is not available on github actions
+        //     if(workflowEnv is MappingToken genvToken) {
+        //         globalEnv = new DictionaryContextData();
+        //         foreach(var kv in genvToken) {
+        //             if(kv.Key is StringToken key && kv.Value is StringToken val) {
+        //                 globalEnv[key.Value] = new StringContextData(val.Value);
+        //             }
+        //         }
+        //     }
+        // }
     }
 }

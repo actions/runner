@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
 public class TaskMetaData {
@@ -10,6 +11,7 @@ public class TaskMetaData {
     public TaskVersion Version { get; set; }
 
     public string ArchivePath { get; set; }
+    public Func<ControllerContext, IActionResult> ArchiveCallback { get; set; }
 
     public static (List<TaskMetaData>, Dictionary<string, TaskMetaData>) LoadTasks(string rootDir) {
         var tasks = new List<TaskMetaData>();

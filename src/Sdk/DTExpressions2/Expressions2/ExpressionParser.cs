@@ -13,13 +13,14 @@ namespace GitHub.DistributedTask.Expressions2
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class ExpressionParser
     {
+        public bool DTExpressionsV1 { get; set; }
         public IExpressionNode CreateTree(
             String expression,
             ITraceWriter trace,
             IEnumerable<INamedValueInfo> namedValues,
             IEnumerable<IFunctionInfo> functions)
         {
-            var context = new ParseContext(expression, trace, namedValues, functions);
+            var context = new ParseContext(expression, trace, namedValues, functions, dtExpressionsV1: DTExpressionsV1);
             context.Trace.Info($"Parsing expression: <{expression}>");
             return CreateTree(context);
         }
@@ -28,7 +29,7 @@ namespace GitHub.DistributedTask.Expressions2
             String expression,
             ITraceWriter trace)
         {
-            var context = new ParseContext(expression, trace, namedValues: null, functions: null, allowUnknownKeywords: true);
+            var context = new ParseContext(expression, trace, namedValues: null, functions: null, allowUnknownKeywords: true, dtExpressionsV1: DTExpressionsV1);
             context.Trace.Info($"Validating expression syntax: <{expression}>");
             return CreateTree(context);
         }
@@ -411,7 +412,7 @@ namespace GitHub.DistributedTask.Expressions2
             String name,
             out IFunctionInfo functionInfo)
         {
-            return ExpressionConstants.WellKnownFunctions.TryGetValue(name, out functionInfo) ||
+            return (context.LexicalAnalyzer.DTExpressionsV1 ? ExpressionConstants.AzureWellKnownFunctions : ExpressionConstants.WellKnownFunctions).TryGetValue(name, out functionInfo) ||
                 context.ExtensionFunctions.TryGetValue(name, out functionInfo);
         }
 
@@ -433,7 +434,8 @@ namespace GitHub.DistributedTask.Expressions2
                 ITraceWriter trace,
                 IEnumerable<INamedValueInfo> namedValues,
                 IEnumerable<IFunctionInfo> functions,
-                Boolean allowUnknownKeywords = false)
+                Boolean allowUnknownKeywords = false,
+                bool dtExpressionsV1 = false)
             {
                 Expression = expression ?? String.Empty;
                 if (Expression.Length > ExpressionConstants.MaxLength)
@@ -452,7 +454,7 @@ namespace GitHub.DistributedTask.Expressions2
                     ExtensionFunctions.Add(functionInfo.Name, functionInfo);
                 }
 
-                LexicalAnalyzer = new LexicalAnalyzer(Expression);
+                LexicalAnalyzer = new LexicalAnalyzer(Expression, dtExpressionsV1);
                 AllowUnknownKeywords = allowUnknownKeywords;
             }
 

@@ -12,6 +12,7 @@ using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -24,6 +25,8 @@ namespace Runner.Server.Controllers
     public class TaskController : VssControllerBase
     {
         private string GitServerUrl;
+        private IMemoryCache cache;
+
         private string GitHubAppPrivateKeyFile { get; }
         private int GitHubAppId { get; }
         private bool AllowPrivateActionAccess { get; }
@@ -40,7 +43,7 @@ namespace Runner.Server.Controllers
             public string GITHUB_TOKEN { get; set; }
         }
 
-        public TaskController(IConfiguration configuration) : base(configuration)
+        public TaskController(IConfiguration configuration, IMemoryCache cache) : base(configuration)
         {
             downloadUrls = configuration.GetSection("Runner.Server:ActionDownloadUrls").Get<List<ActionDownloadUrls>>();
             GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
@@ -49,6 +52,7 @@ namespace Runner.Server.Controllers
             GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
+            this.cache = cache;
         }
 
         [HttpPatch]
@@ -69,7 +73,15 @@ namespace Runner.Server.Controllers
         [HttpGet("{taskid}/{version}")]
         [AllowAnonymous]
         public IActionResult GetTaskArchive(Guid taskid, string version) {
-            var ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks("C:\\Program Files\\Azure DevOps Server 2020\\Tools\\Deploy\\TfsServicingFiles\\Tasks\\Individual");
+            var srunid = User.FindFirst("runid")?.Value;
+            var tasksByNameAndVersion = srunid != null && long.TryParse(srunid, out var runid) && MessageController.WorkflowStates.TryGetValue(runid, out var state) && state.TasksByNameAndVersion != null ? state.TasksByNameAndVersion : cache.GetOrCreate("tasksByNameAndVersion", ce => {
+                var ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(Path.Combine(GharunUtil.GetLocalStorage(), "AzureTasks"));
+                return tasksByNameAndVersion;
+            });
+            var callback = tasksByNameAndVersion[$"{taskid}@{version}"].ArchiveCallback;
+            if(callback != null) {
+                return callback(ControllerContext);
+            }
             return new FileStreamResult(System.IO.File.OpenRead(tasksByNameAndVersion[$"{taskid}@{version}"].ArchivePath), "application/zip") { EnableRangeProcessing = true };
         }
     }

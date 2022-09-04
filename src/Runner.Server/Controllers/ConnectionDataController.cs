@@ -45,6 +45,8 @@ namespace Runner.Server.Controllers
                         // Azure Devops
                         new ServiceDefinition("CustomerIntelligence", Guid.Parse("b5cc35c2-ff2b-491d-a085-24b6e9f396fd"), "CustomerIntelligence", "/_apis/v1/tasks", RelativeToSetting.Context, "CustomerIntelligence", "CustomerIntelligence") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
                         new ServiceDefinition("Tasks", Guid.Parse("60AAC929-F0CD-4BC8-9CE4-6B30E8F1B1BD"), "Tasks", "/_apis/v1/tasks/{taskId}/{versionString}", RelativeToSetting.Context, "Tasks", "Tasks") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
+                        new ServiceDefinition("Cache", Guid.Parse("a7c78d38-31a8-417e-ba6b-7e58b352f304"), "Cache", "_apis/artifactcache", RelativeToSetting.Context, "Cache", "Cache") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
+                        new ServiceDefinition("BuildArtifacts", Guid.Parse("1db06c96-014e-44e1-ac91-90b2d4b3e984"), "BuildArtifacts", "_apis/pipelines/workflows/{buildId}/artifacts", RelativeToSetting.Context, "BuildArtifacts", "BuildArtifacts") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
                     }
                 }
             });

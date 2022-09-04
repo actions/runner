@@ -309,10 +309,14 @@ namespace GitHub.Runner.Worker
                 var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                 if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
                 {
-                    actionDirectory = executionContext.GetGitHubContext("workspace");
-                    if (!string.IsNullOrEmpty(repoAction.Path))
-                    {
-                        actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
+                    if(Path.IsPathFullyQualified(repoAction.Path)) {
+                        actionDirectory = repoAction.Path;
+                    } else {
+                        actionDirectory = executionContext.GetGitHubContext("workspace");
+                        if (!string.IsNullOrEmpty(repoAction.Path))
+                        {
+                            actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
+                        }
                     }
                 }
                 else
@@ -333,6 +337,7 @@ namespace GitHub.Runner.Worker
                 string dockerFileLowerCase = Path.Combine(actionDirectory, "dockerfile");
                 if (File.Exists(manifestFile) || File.Exists(manifestFileYaml))
                 {
+                    executionContext.SetGitHubContext("action_path", actionDirectory);
                     var manifestManager = HostContext.GetService<IActionManifestManager>();
                     if (File.Exists(manifestFile))
                     {
@@ -342,6 +347,7 @@ namespace GitHub.Runner.Worker
                     {
                         definition.Data = manifestManager.Load(executionContext, manifestFileYaml);
                     }
+                    executionContext.SetGitHubContext("action_path", "");
                     Trace.Verbose($"Action friendly name: '{definition.Data.Name}'");
                     Trace.Verbose($"Action description: '{definition.Data.Description}'");
 
@@ -840,7 +846,7 @@ namespace GitHub.Runner.Worker
                     {
                         var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
                         executionContext.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
-                        await Task.Delay(backOff);
+                        await Task.Delay(backOff, executionContext.CancellationToken);
                     }
                 }
 

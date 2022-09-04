@@ -2,12 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using static Runner.Server.Controllers.MessageController;
 
 namespace Runner.Server.Models {
@@ -34,29 +38,31 @@ namespace Runner.Server.Models {
         public string Matrix { get; set; }
         [NotMapped]
         [IgnoreDataMember]
-        private TemplateToken _matrix;
+        private ArrayContextData _matrix;
+
+        [NotMapped]
+        [IgnoreDataMember]
+        public ArrayContextData MatrixContextData { get {
+            if(_matrix != null) {
+                return _matrix;
+            }
+            var rawmatrix = string.IsNullOrEmpty(Matrix) ? null : JToken.Parse(Matrix).ToPipelineContextData();
+            if(rawmatrix is ArrayContextData amatrix) {
+                _matrix = amatrix;
+            } else {
+                amatrix = new ArrayContextData();
+                for(int i = 0, depth = WorkflowIdentifier?.Count(c => c == '/') ?? 0; i < depth; i++) {
+                    amatrix.Add(null);
+                }
+                amatrix.Add(rawmatrix);
+                _matrix = amatrix;
+            }
+            return _matrix;
+        }}
         [NotMapped]
         [IgnoreDataMember]
         public TemplateToken MatrixToken { get {
-            if(_matrix != null) {
-                return _matrix;
-            } else if(!string.IsNullOrEmpty(Matrix)) {
-                using (var stringReader = new StringReader(Matrix)) {
-                    var templateContext = new TemplateContext(){
-                        CancellationToken = CancellationToken.None,
-                        Errors = new TemplateValidationErrors(10, 500),
-                        Memory = new TemplateMemory(
-                            maxDepth: 100,
-                            maxEvents: 1000000,
-                            maxBytes: 10 * 1024 * 1024),
-                        Schema = PipelineTemplateSchemaFactory.GetSchema()
-                    };
-                    var yamlObjectReader = new YamlObjectReader(0, stringReader);
-                    _matrix = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _);
-                    return _matrix;
-                }
-            }
-            return new NullToken(null, null, null);
+            return MatrixContextData.ToTemplateToken();
         }}
 
         public string workflowname { get; set; }

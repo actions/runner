@@ -651,7 +651,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (MatchesDirective(trimmed, "if", 1, out parameters, out ex))
+            else if (m_context.AzureDevops && MatchesDirective(trimmed, "if", 1, out parameters, out ex))
             {
                 return new IfExpressionToken(m_fileId, line, column, parameters[0]);
             }
@@ -659,7 +659,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (MatchesDirective(trimmed, "elseif", 1, out parameters, out ex))
+            else if (m_context.AzureDevops && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex))
             {
                 return new ElseIfExpressionToken(m_fileId, line, column, parameters[0]);
             }
@@ -667,7 +667,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (MatchesDirective(trimmed, "else", 0, out parameters, out ex))
+            else if (m_context.AzureDevops && MatchesDirective(trimmed, "else", 0, out parameters, out ex))
             {
                 return new ElseExpressionToken(m_fileId, line, column);
             }
@@ -675,7 +675,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1] == "in")
+            else if (m_context.AzureDevops && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1] == "in")
             {
                 return new EachExpressionToken(m_fileId, line, column, parameters[0], parameters[2]);
             }
@@ -685,7 +685,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
 
             // Check if the value is an expression
-            if (!ExpressionToken.IsValidExpression(trimmed, allowedContext, out ex))
+            if (!ExpressionToken.IsValidExpression(trimmed, allowedContext, out ex, m_context.AzureDevops))
             {
                 return null;
             }

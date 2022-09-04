@@ -14,5 +14,16 @@ namespace GitHub.Runner.Sdk {
             }
             return Path.GetFullPath(Path.Join(localStorage, "gharun"));
         }
+
+        public static string GetHostOS() {
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
+                return "linux";
+            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                return "windows";
+            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+                return "osx";
+            }
+            return null;
+        }
     }
 }

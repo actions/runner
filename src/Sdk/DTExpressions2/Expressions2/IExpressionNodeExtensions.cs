@@ -4,6 +4,9 @@ using System.Linq;
 using GitHub.DistributedTask.Logging;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.Expressions2.Sdk.Operators;
+using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.Expressions2.Sdk.Functions;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.Expressions2
 {
@@ -27,6 +30,31 @@ namespace GitHub.DistributedTask.Expressions2
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns the node and all descendant nodes
+        /// </summary>
+        public static ExpressionNode PartiallyEvaluate(this IExpressionNode node, IDictionary<string, object> expressionValues)
+        {
+            if (node is NamedValue namedValue && expressionValues.TryGetValue(namedValue.Name, out var value)) {
+                if(value == null) {
+                    return new Literal(new NullToken(null, null, null));
+                } else if(value is Pipelines.ContextData.PipelineContextData contextData) {
+                    var nop = new NoOperation();
+                    nop.Name = "fromJSON";
+                    nop.AddParameter(new Literal(contextData.ToJToken().ToString()));
+                    return nop;
+                }
+            }
+            if (node is Container container && container.Parameters.Count > 0)
+            {
+                for (int i = 0; i < container.Parameters.Count; i++)
+                {
+                    container.SetParameter(i, container.Parameters[i].PartiallyEvaluate(expressionValues));
+                }
+            }
+            return node as ExpressionNode;
         }
 
         /// <summary>

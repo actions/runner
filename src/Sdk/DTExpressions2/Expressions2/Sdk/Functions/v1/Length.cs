@@ -9,8 +9,19 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1
         protected sealed override Object EvaluateCore(EvaluationContext context, out ResultMemory memory)
         {
             memory = null;
-            String left = Parameters[0].EvaluateString(context) as String ?? String.Empty;
-            return left.Length;
+            var left = Parameters[0].Evaluate(context);
+            if (left.TryGetCollectionInterface(out Object collection))
+            {
+                if (collection is IReadOnlyArray array)
+                {
+                    return array.Count;
+                }
+                else if (collection is IReadOnlyObject obj)
+                {
+                    return obj.Count;
+                }
+            }
+            return (left?.ConvertToString() ?? string.Empty).Length;
         }
     }
 }
