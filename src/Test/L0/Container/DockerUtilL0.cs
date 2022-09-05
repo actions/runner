@@ -188,6 +188,9 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             Assert.Equal(expected, actual);
         }
 
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         [InlineData("", "")]
         [InlineData("HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #")]
         [InlineData("HOME \"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #")]
