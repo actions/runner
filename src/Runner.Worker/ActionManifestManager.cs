@@ -309,8 +309,8 @@ namespace GitHub.Runner.Worker
             IDictionary<string, PipelineContextData> extraExpressionValues = null)
         {
             var schema = _actionManifestSchema;
-            if(executionContext.Global.Variables.TryGetValue("system.runner.server.composite_schema", out var composite_schema)) {
-                var objectReader = new JsonObjectReader(null, composite_schema);
+            if(executionContext.Global.Variables.TryGetValue("system.runner.server.action_schema", out var action_schema)) {
+                var objectReader = new JsonObjectReader(null, action_schema);
                 schema = TemplateSchema.Load(objectReader);
             }
 
