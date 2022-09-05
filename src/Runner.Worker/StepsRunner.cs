@@ -111,6 +111,7 @@ namespace GitHub.Runner.Worker
                         foreach (var env in actionEnvironment)
                         {
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                            step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
                         }
                     }
                     catch (Exception ex)

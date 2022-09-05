@@ -256,7 +256,11 @@ namespace GitHub.Runner.Worker.Handlers
                     var dict = envContextData as IDictionaryContextData;
                     foreach (var pair in dict)
                     {
-                        envContext[pair.Key] = pair.Value;
+                        // Skip global env, otherwise we merge an outdated global env
+                        if (ExecutionContext.StepEnvironmentOverrides.Contains(pair.Key))
+                        {
+                            envContext[pair.Key] = pair.Value;
+                        }
                     }
                 }
 
@@ -265,11 +269,13 @@ namespace GitHub.Runner.Worker.Handlers
                     if (step is IActionRunner actionStep)
                     {
                         // Evaluate and merge embedded-step env
+                        step.ExecutionContext.StepEnvironmentOverrides.AddRange(ExecutionContext.StepEnvironmentOverrides);
                         var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
                         var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var env in actionEnvironment)
                         {
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                            step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
                         }
                     }
                 }
