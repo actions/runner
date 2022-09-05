@@ -4778,6 +4778,15 @@ namespace Runner.Server.Controllers
                         }
                     }
                 }
+                // Update Vars context for the selected environment, only used by old runners
+                if(!string.IsNullOrEmpty(deploymentEnvironmentValue?.Name)) {
+                    DictionaryContextData vars = new DictionaryContextData();
+                    contextData["vars"] = vars
+                    var jobVars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue.Name);
+                    foreach(var kv in jobVars) {
+                        vars[kv.Key] = new StringContextData(kv.Value);
+                    }
+                }
                 var defaultToken = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "defaults" select r).FirstOrDefault().Value;
 
                 List<TemplateToken> jobDefaults = new List<TemplateToken>();
