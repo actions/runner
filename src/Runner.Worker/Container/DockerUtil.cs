@@ -72,5 +72,19 @@ namespace GitHub.Runner.Worker.Container
             var imageWithoutPath = image.Split('/').Last();
             return imageWithoutPath.StartsWith("Dockerfile.") || imageWithoutPath.StartsWith("dockerfile.") || imageWithoutPath.EndsWith("Dockerfile") || imageWithoutPath.EndsWith("dockerfile");
         }
+        
+        public static string CreateEscapedOption(string flag, string key)
+        {
+            if (String.IsNullOrEmpty(key))
+            {
+                return "";
+            }
+            return $"{flag} \"{EscapeString(key)}\"";
+        }
+
+        private static string EscapeString(string value)
+        {
+            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        }
     }
 }

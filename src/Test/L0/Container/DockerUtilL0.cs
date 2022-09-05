@@ -187,5 +187,29 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             var actual = DockerUtil.IsDockerfile(input);
             Assert.Equal(expected, actual);
         }
+
+        [InlineData("", "")]
+        [InlineData("HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #")]
+        [InlineData("HOME \"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #")]
+        public void CreateEscapedOption_keyOnly(string input, string escaped)
+        {
+            var flag = "--example";
+            var actual = DockerUtil.CreateEscapedOption(flag, input);
+            string expected;
+            if (String.IsNullOrEmpty(input))
+            {
+                expected = "";
+            }
+            else
+            {
+                expected = $"{flag} \"{escaped}\"";
+            }
+            Assert.Equal(expected, actual);
+        }
     }
 }

@@ -360,6 +360,8 @@ namespace GitHub.Runner.Listener
                     bool runOnceJobReceived = false;
                     jobDispatcher = HostContext.CreateService<IJobDispatcher>();
 
+                    jobDispatcher.JobStatus += _listener.OnJobStatus;
+
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
                         TaskAgentMessage message = null;
@@ -561,6 +563,7 @@ namespace GitHub.Runner.Listener
                 {
                     if (jobDispatcher != null)
                     {
+                        jobDispatcher.JobStatus -= _listener.OnJobStatus;
                         await jobDispatcher.ShutdownAsync();
                     }
 
@@ -627,7 +630,7 @@ Config Options:
  --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
- --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`
+ --pat                  GitHub personal access token with repo scope. Used for checking network connectivity when executing `.{separator}run.{ext} --check`
  --disableupdate        Disable self-hosted runner automatic update to the latest released version`
  --ephemeral            Configure the runner to only take one job and then let the service un-configure the runner after the job finishes (default false)");
 

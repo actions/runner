@@ -31,6 +31,9 @@ namespace GitHub.DistributedTask.WebApi
         public Guid StepId { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public string StepContextName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public bool? HasRunsStep { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
@@ -56,6 +59,12 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public int? ExecutionTimeInSeconds { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public DateTime? StartTime { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public DateTime? FinishTime { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public string ContainerHookData { get; set; }

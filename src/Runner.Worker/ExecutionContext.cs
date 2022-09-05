@@ -67,6 +67,8 @@ namespace GitHub.Runner.Worker
 
         bool IsEmbedded { get; }
 
+        List<string> StepEnvironmentOverrides { get; }
+
         ExecutionContext Root { get; }
 
         // Initialize
@@ -237,6 +239,8 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        public List<string> StepEnvironmentOverrides { get; } = new List<string>();
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -365,6 +369,7 @@ namespace GitHub.Runner.Worker
             child.StepTelemetry.StepId = recordId;
             child.StepTelemetry.Stage = stage.ToString();
             child.StepTelemetry.IsEmbedded = isEmbedded;
+            child.StepTelemetry.StepContextName = child.GetFullyQualifiedContextName(); ;
 
             return child;
         }
@@ -955,6 +960,8 @@ namespace GitHub.Runner.Worker
                         _record.StartTime != null)
                     {
                         StepTelemetry.ExecutionTimeInSeconds = (int)Math.Ceiling((_record.FinishTime - _record.StartTime)?.TotalSeconds ?? 0);
+                        StepTelemetry.StartTime = _record.StartTime;
+                        StepTelemetry.FinishTime = _record.FinishTime;
                     }
 
                     if (!IsEmbedded &&

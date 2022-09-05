@@ -131,6 +131,8 @@ namespace GitHub.Runner.Listener
                 // For L0, we will skip execute update script.
                 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_EXECUTE_UPDATE_SCRIPT")))
                 {
+                    string flagFile = "update.finished";
+                    IOUtil.DeleteFile(flagFile);
                     // kick off update script
                     Process invokeScript = new Process();
 #if OS_WINDOWS
@@ -294,12 +296,12 @@ namespace GitHub.Runner.Listener
                         archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.tar.gz");
                     }
 
-                    if (File.Exists(archiveFile)) 
+                    if (File.Exists(archiveFile))
                     {
                         _updateTrace.Enqueue($"Mocking update with file: '{archiveFile}' and targetVersion: '{targetVersion}', nothing is downloaded");
                         _terminal.WriteLine($"Mocking update with file: '{archiveFile}' and targetVersion: '{targetVersion}', nothing is downloaded");
                     }
-                    else 
+                    else
                     {
                         archiveFile = null;
                         _terminal.WriteLine($"Mock runner archive not found at {archiveFile} for target version {targetVersion}, proceeding with download instead");

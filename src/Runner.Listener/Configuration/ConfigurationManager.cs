@@ -3,6 +3,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
 using GitHub.Services.OAuth;
 using System;
 using System.Collections.Generic;
@@ -128,7 +129,7 @@ namespace GitHub.Runner.Listener.Configuration
                         // Example githubServerUrl is https://my-ghes
                         var actionsServerUrl = new Uri(runnerSettings.ServerUrl);
                         var githubServerUrl = new Uri(runnerSettings.GitHubUrl);
-                        if (!string.Equals(actionsServerUrl.Authority, githubServerUrl.Authority, StringComparison.OrdinalIgnoreCase))
+                        if (!UriUtility.IsSubdomainOf(actionsServerUrl.Authority, githubServerUrl.Authority))
                         {
                             throw new InvalidOperationException($"GitHub Actions is not properly configured in GHES. GHES url: {runnerSettings.GitHubUrl}, Actions url: {runnerSettings.ServerUrl}.");
                         }
