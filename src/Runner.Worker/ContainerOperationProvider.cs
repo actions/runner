@@ -134,7 +134,6 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(container, nameof(container));
             ArgUtil.NotNullOrEmpty(container.ContainerImage, nameof(container.ContainerImage));
-
             Trace.Info($"Container name: {container.ContainerName}");
             Trace.Info($"Container image: {container.ContainerImage}");
             Trace.Info($"Container options: {container.ContainerCreateOptions}");
@@ -197,6 +196,8 @@ namespace GitHub.Runner.Worker
 
             container.ContainerId = await _dockerManager.DockerCreate(executionContext, container);
             ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
+            
+
 
             // Start container
             int startExitCode = await _dockerManager.DockerStart(executionContext, container.ContainerId);
@@ -207,19 +208,36 @@ namespace GitHub.Runner.Worker
 
             try
             {
+                
                 // Make sure container is up and running
                 var psOutputs = await _dockerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --filter status=running --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
+                
                 if (psOutputs.FirstOrDefault(x => !string.IsNullOrEmpty(x))?.StartsWith(container.ContainerId) != true)
                 {
                     // container is not up and running, pull docker log for this container.
                     await _dockerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
+                    
+                    
+                    //executionContext.Output("##[group]Getting docker logs..");
+
                     int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
+                    
                     if (logsExitCode != 0)
                     {
                         executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
                     }
-
+                    //executionContext.Output("##[endgroup]");
                     executionContext.Warning($"Docker container {container.ContainerId} is not in running state.");
+                }
+                else {
+                        executionContext.Output($"##[group]Container {container.ContainerId} is not running!");
+                        string opt = "--format=\'{{.State.ExitCode}}\'";
+                        await _dockerManager.DockerInspect(executionContext, container.ContainerId, opt);
+                        await _dockerManager.DockerLogs(executionContext, container.ContainerId);
+                        //if exit code is not 0 we can maybe print a message?
+                        //executionContext.Output("Container exit code: ");
+                
+                    executionContext.Output("##[endgroup]");
                 }
             }
             catch (Exception ex)

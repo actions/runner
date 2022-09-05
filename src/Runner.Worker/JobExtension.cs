@@ -279,7 +279,7 @@ namespace GitHub.Runner.Worker
 
                         preJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainersAsync,
                                                                           condition: $"{PipelineTemplateConstants.Success}()",
-                                                                          displayName: "Initialize containers",
+                                                                          displayName: "**Initialize containers**",
                                                                           data: (object)containers));
                     }
 
