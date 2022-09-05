@@ -4781,7 +4781,7 @@ namespace Runner.Server.Controllers
                 // Update Vars context for the selected environment, only used by old runners
                 if(!string.IsNullOrEmpty(deploymentEnvironmentValue?.Name)) {
                     DictionaryContextData vars = new DictionaryContextData();
-                    contextData["vars"] = vars
+                    contextData["vars"] = vars;
                     var jobVars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue.Name);
                     foreach(var kv in jobVars) {
                         vars[kv.Key] = new StringContextData(kv.Value);
