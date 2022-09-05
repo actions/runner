@@ -4596,7 +4596,7 @@ namespace Runner.Server.Controllers
                                     var cEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(envTemplateContext, "job-env", envBlock, 0, null, true);
                                     // Best effort, don't check for errors
                                     // templateContext.Errors.Check();
-                                    // Best effort, make global env available this is not available on github actions
+                                    // Best effort, make job env available this is not available on github actions
                                     if(cEnv is MappingToken genvToken) {
                                         foreach(var kv in genvToken) {
                                             if(kv.Key is StringToken key && kv.Value is StringToken val) {
@@ -4709,6 +4709,25 @@ namespace Runner.Server.Controllers
                         });
                         return _job;
                     };
+                }
+                // Update env to include job env
+                {
+                    var jobEnvCtx = new DictionaryContextData();
+                    contextData["env"] = jobEnvCtx;
+                    foreach(var envBlock in environment) {
+                        var envTemplateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                        var cEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(envTemplateContext, "job-env", envBlock, 0, null, true);
+                        // Best effort, don't check for errors
+                        // templateContext.Errors.Check();
+                        // Best effort, make job env available this is not available on github actions
+                        if(cEnv is MappingToken genvToken) {
+                            foreach(var kv in genvToken) {
+                                if(kv.Key is StringToken key && kv.Value is StringToken val) {
+                                    jobEnvCtx[key.Value] = new StringContextData(val.Value);
+                                }
+                            }
+                        }
+                    }
                 }
                 List<Step> steps;
                 {
