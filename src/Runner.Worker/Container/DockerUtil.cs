@@ -71,6 +71,15 @@ namespace GitHub.Runner.Worker.Container
             return $"{flag} \"{EscapeString(key)}\"";
         }
 
+        public static string CreateEscapedOption(string flag, string key, string value)
+        {
+            if (String.IsNullOrEmpty(key))
+            {
+                return "";
+            }
+            return $"{flag} \"{EscapeString(key)}={EscapeString(value)}\"";
+        }
+
         private static string EscapeString(string value)
         {
             return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
