@@ -429,8 +429,9 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                executionContext.Output($"##[group] Container {container.ContainerImage} failed healthchecks, printing logs:");
+                executionContext.Output($"##[group]Container {container.ContainerImage} failed healthchecks, printing logs:");
                 await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
+                executionContext.Error($"Failed to initialize container {container.ContainerImage}");
                 executionContext.Output("##[endgroup]");
             }
         }

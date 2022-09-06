@@ -64,7 +64,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             //Assert
             _ec.Verify(dm => dm.Write(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
-            _ec.Verify(dm => dm.Write(null, $"##[group] Container {containerInfo.ContainerImage} failed healthchecks, printing logs:"), Times.AtLeastOnce());
+            _ec.Verify(dm => dm.Write(null, $"##[group]Container {containerInfo.ContainerImage} failed healthchecks, printing logs:"), Times.AtLeastOnce());
             _ec.Verify(dm => dm.Write(null, "##[endgroup]"), Times.AtLeastOnce());
         }
 
