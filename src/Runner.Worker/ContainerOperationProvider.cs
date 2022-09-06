@@ -429,7 +429,6 @@ namespace GitHub.Runner.Worker
                 List<string> dockerLogs = await _dockerManager.DockerInspectLogs(context: executionContext, dockerContainerId: container.ContainerId);
                 dockerLogs.ForEach(log => executionContext.Output(log));
                 executionContext.Output("##[endgroup]");
-                throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
             }
         }
 
