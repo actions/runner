@@ -425,7 +425,7 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                executionContext.Output($"##[group]Docker logs for container id {container.ContainerId}");
+                executionContext.Output($"##[group] Container {container.ContainerImage} failed healthchecks, printing logs:");
                 await _dockerManager.DockerInspectLogs(context: executionContext, dockerContainerId: container.ContainerId);
                 executionContext.Output("##[endgroup]");
             }
