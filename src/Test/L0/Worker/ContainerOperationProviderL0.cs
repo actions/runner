@@ -47,48 +47,25 @@ namespace GitHub.Runner.Common.Tests.Worker
             var result = await containerOperationProvider.Healthcheck(_ec.Object, containerInfo);
 
             //Assert
-            _dockerManager.Verify(dm => dm.DockerInspectLogs(It.IsAny<IExecutionContext>(), It.IsAny<string>()), Times.Never());
+            _dockerManager.Verify(dm => dm.DockerLogs(It.IsAny<IExecutionContext>(), It.IsAny<string>()), Times.Never());
 
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void Healthchecktest_dockerError()
+        public async void HealthcheckTestDockerErrorLogs()
         {
             //Arrange
             Setup();
-            _dockerManager.Setup(x => x.DockerInspectLogs(_ec.Object, containerInfo.ContainerId)).Returns(Task.FromResult(dockerLogs));
-
+            _dockerManager.Setup(x => x.DockerLogs(_ec.Object, containerInfo.ContainerId)).Returns(Task.FromResult<int>(1));
             //Act
-            //Asert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => containerOperationProvider.ContainerHealthcheckLogs(_ec.Object, containerInfo, "error"));
+            await containerOperationProvider.ContainerHealthcheckLogs(_ec.Object, containerInfo, "error");
 
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async void Healthchecktest_dockerError_inspectLogs()
-        {
-            //Arrange
-            Setup();
-            _dockerManager.Setup(x => x.DockerInspectLogs(_ec.Object, containerInfo.ContainerId)).Returns(Task.FromResult(dockerLogs));
-
-            try
-            {
-                //Act
-                await containerOperationProvider.ContainerHealthcheckLogs(_ec.Object, containerInfo, "error");
-
-            }
-            catch (InvalidOperationException)
-            {
-
-                //Assert
-                _ec.Verify(pL => pL.Write(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(3));
-
-            }
-
+            //Assert
+            _ec.Verify(dm => dm.Write(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
+            _ec.Verify(dm => dm.Write(null, $"##[group] Container {containerInfo.ContainerImage} failed healthchecks, printing logs:"), Times.AtLeastOnce());
+            _ec.Verify(dm => dm.Write(null, "##[endgroup]"), Times.AtLeastOnce());
         }
 
         private void Setup([CallerMemberName] string testName = "")
@@ -109,9 +86,6 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
             _hc.SetSingleton<IContainerHookManager>(_containerHookManager.Object);
-
-            var list = new List<string>();
-            list.Add("result");
 
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
 
