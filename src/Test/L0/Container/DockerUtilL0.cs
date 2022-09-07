@@ -149,13 +149,12 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         [InlineData("", "")]
-        [InlineData("HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("foo", "foo")]
+        [InlineData("foo \\ bar", "foo \\ bar")]
+        [InlineData("foo \\", "foo \\\\")]
+        [InlineData("foo \\\\", "foo \\\\\\\\")]
+        [InlineData("foo \\\" bar", "foo \\\\\\\" bar")]
+        [InlineData("foo \\\\\" bar", "foo \\\\\\\\\\\" bar")]
         public void CreateEscapedOption_keyOnly(string input, string escaped)
         {
             var flag = "--example";
@@ -175,15 +174,11 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         [Theory]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        [InlineData("HOME", "", "HOME", "")]
-        [InlineData("HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"alpine:3.8 sh -c id #", "HOME \"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #", "HOME \\\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"\"alpine:3.8 sh -c id #", "HOME \"\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #", "HOME \\\\\"\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"\\\"alpine:3.8 sh -c id #", "HOME \"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\"alpine:3.8 sh -c id #")]
-        public void CreateEscapedOption_keyValue(string keyInput, string valueInput, string escapedKey, string escapedValue)
+        [InlineData("foo", "bar", "foo=bar")]
+        [InlineData("foo\\", "bar", "foo\\=bar")]
+        [InlineData("foo\\", "bar\\", "foo\\=bar\\\\")]
+        [InlineData("foo \\","bar \\", "foo \\=bar \\\\")]
+        public void CreateEscapedOption_keyValue(string keyInput, string valueInput, string escapedString)
         {
             var flag = "--example";
             var actual = DockerUtil.CreateEscapedOption(flag, keyInput, valueInput);
@@ -194,7 +189,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             }
             else
             {
-                expected = $"{flag} \"{escapedKey}={escapedValue}\"";
+                expected = $"{flag} \"{escapedString}\"";
             }
             Assert.Equal(expected, actual);
         }
