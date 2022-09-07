@@ -26,7 +26,6 @@ namespace GitHub.Runner.Common.Tests
         private string _suiteName;
         private string _testName;
         private Tracing _trace;
-
         private AssemblyLoadContext _loadContext;
         private string _tempDirectoryRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("D"));
         private StartupType _startupType;
