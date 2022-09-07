@@ -98,13 +98,12 @@ namespace GitHub.Runner.Worker
                 await StartContainerAsync(executionContext, container);
             }
 
-            executionContext.Output("##[group]Waiting for all services to be ready");
+            executionContext.Output("Waiting for all services to be ready");
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
                 var healthcheck = await Healthcheck(executionContext, container);
                 await ContainerHealthcheckLogs(executionContext, container, healthcheck);
             }
-            executionContext.Output("##[endgroup]");
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
