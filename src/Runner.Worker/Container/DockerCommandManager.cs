@@ -351,7 +351,6 @@ namespace GitHub.Runner.Worker.Container
         {
             return await ExecuteDockerCommandAsync(context, "inspect", $"{options} {dockerObject}");
         }
-        
 
         public async Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId)
         {
