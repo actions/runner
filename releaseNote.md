@@ -1,5 +1,5 @@
 ## Bugs
-- Fixed an issue where job and service container envs were corrupted (#2091)
+- Fixed an issue where self hosted environments had their docker env's overwritten (#2107)
 ## Misc
 
 ## Windows x64
