@@ -6,6 +6,9 @@ namespace GitHub.Runner.Worker.Container
 {
     public class DockerUtil
     {
+        private static readonly Regex QuoteEscape = new Regex(@"(\\*)" + "\"", RegexOptions.Compiled);
+        private static readonly Regex EndOfStringEscape = new Regex(@"(\\+)$", RegexOptions.Compiled);
+
         public static List<PortMapping> ParseDockerPort(IList<string> portMappingLines)
         {
             const string targetPort = "targetPort";
@@ -93,10 +96,10 @@ namespace GitHub.Runner.Worker.Container
             // https://docs.microsoft.com/en-us/dotnet/api/system.environment.getcommandlineargs?redirectedfrom=MSDN&view=net-6.0#remarks
 
             // First, find any \ followed by a " and double the number of \ + 1.
-             value = Regex.Replace(value, @"(\\*)" + "\"", @"$1$1\" + "\"");
+             value = QuoteEscape.Replace(value, @"$1$1\" + "\"");
             // Next, what if it ends in `\`, it would escape the end quote. So, we need to detect that at the end of the string and perform the same escape
             // Luckily, we can just use the $ character with detects the end of string in regex
-            value = Regex.Replace(value, @"(\\+)$", @"$1$1");
+            value = EndOfStringEscape.Replace(value, @"$1$1");
             // Finally, wrap it in quotes
             return $"\"{value}\"";
         }
