@@ -867,7 +867,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobRequest.Variables["VARIABLE_1"] = "value1";
                 jobRequest.Variables["VARIABLE_2"] = "value2";
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Setup the paging logger. 
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 hc.EnqueueInstance(pagingLogger1.Object);
