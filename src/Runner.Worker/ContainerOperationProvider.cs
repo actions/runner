@@ -99,7 +99,7 @@ namespace GitHub.Runner.Worker
                 await StartContainerAsync(executionContext, container);
             }
 
-            executionContext.Output("Waiting for all services to be ready");
+            executionContext.Output("##[group]Waiting for all services to be ready");
 
             bool IsAnyUnhealthy = false;
             foreach (var container in containers.Where(c => !c.IsJobContainer))
@@ -113,6 +113,7 @@ namespace GitHub.Runner.Worker
                 await ContainerHealthcheckLogs(executionContext, container, healthcheck);
             }
             if (IsAnyUnhealthy) throw new InvalidOperationException("One or more containers failed to start.");
+            executionContext.Output("##[endgroup]");
         }
 
         public void printHello()
@@ -447,7 +448,6 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-
                 executionContext.Output($"Container {container.ContainerImage} failed healthchecks, printing logs:");
                 await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
                 executionContext.Error($"Failed to initialize container {container.ContainerImage}");
