@@ -820,6 +820,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _ec.Object.ExpressionValues["job"] = new DictionaryContextData();
                 _ec.Object.ExpressionValues["runner"] = new DictionaryContextData();
                 _ec.Object.ExpressionValues["env"] = new DictionaryContextData();
+                _ec.Object.ExpressionValues["vars"] = new DictionaryContextData();
                 _ec.Object.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>("hashFiles", 1, 255));
 
                 //Act
