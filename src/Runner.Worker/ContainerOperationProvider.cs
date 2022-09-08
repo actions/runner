@@ -89,6 +89,7 @@ namespace GitHub.Runner.Worker
             executionContext.Output("##[group]Create local container network");
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             await CreateContainerNetworkAsync(executionContext, containerNetwork);
+
             executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
             executionContext.Output("##[endgroup]");
 
@@ -99,11 +100,27 @@ namespace GitHub.Runner.Worker
             }
 
             executionContext.Output("Waiting for all services to be ready");
+
+            bool IsAnyUnhealthy = false;
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
+
                 var healthcheck = await Healthcheck(executionContext, container);
+                if (!string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
+                {
+                    IsAnyUnhealthy = true;
+                }
                 await ContainerHealthcheckLogs(executionContext, container, healthcheck);
             }
+            if (IsAnyUnhealthy) throw new InvalidOperationException("One or more containers failed to start.");
+        }
+
+        public void printHello()
+        {
+            Console.WriteLine("Hello World");
+            // create an array of strings
+
+
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
@@ -299,10 +316,11 @@ namespace GitHub.Runner.Worker
 
             if (!string.IsNullOrEmpty(container.ContainerId))
             {
-                if (!container.IsJobContainer)
+                if (!container.IsJobContainer && container.IsHealthy)
                 {
                     var healthcheck = await Healthcheck(executionContext, container);
-                    if (string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase)){
+                    if (string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
+                    {
                         // Print logs for service container jobs (not the "action" job itself b/c that's already logged).
                         // Print them only if the service was healthy, else they were already logged via ContainerHealthCheckLogs.
                         executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
@@ -312,7 +330,7 @@ namespace GitHub.Runner.Worker
                         {
                             executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
                         }
-                    }   
+                    }
                 }
 
                 executionContext.Output($"Stop and remove container: {container.ContainerDisplayName}");
@@ -399,7 +417,8 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public async Task<string> Healthcheck(IExecutionContext executionContext, ContainerInfo container){
+        public async Task<string> Healthcheck(IExecutionContext executionContext, ContainerInfo container)
+        {
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
             string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             if (string.IsNullOrEmpty(serviceHealth))
@@ -421,17 +440,18 @@ namespace GitHub.Runner.Worker
 
         public async Task ContainerHealthcheckLogs(IExecutionContext executionContext, ContainerInfo container, string serviceHealth)
         {
-    
+
             if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
             {
                 executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
             }
             else
             {
-                executionContext.Output($"##[group]Container {container.ContainerImage} failed healthchecks, printing logs:");
+
+                executionContext.Output($"Container {container.ContainerImage} failed healthchecks, printing logs:");
                 await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
                 executionContext.Error($"Failed to initialize container {container.ContainerImage}");
-                executionContext.Output("##[endgroup]");
+                container.IsHealthy = false;
             }
         }
 
