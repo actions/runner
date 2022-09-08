@@ -6,6 +6,9 @@ namespace GitHub.Runner.Worker.Container
 {
     public class DockerUtil
     {
+        private static readonly Regex QuoteEscape = new Regex(@"(\\*)" + "\"", RegexOptions.Compiled);
+        private static readonly Regex EndOfStringEscape = new Regex(@"(\\+)$", RegexOptions.Compiled);
+
         public static List<PortMapping> ParseDockerPort(IList<string> portMappingLines)
         {
             const string targetPort = "targetPort";
@@ -68,12 +71,37 @@ namespace GitHub.Runner.Worker.Container
             {
                 return "";
             }
-            return $"{flag} \"{EscapeString(key)}\"";
+            return $"{flag} {EscapeString(key)}";
+        }
+
+        public static string CreateEscapedOption(string flag, string key, string value)
+        {
+            if (String.IsNullOrEmpty(key))
+            {
+                return "";
+            }
+            var escapedString = EscapeString($"{key}={value}");
+            return $"{flag} {escapedString}";
         }
 
         private static string EscapeString(string value)
         {
-            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            if (String.IsNullOrEmpty(value))
+            {
+                return "";
+            }
+            // Dotnet escaping rules are weird here, we can only escape \ if it precedes a "
+            // If a double quotation mark follows two or an even number of backslashes, each proceeding backslash pair is replaced with one backslash and the double quotation mark is removed.
+            // If a double quotation mark follows an odd number of backslashes, including just one, each preceding pair is replaced with one backslash and the remaining backslash is removed; however, in this case the double quotation mark is not removed.
+            // https://docs.microsoft.com/en-us/dotnet/api/system.environment.getcommandlineargs?redirectedfrom=MSDN&view=net-6.0#remarks
+
+            // First, find any \ followed by a " and double the number of \ + 1.
+             value = QuoteEscape.Replace(value, @"$1$1\" + "\"");
+            // Next, what if it ends in `\`, it would escape the end quote. So, we need to detect that at the end of the string and perform the same escape
+            // Luckily, we can just use the $ character with detects the end of string in regex
+            value = EndOfStringEscape.Replace(value, @"$1$1");
+            // Finally, wrap it in quotes
+            return $"\"{value}\"";
         }
     }
 }
