@@ -63,6 +63,8 @@ namespace GitHub.Runner.Worker
         // Keep track of embedded steps states
         Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; }
 
+        IList<Issue> EmbeddedIssues { get; }
+
         bool EchoOnActionCommand { get; set; }
 
         bool IsEmbedded { get; }
@@ -91,6 +93,7 @@ namespace GitHub.Runner.Worker
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
         void AddIssue(Issue issue, string message = null);
+        void AddIssueToTimelineRecord(Issue issue);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
 
@@ -179,6 +182,8 @@ namespace GitHub.Runner.Worker
         public Dictionary<Guid, string> EmbeddedStepsWithPostRegistered { get; private set; }
 
         public Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; private set; }
+
+        public IList<Issue> EmbeddedIssues { get; } = new List<Issue>();
 
         public bool EchoOnActionCommand { get; set; }
 
@@ -575,7 +580,31 @@ namespace GitHub.Runner.Worker
                     long logLineNumber = Write(WellKnownTags.Error, logMessage);
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
+            }
+            else if (issue.Type == IssueType.Warning)
+            {
+                if (!string.IsNullOrEmpty(logMessage))
+                {
+                    long logLineNumber = Write(WellKnownTags.Warning, logMessage);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
+            }
+            else if (issue.Type == IssueType.Notice)
+            {
+                if (!string.IsNullOrEmpty(logMessage))
+                {
+                    long logLineNumber = Write(WellKnownTags.Notice, logMessage);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
+            }
+            AddIssueToTimelineRecord(issue);
+        }
 
+        public void AddIssueToTimelineRecord(Issue issue)
+        {
+            ArgUtil.NotNull(issue, nameof(issue));
+            if (issue.Type == IssueType.Error)
+            {
                 if (_record.ErrorCount < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
@@ -585,12 +614,6 @@ namespace GitHub.Runner.Worker
             }
             else if (issue.Type == IssueType.Warning)
             {
-                if (!string.IsNullOrEmpty(logMessage))
-                {
-                    long logLineNumber = Write(WellKnownTags.Warning, logMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
-                }
-
                 if (_record.WarningCount < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
@@ -600,12 +623,6 @@ namespace GitHub.Runner.Worker
             }
             else if (issue.Type == IssueType.Notice)
             {
-                if (!string.IsNullOrEmpty(logMessage))
-                {
-                    long logLineNumber = Write(WellKnownTags.Notice, logMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
-                }
-
                 if (_record.NoticeCount < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
@@ -613,8 +630,17 @@ namespace GitHub.Runner.Worker
 
                 _record.NoticeCount++;
             }
+            // Composite actions should never upload a timeline record to the server
+            // We add these to a list and let composite action handler bubble it up recursively
+            if (this.IsEmbedded)
+            {
+                EmbeddedIssues.Add(issue);
+            }
+            else
+            {
+                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            }
 
-            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
         }
 
         public void UpdateDetailTimelineRecord(TimelineRecord record)
