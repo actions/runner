@@ -2106,6 +2106,7 @@ namespace Runner.Server.Controllers
                                                             return cancel => _job;
                                                         }
                                                     }
+                                                    next.NoStatusCheck = usesJob;
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job name" }), next.TimelineId, next.Id);
                                                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                                                     var _jobdisplayname = _prejobdisplayname;
@@ -2114,21 +2115,8 @@ namespace Runner.Server.Controllers
                                                         templateContext.Errors.Check();
                                                     }
                                                     next.DisplayName = _jobdisplayname;
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job continueOnError" }), next.TimelineId, next.Id);
-                                                    templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                                                    next.ContinueOnError = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, null, true).AssertBoolean($"jobs.{jobname}.continue-on-error be a boolean").Value).FirstOrDefault();
-                                                    templateContext.Errors.Check();
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job timeoutMinutes" }), next.TimelineId, next.Id);
-                                                    templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                                                    var timeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true).AssertNumber($"jobs.{jobname}.timeout-minutes be a number").Value).Append(360).First();
-                                                    templateContext.Errors.Check();
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job cancelTimeoutMinutes" }), next.TimelineId, next.Id);
-                                                    templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                                                    var cancelTimeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true).AssertNumber($"jobs.{jobname}.cancel-timeout-minutes be a number").Value).Append(5).First();
-                                                    templateContext.Errors.Check();
-                                                    next.NoStatusCheck = usesJob;
                                                     next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
-                                                    return queueJob(matrixJobTraceWriter, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
+                                                    return queueJob(matrixJobTraceWriter, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                                 } catch(Exception ex) {
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
                                                     return failJob();
@@ -4414,7 +4402,7 @@ namespace Runner.Server.Controllers
             var stoken = tokenHandler.WriteToken(token);
             return await Ok(new { value = stoken });
         }
-        private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
+        private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
         {
             var workflowRef = callingJob?.WorkflowRef ?? Sha;
             var workflowRepo = callingJob?.WorkflowRepo ?? repo;
@@ -4505,12 +4493,6 @@ namespace Runner.Server.Controllers
                         }
                     }
                 }
-                var jobConcurrency = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "concurrency" select r).FirstOrDefault().Value;
-                if(jobConcurrency != null) {
-                    matrixJobTraceWriter.Info("{0}", $"Evaluate job concurrency");
-                    var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                    jobConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-concurrency", jobConcurrency, 0, null, true);
-                }
                 var environmentToken = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "env" select r).FirstOrDefault().Value;
 
                 List<TemplateToken> environment = new List<TemplateToken>();
@@ -4521,7 +4503,73 @@ namespace Runner.Server.Controllers
                 {
                     environment.Add(environmentToken);
                 }
+                // Update env to include job env
+                {
+                    var jobEnvCtx = new DictionaryContextData();
+                    contextData["env"] = jobEnvCtx;
+                    foreach(var envBlock in environment) {
+                        var envTemplateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                        var cEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(envTemplateContext, "job-env", envBlock, 0, null, true);
+                        // Best effort, don't check for errors
+                        // templateContext.Errors.Check();
+                        // Best effort, make job env available this is not available on github actions
+                        if(cEnv is MappingToken genvToken) {
+                            foreach(var kv in genvToken) {
+                                if(kv.Key is StringToken key && kv.Value is StringToken val) {
+                                    jobEnvCtx[key.Value] = new StringContextData(val.Value);
+                                }
+                            }
+                        }
+                    }
+                }
                 var rawSteps = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "steps" select r).FirstOrDefault().Value?.AssertSequence($"jobs.{name}.steps");
+                TemplateContext templateContext;
+                // Environment, only supported for regular jobs
+                TemplateToken deploymentEnvironment = rawSteps != null ? (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "environment" select r).FirstOrDefault().Value : null;
+                GitHub.DistributedTask.WebApi.ActionsEnvironmentReference deploymentEnvironmentValue = null;
+                if(deploymentEnvironment != null) {
+                    matrixJobTraceWriter.Info("{0}", $"Evaluate environment");
+                    templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                    deploymentEnvironment = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "environment", deploymentEnvironment, 0, null, true);
+                    templateContext.Errors.Check();
+                    if(deploymentEnvironment != null) {
+                        if(deploymentEnvironment is StringToken ename) {
+                            deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference(ename.Value);
+                        } else {
+                            var mtoken = deploymentEnvironment.AssertMapping($"jobs.{name}.environment must be a mapping or string");
+                            deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString($"jobs.{name}.environment mapping key").Value == "name" select r.Value).First().AssertString("name").Value);
+                            deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString($"jobs.{name}.environment mapping key").Value == "url" select r.Value).FirstOrDefault();
+                        }
+                    }
+                }
+                // Update Vars context for the selected environment, only used by old runners
+                if(!string.IsNullOrEmpty(deploymentEnvironmentValue?.Name)) {
+                    DictionaryContextData vars = new DictionaryContextData();
+                    contextData["vars"] = vars;
+                    var jobVars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue.Name);
+                    foreach(var kv in jobVars) {
+                        vars[kv.Key] = new StringContextData(kv.Value);
+                    }
+                }
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job continueOnError" }), ji.TimelineId, ji.Id);
+                templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                ji.ContinueOnError = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, null, true).AssertBoolean($"jobs.{name}.continue-on-error be a boolean").Value).FirstOrDefault();
+                templateContext.Errors.Check();
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job timeoutMinutes" }), ji.TimelineId, ji.Id);
+                templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                var timeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true).AssertNumber($"jobs.{name}.timeout-minutes be a number").Value).Append(360).First();
+                templateContext.Errors.Check();
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job cancelTimeoutMinutes" }), ji.TimelineId, ji.Id);
+                templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                var cancelTimeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true).AssertNumber($"jobs.{name}.cancel-timeout-minutes be a number").Value).Append(5).First();
+                templateContext.Errors.Check();
+                var jobConcurrency = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "concurrency" select r).FirstOrDefault().Value;
+                if(jobConcurrency != null) {
+                    matrixJobTraceWriter.Info("{0}", $"Evaluate job concurrency");
+                    templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                    jobConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-concurrency", jobConcurrency, 0, null, true);
+                    templateContext.Errors.Check();
+                }
                 if(rawSteps == null) {
                     var rawUses = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "uses" select r).FirstOrDefault().Value?.AssertString($"jobs.{name}.uses");
                     var rawWith = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "with" select r).FirstOrDefault().Value?.AssertMapping($"jobs.{name}.with");
@@ -4589,22 +4637,6 @@ namespace Runner.Server.Controllers
                             Action<string, string> workflow_call = (filename, filecontent) => {
                                 var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
                                 var ghook = hook.ToObject<GiteaHook>();
-                                var jobEnvCtx = new DictionaryContextData();
-                                contextData["env"] = jobEnvCtx;
-                                foreach(var envBlock in environment) {
-                                    var envTemplateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                                    var cEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(envTemplateContext, "job-env", envBlock, 0, null, true);
-                                    // Best effort, don't check for errors
-                                    // templateContext.Errors.Check();
-                                    // Best effort, make job env available this is not available on github actions
-                                    if(cEnv is MappingToken genvToken) {
-                                        foreach(var kv in genvToken) {
-                                            if(kv.Key is StringToken key && kv.Value is StringToken val) {
-                                                jobEnvCtx[key.Value] = new StringContextData(val.Value);
-                                            }
-                                        }
-                                    }
-                                }
 
                                 var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                                 var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
@@ -4710,28 +4742,9 @@ namespace Runner.Server.Controllers
                         return _job;
                     };
                 }
-                // Update env to include job env
-                {
-                    var jobEnvCtx = new DictionaryContextData();
-                    contextData["env"] = jobEnvCtx;
-                    foreach(var envBlock in environment) {
-                        var envTemplateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                        var cEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(envTemplateContext, "job-env", envBlock, 0, null, true);
-                        // Best effort, don't check for errors
-                        // templateContext.Errors.Check();
-                        // Best effort, make job env available this is not available on github actions
-                        if(cEnv is MappingToken genvToken) {
-                            foreach(var kv in genvToken) {
-                                if(kv.Key is StringToken key && kv.Value is StringToken val) {
-                                    jobEnvCtx[key.Value] = new StringContextData(val.Value);
-                                }
-                            }
-                        }
-                    }
-                }
                 List<Step> steps;
                 {
-                    var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                    templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                     var evaluatedSteps = TemplateEvaluator.Evaluate(templateContext, "steps", rawSteps, 0, null, true) ?? rawSteps;
                     steps = PipelineTemplateConverter.ConvertToSteps(templateContext, evaluatedSteps);
                     templateContext.Errors.Check();
@@ -4740,7 +4753,7 @@ namespace Runner.Server.Controllers
                 HashSet<string> runsOnMap = new HashSet<string>();
                 if (runsOn != null) {
                     matrixJobTraceWriter.Info("{0}", "Evaluate runs-on");
-                    var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
+                    templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                     var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.RunsOn, runsOn, 0, null, true);
                     templateContext.Errors.Check();
                     runsOnMap.UnionWith(from t in eval.AssertScalarOrSequence($"jobs.{name}.runs-on") select t.AssertString($"jobs.{name}.runs-on.*").Value.ToLowerInvariant());
@@ -4779,33 +4792,6 @@ namespace Runner.Server.Controllers
                 TemplateToken jobServiceContainer = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "services" select r).FirstOrDefault().Value;
                 // Job outputs
                 TemplateToken outputs = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "outputs" select r).FirstOrDefault().Value;
-                // Environment
-                TemplateToken deploymentEnvironment = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "environment" select r).FirstOrDefault().Value;
-                GitHub.DistributedTask.WebApi.ActionsEnvironmentReference deploymentEnvironmentValue = null;
-                if(deploymentEnvironment != null) {
-                    matrixJobTraceWriter.Info("{0}", $"Evaluate environment");
-                    var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                    deploymentEnvironment = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "environment", deploymentEnvironment, 0, null, true);
-                    templateContext.Errors.Check();
-                    if(deploymentEnvironment != null) {
-                        if(deploymentEnvironment is StringToken ename) {
-                            deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference(ename.Value);
-                        } else {
-                            var mtoken = deploymentEnvironment.AssertMapping($"jobs.{name}.environment must be a mapping or string");
-                            deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString($"jobs.{name}.environment mapping key").Value == "name" select r.Value).First().AssertString("name").Value);
-                            deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString($"jobs.{name}.environment mapping key").Value == "url" select r.Value).FirstOrDefault();
-                        }
-                    }
-                }
-                // Update Vars context for the selected environment, only used by old runners
-                if(!string.IsNullOrEmpty(deploymentEnvironmentValue?.Name)) {
-                    DictionaryContextData vars = new DictionaryContextData();
-                    contextData["vars"] = vars;
-                    var jobVars = secretsProvider.GetVariablesForEnvironment(deploymentEnvironmentValue.Name);
-                    foreach(var kv in jobVars) {
-                        vars[kv.Key] = new StringContextData(kv.Value);
-                    }
-                }
                 var defaultToken = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "defaults" select r).FirstOrDefault().Value;
 
                 List<TemplateToken> jobDefaults = new List<TemplateToken>();
@@ -5045,7 +5031,7 @@ namespace Runner.Server.Controllers
                         Console.WriteLine($"Internal Error: {ex.Message}, {ex.StackTrace}");
                         return null;
                     }
-                }, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = name.PrefixJobIdIfNotNull(parentId), name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = requestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])?.ToJToken()?.ToString() };
+                }, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = name.PrefixJobIdIfNotNull(parentId), name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = requestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = ji.ContinueOnError, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])?.ToJToken()?.ToString() };
                 AddJob(job);
                 //ConcurrencyGroup
                 string group = null;
