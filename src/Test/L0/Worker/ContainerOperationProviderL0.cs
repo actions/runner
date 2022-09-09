@@ -5,13 +5,7 @@ using Moq;
 using GitHub.Runner.Worker.Container.ContainerHooks;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System;
-using System.IO;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading;
-
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -51,22 +45,6 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async void HealthcheckTestDockerErrorLogs()
-        {
-            //Arrange
-            Setup();
-            _dockerManager.Setup(x => x.DockerLogs(_ec.Object, containerInfo.ContainerId)).Returns(Task.FromResult<int>(1));
-            //Act
-            await containerOperationProvider.ContainerHealthcheckLogs(_ec.Object, containerInfo, "error");
-
-            //Assert
-            _ec.Verify(dm => dm.Write(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
-            _ec.Verify(dm => dm.Write(null, $"##[group]Container {containerInfo.ContainerImage} failed healthchecks, printing logs:"), Times.AtLeastOnce());
-            _ec.Verify(dm => dm.Write(null, "##[endgroup]"), Times.AtLeastOnce());
-        }
 
         private void Setup([CallerMemberName] string testName = "")
         {
