@@ -149,13 +149,12 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         [InlineData("", "")]
-        [InlineData("HOME alpine:3.8 sh -c id #", "HOME alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"alpine:3.8 sh -c id #", "HOME \\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\"alpine:3.8 sh -c id #", "HOME \\\\\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\\\"alpine:3.8 sh -c id #", "HOME \\\\\\\\\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"\"alpine:3.8 sh -c id #", "HOME \\\"\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \\\"\"alpine:3.8 sh -c id #", "HOME \\\\\\\"\\\"alpine:3.8 sh -c id #")]
-        [InlineData("HOME \"\\\"alpine:3.8 sh -c id #", "HOME \\\"\\\\\\\"alpine:3.8 sh -c id #")]
+        [InlineData("foo", "foo")]
+        [InlineData("foo \\ bar", "foo \\ bar")]
+        [InlineData("foo \\", "foo \\\\")]
+        [InlineData("foo \\\\", "foo \\\\\\\\")]
+        [InlineData("foo \\\" bar", "foo \\\\\\\" bar")]
+        [InlineData("foo \\\\\" bar", "foo \\\\\\\\\\\" bar")]
         public void CreateEscapedOption_keyOnly(string input, string escaped)
         {
             var flag = "--example";
@@ -168,6 +167,29 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             else
             {
                 expected = $"{flag} \"{escaped}\"";
+            }
+            Assert.Equal(expected, actual);
+        }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData("foo", "bar", "foo=bar")]
+        [InlineData("foo\\", "bar", "foo\\=bar")]
+        [InlineData("foo\\", "bar\\", "foo\\=bar\\\\")]
+        [InlineData("foo \\","bar \\", "foo \\=bar \\\\")]
+        public void CreateEscapedOption_keyValue(string keyInput, string valueInput, string escapedString)
+        {
+            var flag = "--example";
+            var actual = DockerUtil.CreateEscapedOption(flag, keyInput, valueInput);
+            string expected;
+            if (String.IsNullOrEmpty(keyInput))
+            {
+                expected = "";
+            }
+            else
+            {
+                expected = $"{flag} \"{escapedString}\"";
             }
             Assert.Equal(expected, actual);
         }
