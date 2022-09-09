@@ -46,7 +46,7 @@ namespace Runner.Client
             return $"{runner_URL}/v{runner12_VERSION}/runner-v{runner12_VERSION}-{os}-{arch}.{suffix}";
         }
 
-        private static async Task DownloadTool(string link, string destDirectory, string tarextraopts = "", bool unwrap = false) {
+        private static async Task DownloadTool(string link, string destDirectory, CancellationToken token, string tarextraopts = "", bool unwrap = false) {
             Console.WriteLine($"Downloading from {link} to {destDirectory}");
             string tempDirectory = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "temp" + System.Guid.NewGuid().ToString());
             var stagingDirectory = Path.Combine(tempDirectory, "_staging");
@@ -71,7 +71,7 @@ namespace Runner.Client
                     httpClientHandler.MaxAutomaticRedirections = 10;
                     using (var httpClient = new HttpClient(httpClientHandler))
                     {
-                        using (var response = await httpClient.GetAsync(link, HttpCompletionOption.ResponseHeadersRead))
+                        using (var response = await httpClient.GetAsync(link, HttpCompletionOption.ResponseHeadersRead, token))
                         {
                             response.EnsureSuccessStatusCode();
                             if(response.Headers.TryGetValues("Content-Disposition", out var values)) {
@@ -90,8 +90,8 @@ namespace Runner.Client
                             using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                             using (var result = await response.Content.ReadAsStreamAsync())
                             {
-                                await result.CopyToAsync(fs, 4096, CancellationToken.None);
-                                await fs.FlushAsync(CancellationToken.None);
+                                await result.CopyToAsync(fs, 4096, token);
+                                await fs.FlushAsync(token);
                             }
                         }
                     }
@@ -153,7 +153,7 @@ namespace Runner.Client
 
         private static Mutex l = new Mutex();
 
-        public static async Task<string> GetAgent(string name, string version) {
+        public static async Task<string> GetAgent(string name, string version, CancellationToken token) {
             l.WaitOne();
             try {
                 var externalsPath = Path.Join(GharunUtil.GetLocalStorage());
@@ -171,22 +171,22 @@ namespace Runner.Client
                         // Note use the vsts package, because container operations have node6 hardcoded as trampoline
                         Func<string, string, string> AURL = (arch, ext) => $"https://vstsagentpackage.azureedge.net/agent/{version}/vsts-agent-{arch}-{version}.{ext}";
                         _tools = new Dictionary<string, Func<string, Task>> {
-                            { "windows/386", dest => DownloadTool(AURL("win-x86", "zip"), dest, unwrap: false)},
-                            { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, unwrap: false)},
-                            { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, unwrap: false)},
-                            { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, unwrap: false)},
-                            { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, unwrap: false)},
-                            { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, unwrap: false)},
+                            { "windows/386", dest => DownloadTool(AURL("win-x86", "zip"), dest, token, unwrap: false)},
+                            { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
+                            { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
+                            { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
+                            { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
+                            { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
                         };
                     } else {
                         Func<string, string, string> AURL = (arch, ext) => $"https://github.com/actions/runner/releases/download/v{version}/actions-runner-{arch}-{version}.{ext}";
                         _tools = new Dictionary<string, Func<string, Task>> {
-                            { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, unwrap: false)},
-                            { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, unwrap: false)},
-                            { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, unwrap: false)},
-                            { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, unwrap: false)},
-                            { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, unwrap: false)},
-                            { "osx/arm64", dest => DownloadTool(AURL("osx-arm64", "tar.gz"), dest, unwrap: false)},
+                            { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
+                            { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
+                            { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
+                            { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
+                            { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
+                            { "osx/arm64", dest => DownloadTool(AURL("osx-arm64", "tar.gz"), dest, token, unwrap: false)},
                         };
                     }
                     if(_tools.TryGetValue(platform, out Func<string, Task> download)) {
@@ -196,7 +196,7 @@ namespace Runner.Client
                         }
                         Console.WriteLine("runner executable downloaded, continue workflow");
                     } else {
-                        throw new Exception("Failed to get runner executable");
+                        throw new Exception("Failed to get runner executable, use --runner-path to use an external runner");
                     }
                 }
                 return file;

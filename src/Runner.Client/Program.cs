@@ -420,8 +420,8 @@ namespace Runner.Client
             var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
             var prefix = azure ? "Agent" : "Runner";
             string ext = IOUtil.ExeExtension;
-            var listenerexe = string.IsNullOrEmpty(parameters.RunnerPath) ? await ExternalToolHelper.GetAgent(azure ? "azagent" : "runner", parameters.RunnerVersion) : Path.Join(parameters.RunnerPath, "bin", $"{prefix}.Listener{ext}");
-            var root = Directory.GetParent(listenerexe).Parent.FullName;
+            var root = Path.GetFullPath(parameters.RunnerPath);
+            var listenerexe = Path.Join(root, "bin", $"{prefix}.Listener{ext}");
             var agentname = Path.GetRandomFileName();
             string tmpdir = Path.Combine(Path.GetFullPath(parameters.RunnerDirectory), agentname);
             Directory.CreateDirectory(Path.Join(tmpdir, "bin"));
@@ -1052,6 +1052,15 @@ namespace Runner.Client
                     canceled = true;
                     source.Cancel();
                 };
+                if(parameters.parallel > 0) {
+                    var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
+                    if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
+                        parameters.RunnerVersion = "2.210.0";
+                    }
+                    if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
+                        parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
+                    }
+                }
                 List<Task> listener = new List<Task>();
                 try {
                     if(parameters.server == null || parameters.StartServer || parameters.StartRunner) {
@@ -1210,11 +1219,8 @@ namespace Runner.Client
                         if(parameters.parallel > 0) {
                             Console.WriteLine($"Starting {parameters.parallel} Runner{(parameters.parallel != 1 ? "s" : "")}...");
                             var workerchannel = Channel.CreateBounded<bool>(1);
-                            if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase)) {
-                                parameters.RunnerVersion = "2.206.1";
-                            }
                             for(int i = 0; i < parameters.parallel; i++) {
-                                if(string.IsNullOrEmpty(parameters.RunnerVersion)) {
+                                if(string.IsNullOrEmpty(parameters.RunnerDirectory)) {
                                     listener.Add(CreateRunner(binpath, parameters, listener, workerchannel, source));
                                 } else {
                                     listener.Add(CreateExternalRunner(binpath, parameters, listener, workerchannel, source));
