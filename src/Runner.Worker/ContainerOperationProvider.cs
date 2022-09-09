@@ -100,20 +100,33 @@ namespace GitHub.Runner.Worker
             }
 
             executionContext.Output("##[group]Waiting for all services to be ready");
-
             bool IsAnyUnhealthy = false;
+            _dockerManager.UnhealthyContainers = new List<ContainerInfo>();
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
-
                 var healthcheck = await Healthcheck(executionContext, container);
                 if (!string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
                 {
-                    IsAnyUnhealthy = true;
+                    IsAnyUnhealthy = true;      
+                    _dockerManager.UnhealthyContainers.Add(container);
                 }
-                await ContainerHealthcheckLogs(executionContext, container, healthcheck);
-            }
-            if (IsAnyUnhealthy) throw new InvalidOperationException("One or more containers failed to start.");
+                else
+                {
+                    executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
+                }            
+            }   
             executionContext.Output("##[endgroup]");
+
+            if (IsAnyUnhealthy)
+            {          
+                foreach (var container in _dockerManager.UnhealthyContainers)
+                {
+                    executionContext.Output($"##[group]Service container {container.ContainerNetworkAlias} failed.");
+                    await ContainerErrorLogs(executionContext, container);
+                    executionContext.Output("##[endgroup]"); 
+                }
+                throw new InvalidOperationException("One or more containers failed to start.");
+            }         
         }
 
         public void printHello()
@@ -323,7 +336,7 @@ namespace GitHub.Runner.Worker
                     if (string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
                     {
                         // Print logs for service container jobs (not the "action" job itself b/c that's already logged).
-                        // Print them only if the service was healthy, else they were already logged via ContainerHealthCheckLogs.
+                        // Print them only if the service was healthy, else they were already logged in the initialize containers section.
                         executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
 
                         int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
@@ -439,20 +452,11 @@ namespace GitHub.Runner.Worker
             return serviceHealth;
         }
 
-        public async Task ContainerHealthcheckLogs(IExecutionContext executionContext, ContainerInfo container, string serviceHealth)
+        public async Task ContainerErrorLogs(IExecutionContext executionContext, ContainerInfo container)
         {
-
-            if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
-            {
-                executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
-            }
-            else
-            {
-                executionContext.Output($"Container {container.ContainerImage} failed healthchecks, printing logs:");
-                await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
-                executionContext.Error($"Failed to initialize container {container.ContainerImage}");
-                container.IsHealthy = false;
-            }
+            await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
+            executionContext.Error($"Failed to initialize container {container.ContainerImage}");
+            container.IsHealthy = false;
         }
 
         private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)

@@ -16,6 +16,7 @@ namespace GitHub.Runner.Worker.Container
     {
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
+        IList<ContainerInfo> UnhealthyContainers {get; set; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
         Task<int> DockerPull(IExecutionContext context, string image);
         Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory);
@@ -41,6 +42,8 @@ namespace GitHub.Runner.Worker.Container
         public string DockerPath { get; private set; }
 
         public string DockerInstanceLabel { get; private set; }
+
+        public IList<ContainerInfo> UnhealthyContainers {get; set; }
 
         public override void Initialize(IHostContext hostContext)
         {
