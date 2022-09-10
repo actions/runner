@@ -150,59 +150,51 @@ namespace Runner.Client
                 IOUtil.DeleteDirectory(tempDirectory, CancellationToken.None);
             }
         }
-
-        private static Mutex l = new Mutex();
-
         public static async Task<string> GetAgent(string name, string version, CancellationToken token) {
-            l.WaitOne();
-            try {
-                var externalsPath = Path.Join(GharunUtil.GetLocalStorage());
-                var os = GetHostOS();
-                var arch = GetHostArch();
-                string platform = os + "/" + arch;
-                var exeExtension = os == "windows" ? ".exe" : "";
-                var prefix = name == "azagent" ? "Agent" : "Runner";
-                string file = Path.Combine(externalsPath, name, version, "bin", $"{prefix}.Listener{exeExtension}");
-                if(!File.Exists(file)) {
-                    Console.WriteLine($"{file} executable not found locally");
-                    Dictionary<string, Func<string, Task>> _tools = null;
-                    if(name == "azagent") {
-                        string tarextraopts = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? " --exclude \"*/lib/*\" \"*/bin/runner*\" \"*/LICENSE\"" : "";
-                        // Note use the vsts package, because container operations have node6 hardcoded as trampoline
-                        Func<string, string, string> AURL = (arch, ext) => $"https://vstsagentpackage.azureedge.net/agent/{version}/vsts-agent-{arch}-{version}.{ext}";
-                        _tools = new Dictionary<string, Func<string, Task>> {
-                            { "windows/386", dest => DownloadTool(AURL("win-x86", "zip"), dest, token, unwrap: false)},
-                            { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
-                            { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
-                            { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
-                            { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
-                            { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
-                        };
-                    } else {
-                        Func<string, string, string> AURL = (arch, ext) => $"https://github.com/actions/runner/releases/download/v{version}/actions-runner-{arch}-{version}.{ext}";
-                        _tools = new Dictionary<string, Func<string, Task>> {
-                            { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
-                            { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
-                            { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
-                            { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
-                            { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
-                            { "osx/arm64", dest => DownloadTool(AURL("osx-arm64", "tar.gz"), dest, token, unwrap: false)},
-                        };
-                    }
-                    if(_tools.TryGetValue(platform, out Func<string, Task> download)) {
-                        await download(Path.Combine(externalsPath, name, version));
-                        if(!File.Exists(file)) {
-                            throw new Exception("runner executable, not found after download");
-                        }
-                        Console.WriteLine("runner executable downloaded, continue workflow");
-                    } else {
-                        throw new Exception("Failed to get runner executable, use --runner-path to use an external runner");
-                    }
+            var externalsPath = Path.Join(GharunUtil.GetLocalStorage());
+            var os = GetHostOS();
+            var arch = GetHostArch();
+            string platform = os + "/" + arch;
+            var exeExtension = os == "windows" ? ".exe" : "";
+            var prefix = name == "azagent" ? "Agent" : "Runner";
+            string file = Path.Combine(externalsPath, name, version, "bin", $"{prefix}.Listener{exeExtension}");
+            if(!File.Exists(file)) {
+                Console.WriteLine($"{file} executable not found locally");
+                Dictionary<string, Func<string, Task>> _tools = null;
+                if(name == "azagent") {
+                    string tarextraopts = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? " --exclude \"*/lib/*\" \"*/bin/runner*\" \"*/LICENSE\"" : "";
+                    // Note use the vsts package, because container operations have node6 hardcoded as trampoline
+                    Func<string, string, string> AURL = (arch, ext) => $"https://vstsagentpackage.azureedge.net/agent/{version}/vsts-agent-{arch}-{version}.{ext}";
+                    _tools = new Dictionary<string, Func<string, Task>> {
+                        { "windows/386", dest => DownloadTool(AURL("win-x86", "zip"), dest, token, unwrap: false)},
+                        { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
+                        { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
+                        { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
+                        { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
+                        { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
+                    };
+                } else {
+                    Func<string, string, string> AURL = (arch, ext) => $"https://github.com/actions/runner/releases/download/v{version}/actions-runner-{arch}-{version}.{ext}";
+                    _tools = new Dictionary<string, Func<string, Task>> {
+                        { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
+                        { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
+                        { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
+                        { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
+                        { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
+                        { "osx/arm64", dest => DownloadTool(AURL("osx-arm64", "tar.gz"), dest, token, unwrap: false)},
+                    };
                 }
-                return file;
-            } finally {
-                l.ReleaseMutex();
+                if(_tools.TryGetValue(platform, out Func<string, Task> download)) {
+                    await download(Path.Combine(externalsPath, name, version));
+                    if(!File.Exists(file)) {
+                        throw new Exception("runner executable, not found after download");
+                    }
+                    Console.WriteLine("runner executable downloaded, continue workflow");
+                } else {
+                    throw new Exception("Failed to get runner executable, use --runner-path to use an external runner");
+                }
             }
+            return file;
         }
     }
 }

@@ -1220,7 +1220,7 @@ namespace Runner.Client
                             Console.WriteLine($"Starting {parameters.parallel} Runner{(parameters.parallel != 1 ? "s" : "")}...");
                             var workerchannel = Channel.CreateBounded<bool>(1);
                             for(int i = 0; i < parameters.parallel; i++) {
-                                if(string.IsNullOrEmpty(parameters.RunnerDirectory)) {
+                                if(string.IsNullOrEmpty(parameters.RunnerPath)) {
                                     listener.Add(CreateRunner(binpath, parameters, listener, workerchannel, source));
                                 } else {
                                     listener.Add(CreateExternalRunner(binpath, parameters, listener, workerchannel, source));
