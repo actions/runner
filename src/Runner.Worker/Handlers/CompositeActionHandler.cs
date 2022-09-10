@@ -411,6 +411,28 @@ namespace GitHub.Runner.Worker.Handlers
             Trace.Info($"Starting: {step.DisplayName}");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
 
+            if(step.ExecutionContext.Global.Variables.GetBoolean("system.runner.server.composite-timeout-minutes") ?? false) {
+                // Set the timeout
+                var timeoutMinutes = 0;
+                var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
+                try
+                {
+                    timeoutMinutes = templateEvaluator.EvaluateStepTimeout(step.Timeout, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info("An error occurred when attempting to determine the step timeout.");
+                    Trace.Error(ex);
+                    step.ExecutionContext.Error("An error occurred when attempting to determine the step timeout.");
+                    step.ExecutionContext.Error(ex);
+                }
+                if (timeoutMinutes > 0)
+                {
+                    var timeout = TimeSpan.FromMinutes(timeoutMinutes);
+                    step.ExecutionContext.SetTimeout(timeout);
+                }
+            }
+
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 
             try
