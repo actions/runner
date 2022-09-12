@@ -190,17 +190,6 @@ namespace GitHub.Runner.Worker
                         context.SetGitHubContext("api_url", $"{url.Scheme}://{url.Host}{portInfo}/api/v3");
                         context.SetGitHubContext("graphql_url", $"{url.Scheme}://{url.Host}{portInfo}/api/graphql");
                     }
-
-                    // Add non-secret variables as environment variables first, so workflows/jobs can override them
-                    context.Debug("Adding non-secret variables as environment variables");
-                    foreach (var variable in message.Variables)
-                    {
-                        if (!variable.Value.IsSecret)
-                        {
-                            context.Global.EnvironmentVariables[variable.Key] = variable.Value.Value ;
-                            context.SetEnvContext(variable.Key, variable.Value.Value);
-                        }
-                    }
                     
                     // Evaluate the job-level environment variables
                     context.Debug("Evaluating job-level environment variables");
