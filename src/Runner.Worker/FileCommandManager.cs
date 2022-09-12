@@ -370,4 +370,35 @@ namespace GitHub.Runner.Worker
             }
         }
     }
+
+    public sealed class SetOutputFileCommand : RunnerService, IFileCommandExtension
+    {
+        public string ContextName => "output";
+        public string FilePrefix => "set_output_";
+
+        public Type ExtensionType => typeof(IFileCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
+        {
+            if (File.Exists(filePath))
+            {
+                var lines = File.ReadAllLines(filePath, Encoding.UTF8);
+                foreach(var line in lines)
+                {
+                    if (string.IsNullOrEmpty(line))
+                    {
+                        continue;
+                    }
+
+                    var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
+                    var name = split[0];
+                    var value = split[1];
+
+                    context.SetOutput(name, value, out var reference);
+
+                    context.Debug($"Set output {name} = {value}");
+                }
+            }
+        }
+    }
 }

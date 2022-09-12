@@ -21,6 +21,7 @@ namespace GitHub.Runner.Worker
             "graphql_url",
             "head_ref",
             "job",
+            "output",
             "path",
             "ref_name",
             "ref_protected",
