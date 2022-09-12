@@ -1,6 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
-using GitHub.DistributedTask.Pipelines.ContextData;
 using Moq;
 using System;
 using System.Collections.Generic;

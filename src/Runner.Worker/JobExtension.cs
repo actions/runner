@@ -190,7 +190,7 @@ namespace GitHub.Runner.Worker
                         context.SetGitHubContext("api_url", $"{url.Scheme}://{url.Host}{portInfo}/api/v3");
                         context.SetGitHubContext("graphql_url", $"{url.Scheme}://{url.Host}{portInfo}/api/graphql");
                     }
-                    
+
                     // Evaluate the job-level environment variables
                     context.Debug("Evaluating job-level environment variables");
                     var templateEvaluator = context.ToPipelineTemplateEvaluator();
