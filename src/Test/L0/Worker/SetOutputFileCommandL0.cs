@@ -365,7 +365,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 WriteContent(stateFile, content, newline: newline);
-                _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _outputs.Count);
                 Assert.Equal($"hello{newline}world", _outputs["MY_OUTPUT"]);
@@ -402,7 +402,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
             ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
             Directory.CreateDirectory(workDirectory);
-            _rootDirectory = Path.Combine(workDirectory, nameof(SaveStateFileCommandL0));
+            _rootDirectory = Path.Combine(workDirectory, nameof(SetOutputFileCommandL0));
             Directory.CreateDirectory(_rootDirectory);
 
             // Execution context
@@ -434,7 +434,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _outputs[name] = value;
               });
 
-            // SaveStateFileCommand
+            // SetOutputFileCommand
             _setOutputFileCommand = new SetOutputFileCommand();
             _setOutputFileCommand.Initialize(hostContext);
 
