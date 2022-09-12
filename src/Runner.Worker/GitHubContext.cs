@@ -34,6 +34,7 @@ namespace GitHub.Runner.Worker
             "run_number",
             "server_url",
             "sha",
+            "state",
             "step_summary",
             "triggering_actor",
             "workflow",

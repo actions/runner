@@ -325,4 +325,49 @@ namespace GitHub.Runner.Worker
             }
         }
     }
+
+    public sealed class SaveStateFileCommand : RunnerService, IFileCommandExtension
+    {
+        public string ContextName => "state";
+        public string FilePrefix => "save_state_";
+
+        public Type ExtensionType => typeof(IFileCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
+        {
+            if (File.Exists(filePath))
+            {
+                var lines = File.ReadAllLines(filePath, Encoding.UTF8);
+                foreach(var line in lines)
+                {
+                    if (string.IsNullOrEmpty(line))
+                    {
+                        continue;
+                    }
+
+                    var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
+                    var name = split[0];
+                    var value = split[1];
+
+                    // Embedded steps (composite) keep track of the state at the root level
+                    if (context.IsEmbedded)
+                    {
+                      var id = context.EmbeddedId;
+                      if (!context.Root.EmbeddedIntraActionState.ContainsKey(id))
+                      {
+                        context.Root.EmbeddedIntraActionState[id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                      }
+                      context.Root.EmbeddedIntraActionState[id][name] = value;
+                    }
+                    // Otherwise modify the ExecutionContext
+                    else
+                    {
+                      context.IntraActionState[name] = value;
+                    }
+
+                    context.Debug($"Save intra-action state {name} = {value}");
+                }
+            }
+        }
+    }
 }
