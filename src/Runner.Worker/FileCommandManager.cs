@@ -142,63 +142,10 @@ namespace GitHub.Runner.Worker
         {
             try
             {
-                var text = File.ReadAllText(filePath) ?? string.Empty;
-                var index = 0;
-                var line = ReadLine(text, ref index);
-                while (line != null)
+                var pairs = new EnvFileKeyValuePairs(filePath);
+                foreach (var pair in pairs)
                 {
-                    if (!string.IsNullOrEmpty(line))
-                    {
-                        var equalsIndex = line.IndexOf("=", StringComparison.Ordinal);
-                        var heredocIndex = line.IndexOf("<<", StringComparison.Ordinal);
-
-                        // Normal style NAME=VALUE
-                        if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
-                        {
-                            var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
-                            if (string.IsNullOrEmpty(line))
-                            {
-                                throw new Exception($"Invalid environment variable format '{line}'. Environment variable name must not be empty");
-                            }
-                            SetEnvironmentVariable(context, split[0], split[1]);
-                        }
-                        // Heredoc style NAME<<EOF
-                        else if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
-                        {
-                            var split = line.Split(new[] { "<<" }, 2, StringSplitOptions.None);
-                            if (string.IsNullOrEmpty(split[0]) || string.IsNullOrEmpty(split[1]))
-                            {
-                                throw new Exception($"Invalid environment variable format '{line}'. Environment variable name must not be empty and delimiter must not be empty");
-                            }
-                            var name = split[0];
-                            var delimiter = split[1];
-                            var startIndex = index; // Start index of the value (inclusive)
-                            var endIndex = index;   // End index of the value (exclusive)
-                            var tempLine = ReadLine(text, ref index, out var newline);
-                            while (!string.Equals(tempLine, delimiter, StringComparison.Ordinal))
-                            {
-                                if (tempLine == null)
-                                {
-                                    throw new Exception($"Invalid environment variable value. Matching delimiter not found '{delimiter}'");
-                                }
-                                if (newline == null)
-                                {
-                                    throw new Exception($"Invalid environment variable value. EOF marker missing new line.");
-                                }
-                                endIndex = index - newline.Length;
-                                tempLine = ReadLine(text, ref index, out newline);
-                            }
-
-                            var value = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
-                            SetEnvironmentVariable(context, name, value);
-                        }
-                        else
-                        {
-                            throw new Exception($"Invalid environment variable format '{line}'");
-                        }
-                    }
-
-                    line = ReadLine(text, ref index);
+                    SetEnvironmentVariable(context, pair.Key, pair.Value);
                 }
             }
             catch (DirectoryNotFoundException)
@@ -219,48 +166,6 @@ namespace GitHub.Runner.Worker
             context.Global.EnvironmentVariables[name] = value;
             context.SetEnvContext(name, value);
             context.Debug($"{name}='{value}'");
-        }
-
-        private static string ReadLine(
-            string text,
-            ref int index)
-        {
-            return ReadLine(text, ref index, out _);
-        }
-
-        private static string ReadLine(
-            string text,
-            ref int index,
-            out string newline)
-        {
-            if (index >= text.Length)
-            {
-                newline = null;
-                return null;
-            }
-
-            var originalIndex = index;
-            var lfIndex = text.IndexOf("\n", index, StringComparison.Ordinal);
-            if (lfIndex < 0)
-            {
-                index = text.Length;
-                newline = null;
-                return text.Substring(originalIndex);
-            }
-
-#if OS_WINDOWS
-            var crLFIndex = text.IndexOf("\r\n", index, StringComparison.Ordinal);
-            if (crLFIndex >= 0 && crLFIndex < lfIndex)
-            {
-                index = crLFIndex + 2; // Skip over CRLF
-                newline = "\r\n";
-                return text.Substring(originalIndex, crLFIndex - originalIndex);
-            }
-#endif
-
-            index = lfIndex + 1; // Skip over LF
-            newline = "\n";
-            return text.Substring(originalIndex, lfIndex - originalIndex);
         }
     }
 
@@ -337,85 +242,26 @@ namespace GitHub.Runner.Worker
         {
             try
             {
-                var text = File.ReadAllText(filePath) ?? string.Empty;
-                var index = 0;
-                var line = ReadLine(text, ref index);
-                while (line != null)
+                var pairs = new EnvFileKeyValuePairs(filePath);
+                foreach (var pair in pairs)
                 {
-                    if (!string.IsNullOrEmpty(line))
+                    // Embedded steps (composite) keep track of the state at the root level
+                    if (context.IsEmbedded)
                     {
-                        var stateName = string.Empty;
-                        var stateValue = string.Empty;
-
-                        var equalsIndex = line.IndexOf("=", StringComparison.Ordinal);
-                        var heredocIndex = line.IndexOf("<<", StringComparison.Ordinal);
-
-                        // Normal style NAME=VALUE
-                        if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
+                        var id = context.EmbeddedId;
+                        if (!context.Root.EmbeddedIntraActionState.ContainsKey(id))
                         {
-                            var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
-                            if (string.IsNullOrEmpty(line))
-                            {
-                                throw new Exception($"Invalid state format '{line}'. State name must not be empty");
-                            }
-
-                            stateName = split[0];
-                            stateValue = split[1];
-                        }
-                        // Heredoc style NAME<<EOF
-                        else if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
-                        {
-                            var split = line.Split(new[] { "<<" }, 2, StringSplitOptions.None);
-                            if (string.IsNullOrEmpty(split[0]) || string.IsNullOrEmpty(split[1]))
-                            {
-                                throw new Exception($"Invalid state format '{line}'. State name must not be empty and delimiter must not be empty");
-                            }
-                            stateName = split[0];
-                            var delimiter = split[1];
-                            var startIndex = index; // Start index of the value (inclusive)
-                            var endIndex = index;   // End index of the value (exclusive)
-                            var tempLine = ReadLine(text, ref index, out var newline);
-                            while (!string.Equals(tempLine, delimiter, StringComparison.Ordinal))
-                            {
-                                if (tempLine == null)
-                                {
-                                    throw new Exception($"Invalid state value. Matching delimiter not found '{delimiter}'");
-                                }
-                                if (newline == null)
-                                {
-                                    throw new Exception($"Invalid state value. EOF marker missing new line.");
-                                }
-                                endIndex = index - newline.Length;
-                                tempLine = ReadLine(text, ref index, out newline);
-                            }
-
-                            stateValue = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
-                        }
-                        else
-                        {
-                            throw new Exception($"Invalid state format '{line}'");
-                        }
-
-                        // Embedded steps (composite) keep track of the state at the root level
-                        if (context.IsEmbedded)
-                        {
-                          var id = context.EmbeddedId;
-                          if (!context.Root.EmbeddedIntraActionState.ContainsKey(id))
-                          {
                             context.Root.EmbeddedIntraActionState[id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                          }
-                          context.Root.EmbeddedIntraActionState[id][stateName] = stateValue;
                         }
-                        // Otherwise modify the ExecutionContext
-                        else
-                        {
-                          context.IntraActionState[stateName] = stateValue;
-                        }
-
-                        context.Debug($"Save intra-action state {stateName} = {stateValue}");
+                        context.Root.EmbeddedIntraActionState[id][pair.Key] = pair.Value;
+                    }
+                    // Otherwise modify the ExecutionContext
+                    else
+                    {
+                        context.IntraActionState[pair.Key] = pair.Value;
                     }
 
-                    line = ReadLine(text, ref index);
+                    context.Debug($"Save intra-action state {pair.Key} = {pair.Value}");
                 }
             }
             catch (DirectoryNotFoundException)
@@ -482,71 +328,11 @@ namespace GitHub.Runner.Worker
         {
             try
             {
-                var text = File.ReadAllText(filePath) ?? string.Empty;
-                var index = 0;
-                var line = ReadLine(text, ref index);
-                while (line != null)
+                var pairs = new EnvFileKeyValuePairs(filePath);
+                foreach (var pair in pairs)
                 {
-                    if (!string.IsNullOrEmpty(line))
-                    {
-                        var outputName = string.Empty;
-                        var outputValue = string.Empty;
-
-                        var equalsIndex = line.IndexOf("=", StringComparison.Ordinal);
-                        var heredocIndex = line.IndexOf("<<", StringComparison.Ordinal);
-
-                        // Normal style NAME=VALUE
-                        if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
-                        {
-                            var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
-                            if (string.IsNullOrEmpty(line))
-                            {
-                                throw new Exception($"Invalid state format '{line}'. State name must not be empty");
-                            }
-
-                            outputName = split[0];
-                            outputValue = split[1];
-                        }
-                        // Heredoc style NAME<<EOF
-                        else if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
-                        {
-                            var split = line.Split(new[] { "<<" }, 2, StringSplitOptions.None);
-                            if (string.IsNullOrEmpty(split[0]) || string.IsNullOrEmpty(split[1]))
-                            {
-                                throw new Exception($"Invalid state format '{line}'. State name must not be empty and delimiter must not be empty");
-                            }
-                            outputName = split[0];
-                            var delimiter = split[1];
-                            var startIndex = index; // Start index of the value (inclusive)
-                            var endIndex = index;   // End index of the value (exclusive)
-                            var tempLine = ReadLine(text, ref index, out var newline);
-                            while (!string.Equals(tempLine, delimiter, StringComparison.Ordinal))
-                            {
-                                if (tempLine == null)
-                                {
-                                    throw new Exception($"Invalid state value. Matching delimiter not found '{delimiter}'");
-                                }
-                                if (newline == null)
-                                {
-                                    throw new Exception($"Invalid state value. EOF marker missing new line.");
-                                }
-                                endIndex = index - newline.Length;
-                                tempLine = ReadLine(text, ref index, out newline);
-                            }
-
-                            outputValue = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
-                        }
-                        else
-                        {
-                            throw new Exception($"Invalid state format '{line}'");
-                        }
-
-                        context.SetOutput(outputName, outputValue, out var reference);
-
-                        context.Debug($"Set output {outputName} = {outputValue}");
-                    }
-
-                    line = ReadLine(text, ref index);
+                    context.SetOutput(pair.Key, pair.Value, out var reference);
+                    context.Debug($"Set output {pair.Key} = {pair.Value}");
                 }
             }
             catch (DirectoryNotFoundException)
@@ -558,18 +344,104 @@ namespace GitHub.Runner.Worker
                 context.Debug($"State file does not exist '{filePath}'");
             }
         }
+    }
+
+    public sealed class EnvFileKeyValuePairs: IEnumerable<KeyValuePair<string, string>>
+    {
+        private string _filePath;
+
+        public EnvFileKeyValuePairs(string filePath)
+        {
+            _filePath = filePath;
+        }
+
+        public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
+        {
+            var text = File.ReadAllText(_filePath) ?? string.Empty;
+            var index = 0;
+            var line = ReadLine(text, ref index);
+            while (line != null)
+            {
+                if (!string.IsNullOrEmpty(line))
+                {
+                    var key = string.Empty;
+                    var output = string.Empty;
+
+                    var equalsIndex = line.IndexOf("=", StringComparison.Ordinal);
+                    var heredocIndex = line.IndexOf("<<", StringComparison.Ordinal);
+
+                    // Normal style NAME=VALUE
+                    if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
+                    {
+                        var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            throw new Exception($"Invalid format '{line}'. Name must not be empty");
+                        }
+
+                        key = split[0];
+                        output = split[1];
+                    }
+
+                    // Heredoc style NAME<<EOF
+                    else if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
+                    {
+                        var split = line.Split(new[] { "<<" }, 2, StringSplitOptions.None);
+                        if (string.IsNullOrEmpty(split[0]) || string.IsNullOrEmpty(split[1]))
+                        {
+                            throw new Exception($"Invalid format '{line}'. Name must not be empty and delimiter must not be empty");
+                        }
+                        key = split[0];
+                        var delimiter = split[1];
+                        var startIndex = index; // Start index of the value (inclusive)
+                        var endIndex = index;   // End index of the value (exclusive)
+                        var tempLine = ReadLine(text, ref index, out var newline);
+                        while (!string.Equals(tempLine, delimiter, StringComparison.Ordinal))
+                        {
+                            if (tempLine == null)
+                            {
+                                throw new Exception($"Invalid value. Matching delimiter not found '{delimiter}'");
+                            }
+                            if (newline == null)
+                            {
+                                throw new Exception($"Invalid value. EOF marker missing new line.");
+                            }
+                            endIndex = index - newline.Length;
+                            tempLine = ReadLine(text, ref index, out newline);
+                        }
+
+                        output = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
+                    }
+                    else
+                    {
+                        throw new Exception($"Invalid format '{line}'");
+                    }
+
+                    yield return new KeyValuePair<string, string>(key, output);
+                }
+
+                line = ReadLine(text, ref index);
+            }
+        }
+
+        System.Collections.IEnumerator
+            System.Collections.IEnumerable.GetEnumerator()
+        {
+            // Invoke IEnumerator<string> GetEnumerator() above.
+            return GetEnumerator();
+        }
 
         private static string ReadLine(
-            string text,
-            ref int index)
+                string text,
+                ref int index)
         {
             return ReadLine(text, ref index, out _);
         }
 
         private static string ReadLine(
-            string text,
-            ref int index,
-            out string newline)
+                string text,
+                ref int index,
+                out string newline)
         {
             if (index >= text.Length)
             {
@@ -598,6 +470,7 @@ namespace GitHub.Runner.Worker
 
             index = lfIndex + 1; // Skip over LF
             newline = "\n";
+            var reader = new EnvFileKeyValuePairs("path");
             return text.Substring(originalIndex, lfIndex - originalIndex);
         }
     }
