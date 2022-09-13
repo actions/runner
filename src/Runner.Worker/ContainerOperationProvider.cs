@@ -129,14 +129,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void printHello()
-        {
-            Console.WriteLine("Hello World");
-            // create an array of strings
-
-
-        }
-
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
         {
             Trace.Entering();
