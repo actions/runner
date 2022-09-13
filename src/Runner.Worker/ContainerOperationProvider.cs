@@ -322,7 +322,7 @@ namespace GitHub.Runner.Worker
 
             if (!string.IsNullOrEmpty(container.ContainerId))
             {
-                if (!container.IsJobContainer && container.IsHealthy)
+                if (!container.IsJobContainer && !container.FailedInitialization)
                 {
                     var healthcheck = await Healthcheck(executionContext, container);
                     if (string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
@@ -448,7 +448,7 @@ namespace GitHub.Runner.Worker
         {
             await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
             executionContext.Error($"Failed to initialize container {container.ContainerImage}");
-            container.IsHealthy = false;
+            container.FailedInitialization = true;
         }
 
         private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)
