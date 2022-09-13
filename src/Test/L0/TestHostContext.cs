@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using GitHub.DistributedTask.Logging;
 using System.Net.Http.Headers;
 using GitHub.Runner.Sdk;
+
 namespace GitHub.Runner.Common.Tests
 {
     public sealed class TestHostContext : IHostContext, IDisposable
