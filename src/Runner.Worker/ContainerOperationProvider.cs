@@ -101,14 +101,14 @@ namespace GitHub.Runner.Worker
 
             executionContext.Output("##[group]Waiting for all services to be ready");
 
-            _dockerManager.UnhealthyContainers = new List<ContainerInfo>();
+            var unhealthyContainers = new List<ContainerInfo>();
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
                 var healthcheck = await Healthcheck(executionContext, container);
 
                 if (!string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
                 {
-                    _dockerManager.UnhealthyContainers.Add(container);
+                    unhealthyContainers.Add(container);
                 }
                 else
                 {
@@ -117,9 +117,9 @@ namespace GitHub.Runner.Worker
             }
             executionContext.Output("##[endgroup]");
 
-            if (_dockerManager.UnhealthyContainers.Count > 0)
+            if (unhealthyContainers.Count > 0)
             {
-                foreach (var container in _dockerManager.UnhealthyContainers)
+                foreach (var container in unhealthyContainers)
                 {
                     executionContext.Output($"##[group]Service container {container.ContainerNetworkAlias} failed.");
                     await ContainerErrorLogs(executionContext, container);
