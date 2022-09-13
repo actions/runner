@@ -100,33 +100,33 @@ namespace GitHub.Runner.Worker
             }
 
             executionContext.Output("##[group]Waiting for all services to be ready");
-            bool IsAnyUnhealthy = false;
+
             _dockerManager.UnhealthyContainers = new List<ContainerInfo>();
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
                 var healthcheck = await Healthcheck(executionContext, container);
+
                 if (!string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
                 {
-                    IsAnyUnhealthy = true;      
                     _dockerManager.UnhealthyContainers.Add(container);
                 }
                 else
                 {
                     executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
-                }            
-            }   
+                }
+            }
             executionContext.Output("##[endgroup]");
 
-            if (IsAnyUnhealthy)
-            {          
+            if (_dockerManager.UnhealthyContainers.Count > 0)
+            {
                 foreach (var container in _dockerManager.UnhealthyContainers)
                 {
                     executionContext.Output($"##[group]Service container {container.ContainerNetworkAlias} failed.");
                     await ContainerErrorLogs(executionContext, container);
-                    executionContext.Output("##[endgroup]"); 
+                    executionContext.Output("##[endgroup]");
                 }
                 throw new InvalidOperationException("One or more containers failed to start.");
-            }         
+            }
         }
 
         public void printHello()
