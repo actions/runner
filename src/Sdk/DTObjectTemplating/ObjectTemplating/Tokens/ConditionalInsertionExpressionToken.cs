@@ -10,7 +10,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class ConditionalExpressionToken : ExpressionToken
     {
-        public string Condition { get; }
+        [DataMember(Name = "condition", EmitDefaultValue = false)]
+        public string Condition { get; set; }
         internal ConditionalExpressionToken (
             int type,
             Int32? fileId,

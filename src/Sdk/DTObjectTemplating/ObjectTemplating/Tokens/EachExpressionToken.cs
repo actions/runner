@@ -22,8 +22,10 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             Collection = collection;
         }
 
-        public string Variable { get; private set; }
-        public string Collection { get; private set; }
+        [DataMember(Name = "variable", EmitDefaultValue = false)]
+        public string Variable { get; set; }
+        [DataMember(Name = "collection", EmitDefaultValue = false)]
+        public string Collection { get; set; }
 
         public override TemplateToken Clone(Boolean omitSource)
         {

@@ -557,7 +557,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return $"{PipelineTemplateConstants.Success}()";
             }
 
-            var expressionParser = new ExpressionParser() { DTExpressionsV1 = context.AzureDevops };
+            var expressionParser = new ExpressionParser() { Flags = context.Flags };
 
             // Create dummy named values and functions
             var namedValues = new List<INamedValueInfo>();

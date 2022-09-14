@@ -57,7 +57,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser() { DTExpressionsV1 = context.AzureDevops }.CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
+                var tree = new ExpressionParser() { Flags = context.Flags }.CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
                     MaxMemory = context.Memory.MaxBytes,
@@ -94,7 +94,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser() { DTExpressionsV1 = context.AzureDevops }.CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
+                var tree = new ExpressionParser() { Flags = context.Flags }.CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
                     MaxMemory = context.Memory.MaxBytes,
@@ -123,7 +123,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser() { DTExpressionsV1 = context.AzureDevops }.CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
+                var tree = new ExpressionParser() { Flags = context.Flags }.CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
                     MaxMemory = context.Memory.MaxBytes,
@@ -152,7 +152,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser() { DTExpressionsV1 = context.AzureDevops }.CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
+                var tree = new ExpressionParser() { Flags = context.Flags }.CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
                     MaxMemory = context.Memory.MaxBytes,

@@ -15,6 +15,7 @@ using YamlDotNet.Core.Events;
 using System.Globalization;
 using System.Linq;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Expressions2;
 
 namespace GitHub.Runner.Worker
 {
@@ -314,8 +315,19 @@ namespace GitHub.Runner.Worker
                 schema = TemplateSchema.Load(objectReader);
             }
 
+            ExpressionFlags flags = ExpressionFlags.None;
+            if(executionContext.Global.Variables.GetBoolean("system.runner.server.extendedFunctions") == true) {
+                flags |= ExpressionFlags.ExtendedFunctions;
+            }
+            if(executionContext.Global.Variables.GetBoolean("system.runner.server.extendedDirectives") == true) {
+                flags |= ExpressionFlags.ExtendedDirectives;
+            }
+            if(executionContext.Global.Variables.GetBoolean("system.runner.server.allowAnyForInsert") == true) {
+                flags |= ExpressionFlags.AllowAnyForInsert;
+            }
             var result = new TemplateContext
             {
+                Flags = flags,
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(10, int.MaxValue), // Don't truncate error messages otherwise we might not scrub secrets correctly
                 Memory = new TemplateMemory(

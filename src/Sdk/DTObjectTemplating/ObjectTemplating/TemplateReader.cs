@@ -321,6 +321,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             var def = new DefinitionInfo(mappingDefinition, "any");
                             def.AllowedContext = valueDefinition.AllowedContext.Append(eachexp.Variable).ToArray();
                             nextValue = ReadValue(def);
+                        } else if(nextKeyScalar is ConditionalExpressionToken || nextKeyScalar is InsertExpressionToken && (m_context.Flags & Expressions2.ExpressionFlags.AllowAnyForInsert) != Expressions2.ExpressionFlags.None) {
+                            var def = new DefinitionInfo(mappingDefinition, "any");
+                            nextValue = ReadValue(def);
                         } else {
                             nextValue = ReadValue(valueDefinition);
                         }
@@ -641,6 +644,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 return null;
             }
 
+            bool extendedDirectives = (m_context.Flags & Expressions2.ExpressionFlags.ExtendedDirectives) != Expressions2.ExpressionFlags.None;
             // Try to find a matching directive
             List<String> parameters;
             if (MatchesDirective(trimmed, TemplateConstants.InsertDirective, 0, out parameters, out ex))
@@ -651,7 +655,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (m_context.AzureDevops && MatchesDirective(trimmed, "if", 1, out parameters, out ex))
+            else if (extendedDirectives && MatchesDirective(trimmed, "if", 1, out parameters, out ex))
             {
                 return new IfExpressionToken(m_fileId, line, column, parameters[0]);
             }
@@ -659,7 +663,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (m_context.AzureDevops && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex))
+            else if (extendedDirectives && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex))
             {
                 return new ElseIfExpressionToken(m_fileId, line, column, parameters[0]);
             }
@@ -667,7 +671,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (m_context.AzureDevops && MatchesDirective(trimmed, "else", 0, out parameters, out ex))
+            else if (extendedDirectives && MatchesDirective(trimmed, "else", 0, out parameters, out ex))
             {
                 return new ElseExpressionToken(m_fileId, line, column);
             }
@@ -675,7 +679,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (m_context.AzureDevops && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1] == "in")
+            else if (extendedDirectives && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1] == "in")
             {
                 return new EachExpressionToken(m_fileId, line, column, parameters[0], parameters[2]);
             }
@@ -685,7 +689,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
 
             // Check if the value is an expression
-            if (!ExpressionToken.IsValidExpression(trimmed, allowedContext, out ex, m_context.AzureDevops))
+            if (!ExpressionToken.IsValidExpression(trimmed, allowedContext, out ex, m_context.Flags))
             {
                 return null;
             }

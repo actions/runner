@@ -36,7 +36,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             String expression,
             String[] allowedContext,
             out Exception ex,
-            bool azureDevops = false)
+            ExpressionFlags flags = ExpressionFlags.None)
         {
             // Create dummy named values and functions
             var namedValues = new List<INamedValueInfo>();
@@ -68,7 +68,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             ExpressionNode root = null;
             try
             {
-                root = new ExpressionParser() { DTExpressionsV1 = azureDevops }.CreateTree(expression, null, namedValues, functions) as ExpressionNode;
+                root = new ExpressionParser() { Flags = flags }.CreateTree(expression, null, namedValues, functions) as ExpressionNode;
 
                 result = true;
                 ex = null;

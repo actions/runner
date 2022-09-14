@@ -90,6 +90,22 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                     newValue = new InsertExpressionToken(null, null, null);
                     break;
 
+                case TokenType.IfExpression:
+                    newValue = new IfExpressionToken(null, null, null, null);
+                    break;
+
+                case TokenType.ElseExpression:
+                    newValue = new ElseExpressionToken(null, null, null);
+                    break;
+
+                case TokenType.ElseIfExpression:
+                    newValue = new ElseIfExpressionToken(null, null, null, null);
+                    break;
+ 
+                case TokenType.EachExpression:
+                    newValue = new EachExpressionToken(null, null, null, null, null);
+                    break;
+
                 case TokenType.Sequence:
                     newValue = new SequenceToken(null, null, null);
                     break;
@@ -294,6 +310,64 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         }
                         writer.WritePropertyName("directive");
                         writer.WriteValue(insertExpressionToken.Directive);
+                        writer.WriteEndObject();
+                        return;
+
+                    case TokenType.IfExpression:
+                    case TokenType.ElseIfExpression:
+                    case TokenType.ElseExpression:
+                        var condExpressionToken = token as ConditionalExpressionToken;
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("type");
+                        writer.WriteValue(token.Type);
+                        if (token.FileId != null)
+                        {
+                            writer.WritePropertyName("file");
+                            writer.WriteValue(token.FileId);
+                        }
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("line");
+                            writer.WriteValue(token.Line);
+                        }
+                        if (token.Column != null)
+                        {
+                            writer.WritePropertyName("col");
+                            writer.WriteValue(token.Column);
+                        }
+                        writer.WritePropertyName("directive");
+                        writer.WriteValue(condExpressionToken.Directive);
+                        writer.WritePropertyName("condition");
+                        writer.WriteValue(condExpressionToken.Condition);
+                        writer.WriteEndObject();
+                        return;
+
+                    case TokenType.EachExpression:
+                        var eachExpressionToken = token as EachExpressionToken;
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("type");
+                        writer.WriteValue(token.Type);
+                        if (token.FileId != null)
+                        {
+                            writer.WritePropertyName("file");
+                            writer.WriteValue(token.FileId);
+                        }
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("line");
+                            writer.WriteValue(token.Line);
+                        }
+                        if (token.Column != null)
+                        {
+                            writer.WritePropertyName("col");
+                            writer.WriteValue(token.Column);
+                        }
+                        writer.WritePropertyName("directive");
+                        writer.WriteValue(eachExpressionToken.Directive);
+                        writer.WritePropertyName("variable");
+                        writer.WriteValue(eachExpressionToken.Variable);
+                        writer.WritePropertyName("collection");
+                        writer.WriteValue(eachExpressionToken.Collection);
                         writer.WriteEndObject();
                         return;
 

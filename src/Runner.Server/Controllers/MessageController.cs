@@ -917,7 +917,18 @@ namespace Runner.Server.Controllers
         }
 
         private static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, WorkflowContext context, DictionaryContextData contextData = null, ExecutionContext exctx = null) {
+            ExpressionFlags flags = ExpressionFlags.None;
+            if(context.HasFeature("system.runner.server.extendedFunctions")) {
+                flags |= ExpressionFlags.ExtendedFunctions;
+            }
+            if(context.HasFeature("system.runner.server.extendedDirectives")) {
+                flags |= ExpressionFlags.ExtendedDirectives;
+            }
+            if(context.HasFeature("system.runner.server.allowAnyForInsert")) {
+                flags |= ExpressionFlags.AllowAnyForInsert;
+            }
             var templateContext = new TemplateContext() {
+                Flags = flags,
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(10, 500),
                 Memory = new TemplateMemory(

@@ -15,10 +15,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class TemplateContext
     {
-        public TemplateContext(bool azureDevops = false) {
-            AzureDevops = azureDevops;
-        }
-        public bool AzureDevops { get; }
+        public ExpressionFlags Flags { get; set; }
         internal CancellationToken CancellationToken { get; set; }
 
         internal TemplateValidationErrors Errors

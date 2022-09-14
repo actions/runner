@@ -31,7 +31,8 @@ public class AzureDevops {
     }
 
     public static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, IList<string> fileTable, DictionaryContextData contextData = null) {
-        var templateContext = new TemplateContext(true) {
+        var templateContext = new TemplateContext {
+            Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives,
             CancellationToken = CancellationToken.None,
             Errors = new TemplateValidationErrors(10, 500),
             Memory = new TemplateMemory(

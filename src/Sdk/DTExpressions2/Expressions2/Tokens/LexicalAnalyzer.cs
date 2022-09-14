@@ -9,10 +9,10 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
 {
     internal sealed class LexicalAnalyzer
     {
-        public LexicalAnalyzer(String expression, bool dtExpressionsV1)
+        public LexicalAnalyzer(String expression, ExpressionFlags flags)
         {
             m_expression = expression;
-            DTExpressionsV1 = dtExpressionsV1;
+            Flags = flags;
         }
 
         public IEnumerable<Token> UnclosedTokens => m_unclosedTokens;
@@ -45,7 +45,7 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
                     // Logical grouping
                     else
                     {
-                        if(DTExpressionsV1) {
+                        if((Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.DTExpressionsV1) {
                             // These are not supported in azure devops
                             goto default;
                         }
@@ -85,7 +85,7 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
                 case '=':   // "=="
                 case '&':   // "&&"
                 case '|':   // "||"
-                    if(DTExpressionsV1) {
+                    if((Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.DTExpressionsV1) {
                         // These are not supported in azure devops
                         goto default;
                     }
@@ -493,7 +493,7 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
         }
 
         private readonly String m_expression; // Raw expression string
-        public bool DTExpressionsV1 { get; private set; }
+        public ExpressionFlags Flags { get; private set; }
         private readonly Stack<Token> m_unclosedTokens = new Stack<Token>(); // Unclosed start tokens
         private Int32 m_index; // Index of raw expression string
         private Token m_lastToken;

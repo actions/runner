@@ -117,12 +117,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             this TemplateToken token,
             IReadOnlyObject expressionValues,
             IList<IFunctionInfo> expressionFunctions,
-            bool azureDevops = false)
+            ExpressionFlags flags = ExpressionFlags.None)
         {
             var expressionTokens = token.Traverse()
                 .OfType<BasicExpressionToken>()
                 .ToArray();
-            var parser = new ExpressionParser() { DTExpressionsV1 = azureDevops };
+            var parser = new ExpressionParser() { Flags = flags };
             foreach (var expressionToken in expressionTokens)
             {
                 var tree = parser.ValidateSyntax(expressionToken.Expression, null);
@@ -136,7 +136,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         }
                     }
                     else if (node is Function function &&
-                        !(azureDevops ? ExpressionConstants.AzureWellKnownFunctions : ExpressionConstants.WellKnownFunctions).ContainsKey(function.Name) &&
+                        !((flags & ExpressionFlags.ExtendedFunctions) == ExpressionFlags.DTExpressionsV1 ? ExpressionConstants.AzureWellKnownFunctions : ExpressionConstants.WellKnownFunctions).ContainsKey(function.Name) &&
                         expressionFunctions?.Any(x => string.Equals(x.Name, function.Name, StringComparison.OrdinalIgnoreCase)) != true)
                     {
                         return false;

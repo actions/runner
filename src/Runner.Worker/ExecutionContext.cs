@@ -1179,7 +1179,17 @@ namespace GitHub.Runner.Worker
                 var objectReader = new JsonObjectReader(null, workflow_schema);
                 schema = TemplateSchema.Load(objectReader);
             }
-            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
+            ExpressionFlags flags = ExpressionFlags.None;
+            if(context.Global.Variables.GetBoolean("system.runner.server.extendedFunctions") == true) {
+                flags |= ExpressionFlags.ExtendedFunctions;
+            }
+            if(context.Global.Variables.GetBoolean("system.runner.server.extendedDirectives") == true) {
+                flags |= ExpressionFlags.ExtendedDirectives;
+            }
+            if(context.Global.Variables.GetBoolean("system.runner.server.allowAnyForInsert") == true) {
+                flags |= ExpressionFlags.AllowAnyForInsert;
+            }
+            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable, flags)
             {
                 MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
             };
