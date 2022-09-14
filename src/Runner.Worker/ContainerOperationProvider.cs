@@ -99,6 +99,11 @@ namespace GitHub.Runner.Worker
                 await StartContainerAsync(executionContext, container);
             }
 
+            await RunContainersHealthcheck(executionContext, containers);
+        }
+
+        public async Task RunContainersHealthcheck(IExecutionContext executionContext, List<ContainerInfo> containers)
+        {
             executionContext.Output("##[group]Waiting for all services to be ready");
 
             var unhealthyContainers = new List<ContainerInfo>();
@@ -423,7 +428,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public async Task<string> Healthcheck(IExecutionContext executionContext, ContainerInfo container)
+        private async Task<string> Healthcheck(IExecutionContext executionContext, ContainerInfo container)
         {
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
             string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
@@ -444,7 +449,7 @@ namespace GitHub.Runner.Worker
             return serviceHealth;
         }
 
-        public async Task ContainerErrorLogs(IExecutionContext executionContext, ContainerInfo container)
+        private async Task ContainerErrorLogs(IExecutionContext executionContext, ContainerInfo container)
         {
             await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
             executionContext.Error($"Failed to initialize container {container.ContainerImage}");

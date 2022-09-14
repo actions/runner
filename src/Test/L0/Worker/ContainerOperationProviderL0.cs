@@ -6,6 +6,8 @@ using GitHub.Runner.Worker.Container.ContainerHooks;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using GitHub.DistributedTask.WebApi;
+using System;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -18,37 +20,69 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IDockerCommandManager> _dockerManager;
         private Mock<IContainerHookManager> _containerHookManager;
         private ContainerOperationProvider containerOperationProvider;
-
         private Mock<IJobServerQueue> serverQueue;
-
         private Mock<IPagingLogger> pagingLogger;
-
         private List<string> healthyDockerStatus = new List<string> { "healthy" };
+        private List<string> unhealthyDockerStatus = new List<string> { "unhealthy" };
         private List<string> dockerLogs = new List<string> { "log1", "log2", "log3" };
 
-        private ContainerInfo containerInfo;
+        List<ContainerInfo> containers = new List<ContainerInfo>();
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void Healthchecktest_healthyDocker()
+        public async void RunServiceContainersHealthcheck_UnhealthyServiceContainer_AssertExceptionThrown()
+        {
+            //Arrange
+            Setup();
+            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(unhealthyDockerStatus));
+
+            //Act and Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() => containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers));
+
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void RunServiceContainersHealthcheck_UnhealthyServiceContainer_AssertFailedTask()
+        {
+            //Arrange
+            Setup();
+            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(unhealthyDockerStatus));
+
+            //Act
+            try
+            {
+                await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
+
+            }
+            catch (InvalidOperationException) { }
+
+            //Assert
+            Assert.Equal(TaskResult.Failed, _ec.Object.Result ?? TaskResult.Failed);
+
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void RunServiceContainersHealthcheck_healthyServiceContainer_AssertSucceededTask()
         {
             //Arrange
             Setup();
             _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(healthyDockerStatus));
 
             //Act
-            var result = await containerOperationProvider.Healthcheck(_ec.Object, containerInfo);
+            await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
 
             //Assert
-            _dockerManager.Verify(dm => dm.DockerLogs(It.IsAny<IExecutionContext>(), It.IsAny<string>()), Times.Never());
+            Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
 
         }
-
-
         private void Setup([CallerMemberName] string testName = "")
         {
-            containerInfo = new ContainerInfo() { ContainerImage = "ubuntu:16.04" };
+            containers.Add(new ContainerInfo() { ContainerImage = "ubuntu:16.04" });
             _hc = new TestHostContext(this, "name");
             _ec = new Mock<IExecutionContext>();
             serverQueue = new Mock<IJobServerQueue>();
