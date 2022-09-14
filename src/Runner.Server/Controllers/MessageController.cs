@@ -881,6 +881,8 @@ namespace Runner.Server.Controllers
             public string FileName { get; set; }
             public HashSet<string> ReferencedWorkflows { get; } = new HashSet<string>();
             public IDictionary<string, string> FeatureToggles { get; set; }
+            public ExpressionFlags Flags { get; internal set; }
+
             public bool HasFeature(string name, bool def = false) {
                 return FeatureToggles.TryGetValue(name, out var anchors) ? string.Equals(anchors, "true", StringComparison.OrdinalIgnoreCase) : def;
             }
@@ -2827,6 +2829,19 @@ namespace Runner.Server.Controllers
                     throw new Exception("Workflow size too large {workflowBytelen} exceeds {MaxWorkflowFileSize} bytes");
                 }
                 var workflowContext = new WorkflowContext() { FileName = fileRelativePath };
+                var globalVars = secretsProvider.GetVariablesForEnvironment("");
+                workflowContext.FeatureToggles = globalVars;
+                ExpressionFlags flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives;
+                if(workflowContext.HasFeature("system.runner.server.extendedFunctions")) {
+                    flags |= ExpressionFlags.ExtendedFunctions;
+                }
+                if(workflowContext.HasFeature("system.runner.server.DTExpressionsV2")) {
+                    flags &= ~ExpressionFlags.DTExpressionsV1;
+                }
+                if(workflowContext.HasFeature("system.runner.server.allowAnyForInsert")) {
+                    flags |= ExpressionFlags.AllowAnyForInsert;
+                }
+                workflowContext.Flags = flags;
                 List<JobItem> jobgroup = new List<JobItem>();
                 List<JobItem> dependentjobgroup = new List<JobItem>();
                 var fileProvider = new DefaultInMemoryFileProviderFileProvider(workflows, (a, b) => {
@@ -2837,7 +2852,7 @@ namespace Runner.Server.Controllers
                 if(env?.Length > 0) {
                     LoadEnvSec(env, (k, v) => rootVariables[k] = v);
                 }
-                var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, Variables = rootVariables };
+                var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, Variables = rootVariables, Flags = flags };
                 var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, null);
 
                 var tasksByNameAndVersion = new Dictionary<string, TaskMetaData>(_cache.GetOrCreate("tasksByNameAndVersion", ce => {
@@ -3159,7 +3174,7 @@ namespace Runner.Server.Controllers
                                     }
                                 }
                                 jobitem.EvaluateIf = (traceWriter) => {
-                                    var templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, contextData);
+                                    var templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, flags, contextData);
                                     // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                     templateContext.ExpressionValues["dependencies"] = stageToStageDependencies;
                                     DictionaryContextData matrixContext = new DictionaryContextData();
@@ -3205,7 +3220,7 @@ namespace Runner.Server.Controllers
                                     if(!PipelineTemplateConverter.ConvertToIfResult(templateContext, eval)) {
                                         return false;
                                     }
-                                    templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, contextData);
+                                    templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, flags, contextData);
                                     // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                     templateContext.ExpressionValues["stageDependencies"] = stageDependencies;
                                     templateContext.ExpressionValues["dependencies"] = recursiveNeedsctx;
@@ -5244,7 +5259,7 @@ namespace Runner.Server.Controllers
                             if(!(val.StartsWith("$[") && val.EndsWith("]"))) {
                                 return val;
                             }
-                            var templateContext = AzureDevops.CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, contextData);
+                            var templateContext = AzureDevops.CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, workflowContext.Flags, contextData);
                             var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "variable-result", new BasicExpressionToken(null, null, null, val.Substring(2, val.Length - 3)), 0, null, true);
                             templateContext.Errors.Check();
                             return eval.AssertString("variable").Value;

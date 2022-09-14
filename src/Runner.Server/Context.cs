@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.Expressions2;
 
 namespace Runner.Server.Azure.Devops {
     public class Context {
+        public ExpressionFlags Flags { get; set; }
         public IFileProvider FileProvider { get; set; }
         public GitHub.DistributedTask.ObjectTemplating.ITraceWriter TraceWriter { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
@@ -13,7 +15,7 @@ namespace Runner.Server.Azure.Devops {
         public Dictionary<string, string> Repositories { get; set; }
 
         public Context Clone() {
-            return new Context { FileProvider = FileProvider, TraceWriter = TraceWriter, Variables = Variables, RepositoryAndRef = RepositoryAndRef, CWD = CWD, Repositories = Repositories };
+            return new Context { FileProvider = FileProvider, TraceWriter = TraceWriter, Variables = Variables, RepositoryAndRef = RepositoryAndRef, CWD = CWD, Repositories = Repositories, Flags = Flags };
         }
 
         public Context ChildContext(MappingToken template, string path = null) {

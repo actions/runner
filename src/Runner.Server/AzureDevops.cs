@@ -30,9 +30,9 @@ public class AzureDevops {
         return TemplateSchema.Load(objectReader);
     }
 
-    public static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, IList<string> fileTable, DictionaryContextData contextData = null) {
+    public static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, IList<string> fileTable, ExpressionFlags flags, DictionaryContextData contextData = null) {
         var templateContext = new TemplateContext {
-            Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives,
+            Flags = flags,
             CancellationToken = CancellationToken.None,
             Errors = new TemplateValidationErrors(10, 500),
             Memory = new TemplateMemory(
@@ -400,7 +400,7 @@ public class AzureDevops {
 
     public static MappingToken ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null) {
         var variables = context.Variables;
-        var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), new List<string>());
+        var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), new List<string>(), context.Flags);
         var afilenameAndRef = filenameAndRef.Split("@", 2);
         var filename = afilenameAndRef[0];
         var fileId = templateContext.GetFileId(filename);
@@ -493,7 +493,7 @@ public class AzureDevops {
             }
         }
 
-        templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), contextData);
+        templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
 
         var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, "workflow-root", pipelineroot, 0, fileId);
         templateContext.Errors.Check();
