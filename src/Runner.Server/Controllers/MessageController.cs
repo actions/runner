@@ -82,6 +82,7 @@ namespace Runner.Server.Controllers
         public bool ReusableWorkflowObjectType { get; private set; }
 
         private bool reusableWorkflowInheritEnv;
+        private string workflowRootFolder;
 
         private bool DisableNoCI { get; }
         private string OnQueueJobProgram { get; }
@@ -131,6 +132,7 @@ namespace Runner.Server.Controllers
             MergedInputs = configuration.GetSection("Runner.Server").GetValue<bool>("MergedInputs", true);
             ReusableWorkflowObjectType = configuration.GetSection("Runner.Server").GetValue<bool>("ReusableWorkflowObjectType", false);
             reusableWorkflowInheritEnv = configuration.GetSection("Runner.Server").GetValue<bool>("ReusableWorkflowInheritEnv", false);
+            workflowRootFolder = configuration.GetSection("Runner.Server").GetValue<string>("WorkflowRootFolder", ".github/workflows");
             _cache = memoryCache;
             _context = context;
         }
@@ -5966,7 +5968,7 @@ namespace Runner.Server.Controllers
                                 Sha = o.Sha;
                             }
                         }
-                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/{Uri.EscapeDataString(".github/workflows")}"));
+                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/{Uri.EscapeDataString(workflowRootFolder)}"));
                         urlBuilder.Query = $"?ref={Uri.EscapeDataString(Sha ?? Ref)}";
                         var res = await client.GetAsync(urlBuilder.ToString());
                         if(res.StatusCode == System.Net.HttpStatusCode.OK) {
