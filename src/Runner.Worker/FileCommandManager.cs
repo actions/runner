@@ -140,21 +140,10 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            try
+            var pairs = new EnvFileKeyValuePairs(context, filePath);
+            foreach (var pair in pairs)
             {
-                var pairs = new EnvFileKeyValuePairs(filePath);
-                foreach (var pair in pairs)
-                {
-                    SetEnvironmentVariable(context, pair.Key, pair.Value);
-                }
-            }
-            catch (DirectoryNotFoundException)
-            {
-                context.Debug($"Environment variables file does not exist '{filePath}'");
-            }
-            catch (FileNotFoundException)
-            {
-                context.Debug($"Environment variables file does not exist '{filePath}'");
+                SetEnvironmentVariable(context, pair.Key, pair.Value);
             }
         }
 
@@ -240,80 +229,27 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            try
+            var pairs = new EnvFileKeyValuePairs(context, filePath);
+            foreach (var pair in pairs)
             {
-                var pairs = new EnvFileKeyValuePairs(filePath);
-                foreach (var pair in pairs)
+                // Embedded steps (composite) keep track of the state at the root level
+                if (context.IsEmbedded)
                 {
-                    // Embedded steps (composite) keep track of the state at the root level
-                    if (context.IsEmbedded)
+                    var id = context.EmbeddedId;
+                    if (!context.Root.EmbeddedIntraActionState.ContainsKey(id))
                     {
-                        var id = context.EmbeddedId;
-                        if (!context.Root.EmbeddedIntraActionState.ContainsKey(id))
-                        {
-                            context.Root.EmbeddedIntraActionState[id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                        }
-                        context.Root.EmbeddedIntraActionState[id][pair.Key] = pair.Value;
+                        context.Root.EmbeddedIntraActionState[id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     }
-                    // Otherwise modify the ExecutionContext
-                    else
-                    {
-                        context.IntraActionState[pair.Key] = pair.Value;
-                    }
-
-                    context.Debug($"Save intra-action state {pair.Key} = {pair.Value}");
+                    context.Root.EmbeddedIntraActionState[id][pair.Key] = pair.Value;
                 }
-            }
-            catch (DirectoryNotFoundException)
-            {
-                context.Debug($"State file does not exist '{filePath}'");
-            }
-            catch (FileNotFoundException)
-            {
-                context.Debug($"State file does not exist '{filePath}'");
-            }
-        }
+                // Otherwise modify the ExecutionContext
+                else
+                {
+                    context.IntraActionState[pair.Key] = pair.Value;
+                }
 
-        private static string ReadLine(
-            string text,
-            ref int index)
-        {
-            return ReadLine(text, ref index, out _);
-        }
-
-        private static string ReadLine(
-            string text,
-            ref int index,
-            out string newline)
-        {
-            if (index >= text.Length)
-            {
-                newline = null;
-                return null;
+                context.Debug($"Save intra-action state {pair.Key} = {pair.Value}");
             }
-
-            var originalIndex = index;
-            var lfIndex = text.IndexOf("\n", index, StringComparison.Ordinal);
-            if (lfIndex < 0)
-            {
-                index = text.Length;
-                newline = null;
-                return text.Substring(originalIndex);
-            }
-
-#if OS_WINDOWS
-            var crLFIndex = text.IndexOf("\r\n", index, StringComparison.Ordinal);
-            if (crLFIndex >= 0 && crLFIndex < lfIndex)
-            {
-                index = crLFIndex + 2; // Skip over CRLF
-                newline = "\r\n";
-                return text.Substring(originalIndex, crLFIndex - originalIndex);
-            }
-#endif
-
-            index = lfIndex + 1; // Skip over LF
-            newline = "\n";
-            return text.Substring(originalIndex, lfIndex - originalIndex);
         }
     }
 
@@ -326,38 +262,44 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            try
+            var pairs = new EnvFileKeyValuePairs(context, filePath);
+            foreach (var pair in pairs)
             {
-                var pairs = new EnvFileKeyValuePairs(filePath);
-                foreach (var pair in pairs)
-                {
-                    context.SetOutput(pair.Key, pair.Value, out var reference);
-                    context.Debug($"Set output {pair.Key} = {pair.Value}");
-                }
-            }
-            catch (DirectoryNotFoundException)
-            {
-                context.Debug($"State file does not exist '{filePath}'");
-            }
-            catch (FileNotFoundException)
-            {
-                context.Debug($"State file does not exist '{filePath}'");
+                context.SetOutput(pair.Key, pair.Value, out var reference);
+                context.Debug($"Set output {pair.Key} = {pair.Value}");
             }
         }
     }
 
     public sealed class EnvFileKeyValuePairs: IEnumerable<KeyValuePair<string, string>>
     {
+        private IExecutionContext _context;
         private string _filePath;
 
-        public EnvFileKeyValuePairs(string filePath)
+        public EnvFileKeyValuePairs(IExecutionContext context, string filePath)
         {
+            _context = context;
             _filePath = filePath;
         }
 
         public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
         {
-            var text = File.ReadAllText(_filePath) ?? string.Empty;
+            var text = string.Empty;
+            try
+            {
+                text = File.ReadAllText(_filePath) ?? string.Empty;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                _context.Debug($"File does not exist '{_filePath}'");
+                yield break;
+            }
+            catch (FileNotFoundException)
+            {
+                _context.Debug($"File does not exist '{_filePath}'");
+                yield break;
+            }
+
             var index = 0;
             var line = ReadLine(text, ref index);
             while (line != null)
@@ -427,7 +369,7 @@ namespace GitHub.Runner.Worker
         System.Collections.IEnumerator
             System.Collections.IEnumerable.GetEnumerator()
         {
-            // Invoke IEnumerator<string> GetEnumerator() above.
+            // Invoke IEnumerator<KeyValuePair<string, string>> GetEnumerator() above.
             return GetEnumerator();
         }
 
@@ -470,7 +412,6 @@ namespace GitHub.Runner.Worker
 
             index = lfIndex + 1; // Skip over LF
             newline = "\n";
-            var reader = new EnvFileKeyValuePairs("path");
             return text.Substring(originalIndex, lfIndex - originalIndex);
         }
     }
