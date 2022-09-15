@@ -126,7 +126,9 @@ namespace GitHub.Runner.Worker
                 foreach (var container in unhealthyContainers)
                 {
                     executionContext.Output($"##[group]Service container {container.ContainerNetworkAlias} failed.");
-                    await ContainerErrorLogs(executionContext, container);
+                    await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
+                    executionContext.Error($"Failed to initialize container {container.ContainerImage}");
+                    container.FailedInitialization = true;
                     executionContext.Output("##[endgroup]");
                 }
                 throw new InvalidOperationException("One or more containers failed to start.");
@@ -446,13 +448,6 @@ namespace GitHub.Runner.Worker
                 retryCount++;
             }
             return serviceHealth;
-        }
-
-        private async Task ContainerErrorLogs(IExecutionContext executionContext, ContainerInfo container)
-        {
-            await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
-            executionContext.Error($"Failed to initialize container {container.ContainerImage}");
-            container.FailedInitialization = true;
         }
 
         private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)
