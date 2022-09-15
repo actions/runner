@@ -60,7 +60,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(healthyDockerStatus));
 
             //Act
-            await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
+            await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers).ConfigureAwait(true);
 
             //Assert
             Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
