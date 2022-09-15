@@ -1,4 +1,4 @@
-﻿#if OS_LINUX
+#if OS_LINUX
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Listener.Configuration
 {
