@@ -220,6 +220,7 @@ namespace GitHub.Runner.Common
         // Related to definition variables.
         public static class Variables
         {
+            public static readonly string ConfigurationVariablePrefix = "CONFIGURATION_VARIABLE.";
             public static readonly string MacroPrefix = "$(";
             public static readonly string MacroSuffix = ")";
 
