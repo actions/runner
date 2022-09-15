@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -7,9 +7,6 @@ using Xunit;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
 using GitHub.Runner.Worker.Container;
-using GitHub.DistributedTask.Pipelines.ContextData;
-using System.Linq;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Common.Tests.Worker

@@ -1,4 +1,3 @@
-﻿using GitHub.Runner.Common.Util;
 using Moq;
 using System;
 using System.IO;
