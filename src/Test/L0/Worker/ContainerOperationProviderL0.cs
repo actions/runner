@@ -12,6 +12,7 @@ using System;
 namespace GitHub.Runner.Common.Tests.Worker
 {
 
+    [Collection("Sequential")]
     public sealed class ContainerOperationProviderL0
     {
 
