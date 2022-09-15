@@ -108,7 +108,7 @@ namespace GitHub.Runner.Worker
             var unhealthyContainers = new List<ContainerInfo>();
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
-                var healthcheck = await Healthcheck(executionContext, container);
+                var healthcheck = await ContainerHealthcheck(executionContext, container);
 
                 if (!string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
                 {
@@ -328,7 +328,7 @@ namespace GitHub.Runner.Worker
             {
                 if (!container.IsJobContainer && !container.FailedInitialization)
                 {
-                    var healthcheck = await Healthcheck(executionContext, container);
+                    var healthcheck = await ContainerHealthcheck(executionContext, container);
                     if (string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
                     {
                         // Print logs for service container jobs (not the "action" job itself b/c that's already logged).
