@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using GitHub.Runner.Common.Util;
 using System.Threading.Channels;
 using GitHub.Runner.Sdk;
 using System.Linq;
