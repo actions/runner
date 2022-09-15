@@ -1,7 +1,4 @@
-using System;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
-using GitHub.Runner.Common;
 using GitHub.Runner.Listener.Configuration;
 using Xunit;
 
