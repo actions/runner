@@ -89,7 +89,6 @@ namespace GitHub.Runner.Worker
             executionContext.Output("##[group]Create local container network");
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             await CreateContainerNetworkAsync(executionContext, containerNetwork);
-
             executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
             executionContext.Output("##[endgroup]");
 
