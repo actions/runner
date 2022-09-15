@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;

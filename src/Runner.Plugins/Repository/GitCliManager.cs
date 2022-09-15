@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -9,7 +8,6 @@ using System.Threading.Tasks;
 using System.IO;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
-using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Plugins.Repository
 {

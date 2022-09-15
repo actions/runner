@@ -6,11 +6,9 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
-using System.Diagnostics;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Plugins.Repository.v1_0
 {

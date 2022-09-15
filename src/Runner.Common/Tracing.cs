@@ -1,5 +1,3 @@
-﻿
-using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System;
 using System.Diagnostics;

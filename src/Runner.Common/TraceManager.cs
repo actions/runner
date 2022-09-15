@@ -1,4 +1,3 @@
-﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
