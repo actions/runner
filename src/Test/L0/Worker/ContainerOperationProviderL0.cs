@@ -12,7 +12,6 @@ using System;
 namespace GitHub.Runner.Common.Tests.Worker
 {
 
-    [Collection("Sequential")]
     public sealed class ContainerOperationProviderL0
     {
 
@@ -32,20 +31,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void RunServiceContainersHealthcheck_UnhealthyServiceContainer_AssertExceptionThrown()
-        {
-            //Arrange
-            Setup();
-            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(unhealthyDockerStatus));
-
-            //Act and Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers));
-
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public async void RunServiceContainersHealthcheck_UnhealthyServiceContainer_AssertFailedTask()
         {
             //Arrange
@@ -58,11 +43,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
 
             }
-            catch (InvalidOperationException) { }
-
+            catch (InvalidOperationException) { 
+            
             //Assert
             Assert.Equal(TaskResult.Failed, _ec.Object.Result ?? TaskResult.Failed);
-
+            }
         }
 
         [Fact]
