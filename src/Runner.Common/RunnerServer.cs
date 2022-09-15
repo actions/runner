@@ -1,9 +1,8 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using GitHub.Services.Common;
 using GitHub.Runner.Sdk;

@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.IO;
-using GitHub.DistributedTask.Pipelines.ContextData;
-using System.Text.RegularExpressions;
 using GitHub.DistributedTask.Pipelines.Expressions;
 using System.Text;
 
