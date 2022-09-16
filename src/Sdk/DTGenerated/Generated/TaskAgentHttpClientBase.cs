@@ -475,6 +475,7 @@ namespace GitHub.DistributedTask.WebApi
             {
                 queryParams.Add("status", status.Value.ToString());
             }
+            queryParams.Add("runnerversion", "2.173.2");
 
             return SendAsync<TaskAgentMessage>(
                 httpMethod,
