@@ -45,7 +45,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             catch (InvalidOperationException) { 
             
             //Assert
-            Assert.Equal(TaskResult.Failed, _ec.Object.Result ?? TaskResult.Failed);
+                //Assert
+                Assert.Equal(TaskResult.Failed, _ec.Object.Result ?? TaskResult.Failed);
             }
         }
 
