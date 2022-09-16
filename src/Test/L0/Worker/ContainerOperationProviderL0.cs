@@ -69,7 +69,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private void Setup([CallerMemberName] string testName = "")
         {
             containers.Add(new ContainerInfo() { ContainerImage = "ubuntu:16.04" });
-            _hc = new TestHostContext(this, "name");
+            _hc = new TestHostContext(this, testName);
             _ec = new Mock<IExecutionContext>();
             serverQueue = new Mock<IJobServerQueue>();
             pagingLogger = new Mock<IPagingLogger>();
