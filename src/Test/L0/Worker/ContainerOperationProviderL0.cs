@@ -66,6 +66,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
 
         }
+
         private void Setup([CallerMemberName] string testName = "")
         {
             containers.Add(new ContainerInfo() { ContainerImage = "ubuntu:16.04" });
