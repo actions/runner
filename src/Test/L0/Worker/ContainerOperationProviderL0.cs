@@ -42,7 +42,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
             }
-            catch (InvalidOperationException) { 
+            catch (InvalidOperationException)
+            { 
             
             //Assert
                 //Assert
