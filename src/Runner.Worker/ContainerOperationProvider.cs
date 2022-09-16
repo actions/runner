@@ -435,8 +435,13 @@ namespace GitHub.Runner.Worker
             string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             if (string.IsNullOrEmpty(serviceHealth))
             {
+                string exitCode = "--format=\"{{print .State.ExitCode}}\"";
+                string serviceExitCode = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: exitCode)).FirstOrDefault();
+
+                // Container has no healthcheck but didn't exit with an error code    
+                if ("0".Equals(serviceExitCode)) return "healthy";
                 // Container has no HEALTHCHECK
-                return String.Empty;
+                else return "unhealthy";
             }
             var retryCount = 0;
             while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
