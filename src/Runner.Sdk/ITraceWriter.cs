@@ -2,7 +2,10 @@
 {
     public interface ITraceWriter
     {
-        void Info(string message);
+        
+        
+         
+          void Info(string message);
         void Verbose(string message);
     }
 }
