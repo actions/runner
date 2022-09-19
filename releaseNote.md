@@ -4,7 +4,7 @@
 
 ## Bugs
 
-- Revert node12 version due to fs.copyFileSync hang #1537
+- Fixed an issue where container environment variables names or values could escape the docker command (#2108)
 
 
 ## Misc
