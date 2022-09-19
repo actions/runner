@@ -1,5 +1,7 @@
 name: Lint Code Base
-on: workflow_dispatch
+on:
+  pull_request:
+    branches: [ master, main, develop ]
 
 jobs:
   build:
