@@ -1,11 +1,8 @@
 ## Features
-- Allow self-hosted runner admins to fail jobs that don't have a job container (#1895)
-- Experimental: Self-hosted runner admins can now use scripts to customize the container invocation in the runner (#1853)
 ## Bugs
-- Fixed an issue where a Job Hook would fail to execute if the shell path contains a space on Windows (#1826)
+- Fixed an issue where container environment variables names or values could escape the docker command (#2108)
 
 ## Misc
-- Handle new `HostedRunnerShutdownMessage` to shutdown hosted runners faster (#1922)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
