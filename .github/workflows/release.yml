@@ -72,7 +72,7 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
-          os: windows-latest
+          os: windows-2019
           devScript: ./dev
 
     runs-on: ${{ matrix.os }}
