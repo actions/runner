@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- Fixed an issue where ephemeral runners did not restart after upgrading (#1396)
+- Fixed an issue where container environment variables names or values could escape the docker command (#2108)
 
 ## Misc
 
