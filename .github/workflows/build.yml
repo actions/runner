@@ -47,7 +47,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
-
+    # Needed for runner service (win only)
+    - name: Install dotnet framework 4.5
+      if: matrix.runtime == 'win-x64'
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: | 
+          4.5.x
     # Build runner layout
     - name: Build & Layout Release
       run: |
