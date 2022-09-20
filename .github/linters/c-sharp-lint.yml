@@ -1,0 +1,7 @@
+[*]
+end_of_line = lf
+charset = utf-8
+
+# Tab indentation
+indent_style = space
+indent_size = 2
