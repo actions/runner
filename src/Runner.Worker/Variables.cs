@@ -165,21 +165,6 @@ namespace GitHub.Runner.Worker
             }
             return result;
         }
-
-        public DictionaryContextData ToVarsContext()
-        {
-            var result = new DictionaryContextData();
-            foreach (var variable in _variables.Values)
-            {
-                // Only add the configuration variables to the vars context.
-                if (!variable.Secret && variable.Name.StartsWith(Constants.Variables.ConfigurationVariablePrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    var name = variable.Name.Replace(Constants.Variables.ConfigurationVariablePrefix, string.Empty);
-                    result[name] = new StringContextData(variable.Value);
-                }
-            }
-            return result;
-        }
     }
 
     public sealed class Variable

@@ -864,8 +864,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                jobRequest.Variables["CONFIGURATION_VARIABLE.VARIABLE_1"] = "value1";
-                jobRequest.Variables["CONFIGURATION_VARIABLE.VARIABLE_2"] = "value2";
+                var inputVarsContext = new DictionaryContextData();
+
+                inputVarsContext["VARIABLE_1"] = new StringContextData("value1");
+                inputVarsContext["VARIABLE_2"] = new StringContextData("value2");
+                jobRequest.ContextData["vars"] = inputVarsContext;
 
                 // Arrange: Setup the paging logger. 
                 var pagingLogger1 = new Mock<IPagingLogger>();
