@@ -1,7 +1,7 @@
 ## Features
 
 ## Bugs
-- Fixed an issue where websockets failed to successfully close when posting log lines (#1790)
+- Fixed an issue where container environment variables names or values could escape the docker command (#2108)
 
 
 ## Windows x64
