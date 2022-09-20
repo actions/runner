@@ -53,7 +53,7 @@ jobs:
       uses: actions/setup-dotnet@v2
       with:
         dotnet-version: | 
-          4.5.x
+          5.0.x
     # Build runner layout
     - name: Build & Layout Release
       run: |
