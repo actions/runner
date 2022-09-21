@@ -40,6 +40,7 @@ namespace GitHub.DistributedTask.Expressions2
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.StartsWith>("startsWith", 2, 2);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Upper>("upper", 1, 1);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Xor>("xor", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Split>("split", 2, 2);
         }
 
         private static void AddFunction<T>(String name, Int32 minParameters, Int32 maxParameters)
