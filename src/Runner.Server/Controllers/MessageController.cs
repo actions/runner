@@ -1797,6 +1797,9 @@ namespace Runner.Server.Controllers
                                         SequenceToken exclude = null;
                                         bool failFast = true;
                                         double? max_parallel = null;
+                                        // Allow including and excluding via list properties https://github.com/orgs/community/discussions/7835
+                                        // https://github.com/actions/runner/issues/857
+                                        var matrixexcludeincludelists = workflowContext.HasFeature("system.runner.server.matrixexcludeincludelists");
                                         if (rawstrategy != null) {
                                             jobTraceWriter.Info("{0}", "Evaluate strategy");
                                             var templateContext = CreateTemplateContext(jobTraceWriter, workflowContext, contextData);
@@ -1848,7 +1851,7 @@ namespace Runner.Server.Controllers
                                                                     // The official github actions service reject this matrix, return false would just ignore it
                                                                     throw new Exception($"Tried to exclude a matrix key {item.Key} which isn't defined by the matrix");
                                                                 }
-                                                                if (!TemplateTokenEqual(item.Value, val)) {
+                                                                if (!(matrixexcludeincludelists && val is SequenceToken seq ? seq.Any(t => TemplateTokenEqual(t, item.Value)) : TemplateTokenEqual(item.Value, val))) {
                                                                     return false;
                                                                 }
                                                             }
@@ -1872,8 +1875,31 @@ namespace Runner.Server.Controllers
                                         }
                                         var keys = flatmatrix.First().Keys.ToArray();
                                         if (include != null) {
-                                            foreach (var item in include) {
+                                            foreach(var map in include.SelectMany(item => {
                                                 var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.include.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.include.* mapping key").Value, k => k.Value, StringComparer.OrdinalIgnoreCase);
+                                                if(matrixexcludeincludelists) {
+                                                    var ret = new List<Dictionary<string, TemplateToken>>{ new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase) };
+                                                    foreach(var m in map) {
+                                                        var next = new List<Dictionary<string, TemplateToken>>();
+                                                        var cur = next.ToArray();
+                                                        foreach(var n in ret) {
+                                                            var d = new Dictionary<string, TemplateToken>(n, StringComparer.OrdinalIgnoreCase);
+                                                            if(m.Value is SequenceToken seq) {
+                                                                foreach(var v in seq) {
+                                                                    d[m.Key] = v;
+                                                                }
+                                                            } else {
+                                                                d[m.Key] = m.Value;
+                                                            }
+                                                            next.Add(d);
+                                                        }
+                                                        ret = next;
+                                                    }
+                                                    return ret.AsEnumerable();
+                                                } else {
+                                                    return new[] { map }.AsEnumerable();
+                                                }
+                                            })) {
                                                 bool matched = false;
                                                 if(keys.Length > 0) {
                                                     flatmatrix.ForEach(dict => {
