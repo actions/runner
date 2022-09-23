@@ -67,7 +67,7 @@ namespace GitHub.Runner.Common
 
                 // Get the index of the separator between the command info and the data.
                 int endIndex = message.IndexOf(_commandKey, _commandKey.Length);
-                if (endIndex < 0)
+                if(endIndex < 0)
                 {
                     return false;
                 }
