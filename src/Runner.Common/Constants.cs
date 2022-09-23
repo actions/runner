@@ -77,7 +77,7 @@ namespace GitHub.Runner.Common
             public static readonly Architecture PlatformArchitecture = Architecture.X64;
 #elif ARM
             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
-#elif ARM64            
+#elif ARM64
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
 #endif
 
@@ -152,7 +152,7 @@ namespace GitHub.Runner.Common
                 public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
                 public static readonly string Node12Warning = "DistributedTask.AddWarningToNode12Action";
                 public static readonly string UseContainerPathForTemplate = "DistributedTask.UseContainerPathForTemplate";
-                public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks"; 
+                public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
@@ -241,8 +241,8 @@ namespace GitHub.Runner.Common
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
 
                 // Set this env var to "node12" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
-                public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION"; 
-                public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION"; 
+                public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION";
+                public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
             }
 
             public static class System
@@ -253,6 +253,16 @@ namespace GitHub.Runner.Common
                 public static readonly string AccessToken = "system.accessToken";
                 public static readonly string Culture = "system.culture";
                 public static readonly string PhaseDisplayName = "system.phaseDisplayName";
+            }
+
+            public static class Windows
+            {
+                //
+                // Keep alphabetical
+                //
+                public static readonly int Windows11BuildVersion = 22000;
+                // Both windows 10 and windows 11 share the same Major Version 10, need to use the build version to differentiate
+                public static readonly int Windows11MajorVersion = 10;
             }
         }
     }
