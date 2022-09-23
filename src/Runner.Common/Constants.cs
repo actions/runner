@@ -69,9 +69,6 @@ namespace GitHub.Runner.Common
             public static readonly OSPlatform Platform = OSPlatform.OSX;
 #elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
-            public static readonly int Windows11BuildVersion = 22000;
-            // Both windows 10 and windows 11 share the same Major Version 10, need to use the build version to differentiate
-            public static readonly int Windows11MajorVersion = 10;
 #endif
 
 #if X86
@@ -257,6 +254,13 @@ namespace GitHub.Runner.Common
                 public static readonly string Culture = "system.culture";
                 public static readonly string PhaseDisplayName = "system.phaseDisplayName";
             }
+        }
+
+        public static class OperatingSystem
+        {
+            public static readonly int Windows11BuildVersion = 22000;
+            // Both windows 10 and windows 11 share the same Major Version 10, need to use the build version to differentiate
+            public static readonly int Windows11MajorVersion = 10;
         }
     }
 }
