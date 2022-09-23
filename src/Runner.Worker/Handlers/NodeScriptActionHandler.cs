@@ -101,7 +101,11 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.Equals(Data.NodeVersion, "node12", StringComparison.OrdinalIgnoreCase) &&
                 Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
             {
-                ExecutionContext.Output($"The node12 is not supported on the macOS or windows ARM64 platforms. Use node16 instead.");
+#if OS_OSX
+                ExecutionContext.Output($"The node12 is not supported on macOS ARM64 platform. Use node16 instead.");
+#elif OS_WINDOWS
+                ExecutionContext.Output($"The node12 is not supported on windows ARM64 platform. Use node16 instead.");
+#endif
                 Data.NodeVersion = "node16";
             }
 #endif
