@@ -17,7 +17,7 @@
   <PropertyGroup Condition=" '$(PackageRuntime)' == 'win-arm64' ">
       <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
   </PropertyGroup>
-    <PropertyGroup Condition=" '$(PackageRuntime)' != 'win-arm64' ">
+  <PropertyGroup Condition=" '$(PackageRuntime)' != 'win-arm64' ">
       <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
