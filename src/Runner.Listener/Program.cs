@@ -58,6 +58,18 @@ namespace GitHub.Runner.Listener
                         terminal.WriteLine("This runner version is built for Windows. Please install a correct build for your OS.");
                         return Constants.Runner.ReturnCode.TerminatedError;
                     }
+                    #if ARM64
+                        // A little hacky, but windows gives no way to differentiate between windows 10 and 11.
+                        // By default only 11 supports native x64 app emulation on arm, so we only want to support windows 11
+                        // https://docs.microsoft.com/en-us/windows/arm/overview#build-windows-apps-that-run-on-arm
+                        // Windows 10 and 11 share a MajorVersion, so we also check the build version. Minor for both is 0, so doing < 0 doesn't really make a lot of sense.
+                        if (Environment.OSVersion.Version.Major < Constants.OperatingSystem.Windows11MajorVersion || 
+                            Environment.OSVersion.Version.Build < Constants.OperatingSystem.Windows11BuildVersion)
+                        {
+                            terminal.WriteLine("Win-arm64 runners require windows 11 or later. Please upgrade your operating system.");
+                            return Constants.Runner.ReturnCode.TerminatedError;
+                        }
+                    #endif
                     break;
                 default:
                     terminal.WriteLine($"Running the runner on this platform is not supported. The current platform is {RuntimeInformation.OSDescription} and it was built for {Constants.Runner.Platform.ToString()}.");
