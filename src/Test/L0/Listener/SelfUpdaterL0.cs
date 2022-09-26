@@ -1,4 +1,4 @@
-﻿#if !(OS_OSX && ARM64)
+#if !(OS_WINDOWS && ARM64)
 using System;
 using System.Collections.Generic;
 using System.IO;

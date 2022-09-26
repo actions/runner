@@ -3,6 +3,7 @@ PACKAGERUNTIME=$1
 PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
+UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
 NODE12_VERSION="12.22.7"
 NODE16_VERSION="16.13.0"
 
@@ -129,6 +130,16 @@ if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/$PACKAGERUNTIME/node.lib" node12/bin
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/$PACKAGERUNTIME/node.exe" node16/bin
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/$PACKAGERUNTIME/node.lib" node16/bin
+    if [[ "$PRECACHE" != "" ]]; then
+        acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
+    fi
+fi
+
+# Download the external tools only for Windows.
+if [[ "$PACKAGERUNTIME" == "win-arm64" ]]; then
+    # todo: replace these with official release when available
+    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_VERSION}/$PACKAGERUNTIME/node.exe" node16/bin
+    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_VERSION}/$PACKAGERUNTIME/node.lib" node16/bin
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi

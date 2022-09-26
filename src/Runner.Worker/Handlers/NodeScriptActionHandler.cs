@@ -97,11 +97,15 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-#if OS_OSX
+#if OS_OSX || OS_WINDOWS
             if (string.Equals(Data.NodeVersion, "node12", StringComparison.OrdinalIgnoreCase) &&
                 Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
             {
+#if OS_OSX
                 ExecutionContext.Output($"The node12 is not supported on macOS ARM64 platform. Use node16 instead.");
+#elif OS_WINDOWS
+                ExecutionContext.Output($"The node12 is not supported on windows ARM64 platform. Use node16 instead.");
+#endif
                 Data.NodeVersion = "node16";
             }
 #endif
@@ -134,11 +138,11 @@ namespace GitHub.Runner.Worker.Handlers
             if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node12Warning) ?? false))
             {
                 if (!ExecutionContext.JobContext.ContainsKey("Node12ActionsWarnings"))
-                {                     
+                {
                     ExecutionContext.JobContext["Node12ActionsWarnings"] = new ArrayContextData();
                 }
                 var repoAction = Action as RepositoryPathReference;
-                var actionDisplayName = new StringContextData(repoAction.Name ?? repoAction.Path); // local actions don't have a 'Name'                
+                var actionDisplayName = new StringContextData(repoAction.Name ?? repoAction.Path); // local actions don't have a 'Name'
                 ExecutionContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Add(actionDisplayName);
             }
 

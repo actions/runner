@@ -18,7 +18,7 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64, osx-arm64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -42,6 +42,10 @@ jobs:
 
         - runtime: win-x64
           os: windows-2019
+          devScript: ./dev
+
+        - runtime: win-arm64
+          os: windows-latest
           devScript: ./dev
 
     runs-on: ${{ matrix.os }}
@@ -82,7 +86,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64'
 
     # Create runner package tar.gz/zip
     - name: Package Release
@@ -97,7 +101,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: runner-package-${{ matrix.runtime }}
-        path: | 
+        path: |
           _package
           _package_trims/trim_externals
           _package_trims/trim_runtime
