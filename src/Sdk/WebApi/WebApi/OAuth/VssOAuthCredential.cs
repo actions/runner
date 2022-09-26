@@ -12,7 +12,7 @@ namespace GitHub.Services.OAuth
     public class VssOAuthCredential : FederatedCredential
     {
         /// <summary>
-        /// Initializes a new <c>VssOAuthCredential</c> instance with the specified authorization grant and client 
+        /// Initializes a new <c>VssOAuthCredential</c> instance with the specified authorization grant and client
         /// credentials.
         /// </summary>
         /// <param name="authorizationUrl">The location of the token endpoint for the target authorization server</param>
@@ -117,8 +117,14 @@ namespace GitHub.Services.OAuth
             return false;
         }
 
+        public VssOAuthTokenProvider GeTokenProvider(
+            Uri serviceUrl)
+        {
+            return new VssOAuthTokenProvider(this, serviceUrl);
+        }
+
         protected override IssuedTokenProvider OnCreateTokenProvider(
-            Uri serverUrl, 
+            Uri serverUrl,
             IHttpResponse response)
         {
             return new VssOAuthTokenProvider(this, serverUrl);
