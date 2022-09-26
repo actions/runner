@@ -5,6 +5,7 @@
 ## Bugs
 - Fixed an issue where self hosted environments had their docker env's overwritten (#2107)
 - Fixed an issue where step summaries for composite actions got overwritten (#2077)
+
 ## Misc
 - Bumped `actions/core` dependency (#2123)
 
