@@ -1,6 +1,6 @@
 ## Features
 - Created prerelease runner package for win-arm64 architecture (#2022)
-- Added `GITHUB_STATE` and `GITHUB_OUTPUT`environment file commands (#2118)
+- Added `GITHUB_STATE` and `GITHUB_OUTPUT` environment file commands (#2118)
 
 ## Bugs
 - Fixed an issue where self hosted environments had their docker env's overwritten (#2107)
