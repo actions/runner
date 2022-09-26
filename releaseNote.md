@@ -1,6 +1,13 @@
+## Features
+- Created prerelease runner package for win-arm64 architecture (#2022)
+- Added `GITHUB_STATE` and `GITHUB_OUTPUT` environment file commands (#2118)
+
 ## Bugs
 - Fixed an issue where self hosted environments had their docker env's overwritten (#2107)
+- Fixed an issue where step summaries for composite actions got overwritten (#2077)
+
 ## Misc
+- Bumped `actions/core` dependency (#2123)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
