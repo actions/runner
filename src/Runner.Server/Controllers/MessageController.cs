@@ -1612,7 +1612,17 @@ namespace Runner.Server.Controllers
                         return skipWorkflow();
                     }
                 }
-                workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? fileRelativePath;
+                Func<string> tryEvalRunName = () => {
+                    var runName = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "run-name" select r).FirstOrDefault().Value;
+                    if(runName == null) {
+                        return null;
+                    }
+                    var contextData = createContext("");
+                    var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
+                    var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-run-name", runName, 0, null, true);
+                    return workflowEnv?.AssertString("run-name")?.Value;
+                };
+                workflowname = callingJob?.WorkflowName ?? tryEvalRunName() ?? (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? fileRelativePath;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
                     if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
