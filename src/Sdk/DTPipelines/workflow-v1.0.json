@@ -12,6 +12,7 @@
             "required": true
           },
           "name": "string",
+          "run-name": "workflow-run-name",
           "defaults": "workflow-defaults",
           "env": "workflow-env",
           "jobs": {
@@ -838,6 +839,14 @@
         "loose-key-type": "any",
         "loose-value-type": "any"
       }
+    },
+    
+    "workflow-run-name": {
+      "context": [
+        "github",
+        "inputs"
+      ],
+      "string": {}
     }
   }
 }
