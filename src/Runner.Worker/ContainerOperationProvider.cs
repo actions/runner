@@ -330,11 +330,6 @@ namespace GitHub.Runner.Worker
             {
                 if (!container.IsJobContainer && !container.FailedInitialization)
                 {
-                    var healthcheck = await ContainerHealthcheck(executionContext, container);
-                    if (string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Print logs for service container jobs (not the "action" job itself b/c that's already logged).
-                        // Print them only if the service was healthy, else they were already logged in the initialize containers section.
                         executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
 
                         int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
@@ -342,7 +337,6 @@ namespace GitHub.Runner.Worker
                         {
                             executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
                         }
-                    }
                 }
 
                 executionContext.Output($"Stop and remove container: {container.ContainerDisplayName}");
