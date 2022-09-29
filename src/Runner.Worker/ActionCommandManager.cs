@@ -307,7 +307,7 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
-            if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateOldWorkflowCommands2") ?? false)
+            if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateStepOutputCommands") ?? false)
             {
                 var issue = new Issue()
                 {
@@ -342,7 +342,7 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
-            if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateOldWorkflowCommands2") ?? false)
+            if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateStepOutputCommands") ?? false)
             {
                 var issue = new Issue()
                 {
