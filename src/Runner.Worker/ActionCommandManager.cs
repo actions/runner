@@ -353,7 +353,6 @@ namespace GitHub.Runner.Worker
                 context.AddIssue(issue);
             }
 
-
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
             {
                 throw new Exception("Required field 'name' is missing in ##[save-state] command.");
