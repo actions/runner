@@ -92,6 +92,8 @@ namespace GitHub.Runner.Worker.Container
         public bool IsJobContainer { get; set; }
         public bool IsAlpine { get; set; }
 
+        public bool FailedInitialization { get; set; }
+
         public IDictionary<string, string> ContainerEnvironmentVariables
         {
             get
