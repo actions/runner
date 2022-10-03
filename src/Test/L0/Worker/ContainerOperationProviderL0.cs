@@ -24,9 +24,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IPagingLogger> pagingLogger;
         private List<string> healthyDockerStatus = new List<string> { "healthy" };
         private List<string> unhealthyDockerStatus = new List<string> { "unhealthy" };
-        private List<string> emptyDockerStatus = new List<string> { "" };
         private List<string> dockerLogs = new List<string> { "log1", "log2", "log3" };
-        string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
 
         List<ContainerInfo> containers = new List<ContainerInfo>();
 
@@ -37,7 +35,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             //Arrange
             Setup();
-            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), healthCheck)).Returns(Task.FromResult(unhealthyDockerStatus));
+            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(unhealthyDockerStatus));
 
             //Act
             try
@@ -49,7 +47,6 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Assert
                 Assert.Equal(TaskResult.Failed, _ec.Object.Result ?? TaskResult.Failed);
-                _dockerManager.Verify(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             }
         }
 
@@ -60,77 +57,27 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             //Arrange
             Setup();
-            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), healthCheck)).Returns(Task.FromResult(unhealthyDockerStatus));
+            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(unhealthyDockerStatus));
 
             //Act and Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers));
-            _dockerManager.Verify(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void RunServiceContainersHealthcheck_HealthyServiceContainer_AssertSucceededTask()
+        public async void RunServiceContainersHealthcheck_healthyServiceContainer_AssertSucceededTask()
         {
             //Arrange
             Setup();
-            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), healthCheck)).Returns(Task.FromResult(healthyDockerStatus));
+            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(healthyDockerStatus));
 
             //Act
             await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
 
             //Assert
             Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
-            _dockerManager.Verify(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
-
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async void RunServiceContainersHealthcheck_ServiceContainerWithoutHealthcheckAndWithOkExitStatus_AssertSucceededTask()
-        {
-
-            string exitCode = "--format=\"{{print .State.ExitCode}}\"";
-            //Arrange
-            Setup();
-            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), healthCheck)).Returns(Task.FromResult(emptyDockerStatus));
-            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), exitCode)).Returns(Task.FromResult(new List<string> { "0" }));
-
-            //Act
-            await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
-
-            //Assert
-            Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
-            _dockerManager.Verify(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
-
-        }
-
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async void RunServiceContainersHealthcheck_ServiceContainerWithoutHealthcheckAndWithErrorExitStatus_AssertSucceededTask()
-        {
-
-            string exitCode = "--format=\"{{print .State.ExitCode}}\"";
-            //Arrange
-            Setup();
-            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), healthCheck)).Returns(Task.FromResult(emptyDockerStatus));
-            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), exitCode)).Returns(Task.FromResult(new List<string> { "127" }));
-
-            //Act
-            try
-            {
-                await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
-
-            }
-            catch (InvalidOperationException)
-            {
-                //Assert
-                Assert.Equal(TaskResult.Failed, _ec.Object.Result ?? TaskResult.Failed);
-                _dockerManager.Verify(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(2));
-            }
 
         }
 
