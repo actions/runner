@@ -2915,7 +2915,9 @@ namespace Runner.Server.Controllers
                 var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, null);
                 Func<Dictionary<string, TaskMetaData>> getOrCreateTaskCache = () => {
                     var cacheKey = "tasksByNameAndVersion";
-                    if(_cache.TryGetValue(cacheKey, out Dictionary<string, TaskMetaData> res)){
+                    bool forceTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.forceTaskCacheUpdate");
+                    bool skipTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.skipTaskCacheUpdate");
+                    if(!forceTaskCacheUpdate && _cache.TryGetValue(cacheKey, out Dictionary<string, TaskMetaData> res)){
                         return res;
                     }
                     var azureTasks = Path.Join(GharunUtil.GetLocalStorage(), "AzureTasks");
@@ -2925,56 +2927,58 @@ namespace Runner.Server.Controllers
                         return null;
                     }
                     try {
-                        if(_cache.TryGetValue(cacheKey, out res)){
+                        if(!forceTaskCacheUpdate && _cache.TryGetValue(cacheKey, out res)){
                             return res;
                         }
                         var ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(azureTasks);
-                        var client = new HttpClient();
-                        var pageSize = 10;
-                        for(int j = 0; ; j += pageSize) {
-                            var feed = JsonConvert.DeserializeObject<NugetFeed>(client.GetStringAsync($"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/query2/?skip={j}&take={pageSize}&prerelease=true", cancellationToken.Token).GetAwaiter().GetResult());
-                            for(int i = 0; i < feed.Data.Length; i++) {
-                                var lowerId = feed.Data[i].Id.ToLower();
-                                var lowerVersion = feed.Data[i].Versions[0].Version.ToLower();
-                                var nameprefix = "mseng.ms.tf.distributedtask.tasks.";
-                                if(lowerId.StartsWith(nameprefix) && lowerId[lowerId.Length - 2] == 'v' && tasksByNameAndVersion.TryGetValue($"{lowerId.Substring(nameprefix.Length, lowerId.Length  - 2 - nameprefix.Length)}@{lowerVersion}", out _)) {
-                                    continue;
-                                }
-                                var lowerIdVersion = $"{lowerId}.{lowerVersion}";
-                                var taskZip = Path.Join(azureTasks, lowerIdVersion, "task.zip");
-                                if(!System.IO.File.Exists(taskZip) || !TaskMetaData.ValidZipFile(taskZip)) {
-                                    var packageFile = Path.Join(azureTasks, $"{lowerId}.{lowerVersion}.nuget");
-                                    if(!System.IO.File.Exists(packageFile) || !TaskMetaData.ValidZipFile(taskZip)) {
-                                        var packageUrl = $"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/flat2/{lowerId}/{lowerVersion}/{lowerId}.{lowerVersion}.nupkg";
-                                        workflowTraceWriter.Info($"Downloading {lowerId}@{lowerVersion} from {packageUrl}");
-                                        var resp = client.GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken.Token).GetAwaiter().GetResult();
-                                        Directory.CreateDirectory(azureTasks);
-                                        using (FileStream fs = new FileStream(packageFile, FileMode.Create, FileAccess.Write, FileShare.Read, bufferSize: 4096, useAsync: true))
-                                        using (var result = resp.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
-                                        {
-                                            result.CopyToAsync(fs, 4096, cancellationToken.Token).GetAwaiter().GetResult();
+                        if(!skipTaskCacheUpdate) {
+                            var client = new HttpClient();
+                            var pageSize = 10;
+                            for(int j = 0; ; j += pageSize) {
+                                var feed = JsonConvert.DeserializeObject<NugetFeed>(client.GetStringAsync($"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/query2/?skip={j}&take={pageSize}&prerelease=true", cancellationToken.Token).GetAwaiter().GetResult());
+                                for(int i = 0; i < feed.Data.Length; i++) {
+                                    var lowerId = feed.Data[i].Id.ToLower();
+                                    var lowerVersion = feed.Data[i].Versions[0].Version.ToLower();
+                                    var nameprefix = "mseng.ms.tf.distributedtask.tasks.";
+                                    if(lowerId.StartsWith(nameprefix) && lowerId[lowerId.Length - 2] == 'v' && tasksByNameAndVersion.TryGetValue($"{lowerId.Substring(nameprefix.Length, lowerId.Length  - 2 - nameprefix.Length)}@{lowerVersion}", out _)) {
+                                        continue;
+                                    }
+                                    var lowerIdVersion = $"{lowerId}.{lowerVersion}";
+                                    var taskZip = Path.Join(azureTasks, lowerIdVersion, "task.zip");
+                                    if(!System.IO.File.Exists(taskZip) || !TaskMetaData.ValidZipFile(taskZip)) {
+                                        var packageFile = Path.Join(azureTasks, $"{lowerId}.{lowerVersion}.nuget");
+                                        if(!System.IO.File.Exists(packageFile) || !TaskMetaData.ValidZipFile(taskZip)) {
+                                            var packageUrl = $"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/flat2/{lowerId}/{lowerVersion}/{lowerId}.{lowerVersion}.nupkg";
+                                            workflowTraceWriter.Info($"Downloading {lowerId}@{lowerVersion} from {packageUrl}");
+                                            var resp = client.GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken.Token).GetAwaiter().GetResult();
+                                            Directory.CreateDirectory(azureTasks);
+                                            using (FileStream fs = new FileStream(packageFile, FileMode.Create, FileAccess.Write, FileShare.Read, bufferSize: 4096, useAsync: true))
+                                            using (var result = resp.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
+                                            {
+                                                result.CopyToAsync(fs, 4096, cancellationToken.Token).GetAwaiter().GetResult();
+                                                fs.FlushAsync(cancellationToken.Token).GetAwaiter().GetResult();
+                                            }
+                                        }
+                                        workflowTraceWriter.Info($"Extracting {lowerId}@{lowerVersion}");
+                                        Directory.CreateDirectory(Path.Join(azureTasks, lowerIdVersion));
+                                        using(var task = System.IO.Compression.ZipFile.Open(packageFile, System.IO.Compression.ZipArchiveMode.Read))
+                                        using(var stream = task.GetEntry("content/task.zip")?.Open())
+                                        using (FileStream fs = new FileStream(taskZip, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true)) {
+                                            stream.CopyToAsync(fs, 4096, cancellationToken.Token).GetAwaiter().GetResult();
                                             fs.FlushAsync(cancellationToken.Token).GetAwaiter().GetResult();
                                         }
+                                        workflowTraceWriter.Info($"Extracted {lowerId}@{lowerVersion}");
+                                        System.IO.File.Delete(packageFile);
+                                        workflowTraceWriter.Info($"Deleted {lowerId}.{lowerVersion}.nuget");
                                     }
-                                    workflowTraceWriter.Info($"Extracting {lowerId}@{lowerVersion}");
-                                    Directory.CreateDirectory(Path.Join(azureTasks, lowerIdVersion));
-                                    using(var task = System.IO.Compression.ZipFile.Open(packageFile, System.IO.Compression.ZipArchiveMode.Read))
-                                    using(var stream = task.GetEntry("content/task.zip")?.Open())
-                                    using (FileStream fs = new FileStream(taskZip, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true)) {
-                                        stream.CopyToAsync(fs, 4096, cancellationToken.Token).GetAwaiter().GetResult();
-                                        fs.FlushAsync(cancellationToken.Token).GetAwaiter().GetResult();
-                                    }
-                                    workflowTraceWriter.Info($"Extracted {lowerId}@{lowerVersion}");
-                                    System.IO.File.Delete(packageFile);
-                                    workflowTraceWriter.Info($"Deleted {lowerId}.{lowerVersion}.nuget");
+                                }
+                                if(feed.Data.Length < pageSize) {
+                                    workflowTraceWriter.Info($"Finished updating the cached Tasks");
+                                    break;
                                 }
                             }
-                            if(feed.Data.Length < pageSize) {
-                                workflowTraceWriter.Info($"Finished updating the cached Tasks");
-                                break;
-                            }
+                            ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(azureTasks);
                         }
-                        ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(azureTasks);
                         _cache.Set(cacheKey, tasksByNameAndVersion);
                         return tasksByNameAndVersion;
                     } catch(Exception ex) {
