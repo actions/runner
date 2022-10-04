@@ -2728,6 +2728,9 @@ namespace Runner.Server.Controllers
         private struct NugetFeed {
             public NugetPackage[] Data { get; set; }
         }
+
+        private static Mutex taskCacheLock = new Mutex();
+
         private HookResponse AzureDevopsMain(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null, ISecretsProvider secretsProvider = null, string[] taskNames = null) {
             attempt = _context.Set<WorkflowRunAttempt>().Find(attempt.Id);
             _context.Entry(attempt).Reference(a => a.WorkflowRun).Load();
@@ -2860,11 +2863,31 @@ namespace Runner.Server.Controllers
                 return contextData;
             };
             try {
+                CancellationTokenSource cancellationToken = null;
+                var cforceCancelWorkflow = new CancellationTokenSource();
+                var ctoken = CancellationTokenSource.CreateLinkedTokenSource(cforceCancelWorkflow.Token);
+                var state = new WorkflowState {
+                    Cancel = ctoken,
+                    ForceCancel = cforceCancelWorkflow
+                };
+                var workflowContext = new WorkflowContext() { FileName = fileRelativePath };
+                if(WorkflowStates.TryAdd(runid, state)) {
+                    workflowContext.CancellationToken = ctoken.Token;
+                    cancellationToken = ctoken;
+                    workflowContext.ForceCancellationToken = cforceCancelWorkflow.Token;
+                    var orgfinishWorkflow = finishWorkflow;
+                    finishWorkflow = () => {
+                        orgfinishWorkflow();
+                        WorkflowStates.Remove(runid, out _);
+                    };
+                } else {
+                    // Better don't allow to have multiple reruns active
+                    throw new Exception("This workflow run is already running, multiple attempts are not supported at the same time");
+                }
                 var workflowBytelen = System.Text.Encoding.UTF8.GetByteCount(content);
                 if(workflowBytelen > MaxWorkflowFileSize) {
                     throw new Exception("Workflow size too large {workflowBytelen} exceeds {MaxWorkflowFileSize} bytes");
                 }
-                var workflowContext = new WorkflowContext() { FileName = fileRelativePath };
                 var globalVars = secretsProvider.GetVariablesForEnvironment("");
                 workflowContext.FeatureToggles = globalVars;
                 ExpressionFlags flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives;
@@ -2890,40 +2913,56 @@ namespace Runner.Server.Controllers
                 }
                 var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, Variables = rootVariables, Flags = flags };
                 var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, null);
-
-                var tasksByNameAndVersion = new Dictionary<string, TaskMetaData>(_cache.GetOrCreate("tasksByNameAndVersion", ce => {
+                Func<Dictionary<string, TaskMetaData>> getOrCreateTaskCache = () => {
+                    var cacheKey = "tasksByNameAndVersion";
+                    if(_cache.TryGetValue(cacheKey, out Dictionary<string, TaskMetaData> res)){
+                        return res;
+                    }
                     var azureTasks = Path.Join(GharunUtil.GetLocalStorage(), "AzureTasks");
                     workflowTraceWriter.Info("Downloading and update default Azure Devops Tasks from nuget registry");
+                    if(WaitHandle.WaitAny(new [] { taskCacheLock, cancellationToken.Token.WaitHandle } ) != 0) {
+                        workflowTraceWriter.Error($"Calcelled downloading or updating the cached Tasks");
+                        return null;
+                    }
                     try {
+                        if(_cache.TryGetValue(cacheKey, out res)){
+                            return res;
+                        }
+                        var ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(azureTasks);
                         var client = new HttpClient();
                         var pageSize = 10;
                         for(int j = 0; ; j += pageSize) {
-                            var feed = JsonConvert.DeserializeObject<NugetFeed>(client.GetStringAsync($"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/query2/?skip={j}&take={pageSize}&prerelease=true").GetAwaiter().GetResult());
+                            var feed = JsonConvert.DeserializeObject<NugetFeed>(client.GetStringAsync($"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/query2/?skip={j}&take={pageSize}&prerelease=true", cancellationToken.Token).GetAwaiter().GetResult());
                             for(int i = 0; i < feed.Data.Length; i++) {
                                 var lowerId = feed.Data[i].Id.ToLower();
                                 var lowerVersion = feed.Data[i].Versions[0].Version.ToLower();
-                                var taskZip = Path.Join(azureTasks, lowerId, "task.zip");
+                                var nameprefix = "mseng.ms.tf.distributedtask.tasks.";
+                                if(lowerId.StartsWith(nameprefix) && lowerId[lowerId.Length - 2] == 'v' && tasksByNameAndVersion.TryGetValue($"{lowerId.Substring(nameprefix.Length, lowerId.Length  - 2 - nameprefix.Length)}@{lowerVersion}", out _)) {
+                                    continue;
+                                }
+                                var lowerIdVersion = $"{lowerId}.{lowerVersion}";
+                                var taskZip = Path.Join(azureTasks, lowerIdVersion, "task.zip");
                                 if(!System.IO.File.Exists(taskZip)) {
                                     var packageFile = Path.Join(azureTasks, $"{lowerId}.{lowerVersion}.nuget");
                                     if(!System.IO.File.Exists(packageFile)) {
                                         var packageUrl = $"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/flat2/{lowerId}/{lowerVersion}/{lowerId}.{lowerVersion}.nupkg";
                                         workflowTraceWriter.Info($"Downloading {lowerId}@{lowerVersion} from {packageUrl}");
-                                        var resp = client.GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
+                                        var resp = client.GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken.Token).GetAwaiter().GetResult();
                                         Directory.CreateDirectory(azureTasks);
                                         using (FileStream fs = new FileStream(packageFile, FileMode.Create, FileAccess.Write, FileShare.Read, bufferSize: 4096, useAsync: true))
                                         using (var result = resp.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
                                         {
-                                            result.CopyToAsync(fs, 4096, CancellationToken.None).GetAwaiter().GetResult();
-                                            fs.FlushAsync(CancellationToken.None).GetAwaiter().GetResult();
+                                            result.CopyToAsync(fs, 4096, cancellationToken.Token).GetAwaiter().GetResult();
+                                            fs.FlushAsync(cancellationToken.Token).GetAwaiter().GetResult();
                                         }
                                     }
                                     workflowTraceWriter.Info($"Extracting {lowerId}@{lowerVersion}");
-                                    Directory.CreateDirectory(Path.Join(azureTasks, lowerId));
+                                    Directory.CreateDirectory(Path.Join(azureTasks, lowerIdVersion));
                                     using(var task = System.IO.Compression.ZipFile.Open(packageFile, System.IO.Compression.ZipArchiveMode.Read))
                                     using(var stream = task.GetEntry("content/task.zip")?.Open())
                                     using (FileStream fs = new FileStream(taskZip, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true)) {
-                                        stream.CopyToAsync(fs, 4096, CancellationToken.None).GetAwaiter().GetResult();
-                                        fs.FlushAsync(CancellationToken.None).GetAwaiter().GetResult();
+                                        stream.CopyToAsync(fs, 4096, cancellationToken.Token).GetAwaiter().GetResult();
+                                        fs.FlushAsync(cancellationToken.Token).GetAwaiter().GetResult();
                                     }
                                     workflowTraceWriter.Info($"Extracted {lowerId}@{lowerVersion}");
                                 }
@@ -2933,12 +2972,18 @@ namespace Runner.Server.Controllers
                                 break;
                             }
                         }
+                        ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(azureTasks);
+                        _cache.Set(cacheKey, tasksByNameAndVersion);
+                        return tasksByNameAndVersion;
                     } catch(Exception ex) {
                         workflowTraceWriter.Error($"Failed to Download or update the cached Tasks: {ex}");
+                        return null;
+                    } finally {
+                        taskCacheLock.ReleaseMutex();
                     }
-                    var ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(azureTasks);
-                    return tasksByNameAndVersion;
-                }) , StringComparer.OrdinalIgnoreCase);
+                };
+                var tasksByNameAndVersion = new Dictionary<string, TaskMetaData>(getOrCreateTaskCache(), StringComparer.OrdinalIgnoreCase);
+                state.TasksByNameAndVersion = tasksByNameAndVersion;
                 if(taskNames?.Length > 0) {
                     var config = Configuration;
                     var cache = this._cache;
@@ -4029,28 +4074,6 @@ namespace Runner.Server.Controllers
                     workflowcomplete = (e) => {
                         channel.Writer.WriteAsync(e);
                     };
-                    CancellationTokenSource cancellationToken = null;
-                    if(callingJob != null) {
-                        workflowContext.ForceCancellationToken = callingJob.ForceCancellationToken;
-                        cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(workflowContext.ForceCancellationToken ?? CancellationToken.None, callingJob.CancellationToken.Value);
-                        workflowContext.CancellationToken = cancellationToken.Token;
-                    } else {
-                        var cforceCancelWorkflow = new CancellationTokenSource();
-                        var ctoken = CancellationTokenSource.CreateLinkedTokenSource(cforceCancelWorkflow.Token);
-                        var state = new WorkflowState {
-                            Cancel = ctoken,
-                            ForceCancel = cforceCancelWorkflow,
-                            TasksByNameAndVersion = tasksByNameAndVersion
-                        };
-                        if(WorkflowStates.TryAdd(runid, state)) {
-                            workflowContext.CancellationToken = ctoken.Token;
-                            cancellationToken = ctoken;
-                            workflowContext.ForceCancellationToken = cforceCancelWorkflow.Token;
-                        } else {
-                            // Better don't allow to have multiple reruns active
-                            throw new Exception("This workflow run is already running, multiple attempts are not supported at the same time");
-                        }
-                    }
                     asyncProcessing = true;
                     Action runWorkflow = () => {
                         var clone = Clone();

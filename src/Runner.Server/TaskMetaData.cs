@@ -24,10 +24,12 @@ public class TaskMetaData {
                 var metaData = JsonConvert.DeserializeObject<TaskMetaData>(textreader.ReadToEnd());
                 metaData.ArchivePath = filePath;
                 tasks.Add(metaData);
-                tasksByNameAndVersion.Add($"{metaData.Name}@{metaData.Version.Major}", metaData);
-                tasksByNameAndVersion.Add($"{metaData.Name}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}", metaData);
-                tasksByNameAndVersion.Add($"{metaData.Id}@{metaData.Version.Major}", metaData);
-                tasksByNameAndVersion.Add($"{metaData.Id}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}", metaData);
+                if(!tasksByNameAndVersion.TryGetValue($"{metaData.Id}@{metaData.Version.Major}", out var ometaData) || ometaData.Version.Minor <= metaData.Version.Minor) {
+                    tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}"] = metaData;
+                    tasksByNameAndVersion[$"{metaData.Id}@{metaData.Version.Major}"] = metaData;
+                }
+                tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}"] = metaData;
+                tasksByNameAndVersion[$"{metaData.Id}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}"] = metaData;
             }
         }
         return (tasks, tasksByNameAndVersion);
