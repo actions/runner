@@ -1,7 +1,8 @@
 ## Features
 - Service containers startup error logs are now included in workflow's logs (#2110)
 
-<!-- ## Bugs -->
+## Bugs
+- Fixed missing SHA for Windows arm64 release archive (#2171)
 
 ## Misc
 - Added a feature flag to start warning on `save-state` and `set-output` deprecation (#2164)
