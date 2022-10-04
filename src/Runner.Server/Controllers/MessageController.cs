@@ -2942,9 +2942,9 @@ namespace Runner.Server.Controllers
                                 }
                                 var lowerIdVersion = $"{lowerId}.{lowerVersion}";
                                 var taskZip = Path.Join(azureTasks, lowerIdVersion, "task.zip");
-                                if(!System.IO.File.Exists(taskZip)) {
+                                if(!System.IO.File.Exists(taskZip) || !TaskMetaData.ValidZipFile(taskZip)) {
                                     var packageFile = Path.Join(azureTasks, $"{lowerId}.{lowerVersion}.nuget");
-                                    if(!System.IO.File.Exists(packageFile)) {
+                                    if(!System.IO.File.Exists(packageFile) || !TaskMetaData.ValidZipFile(taskZip)) {
                                         var packageUrl = $"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/flat2/{lowerId}/{lowerVersion}/{lowerId}.{lowerVersion}.nupkg";
                                         workflowTraceWriter.Info($"Downloading {lowerId}@{lowerVersion} from {packageUrl}");
                                         var resp = client.GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken.Token).GetAwaiter().GetResult();
@@ -2965,6 +2965,8 @@ namespace Runner.Server.Controllers
                                         fs.FlushAsync(cancellationToken.Token).GetAwaiter().GetResult();
                                     }
                                     workflowTraceWriter.Info($"Extracted {lowerId}@{lowerVersion}");
+                                    System.IO.File.Delete(packageFile);
+                                    workflowTraceWriter.Info($"Deleted {lowerId}.{lowerVersion}.nuget");
                                 }
                             }
                             if(feed.Data.Length < pageSize) {
