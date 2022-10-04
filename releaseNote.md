@@ -1,13 +1,11 @@
 ## Features
-- Created prerelease runner package for win-arm64 architecture (#2022)
-- Added `GITHUB_STATE` and `GITHUB_OUTPUT` environment file commands (#2118)
+- Service containers startup error logs are now included in workflow's logs (#2110)
 
-## Bugs
-- Fixed an issue where self hosted environments had their docker env's overwritten (#2107)
-- Fixed an issue where step summaries for composite actions got overwritten (#2077)
+<!-- ## Bugs -->
 
 ## Misc
-- Bumped `actions/core` dependency (#2123)
+- Added a feature flag to start warning on `save-state` and `set-output` deprecation (#2164)
+- Prepare supporting `vars` in workflow templates (#2096)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
