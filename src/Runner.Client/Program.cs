@@ -151,6 +151,7 @@ namespace Runner.Client
             public string Sha { get; set; }
             public string[] EnvironmentSecretFiles { get; set; }
             public string[] EnvironmentVarFiles { get; set; }
+            public string[] EnvironmentVars { get; set; }
             public string[] Inputs { get; set; }
             public string RunnerDirectory { get; set; }
             public bool GitHubConnect { get; set; }
@@ -791,6 +792,9 @@ namespace Runner.Client
             var environmentSecretFileOpt = new Option<string[]>(
                 "--environment-secret-file",
                 description: "Environment Secrets with name name for your workflow, name=filename.yml");
+            var environmentVarOpt = new Option<string[]>(
+                "--environment-var",
+                description: "Environment Variables with name name for your workflow, name=varname=valvalue");
             var environmentVarFileOpt = new Option<string[]>(
                 "--environment-var-file",
                 description: "Environment Variables with name name for your workflow, name=filename.yml");
@@ -919,6 +923,7 @@ namespace Runner.Client
                 secretOpt,
                 secretFileOpt,
                 environmentSecretFileOpt,
+                environmentVarOpt,
                 environmentVarFileOpt,
                 jobOpt,
                 matrixOpt,
@@ -1373,18 +1378,20 @@ namespace Runner.Client
                                 description: "Secrets for your workflow");
                             updateCommand.Add(secretFileOpt);
                             updateCommand.Add(environmentSecretFileOpt);
+                            updateCommand.Add(environmentVarOpt);
                             updateCommand.Add(environmentVarFileOpt);
                             updateCommand.Add(workflowInputsOpt);
                             var clearWorkflowInputsOpt = new Option<bool>(
                                 "--clear-inputs",
                                 description: "Discard any workflow_dispatch inputs set previously");
                             updateCommand.Add(clearWorkflowInputsOpt);
-                            updateCommand.SetHandler<string, string[], string[], string, bool, bool, bool, bool, string, string, string[], string[], string[], bool>((payload, envs, secrets, _event, clearEnvs, clearSecrets, clearEnvFile, clearEnvironmentFiles, envFile, secretFile, environmentSecretFiles, environmentVarFiles, inputs, clearInputs) => {
+                            updateCommand.SetHandler<string, string[], string[], string, bool, bool, bool, bool, string, string, string[], string[], string[], string[], bool>((payload, envs, secrets, _event, clearEnvs, clearSecrets, clearEnvFile, clearEnvironmentFiles, envFile, secretFile, environmentSecretFiles, environmentVars, environmentVarFiles, inputs, clearInputs) => {
                                 if(payload != null) {
                                     parameters.payload = payload;
                                 }
                                 if(clearEnvs) {
                                     parameters.env = null;
+                                    parameters.EnvironmentVars = null;
                                 }
                                 if(clearSecrets) {
                                     parameters.secret = null;
@@ -1424,7 +1431,10 @@ namespace Runner.Client
                                 if(inputs != null) {
                                     parameters.Inputs = parameters.Inputs == null ? inputs : parameters.Inputs.Concat(inputs).ToArray();
                                 }
-                            }, payloadOpt, envOpt, secretOpt, eventOpt, clearEnvsOpt, clearSecretsOpt, clearEnvFileOpt, clearEnvironmentFilesOpt, envFile, secretFileOpt, environmentSecretFileOpt, environmentVarFileOpt, workflowInputsOpt, clearWorkflowInputsOpt);
+                                if(environmentVars != null) {
+                                    parameters.EnvironmentVars = parameters.EnvironmentVars == null ? environmentVars : parameters.EnvironmentVars.Concat(environmentVars).ToArray();
+                                }
+                            }, payloadOpt, envOpt, secretOpt, eventOpt, clearEnvsOpt, clearSecretsOpt, clearEnvFileOpt, clearEnvironmentFilesOpt, envFile, secretFileOpt, environmentSecretFileOpt, environmentVarOpt, environmentVarFileOpt, workflowInputsOpt, clearWorkflowInputsOpt);
                             interactiveCommand.Add(updateCommand);
 
                             var exitCommand = new Command("exit", "Stop this program, the server and the runner");
@@ -1788,16 +1798,29 @@ namespace Runner.Client
                                             mp.Add(new StringContent(ser.Serialize(dict)), "actions-environment-secrets", $"{name}.secrets");
                                         }
                                     }
+                                    var envVars = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
                                     if(parameters.EnvironmentVarFiles?.Length > 0) {
                                         foreach(var opt in parameters.EnvironmentVarFiles) {
                                             var subopt = opt.Split('=', 2);
                                             string name = subopt.Length == 2 ? subopt[0] : "";
                                             string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
-                                            var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
-                                            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            var dict = envVars[name] = envVars[name] ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                             Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
-                                            mp.Add(new StringContent(ser.Serialize(dict)), "actions-environment-variables", $"{name}.vars");
                                         }
+                                    }
+                                    if(parameters.EnvironmentVars?.Length > 0) {
+                                        foreach(var opt in parameters.EnvironmentVars) {
+                                            var subopt = opt.Split('=', 3);
+                                            string name = subopt.Length == 3 ? subopt[0] : "";
+                                            string varname = subopt.Length == 3 ? subopt[1] : subopt[0];
+                                            string varval = subopt.Length == 3 ? subopt[2] : subopt[1];
+                                            var dict = envVars[name] = envVars[name] ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            dict[varname] = varval;
+                                        }
+                                    }
+                                    foreach(var envVarKv in envVars) {
+                                        var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
+                                        mp.Add(new StringContent(ser.Serialize(envVarKv.Value)), "actions-environment-variables", $"{envVarKv.Key}.vars");
                                     }
                                     queryParam?.Invoke(query);
                                     b.Query = query.ToQueryString().ToString().TrimStart('?');
@@ -2246,6 +2269,7 @@ namespace Runner.Client
                 parameters.secret = bindingContext.ParseResult.GetValueForOption(secretOpt);
                 parameters.secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
                 parameters.EnvironmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
+                parameters.EnvironmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
                 parameters.EnvironmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
                 parameters.job = bindingContext.ParseResult.GetValueForOption(jobOpt);
                 parameters.matrix = bindingContext.ParseResult.GetValueForOption(matrixOpt);
