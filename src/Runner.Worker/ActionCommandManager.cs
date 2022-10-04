@@ -307,6 +307,17 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
+            if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateStepOutputCommands") ?? false)
+            {
+                var issue = new Issue()
+                {
+                    Type = IssueType.Warning,
+                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
+                };
+                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
+                context.AddIssue(issue);
+            }
+
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
                 throw new Exception("Required field 'name' is missing in ##[set-output] command.");
@@ -331,6 +342,17 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
+            if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateStepOutputCommands") ?? false)
+            {
+                var issue = new Issue()
+                {
+                    Type = IssueType.Warning,
+                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
+                };
+                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
+                context.AddIssue(issue);
+            }
+
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
             {
                 throw new Exception("Required field 'name' is missing in ##[save-state] command.");
@@ -586,7 +608,7 @@ namespace GitHub.Runner.Worker
         public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, ContainerInfo container)
         {
             ValidateLinesAndColumns(command, context);
-        
+
             command.Properties.TryGetValue(IssueCommandProperties.File, out string file);
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
