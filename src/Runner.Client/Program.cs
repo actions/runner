@@ -1787,16 +1787,19 @@ namespace Runner.Client
                                         }
                                     }
                                     mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
+                                    var envSecrets = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
                                     if(parameters.EnvironmentSecretFiles?.Length > 0) {
                                         foreach(var opt in parameters.EnvironmentSecretFiles) {
                                             var subopt = opt.Split('=', 2);
                                             string name = subopt.Length == 2 ? subopt[0] : "";
                                             string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
-                                            var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
-                                            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            var dict = envSecrets[name] = envSecrets.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                             Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
-                                            mp.Add(new StringContent(ser.Serialize(dict)), "actions-environment-secrets", $"{name}.secrets");
                                         }
+                                    }
+                                    foreach(var envVarKv in envSecrets) {
+                                        var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
+                                        mp.Add(new StringContent(ser.Serialize(envVarKv.Value)), "actions-environment-secrets", $"{envVarKv.Key}.secrets");
                                     }
                                     var envVars = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
                                     if(parameters.EnvironmentVarFiles?.Length > 0) {
