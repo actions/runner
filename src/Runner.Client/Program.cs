@@ -1804,7 +1804,7 @@ namespace Runner.Client
                                             var subopt = opt.Split('=', 2);
                                             string name = subopt.Length == 2 ? subopt[0] : "";
                                             string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
-                                            var dict = envVars[name] = envVars[name] ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                             Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
                                         }
                                     }
@@ -1814,7 +1814,7 @@ namespace Runner.Client
                                             string name = subopt.Length == 3 ? subopt[0] : "";
                                             string varname = subopt.Length == 3 ? subopt[1] : subopt[0];
                                             string varval = subopt.Length == 3 ? subopt[2] : subopt[1];
-                                            var dict = envVars[name] = envVars[name] ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                             dict[varname] = varval;
                                         }
                                     }
