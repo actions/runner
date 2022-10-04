@@ -2923,7 +2923,7 @@ namespace Runner.Server.Controllers
                     var azureTasks = Path.Join(GharunUtil.GetLocalStorage(), "AzureTasks");
                     workflowTraceWriter.Info("Downloading and update default Azure Devops Tasks from nuget registry");
                     if(WaitHandle.WaitAny(new [] { taskCacheLock, cancellationToken.Token.WaitHandle } ) != 0) {
-                        workflowTraceWriter.Error($"Calcelled downloading or updating the cached Tasks");
+                        workflowTraceWriter.Error($"Cancelled downloading or updating the cached Tasks");
                         return null;
                     }
                     try {
