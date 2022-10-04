@@ -16,12 +16,43 @@ namespace GitHub.DistributedTask.Expressions2
             AddFunction<StartsWith>("startsWith", 2, 2);
             AddFunction<ToJson>("toJson", 1, 1);
             AddFunction<FromJson>("fromJson", 1, 1);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.And>("and", 2, Int32.MaxValue);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Coalesce>("coalesce", 2, Int32.MaxValue);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Contains>("contains", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.ContainsValue>("containsvalue", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.ToJson>("converttojson", 1, 1);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.EndsWith>("endsWith", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Equal>("eq", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.Format>("format", 2, Int32.MaxValue);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.GreaterThanOrEqual>("ge", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.GreaterThan>("gt", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.In>("in", 1, Int32.MaxValue);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Join>("join", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.LessThanOrEqual>("le", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Length>("length", 1, 1);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Lower>("lower", 1, 1);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.LessThan>("lt", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.NotEqual>("ne", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Not>("not", 1, 1);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.NotIn>("notin", 1, Int32.MaxValue);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Or>("or", 2, Int32.MaxValue);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Replace>("replace", 3, 3);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.StartsWith>("startsWith", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Upper>("upper", 1, 1);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Xor>("xor", 2, 2);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Split>("split", 2, 2);
         }
 
         private static void AddFunction<T>(String name, Int32 minParameters, Int32 maxParameters)
             where T : Function, new()
         {
             WellKnownFunctions.Add(name, new FunctionInfo<T>(name, minParameters, maxParameters));
+        }
+
+        private static void AddAzureFunction<T>(String name, Int32 minParameters, Int32 maxParameters)
+            where T : Function, new()
+        {
+            AzureWellKnownFunctions.Add(name, new FunctionInfo<T>(name, minParameters, maxParameters));
         }
 
         internal static readonly String False = "false";
@@ -34,6 +65,7 @@ namespace GitHub.DistributedTask.Expressions2
         internal static readonly String NumberFormat = "G15";
         internal static readonly String True = "true";
         internal static readonly Dictionary<String, IFunctionInfo> WellKnownFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
+        internal static readonly Dictionary<String, IFunctionInfo> AzureWellKnownFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
 
         // Punctuation
         internal const Char StartGroup = '(';       // logical grouping

@@ -24,6 +24,9 @@ namespace Runner.Server.Models
         
         public DbSet<CacheRecord> Caches { get; set; }
 
+        public DbSet<TimelineIssue> TimelineIssues { get; set; }
+        public DbSet<TimelineVariable> TimelineVariables { get; set; }
+
         public class LogStorage {
             public int Id {get;set;}
             public string Content {get;set;}

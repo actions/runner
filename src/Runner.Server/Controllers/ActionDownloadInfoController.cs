@@ -12,6 +12,7 @@ using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -30,6 +31,7 @@ namespace Runner.Server.Controllers
         private bool AllowPrivateActionAccess { get; }
         private string GITHUB_TOKEN;
         private string GitApiServerUrl;
+        private IMemoryCache _cache;
         private List<ActionDownloadUrls> downloadUrls;
         private class ActionDownloadUrls
         {
@@ -41,13 +43,17 @@ namespace Runner.Server.Controllers
             public string GITHUB_TOKEN { get; set; }
         }
 
-        public ActionDownloadInfoController(IConfiguration configuration) : base(configuration)
+        public ActionDownloadInfoController(IConfiguration configuration, IMemoryCache memoryCache) : base(configuration)
         {
+            this._cache = memoryCache;
             downloadUrls = configuration.GetSection("Runner.Server:ActionDownloadUrls").Get<List<ActionDownloadUrls>>();
             GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
             GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
+            if(string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN_READ_ONLY") ?? "";
+            }
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
         }
@@ -133,6 +139,11 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> Get(Guid scopeIdentifier, string hubName, Guid planId)
         {
             var localcheckout = User.FindFirst("localcheckout")?.Value ?? "";
+            var runid = User.FindFirst("runid")?.Value ?? "";
+            var token = User.FindFirst("github_token")?.Value ?? "";
+            if(!string.IsNullOrEmpty(token)) {
+                GITHUB_TOKEN = token;
+            }
             ActionReferenceList reflist = await FromBody<ActionReferenceList>();
             var repository = User.FindFirst("repository")?.Value;
             var defGhToken = await CreateGithubAppToken(repository);
@@ -144,6 +155,13 @@ namespace Runner.Server.Controllers
                     if(islocalcheckout && (item.Ref == BuildConstants.Source.CommitHash || !item.Ref.StartsWith(BuildConstants.Source.CommitHash)) ) {
                         actions[name] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.tar.gz" : $"_apis/v1/ActionDownloadInfo/localcheckout?format=tarball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.zip"  : $"_apis/v1/ActionDownloadInfo/localcheckout?format=zipball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };                    
                     } else {
+                        if(!string.IsNullOrEmpty(localcheckout) && !string.IsNullOrEmpty(runid) && long.TryParse(runid, out var _runid)) {
+                            var handler = new MessageController(Configuration, this._cache, null);
+                            if(await handler.RepoExists(_runid, name)) {
+                                actions[name] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), $"_apis/v1/Message/tardown/{_runid}?repositoryAndRef={Uri.EscapeDataString(name)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), $"_apis/v1/Message/zipdown/{_runid}?repositoryAndRef={Uri.EscapeDataString(name)}").ToString(), ResolvedSha = "Local-Repository" };
+                                continue;
+                            }
+                        }
                         ActionDownloadInfo defDownloadInfo = null;
                         foreach(var downloadUrl in downloadUrls) {
                             try {

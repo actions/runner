@@ -16,22 +16,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     {
         internal YamlObjectReader(
             Int32? fileId,
-            TextReader input)
+            TextReader input,
+            bool yamlAnchors = false,
+            bool yamlFold = false,
+            bool yamlMerge = false)
         {
             m_fileId = fileId;
-#if FEATURE_YAML_ANCHORS
-            m_parser = new YamlAnchorParser(new Parser(input));
-#else
-            m_parser = new Parser(input);
-#endif
+            m_parser = yamlAnchors ? (IParser) new YamlAnchorParser(new Parser(input), yamlMerge) : new Parser(input);
+            m_yamlFold = yamlFold;
         }
 
         private string GetScalarStringValue(Scalar scalar) {
-#if FEATURE_YAML_FOLD
-            return scalar.Style == ScalarStyle.Folded ? scalar.Value.Replace("\n", " ") : scalar.Value;
-#else
-            return scalar.Value;
-#endif
+            return m_yamlFold && scalar.Style == ScalarStyle.Folded ? scalar.Value.Replace("\n", " ") : scalar.Value;
         }
 
         public Boolean AllowLiteral(out LiteralToken value)
@@ -579,6 +575,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private const String c_stringTag = "tag:yaml.org,2002:string";
         private readonly Int32? m_fileId;
         private readonly IParser m_parser;
+        private readonly bool m_yamlFold;
         private ParsingEvent m_current;
     }
 }

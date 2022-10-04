@@ -79,7 +79,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
-        [Authorize(AuthenticationSchemes = "Bearer")]
+        [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
         public async Task<IActionResult> OnEvent(Guid scopeIdentifier, string hubName, Guid planId)
         {
             var jevent = await FromBody<JobEvent>();

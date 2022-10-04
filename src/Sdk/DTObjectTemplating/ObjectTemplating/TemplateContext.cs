@@ -15,6 +15,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class TemplateContext
     {
+        public ExpressionFlags Flags { get; set; }
         internal CancellationToken CancellationToken { get; set; }
 
         internal TemplateValidationErrors Errors

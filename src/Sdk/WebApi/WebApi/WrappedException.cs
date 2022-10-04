@@ -145,6 +145,7 @@ namespace GitHub.Services.WebApi
 
             set
             {
+                #if false
                 if (value.Contains("Microsoft.VisualStudio"))
                 {
                     m_typeName = value.Replace("Microsoft.VisualStudio", "GitHub");
@@ -162,8 +163,11 @@ namespace GitHub.Services.WebApi
                 }
                 else
                 {
+                #endif
                     m_typeName = value;
+                #if false
                 }
+                #endif
             }
         }
 

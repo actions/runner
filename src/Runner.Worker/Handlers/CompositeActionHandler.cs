@@ -256,7 +256,11 @@ namespace GitHub.Runner.Worker.Handlers
                     var dict = envContextData as IDictionaryContextData;
                     foreach (var pair in dict)
                     {
-                        envContext[pair.Key] = pair.Value;
+                        // Skip global env, otherwise we merge an outdated global env
+                        if (ExecutionContext.StepEnvironmentOverrides.Contains(pair.Key))
+                        {
+                            envContext[pair.Key] = pair.Value;
+                        }
                     }
                 }
 
@@ -265,11 +269,13 @@ namespace GitHub.Runner.Worker.Handlers
                     if (step is IActionRunner actionStep)
                     {
                         // Evaluate and merge embedded-step env
+                        step.ExecutionContext.StepEnvironmentOverrides.AddRange(ExecutionContext.StepEnvironmentOverrides);
                         var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
                         var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var env in actionEnvironment)
                         {
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                            step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
                         }
                     }
                 }
@@ -404,6 +410,28 @@ namespace GitHub.Runner.Worker.Handlers
         {
             Trace.Info($"Starting: {step.DisplayName}");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
+
+            if(step.ExecutionContext.Global.Variables.GetBoolean("system.runner.server.composite-timeout-minutes") ?? false) {
+                // Set the timeout
+                var timeoutMinutes = 0;
+                var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
+                try
+                {
+                    timeoutMinutes = templateEvaluator.EvaluateStepTimeout(step.Timeout, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info("An error occurred when attempting to determine the step timeout.");
+                    Trace.Error(ex);
+                    step.ExecutionContext.Error("An error occurred when attempting to determine the step timeout.");
+                    step.ExecutionContext.Error(ex);
+                }
+                if (timeoutMinutes > 0)
+                {
+                    var timeout = TimeSpan.FromMinutes(timeoutMinutes);
+                    step.ExecutionContext.SetTimeout(timeout);
+                }
+            }
 
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 

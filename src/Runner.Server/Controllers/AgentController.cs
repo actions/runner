@@ -22,7 +22,7 @@ namespace Runner.Server.Controllers
     [ApiController]
     [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagementRead")]
     public class AgentController : VssControllerBase
     {
         private IMemoryCache _cache;

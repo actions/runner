@@ -15,6 +15,7 @@ using YamlDotNet.Core.Events;
 using System.Globalization;
 using System.Linq;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Expressions2;
 
 namespace GitHub.Runner.Worker
 {
@@ -86,7 +87,7 @@ namespace GitHub.Runner.Worker
                 var fileContent = File.ReadAllText(manifestFile);
                 using (var stringReader = new StringReader(fileContent))
                 {
-                    var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
+                    var yamlObjectReader = new YamlObjectReader(fileId, stringReader, executionContext.Global.Variables.GetBoolean("system.runner.server.yaml.anchors") == true, executionContext.Global.Variables.GetBoolean("system.runner.server.yaml.fold") == true, executionContext.Global.Variables.GetBoolean("system.runner.server.yaml.merge") == true);
                     token = TemplateReader.Read(templateContext, "action-root", yamlObjectReader, fileId, out _);
                 }
 
@@ -308,15 +309,32 @@ namespace GitHub.Runner.Worker
             IExecutionContext executionContext,
             IDictionary<string, PipelineContextData> extraExpressionValues = null)
         {
+            var schema = _actionManifestSchema;
+            if(executionContext.Global.Variables.TryGetValue("system.runner.server.action_schema", out var action_schema)) {
+                var objectReader = new JsonObjectReader(null, action_schema);
+                schema = TemplateSchema.Load(objectReader);
+            }
+
+            ExpressionFlags flags = ExpressionFlags.None;
+            if(executionContext.Global.Variables.GetBoolean("system.runner.server.extendedFunctions") == true) {
+                flags |= ExpressionFlags.ExtendedFunctions;
+            }
+            if(executionContext.Global.Variables.GetBoolean("system.runner.server.extendedDirectives") == true) {
+                flags |= ExpressionFlags.ExtendedDirectives;
+            }
+            if(executionContext.Global.Variables.GetBoolean("system.runner.server.allowAnyForInsert") == true) {
+                flags |= ExpressionFlags.AllowAnyForInsert;
+            }
             var result = new TemplateContext
             {
+                Flags = flags,
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(10, int.MaxValue), // Don't truncate error messages otherwise we might not scrub secrets correctly
                 Memory = new TemplateMemory(
                     maxDepth: 100,
                     maxEvents: 1000000,
                     maxBytes: 10 * 1024 * 1024),
-                Schema = _actionManifestSchema,
+                Schema = schema,
                 TraceWriter = executionContext.ToTemplateTraceWriter(),
             };
 
@@ -418,7 +436,12 @@ namespace GitHub.Runner.Worker
                         preIfToken = run.Value.AssertString("pre-if");
                         break;
                     case "steps":
-                        var stepsToken = run.Value.AssertSequence("steps");
+                        templateContext.ExpressionValues.Remove("env");
+                        templateContext.ExpressionValues.Remove("steps");
+                        templateContext.ExpressionValues.Remove("job");
+                        var evaluatedSteps = TemplateEvaluator.Evaluate(templateContext, "composite-steps", run.Value, 0, null);
+                        templateContext.Errors.Check();
+                        var stepsToken = evaluatedSteps.AssertSequence("steps");
                         steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
                         templateContext.Errors.Check();
                         break;
@@ -503,7 +526,7 @@ namespace GitHub.Runner.Worker
                 };
             }
 
-            throw new NotSupportedException(nameof(ConvertRuns));
+            throw new NotSupportedException("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12' or 'node16'.");
         }
 
         private void ConvertInputs(

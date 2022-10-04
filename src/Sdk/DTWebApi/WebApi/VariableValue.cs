@@ -15,10 +15,11 @@ namespace GitHub.DistributedTask.WebApi
         {
         }
 
-        public VariableValue(String value, Boolean isSecret)
+        public VariableValue(String value, bool isSecret = false, bool isReadonly = false)
         {
             Value = value;
             IsSecret = isSecret;
+            IsReadonly = isReadonly;
         }
 
         [DataMember(EmitDefaultValue = true)]
@@ -30,6 +31,13 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public Boolean IsSecret
+        {
+            get;
+            set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public Boolean IsReadonly
         {
             get;
             set;

@@ -317,7 +317,16 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     if (mappingDefinition.AllowedContext.Length > 0)
                     {
                         m_memory.AddBytes(nextKeyScalar);
-                        nextValue = ReadValue(valueDefinition);
+                        if(nextKeyScalar is EachExpressionToken eachexp) {
+                            var def = new DefinitionInfo(mappingDefinition, "any");
+                            def.AllowedContext = valueDefinition.AllowedContext.Append(eachexp.Variable).ToArray();
+                            nextValue = ReadValue(def);
+                        } else if(nextKeyScalar is ConditionalExpressionToken || nextKeyScalar is InsertExpressionToken && (m_context.Flags & Expressions2.ExpressionFlags.AllowAnyForInsert) != Expressions2.ExpressionFlags.None) {
+                            var def = new DefinitionInfo(mappingDefinition, "any");
+                            nextValue = ReadValue(def);
+                        } else {
+                            nextValue = ReadValue(valueDefinition);
+                        }
                         mapping.Add(nextKeyScalar, nextValue);
                     }
                     // Illegal
@@ -635,6 +644,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 return null;
             }
 
+            bool extendedDirectives = (m_context.Flags & Expressions2.ExpressionFlags.ExtendedDirectives) != Expressions2.ExpressionFlags.None;
             // Try to find a matching directive
             List<String> parameters;
             if (MatchesDirective(trimmed, TemplateConstants.InsertDirective, 0, out parameters, out ex))
@@ -645,9 +655,41 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
+            else if (extendedDirectives && MatchesDirective(trimmed, "if", 1, out parameters, out ex))
+            {
+                return new IfExpressionToken(m_fileId, line, column, parameters[0]);
+            }
+            else if (ex != null)
+            {
+                return null;
+            }
+            else if (extendedDirectives && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex))
+            {
+                return new ElseIfExpressionToken(m_fileId, line, column, parameters[0]);
+            }
+            else if (ex != null)
+            {
+                return null;
+            }
+            else if (extendedDirectives && MatchesDirective(trimmed, "else", 0, out parameters, out ex))
+            {
+                return new ElseExpressionToken(m_fileId, line, column);
+            }
+            else if (ex != null)
+            {
+                return null;
+            }
+            else if (extendedDirectives && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1] == "in")
+            {
+                return new EachExpressionToken(m_fileId, line, column, parameters[0], parameters[2]);
+            }
+            else if (ex != null)
+            {
+                return null;
+            }
 
             // Check if the value is an expression
-            if (!ExpressionToken.IsValidExpression(trimmed, allowedContext, out ex))
+            if (!ExpressionToken.IsValidExpression(trimmed, allowedContext, out ex, m_context.Flags))
             {
                 return null;
             }

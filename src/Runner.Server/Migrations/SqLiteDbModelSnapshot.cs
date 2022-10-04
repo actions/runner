@@ -398,6 +398,31 @@ namespace Runner.Server.Migrations
                     b.ToTable("Caches");
                 });
 
+            modelBuilder.Entity("Runner.Server.Models.Capability", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AgentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("System")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.ToTable("Capability");
+                });
+
             modelBuilder.Entity("Runner.Server.Models.Job", b =>
                 {
                     b.Property<Guid>("JobId")
@@ -567,6 +592,59 @@ namespace Runner.Server.Migrations
                     b.HasIndex("RefId");
 
                     b.ToTable("Logs");
+                });
+
+            modelBuilder.Entity("Runner.Server.Models.TimelineIssue", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("IsInfrastructureIssue")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RecordId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordId");
+
+                    b.ToTable("TimelineIssues");
+                });
+
+            modelBuilder.Entity("Runner.Server.Models.TimelineVariable", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RecordId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecordId");
+
+                    b.ToTable("TimelineVariables");
                 });
 
             modelBuilder.Entity("Runner.Server.Models.Workflow", b =>
@@ -780,6 +858,13 @@ namespace Runner.Server.Migrations
                     b.Navigation("FileContainer");
                 });
 
+            modelBuilder.Entity("Runner.Server.Models.Capability", b =>
+                {
+                    b.HasOne("Runner.Server.Models.Agent", null)
+                        .WithMany("Capabilities")
+                        .HasForeignKey("AgentId");
+                });
+
             modelBuilder.Entity("Runner.Server.Models.Job", b =>
                 {
                     b.HasOne("Runner.Server.Models.WorkflowRunAttempt", "WorkflowRunAttempt")
@@ -829,6 +914,24 @@ namespace Runner.Server.Migrations
                     b.Navigation("Ref");
                 });
 
+            modelBuilder.Entity("Runner.Server.Models.TimelineIssue", b =>
+                {
+                    b.HasOne("GitHub.DistributedTask.WebApi.TimelineRecord", "Record")
+                        .WithMany()
+                        .HasForeignKey("RecordId");
+
+                    b.Navigation("Record");
+                });
+
+            modelBuilder.Entity("Runner.Server.Models.TimelineVariable", b =>
+                {
+                    b.HasOne("GitHub.DistributedTask.WebApi.TimelineRecord", "Record")
+                        .WithMany()
+                        .HasForeignKey("RecordId");
+
+                    b.Navigation("Record");
+                });
+
             modelBuilder.Entity("Runner.Server.Models.Workflow", b =>
                 {
                     b.HasOne("Runner.Server.Models.Repository", "Repository")
@@ -854,6 +957,11 @@ namespace Runner.Server.Migrations
                         .HasForeignKey("WorkflowRunId");
 
                     b.Navigation("WorkflowRun");
+                });
+
+            modelBuilder.Entity("Runner.Server.Models.Agent", b =>
+                {
+                    b.Navigation("Capabilities");
                 });
 
             modelBuilder.Entity("Runner.Server.Models.ArtifactContainer", b =>

@@ -35,15 +35,17 @@ namespace YamlDotNet.Core
     {
         private readonly ParsingEventCollection events;
         private readonly IParser innerParser;
+        private readonly bool yamlMerge;
         private IEnumerator<LinkedListNode<ParsingEvent>> iterator;
         private bool merged;
 
-        public YamlAnchorParser(IParser innerParser)
+        public YamlAnchorParser(IParser innerParser, bool yamlMerge = false)
         {
             events = new ParsingEventCollection();
             merged = false;
             iterator = events.GetEnumerator();
             this.innerParser = innerParser;
+            this.yamlMerge = yamlMerge;
         }
 
         public ParsingEvent Current => iterator.Current?.Value;
@@ -68,19 +70,21 @@ namespace YamlDotNet.Core
                 events.Add(cevent);
             }
 
-            // Disable Merge Operator
-            // foreach (var node in events)
-            // {
-            //     if (IsMergeToken(node))
-            //     {
-            //         events.MarkDeleted(node);
-            //         if (!HandleMerge(node.Next))
-            //         {
-            //             throw new SemanticErrorException(node.Value.Start, node.Value.End, "Unrecognized merge key pattern");
-            //         }
-            //     }
-            // }
-            // events.CleanMarked();
+            if(yamlMerge) {
+                // Disable Merge Operator by default
+                foreach (var node in events)
+                {
+                    if (IsMergeToken(node))
+                    {
+                        events.MarkDeleted(node);
+                        if (!HandleMerge(node.Next))
+                        {
+                            throw new SemanticErrorException(node.Value.Start, node.Value.End, "Unrecognized merge key pattern");
+                        }
+                    }
+                }
+                events.CleanMarked();
+            }
             foreach (var node in events)
             {
                 if (node.Value is AnchorAlias anchorAlias)

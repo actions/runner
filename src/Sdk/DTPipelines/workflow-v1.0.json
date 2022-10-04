@@ -12,6 +12,7 @@
             "required": true
           },
           "name": "string",
+          "run-name": "workflow-run-name",
           "defaults": "workflow-defaults",
           "env": "workflow-env",
           "jobs": {
@@ -102,6 +103,7 @@
         "properties": {
           "needs": "needs",
           "if": "job-if",
+          "strategy": "strategy",
           "name": "string-strategy-context",
           "uses": {
             "type": "non-empty-string",
@@ -126,7 +128,9 @@
       "context": [
         "github",
         "needs",
-        "inputs"
+        "inputs",
+        "strategy",
+        "matrix"
       ],
       "one-of": [
         "boolean",
@@ -154,7 +158,9 @@
         "github",
         "needs",
         "inputs",
-        "secrets"
+        "secrets",
+        "strategy",
+        "matrix"
       ],
       "string": {}
     },
@@ -328,10 +334,11 @@
           "checks": "non-empty-string",
           "contents": "non-empty-string",
           "deployments": "non-empty-string",
-          "discussions": "non-empty-string",
           "id-token": "non-empty-string",
           "issues": "non-empty-string",
+          "discussions": "non-empty-string",
           "packages": "non-empty-string",
+          "pages": "non-empty-string",
           "pull-requests": "non-empty-string",
           "repository-projects": "non-empty-string",
           "security-events": "non-empty-string",
@@ -832,6 +839,14 @@
         "loose-key-type": "any",
         "loose-value-type": "any"
       }
+    },
+    
+    "workflow-run-name": {
+      "context": [
+        "github",
+        "inputs"
+      ],
+      "string": {}
     }
   }
 }

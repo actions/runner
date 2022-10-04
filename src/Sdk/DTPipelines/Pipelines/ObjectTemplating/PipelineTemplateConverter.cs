@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.Expressions2.Sdk.Functions;
@@ -484,7 +486,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     var image = uses.Value.Substring("docker://".Length);
                     result.Reference = new ContainerRegistryReference { Image = image };
                 }
-                else if (uses.Value.StartsWith("./") || uses.Value.StartsWith(".\\"))
+                else if (uses.Value.StartsWith("./") || uses.Value.StartsWith(".\\") || System.IO.Path.IsPathFullyQualified(uses.Value))
                 {
                     result.Reference = new RepositoryPathReference
                     {
@@ -555,18 +557,32 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return $"{PipelineTemplateConstants.Success}()";
             }
 
-            var expressionParser = new ExpressionParser();
-            var functions = default(IFunctionInfo[]);
-            var namedValues = default(INamedValueInfo[]);
-            if (isJob)
+            var expressionParser = new ExpressionParser() { Flags = context.Flags };
+
+            // Create dummy named values and functions
+            var namedValues = new List<INamedValueInfo>();
+            var functions = new List<IFunctionInfo>();
+            var allowedContext = context.Schema.GetDefinition(isJob ? "job-if" : "step-if").ReaderContext;
+            if (allowedContext?.Length > 0)
             {
-                namedValues = s_jobIfNamedValues;
-                functions = s_jobIfConditionFunctions;
-            }
-            else
-            {
-                namedValues = s_stepNamedValues;
-                functions = s_stepConditionFunctions;
+                foreach (var contextItem in allowedContext)
+                {
+                    var match = s_function.Match(contextItem);
+                    if (match.Success)
+                    {
+                        var functionName = match.Groups[1].Value;
+                        var minParameters = Int32.Parse(match.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture);
+                        var maxParametersRaw = match.Groups[3].Value;
+                        var maxParameters = String.Equals(maxParametersRaw, TemplateConstants.MaxConstant, StringComparison.Ordinal)
+                            ? Int32.MaxValue
+                            : Int32.Parse(maxParametersRaw, NumberStyles.None, CultureInfo.InvariantCulture);
+                        functions.Add(new FunctionInfo<NoOperation>(functionName, minParameters, maxParameters));
+                    }
+                    else
+                    {
+                        namedValues.Add(new NamedValueInfo<NoOperationNamedValue>(contextItem));
+                    }
+                }
             }
 
             var node = default(ExpressionNode);
@@ -601,40 +617,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return hasStatusFunction ? condition : $"{PipelineTemplateConstants.Success}() && ({condition})";
         }
 
-        private static readonly INamedValueInfo[] s_jobIfNamedValues = new INamedValueInfo[]
-        {
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
-            new NamedValueInfo<NoOperationNamedValue>("inputs"),
-        };
-
-        private static readonly IFunctionInfo[] s_jobIfConditionFunctions = new IFunctionInfo[]
-        {
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Always, 0, 0),
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Cancelled, 0, 0),
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Failure, 0, Int32.MaxValue),
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Success, 0, Int32.MaxValue),
-        };
-
-        private static readonly INamedValueInfo[] s_stepNamedValues = new INamedValueInfo[]
-        {
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Strategy),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Matrix),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Steps),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Inputs),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Env),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
-        };
-        private static readonly IFunctionInfo[] s_stepConditionFunctions = new IFunctionInfo[]
-        {
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Always, 0, 0),
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Cancelled, 0, 0),
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Failure, 0, 0),
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Success, 0, 0),
-            new FunctionInfo<NoOperation>(PipelineTemplateConstants.HashFiles, 1, Byte.MaxValue),
-        };
+        private static readonly Regex s_function = new Regex(@"^([a-zA-Z0-9_]+)\(([0-9]+),([0-9]+|MAX)\)$", RegexOptions.Compiled);
     }
 }

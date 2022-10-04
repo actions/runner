@@ -23,7 +23,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public PipelineTemplateEvaluator(
             ITraceWriter trace,
             TemplateSchema schema,
-            IList<String> fileTable)
+            IList<String> fileTable,
+            ExpressionFlags flags)
         {
             if (!String.Equals(schema.Version, PipelineTemplateConstants.Workflow_1_0, StringComparison.Ordinal))
             {
@@ -32,6 +33,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             m_trace = trace;
             m_schema = schema;
+            m_flags = flags;
             m_fileTable = fileTable;
         }
 
@@ -377,6 +379,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = new TemplateContext
             {
+                Flags = m_flags,
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(MaxErrors, MaxErrorMessageLength),
                 Memory = new TemplateMemory(
@@ -451,6 +454,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         private readonly ITraceWriter m_trace;
         private readonly TemplateSchema m_schema;
+        private readonly ExpressionFlags m_flags;
         private readonly IList<String> m_fileTable;
         private readonly String[] s_expressionValueNames = new[]
         {

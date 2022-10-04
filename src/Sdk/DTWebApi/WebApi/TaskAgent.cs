@@ -130,6 +130,12 @@ namespace GitHub.DistributedTask.WebApi
             }
         }
 
+        [DataMember(EmitDefaultValue = false)]
+        public IDictionary<string, string> SystemCapabilities { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        [DataMember(EmitDefaultValue = false)]
+        public IDictionary<string, string> UserCapabilities { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>
         /// Properties which may be used to extend the storage fields available
         /// for a given machine instance.

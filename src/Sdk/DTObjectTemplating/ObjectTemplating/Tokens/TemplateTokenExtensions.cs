@@ -116,12 +116,13 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         public static bool CheckHasRequiredContext(
             this TemplateToken token,
             IReadOnlyObject expressionValues,
-            IList<IFunctionInfo> expressionFunctions)
+            IList<IFunctionInfo> expressionFunctions,
+            ExpressionFlags flags = ExpressionFlags.None)
         {
             var expressionTokens = token.Traverse()
                 .OfType<BasicExpressionToken>()
                 .ToArray();
-            var parser = new ExpressionParser();
+            var parser = new ExpressionParser() { Flags = flags };
             foreach (var expressionToken in expressionTokens)
             {
                 var tree = parser.ValidateSyntax(expressionToken.Expression, null);
@@ -135,7 +136,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         }
                     }
                     else if (node is Function function &&
-                        !ExpressionConstants.WellKnownFunctions.ContainsKey(function.Name) &&
+                        !((flags & ExpressionFlags.ExtendedFunctions) == ExpressionFlags.DTExpressionsV1 ? ExpressionConstants.AzureWellKnownFunctions : ExpressionConstants.WellKnownFunctions).ContainsKey(function.Name) &&
                         expressionFunctions?.Any(x => string.Equals(x.Name, function.Name, StringComparison.OrdinalIgnoreCase)) != true)
                     {
                         return false;

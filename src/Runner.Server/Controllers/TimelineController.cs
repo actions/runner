@@ -16,6 +16,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using GitHub.Actions.Pipelines.WebApi;
+using Newtonsoft.Json;
 
 namespace Runner.Server.Controllers
 {
@@ -50,6 +51,19 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> GetTimelineRecords(Guid timelineId) {
             var l = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
             l.Sort((a,b) => a.ParentId == null ? -1 : b.ParentId == null ? 1 : a.Order - b.Order ?? 0);
+            foreach(var record in l) {
+                record.Issues.AddRange((from item in _context.TimelineIssues where item.Record == record select item).ToList().Select(item => {
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, string>>(item.Data);
+                    var issue = new Issue { Category = item.Category, IsInfrastructureIssue = item.IsInfrastructureIssue, Message = item.Message, Type = item.Type };
+                    foreach(var kv in data) {
+                        issue.Data[kv.Key] = kv.Value;
+                    }
+                    return issue;
+                }));
+                foreach(var variable in from item in _context.TimelineVariables where item.Record == record select item) {
+                    record.Variables[variable.Name] = new VariableValue { Value = variable.Value };
+                }
+            }
             return await Ok(l, true);
         }
 
@@ -177,6 +191,25 @@ namespace Runner.Server.Controllers
                 return r;
             }));
             records = MergeTimelineRecords(records);
+            foreach(var r in records) {
+                var stored = (from va in _context.TimelineVariables where va.Record == r select va).ToDictionary(kv => kv.Name, kv => kv, StringComparer.OrdinalIgnoreCase);
+                foreach(var item in r.Variables)
+                {
+                    if(stored.TryGetValue(item.Key, out var entry)) {
+                        entry.Value = item.Value.Value;
+                    } else {
+                        _context.TimelineVariables.Add(new TimelineVariable() { Record = r , Name = item.Key, Value = item.Value.Value });
+                    }
+                }
+                var storedIssues = (from va in _context.TimelineIssues where va.Record == r select va).ToDictionary(kv => kv.Message + kv.Data, kv => kv);
+                foreach(var item in r.Issues)
+                {
+                    var data = JsonConvert.SerializeObject(item.Data);
+                    if(!storedIssues.ContainsKey(item.Message + data)) {
+                        _context.TimelineIssues.Add(new TimelineIssue() { Record = r , Category = item.Category, Data = data, IsInfrastructureIssue = item.IsInfrastructureIssue, Message = item.Message, Type = item.Type });
+                    }
+                }
+            }
             Task.Run(() => TimeLineUpdate?.Invoke(timelineId, records));
             
             await _context.AddRangeAsync(from rec in records where !old.Contains(rec) select rec);

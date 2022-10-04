@@ -1,8 +1,8 @@
-# GitHub Actions Runner + Server
+# Local GitHub Actions and Azure Pipelines Emulator
 
 [![Runner CI](https://github.com/ChristopherHX/runner.server/actions/workflows/build.yml/badge.svg)](https://github.com/ChristopherHX/runner.server/actions/workflows/build.yml)
 
-This fork adds two executables to this Project, `Runner.Server` as a runner backend like github actions and `Runner.Client` to schedule workflows via commandline.
+This fork of [actions/runner](https://github.com/actions/runner) adds two executables to this Project, `Runner.Server` as a runner backend like github actions and `Runner.Client` to schedule workflows via commandline.
 
 <p align="center">
   <img src="src/Runner.Server/webpage1.png">
@@ -25,6 +25,24 @@ The new nuget package [can be found here](https://www.nuget.org/packages/io.gith
   - dotnet sdk 6.0.100 and 6.0.x are known to work and tested via CI
 - `dotnet tool install --global io.github.christopherhx.gharun`
 - Run `gharun` like `Runner.Client`
+
+### Azure Pipelines
+This is experimental and covers a subset of Azure Pipelines.
+
+run `Runner.Client --event azpipelines -W pipeline.yml` / `gharun --event azpipelines -W pipeline.yml` to run Azure Pipelines locally, _this tool defaults to GitHub Actions and looks by default in `.github/workflows/` for yaml files_.
+#### Templating
+```yaml
+steps:
+  - ${{ each x in split('hello, world, x, y', ', ') }}:
+      - script: |
+          echo ${{ x }}
+      - ${{ if in(x, 'x', 'y') }}:
+          - script: |
+              echo "This step is injected if x is 'x' or 'y'"
+      - ${{ else }}:
+          - script: |
+              echo "This step is injected if x isn't 'x' or 'y'"
+```
 
 ## Environment Secret files
 CLI

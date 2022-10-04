@@ -93,7 +93,8 @@ namespace GitHub.Runner.Worker
                 string.Equals(localAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
                 var actionManager = HostContext.GetService<IActionManager>();
-                var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
+                // Action.Id is the correct parent step id, by using ExecutionContext.Id all post steps are squashed into the parent composite action
+                var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, Action.Id);
 
                 // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
                 definition = taskManager.LoadAction(ExecutionContext, Action);

@@ -30,6 +30,10 @@ using System.Security.Claims;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
+using Microsoft.AspNetCore.Authorization.Policy;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace Runner.Server
 {
@@ -64,7 +68,7 @@ namespace Runner.Server
                     File.Delete(Path.Combine(artifactspath, rec.StoreName));
                 }
                 foreach(var cache in db.Caches) {
-                    File.Delete(Path.Combine(artifactspath, cache.Storage));
+                    File.Delete(Path.Combine(cachepath, cache.Storage));
                 }
                 return Task.CompletedTask;
             }
@@ -73,6 +77,8 @@ namespace Runner.Server
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.TryAddSingleton<IPolicyEvaluator, AgentAuthenticationPolicyEvaluator>();
+
             services.AddControllers(options => {
                 // options.InputFormatters.Add(new LogFormatter());
             }).AddNewtonsoftJson();
@@ -127,16 +133,7 @@ namespace Runner.Server
             }
             var sessionCookieLifetime = Configuration.GetValue("SessionCookieLifetimeMinutes", 60);
             services.AddSingleton<IAuthorizationHandler, DevModeOrAuthenticatedUser>();
-            services.AddAuthorization(options => {
 
-                options.FallbackPolicy = new AuthorizationPolicyBuilder()
-                    .AddRequirements(new DevModeOrAuthenticatedUserRequirement()).Build();
-                // options.AddPolicy("DevModeOrAuthenticatedUser", builder => builder
-                //     .AddRequirements(new DevModeOrAuthenticatedUserRequirement()));
-                options.AddPolicy("AgentManagement", policy => policy.RequireClaim("Agent", "management"));
-                options.AddPolicy("Agent", policy => policy.RequireClaim("Agent", "oauth"));
-                options.AddPolicy("AgentJob", policy => policy.RequireClaim("Agent", "oauth", "job"));
-            });
             var rsa = RSA.Create();
             AccessTokenParameter = rsa.ExportParameters(true);
             KeyId = Guid.NewGuid().ToString();
@@ -165,6 +162,25 @@ namespace Runner.Server
                 };
             });
 
+            // auth.AddNegotiate(opts => {
+            //     // opts.Events.OnChallenge += async (Microsoft.AspNetCore.Authentication.Negotiate.ChallengeContext chp) => {
+                    
+            //     //     await Task.CompletedTask;
+            //     //     // chp.HandleResponse();
+            //     //     // chp.Properties.
+            //     // };
+            //     // //opts.Events.OnAuthenticated
+            // });
+
+            services.AddAuthorization(options => {
+
+                options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                    .AddRequirements(new DevModeOrAuthenticatedUserRequirement()).Build();
+                options.AddPolicy("AgentManagement", policy => policy.RequireClaim("Agent", "management"));
+                options.AddPolicy("AgentManagementRead", policy => policy.RequireClaim("Agent", "management", "oauth"));
+                options.AddPolicy("Agent", policy => policy.RequireClaim("Agent", "oauth"));
+                options.AddPolicy("AgentJob", policy => policy.RequireClaim("Agent", "oauth", "job"));
+            });
             if(Configuration["Authority"] != null && Configuration["ClientId"] != null  && Configuration["ClientSecret"] != null) {
                 auth.AddOpenIdConnect(options =>
                 {
@@ -214,9 +230,64 @@ namespace Runner.Server
             });
         }
 
+        public class AgentAuthenticationPolicyEvaluator : IPolicyEvaluator
+        {
+            private IConfiguration configuration;
+            private PolicyEvaluator policyEvaluator;
+
+            public AgentAuthenticationPolicyEvaluator(IConfiguration configuration, IAuthorizationService authorization)
+            {
+                this.configuration = configuration;
+                this.policyEvaluator = new PolicyEvaluator(authorization);
+            }
+
+            public async Task<AuthenticateResult> AuthenticateAsync(AuthorizationPolicy policy, HttpContext context)
+            {
+                if(policy.Requirements.FirstOrDefault() is ClaimsAuthorizationRequirement claimreq && claimreq.ClaimType == "Agent" && claimreq.AllowedValues?.FirstOrDefault() == "management") {
+                    var token = configuration.GetSection("Runner.Server")?.GetValue<String>("RUNNER_TOKEN") ?? "";
+                    if(string.IsNullOrEmpty(token)) {
+                        var authenticationTicket = new AuthenticationTicket(new ClaimsPrincipal(), new AuthenticationProperties(), JwtBearerDefaults.AuthenticationScheme);
+                        return AuthenticateResult.Success(authenticationTicket);
+                    }
+                    string authheader = context.Request.Headers.Authorization;
+                    var basicauthprefix = "Basic ";
+                    if(!string.IsNullOrEmpty(authheader) && authheader.StartsWith(basicauthprefix, StringComparison.OrdinalIgnoreCase)) {
+                        authheader = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(authheader.Substring(basicauthprefix.Length)));
+                        var nameandtoken = authheader.Split(":", 2);
+                        if(nameandtoken?.Length == 2 && nameandtoken[1] == token) {
+                            var authenticationTicket = new AuthenticationTicket(new ClaimsPrincipal(), new AuthenticationProperties(), JwtBearerDefaults.AuthenticationScheme);
+                            return AuthenticateResult.Success(authenticationTicket);
+                        }
+                    }
+                }
+                return await policyEvaluator.AuthenticateAsync(policy, context);
+            }
+
+            public async Task<PolicyAuthorizationResult> AuthorizeAsync(AuthorizationPolicy policy, AuthenticateResult authenticationResult, HttpContext context, object resource)
+            {
+                if(policy.Requirements.FirstOrDefault() is ClaimsAuthorizationRequirement claimreq && claimreq.ClaimType == "Agent" && claimreq.AllowedValues?.Contains("management") == true) {
+                    var token = configuration.GetSection("Runner.Server")?.GetValue<String>("RUNNER_TOKEN") ?? "";
+                    if(string.IsNullOrEmpty(token)) {
+                        return PolicyAuthorizationResult.Success();
+                    }
+                    string authheader = context.Request.Headers.Authorization;
+                    var basicauthprefix = "Basic ";
+                    if(!string.IsNullOrEmpty(authheader) && authheader.StartsWith(basicauthprefix, StringComparison.OrdinalIgnoreCase)) {
+                        authheader = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(authheader.Substring(basicauthprefix.Length)));
+                        var nameandtoken = authheader.Split(":", 2);
+                        if(nameandtoken?.Length == 2 && nameandtoken[1] == token) {
+                            return PolicyAuthorizationResult.Success();
+                        }
+                    }
+                }
+                return await policyEvaluator.AuthorizeAsync(policy, authenticationResult, context, resource);
+            }
+        }
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime lifetime)
         {
+            app.UseHttpLogging();
             var pipe = Environment.GetEnvironmentVariable("RUNNER_CLIENT_PIPE");
             if(pipe != null) {
                 lifetime.ApplicationStarted.Register(() => {

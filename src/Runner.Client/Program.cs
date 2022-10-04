@@ -5,6 +5,7 @@ using System.CommandLine.Invocation;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -25,6 +26,9 @@ using System.ComponentModel;
 using GitHub.Services.WebApi;
 using System.CommandLine.Builder;
 using System.CommandLine.Binding;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using GitHub.Runner.Common;
 
 namespace Runner.Client
 {
@@ -60,7 +64,7 @@ namespace Runner.Client
             public TimelineRecordFeedLinesWrapper record {get;set;}
         }
 
-        private class TraceWriter : GitHub.Runner.Sdk.ITraceWriter
+        public class TraceWriter : GitHub.Runner.Sdk.ITraceWriter
         {
             private bool verbose;
             public TraceWriter(bool verbose = false) {
@@ -106,9 +110,9 @@ namespace Runner.Client
             public string eventpath { get => payload; set => payload = value; }
             public string Event { get; set; }
             public string[] env { get; set; }
-            public string envFile { get; set; }
+            public string[] envFile { get; set; }
             public string[] secret { get; set; }
-            public string secretFile { get; set; }
+            public string[] secretFile { get; set; }
             public string job { get; set; }
             public string[] matrix { get; set; }
             public bool list { get; set; }
@@ -124,7 +128,7 @@ namespace Runner.Client
             public string defaultbranch { get; set; }
             public string directory { get; set; }
             public bool verbose { get; set; }
-            public int parallel { get; set; }
+            public int? parallel { get; set; }
             public bool StartServer { get; set; }
             public bool StartRunner { get; set; }
             public bool NoCopyGitDir { get; set; }
@@ -145,11 +149,20 @@ namespace Runner.Client
             public string Repository { get; set; }
             public string Ref { get; set; }
             public string Sha { get; set; }
+            public string[] Vars { get; set; }
+            public string[] VarFiles { get; set; }
             public string[] EnvironmentSecretFiles { get; set; }
+            public string[] EnvironmentVarFiles { get; set; }
+            public string[] EnvironmentVars { get; set; }
+            public string[] EnvironmentSecrets { get; set; }
             public string[] Inputs { get; set; }
             public string RunnerDirectory { get; set; }
             public bool GitHubConnect { get; set; }
             public string GitHubConnectToken { get; set; }
+            public string RunnerPath { get; set; }
+            public string RunnerVersion { get; set; }
+            public bool Interactive { get; internal set; }
+            public string[] LocalRepositories { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -170,6 +183,9 @@ namespace Runner.Client
             public string Url {get;set;}
             public bool Submodules {get;set;}
             public bool NestedSubmodules {get;set;}
+            public string Repository {get;set;}
+            public string Format {get;set;}
+            public string Path {get;set;}
         };
 
         private static string ReadSecret() {
@@ -262,7 +278,13 @@ namespace Runner.Client
                             inv.ErrorDataReceived += _out;
                         }
                         
-                        var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }};
+                        var systemEnv = System.Environment.GetEnvironmentVariables();
+                        var runnerEnv = new Dictionary<string, string>();
+                        foreach(var e in systemEnv.Keys) {
+                            runnerEnv[e as string] = systemEnv[e] as string;
+                        }
+                        runnerEnv["RUNNER_SERVER_CONFIG_ROOT"] = tmpdir;
+                        runnerEnv["GHARUN_CHANGE_PROCESS_GROUP"] = "1";
                         if(!parameters.NoSharedToolcache && Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") == null) {
                             runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "tool_cache");
                         }
@@ -387,6 +409,195 @@ namespace Runner.Client
                 if(!source.IsCancellationRequested) {
                     Console.WriteLine("Recreate Runner");
                     if(await CreateRunner(binpath, parameters, listener, workerchannel, source) != 0 && !source.IsCancellationRequested) {
+                        Console.WriteLine("Failed to recreate Runner, exiting...");
+                        source.Cancel();
+                    }
+                }
+            }
+            return 0;
+        }
+
+        private static async Task<int> CreateExternalRunner(string binpath, Parameters parameters, List<Task> listener, Channel<bool> workerchannel, CancellationTokenSource source) {
+            EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
+                Console.WriteLine(e.Data);
+            };
+            var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
+            var prefix = azure ? "Agent" : "Runner";
+            string ext = IOUtil.ExeExtension;
+            var root = Path.GetFullPath(parameters.RunnerPath);
+            var listenerexe = Path.Join(root, "bin", $"{prefix}.Listener{ext}");
+            var agentname = Path.GetRandomFileName();
+            string tmpdir = Path.Combine(Path.GetFullPath(parameters.RunnerDirectory), agentname);
+            Directory.CreateDirectory(Path.Join(tmpdir, "bin"));
+            var bindir = Path.Join(root, "bin");
+            foreach(var bfile in Directory.EnumerateFileSystemEntries(bindir)) {
+                var fname = bfile.Substring(bindir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var destfile = Path.Join(tmpdir, "bin", fname);
+                // copy .exe on windows alters the assembly path
+                // copy .dll on linux alters the assembly path, not shure about the executable stub
+                if(fname.StartsWith(prefix + ".") && (fname.EndsWith(".exe") || fname.EndsWith(".dll") || !fname.Substring(prefix.Length + 1).Contains("."))) {
+                    File.Copy(bfile, destfile);
+                } else {
+                    if(Directory.Exists(bfile)) {
+                        Directory.CreateSymbolicLink(destfile, bfile);
+                    } else {
+                        File.CreateSymbolicLink(destfile, bfile);
+                    }
+                }
+            }
+            Directory.CreateSymbolicLink(Path.Join(tmpdir, "externals"), Path.Join(root, "externals"));
+            // for the azure pipelines agent on linux, doesn't exist on windows
+            File.CreateSymbolicLink(Path.Join(tmpdir, "license.html"), Path.Join(root, "license.html"));
+
+            var runner = Path.Join(tmpdir, "bin", $"{prefix}.Listener{ext}");
+            var file = runner;
+            try {
+                int attempt = 1;
+                while(!source.IsCancellationRequested) {
+                    try {
+                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                        if(parameters.verbose) {
+                            inv.OutputDataReceived += _out;
+                            inv.ErrorDataReceived += _out;
+                        }
+                        var systemEnv = System.Environment.GetEnvironmentVariables();
+                        var runnerEnv = new Dictionary<string, string>();
+                        foreach(var e in systemEnv.Keys) {
+                            runnerEnv[e as string] = systemEnv[e] as string;
+                        }
+                        if(azure) {
+                            // Otherwise we have trouble to detect if the agent is ready for receiving jobs, althougt Runner.Server can tell us the state of the runner
+                            runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"] = "1";
+                        } else {
+                            runnerEnv["RUNNER_SERVER_CONFIG_ROOT"] = tmpdir;
+                        }
+                        var toolCacheEnv = azure ? "AGENT_TOOLSDIRECTORY" : "RUNNER_TOOL_CACHE";
+                        if(!parameters.NoSharedToolcache && !runnerEnv.TryGetValue(toolCacheEnv, out _)) {
+                            runnerEnv[toolCacheEnv] = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "tool_cache", GitHub.Runner.Sdk.GharunUtil.GetHostOS());
+                        }
+
+                        // PAT Auth is only possible via https for azure devops agents, fallback to negotiate with dummy credentials otherwise it wouldn't work on linux without https
+                        var arguments = azure ? parameters.server.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ?  $"configure --auth pat --token {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.server} --work w" : $"configure --auth negotiate --userName token --password {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.server} --work w" : $"configure --name {agentname} --unattended --url {parameters.server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
+                        if(!azure) {
+                            // Use embedded runner to configure external github agent, otherwise only port 80 or 443 are possible to use for configuration
+                        #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                            arguments = $"\"{Path.Join(binpath, "Runner.Listener.dll")}\" {arguments}";
+                            file = WhichUtil.Which("dotnet", true);
+                        #else
+                            file = Path.Join(binpath, $"Runner.Listener{ext}");
+                        #endif
+                        }
+                        var code = await inv.ExecuteAsync(tmpdir, file, arguments, runnerEnv, true, null, true, CancellationTokenSource.CreateLinkedTokenSource(source.Token, new CancellationTokenSource(60 * 1000).Token).Token);
+                        int execAttempt = 1;
+                        while(true) {
+                            file = runner;
+                            try {
+                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                if(parameters.verbose) {
+                                    runnerlistener.OutputDataReceived += _out;
+                                    runnerlistener.ErrorDataReceived += _out;
+                                }
+                                
+                                var runToken = CancellationTokenSource.CreateLinkedTokenSource(source.Token);
+                                using(var timer = new Timer(obj => {
+                                    runToken.Cancel();
+                                }, null, 60 * 1000, -1)) {
+                                    runnerlistener.OutputDataReceived += (s, e) => {
+                                        if(e.Data.Contains("Listen")) {
+                                            timer.Change(-1, -1);
+                                            workerchannel.Writer.WriteAsync(true);
+                                        }
+                                    };
+                                    if(source.IsCancellationRequested) {
+                                        return 1;
+                                    }
+                                    arguments = $"run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}";
+                                    // Wrap listener to avoid that ctrl-c is sent to the runner
+                                    if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                                        #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                            arguments = $"\"{Path.Join(binpath, "Runner.Client.dll")}\" spawn \"{file}\" {arguments}";
+                                            file = WhichUtil.Which("dotnet", true);
+                                        #else
+                                            arguments = $"spawn \"{file}\" {arguments}";
+                                            file = Path.Join(binpath, $"Runner.Client{ext}");
+                                        #endif
+                                    }
+                                    await runnerlistener.ExecuteAsync(tmpdir, file, arguments, runnerEnv, true, null, true, runToken.Token);
+                                    break;
+                                }
+                            } catch {
+                                if(execAttempt++ <= 3) {
+                                    await Task.Delay(500);
+                                } else {
+                                    Console.Error.WriteLine("Failed to start actions runner after 3 attempts");
+                                    int delattempt = 1;
+                                    while(true) {
+                                        try {
+                                            Directory.Delete(tmpdir, true);
+                                            break;
+                                        } catch {
+                                            if(delattempt++ >= 3) {
+                                                await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                break;
+                                            } else {
+                                                await Task.Delay(500);
+                                            }
+                                        }
+                                    }
+                                    return 1;
+                                }
+                            }
+                        }
+                        break;
+                    } catch {
+                        if(attempt++ <= 3) {
+                            await Task.Delay(500);
+                        } else {
+                            Console.Error.WriteLine("Failed to auto-configure actions runner after 3 attempts");
+                            int delattempt = 1;
+                            while(true) {
+                                try {
+                                    Directory.Delete(tmpdir, true);
+                                    break;
+                                } catch {
+                                    if(delattempt++ >= 3) {
+                                        await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                        break;
+                                    } else {
+                                        await Task.Delay(500);
+                                    }
+                                }
+                            }
+                            return 1;
+                        }
+                    }
+                }
+            } finally {
+                Console.WriteLine("Stopped Runner");
+                if(!parameters.KeepContainer && !parameters.KeepRunnerDirectory) {
+                    int delattempt = 1;
+                    while(true) {
+                        try {
+                            Directory.Delete(tmpdir, true);
+                            break;
+                        } catch {
+                            if(!Directory.Exists(tmpdir)) {
+                                break;
+                            }
+                            if(delattempt++ >= 3) {
+                                await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                break;
+                            } else {
+                                await Task.Delay(500);
+                            }
+                        }
+                    }
+                };
+            }
+            if(parameters.KeepContainer || parameters.NoReuse) {
+                if(!source.IsCancellationRequested) {
+                    Console.WriteLine("Recreate Runner");
+                    if(await CreateExternalRunner(binpath, parameters, listener, workerchannel, source) != 0 && !source.IsCancellationRequested) {
                         Console.WriteLine("Failed to recreate Runner, exiting...");
                         source.Cancel();
                     }
@@ -530,20 +741,19 @@ namespace Runner.Client
 
             var secretOpt = new Option<string[]>(
                 new[] { "-s", "--secret" },
-                description: "Secret for your workflow, overrides keys from your secrets file. E.g. `-s Name` or `-s Name=Value`. You will be asked for a value if you add `--secret name`, but no environment variable with name `name` exists.") {
+                description: "Secret for your workflow, overrides keys from your secrets file. E.g. `-s Name` or `-s Name=Value`. You will be asked for a value if you add `--secret name`, but no environment variable with name `name` exists") {
                     AllowMultipleArgumentsPerToken = false,
                     Arity = ArgumentArity.ZeroOrMore
                 };
             var envOpt = new Option<string[]>(
                 new[] { "--env" },
-                description: "Environment variable for your workflow, overrides keys from your env file. E.g. `--env Name` or `--env Name=Value`. You will be asked for a value if you add `--env name`, but no environment variable with name `name` exists.") {
+                description: "Environment variable for your workflow, overrides keys from your env file. E.g. `--env Name` or `--env Name=Value`. You will be asked for a value if you add `--env name`, but no environment variable with name `name` exists") {
                     AllowMultipleArgumentsPerToken = false,
                     Arity = ArgumentArity.ZeroOrMore
                 };
-            var envFile = new Option<string>(
+            var envFile = new Option<string[]>(
                 "--env-file",
-                getDefaultValue: () => ".env",
-                description: "Environment variables for your workflow.");
+                description: "Environment variables for your workflow");
             var matrixOpt = new Option<string[]>(
                 new[] { "-m", "--matrix" },
                 description: "Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use multiple times to filter more specifically. If you want to force a value to be a string you need to quote it, e.g. `\"-m Key:\\\"1\\\"\"` or `\"-m Key:\"\"1\"\"\"` (requires shell escaping)") {
@@ -553,100 +763,116 @@ namespace Runner.Client
             
             var workflowOption = new Option<string[]>(
                 "--workflow",
-                description: "Workflow(s) to run. Use multiple times to execute more workflows parallel.") {
+                description: "Workflow(s) to run. Use multiple times to execute more workflows parallel") {
                     AllowMultipleArgumentsPerToken = false,
                     Arity = ArgumentArity.ZeroOrMore
                 };
 
             var platformOption = new Option<string[]>(
                 new[] { "-P", "--platform" },
-                description: "Platform mapping to run the workflow in a docker container (similar behavior as using the container property of a workflow job, the container property of a job will take precedence over your specified docker image) or host. E.g. `-P ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P ubuntu-latest=-self-hosted` (Local Machine), `-P windows-latest=-self-hosted` (Local Machine), `-P windows-latest=mcr.microsoft.com/windows/servercore:ltsc2022` (Docker Windows container, windows only), `-P macos-latest=-self-hosted` (Local Machine) or with multiple labels `-P self-hosted,testmachine,anotherlabel=-self-hosted` (Local Machine).") {
+                description: "Platform mapping to run the workflow in a docker container (similar behavior as using the container property of a workflow job, the container property of a job will take precedence over your specified docker image) or host. E.g. `-P ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P ubuntu-latest=-self-hosted` (Local Machine), `-P windows-latest=-self-hosted` (Local Machine), `-P windows-latest=mcr.microsoft.com/windows/servercore:ltsc2022` (Docker Windows container, windows only), `-P macos-latest=-self-hosted` (Local Machine) or with multiple labels `-P self-hosted,testmachine,anotherlabel=-self-hosted` (Local Machine)") {
                     AllowMultipleArgumentsPerToken = false,
                     Arity = ArgumentArity.ZeroOrMore
                 };
             var serverOpt = new Option<string>(
                 "--server",
-                description: "Runner.Server address, e.g. `http://localhost:5000` or `https://localhost:5001`.");
+                description: "Runner.Server address, e.g. `http://localhost:5000` or `https://localhost:5001`");
             var payloadOpt = new Option<string>(
                 new[] { "-e", "--payload", "--eventpath" },
-                "Webhook payload to send to the Runner.");
+                "Webhook payload to send to the Runner");
             var noDefaultPayloadOpt = new Option<bool>(
                 "--no-default-payload",
-                "Do not provide or merge autogenerated payload content, will pass your unmodified payload to the runner.");
+                "Do not provide or merge autogenerated payload content, will pass your unmodified payload to the runner");
             var eventOpt = new Option<string>(
                 "--event",
                 getDefaultValue: () => "push",
-                description: "Which event to send to a worker, ignored if you use subcommands which overriding the event.");
-            var secretFileOpt = new Option<string>(
+                description: "Which event to send to a worker, ignored if you use subcommands which overriding the event");
+            var varOpt = new Option<string[]>(
+                "--var",
+                description: "Variables for your workflow, varname=valvalue");
+            var varFileOpt = new Option<string[]>(
+                "--var-file",
+                description: "Variables for your workflow, filename.yml");
+            var secretFileOpt = new Option<string[]>(
                 "--secret-file",
-                getDefaultValue: () => ".secrets",
-                description: "Secrets for your workflow.");
+                description: "Secrets for your workflow");
+            var environmentSecretOpt = new Option<string[]>(
+                "--environment-secret",
+                description: "Environment Secrets with name name for your workflow, name=secretname=secretvalue");
             var environmentSecretFileOpt = new Option<string[]>(
                 "--environment-secret-file",
-                description: "Environment Secrets with name name for your workflow, name=filename.yml.");
+                description: "Environment Secrets with name name for your workflow, name=filename.yml");
+            var environmentVarOpt = new Option<string[]>(
+                "--environment-var",
+                description: "Environment Variables with name name for your workflow, name=varname=valvalue");
+            var environmentVarFileOpt = new Option<string[]>(
+                "--environment-var-file",
+                description: "Environment Variables with name name for your workflow, name=filename.yml");
             var jobOpt = new Option<string>(
                 new[] {"-j", "--job"},
-                description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with `--workflow <workflow>` to run exact one job.");
+                description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with `--workflow <workflow>` to run exact one job");
             var listOpt = new Option<bool>(
                 new[] { "-l", "--list"},
-                description: "List jobs for the selected event (defaults to push).");
+                description: "List jobs for the selected event (defaults to push)");
             var workflowsOpt = new Option<string>(
                 new[] { "-W", "--workflows"},
-                description: "Workflow file or directory which contains workflows, only used if no `--workflow <workflow>` option is set.");
+                description: "Workflow file or directory which contains workflows, only used if no `--workflow <workflow>` option is set");
             var actorOpt = new Option<string>(
                 new[] {"-a" , "--actor"},
-                "The login of the user who initiated the workflow run, ignored if already in your event payload.");
+                "The login of the user who initiated the workflow run, ignored if already in your event payload");
             var watchOpt = new Option<bool>(
                 new[] {"-w", "--watch"},
-                "Run automatically on every file change.");
+                "Run automatically on every file change");
+            var interactiveOpt = new Option<bool>(
+                new[] {"--interactive"},
+                "Run interactively");
             var quietOpt = new Option<bool>(
                 new[] {"-q", "--quiet"},
-                "Display no progress in the cli.");
+                "Display no progress in the cli");
             var privilegedOpt = new Option<bool>(
                 "--privileged",
-                "Run the docker container under privileged mode, only applies to container jobs using this Runner fork.");
+                "Run the docker container under privileged mode, only applies to container jobs using this Runner fork");
             var usernsOpt = new Option<string>(
                 "--userns",
-                "Change the docker container linux user namespace, only applies to container jobs using this Runner fork.");
+                "Change the docker container linux user namespace, only applies to container jobs using this Runner fork");
             var containerPlatformOpt = new Option<string>(
                 new [] { "--container-architecture", "--container-platform" },
-                "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork.");
+                "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork");
             var keepContainerOpt = new Option<bool>(
                 "--keep-container",
-                "Do not clean up docker container after job, this leaks resources.");
+                "Do not clean up docker container after job, this leaks resources");
             var defaultbranchOpt = new Option<string>(
                 "--defaultbranch",
-                description: "The default branch of your workflow run, ignored if already in your event payload.");
+                description: "The default branch of your workflow run, ignored if already in your event payload");
             var DirectoryOpt = new Option<string>(
                 new[] {"-C", "--directory"},
-                "Change the directory of your local repository, provided file or directory names are still resolved relative to your current working directory.");
+                "Change the directory of your local repository, provided file or directory names are still resolved relative to your current working directory");
             var verboseOpt = new Option<bool>(
                 new[] {"-v", "--verbose"},
-                "Print more details like server / runner logs to stdout.");
-            var parallelOpt = new Option<int>(
+                "Print more details like server / runner logs to stdout");
+            var parallelOpt = new Option<int?>(
                 "--parallel",
-                getDefaultValue: () => 1,
-                description: "Run n parallel runners, ignored if `--server <server>` is used.");
+                description: "Run n parallel runners");
             var noCopyGitDirOpt = new Option<bool>(
                 "--no-copy-git-dir",
-                description: "Avoid copying the .git folder into the runner if it exists.");
+                description: "Avoid copying the .git folder into the runner if it exists");
             var keepRunnerDirectoryOpt = new Option<bool>(
                 "--keep-runner-directory",
-                description: "Skip deleting temporary runner directories.");
+                description: "Skip deleting temporary runner directories");
             var runnerDirectoryOpt = new Option<string>(
                 "--runner-directory",
                 getDefaultValue: () => Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "a"),
                 description: "Custom runner directory, can be used to avoid filepath length constraints");
             var noSharedToolCacheOpt = new Option<bool>(
                 "--no-shared-toolcache",
-                description: "Do not share toolcache between runners, a shared toolcache may cause workflow failures.");
+                description: "Do not share toolcache between runners, a shared toolcache may cause workflow failures");
             var noReuseOpt = new Option<bool>(
                 "--no-reuse",
-                "Do not reuse a configured self-hosted runner, creates a new instance after a job completes.");
+                "Do not reuse a configured self-hosted runner, creates a new instance after a job completes");
             var gitServerUrlOpt = new Option<string>(
                 "--git-server-url",
                 getDefaultValue: () => "https://github.com",
-                description: "Url to github or gitea instance.");
+                description: "Url to github or gitea instance");
             var gitApiServerUrlOpt = new Option<string>(
                 "--git-api-server-url",
                 description: "Url to github or gitea api. ( e.g https://api.github.com )");
@@ -655,37 +881,46 @@ namespace Runner.Client
                 description: "Url to github graphql api. ( e.g https://api.github.com/graphql )");
             var gitTarballUrlOpt = new Option<string>(
                 "--git-tarball-url",
-                description: "Url to github or gitea tarball api url, defaults to `<git-server-url>/{0}/archive/{1}.tar.gz`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+                description: "Url to github or gitea tarball api url, defaults to `<git-server-url>/{0}/archive/{1}.tar.gz`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha");
             var gitZipballUrlOpt = new Option<string>(
                 "--git-zipball-url",
-                description: "Url to github or gitea zipball api url, defaults to `<git-server-url>/{0}/archive/{1}.zip`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+                description: "Url to github or gitea zipball api url, defaults to `<git-server-url>/{0}/archive/{1}.zip`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha");
              var githubConnectOpt = new Option<bool>(
                 "--github-connect",
-                description: "Allow all actions from https://github.com with an GHES instance.");
+                description: "Allow all actions from https://github.com with an GHES instance");
             var githubConnectTokenOpt = new Option<string>(
                 "--github-connect-token",
-                description: "Provide an optional Personal Access Token for https://github.com.");
+                description: "Provide an optional Personal Access Token for https://github.com");
+            var runnerPathOpt = new Option<string>(
+                "--runner-path",
+                description: "Use this specfic runner instead of spinning up the embedded runner");
+            var runnerVersionOpt = new Option<string>(
+                "--runner-version",
+                description: "Use this runner version instead of spinning up the embedded runner");
             var remoteCheckoutOpt = new Option<bool>(
                 "--remote-checkout",
-                description: "Do not inject localcheckout into your workflows, always use the original actions/checkout.");
+                description: "Do not inject localcheckout into your workflows, always use the original actions/checkout");
             var artifactOutputDirOpt = new Option<string>(
                 "--artifact-output-dir",
-                description: "Output folder for all artifacts produced by this runs.");
+                description: "Output folder for all artifacts produced by this runs");
             var logOutputDirOpt = new Option<string>(
                 "--log-output-dir",
-                description: "Output folder for all logs produced by this runs.");
+                description: "Output folder for all logs produced by this runs");
             var repositoryOpt = new Option<string>(
                 "--repository",
-                description: "Custom github.repository.");
+                description: "Custom github.repository");
             var shaOpt = new Option<string>(
                 "--sha",
-                description: "Custom github.sha.");
+                description: "Custom github.sha");
             var refOpt = new Option<string>(
                 "--ref",
-                description: "Custom github.ref.");
+                description: "Custom github.ref");
             var workflowInputsOpt = new Option<string[]>(
                 new[] {"-i", "--input"},
                 description: "Inputs to add to the payload. E.g. `--input name=value`");
+            var localrepositoriesOpt = new Option<string[]>(
+                "--local-repository",
+                description: "Redirect dependent repositories to the local filesystem. E.g `--local-repository org/name@ref=/path/to/repository`");
             var rootCommand = new RootCommand
             {
                 workflowOption,
@@ -695,9 +930,14 @@ namespace Runner.Client
                 eventOpt,
                 envOpt,
                 envFile,
+                varOpt,
+                varFileOpt,
                 secretOpt,
                 secretFileOpt,
+                environmentSecretOpt,
                 environmentSecretFileOpt,
+                environmentVarOpt,
+                environmentVarFileOpt,
                 jobOpt,
                 matrixOpt,
                 listOpt,
@@ -705,6 +945,7 @@ namespace Runner.Client
                 platformOption,
                 actorOpt,
                 watchOpt,
+                interactiveOpt,
                 quietOpt,
                 privilegedOpt,
                 usernsOpt,
@@ -725,21 +966,56 @@ namespace Runner.Client
                 gitZipballUrlOpt,
                 githubConnectOpt,
                 githubConnectTokenOpt,
+                runnerPathOpt,
+                runnerVersionOpt,
                 remoteCheckoutOpt,
                 artifactOutputDirOpt,
                 logOutputDirOpt,
                 repositoryOpt,
                 shaOpt,
                 refOpt,
+                localrepositoriesOpt,
             };
 
             rootCommand.Description = "Run your workflows locally.";
 
+            var spawn = new Command("spawn", "executes a process and changes it's process group") { IsHidden = true };
+            var spawnargs = new Argument<string[]>();
+            spawn.AddArgument(spawnargs);
+            Func<string[], Task<int>> spawnHandler = async (string[] args) => {
+                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    try {
+                        if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
+                            Console.WriteLine($"Failed to change Process Group");
+                        }
+                    } catch {
+                        Console.WriteLine($"Failed to change Process Group exception");
+                    }
+                }
+                var proc = new System.Diagnostics.Process();
+                proc.StartInfo.FileName = args[0];
+                for(int i = 1; i < args.Length; i++) {
+                    proc.StartInfo.ArgumentList.Add(args[i]);
+                }
+                proc.StartInfo.RedirectStandardError = true;
+                proc.StartInfo.RedirectStandardInput = true;
+                proc.StartInfo.RedirectStandardOutput = true;
+                proc.Start();
+                var stdout = proc.StandardOutput.BaseStream.CopyToAsync(System.Console.OpenStandardOutput());
+                var stderr = proc.StandardError.BaseStream.CopyToAsync(System.Console.OpenStandardError());
+                var stdin = System.Console.OpenStandardInput().CopyToAsync(proc.StandardInput.BaseStream);
+                await Task.WhenAll(stdout, stderr);
+                proc.WaitForExit();
+                return proc.ExitCode;
+            };
+            spawn.SetHandler(spawnHandler, spawnargs);
+            rootCommand.Add(spawn);
+
             // Note that the parameters of the handler method are matched according to the names of the options
-            Func<Parameters , Task<int>> handler = async (parameters) =>
+            Func<Parameters, Task<int>> handler = async (parameters) =>
             {
-                if(parameters.list) {
-                    parameters.parallel = 0;
+                if(parameters.parallel == null && !parameters.StartServer && !parameters.list) {
+                    parameters.parallel = 1;
                 }
                 if(parameters.actor == null) {
                     parameters.actor = "runnerclient";
@@ -794,6 +1070,15 @@ namespace Runner.Client
                     canceled = true;
                     source.Cancel();
                 };
+                if(parameters.parallel > 0) {
+                    var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
+                    if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
+                        parameters.RunnerVersion = "2.210.0";
+                    }
+                    if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
+                        parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
+                    }
+                }
                 List<Task> listener = new List<Task>();
                 try {
                     if(parameters.server == null || parameters.StartServer || parameters.StartRunner) {
@@ -913,7 +1198,18 @@ namespace Runner.Client
                                                     sr.WriteLine("shutdown");
                                                 }
                                             });
-                                            var x = await invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "RUNNER_CLIENT_PIPE_IN", shutdownPipe.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}, false, null, true, runToken.Token);
+                                            var systemEnv = System.Environment.GetEnvironmentVariables();
+                                            var serverEnv = new Dictionary<string, string>();
+                                            foreach(var e in systemEnv.Keys) {
+                                                serverEnv[e as string] = systemEnv[e] as string;
+                                            }
+                                            foreach(var kv in new Dictionary<string, string>{ {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "RUNNER_CLIENT_PIPE_IN", shutdownPipe.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}) {
+                                                serverEnv[kv.Key] = kv.Value;
+                                            }
+                                            if(parameters.verbose) {
+                                                Console.WriteLine($"serverEnv: {(serverEnv.Select(kv => $"{kv.Key}={kv.Value}").Aggregate((l, nl) => string.IsNullOrEmpty(l) ? nl : $"{l}\n{nl}"))}");
+                                            }
+                                            var x = await invoker.ExecuteAsync(binpath, file, arguments, serverEnv, false, null, true, runToken.Token);
                                             Console.WriteLine("Stopped Server");
                                             File.Delete(serverconfigfileName);
                                         }
@@ -942,7 +1238,11 @@ namespace Runner.Client
                             Console.WriteLine($"Starting {parameters.parallel} Runner{(parameters.parallel != 1 ? "s" : "")}...");
                             var workerchannel = Channel.CreateBounded<bool>(1);
                             for(int i = 0; i < parameters.parallel; i++) {
-                                listener.Add(CreateRunner(binpath, parameters, listener, workerchannel, source));
+                                if(string.IsNullOrEmpty(parameters.RunnerPath)) {
+                                    listener.Add(CreateRunner(binpath, parameters, listener, workerchannel, source));
+                                } else {
+                                    listener.Add(CreateExternalRunner(binpath, parameters, listener, workerchannel, source));
+                                }
                             }
                             var task = workerchannel.Reader.ReadAsync().AsTask();
                             if(await Task.WhenAny(listener.Append(task)) != task) {
@@ -973,12 +1273,207 @@ namespace Runner.Client
                     }
                     bool first = true;
                     bool skipAskToSaveArtifact = false;
-                    while(!source.IsCancellationRequested && (parameters.watch || first)) {
+                    while(!source.IsCancellationRequested && (parameters.Interactive || parameters.watch || first)) {
+                        cancelWorkflow = null;
                         var ret = await Task.Run<int>(async () => {
+                            string command = "run";
+                            if(parameters.Interactive) {
+                                parameters.list = false;
+                                parameters.job = null;
+                                Console.Write("gharun> ");
+                                try {
+                                    command = await Console.In.ReadLineAsync().WithCancellation(source.Token);
+                                } catch {
+                                    command = "";
+                                }
+                            }
+                            Action<QueryBuilder> queryParam = null;
+                            var interactiveCommand = new Command("gharun>");
+                            var runCommand = new Command("run", "Create a new run, this is the default action of this tool");
+                            runCommand.Add(jobOpt);
+                            runCommand.SetHandler(job => {
+                                parameters.job = job;
+                                queryParam = _ => {};
+                            }, jobOpt);
+
+                            interactiveCommand.Add(runCommand);
+                            var rerunCommand = new Command("rerun", "Rerun an completed workflow instead of starting a new one, you can keep completed jobs and artifacts during reruns");
+                            var failedOpt = new Option<bool>(
+                                new [] { "-f", "--failed" }, "rerun all failed jobs"
+                            );
+                            var resetArtifactsOpt = new Option<bool>(
+                                new [] { "-r", "--resetArtifacts" }, "rerun without previous artifacts"
+                            );
+                            var refreshOpt = new Option<bool>(
+                                new [] { "--refresh" }, "refresh workflow runs new jobs added to the workflow"
+                            );
+                            var runIdOpt = new Argument<int>(
+                                "runid", "Which workflow to rerun"
+                            );
+                            var jobIdOpt = new Option<string>(new [] { "-j", "--jobid" }, "Which job to rerun");
+                            rerunCommand.Add(runIdOpt);
+                            rerunCommand.Add(jobIdOpt);
+                            rerunCommand.Add(failedOpt);
+                            rerunCommand.Add(resetArtifactsOpt);
+                            rerunCommand.Add(refreshOpt);
+                            rerunCommand.SetHandler((runId, jobId, failed, resetArtifacts, refresh) => {
+                                queryParam = qb => {
+                                    qb.Add("runid", runId.ToString());
+                                    if(!string.IsNullOrEmpty(jobId)) {
+                                        qb.Add("jobId", jobId);
+                                    }
+                                    qb.Add("failed", failed.ToString());
+                                    qb.Add("resetArtifacts", resetArtifacts.ToString());
+                                    qb.Add("refresh", refresh.ToString());
+                                };
+                            }, runIdOpt, jobIdOpt, failedOpt, resetArtifactsOpt, refreshOpt);
+
+                            interactiveCommand.Add(rerunCommand);
+
+                            var listCommand = new Command("list", "Lists jobs of the selected workflows");
+                            listCommand.Add(jobOpt);
+                            listCommand.SetHandler(job => {
+                                parameters.job = job;
+                                parameters.list = true;
+                                queryParam = _ => {};
+                            }, jobOpt);
+                            interactiveCommand.Add(listCommand);
+
+                            var deleteCommand = new Command("delete", "Delete Artifacts or Cache");
+                            var deleteCacheCommand = new Command("cache", "Delete Cache, can be used to recreate the Cache and free storage");
+                            deleteCacheCommand.SetHandler(async () => {
+                                var client = new HttpClient();
+                                var deleteUri = new UriBuilder(parameters.server);
+                                deleteUri.Path = "_apis/artifactcachemanagement/cache";
+                                await client.DeleteAsync(deleteUri.ToString());
+                            });
+                            deleteCommand.Add(deleteCacheCommand);
+                            var deleteArtifactsCommand = new Command("artifacts", "Delete all Artifacts and free storage");
+                            deleteArtifactsCommand.SetHandler(async () => {
+                                var client = new HttpClient();
+                                var deleteUri = new UriBuilder(parameters.server);
+                                deleteUri.Path = "_apis/artifactcachemanagement/artifacts";
+                                await client.DeleteAsync(deleteUri.ToString());
+                            });
+                            deleteCommand.Add(deleteArtifactsCommand);
+                            interactiveCommand.Add(deleteCommand);
+
+                            var updateCommand = new Command("update", "Update provided env and secrets");
+                            updateCommand.Add(payloadOpt);
+                            updateCommand.Add(envOpt);
+                            updateCommand.Add(secretOpt);
+                            var eventOpt = new Option<string>(
+                                "--event",
+                                description: "Change the event to trigger the workflow");
+                            updateCommand.Add(eventOpt);
+                            var resetOpt = new Option<bool>(
+                                "--reset",
+                                description: "Discard cached cli options");
+                            updateCommand.Add(resetOpt);
+                            var envFileOpt = new Option<string[]>(
+                                "--env-file",
+                                description: "Environment variables for your workflow");
+                            updateCommand.Add(envFileOpt);
+                            updateCommand.Add(varOpt);
+                            updateCommand.Add(varFileOpt);
+                            var secretFileOpt = new Option<string[]>(
+                                "--secret-file",
+                                description: "Secrets for your workflow");
+                            updateCommand.Add(secretFileOpt);
+                            updateCommand.Add(environmentSecretOpt);
+                            updateCommand.Add(environmentSecretFileOpt);
+                            updateCommand.Add(environmentVarOpt);
+                            updateCommand.Add(environmentVarFileOpt);
+                            updateCommand.Add(workflowInputsOpt);
+                            updateCommand.SetHandler(_ => {}, new MyCustomBinder(bindingContext => {
+                                if(bindingContext.ParseResult.GetValueForOption(resetOpt)) {
+                                    parameters.payload = null;
+                                    parameters.env = null;
+                                    parameters.Vars = null;
+                                    parameters.EnvironmentVars = null;
+                                    parameters.secret = null;
+                                    parameters.envFile = null;
+                                    parameters.secretFile = null;
+                                    parameters.EnvironmentSecrets = null;
+                                    parameters.EnvironmentSecretFiles = null;
+                                    parameters.EnvironmentVarFiles = null;
+                                    parameters.Inputs = null;
+                                }
+                                var payload = bindingContext.ParseResult.GetValueForOption(payloadOpt);
+                                if(payload != null) {
+                                    parameters.payload = payload;
+                                }
+                                var envs = bindingContext.ParseResult.GetValueForOption(envOpt);
+                                if(envs != null) {
+                                    parameters.env = parameters.env == null ? envs : parameters.env.Concat(envs).ToArray();
+                                }
+                                var secrets = bindingContext.ParseResult.GetValueForOption(secretOpt);
+                                if(secrets != null) {
+                                    parameters.secret = parameters.secret == null ? secrets : parameters.secret.Concat(secrets).ToArray();
+                                }
+                                var _event = bindingContext.ParseResult.GetValueForOption(eventOpt);
+                                if(_event != null) {
+                                    parameters.Event = _event;
+                                }
+                                var envFile = bindingContext.ParseResult.GetValueForOption(envFileOpt);
+                                if(envFile != null) {
+                                    parameters.envFile = parameters.envFile == null ? envFile : parameters.envFile.Concat(envFile).ToArray();
+                                }
+                                var vars = bindingContext.ParseResult.GetValueForOption(varFileOpt);
+                                if(vars != null) {
+                                    parameters.Vars = parameters.Vars == null ? vars : parameters.Vars.Concat(vars).ToArray();
+                                }
+                                var varFiles = bindingContext.ParseResult.GetValueForOption(varFileOpt);
+                                if(varFiles != null) {
+                                    parameters.VarFiles = parameters.VarFiles == null ? varFiles : parameters.VarFiles.Concat(varFiles).ToArray();
+                                }
+                                var secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
+                                if(secretFile != null) {
+                                    parameters.secretFile = parameters.secretFile == null ? secretFile : parameters.secretFile.Concat(secretFile).ToArray();
+                                }
+                                var environmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
+                                if(environmentSecrets != null) {
+                                    parameters.EnvironmentSecrets = parameters.EnvironmentSecrets == null ? environmentSecrets : parameters.EnvironmentSecrets.Concat(environmentSecrets).ToArray();
+                                }
+                                var environmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
+                                if(environmentSecretFiles != null) {
+                                    parameters.EnvironmentSecretFiles = parameters.EnvironmentSecretFiles == null ? environmentSecretFiles : parameters.EnvironmentSecretFiles.Concat(environmentSecretFiles).ToArray();
+                                }
+                                var environmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
+                                if(environmentVarFiles != null) {
+                                    parameters.EnvironmentVarFiles = parameters.EnvironmentVarFiles == null ? environmentVarFiles : parameters.EnvironmentVarFiles.Concat(environmentVarFiles).ToArray();
+                                }
+                                var inputs = bindingContext.ParseResult.GetValueForOption(workflowInputsOpt);
+                                if(inputs != null) {
+                                    parameters.Inputs = parameters.Inputs == null ? inputs : parameters.Inputs.Concat(inputs).ToArray();
+                                }
+                                var environmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
+                                if(environmentVars != null) {
+                                    parameters.EnvironmentVars = parameters.EnvironmentVars == null ? environmentVars : parameters.EnvironmentVars.Concat(environmentVars).ToArray();
+                                }
+                                return parameters;
+                            }));
+                            interactiveCommand.Add(updateCommand);
+
+                            var exitCommand = new Command("exit", "Stop this program, the server and the runner");
+                            exitCommand.AddAlias("quit");
+                            exitCommand.AddAlias("Quit");
+                            exitCommand.SetHandler(() => {
+                                source.Cancel();
+                            });
+                            interactiveCommand.Add(exitCommand);
+                            
+                            if(source.IsCancellationRequested) {
+                                return 0;
+                            }
+                            await interactiveCommand.InvokeAsync(command);
+                            if(queryParam == null) {
+                                return 0;
+                            }
                             List<string> addedFiles = new List<string>();
                             List<string> changedFiles = new List<string>();
                             List<string> removedFiles = new List<string>();
-                            if(!first) {
+                            if(!first && !parameters.Interactive) {
                                 using(FileSystemWatcher watcher = new FileSystemWatcher(parameters.directory ?? ".") {IncludeSubdirectories = true}) {
                                     watcher.Created += (s, f) => {
                                         var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
@@ -1096,20 +1591,24 @@ namespace Runner.Client
                                     
                                     List<string> wenv = new List<string>();
                                     List<string> wsecrets = new List<string>();
-                                    try {
-                                        wenv.AddRange(Util.ReadEnvFile(parameters.envFile));
-                                    } catch(Exception ex) {
-                                        if(parameters.envFile != ".env") {
-                                            Console.WriteLine($"Failed to read file: {parameters.envFile}, Details: {ex.Message}");
-                                            return 1;
+                                    if(parameters.envFile?.Length > 0) {
+                                        foreach(var file in parameters.envFile) {
+                                            try {
+                                                wenv.AddRange(Util.ReadEnvFile(file));
+                                            } catch(Exception ex) {
+                                                Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                return 1;
+                                            }
                                         }
                                     }
-                                    try {
-                                        wsecrets.AddRange(Util.ReadEnvFile(parameters.secretFile));
-                                    } catch(Exception ex) {
-                                        if(parameters.secretFile != ".secrets") {
-                                            Console.WriteLine($"Failed to read file: {parameters.secretFile}, Details: {ex.Message}");
-                                            return 1;
+                                    if(parameters.secretFile?.Length > 0) {
+                                        foreach(var file in parameters.secretFile) {
+                                            try {
+                                                wsecrets.AddRange(Util.ReadEnvFile(file));
+                                            } catch(Exception ex) {
+                                                Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                return 1;
+                                            }
                                         }
                                     }
                                     if(parameters.job != null) {
@@ -1124,8 +1623,12 @@ namespace Runner.Client
                                     if(parameters.platform?.Length > 0) {
                                         query.Add("platform", parameters.platform);
                                     }
+                                    if(parameters.LocalRepositories?.Length > 0) {
+                                        query.Add("taskNames", (from r in parameters.LocalRepositories select r.Substring(0, r.IndexOf('='))));
+                                    }
                                     if(parameters.env?.Length > 0) {
-                                        foreach (var e in parameters.env) {
+                                        for(int i = 0; i < parameters.env.Length; i++ ) {
+                                            var e = parameters.env[i];
                                             if(e.IndexOf('=') > 0) {
                                                 wenv.Add(e);
                                             } else {
@@ -1133,13 +1636,15 @@ namespace Runner.Client
                                                 if(envvar == null) {
                                                     await Console.Out.WriteAsync($"{e}=");
                                                     envvar = await Console.In.ReadLineAsync();
+                                                    parameters.env[i] = $"{e}={envvar}";
                                                 }
                                                 wenv.Add($"{e}={envvar}");
                                             }
                                         }
                                     }
                                     if(parameters.secret?.Length > 0) {
-                                        foreach (var e in parameters.secret) {
+                                        for(int i = 0; i < parameters.secret.Length; i++ ) {
+                                            var e = parameters.secret[i];
                                             if(e.IndexOf('=') > 0) {
                                                 wsecrets.Add(e);
                                             } else {
@@ -1147,6 +1652,7 @@ namespace Runner.Client
                                                 if(envvar == null) {
                                                     await Console.Out.WriteAsync($"{e}=");
                                                     envvar = ReadSecret();
+                                                    parameters.secret[i] = $"{e}={envvar}";
                                                 }
                                                 wsecrets.Add($"{e}={envvar}");
                                             }
@@ -1276,7 +1782,7 @@ namespace Runner.Client
                                         payloadContent["repository"] = repository;
                                     }
                                     
-                                    if(parameters.payload != null) {
+                                    if(!string.IsNullOrEmpty(parameters.payload)) {
                                         try {
                                             // 
                                             var filec = await File.ReadAllTextAsync(parameters.payload, Encoding.UTF8);
@@ -1294,7 +1800,7 @@ namespace Runner.Client
                                     } else if(parameters.NoDefaultPayload) {
                                         payloadContent = new JObject();
                                     }
-                                    if(parameters.Inputs?.Length > 0) {
+                                    if(parameters.Event == "workflow_dispatch" && parameters.Inputs?.Length > 0) {
                                         var inputs = new JObject();
                                         payloadContent["inputs"] = inputs;
                                         foreach(var input in parameters.Inputs) {
@@ -1303,17 +1809,91 @@ namespace Runner.Client
                                         }
                                     }
                                     mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
+                                    var envSecrets = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
                                     if(parameters.EnvironmentSecretFiles?.Length > 0) {
                                         foreach(var opt in parameters.EnvironmentSecretFiles) {
                                             var subopt = opt.Split('=', 2);
                                             string name = subopt.Length == 2 ? subopt[0] : "";
                                             string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
-                                            var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
-                                            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            var dict = envSecrets[name] = envSecrets.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                             Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
-                                            mp.Add(new StringContent(ser.Serialize(dict)), "actions-environment-secrets", $"{name}.secrets");
                                         }
                                     }
+                                    if(parameters.EnvironmentSecrets?.Length > 0) {
+                                        for(int i = 0; i < parameters.EnvironmentSecrets.Length; i++) {
+                                            var opt = parameters.EnvironmentSecrets[i];
+                                            var subopt = opt.Split('=', 3);
+                                            string name = subopt[0];
+                                            string varname = subopt[1];
+                                            string varval = subopt.Length == 3 ? subopt[2] : null;
+                                            if(varval == null) {
+                                                await Console.Out.WriteAsync($"{name}={varname}=");
+                                                varval = ReadSecret();
+                                                parameters.EnvironmentSecrets[i] = $"{name}={varname}={varval}";
+                                            }
+                                            var dict = envSecrets[name] = envSecrets.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            dict[varname] = varval;
+                                        }
+                                    }
+                                    foreach(var envVarKv in envSecrets) {
+                                        var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
+                                        mp.Add(new StringContent(ser.Serialize(envVarKv.Value)), "actions-environment-secrets", $"{envVarKv.Key}.secrets");
+                                    }
+                                    var envVars = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+                                    if(parameters.EnvironmentVarFiles?.Length > 0) {
+                                        foreach(var opt in parameters.EnvironmentVarFiles) {
+                                            var subopt = opt.Split('=', 2);
+                                            string name = subopt.Length == 2 ? subopt[0] : "";
+                                            string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
+                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
+                                        }
+                                    }
+                                    if(parameters.VarFiles?.Length > 0) {
+                                        foreach(var opt in parameters.VarFiles) {
+                                            string name = "";
+                                            string filename = opt;
+                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
+                                        }
+                                    }
+                                    if(parameters.EnvironmentVars?.Length > 0) {
+                                        for(int i = 0; i < parameters.EnvironmentVars.Length; i++) {
+                                            var opt = parameters.EnvironmentVars[i];
+                                            var subopt = opt.Split('=', 3);
+                                            string name = subopt[0];
+                                            string varname = subopt[1];
+                                            string varval = subopt.Length == 3 ? subopt[2] : null;
+                                            if(varval == null) {
+                                                await Console.Out.WriteAsync($"{name}={varname}=");
+                                                varval = await Console.In.ReadLineAsync();
+                                                parameters.EnvironmentVars[i] = $"{name}={varname}={varval}";
+                                            }
+                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            dict[varname] = varval;
+                                        }
+                                    }
+                                    if(parameters.Vars?.Length > 0) {
+                                        for(int i = 0; i < parameters.Vars.Length; i++) {
+                                            var opt = parameters.Vars[i];
+                                            var subopt = opt.Split('=', 2);
+                                            string name = "";
+                                            string varname = subopt[0];
+                                            string varval = subopt.Length == 2 ? subopt[1] : null;
+                                            if(varval == null) {
+                                                await Console.Out.WriteAsync($"{varname}=");
+                                                varval = await Console.In.ReadLineAsync();
+                                                parameters.Vars[i] = $"{name}={varname}={varval}";
+                                            }
+                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            dict[varname] = varval;
+                                        }
+                                    }
+                                    foreach(var envVarKv in envVars) {
+                                        var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
+                                        mp.Add(new StringContent(ser.Serialize(envVarKv.Value)), "actions-environment-variables", $"{envVarKv.Key}.vars");
+                                    }
+                                    queryParam?.Invoke(query);
                                     b.Query = query.ToQueryString().ToString().TrimStart('?');
                                     resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, b.Uri.ToString()) { Content = mp }, HttpCompletionOption.ResponseHeadersRead);
                                     resp.EnsureSuccessStatusCode();
@@ -1493,61 +2073,125 @@ namespace Runner.Client
                                             if(line == "event: repodownload") {
                                                 var endpoint = JsonConvert.DeserializeObject<RepoDownload>(data);
                                                 Task.Run(async () => {
-                                                    var repodownload = new MultipartFormDataContent();
-                                                    List<Stream> streamsToDispose = new List<Stream>();
-                                                    try {
+                                                    Func<string, string, bool> matchRepository = (l, r) => {
+                                                        var lnameAndRef = l.Split("=", 2).FirstOrDefault()?.Split("@", 2);
+                                                        var rnameAndRef = r.Split("@", 2);
+                                                        return lnameAndRef?.Length == 2 && rnameAndRef?.Length == 2 && string.Equals(lnameAndRef[0], rnameAndRef[0], StringComparison.OrdinalIgnoreCase) && lnameAndRef[1] == rnameAndRef[1];
+                                                    };
+                                                    var reporoot = endpoint.Repository == null ? Path.GetFullPath(parameters.directory ?? ".") : (from r in parameters.LocalRepositories where matchRepository(r, endpoint.Repository) select Path.GetFullPath(r.Substring($"{endpoint.Repository}=".Length))).LastOrDefault();
+                                                    if(string.Equals(endpoint.Format, "repoexists", StringComparison.OrdinalIgnoreCase) && endpoint.Path == null) {
+                                                        if(reporoot == null) {
+                                                            await client.DeleteAsync(parameters.server + endpoint.Url, token);
+                                                        } else {
+                                                            await client.PostAsync(parameters.server + endpoint.Url, new StringContent("Ok"), token);
+                                                        }
+                                                    } else if(reporoot != null && endpoint.Path == null && endpoint.Format == null) {
+                                                        var repodownload = new MultipartFormDataContent();
+                                                        List<Stream> streamsToDispose = new List<Stream>();
                                                         try {
-                                                            await CollectRepoFiles(parameters.directory ?? Path.GetFullPath("."), endpoint, repodownload, streamsToDispose, 0, parameters, source);
-                                                        } catch {
+                                                            try {
+                                                                await CollectRepoFiles(reporoot, reporoot, endpoint, repodownload, streamsToDispose, 0, parameters, source);
+                                                            } catch {
+                                                                foreach(var fstream in streamsToDispose) {
+                                                                    await fstream.DisposeAsync();
+                                                                }
+                                                                streamsToDispose.Clear();
+                                                                repodownload.Dispose();
+                                                                repodownload = new MultipartFormDataContent();
+                                                            }
+                                                            if(streamsToDispose.Count == 0) {
+                                                                foreach(var w in Directory.EnumerateFiles(reporoot, "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
+                                                                    var relpath = Path.GetRelativePath(reporoot, w).Replace('\\', '/');
+                                                                    var file = File.OpenRead(w);
+                                                                    streamsToDispose.Add(file);
+                                                                    var mode = "644";
+                                                                    if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                                                                        try {
+                                                                            var finfo = new Mono.Unix.UnixSymbolicLinkInfo(w);
+                                                                            if(finfo.IsSymbolicLink) {
+                                                                                var dest = finfo.ContentsPath;
+                                                                                repodownload.Add(new StringContent(dest), "lnk:" + relpath);
+                                                                                continue;
+                                                                            }
+                                                                            if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                                                                mode = "755";
+                                                                            }
+                                                                        }
+                                                                        catch {
+
+                                                                        }
+                                                                    } else {
+                                                                        try {
+                                                                            if(new FileInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
+                                                                                var dest = ReadSymlinkWindows(w);
+                                                                                repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                                                                continue;
+                                                                            }
+                                                                        } catch {
+
+                                                                        }
+                                                                    }
+                                                                    repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
+                                                                }
+                                                            }
+                                                            repodownload.Headers.ContentType.MediaType = "application/octet-stream";
+                                                            await client.PostAsync(parameters.server + endpoint.Url, repodownload, token);
+                                                        } finally {
                                                             foreach(var fstream in streamsToDispose) {
                                                                 await fstream.DisposeAsync();
                                                             }
-                                                            streamsToDispose.Clear();
                                                             repodownload.Dispose();
-                                                            repodownload = new MultipartFormDataContent();
                                                         }
-                                                        if(streamsToDispose.Count == 0) {
-                                                            foreach(var w in Directory.EnumerateFiles(parameters.directory ?? ".", "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
-                                                                var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
-                                                                var file = File.OpenRead(w);
-                                                                streamsToDispose.Add(file);
-                                                                var mode = "644";
-                                                                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                                                                    try {
-                                                                        var finfo = new Mono.Unix.UnixSymbolicLinkInfo(w);
-                                                                        if(finfo.IsSymbolicLink) {
-                                                                            var dest = finfo.ContentsPath;
-                                                                            repodownload.Add(new StringContent(dest), "lnk:" + relpath);
-                                                                            continue;
+                                                    } else if(reporoot != null && endpoint.Path != null && string.Equals(endpoint.Format, "file", StringComparison.OrdinalIgnoreCase)) {
+                                                        var w = Path.Join(reporoot, endpoint.Path);
+                                                        try {
+                                                            using(var file = File.OpenRead(w)) {
+                                                                var content = new StreamContent(file);
+                                                                content.Headers.ContentType = new MediaTypeHeaderValue("text/plain") { CharSet = "utf8" };
+                                                                (await client.PostAsync(parameters.server + endpoint.Url, content, token)).EnsureSuccessStatusCode();
+                                                            }
+                                                        } catch {
+                                                            await client.DeleteAsync(parameters.server + endpoint.Url, token);
+                                                        }
+                                                    } else if(reporoot != null && (string.Equals(endpoint.Format, "zip", StringComparison.OrdinalIgnoreCase) || string.Equals(endpoint.Format, "taskzip", StringComparison.OrdinalIgnoreCase))) {
+                                                        try {
+                                                            bool taskzip = string.Equals(endpoint.Format, "taskzip", StringComparison.OrdinalIgnoreCase);
+                                                            using(var stream = new MemoryStream()) {
+                                                                using(var zipFile = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, true)) {
+                                                                    foreach(var w in Directory.EnumerateFiles(reporoot, "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
+                                                                        var relpath = Path.GetRelativePath(reporoot, w).Replace('\\', '/');
+                                                                        var entry = zipFile.CreateEntry(taskzip ? $"{relpath}" : $"archive/{relpath}", System.IO.Compression.CompressionLevel.NoCompression);
+                                                                        using(var file = File.OpenRead(w))
+                                                                        using(var fileout = entry.Open()) {
+                                                                            file.CopyTo(fileout);
                                                                         }
-                                                                        if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
-                                                                            mode = "755";
-                                                                        }
-                                                                    }
-                                                                    catch {
-
-                                                                    }
-                                                                } else {
-                                                                    try {
-                                                                        if(new FileInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
-                                                                            var dest = ReadSymlinkWindows(w);
-                                                                            repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
-                                                                            continue;
-                                                                        }
-                                                                    } catch {
-
                                                                     }
                                                                 }
-                                                                repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
+                                                                stream.Position = 0;
+                                                                (await client.PostAsync(parameters.server + endpoint.Url, new StreamContent(stream), token)).EnsureSuccessStatusCode();
                                                             }
+                                                        } catch {
+                                                            await client.DeleteAsync(parameters.server + endpoint.Url, token);
                                                         }
-                                                        repodownload.Headers.ContentType.MediaType = "application/octet-stream";
-                                                        await client.PostAsync(parameters.server + endpoint.Url, repodownload, token);
-                                                    } finally {
-                                                        foreach(var fstream in streamsToDispose) {
-                                                            await fstream.DisposeAsync();
+                                                    } else if(reporoot != null && string.Equals(endpoint.Format, "tar", StringComparison.OrdinalIgnoreCase)) {
+                                                        try {
+                                                            string tar = WhichUtil.Which("tar", require: true);
+                                                            var cwd = Directory.GetParent(reporoot);
+                                                            using(var proc = new System.Diagnostics.Process()) {
+                                                                proc.StartInfo.FileName = tar;
+                                                                proc.StartInfo.Arguments = $"czf - \"{Path.GetFileName(reporoot).Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+                                                                proc.StartInfo.WorkingDirectory = cwd.FullName;
+                                                                proc.StartInfo.RedirectStandardOutput = true;
+                                                                proc.Start();
+                                                                (await client.PostAsync(parameters.server + endpoint.Url, new StreamContent(proc.StandardOutput.BaseStream), token)).EnsureSuccessStatusCode();
+                                                                proc.WaitForExit();
+                                                            }
+                                                            
+                                                        } catch {
+                                                            await client.DeleteAsync(parameters.server + endpoint.Url, token);
                                                         }
-                                                        repodownload.Dispose();
+                                                    } else {
+                                                        await client.DeleteAsync(parameters.server + endpoint.Url, token);
                                                     }
                                                 });
                                             }
@@ -1665,7 +2309,7 @@ namespace Runner.Client
                                 cancelWorkflow = null;
                             }
                         });
-                        if(!parameters.watch) {
+                        if(!parameters.watch && !parameters.Interactive) {
                             return ret;
                         }
                     }
@@ -1681,6 +2325,9 @@ namespace Runner.Client
                 }
                 return 0;
             };
+            var tokenOpt = new Option<string>(
+                "--token",
+                description: "custom runner token to use");
             var binder = new MyCustomBinder(bindingContext => {
                 var parameters = new Parameters();
                 parameters.workflow = bindingContext.ParseResult.GetValueForOption(workflowOption);
@@ -1690,9 +2337,14 @@ namespace Runner.Client
                 parameters.Event = bindingContext.ParseResult.GetValueForOption(eventOpt);
                 parameters.env = bindingContext.ParseResult.GetValueForOption(envOpt);
                 parameters.envFile = bindingContext.ParseResult.GetValueForOption(envFile);
+                parameters.Vars = bindingContext.ParseResult.GetValueForOption(varOpt);
+                parameters.VarFiles = bindingContext.ParseResult.GetValueForOption(varFileOpt);
                 parameters.secret = bindingContext.ParseResult.GetValueForOption(secretOpt);
                 parameters.secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
+                parameters.EnvironmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretOpt);
                 parameters.EnvironmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
+                parameters.EnvironmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
+                parameters.EnvironmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
                 parameters.job = bindingContext.ParseResult.GetValueForOption(jobOpt);
                 parameters.matrix = bindingContext.ParseResult.GetValueForOption(matrixOpt);
                 parameters.list = bindingContext.ParseResult.GetValueForOption(listOpt);
@@ -1700,6 +2352,7 @@ namespace Runner.Client
                 parameters.platform = bindingContext.ParseResult.GetValueForOption(platformOption);
                 parameters.actor = bindingContext.ParseResult.GetValueForOption(actorOpt);
                 parameters.watch = bindingContext.ParseResult.GetValueForOption(watchOpt);
+                parameters.Interactive = bindingContext.ParseResult.GetValueForOption(interactiveOpt);
                 parameters.quiet = bindingContext.ParseResult.GetValueForOption(quietOpt);
                 parameters.privileged = bindingContext.ParseResult.GetValueForOption(privilegedOpt);
                 parameters.userns = bindingContext.ParseResult.GetValueForOption(usernsOpt);
@@ -1726,6 +2379,8 @@ namespace Runner.Client
                 parameters.GitZipballUrl = bindingContext.ParseResult.GetValueForOption(gitZipballUrlOpt);
                 parameters.GitHubConnect = bindingContext.ParseResult.GetValueForOption(githubConnectOpt);
                 parameters.GitHubConnectToken = bindingContext.ParseResult.GetValueForOption(githubConnectTokenOpt);
+                parameters.RunnerPath = bindingContext.ParseResult.GetValueForOption(runnerPathOpt);
+                parameters.RunnerVersion = bindingContext.ParseResult.GetValueForOption(runnerVersionOpt);
                 parameters.RemoteCheckout = bindingContext.ParseResult.GetValueForOption(remoteCheckoutOpt);
                 parameters.ArtifactOutputDir = bindingContext.ParseResult.GetValueForOption(artifactOutputDirOpt);
                 parameters.LogOutputDir = bindingContext.ParseResult.GetValueForOption(logOutputDirOpt);
@@ -1733,6 +2388,8 @@ namespace Runner.Client
                 parameters.Sha = bindingContext.ParseResult.GetValueForOption(shaOpt);
                 parameters.Ref = bindingContext.ParseResult.GetValueForOption(refOpt);
                 parameters.Inputs = bindingContext.ParseResult.GetValueForOption(workflowInputsOpt);
+                parameters.Token = bindingContext.ParseResult.GetValueForOption(tokenOpt);
+                parameters.LocalRepositories = bindingContext.ParseResult.GetValueForOption(localrepositoriesOpt);
                 return parameters;
             });
 
@@ -1757,7 +2414,6 @@ namespace Runner.Client
             rootCommand.AddCommand(startserver);
             Func<Parameters, Task<int>> sthandler = p => {
                 p.StartServer = true;
-                p.parallel = 0;
                 return handler(p);
             };
             startserver.SetHandler(sthandler, binder);
@@ -1769,18 +2425,13 @@ namespace Runner.Client
                 return handler(p);
             };
             startrunner.SetHandler(thandler, binder);
-
+            rootCommand.AddOption(tokenOpt);
             foreach(var opt in rootCommand.Options) {
-                if(opt.Aliases.Contains("--server") || opt.Aliases.Contains("--verbose")) {
+                if(opt.Aliases.Contains("--server") || opt.Aliases.Contains("--verbose") || opt.Aliases.Contains("--parallel") || opt.Aliases.Contains("--privileged") || opt.Aliases.Contains("--userns") || opt.Aliases.Contains("--container-architecture") || opt.Aliases.Contains("--runner-version") || opt.Aliases.Contains("--token")) {
                     startserver.AddOption(opt);
-                    startrunner.AddOption(opt);
-                } else if(opt.Aliases.Contains("--parallel") || opt.Aliases.Contains("--privileged") || opt.Aliases.Contains("--userns") || opt.Aliases.Contains("--container-architecture")) {
                     startrunner.AddOption(opt);
                 }
             }
-            startrunner.AddOption(new Option<string>(
-                "--token",
-                description: "custom runner token to use"));
 
             rootCommand.SetHandler(handler, binder);
 
@@ -1829,7 +2480,7 @@ namespace Runner.Client
             return rootCommand.InvokeAsync(args.Length == 1 && args[0] == "--version" ? args : cargs.ToArray()).Result;
         }
 
-        private static async Task CollectRepoFiles(string wd, RepoDownload endpoint, MultipartFormDataContent repodownload, List<Stream> streamsToDispose, long level, Parameters parameters, CancellationTokenSource source) {
+        private static async Task CollectRepoFiles(string root, string wd, RepoDownload endpoint, MultipartFormDataContent repodownload, List<Stream> streamsToDispose, long level, Parameters parameters, CancellationTokenSource source) {
             List<Func<Task>> submoduleTasks = new List<Func<Task>>();
             EventHandler<ProcessDataReceivedEventArgs> handleoutput = (s, e) => {
                 var files = e.Data.Split('\0');
@@ -1845,7 +2496,7 @@ namespace Runner.Client
                             mode = file.Substring(3, modeend - 3);
                         } else if(file.StartsWith("160")) {
                             if(endpoint.Submodules && level == 0 || endpoint.NestedSubmodules) {
-                                submoduleTasks.Add(() => CollectRepoFiles(Path.Combine(wd, filename), endpoint, repodownload, streamsToDispose, level + 1, parameters, source));
+                                submoduleTasks.Add(() => CollectRepoFiles(root, Path.Combine(wd, filename), endpoint, repodownload, streamsToDispose, level + 1, parameters, source));
                             }
                             continue;
                         } else if(file.StartsWith("120")) {
@@ -1860,7 +2511,7 @@ namespace Runner.Client
                                 var git = WhichUtil.Which("git", true);
                                 var sha = file.Substring(modeend + 1, shaend - (modeend + 1));
                                 await gitinvoker.ExecuteAsync(wd, git, $"cat-file -p {sha}", new Dictionary<string, string>(), source.Token);
-                                repodownload.Add(new StringContent(dest), "lnk:" + Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename)).Replace('\\', '/'));
+                                repodownload.Add(new StringContent(dest), "lnk:" + Path.GetRelativePath(root, Path.Combine(wd, filename)).Replace('\\', '/'));
                             });
                             continue;
                             // readlink git cat-file -p sha
@@ -1869,7 +2520,7 @@ namespace Runner.Client
                     try {
                         var fs = File.OpenRead(Path.Combine(wd, filename));
                         streamsToDispose.Add(fs);
-                        filename = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
+                        filename = Path.GetRelativePath(root, Path.Combine(wd, filename));
                         repodownload.Add(new StreamContent(fs), mode + ":" + filename.Replace('\\', '/'), filename.Replace('\\', '/'));
                     }
                     catch {
@@ -1898,7 +2549,7 @@ namespace Runner.Client
                                 var finfo = new Mono.Unix.UnixSymbolicLinkInfo(relpath);
                                 if(finfo.IsSymbolicLink) {
                                     var dest = finfo.ContentsPath;
-                                    relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
+                                    relpath = Path.GetRelativePath(root, Path.Combine(wd, filename));
                                     repodownload.Add(new StringContent(dest), "lnk:" + relpath);
                                     continue;
                                 }
@@ -1913,7 +2564,7 @@ namespace Runner.Client
                             try {
                                 if(new FileInfo(relpath).Attributes.HasFlag(FileAttributes.ReparsePoint)){
                                     var dest = ReadSymlinkWindows(relpath);
-                                    relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
+                                    relpath = Path.GetRelativePath(root, Path.Combine(wd, filename));
                                     repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath.Replace('\\', '/'));
                                     continue;
                                 }
@@ -1924,7 +2575,7 @@ namespace Runner.Client
                     try {
                         var fs = File.OpenRead(relpath);
                         streamsToDispose.Add(fs);
-                        relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
+                        relpath = Path.GetRelativePath(root, Path.Combine(wd, filename));
                         repodownload.Add(new StreamContent(fs), mode + ":" + relpath.Replace('\\', '/'), relpath.Replace('\\', '/'));
                     } catch {
 
@@ -1937,7 +2588,7 @@ namespace Runner.Client
                 var gitdir = Path.Combine(wd, ".git");
                 if(Directory.Exists(gitdir)) {
                     foreach(var w in Directory.EnumerateFiles(gitdir, "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
-                        var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
+                        var relpath = Path.GetRelativePath(root, w).Replace('\\', '/');
                         var file = File.OpenRead(w);
                         streamsToDispose.Add(file);
                         var mode = "644";

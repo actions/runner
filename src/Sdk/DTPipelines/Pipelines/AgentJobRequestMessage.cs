@@ -398,7 +398,8 @@ namespace GitHub.DistributedTask.Pipelines
 
             if (m_maskHints?.Count == 0)
             {
-                m_maskHints = null;
+                // Otherwise the Agent.Listener throws here, while sending the message to the worker
+                //m_maskHints = null;
             }
             else if (m_maskHints != null)
             {

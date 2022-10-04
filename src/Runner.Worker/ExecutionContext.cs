@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
@@ -66,6 +67,8 @@ namespace GitHub.Runner.Worker
         bool EchoOnActionCommand { get; set; }
 
         bool IsEmbedded { get; }
+
+        List<string> StepEnvironmentOverrides { get; }
 
         ExecutionContext Root { get; }
 
@@ -236,6 +239,8 @@ namespace GitHub.Runner.Worker
                 return ExpressionValues["job"] as JobContext;
             }
         }
+
+        public List<string> StepEnvironmentOverrides { get; } = new List<string>();
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -1170,7 +1175,21 @@ namespace GitHub.Runner.Worker
                 traceWriter = context.ToTemplateTraceWriter();
             }
             var schema = PipelineTemplateSchemaFactory.GetSchema();
-            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
+            if(context.Global.Variables.TryGetValue("system.runner.server.workflow_schema", out var workflow_schema)) {
+                var objectReader = new JsonObjectReader(null, workflow_schema);
+                schema = TemplateSchema.Load(objectReader);
+            }
+            ExpressionFlags flags = ExpressionFlags.None;
+            if(context.Global.Variables.GetBoolean("system.runner.server.extendedFunctions") == true) {
+                flags |= ExpressionFlags.ExtendedFunctions;
+            }
+            if(context.Global.Variables.GetBoolean("system.runner.server.extendedDirectives") == true) {
+                flags |= ExpressionFlags.ExtendedDirectives;
+            }
+            if(context.Global.Variables.GetBoolean("system.runner.server.allowAnyForInsert") == true) {
+                flags |= ExpressionFlags.AllowAnyForInsert;
+            }
+            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable, flags)
             {
                 MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
             };

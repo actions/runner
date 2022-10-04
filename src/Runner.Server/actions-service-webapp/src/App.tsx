@@ -891,6 +891,57 @@ function RedirectOldUrl() {
   return <div>Redirecting...</div>
 }
 
+function TimeLineViewer() {
+  var params = useParams();
+  const [timeline, setTimeline] = useState<ITimeLine[]>();
+  const eventHandler = useMemo<Map<string, (line: string[]) => void>>(() => new Map(), []);
+  useEffect(() => {
+    var timeLineId = params.timeLineId;
+    if(timeLineId) {
+      var source = new EventSource(ghHostApiUrl + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ timeLineId);
+      source.addEventListener("log", (me) => {
+        var ev = me as MessageEvent;
+        var e = JSON.parse(ev.data) as ILoglineEvent;
+        eventHandler.get(e.record.stepId)?.call(undefined, e.record.value);
+      });
+      source.addEventListener ("timeline", (me : Event) => {
+        var ev = me as MessageEvent;
+        var e = JSON.parse(ev.data) as ITimeLineEvent;
+        setTimeline(_oldtimeline => {
+          e.timeline.forEach(entry => entry.timelineId = timeLineId);
+          return e.timeline;
+        });
+      });
+      (async () => {
+        var resp = await fetch(ghHostApiUrl + "/_apis/v1/Timeline/" + timeLineId, { });
+        if(resp.status === 200) {
+            var newTimeline = await resp.json() as ITimeLine[];
+            if(newTimeline != null && newTimeline.length > 0) {
+                newTimeline.forEach(entry => entry.timelineId = timeLineId);
+                setTimeline(newTimeline);
+            } else {
+                setTimeline([]);
+            }
+        } else {
+            setTimeline([]);
+        }
+      })()
+      return () => {
+        source.close();
+      }
+    }
+  }, [params.timeLineId, eventHandler]);
+  return ( <span style={{width: '100%', height: '100%', overflowY: 'auto'}}>
+    {(() => {
+      if((timeline?.length || 0) > 1) {
+        return (<>{timeline?.map((timelineEntry, i) => (<Collapsible key={timelineEntry.id} timelineEntry={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}></Collapsible>))}</>);
+      }
+      return (<Detail timeline={(timeline || [null])[0]} render={true} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}/>)
+    })()
+  }
+  </span>);
+}
+
 function App() {
   var [gitServerUrl, setGitServerUrl] = useState<string>()
   useEffect(() => {
@@ -903,6 +954,7 @@ function App() {
   }, []);
   return (
       <Routes>
+        <Route path="/timeline/:timeLineId" element={<TimeLineViewer></TimeLineViewer>}/>
         <Route path="/master/:a/:b/detail/:id" element={<RedirectOldUrl/>}/>
         <Route path="/master" element={<Navigate to={"0"}/>}/>
         <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")} externalBackUrl={params => gitServerUrl} externalBackLabel={() => "Back to git"} actions={ o => gitServerUrl ? <a href={new URL(o.name, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="owner" eventQuery={ params => "" }></GenericList>}/>

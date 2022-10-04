@@ -140,6 +140,9 @@ namespace Runner.Server.Controllers {
             var gzip = Request.Headers.TryGetValue("Content-Encoding", out StringValues v) && v.Contains("gzip");
             if(container == null) {
                 container = new ArtifactRecord() {FileName = itemPath, StoreName = Path.GetRandomFileName(), GZip = gzip, FileContainer = _context.ArtifactFileContainer.Find(id)} ;
+                if(container.FileContainer == null) {
+                    container.FileContainer = new ArtifactFileContainer() { Id = id };
+                }
                 _context.ArtifactRecords.Add(container);
                 await _context.SaveChangesAsync();
                 created = true;
