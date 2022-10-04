@@ -1,12 +1,13 @@
-name: Runner CI
+name: Emulator CI/CD
 
 on:
   workflow_dispatch:
     inputs:
-      # 0.0.0
-      type: string
-    changelog:
-      type: string
+      version:
+        # 0.0.0
+        type: string
+      changelog:
+        type: string
   push:
     branches:
     - main
