@@ -110,9 +110,9 @@ namespace Runner.Client
             public string eventpath { get => payload; set => payload = value; }
             public string Event { get; set; }
             public string[] env { get; set; }
-            public string envFile { get; set; }
+            public string[] envFile { get; set; }
             public string[] secret { get; set; }
-            public string secretFile { get; set; }
+            public string[] secretFile { get; set; }
             public string job { get; set; }
             public string[] matrix { get; set; }
             public bool list { get; set; }
@@ -149,9 +149,12 @@ namespace Runner.Client
             public string Repository { get; set; }
             public string Ref { get; set; }
             public string Sha { get; set; }
+            public string[] Vars { get; set; }
+            public string[] VarFiles { get; set; }
             public string[] EnvironmentSecretFiles { get; set; }
             public string[] EnvironmentVarFiles { get; set; }
             public string[] EnvironmentVars { get; set; }
+            public string[] EnvironmentSecrets { get; set; }
             public string[] Inputs { get; set; }
             public string RunnerDirectory { get; set; }
             public bool GitHubConnect { get; set; }
@@ -748,9 +751,8 @@ namespace Runner.Client
                     AllowMultipleArgumentsPerToken = false,
                     Arity = ArgumentArity.ZeroOrMore
                 };
-            var envFile = new Option<string>(
+            var envFile = new Option<string[]>(
                 "--env-file",
-                getDefaultValue: () => ".env",
                 description: "Environment variables for your workflow");
             var matrixOpt = new Option<string[]>(
                 new[] { "-m", "--matrix" },
@@ -785,10 +787,18 @@ namespace Runner.Client
                 "--event",
                 getDefaultValue: () => "push",
                 description: "Which event to send to a worker, ignored if you use subcommands which overriding the event");
-            var secretFileOpt = new Option<string>(
+            var varOpt = new Option<string[]>(
+                "--var",
+                description: "Variables for your workflow, varname=valvalue");
+            var varFileOpt = new Option<string[]>(
+                "--var-file",
+                description: "Variables for your workflow, filename.yml");
+            var secretFileOpt = new Option<string[]>(
                 "--secret-file",
-                getDefaultValue: () => ".secrets",
                 description: "Secrets for your workflow");
+            var environmentSecretOpt = new Option<string[]>(
+                "--environment-secret",
+                description: "Environment Secrets with name name for your workflow, name=secretname=secretvalue");
             var environmentSecretFileOpt = new Option<string[]>(
                 "--environment-secret-file",
                 description: "Environment Secrets with name name for your workflow, name=filename.yml");
@@ -920,8 +930,11 @@ namespace Runner.Client
                 eventOpt,
                 envOpt,
                 envFile,
+                varOpt,
+                varFileOpt,
                 secretOpt,
                 secretFileOpt,
+                environmentSecretOpt,
                 environmentSecretFileOpt,
                 environmentVarOpt,
                 environmentVarFileOpt,
@@ -1278,7 +1291,7 @@ namespace Runner.Client
                             var interactiveCommand = new Command("gharun>");
                             var runCommand = new Command("run", "Create a new run, this is the default action of this tool");
                             runCommand.Add(jobOpt);
-                            runCommand.SetHandler<string>(job => {
+                            runCommand.SetHandler(job => {
                                 parameters.job = job;
                                 queryParam = _ => {};
                             }, jobOpt);
@@ -1303,7 +1316,7 @@ namespace Runner.Client
                             rerunCommand.Add(failedOpt);
                             rerunCommand.Add(resetArtifactsOpt);
                             rerunCommand.Add(refreshOpt);
-                            rerunCommand.SetHandler<int, string, bool, bool, bool>((runId, jobId, failed, resetArtifacts, refresh) => {
+                            rerunCommand.SetHandler((runId, jobId, failed, resetArtifacts, refresh) => {
                                 queryParam = qb => {
                                     qb.Add("runid", runId.ToString());
                                     if(!string.IsNullOrEmpty(jobId)) {
@@ -1319,7 +1332,7 @@ namespace Runner.Client
 
                             var listCommand = new Command("list", "Lists jobs of the selected workflows");
                             listCommand.Add(jobOpt);
-                            listCommand.SetHandler<string>(job => {
+                            listCommand.SetHandler(job => {
                                 parameters.job = job;
                                 parameters.list = true;
                                 queryParam = _ => {};
@@ -1353,88 +1366,93 @@ namespace Runner.Client
                                 "--event",
                                 description: "Change the event to trigger the workflow");
                             updateCommand.Add(eventOpt);
-                            var clearEnvsOpt = new Option<bool>(
-                                "--clear-envs",
-                                description: "Discard any envs set previously");
-                            updateCommand.Add(clearEnvsOpt);
-                            var clearSecretsOpt = new Option<bool>(
-                                "--clear-secrets",
-                                description: "Discard any secrets set previously");
-                            updateCommand.Add(clearSecretsOpt);
-                            var clearEnvFileOpt = new Option<bool>(
-                                "--clear-env-file",
-                                description: "Discard the env file set previously");
-                            updateCommand.Add(clearEnvFileOpt);
-                            var clearEnvironmentFilesOpt = new Option<bool>(
-                                "--clear-environment-files",
-                                description: "Discard any environment variable and secrets files set previously");
-                            updateCommand.Add(clearEnvironmentFilesOpt);
-                            var envFile = new Option<string>(
+                            var resetOpt = new Option<bool>(
+                                "--reset",
+                                description: "Discard cached cli options");
+                            updateCommand.Add(resetOpt);
+                            var envFileOpt = new Option<string[]>(
                                 "--env-file",
                                 description: "Environment variables for your workflow");
-                            updateCommand.Add(envFile);
-                            var secretFileOpt = new Option<string>(
+                            updateCommand.Add(envFileOpt);
+                            updateCommand.Add(varOpt);
+                            updateCommand.Add(varFileOpt);
+                            var secretFileOpt = new Option<string[]>(
                                 "--secret-file",
                                 description: "Secrets for your workflow");
                             updateCommand.Add(secretFileOpt);
+                            updateCommand.Add(environmentSecretOpt);
                             updateCommand.Add(environmentSecretFileOpt);
                             updateCommand.Add(environmentVarOpt);
                             updateCommand.Add(environmentVarFileOpt);
                             updateCommand.Add(workflowInputsOpt);
-                            var clearWorkflowInputsOpt = new Option<bool>(
-                                "--clear-inputs",
-                                description: "Discard any workflow_dispatch inputs set previously");
-                            updateCommand.Add(clearWorkflowInputsOpt);
-                            updateCommand.SetHandler<string, string[], string[], string, bool, bool, bool, bool, string, string, string[], string[], string[], string[], bool>((payload, envs, secrets, _event, clearEnvs, clearSecrets, clearEnvFile, clearEnvironmentFiles, envFile, secretFile, environmentSecretFiles, environmentVars, environmentVarFiles, inputs, clearInputs) => {
+                            updateCommand.SetHandler(_ => {}, new MyCustomBinder(bindingContext => {
+                                if(bindingContext.ParseResult.GetValueForOption(resetOpt)) {
+                                    parameters.payload = null;
+                                    parameters.env = null;
+                                    parameters.Vars = null;
+                                    parameters.EnvironmentVars = null;
+                                    parameters.secret = null;
+                                    parameters.envFile = null;
+                                    parameters.secretFile = null;
+                                    parameters.EnvironmentSecrets = null;
+                                    parameters.EnvironmentSecretFiles = null;
+                                    parameters.EnvironmentVarFiles = null;
+                                    parameters.Inputs = null;
+                                }
+                                var payload = bindingContext.ParseResult.GetValueForOption(payloadOpt);
                                 if(payload != null) {
                                     parameters.payload = payload;
                                 }
-                                if(clearEnvs) {
-                                    parameters.env = null;
-                                    parameters.EnvironmentVars = null;
-                                }
-                                if(clearSecrets) {
-                                    parameters.secret = null;
-                                }
+                                var envs = bindingContext.ParseResult.GetValueForOption(envOpt);
                                 if(envs != null) {
                                     parameters.env = parameters.env == null ? envs : parameters.env.Concat(envs).ToArray();
                                 }
+                                var secrets = bindingContext.ParseResult.GetValueForOption(secretOpt);
                                 if(secrets != null) {
                                     parameters.secret = parameters.secret == null ? secrets : parameters.secret.Concat(secrets).ToArray();
                                 }
+                                var _event = bindingContext.ParseResult.GetValueForOption(eventOpt);
                                 if(_event != null) {
                                     parameters.Event = _event;
                                 }
-                                if(clearEnvFile) {
-                                    parameters.envFile = ".env";
-                                }
+                                var envFile = bindingContext.ParseResult.GetValueForOption(envFileOpt);
                                 if(envFile != null) {
-                                    parameters.envFile = envFile;
+                                    parameters.envFile = parameters.envFile == null ? envFile : parameters.envFile.Concat(envFile).ToArray();
                                 }
-                                if(clearEnvironmentFiles) {
-                                    parameters.secretFile = ".secrets";
-                                    parameters.EnvironmentSecretFiles = null;
-                                    parameters.EnvironmentVarFiles = null;
+                                var vars = bindingContext.ParseResult.GetValueForOption(varFileOpt);
+                                if(vars != null) {
+                                    parameters.Vars = parameters.Vars == null ? vars : parameters.Vars.Concat(vars).ToArray();
                                 }
+                                var varFiles = bindingContext.ParseResult.GetValueForOption(varFileOpt);
+                                if(varFiles != null) {
+                                    parameters.VarFiles = parameters.VarFiles == null ? varFiles : parameters.VarFiles.Concat(varFiles).ToArray();
+                                }
+                                var secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
                                 if(secretFile != null) {
-                                    parameters.secretFile = secretFile;
+                                    parameters.secretFile = parameters.secretFile == null ? secretFile : parameters.secretFile.Concat(secretFile).ToArray();
                                 }
+                                var environmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
+                                if(environmentSecrets != null) {
+                                    parameters.EnvironmentSecrets = parameters.EnvironmentSecrets == null ? environmentSecrets : parameters.EnvironmentSecrets.Concat(environmentSecrets).ToArray();
+                                }
+                                var environmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
                                 if(environmentSecretFiles != null) {
                                     parameters.EnvironmentSecretFiles = parameters.EnvironmentSecretFiles == null ? environmentSecretFiles : parameters.EnvironmentSecretFiles.Concat(environmentSecretFiles).ToArray();
                                 }
+                                var environmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
                                 if(environmentVarFiles != null) {
                                     parameters.EnvironmentVarFiles = parameters.EnvironmentVarFiles == null ? environmentVarFiles : parameters.EnvironmentVarFiles.Concat(environmentVarFiles).ToArray();
                                 }
-                                if(clearInputs) {
-                                    parameters.Inputs = null;
-                                }
+                                var inputs = bindingContext.ParseResult.GetValueForOption(workflowInputsOpt);
                                 if(inputs != null) {
                                     parameters.Inputs = parameters.Inputs == null ? inputs : parameters.Inputs.Concat(inputs).ToArray();
                                 }
+                                var environmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
                                 if(environmentVars != null) {
                                     parameters.EnvironmentVars = parameters.EnvironmentVars == null ? environmentVars : parameters.EnvironmentVars.Concat(environmentVars).ToArray();
                                 }
-                            }, payloadOpt, envOpt, secretOpt, eventOpt, clearEnvsOpt, clearSecretsOpt, clearEnvFileOpt, clearEnvironmentFilesOpt, envFile, secretFileOpt, environmentSecretFileOpt, environmentVarOpt, environmentVarFileOpt, workflowInputsOpt, clearWorkflowInputsOpt);
+                                return parameters;
+                            }));
                             interactiveCommand.Add(updateCommand);
 
                             var exitCommand = new Command("exit", "Stop this program, the server and the runner");
@@ -1573,20 +1591,24 @@ namespace Runner.Client
                                     
                                     List<string> wenv = new List<string>();
                                     List<string> wsecrets = new List<string>();
-                                    try {
-                                        wenv.AddRange(Util.ReadEnvFile(parameters.envFile));
-                                    } catch(Exception ex) {
-                                        if(parameters.envFile != ".env") {
-                                            Console.WriteLine($"Failed to read file: {parameters.envFile}, Details: {ex.Message}");
-                                            return 1;
+                                    if(parameters.envFile?.Length > 0) {
+                                        foreach(var file in parameters.envFile) {
+                                            try {
+                                                wenv.AddRange(Util.ReadEnvFile(file));
+                                            } catch(Exception ex) {
+                                                Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                return 1;
+                                            }
                                         }
                                     }
-                                    try {
-                                        wsecrets.AddRange(Util.ReadEnvFile(parameters.secretFile));
-                                    } catch(Exception ex) {
-                                        if(parameters.secretFile != ".secrets") {
-                                            Console.WriteLine($"Failed to read file: {parameters.secretFile}, Details: {ex.Message}");
-                                            return 1;
+                                    if(parameters.secretFile?.Length > 0) {
+                                        foreach(var file in parameters.secretFile) {
+                                            try {
+                                                wsecrets.AddRange(Util.ReadEnvFile(file));
+                                            } catch(Exception ex) {
+                                                Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                return 1;
+                                            }
                                         }
                                     }
                                     if(parameters.job != null) {
@@ -1797,6 +1819,22 @@ namespace Runner.Client
                                             Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
                                         }
                                     }
+                                    if(parameters.EnvironmentSecrets?.Length > 0) {
+                                        for(int i = 0; i < parameters.EnvironmentSecrets.Length; i++) {
+                                            var opt = parameters.EnvironmentSecrets[i];
+                                            var subopt = opt.Split('=', 3);
+                                            string name = subopt[0];
+                                            string varname = subopt[1];
+                                            string varval = subopt.Length == 3 ? subopt[2] : null;
+                                            if(varval == null) {
+                                                await Console.Out.WriteAsync($"{name}={varname}=");
+                                                varval = ReadSecret();
+                                                parameters.EnvironmentSecrets[i] = $"{name}={varname}={varval}";
+                                            }
+                                            var dict = envSecrets[name] = envSecrets.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            dict[varname] = varval;
+                                        }
+                                    }
                                     foreach(var envVarKv in envSecrets) {
                                         var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
                                         mp.Add(new StringContent(ser.Serialize(envVarKv.Value)), "actions-environment-secrets", $"{envVarKv.Key}.secrets");
@@ -1811,12 +1849,42 @@ namespace Runner.Client
                                             Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
                                         }
                                     }
+                                    if(parameters.VarFiles?.Length > 0) {
+                                        foreach(var opt in parameters.VarFiles) {
+                                            string name = "";
+                                            string filename = opt;
+                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
+                                        }
+                                    }
                                     if(parameters.EnvironmentVars?.Length > 0) {
-                                        foreach(var opt in parameters.EnvironmentVars) {
+                                        for(int i = 0; i < parameters.EnvironmentVars.Length; i++) {
+                                            var opt = parameters.EnvironmentVars[i];
                                             var subopt = opt.Split('=', 3);
-                                            string name = subopt.Length == 3 ? subopt[0] : "";
-                                            string varname = subopt.Length == 3 ? subopt[1] : subopt[0];
-                                            string varval = subopt.Length == 3 ? subopt[2] : subopt[1];
+                                            string name = subopt[0];
+                                            string varname = subopt[1];
+                                            string varval = subopt.Length == 3 ? subopt[2] : null;
+                                            if(varval == null) {
+                                                await Console.Out.WriteAsync($"{name}={varname}=");
+                                                varval = await Console.In.ReadLineAsync();
+                                                parameters.EnvironmentVars[i] = $"{name}={varname}={varval}";
+                                            }
+                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                            dict[varname] = varval;
+                                        }
+                                    }
+                                    if(parameters.Vars?.Length > 0) {
+                                        for(int i = 0; i < parameters.Vars.Length; i++) {
+                                            var opt = parameters.Vars[i];
+                                            var subopt = opt.Split('=', 2);
+                                            string name = "";
+                                            string varname = subopt[0];
+                                            string varval = subopt.Length == 2 ? subopt[1] : null;
+                                            if(varval == null) {
+                                                await Console.Out.WriteAsync($"{varname}=");
+                                                varval = await Console.In.ReadLineAsync();
+                                                parameters.Vars[i] = $"{name}={varname}={varval}";
+                                            }
                                             var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                             dict[varname] = varval;
                                         }
@@ -2269,8 +2337,11 @@ namespace Runner.Client
                 parameters.Event = bindingContext.ParseResult.GetValueForOption(eventOpt);
                 parameters.env = bindingContext.ParseResult.GetValueForOption(envOpt);
                 parameters.envFile = bindingContext.ParseResult.GetValueForOption(envFile);
+                parameters.Vars = bindingContext.ParseResult.GetValueForOption(varOpt);
+                parameters.VarFiles = bindingContext.ParseResult.GetValueForOption(varFileOpt);
                 parameters.secret = bindingContext.ParseResult.GetValueForOption(secretOpt);
                 parameters.secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
+                parameters.EnvironmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretOpt);
                 parameters.EnvironmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
                 parameters.EnvironmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
                 parameters.EnvironmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
