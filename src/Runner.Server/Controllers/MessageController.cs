@@ -2973,13 +2973,13 @@ namespace Runner.Server.Controllers
                                     }
                                 }
                                 if(feed.Data.Length < pageSize) {
-                                    workflowTraceWriter.Info($"Finished updating the cached Tasks");
                                     break;
                                 }
                             }
                             ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(azureTasks);
                         }
                         _cache.Set(cacheKey, tasksByNameAndVersion);
+                        workflowTraceWriter.Info($"Finished updating the cached Tasks");
                         return tasksByNameAndVersion;
                     } catch(Exception ex) {
                         workflowTraceWriter.Error($"Failed to Download or update the cached Tasks: {ex}");
