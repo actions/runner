@@ -108,9 +108,9 @@ namespace GitHub.Runner.Worker
             var unhealthyContainers = new List<ContainerInfo>();
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
-                var healthcheck = await ContainerHealthcheck(executionContext, container);
+                var healthy_container = await ContainerHealthcheck(executionContext, container);
 
-                if (!string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
+                if (!healthy_container)
                 {
                     unhealthyContainers.Add(container);
                 }
@@ -330,13 +330,13 @@ namespace GitHub.Runner.Worker
             {
                 if (!container.IsJobContainer && !container.FailedInitialization)
                 {
-                        executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
+                    executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
 
-                        int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
-                        if (logsExitCode != 0)
-                        {
-                            executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
-                        }
+                    int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
+                    if (logsExitCode != 0)
+                    {
+                        executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
+                    }
                 }
 
                 executionContext.Output($"Stop and remove container: {container.ContainerDisplayName}");
@@ -423,14 +423,14 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task<string> ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
+        private async Task<bool> ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
         {
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
             string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             if (string.IsNullOrEmpty(serviceHealth))
             {
                 // Container has no HEALTHCHECK
-                return String.Empty;
+                return true;
             }
             var retryCount = 0;
             while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
@@ -441,7 +441,7 @@ namespace GitHub.Runner.Worker
                 serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
                 retryCount++;
             }
-            return serviceHealth;
+            return string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)
