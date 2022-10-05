@@ -44,6 +44,7 @@ namespace GitHub.Runner.Common
                                                     {
                                                         return await _taskAgentClient.GetJobMessageAsync(id, cancellationToken);
                                                     }, cancellationToken);
+
             return jobMessage;
         }
     }

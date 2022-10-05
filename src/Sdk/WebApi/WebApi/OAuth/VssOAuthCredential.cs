@@ -117,7 +117,7 @@ namespace GitHub.Services.OAuth
             return false;
         }
 
-        public VssOAuthTokenProvider GeTokenProvider(
+        public VssOAuthTokenProvider GetTokenProvider(
             Uri serviceUrl)
         {
             return new VssOAuthTokenProvider(this, serviceUrl);

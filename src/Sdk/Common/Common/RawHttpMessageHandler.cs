@@ -111,7 +111,7 @@ namespace GitHub.Services.Common
                 // Ensure that we attempt to use the most appropriate authentication mechanism by default.
                 if (m_tokenProvider == null)
                 {
-                    m_tokenProvider = this.Credentials.GeTokenProvider(request.RequestUri);
+                    m_tokenProvider = this.Credentials.GetTokenProvider(request.RequestUri);
                 }
             }
 

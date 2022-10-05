@@ -7,7 +7,7 @@ namespace GitHub.Services.Common
         public static VssOAuthCredential ToOAuthCredentials(
             this VssCredentials credentials)
         {
-            if(credentials.Federated.CredentialType == VssCredentialsType.OAuth)
+            if (credentials.Federated.CredentialType == VssCredentialsType.OAuth)
             {
                 return credentials.Federated as VssOAuthCredential;
             }
