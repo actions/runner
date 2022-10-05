@@ -110,7 +110,7 @@ namespace GitHub.Runner.Worker
             {
                 var healthcheck = await ContainerHealthcheck(executionContext, container);
 
-                if (!string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase))
+                if (!(string.Equals(healthcheck, "healthy", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(healthcheck)))
                 {
                     unhealthyContainers.Add(container);
                 }
@@ -330,13 +330,13 @@ namespace GitHub.Runner.Worker
             {
                 if (!container.IsJobContainer && !container.FailedInitialization)
                 {
-                        executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
+                    executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
 
-                        int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
-                        if (logsExitCode != 0)
-                        {
-                            executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
-                        }
+                    int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
+                    if (logsExitCode != 0)
+                    {
+                        executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
+                    }
                 }
 
                 executionContext.Output($"Stop and remove container: {container.ContainerDisplayName}");

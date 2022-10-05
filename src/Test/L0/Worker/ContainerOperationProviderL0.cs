@@ -23,6 +23,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IJobServerQueue> serverQueue;
         private Mock<IPagingLogger> pagingLogger;
         private List<string> healthyDockerStatus = new List<string> { "healthy" };
+        private List<string> emptyDockerStatus = new List<string> { string.Empty };
         private List<string> unhealthyDockerStatus = new List<string> { "unhealthy" };
         private List<string> dockerLogs = new List<string> { "log1", "log2", "log3" };
 
@@ -72,6 +73,23 @@ namespace GitHub.Runner.Common.Tests.Worker
             //Arrange
             Setup();
             _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(healthyDockerStatus));
+
+            //Act
+            await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
+
+            //Assert
+            Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
+
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void RunServiceContainersHealthcheck_healthyServiceContainerWithoutHealthcheck_AssertSucceededTask()
+        {
+            //Arrange
+            Setup();
+            _dockerManager.Setup(x => x.DockerInspect(_ec.Object, It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(emptyDockerStatus));
 
             //Act
             await containerOperationProvider.RunContainersHealthcheck(_ec.Object, containers);
