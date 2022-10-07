@@ -11,9 +11,9 @@ This fork of [actions/runner](https://github.com/actions/runner) adds two execut
 ## Usage
 - [Download the Actions Runner Client + Server](https://github.com/ChristopherHX/runner/releases/latest)
 - The installation directory needs to be accessible by docker file sharing
-  - On linux (Docker) all non overlayfs folders should work
+  - On Linux (Docker) all non overlayfs folders should work
   - On macOS (Docker Desktop) you might need to add the install path to Docker File Sharing
-  - On windows (Docker Desktop) you might need to accept all file sharing requests (hyper-v backend)
+  - On Windows (Docker Desktop) you might need to accept all file sharing requests (hyper-v backend)
   - Docker Settings -> Resources -> File Sharing
   - [Tracking issue for macOS](https://github.com/ChristopherHX/runner.server/issues/72)
 - Clone your github actions repo
