@@ -11,9 +11,9 @@ This fork of [actions/runner](https://github.com/actions/runner) adds two execut
 ## Usage
 - [Download the Actions Runner Client + Server](https://github.com/ChristopherHX/runner/releases/latest)
 - The installation directory needs to be accessible by docker file sharing
-  - On linux (Docker) all non overlayfs folders should work
-  - On macOs (Docker Desktop) you might need to add the install path to Docker File Sharing
-  - On windows (Docker Desktop) you might need to accept all file sharing requests (hyper-v backend)
+  - On Linux (Docker) all non overlayfs folders should work
+  - On macOS (Docker Desktop) you might need to add the install path to Docker File Sharing
+  - On Windows (Docker Desktop) you might need to accept all file sharing requests (hyper-v backend)
   - Docker Settings -> Resources -> File Sharing
   - [Tracking issue for macOS](https://github.com/ChristopherHX/runner.server/issues/72)
 - Clone your github actions repo
@@ -240,7 +240,7 @@ With this config you are no longer allowed to register a runner with any token, 
 ```
 
 ### Allow PullRequest events
-Process the `pull_request` action trigger, if disabled only `pull_request_target` from the target branch or `pull_request` from the same repository are processed. Enabling this make it possible to leak secrets and run arbitary code on your self-hosted runners from forked repositories. Proper secret and self-hosted runner protection needs to be implemented, to make this save to enable.
+Process the `pull_request` action trigger, if disabled only `pull_request_target` from the target branch or `pull_request` from the same repository are processed. Enabling this make it possible to leak secrets and run arbitary code on your self-hosted runners from forked repositories. Proper secret and self-hosted runner protection needs to be implemented, to make this safe to enable.
 ```json
 {
   "Runner.Server": {
