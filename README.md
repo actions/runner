@@ -240,7 +240,7 @@ With this config you are no longer allowed to register a runner with any token, 
 ```
 
 ### Allow PullRequest events
-Process the `pull_request` action trigger, if disabled only `pull_request_target` from the target branch or `pull_request` from the same repository are processed. Enabling this make it possible to leak secrets and run arbitary code on your self-hosted runners from forked repositories. Proper secret and self-hosted runner protection needs to be implemented, to make this save to enable.
+Process the `pull_request` action trigger, if disabled only `pull_request_target` from the target branch or `pull_request` from the same repository are processed. Enabling this make it possible to leak secrets and run arbitary code on your self-hosted runners from forked repositories. Proper secret and self-hosted runner protection needs to be implemented, to make this safe to enable.
 ```json
 {
   "Runner.Server": {
