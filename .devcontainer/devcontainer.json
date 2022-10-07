@@ -1,0 +1,20 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+{
+	"name": "Acrtions Runner Codespaces",
+	"dockerFile": "Dockerfile",
+	"runArgs": ["--init", "--privileged"],
+	"mounts": ["source=dind-var-lib-docker,target=/var/lib/docker,type=volume"],
+	"overrideCommand": false,
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-azuretools.vscode-docker",
+				"ms-dotnettools.csharp",
+				"eamodio.gitlens"
+			]
+		}
+	},
+	"postCreateCommand": "sudo /bin/bash /var/init.sh",
+	"waitFor": "postCreateCommand", // Will make extensions wait for restore (would have to manually restart omniSharp otherwise)
+	"remoteUser": "vscode"
+}

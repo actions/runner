@@ -1,0 +1,5 @@
+A self-hosted runner has been built in _layout and is ready to be configured. 
+
+You can configure it for your repository or organisation by following these steps: https://docs.github.com/en/actions/hosting-your-own-runners/adding-self-hosted-runners#adding-a-self-hosted-runner-to-a-repository
+
+If you'd like to make changes to the runner, check out docs/contribute.md for the details.
