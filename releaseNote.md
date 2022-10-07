@@ -1,5 +1,6 @@
 ## Features
-- Service containers startup error logs are now included in workflow's logs (#2110)
+- [REVERTED] Service containers startup error logs are now included in workflow's logs (#2110)
+  - Reverted due to https://github.com/actions/runner/issues/2173
 
 ## Bugs
 - Fixed missing SHA for Windows arm64 release archive (#2171)
