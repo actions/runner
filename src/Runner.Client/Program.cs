@@ -1419,7 +1419,7 @@ namespace Runner.Client
                                 if(envFile != null) {
                                     parameters.envFile = parameters.envFile == null ? envFile : parameters.envFile.Concat(envFile).ToArray();
                                 }
-                                var vars = bindingContext.ParseResult.GetValueForOption(varFileOpt);
+                                var vars = bindingContext.ParseResult.GetValueForOption(varOpt);
                                 if(vars != null) {
                                     parameters.Vars = parameters.Vars == null ? vars : parameters.Vars.Concat(vars).ToArray();
                                 }
@@ -1431,7 +1431,7 @@ namespace Runner.Client
                                 if(secretFile != null) {
                                     parameters.secretFile = parameters.secretFile == null ? secretFile : parameters.secretFile.Concat(secretFile).ToArray();
                                 }
-                                var environmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
+                                var environmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretOpt);
                                 if(environmentSecrets != null) {
                                     parameters.EnvironmentSecrets = parameters.EnvironmentSecrets == null ? environmentSecrets : parameters.EnvironmentSecrets.Concat(environmentSecrets).ToArray();
                                 }
@@ -1883,7 +1883,7 @@ namespace Runner.Client
                                             if(varval == null) {
                                                 await Console.Out.WriteAsync($"{varname}=");
                                                 varval = await Console.In.ReadLineAsync();
-                                                parameters.Vars[i] = $"{name}={varname}={varval}";
+                                                parameters.Vars[i] = $"{varname}={varval}";
                                             }
                                             var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                             dict[varname] = varval;
