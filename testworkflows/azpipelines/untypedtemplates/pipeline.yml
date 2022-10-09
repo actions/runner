@@ -1,0 +1,15 @@
+stages:
+- template: tmpl.yml
+  parameters:
+    stages:
+    - stage: A
+      jobs:
+      - job: A
+        steps:
+        - script: exit 0
+    - stage: B
+      dependsOn: A
+      jobs:
+      - job: A
+        steps:
+        - script: exit 0

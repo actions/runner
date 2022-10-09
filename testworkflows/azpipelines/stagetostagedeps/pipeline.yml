@@ -1,0 +1,14 @@
+# Based on https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#stage-to-stage-dependencies, condition changed to double quotes
+stages:
+- stage: A
+  condition: "false"
+  jobs:
+  - job: A1
+    steps:
+    - script: echo Job A1
+- stage: B
+  condition: in(dependencies.A.result, 'Succeeded', 'SucceededWithIssues', 'Skipped')
+  jobs:
+  - job: B1
+    steps:
+    - script: echo Job B1

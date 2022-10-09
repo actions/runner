@@ -1,0 +1,4 @@
+parameters:
+  stages: []
+stages:
+  - ${{ parameters.stages }}

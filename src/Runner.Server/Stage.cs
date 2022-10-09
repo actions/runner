@@ -70,7 +70,7 @@ public class Stage {
 
     public DictionaryContextData ToContextData() {
         var stage = new DictionaryContextData();
-        stage["job"] = new StringContextData(Name);
+        stage["stage"] = new StringContextData(Name);
         if(DisplayName?.Length > 0) {
             stage["displayName"] = new StringContextData(DisplayName);
         }
