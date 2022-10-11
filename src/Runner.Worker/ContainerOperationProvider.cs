@@ -122,12 +122,41 @@ namespace GitHub.Runner.Worker
                 }
             }
 
+            await RunContainersHealthcheck(executionContext, containers);
+        }
+
+        public async Task RunContainersHealthcheck(IExecutionContext executionContext, List<ContainerInfo> containers)
+        {
             executionContext.Output("##[group]Waiting for all services to be ready");
+
+            var unhealthyContainers = new List<ContainerInfo>();
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
-                await ContainerHealthcheck(executionContext, container);
+                var healthy_container = await ContainerHealthcheck(executionContext, container);
+
+                if (!healthy_container)
+                {
+                    unhealthyContainers.Add(container);
+                }
+                else
+                {
+                    executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
+                }
             }
             executionContext.Output("##[endgroup]");
+
+            if (unhealthyContainers.Count > 0)
+            {
+                foreach (var container in unhealthyContainers)
+                {
+                    executionContext.Output($"##[group]Service container {container.ContainerNetworkAlias} failed.");
+                    await _dockerManager.DockerLogs(context: executionContext, containerId: container.ContainerId);
+                    executionContext.Error($"Failed to initialize container {container.ContainerImage}");
+                    container.FailedInitialization = true;
+                    executionContext.Output("##[endgroup]");
+                }
+                throw new InvalidOperationException("One or more containers failed to start.");
+            }
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
@@ -362,9 +391,8 @@ namespace GitHub.Runner.Worker
 
             if (!string.IsNullOrEmpty(container.ContainerId))
             {
-                if(!container.IsJobContainer)
+                if (!container.IsJobContainer && !container.FailedInitialization)
                 {
-                    // Print logs for service container jobs (not the "action" job itself b/c that's already logged).
                     executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
                     
                     int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
@@ -456,14 +484,14 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
+        private async Task<bool> ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
         {
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
             string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             if (string.IsNullOrEmpty(serviceHealth))
             {
                 // Container has no HEALTHCHECK
-                return;
+                return true;
             }
             var retryCount = 0;
             while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
@@ -474,14 +502,7 @@ namespace GitHub.Runner.Worker
                 serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
                 retryCount++;
             }
-            if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
-            {
-                executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
-            }
-            else
-            {
-                throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
-            }
+            return string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase);
         }
 
         private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)
