@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
 using System.IO;
@@ -87,6 +87,43 @@ namespace GitHub.Runner.Common.Tests.Util
 
                 // Assert.
                 Assert.Equal(gitPath, gitPath2);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WhichThrowsWhenSymlinkBroken()
+        {
+            using TestHostContext hc = new TestHostContext(this);
+            // Arrange
+            Tracing trace = hc.GetTrace();
+            string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
+            string newValue = oldValue + Path.GetTempPath();
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
+
+            string brokenSymlink = Path.GetTempPath() + "broken-symlink.exe";
+            string target = "no-such-file-cf7e351f";
+            File.CreateSymbolicLink(brokenSymlink, target);
+
+            // Act.
+            try
+            {
+                WhichUtil.Which("broken-symlink", require: true, trace: trace);
+                throw new Exception("which should have thrown");
+            }
+
+            // Assert
+            catch (FileNotFoundException ex)
+            {
+                Assert.Equal("broken-symlink", ex.FileName);
+            }
+
+            // Cleanup
+            finally
+            {
+                File.Delete(brokenSymlink);
+                Environment.SetEnvironmentVariable(PathUtil.PathVariable, oldValue);
             }
         }
     }
