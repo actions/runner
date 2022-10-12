@@ -9,13 +9,13 @@ namespace Runner.Server.Azure.Devops {
         public ExpressionFlags Flags { get; set; }
         public IFileProvider FileProvider { get; set; }
         public GitHub.DistributedTask.ObjectTemplating.ITraceWriter TraceWriter { get; set; }
-        public Dictionary<string, VariableValue> Variables { get; set; }
+        public IVariablesProvider VariablesProvider { get; set; }
         public string RepositoryAndRef { get; set; }
         public string CWD { get; set; }
         public Dictionary<string, string> Repositories { get; set; }
 
         public Context Clone() {
-            return new Context { FileProvider = FileProvider, TraceWriter = TraceWriter, Variables = Variables, RepositoryAndRef = RepositoryAndRef, CWD = CWD, Repositories = Repositories, Flags = Flags };
+            return new Context { FileProvider = FileProvider, TraceWriter = TraceWriter, VariablesProvider = VariablesProvider, RepositoryAndRef = RepositoryAndRef, CWD = CWD, Repositories = Repositories, Flags = Flags };
         }
 
         public Context ChildContext(MappingToken template, string path = null) {

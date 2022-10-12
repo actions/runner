@@ -2906,7 +2906,7 @@ namespace Runner.Server.Controllers
                 var fileProvider = new DefaultInMemoryFileProviderFileProvider(workflows, (a, b) => {
                     return TryGetFile(runid, a, out var content, b) ? content : null;
                 });
-                var rootVariables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                var rootVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 // Provide all env vars as normal variables
                 if(env?.Length > 0) {
                     LoadEnvSec(env, (k, v) => rootVariables[k] = v);
@@ -2915,7 +2915,7 @@ namespace Runner.Server.Controllers
                 foreach(var v in globalVars) {
                     rootVariables[v.Key] = v.Value;
                 }
-                var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, Variables = rootVariables, Flags = flags };
+                var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, VariablesProvider = new AzurePipelinesVariablesProvider(secretsProvider, rootVariables), Flags = flags };
                 var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, null);
                 Func<Dictionary<string, TaskMetaData>> getOrCreateTaskCache = () => {
                     var cacheKey = "tasksByNameAndVersion";
@@ -6254,6 +6254,25 @@ namespace Runner.Server.Controllers
 
             public IDictionary<string, string> GetVariablesForEnvironment(string name = null)
             {
+                return parent.GetVariablesForEnvironment(name);
+            }
+        }
+        
+        private class AzurePipelinesVariablesProvider : IVariablesProvider
+        {
+            private ISecretsProvider parent;
+            private IDictionary<string, string> rootVars;
+
+            public AzurePipelinesVariablesProvider(ISecretsProvider parent, IDictionary<string, string> rootVars){
+                this.parent = parent;
+                this.rootVars = rootVars;
+            }
+        
+            public IDictionary<string, string> GetVariablesForEnvironment(string name = null)
+            {
+                if(string.IsNullOrEmpty(name)) {
+                    return rootVars;
+                }
                 return parent.GetVariablesForEnvironment(name);
             }
         }

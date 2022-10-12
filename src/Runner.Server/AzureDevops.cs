@@ -71,6 +71,7 @@ public class AzureDevops {
                 string name = null;
                 string value = null;
                 bool isReadonly = false;
+                string group = null;
                 bool skip = false;
                 foreach(var kv in rawdef.AssertMapping("")) {
                     if(onlyStaticVars && (kv.Key is ExpressionToken || kv.Value is ExpressionToken)) {
@@ -94,13 +95,23 @@ public class AzureDevops {
                         case "readonly":
                             isReadonly = kv.Value.AssertBoolean("variables").Value;
                         break;
+                        case "group":
+                            group = kv.Value.AssertString("variables").Value;
+                        break;
                     }
                 }
                 // Skip expressions and template references if we parse static variables
                 if(skip || onlyStaticVars && template != null) {
                     continue;
                 }
-                if(template != null) {
+                if(group != null) {
+                    var groupVars = context.VariablesProvider?.GetVariablesForEnvironment(group);
+                    if(groupVars != null) {
+                        foreach(var v in groupVars) {
+                            vars[v.Key] = new VariableValue(v.Value);
+                        }
+                    }
+                } else if(template != null) {
                     var file = ReadTemplate(context, template, parameters != null ? parameters.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null);
                     ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First());
                 } else {
@@ -412,7 +423,7 @@ public class AzureDevops {
     }
 
     public static MappingToken ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null) {
-        var variables = context.Variables;
+        var variables = context.VariablesProvider?.GetVariablesForEnvironment("");
         var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), new List<string>(), context.Flags);
         var afilenameAndRef = filenameAndRef.Split("@", 2);
         var filename = afilenameAndRef[0];
@@ -454,7 +465,7 @@ public class AzureDevops {
         contextData["variables"] = variablesData;
         if(variables != null) {
             foreach(var v in variables) {
-                variablesData[v.Key] = new StringContextData(v.Value.Value);
+                variablesData[v.Key] = new StringContextData(v.Value);
             }
         }
         if(rawStaticVariables != null) {

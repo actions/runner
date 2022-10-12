@@ -151,6 +151,7 @@ jobs:
         gharun --event azpipelines -C testworkflows/azpipelines/stagetostagedeps -W testworkflows/azpipelines/stagetostagedeps/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/staticvars -W testworkflows/azpipelines/staticvars/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/staticvarfromcli -W testworkflows/azpipelines/staticvarfromcli/pipeline.yml --var myvar=myval --var myvarwitheq=my=val --env myenvar=myval
+        gharun --event azpipelines -C testworkflows/azpipelines/staticvargroupfromcli -W testworkflows/azpipelines/staticvargroupfromcli/pipeline.yml --environment-var B=myvar=myval --environment-var b=myvarwitheq=my=val --environment-var C=myenvar=myval
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
