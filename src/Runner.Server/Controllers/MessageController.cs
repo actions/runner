@@ -2911,6 +2911,10 @@ namespace Runner.Server.Controllers
                 if(env?.Length > 0) {
                     LoadEnvSec(env, (k, v) => rootVariables[k] = v);
                 }
+                // Provide normal variables from cli
+                foreach(var v in globalVars) {
+                    rootVariables[v.Key] = v.Value;
+                }
                 var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, Variables = rootVariables, Flags = flags };
                 var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, null);
                 Func<Dictionary<string, TaskMetaData>> getOrCreateTaskCache = () => {

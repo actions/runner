@@ -1,0 +1,11 @@
+steps:
+  - script: |
+      echo ${{variables.myvar}}
+      echo ${{variables.myvarwitheq}}
+      echo ${{variables.myenvar}}
+  - script: exit 1
+    condition: ne('${{ variables.myvar }}', 'myval')
+  - script: exit 1
+    condition: ne('${{ variables.myvarwitheq }}', 'my=val')
+  - script: exit 1
+    condition: ne('${{ variables.myenvar }}', 'myval')
