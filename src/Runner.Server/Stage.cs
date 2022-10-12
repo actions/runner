@@ -33,7 +33,7 @@ public class Stage {
                     DependsOn = (from dep in kv.Value.AssertScalarOrSequence("dependsOn") select dep.AssertString("dep").Value).ToArray();
                 break;
                 case "condition":
-                    Condition = kv.Value.AssertString("condition").Value;
+                    Condition = kv.Value is BooleanToken b ? b.ToString() : kv.Value.AssertString("condition").Value;
                 break;
                 case "variables":
                     Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);

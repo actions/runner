@@ -133,7 +133,7 @@ public class AzureDevops {
                 }
                 switch(mstep[i].Key.AssertString("step key").Value) {
                     case "condition":
-                        tstep.Condition = mstep[i].Value.AssertString("step value").Value;
+                        tstep.Condition = mstep[i].Value is BooleanToken b ? b.ToString() : mstep[i].Value.AssertString("step value").Value;
                     break;
                     case "continueOnError":
                         tstep.ContinueOnError = mstep[i].Value.AssertBoolean("step value").Clone(true);
