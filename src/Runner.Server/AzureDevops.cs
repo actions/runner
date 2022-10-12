@@ -55,9 +55,13 @@ public class AzureDevops {
         return templateContext;
     }
 
-    public static void ParseVariables(Runner.Server.Azure.Devops.Context context, IDictionary<string, VariableValue> vars, TemplateToken rawvars) {
+    public static void ParseVariables(Runner.Server.Azure.Devops.Context context, IDictionary<string, VariableValue> vars, TemplateToken rawvars, bool onlyStaticVars = false) {
         if(rawvars is MappingToken mvars) {
             foreach(var kv in mvars) {
+                // Skip expressions if we parse static variables
+                if(onlyStaticVars && (kv.Key is ExpressionToken || kv.Value is ExpressionToken)) {
+                    continue;
+                }
                 vars[kv.Key.AssertString("variables").Value] = kv.Value.AssertString("variables").Value;
             }
         } else {
@@ -67,7 +71,12 @@ public class AzureDevops {
                 string name = null;
                 string value = null;
                 bool isReadonly = false;
+                bool skip = false;
                 foreach(var kv in rawdef.AssertMapping("")) {
+                    if(onlyStaticVars && (kv.Key is ExpressionToken || kv.Value is ExpressionToken)) {
+                        skip = true;
+                        break;
+                    }
                     var primaryKey = kv.Key.AssertString("variables").Value;
                     switch(primaryKey) {
                         case "template":
@@ -86,6 +95,10 @@ public class AzureDevops {
                             isReadonly = kv.Value.AssertBoolean("variables").Value;
                         break;
                     }
+                }
+                // Skip expressions and template references if we parse static variables
+                if(skip || onlyStaticVars && template != null) {
+                    continue;
                 }
                 if(template != null) {
                     var file = ReadTemplate(context, template, parameters != null ? parameters.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null);
@@ -419,6 +432,7 @@ public class AzureDevops {
         var pipelineroot = token.AssertMapping("root");
 
         TemplateToken parameters = null;
+        TemplateToken rawStaticVariables = null;
         foreach(var kv in pipelineroot) {
             if(kv.Key.Type != TokenType.String) {
                 continue;
@@ -427,18 +441,26 @@ public class AzureDevops {
                 case "parameters":
                 parameters = kv.Value;
                 break;
+                case "variables":
+                rawStaticVariables = kv.Value;
+                break;
             }
         }
 
         var contextData = new DictionaryContextData();
         var parametersData = new DictionaryContextData();
         contextData["parameters"] = parametersData;
-        if(variables == null) {
-            contextData["variables"] = null;
-        } else {
-            var variablesData = new DictionaryContextData();
-            contextData["variables"] = variablesData;
+        var variablesData = new DictionaryContextData();
+        contextData["variables"] = variablesData;
+        if(variables != null) {
             foreach(var v in variables) {
+                variablesData[v.Key] = new StringContextData(v.Value.Value);
+            }
+        }
+        if(rawStaticVariables != null) {
+            IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+            ParseVariables(context, pvars, rawStaticVariables, true);
+            foreach(var v in pvars) {
                 variablesData[v.Key] = new StringContextData(v.Value.Value);
             }
         }

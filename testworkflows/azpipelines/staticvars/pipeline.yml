@@ -1,0 +1,13 @@
+# Based on a snipped in https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops
+variables:
+  staticVar: 'my value' # static variable
+  compileVar: ${{ variables.staticVar }} # compile time expression
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')] # runtime expression
+
+steps:
+  - script: |
+      echo ${{variables.staticVar}} # outputs my value
+      echo $(compileVar) # outputs my value
+      echo $(isMain) # outputs True
+  - script: exit 1
+    condition: ne('${{ variables.staticVar }}', 'my value')

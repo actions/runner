@@ -149,6 +149,7 @@ jobs:
         gharun --event azpipelines -C testworkflows/azpipelines/typedtemplates -W testworkflows/azpipelines/typedtemplates/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/untypedtemplates -W testworkflows/azpipelines/untypedtemplates/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/stagetostagedeps -W testworkflows/azpipelines/stagetostagedeps/pipeline.yml
+        gharun --event azpipelines -C testworkflows/azpipelines/staticvars -W testworkflows/azpipelines/staticvars/pipeline.yml  
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
