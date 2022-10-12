@@ -1,10 +1,11 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 {
 	"name": "Acrtions Runner Codespaces",
-	"dockerFile": "Dockerfile",
-	"runArgs": ["--init", "--privileged"],
-	"mounts": ["source=dind-var-lib-docker,target=/var/lib/docker,type=volume"],
-	"overrideCommand": false,
+	"image": "mcr.microsoft.com/devcontainers/base:focal",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:1": {},
+		"ghcr.io/devcontainers/features/dotnet":{"version": "6.0.300"}
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [

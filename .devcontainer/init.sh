@@ -1,8 +1,6 @@
 #!/bin/bash
 
-echo 'Creating symlink for embedded sdk...'
-whoami
-pwd 
+echo 'Creating symlink sourced from system dotnet SDK to embedded sdk in runner/_dotnetsdk'
 # pwd is the source root folder
 rm -rf _dotnetsdk 
 mkdir _dotnetsdk
