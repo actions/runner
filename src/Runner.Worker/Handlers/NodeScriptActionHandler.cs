@@ -142,7 +142,13 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.JobContext["Node12ActionsWarnings"] = new ArrayContextData();
                 }
                 var repoAction = Action as RepositoryPathReference;
-                var actionDisplayName = new StringContextData(repoAction.Name ?? repoAction.Path); // local actions don't have a 'Name'
+
+                var actionDisplayNameStr = repoAction.Name ?? repoAction.Path; // local actions don't have a 'Name'
+                if (repoAction.Ref is not null)
+                {
+                    actionDisplayNameStr += $"@{repoAction.Ref}";
+                }
+                var actionDisplayName = new StringContextData(actionDisplayNameStr);
                 ExecutionContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Add(actionDisplayName);
             }
 
