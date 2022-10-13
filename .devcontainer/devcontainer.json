@@ -1,6 +1,6 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 {
-	"name": "Acrtions Runner Codespaces",
+	"name": "Actions Runner Devcontainer",
 	"image": "mcr.microsoft.com/devcontainers/base:focal",
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:1": {},
@@ -15,7 +15,8 @@
 			]
 		}
 	},
-	"postCreateCommand": "sudo /bin/bash /var/init.sh",
-	"waitFor": "postCreateCommand", // Will make extensions wait for restore (would have to manually restart omniSharp otherwise)
+	"mounts": ["source=${localWorkspaceFolder}/.devcontainer,target=/usr/local/etc/vscode-dev-containers/,type=bind,consistency=cached"],
+	// dotnet restore to install dependencies so OmniSharp works out of the box
+	"postCreateCommand": "dotnet restore src/Runner.PluginHost && dotnet restore src/Runner.PluginHost && dotnet restore src/Test",
 	"remoteUser": "vscode"
 }
