@@ -1276,8 +1276,9 @@ namespace Runner.Client
                     while(!source.IsCancellationRequested && (parameters.Interactive || parameters.watch || first)) {
                         cancelWorkflow = null;
                         var ret = await Task.Run<int>(async () => {
-                            string command = "run";
+                            Action<QueryBuilder> queryParam = null;
                             if(parameters.Interactive) {
+                                string command = "";
                                 parameters.list = false;
                                 parameters.job = null;
                                 Console.Write("gharun> ");
@@ -1286,189 +1287,188 @@ namespace Runner.Client
                                 } catch {
                                     command = "";
                                 }
-                            }
-                            Action<QueryBuilder> queryParam = null;
-                            var interactiveCommand = new Command("gharun>");
-                            var runCommand = new Command("run", "Create a new run, this is the default action of this tool");
-                            runCommand.Add(jobOpt);
-                            runCommand.SetHandler(job => {
-                                parameters.job = job;
-                                queryParam = _ => {};
-                            }, jobOpt);
+                                var interactiveCommand = new Command("gharun>");
+                                var runCommand = new Command("run", "Create a new run, this is the default action of this tool");
+                                runCommand.Add(jobOpt);
+                                runCommand.SetHandler(job => {
+                                    parameters.job = job;
+                                    queryParam = _ => {};
+                                }, jobOpt);
 
-                            interactiveCommand.Add(runCommand);
-                            var rerunCommand = new Command("rerun", "Rerun an completed workflow instead of starting a new one, you can keep completed jobs and artifacts during reruns");
-                            var failedOpt = new Option<bool>(
-                                new [] { "-f", "--failed" }, "rerun all failed jobs"
-                            );
-                            var resetArtifactsOpt = new Option<bool>(
-                                new [] { "-r", "--resetArtifacts" }, "rerun without previous artifacts"
-                            );
-                            var refreshOpt = new Option<bool>(
-                                new [] { "--refresh" }, "refresh workflow runs new jobs added to the workflow"
-                            );
-                            var runIdOpt = new Argument<int>(
-                                "runid", "Which workflow to rerun"
-                            );
-                            var jobIdOpt = new Option<string>(new [] { "-j", "--jobid" }, "Which job to rerun");
-                            rerunCommand.Add(runIdOpt);
-                            rerunCommand.Add(jobIdOpt);
-                            rerunCommand.Add(failedOpt);
-                            rerunCommand.Add(resetArtifactsOpt);
-                            rerunCommand.Add(refreshOpt);
-                            rerunCommand.SetHandler((runId, jobId, failed, resetArtifacts, refresh) => {
-                                queryParam = qb => {
-                                    qb.Add("runid", runId.ToString());
-                                    if(!string.IsNullOrEmpty(jobId)) {
-                                        qb.Add("jobId", jobId);
+                                interactiveCommand.Add(runCommand);
+                                var rerunCommand = new Command("rerun", "Rerun an completed workflow instead of starting a new one, you can keep completed jobs and artifacts during reruns");
+                                var failedOpt = new Option<bool>(
+                                    new [] { "-f", "--failed" }, "rerun all failed jobs"
+                                );
+                                var resetArtifactsOpt = new Option<bool>(
+                                    new [] { "-r", "--resetArtifacts" }, "rerun without previous artifacts"
+                                );
+                                var refreshOpt = new Option<bool>(
+                                    new [] { "--refresh" }, "refresh workflow runs new jobs added to the workflow"
+                                );
+                                var runIdOpt = new Argument<int>(
+                                    "runid", "Which workflow to rerun"
+                                );
+                                var jobIdOpt = new Option<string>(new [] { "-j", "--jobid" }, "Which job to rerun");
+                                rerunCommand.Add(runIdOpt);
+                                rerunCommand.Add(jobIdOpt);
+                                rerunCommand.Add(failedOpt);
+                                rerunCommand.Add(resetArtifactsOpt);
+                                rerunCommand.Add(refreshOpt);
+                                rerunCommand.SetHandler((runId, jobId, failed, resetArtifacts, refresh) => {
+                                    queryParam = qb => {
+                                        qb.Add("runid", runId.ToString());
+                                        if(!string.IsNullOrEmpty(jobId)) {
+                                            qb.Add("jobId", jobId);
+                                        }
+                                        qb.Add("failed", failed.ToString());
+                                        qb.Add("resetArtifacts", resetArtifacts.ToString());
+                                        qb.Add("refresh", refresh.ToString());
+                                    };
+                                }, runIdOpt, jobIdOpt, failedOpt, resetArtifactsOpt, refreshOpt);
+
+                                interactiveCommand.Add(rerunCommand);
+
+                                var listCommand = new Command("list", "Lists jobs of the selected workflows");
+                                listCommand.Add(jobOpt);
+                                listCommand.SetHandler(job => {
+                                    parameters.job = job;
+                                    parameters.list = true;
+                                    queryParam = _ => {};
+                                }, jobOpt);
+                                interactiveCommand.Add(listCommand);
+
+                                var deleteCommand = new Command("delete", "Delete Artifacts or Cache");
+                                var deleteCacheCommand = new Command("cache", "Delete Cache, can be used to recreate the Cache and free storage");
+                                deleteCacheCommand.SetHandler(async () => {
+                                    var client = new HttpClient();
+                                    var deleteUri = new UriBuilder(parameters.server);
+                                    deleteUri.Path = "_apis/artifactcachemanagement/cache";
+                                    await client.DeleteAsync(deleteUri.ToString());
+                                });
+                                deleteCommand.Add(deleteCacheCommand);
+                                var deleteArtifactsCommand = new Command("artifacts", "Delete all Artifacts and free storage");
+                                deleteArtifactsCommand.SetHandler(async () => {
+                                    var client = new HttpClient();
+                                    var deleteUri = new UriBuilder(parameters.server);
+                                    deleteUri.Path = "_apis/artifactcachemanagement/artifacts";
+                                    await client.DeleteAsync(deleteUri.ToString());
+                                });
+                                deleteCommand.Add(deleteArtifactsCommand);
+                                interactiveCommand.Add(deleteCommand);
+
+                                var updateCommand = new Command("update", "Update provided env and secrets");
+                                updateCommand.Add(payloadOpt);
+                                updateCommand.Add(envOpt);
+                                updateCommand.Add(secretOpt);
+                                var eventOpt = new Option<string>(
+                                    "--event",
+                                    description: "Change the event to trigger the workflow");
+                                updateCommand.Add(eventOpt);
+                                var resetOpt = new Option<bool>(
+                                    "--reset",
+                                    description: "Discard cached cli options");
+                                updateCommand.Add(resetOpt);
+                                var envFileOpt = new Option<string[]>(
+                                    "--env-file",
+                                    description: "Environment variables for your workflow");
+                                updateCommand.Add(envFileOpt);
+                                updateCommand.Add(varOpt);
+                                updateCommand.Add(varFileOpt);
+                                var secretFileOpt = new Option<string[]>(
+                                    "--secret-file",
+                                    description: "Secrets for your workflow");
+                                updateCommand.Add(secretFileOpt);
+                                updateCommand.Add(environmentSecretOpt);
+                                updateCommand.Add(environmentSecretFileOpt);
+                                updateCommand.Add(environmentVarOpt);
+                                updateCommand.Add(environmentVarFileOpt);
+                                updateCommand.Add(workflowInputsOpt);
+                                updateCommand.SetHandler(_ => {}, new MyCustomBinder(bindingContext => {
+                                    if(bindingContext.ParseResult.GetValueForOption(resetOpt)) {
+                                        parameters.payload = null;
+                                        parameters.env = null;
+                                        parameters.Vars = null;
+                                        parameters.EnvironmentVars = null;
+                                        parameters.secret = null;
+                                        parameters.envFile = null;
+                                        parameters.secretFile = null;
+                                        parameters.EnvironmentSecrets = null;
+                                        parameters.EnvironmentSecretFiles = null;
+                                        parameters.EnvironmentVarFiles = null;
+                                        parameters.Inputs = null;
                                     }
-                                    qb.Add("failed", failed.ToString());
-                                    qb.Add("resetArtifacts", resetArtifacts.ToString());
-                                    qb.Add("refresh", refresh.ToString());
-                                };
-                            }, runIdOpt, jobIdOpt, failedOpt, resetArtifactsOpt, refreshOpt);
+                                    var payload = bindingContext.ParseResult.GetValueForOption(payloadOpt);
+                                    if(payload != null) {
+                                        parameters.payload = payload;
+                                    }
+                                    var envs = bindingContext.ParseResult.GetValueForOption(envOpt);
+                                    if(envs != null) {
+                                        parameters.env = parameters.env == null ? envs : parameters.env.Concat(envs).ToArray();
+                                    }
+                                    var secrets = bindingContext.ParseResult.GetValueForOption(secretOpt);
+                                    if(secrets != null) {
+                                        parameters.secret = parameters.secret == null ? secrets : parameters.secret.Concat(secrets).ToArray();
+                                    }
+                                    var _event = bindingContext.ParseResult.GetValueForOption(eventOpt);
+                                    if(_event != null) {
+                                        parameters.Event = _event;
+                                    }
+                                    var envFile = bindingContext.ParseResult.GetValueForOption(envFileOpt);
+                                    if(envFile != null) {
+                                        parameters.envFile = parameters.envFile == null ? envFile : parameters.envFile.Concat(envFile).ToArray();
+                                    }
+                                    var vars = bindingContext.ParseResult.GetValueForOption(varOpt);
+                                    if(vars != null) {
+                                        parameters.Vars = parameters.Vars == null ? vars : parameters.Vars.Concat(vars).ToArray();
+                                    }
+                                    var varFiles = bindingContext.ParseResult.GetValueForOption(varFileOpt);
+                                    if(varFiles != null) {
+                                        parameters.VarFiles = parameters.VarFiles == null ? varFiles : parameters.VarFiles.Concat(varFiles).ToArray();
+                                    }
+                                    var secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
+                                    if(secretFile != null) {
+                                        parameters.secretFile = parameters.secretFile == null ? secretFile : parameters.secretFile.Concat(secretFile).ToArray();
+                                    }
+                                    var environmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretOpt);
+                                    if(environmentSecrets != null) {
+                                        parameters.EnvironmentSecrets = parameters.EnvironmentSecrets == null ? environmentSecrets : parameters.EnvironmentSecrets.Concat(environmentSecrets).ToArray();
+                                    }
+                                    var environmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
+                                    if(environmentSecretFiles != null) {
+                                        parameters.EnvironmentSecretFiles = parameters.EnvironmentSecretFiles == null ? environmentSecretFiles : parameters.EnvironmentSecretFiles.Concat(environmentSecretFiles).ToArray();
+                                    }
+                                    var environmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
+                                    if(environmentVarFiles != null) {
+                                        parameters.EnvironmentVarFiles = parameters.EnvironmentVarFiles == null ? environmentVarFiles : parameters.EnvironmentVarFiles.Concat(environmentVarFiles).ToArray();
+                                    }
+                                    var inputs = bindingContext.ParseResult.GetValueForOption(workflowInputsOpt);
+                                    if(inputs != null) {
+                                        parameters.Inputs = parameters.Inputs == null ? inputs : parameters.Inputs.Concat(inputs).ToArray();
+                                    }
+                                    var environmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
+                                    if(environmentVars != null) {
+                                        parameters.EnvironmentVars = parameters.EnvironmentVars == null ? environmentVars : parameters.EnvironmentVars.Concat(environmentVars).ToArray();
+                                    }
+                                    return parameters;
+                                }));
+                                interactiveCommand.Add(updateCommand);
 
-                            interactiveCommand.Add(rerunCommand);
-
-                            var listCommand = new Command("list", "Lists jobs of the selected workflows");
-                            listCommand.Add(jobOpt);
-                            listCommand.SetHandler(job => {
-                                parameters.job = job;
-                                parameters.list = true;
-                                queryParam = _ => {};
-                            }, jobOpt);
-                            interactiveCommand.Add(listCommand);
-
-                            var deleteCommand = new Command("delete", "Delete Artifacts or Cache");
-                            var deleteCacheCommand = new Command("cache", "Delete Cache, can be used to recreate the Cache and free storage");
-                            deleteCacheCommand.SetHandler(async () => {
-                                var client = new HttpClient();
-                                var deleteUri = new UriBuilder(parameters.server);
-                                deleteUri.Path = "_apis/artifactcachemanagement/cache";
-                                await client.DeleteAsync(deleteUri.ToString());
-                            });
-                            deleteCommand.Add(deleteCacheCommand);
-                            var deleteArtifactsCommand = new Command("artifacts", "Delete all Artifacts and free storage");
-                            deleteArtifactsCommand.SetHandler(async () => {
-                                var client = new HttpClient();
-                                var deleteUri = new UriBuilder(parameters.server);
-                                deleteUri.Path = "_apis/artifactcachemanagement/artifacts";
-                                await client.DeleteAsync(deleteUri.ToString());
-                            });
-                            deleteCommand.Add(deleteArtifactsCommand);
-                            interactiveCommand.Add(deleteCommand);
-
-                            var updateCommand = new Command("update", "Update provided env and secrets");
-                            updateCommand.Add(payloadOpt);
-                            updateCommand.Add(envOpt);
-                            updateCommand.Add(secretOpt);
-                            var eventOpt = new Option<string>(
-                                "--event",
-                                description: "Change the event to trigger the workflow");
-                            updateCommand.Add(eventOpt);
-                            var resetOpt = new Option<bool>(
-                                "--reset",
-                                description: "Discard cached cli options");
-                            updateCommand.Add(resetOpt);
-                            var envFileOpt = new Option<string[]>(
-                                "--env-file",
-                                description: "Environment variables for your workflow");
-                            updateCommand.Add(envFileOpt);
-                            updateCommand.Add(varOpt);
-                            updateCommand.Add(varFileOpt);
-                            var secretFileOpt = new Option<string[]>(
-                                "--secret-file",
-                                description: "Secrets for your workflow");
-                            updateCommand.Add(secretFileOpt);
-                            updateCommand.Add(environmentSecretOpt);
-                            updateCommand.Add(environmentSecretFileOpt);
-                            updateCommand.Add(environmentVarOpt);
-                            updateCommand.Add(environmentVarFileOpt);
-                            updateCommand.Add(workflowInputsOpt);
-                            updateCommand.SetHandler(_ => {}, new MyCustomBinder(bindingContext => {
-                                if(bindingContext.ParseResult.GetValueForOption(resetOpt)) {
-                                    parameters.payload = null;
-                                    parameters.env = null;
-                                    parameters.Vars = null;
-                                    parameters.EnvironmentVars = null;
-                                    parameters.secret = null;
-                                    parameters.envFile = null;
-                                    parameters.secretFile = null;
-                                    parameters.EnvironmentSecrets = null;
-                                    parameters.EnvironmentSecretFiles = null;
-                                    parameters.EnvironmentVarFiles = null;
-                                    parameters.Inputs = null;
+                                var exitCommand = new Command("exit", "Stop this program, the server and the runner");
+                                exitCommand.AddAlias("quit");
+                                exitCommand.AddAlias("Quit");
+                                exitCommand.SetHandler(() => {
+                                    source.Cancel();
+                                });
+                                interactiveCommand.Add(exitCommand);
+                                
+                                if(source.IsCancellationRequested) {
+                                    return 0;
                                 }
-                                var payload = bindingContext.ParseResult.GetValueForOption(payloadOpt);
-                                if(payload != null) {
-                                    parameters.payload = payload;
+                                await interactiveCommand.InvokeAsync(command);
+                                if(queryParam == null) {
+                                    return 0;
                                 }
-                                var envs = bindingContext.ParseResult.GetValueForOption(envOpt);
-                                if(envs != null) {
-                                    parameters.env = parameters.env == null ? envs : parameters.env.Concat(envs).ToArray();
-                                }
-                                var secrets = bindingContext.ParseResult.GetValueForOption(secretOpt);
-                                if(secrets != null) {
-                                    parameters.secret = parameters.secret == null ? secrets : parameters.secret.Concat(secrets).ToArray();
-                                }
-                                var _event = bindingContext.ParseResult.GetValueForOption(eventOpt);
-                                if(_event != null) {
-                                    parameters.Event = _event;
-                                }
-                                var envFile = bindingContext.ParseResult.GetValueForOption(envFileOpt);
-                                if(envFile != null) {
-                                    parameters.envFile = parameters.envFile == null ? envFile : parameters.envFile.Concat(envFile).ToArray();
-                                }
-                                var vars = bindingContext.ParseResult.GetValueForOption(varOpt);
-                                if(vars != null) {
-                                    parameters.Vars = parameters.Vars == null ? vars : parameters.Vars.Concat(vars).ToArray();
-                                }
-                                var varFiles = bindingContext.ParseResult.GetValueForOption(varFileOpt);
-                                if(varFiles != null) {
-                                    parameters.VarFiles = parameters.VarFiles == null ? varFiles : parameters.VarFiles.Concat(varFiles).ToArray();
-                                }
-                                var secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
-                                if(secretFile != null) {
-                                    parameters.secretFile = parameters.secretFile == null ? secretFile : parameters.secretFile.Concat(secretFile).ToArray();
-                                }
-                                var environmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretOpt);
-                                if(environmentSecrets != null) {
-                                    parameters.EnvironmentSecrets = parameters.EnvironmentSecrets == null ? environmentSecrets : parameters.EnvironmentSecrets.Concat(environmentSecrets).ToArray();
-                                }
-                                var environmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
-                                if(environmentSecretFiles != null) {
-                                    parameters.EnvironmentSecretFiles = parameters.EnvironmentSecretFiles == null ? environmentSecretFiles : parameters.EnvironmentSecretFiles.Concat(environmentSecretFiles).ToArray();
-                                }
-                                var environmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
-                                if(environmentVarFiles != null) {
-                                    parameters.EnvironmentVarFiles = parameters.EnvironmentVarFiles == null ? environmentVarFiles : parameters.EnvironmentVarFiles.Concat(environmentVarFiles).ToArray();
-                                }
-                                var inputs = bindingContext.ParseResult.GetValueForOption(workflowInputsOpt);
-                                if(inputs != null) {
-                                    parameters.Inputs = parameters.Inputs == null ? inputs : parameters.Inputs.Concat(inputs).ToArray();
-                                }
-                                var environmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
-                                if(environmentVars != null) {
-                                    parameters.EnvironmentVars = parameters.EnvironmentVars == null ? environmentVars : parameters.EnvironmentVars.Concat(environmentVars).ToArray();
-                                }
-                                return parameters;
-                            }));
-                            interactiveCommand.Add(updateCommand);
-
-                            var exitCommand = new Command("exit", "Stop this program, the server and the runner");
-                            exitCommand.AddAlias("quit");
-                            exitCommand.AddAlias("Quit");
-                            exitCommand.SetHandler(() => {
-                                source.Cancel();
-                            });
-                            interactiveCommand.Add(exitCommand);
-                            
-                            if(source.IsCancellationRequested) {
-                                return 0;
-                            }
-                            await interactiveCommand.InvokeAsync(command);
-                            if(queryParam == null) {
-                                return 0;
                             }
                             List<string> addedFiles = new List<string>();
                             List<string> changedFiles = new List<string>();

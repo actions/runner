@@ -1,0 +1,11 @@
+on: push
+jobs:
+  test:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        fail:
+        - true
+        - false
+    steps:
+    - run: exit ${{ matrix.fail && '1' || '0' }}
