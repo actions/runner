@@ -95,8 +95,8 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void WhichThrowsWhenSymlinkBroken()
         {
-            using TestHostContext hc = new TestHostContext(this);
             // Arrange
+            using TestHostContext hc = new TestHostContext(this);
             Tracing trace = hc.GetTrace();
             string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
             string newValue = oldValue + Path.GetTempPath();
@@ -107,24 +107,14 @@ namespace GitHub.Runner.Common.Tests.Util
             File.CreateSymbolicLink(brokenSymlink, target);
 
             // Act.
-            try
-            {
-                WhichUtil.Which("broken-symlink", require: true, trace: trace);
-                throw new Exception("which should have thrown");
-            }
+            var exception = Assert.Throws<FileNotFoundException>(()=>WhichUtil.Which("broken-symlink", require: true, trace: trace));
 
             // Assert
-            catch (FileNotFoundException ex)
-            {
-                Assert.Equal("broken-symlink", ex.FileName);
-            }
+            Assert.Equal("broken-symlink", exception.FileName);
 
             // Cleanup
-            finally
-            {
-                File.Delete(brokenSymlink);
-                Environment.SetEnvironmentVariable(PathUtil.PathVariable, oldValue);
-            }
+            File.Delete(brokenSymlink);
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, oldValue);
         }
     }
 }

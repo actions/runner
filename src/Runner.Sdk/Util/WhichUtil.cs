@@ -60,7 +60,7 @@ namespace GitHub.Runner.Sdk
                             trace?.Verbose(ex.ToString());
                         }
 
-                        if (matches != null && matches.Length > 0 && IsSymlinkValid(matches.First()))
+                        if (matches != null && matches.Length > 0 && IsPathValid(matches.First()))
                         {
                             trace?.Info($"Location: '{matches.First()}'");
                             return matches.First();
@@ -86,7 +86,7 @@ namespace GitHub.Runner.Sdk
                             for (int i = 0; i < pathExtSegments.Length; i++)
                             {
                                 string fullPath = Path.Combine(pathSegment, $"{command}{pathExtSegments[i]}");
-                                if (matches.Any(p => p.Equals(fullPath, StringComparison.OrdinalIgnoreCase)) && IsSymlinkValid(matches.First()))
+                                if (matches.Any(p => p.Equals(fullPath, StringComparison.OrdinalIgnoreCase)) && IsPathValid(fullPath))
                                 {
                                     trace?.Info($"Location: '{fullPath}'");
                                     return fullPath;
@@ -105,7 +105,7 @@ namespace GitHub.Runner.Sdk
                         trace?.Verbose(ex.ToString());
                     }
 
-                    if (matches != null && matches.Length > 0 && IsSymlinkValid(matches.First()))
+                    if (matches != null && matches.Length > 0 && IsPathValid(matches.First()))
                     {
                         trace?.Info($"Location: '{matches.First()}'");
                         return matches.First();
@@ -130,11 +130,10 @@ namespace GitHub.Runner.Sdk
         }
 
         // checks if the file is a symlink and if the symlink`s target exists.
-        private static bool IsSymlinkValid(string path)
+        private static bool IsPathValid(string path)
         {
             var fileInfo = new FileInfo(path);
-            return fileInfo.LinkTarget == null || File.Exists(fileInfo.LinkTarget)
-            return true;
+            return fileInfo.LinkTarget == null || File.Exists(fileInfo.LinkTarget);
         }
     }
 }
