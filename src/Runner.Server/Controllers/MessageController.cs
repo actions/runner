@@ -5403,7 +5403,7 @@ namespace Runner.Server.Controllers
                         // checkoutTask.Inputs["fetchDepth"] = "0";
                         // checkoutTask.Inputs["lfs"] = "false";
 
-                        var steps = rjob.Steps/*.Prepend(checkoutTask)*/.ToList();
+                        var steps = rjob.Steps/*.Prepend(checkoutTask)*/.Where(s => s.Enabled).ToList();
                         List<string> errors = new List<string>();
                         for(int i = 0; i < steps.Count; i++) {
                             var clone = new TaskStep();
