@@ -133,7 +133,7 @@ namespace GitHub.Runner.Sdk
         private static bool IsSymlinkValid(string path)
         {
             var fileInfo = new FileInfo(path);
-            if (fileInfo.LinkTarget != null && !File.Exists(fileInfo.LinkTarget)) return false;
+            return fileInfo.LinkTarget == null || File.Exists(fileInfo.LinkTarget)
             return true;
         }
     }
