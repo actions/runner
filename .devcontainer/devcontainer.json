@@ -15,7 +15,6 @@
 			]
 		}
 	},
-	"mounts": ["source=${localWorkspaceFolder}/.devcontainer,target=/usr/local/etc/vscode-dev-containers/,type=bind,consistency=cached"],
 	// dotnet restore to install dependencies so OmniSharp works out of the box
 	"postCreateCommand": "dotnet restore src/Runner.PluginHost && dotnet restore src/Runner.PluginHost && dotnet restore src/Test",
 	"remoteUser": "vscode"
