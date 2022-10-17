@@ -1028,7 +1028,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Arrange
                 Setup();
 
-                Pipelines.ActionStep instance = new Pipelines.ActionStep()
+                Pipelines.ActionStep instance = new()
                 {
                     Id = Guid.NewGuid(),
                     Reference = new Pipelines.ContainerRegistryReference()
@@ -1065,7 +1065,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Arrange
                 Setup();
 
-                Pipelines.ActionStep instance = new Pipelines.ActionStep()
+                Pipelines.ActionStep instance = new()
                 {
                     Id = Guid.NewGuid(),
                     Reference = new Pipelines.ScriptReference()
@@ -1137,7 +1137,7 @@ runs:
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
 
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1236,7 +1236,7 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1328,7 +1328,7 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1397,7 +1397,7 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1479,7 +1479,7 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1555,7 +1555,7 @@ runs:
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
 
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1653,7 +1653,7 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1745,7 +1745,7 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1814,7 +1814,7 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1893,7 +1893,7 @@ runs:
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
 
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;
@@ -1983,7 +1983,7 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var input in definition.Data.Inputs)
                 {
                     var name = input.Key.AssertString("key").Value;

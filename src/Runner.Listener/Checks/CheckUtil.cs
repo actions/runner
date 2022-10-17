@@ -347,8 +347,8 @@ namespace GitHub.Runner.Listener.Check
     public sealed class HttpEventSourceListener : EventListener
     {
         private readonly List<string> _logs;
-        private readonly object _lock = new object();
-        private readonly Dictionary<string, HashSet<string>> _ignoredEvent = new Dictionary<string, HashSet<string>>
+        private readonly object _lock = new();
+        private readonly Dictionary<string, HashSet<string>> _ignoredEvent = new()
         {
             {
                 "Microsoft-System-Net-Http",

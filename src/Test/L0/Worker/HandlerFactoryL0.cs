@@ -56,7 +56,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     variables["DistributedTask.ForceGithubJavascriptActionsToNode16"] = serverFeatureFlag;
                 }
-                Variables serverVariables = new Variables(hc, variables);
+                Variables serverVariables = new(hc, variables);
 
                 // Workflow opt-out
                 var workflowVariables = new Dictionary<string, string>();

@@ -12,7 +12,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void FormatAlwaysCallsFormat()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -48,7 +48,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void FormatHandlesFormatException()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -79,7 +79,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void FormatUsesInvariantCulture()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 CultureInfo originalCulture = CultureInfo.CurrentCulture;
@@ -105,7 +105,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void ConvertNullOrEmptryStringToBool()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 string nullString = null;
@@ -126,7 +126,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void ConvertNullOrEmptryStringToDefaultBool()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 string nullString = null;
@@ -147,7 +147,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void ConvertStringToBool()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 string trueString1 = "1";

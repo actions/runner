@@ -15,7 +15,7 @@ namespace GitHub.Runner.Worker.Container
         private IDictionary<string, string> _userPortMappings;
         private List<PortMapping> _portMappings;
         private IDictionary<string, string> _environmentVariables;
-        private List<PathMapping> _pathMappings = new List<PathMapping>();
+        private List<PathMapping> _pathMappings = new();
 
         public ContainerInfo()
         {

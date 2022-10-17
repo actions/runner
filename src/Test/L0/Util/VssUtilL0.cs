@@ -12,7 +12,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void VerifyOverwriteVssConnectionSetting()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
