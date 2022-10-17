@@ -16,6 +16,7 @@
 		}
 	},
 	// dotnet restore to install dependencies so OmniSharp works out of the box
-	"postCreateCommand": "dotnet restore src/Runner.PluginHost && dotnet restore src/Runner.PluginHost && dotnet restore src/Test",
+	// src/Test restores all other projects it references
+	"postCreateCommand": "dotnet restore src/Test",
 	"remoteUser": "vscode"
 }
