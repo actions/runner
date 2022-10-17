@@ -4,7 +4,9 @@
 	"image": "mcr.microsoft.com/devcontainers/base:focal",
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:1": {},
-		"ghcr.io/devcontainers/features/dotnet":{"version": "6.0.300"}
+		"ghcr.io/devcontainers/features/dotnet": {
+			"version": "6.0.300"
+		}
 	},
 	"customizations": {
 		"vscode": {
@@ -17,6 +19,6 @@
 	},
 	// dotnet restore to install dependencies so OmniSharp works out of the box
 	// src/Test restores all other projects it references
-	"postCreateCommand": "dotnet restore src/Test",
+	"postCreateCommand": "dotnet restore src/Test && dotnet restore src/Runner.PluginHost",
 	"remoteUser": "vscode"
 }
