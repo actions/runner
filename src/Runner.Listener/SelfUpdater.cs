@@ -596,7 +596,7 @@ namespace GitHub.Runner.Listener
                     int exitCode = await processInvoker.ExecuteAsync(extractDirectory, tar, $"-xzf \"{archiveFile}\"", null, token);
                     if (exitCode != 0)
                     {
-                        throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
+                        throw new NotSupportedException($"Can't use 'tar -xzf' to extract archive file: {archiveFile}. return code: {exitCode}.");
                     }
                 }
             }

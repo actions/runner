@@ -27,6 +27,8 @@ An ADR is an Architectural Decision Record.  This allows consensus on the direct
 
 ![Win](res/win_sm.png) Visual Studio 2017 or newer [Install here](https://visualstudio.microsoft.com) (needed for dev sh script)
 
+![Win-arm](res/win_sm.png) Visual Studio 2022 17.3 Preview or later. [Install here](https://docs.microsoft.com/en-us/visualstudio/releases/2022/release-notes-preview)
+
 ## Quickstart: Run a job from a real repository
 
 If you just want to get from building the sourcecode to using it to execute an action, you will need:

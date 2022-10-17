@@ -179,31 +179,6 @@ namespace GitHub.Runner.Common
             }
         }
 
-        private async Task<VssConnection> EstablishVssConnection(Uri serverUrl, VssCredentials credentials, TimeSpan timeout)
-        {
-            Trace.Info($"Establish connection with {timeout.TotalSeconds} seconds timeout.");
-            int attemptCount = 5;
-            while (attemptCount-- > 0)
-            {
-                var connection = VssUtil.CreateConnection(serverUrl, credentials, timeout: timeout);
-                try
-                {
-                    await connection.ConnectAsync();
-                    return connection;
-                }
-                catch (Exception ex) when (attemptCount > 0)
-                {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attempt left.");
-                    Trace.Error(ex);
-
-                    await HostContext.Delay(TimeSpan.FromMilliseconds(100), CancellationToken.None);
-                }
-            }
-
-            // should never reach here.
-            throw new InvalidOperationException(nameof(EstablishVssConnection));
-        }
-
         private void CheckConnection(RunnerConnectionType connectionType)
         {
             switch (connectionType)

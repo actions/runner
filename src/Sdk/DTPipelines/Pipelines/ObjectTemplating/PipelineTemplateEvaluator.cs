@@ -465,6 +465,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             PipelineTemplateConstants.Job,
             PipelineTemplateConstants.Runner,
             PipelineTemplateConstants.Env,
+            PipelineTemplateConstants.Vars,
         };
         private readonly String[] s_expressionFunctionNames = new[]
         {
