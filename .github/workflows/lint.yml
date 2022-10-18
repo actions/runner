@@ -19,7 +19,6 @@ jobs:
         env:
           DEFAULT_BRANCH: ${{ github.base_ref }}
           EDITORCONFIG_FILE_NAME: .editorconfig
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINTER_RULES_PATH: /src/
           VALIDATE_ALL_CODEBASE: false
           VALIDATE_CSHARP: true
