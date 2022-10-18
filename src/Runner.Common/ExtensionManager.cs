@@ -14,7 +14,7 @@ namespace GitHub.Runner.Common
 
     public sealed class ExtensionManager : RunnerService, IExtensionManager
     {
-        private readonly ConcurrentDictionary<Type, List<IExtension>> _cache = new ConcurrentDictionary<Type, List<IExtension>>();
+        private readonly ConcurrentDictionary<Type, List<IExtension>> _cache = new();
 
         public List<T> GetExtensions<T>() where T : class, IExtension
         {

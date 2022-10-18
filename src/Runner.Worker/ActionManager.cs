@@ -52,16 +52,16 @@ namespace GitHub.Runner.Worker
         private const int _defaultCopyBufferSize = 81920;
         private const string _dotcomApiUrl = "https://api.github.com";
 
-        private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
+        private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new();
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
 
-        private readonly Dictionary<Guid, List<Pipelines.ActionStep>> _cachedEmbeddedPreSteps = new Dictionary<Guid, List<Pipelines.ActionStep>>();
+        private readonly Dictionary<Guid, List<Pipelines.ActionStep>> _cachedEmbeddedPreSteps = new();
         public Dictionary<Guid, List<Pipelines.ActionStep>> CachedEmbeddedPreSteps => _cachedEmbeddedPreSteps;
 
-        private readonly Dictionary<Guid, List<Guid>> _cachedEmbeddedStepIds = new Dictionary<Guid, List<Guid>>();
+        private readonly Dictionary<Guid, List<Guid>> _cachedEmbeddedStepIds = new();
         public Dictionary<Guid, List<Guid>> CachedEmbeddedStepIds => _cachedEmbeddedStepIds;
 
-        private readonly Dictionary<Guid, Stack<Pipelines.ActionStep>> _cachedEmbeddedPostSteps = new Dictionary<Guid, Stack<Pipelines.ActionStep>>();
+        private readonly Dictionary<Guid, Stack<Pipelines.ActionStep>> _cachedEmbeddedPostSteps = new();
         public Dictionary<Guid, Stack<Pipelines.ActionStep>> CachedEmbeddedPostSteps => _cachedEmbeddedPostSteps;
 
         public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps, Guid rootStepId = default(Guid))
@@ -791,7 +791,7 @@ namespace GitHub.Runner.Worker
                         try
                         {
                             //open zip stream in async mode
-                            using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
+                            using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {

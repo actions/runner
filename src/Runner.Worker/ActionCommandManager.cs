@@ -21,9 +21,9 @@ namespace GitHub.Runner.Worker
     public sealed class ActionCommandManager : RunnerService, IActionCommandManager
     {
         private const string _stopCommand = "stop-commands";
-        private readonly Dictionary<string, IActionCommandExtension> _commandExtensions = new Dictionary<string, IActionCommandExtension>(StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<string> _registeredCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private readonly object _commandSerializeLock = new object();
+        private readonly Dictionary<string, IActionCommandExtension> _commandExtensions = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _registeredCommands = new(StringComparer.OrdinalIgnoreCase);
+        private readonly object _commandSerializeLock = new();
         private bool _stopProcessCommand = false;
         private string _stopToken = null;
 
@@ -618,7 +618,7 @@ namespace GitHub.Runner.Worker
                 context.Debug("Enhanced Annotations not enabled on the server. The 'title', 'end_line', and 'end_column' fields are unsupported.");
             }
 
-            Issue issue = new Issue()
+            Issue issue = new()
             {
                 Category = "General",
                 Type = this.Type,

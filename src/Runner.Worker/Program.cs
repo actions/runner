@@ -11,7 +11,7 @@ namespace GitHub.Runner.Worker
     {
         public static int Main(string[] args)
         {
-            using (HostContext context = new HostContext("Worker"))
+            using (HostContext context = new("Worker"))
             {
                 return MainAsync(context, args).GetAwaiter().GetResult();
             }

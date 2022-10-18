@@ -16,7 +16,7 @@ namespace GitHub.Runner.Listener
             // Add environment variables from .env file
             LoadAndSetEnv();
 
-            using (HostContext context = new HostContext("Runner"))
+            using (HostContext context = new("Runner"))
             {
                 return MainAsync(context, args).GetAwaiter().GetResult();
             }

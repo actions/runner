@@ -30,7 +30,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage()
         {
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = null;
             Guid jobId = Guid.NewGuid();
             var result = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "someJob", "someJob", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
@@ -101,10 +101,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 int count = 0;
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequest));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
-                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                TaskAgentJobRequest request = new();
                 PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                 Assert.NotNull(lockUntilProperty);
                 lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
@@ -159,10 +159,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 int count = 0;
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnJobNotFoundExceptions));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
-                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                TaskAgentJobRequest request = new();
                 PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                 Assert.NotNull(lockUntilProperty);
                 lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
@@ -218,10 +218,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 int count = 0;
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
-                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                TaskAgentJobRequest request = new();
                 PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                 Assert.NotNull(lockUntilProperty);
                 lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
@@ -279,8 +279,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var reservedAgent = new TaskAgentReference { Name = newName };
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
                 var request = new Mock<TaskAgentJobRequest>();
                 request.Object.ReservedAgent = reservedAgent;
@@ -335,8 +335,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var reservedAgent = new TaskAgentReference { Name = newName };
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
                 var request = new Mock<TaskAgentJobRequest>();
                 request.Object.ReservedAgent = reservedAgent;
@@ -388,8 +388,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var oldSettings = new RunnerSettings { AgentName = oldName };
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
                 var request = new Mock<TaskAgentJobRequest>();
                 PropertyInfo lockUntilProperty = request.Object.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
@@ -441,10 +441,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 int count = 0;
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestRecoverFromExceptions));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
-                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                TaskAgentJobRequest request = new();
                 PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                 Assert.NotNull(lockUntilProperty);
                 lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
@@ -502,10 +502,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 int count = 0;
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestFirstRenewRetrySixTimes));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
-                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                TaskAgentJobRequest request = new();
                 PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                 Assert.NotNull(lockUntilProperty);
                 lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
@@ -557,10 +557,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 int count = 0;
 
                 var trace = hc.GetTrace(nameof(DispatcherRenewJobRequestStopOnExpiredRequest));
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
 
-                TaskAgentJobRequest request = new TaskAgentJobRequest();
+                TaskAgentJobRequest request = new();
                 PropertyInfo lockUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                 Assert.NotNull(lockUntilProperty);
                 lockUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));

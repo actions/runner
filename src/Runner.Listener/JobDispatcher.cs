@@ -37,8 +37,8 @@ namespace GitHub.Runner.Listener
     // and the server will not send another job while this one is still running.
     public sealed class JobDispatcher : RunnerService, IJobDispatcher
     {
-        private static Regex _invalidJsonRegex = new Regex(@"invalid\ Json\ at\ position\ '(\d+)':", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
+        private static Regex _invalidJsonRegex = new(@"invalid\ Json\ at\ position\ '(\d+)':", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new();
         private int _poolId;
 
         IConfigurationStore _configurationStore;
@@ -47,14 +47,14 @@ namespace GitHub.Runner.Listener
         private static readonly string _workerProcessName = $"Runner.Worker{IOUtil.ExeExtension}";
 
         // this is not thread-safe
-        private readonly Queue<Guid> _jobDispatchedQueue = new Queue<Guid>();
-        private readonly ConcurrentDictionary<Guid, WorkerDispatcher> _jobInfos = new ConcurrentDictionary<Guid, WorkerDispatcher>();
+        private readonly Queue<Guid> _jobDispatchedQueue = new();
+        private readonly ConcurrentDictionary<Guid, WorkerDispatcher> _jobInfos = new();
 
         // allow up to 30sec for any data to be transmitted over the process channel
         // timeout limit can be overwritten by environment GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT
         private TimeSpan _channelTimeout;
 
-        private TaskCompletionSource<bool> _runOnceJobCompleted = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _runOnceJobCompleted = new();
 
         public event EventHandler<JobStatusEventArgs> JobStatus;
 
@@ -111,7 +111,7 @@ namespace GitHub.Runner.Listener
                 }
             }
 
-            WorkerDispatcher newDispatch = new WorkerDispatcher(jobRequestMessage.JobId, jobRequestMessage.RequestId);
+            WorkerDispatcher newDispatch = new(jobRequestMessage.JobId, jobRequestMessage.RequestId);
             if (runOnce)
             {
                 Trace.Info("Start dispatcher for one time used runner.");
@@ -357,7 +357,7 @@ namespace GitHub.Runner.Listener
                 term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName}");
 
                 // first job request renew succeed.
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
                 var notification = HostContext.GetService<IJobNotification>();
 
                 // lock renew cancellation token.
@@ -398,8 +398,8 @@ namespace GitHub.Runner.Listener
                     HostContext.WritePerfCounter($"JobRequestRenewed_{requestId.ToString()}");
 
                     Task<int> workerProcessTask = null;
-                    object _outputLock = new object();
-                    List<string> workerOutput = new List<string>();
+                    object _outputLock = new();
+                    List<string> workerOutput = new();
                     using (var processChannel = HostContext.CreateService<IProcessChannel>())
                     using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
@@ -936,7 +936,7 @@ namespace GitHub.Runner.Listener
 
             var runnerServer = HostContext.GetService<IRunnerServer>();
             int completeJobRequestRetryLimit = 5;
-            List<Exception> exceptions = new List<Exception>();
+            List<Exception> exceptions = new();
             while (completeJobRequestRetryLimit-- > 0)
             {
                 try
@@ -1039,7 +1039,7 @@ namespace GitHub.Runner.Listener
             public Task WorkerDispatch { get; set; }
             public CancellationTokenSource WorkerCancellationTokenSource { get; private set; }
             public CancellationTokenSource WorkerCancelTimeoutKillTokenSource { get; private set; }
-            private readonly object _lock = new object();
+            private readonly object _lock = new();
 
             public WorkerDispatcher(Guid jobId, long requestId)
             {

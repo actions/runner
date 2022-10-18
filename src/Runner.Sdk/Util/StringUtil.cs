@@ -9,7 +9,7 @@ namespace GitHub.Runner.Sdk
     public static class StringUtil
     {
         private static readonly object[] s_defaultFormatArgs = new object[] { null };
-        private static Lazy<JsonSerializerSettings> s_serializerSettings = new Lazy<JsonSerializerSettings>(() =>
+        private static Lazy<JsonSerializerSettings> s_serializerSettings = new(() =>
         {
             var settings = new VssJsonMediaTypeFormatter().SerializerSettings;
             settings.DateParseHandling = DateParseHandling.None;

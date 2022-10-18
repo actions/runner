@@ -32,7 +32,7 @@ namespace GitHub.Runner.Worker.Expressions
 
             string githubWorkspace = workspaceData.Value;
             bool followSymlink = false;
-            List<string> patterns = new List<string>();
+            List<string> patterns = new();
             var firstParameter = true;
             foreach (var parameter in Parameters)
             {

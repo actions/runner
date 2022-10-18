@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private IExecutionContext _jobEc;
         private JobRunner _jobRunner;
-        private List<IStep> _initResult = new List<IStep>();
+        private List<IStep> _initResult = new();
         private Pipelines.AgentJobRequestMessage _message;
         private CancellationTokenSource _tokenSource;
         private Mock<IJobServer> _jobServer;
@@ -55,7 +55,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _jobRunner = new JobRunner();
             _jobRunner.Initialize(hc);
 
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = new Timeline(Guid.NewGuid());
             Guid jobId = Guid.NewGuid();
             _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, testName, testName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);

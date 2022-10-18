@@ -10,7 +10,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "ArgumentValidator")]
         public void ServerUrlValidator()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Assert.True(Validators.ServerUrlValidator("http://servername"));
                 Assert.False(Validators.ServerUrlValidator("Fail"));
@@ -23,7 +23,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "ArgumentValidator")]
         public void AuthSchemeValidator()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Assert.True(Validators.AuthSchemeValidator("OAuth"));
                 Assert.False(Validators.AuthSchemeValidator("Fail"));
@@ -35,7 +35,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "ArgumentValidator")]
         public void NonEmptyValidator()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Assert.True(Validators.NonEmptyValidator("test"));
                 Assert.False(Validators.NonEmptyValidator(string.Empty));

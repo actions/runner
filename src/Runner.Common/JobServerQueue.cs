@@ -39,19 +39,19 @@ namespace GitHub.Runner.Common
         private Guid _jobTimelineRecordId;
 
         // queue for web console line
-        private readonly ConcurrentQueue<ConsoleLineInfo> _webConsoleLineQueue = new ConcurrentQueue<ConsoleLineInfo>();
+        private readonly ConcurrentQueue<ConsoleLineInfo> _webConsoleLineQueue = new();
 
         // queue for file upload (log file or attachment)
-        private readonly ConcurrentQueue<UploadFileInfo> _fileUploadQueue = new ConcurrentQueue<UploadFileInfo>();
+        private readonly ConcurrentQueue<UploadFileInfo> _fileUploadQueue = new();
 
         // queue for timeline or timeline record update (one queue per timeline)
-        private readonly ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>> _timelineUpdateQueue = new ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>>();
+        private readonly ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>> _timelineUpdateQueue = new();
 
         // indicate how many timelines we have, we will process _timelineUpdateQueue base on the order of timeline in this list
-        private readonly List<Guid> _allTimelines = new List<Guid>();
+        private readonly List<Guid> _allTimelines = new();
 
         // bufferd timeline records that fail to update
-        private readonly Dictionary<Guid, List<TimelineRecord>> _bufferedRetryRecords = new Dictionary<Guid, List<TimelineRecord>>();
+        private readonly Dictionary<Guid, List<TimelineRecord>> _bufferedRetryRecords = new();
 
         // Task for each queue's dequeue process
         private Task _webConsoleLineDequeueTask;
@@ -61,8 +61,8 @@ namespace GitHub.Runner.Common
         // common
         private IJobServer _jobServer;
         private Task[] _allDequeueTasks;
-        private readonly TaskCompletionSource<int> _jobCompletionSource = new TaskCompletionSource<int>();
-        private readonly TaskCompletionSource<int> _jobRecordUpdated = new TaskCompletionSource<int>();
+        private readonly TaskCompletionSource<int> _jobCompletionSource = new();
+        private readonly TaskCompletionSource<int> _jobRecordUpdated = new();
         private bool _queueInProcess = false;
 
         public TaskCompletionSource<int> JobRecordUpdated => _jobRecordUpdated;
@@ -237,8 +237,8 @@ namespace GitHub.Runner.Common
                 }
 
                 // Group consolelines by timeline record of each step
-                Dictionary<Guid, List<TimelineRecordLogLine>> stepsConsoleLines = new Dictionary<Guid, List<TimelineRecordLogLine>>();
-                List<Guid> stepRecordIds = new List<Guid>(); // We need to keep lines in order
+                Dictionary<Guid, List<TimelineRecordLogLine>> stepsConsoleLines = new();
+                List<Guid> stepRecordIds = new(); // We need to keep lines in order
                 int linesCounter = 0;
                 ConsoleLineInfo lineInfo;
                 while (_webConsoleLineQueue.TryDequeue(out lineInfo))
@@ -264,7 +264,7 @@ namespace GitHub.Runner.Common
                 {
                     // Split consolelines into batch, each batch will container at most 100 lines.
                     int batchCounter = 0;
-                    List<List<TimelineRecordLogLine>> batchedLines = new List<List<TimelineRecordLogLine>>();
+                    List<List<TimelineRecordLogLine>> batchedLines = new();
                     foreach (var line in stepsConsoleLines[stepRecordId])
                     {
                         var currentBatch = batchedLines.ElementAtOrDefault(batchCounter);
@@ -338,7 +338,7 @@ namespace GitHub.Runner.Common
         {
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
-                List<UploadFileInfo> filesToUpload = new List<UploadFileInfo>();
+                List<UploadFileInfo> filesToUpload = new();
                 UploadFileInfo dequeueFile;
                 while (_fileUploadQueue.TryDequeue(out dequeueFile))
                 {
@@ -398,13 +398,13 @@ namespace GitHub.Runner.Common
         {
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
-                List<PendingTimelineRecord> pendingUpdates = new List<PendingTimelineRecord>();
+                List<PendingTimelineRecord> pendingUpdates = new();
                 foreach (var timeline in _allTimelines)
                 {
                     ConcurrentQueue<TimelineRecord> recordQueue;
                     if (_timelineUpdateQueue.TryGetValue(timeline, out recordQueue))
                     {
-                        List<TimelineRecord> records = new List<TimelineRecord>();
+                        List<TimelineRecord> records = new();
                         TimelineRecord record;
                         while (recordQueue.TryDequeue(out record))
                         {
@@ -426,7 +426,7 @@ namespace GitHub.Runner.Common
                 // we need track whether we have new sub-timeline been created on the last run.
                 // if so, we need continue update timeline record even we on the last run.
                 bool pendingSubtimelineUpdate = false;
-                List<Exception> mainTimelineRecordsUpdateErrors = new List<Exception>();
+                List<Exception> mainTimelineRecordsUpdateErrors = new();
                 if (pendingUpdates.Count > 0)
                 {
                     foreach (var update in pendingUpdates)
@@ -529,7 +529,7 @@ namespace GitHub.Runner.Common
                 return timelineRecords;
             }
 
-            Dictionary<Guid, TimelineRecord> dict = new Dictionary<Guid, TimelineRecord>();
+            Dictionary<Guid, TimelineRecord> dict = new();
             foreach (TimelineRecord rec in timelineRecords)
             {
                 if (rec == null)

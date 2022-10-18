@@ -14,9 +14,9 @@ namespace GitHub.Runner.Worker
     public sealed class Variables
     {
         private readonly IHostContext _hostContext;
-        private readonly ConcurrentDictionary<string, Variable> _variables = new ConcurrentDictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, Variable> _variables = new(StringComparer.OrdinalIgnoreCase);
         private readonly ISecretMasker _secretMasker;
-        private readonly object _setLock = new object();
+        private readonly object _setLock = new();
         private readonly Tracing _trace;
 
         public IEnumerable<Variable> AllVariables
@@ -43,7 +43,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Initialize the variable dictionary.
-            List<Variable> variables = new List<Variable>();
+            List<Variable> variables = new();
             foreach (var variable in copy)
             {
                 if (!string.IsNullOrWhiteSpace(variable.Key))
