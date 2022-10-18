@@ -36,7 +36,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext tc = new TestHostContext(this, testName);
+            TestHostContext tc = new(this, testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
@@ -68,7 +68,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -112,7 +112,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -159,7 +159,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -241,7 +241,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -285,7 +285,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);

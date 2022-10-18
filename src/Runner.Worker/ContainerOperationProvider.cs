@@ -354,8 +354,8 @@ namespace GitHub.Runner.Worker
         {
             context.Command($"{command} {arg}");
 
-            List<string> outputs = new List<string>();
-            object outputLock = new object();
+            List<string> outputs = new();
+            object outputLock = new();
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
             processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
@@ -562,7 +562,7 @@ namespace GitHub.Runner.Worker
 #if OS_WINDOWS
             Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
 #else
-            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
+            Version requiredDockerEngineAPIVersion = new(1, 35); // Docker-CE version 17.12
 #endif
 
             if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)

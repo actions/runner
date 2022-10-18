@@ -74,12 +74,12 @@ namespace GitHub.Runner.Common
         {
             get
             {
-                Uri accountUri = new Uri(this.ServerUrl);
+                Uri accountUri = new(this.ServerUrl);
                 string repoOrOrgName = string.Empty;
 
                 if (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase))
                 {
-                    Uri gitHubUrl = new Uri(this.GitHubUrl);
+                    Uri gitHubUrl = new(this.GitHubUrl);
 
                     // Use the "NWO part" from the GitHub URL path
                     repoOrOrgName = gitHubUrl.AbsolutePath.Trim('/');

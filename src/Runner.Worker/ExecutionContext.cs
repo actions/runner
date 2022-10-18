@@ -122,10 +122,10 @@ namespace GitHub.Runner.Worker
         private const int _maxIssueCountInTelemetry = 3; // Only send the first 3 issues to telemetry
         private const int _maxIssueMessageLengthInTelemetry = 256; // Only send the first 256 characters of issue message to telemetry
 
-        private readonly TimelineRecord _record = new TimelineRecord();
-        private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
-        private readonly object _loggerLock = new object();
-        private readonly object _matchersLock = new object();
+        private readonly TimelineRecord _record = new();
+        private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new();
+        private readonly object _loggerLock = new();
+        private readonly object _matchersLock = new();
 
         private event OnMatcherChanged _onMatcherChanged;
 
@@ -140,7 +140,7 @@ namespace GitHub.Runner.Worker
         private bool _expandedForPostJob = false;
         private int _childTimelineRecordOrder = 0;
         private CancellationTokenSource _cancellationTokenSource;
-        private TaskCompletionSource<int> _forceCompleted = new TaskCompletionSource<int>();
+        private TaskCompletionSource<int> _forceCompleted = new();
         private bool _throttlingReported = false;
 
         // only job level ExecutionContext will track throttling delay.

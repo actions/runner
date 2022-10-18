@@ -34,7 +34,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private IActionManifestManager _actionManifestManager;
         private Mock<IFileCommandManager> _fileCommandManager;
 
-        private DictionaryContextData _context = new DictionaryContextData();
+        private DictionaryContextData _context = new();
 
         [Fact]
         [Trait("Level", "L0")]
@@ -60,7 +60,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _actionRunner.Action = action;
 
-            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            Dictionary<string, string> finialInputs = new();
             _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
                            .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory, List<JobExtensionRunner> localActionContainerSetupSteps) =>
                            {
@@ -106,7 +106,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _actionRunner.Action = action;
 
-            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            Dictionary<string, string> finialInputs = new();
             _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
                            .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory, List<JobExtensionRunner> localActionContainerSetupSteps) =>
                            {
@@ -307,7 +307,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _actionRunner.Action = action;
 
-            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            Dictionary<string, string> finialInputs = new();
             _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
                            .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory, List<JobExtensionRunner> localActionContainerSetupSteps) =>
                            {
@@ -358,7 +358,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _actionRunner.Action = action;
 
-            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            Dictionary<string, string> finialInputs = new();
             _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
                            .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory, List<JobExtensionRunner> localActionContainerSetupSteps) =>
                            {

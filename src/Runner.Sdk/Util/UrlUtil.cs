@@ -21,7 +21,7 @@ namespace GitHub.Runner.Sdk
                 return baseUrl;
             }
 
-            UriBuilder credUri = new UriBuilder(baseUrl);
+            UriBuilder credUri = new(baseUrl);
 
             // ensure we have a username, uribuild will throw if username is empty but password is not.
             if (string.IsNullOrEmpty(username))

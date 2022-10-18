@@ -52,7 +52,7 @@ namespace GitHub.Runner.Sdk
             using (SHA256 sha256hash = SHA256.Create())
             {
                 byte[] data = sha256hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));
-                StringBuilder sBuilder = new StringBuilder();
+                StringBuilder sBuilder = new();
                 for (int i = 0; i < data.Length; i++)
                 {
                     sBuilder.Append(data[i].ToString("x2"));
@@ -77,7 +77,7 @@ namespace GitHub.Runner.Sdk
         public static void DeleteDirectory(string path, bool contentsOnly, bool continueOnContentDeleteError, CancellationToken cancellationToken)
         {
             ArgUtil.NotNullOrEmpty(path, nameof(path));
-            DirectoryInfo directory = new DirectoryInfo(path);
+            DirectoryInfo directory = new(path);
             if (!directory.Exists)
             {
                 return;
@@ -363,12 +363,12 @@ namespace GitHub.Runner.Sdk
             Directory.CreateDirectory(target);
 
             // Get the file contents of the directory to copy.
-            DirectoryInfo sourceDir = new DirectoryInfo(source);
+            DirectoryInfo sourceDir = new(source);
             foreach (FileInfo sourceFile in sourceDir.GetFiles() ?? new FileInfo[0])
             {
                 // Check if the file already exists.
                 cancellationToken.ThrowIfCancellationRequested();
-                FileInfo targetFile = new FileInfo(Path.Combine(target, sourceFile.Name));
+                FileInfo targetFile = new(Path.Combine(target, sourceFile.Name));
                 if (!targetFile.Exists ||
                     sourceFile.Length != targetFile.Length ||
                     sourceFile.LastWriteTime != targetFile.LastWriteTime)

@@ -22,8 +22,8 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<ITerminal> _term;
         private Mock<IConfigurationStore> _configStore;
         private Mock<IJobDispatcher> _jobDispatcher;
-        private AgentRefreshMessage _refreshMessage = new AgentRefreshMessage(1, "2.299.0");
-        private List<TrimmedPackageMetadata> _trimmedPackages = new List<TrimmedPackageMetadata>();
+        private AgentRefreshMessage _refreshMessage = new(1, "2.299.0");
+        private List<TrimmedPackageMetadata> _trimmedPackages = new();
 
 #if !OS_WINDOWS
         private string _packageUrl = null;
@@ -52,7 +52,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 if (response.StatusCode == System.Net.HttpStatusCode.Redirect)
                 {
                     var redirectUrl = response.Headers.Location.ToString();
-                    Regex regex = new Regex(@"/runner/releases/tag/v(?<version>\d+\.\d+\.\d+)");
+                    Regex regex = new(@"/runner/releases/tag/v(?<version>\d+\.\d+\.\d+)");
                     var match = regex.Match(redirectUrl);
                     if (match.Success)
                     {

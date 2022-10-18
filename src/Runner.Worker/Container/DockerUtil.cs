@@ -6,8 +6,8 @@ namespace GitHub.Runner.Worker.Container
 {
     public class DockerUtil
     {
-        private static readonly Regex QuoteEscape = new Regex(@"(\\*)" + "\"", RegexOptions.Compiled);
-        private static readonly Regex EndOfStringEscape = new Regex(@"(\\+)$", RegexOptions.Compiled);
+        private static readonly Regex QuoteEscape = new(@"(\\*)" + "\"", RegexOptions.Compiled);
+        private static readonly Regex EndOfStringEscape = new(@"(\\+)$", RegexOptions.Compiled);
 
         public static List<PortMapping> ParseDockerPort(IList<string> portMappingLines)
         {
@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Container
             //"TARGET_PORT/PROTO -> HOST:HOST_PORT"
             string pattern = $"^(?<{targetPort}>\\d+)/(?<{proto}>\\w+) -> (?<{host}>.+):(?<{hostPort}>\\d+)$";
 
-            List<PortMapping> portMappings = new List<PortMapping>();
+            List<PortMapping> portMappings = new();
             foreach (var line in portMappingLines)
             {
                 Match m = Regex.Match(line, pattern, RegexOptions.None, TimeSpan.FromSeconds(1));

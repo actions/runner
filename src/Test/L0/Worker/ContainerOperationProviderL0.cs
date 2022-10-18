@@ -22,12 +22,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         private ContainerOperationProvider containerOperationProvider;
         private Mock<IJobServerQueue> serverQueue;
         private Mock<IPagingLogger> pagingLogger;
-        private List<string> healthyDockerStatus = new List<string> { "healthy" };
-        private List<string> emptyDockerStatus = new List<string> { string.Empty };
-        private List<string> unhealthyDockerStatus = new List<string> { "unhealthy" };
-        private List<string> dockerLogs = new List<string> { "log1", "log2", "log3" };
+        private List<string> healthyDockerStatus = new() { "healthy" };
+        private List<string> emptyDockerStatus = new() { string.Empty };
+        private List<string> unhealthyDockerStatus = new() { "unhealthy" };
+        private List<string> dockerLogs = new() { "log1", "log2", "log3" };
 
-        List<ContainerInfo> containers = new List<ContainerInfo>();
+        List<ContainerInfo> containers = new();
 
         [Fact]
         [Trait("Level", "L0")]

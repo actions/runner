@@ -39,10 +39,10 @@ namespace GitHub.Runner.Worker
 
     public sealed class JobExtension : RunnerService, IJobExtension
     {
-        private readonly HashSet<string> _existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _existingProcesses = new(StringComparer.OrdinalIgnoreCase);
         private bool _processCleanup;
         private string _processLookupId = $"github_{Guid.NewGuid()}";
-        private CancellationTokenSource _diskSpaceCheckToken = new CancellationTokenSource();
+        private CancellationTokenSource _diskSpaceCheckToken = new();
         private Task _diskSpaceCheckTask = null;
 
         // Download all required actions.
@@ -59,8 +59,8 @@ namespace GitHub.Runner.Worker
             context.StepTelemetry.Type = "runner";
             context.StepTelemetry.Action = "setup_job";
 
-            List<IStep> preJobSteps = new List<IStep>();
-            List<IStep> jobSteps = new List<IStep>();
+            List<IStep> preJobSteps = new();
+            List<IStep> jobSteps = new();
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try
@@ -386,7 +386,7 @@ namespace GitHub.Runner.Worker
                                                                           data: (object)jobHookData));
                     }
 
-                    List<IStep> steps = new List<IStep>();
+                    List<IStep> steps = new();
                     steps.AddRange(preJobSteps);
                     steps.AddRange(jobSteps);
 
@@ -674,7 +674,7 @@ namespace GitHub.Runner.Worker
 
         private Dictionary<int, Process> SnapshotProcesses()
         {
-            Dictionary<int, Process> snapshot = new Dictionary<int, Process>();
+            Dictionary<int, Process> snapshot = new();
             foreach (var proc in Process.GetProcesses())
             {
                 try

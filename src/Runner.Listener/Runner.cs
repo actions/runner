@@ -28,7 +28,7 @@ namespace GitHub.Runner.Listener
         private IMessageListener _listener;
         private ITerminal _term;
         private bool _inConfigStage;
-        private ManualResetEvent _completedCommand = new ManualResetEvent(false);
+        private ManualResetEvent _completedCommand = new(false);
 
         public override void Initialize(IHostContext hostContext)
         {

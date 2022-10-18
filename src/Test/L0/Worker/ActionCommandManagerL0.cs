@@ -228,8 +228,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 // Set up a few things
                 // 1. Job request message (with ACTIONS_STEP_DEBUG = true)
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
                 var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);

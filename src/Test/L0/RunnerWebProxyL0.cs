@@ -11,9 +11,9 @@ namespace GitHub.Runner.Common.Tests
 {
     public sealed class RunnerWebProxyL0
     {
-        private static readonly Regex NewHttpClientHandlerRegex = new Regex("New\\s+HttpClientHandler\\s*\\(", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly Regex NewHttpClientRegex = new Regex("New\\s+HttpClient\\s*\\(\\s*\\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        private static readonly List<string> SkippedFiles = new List<string>()
+        private static readonly Regex NewHttpClientHandlerRegex = new("New\\s+HttpClientHandler\\s*\\(", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex NewHttpClientRegex = new("New\\s+HttpClient\\s*\\(\\s*\\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly List<string> SkippedFiles = new()
         {
             "Runner.Common\\HostContext.cs",
             "Runner.Common/HostContext.cs",
@@ -39,7 +39,7 @@ namespace GitHub.Runner.Common.Tests
                     "*.cs",
                     SearchOption.AllDirectories));
 
-            List<string> badCode = new List<string>();
+            List<string> badCode = new();
             foreach (string sourceFile in sourceFiles)
             {
                 // Skip skipped files.
@@ -86,7 +86,7 @@ namespace GitHub.Runner.Common.Tests
                     "*.cs",
                     SearchOption.AllDirectories));
 
-            List<string> badCode = new List<string>();
+            List<string> badCode = new();
             foreach (string sourceFile in sourceFiles)
             {
                 // Skip skipped files.

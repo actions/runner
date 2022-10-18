@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
             var templateContext = CreateTemplateContext(executionContext);
-            ActionDefinitionData actionDefinition = new ActionDefinitionData();
+            ActionDefinitionData actionDefinition = new();
 
             // Clean up file name real quick
             // Instead of using Regex which can be computationally expensive, 

@@ -17,12 +17,12 @@ namespace GitHub.Runner.Common.Tests
 {
     public sealed class TestHostContext : IHostContext, IDisposable
     {
-        private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new ConcurrentDictionary<Type, ConcurrentQueue<object>>();
-        private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new ConcurrentDictionary<Type, object>();
+        private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new();
+        private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new();
         private readonly ITraceManager _traceManager;
         private readonly Terminal _term;
         private readonly SecretMasker _secretMasker;
-        private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _runnerShutdownTokenSource = new();
         private string _suiteName;
         private string _testName;
         private Tracing _trace;
@@ -86,9 +86,9 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
-        public List<ProductInfoHeaderValue> UserAgents => new List<ProductInfoHeaderValue>() { new ProductInfoHeaderValue("L0Test", "0.0") };
+        public List<ProductInfoHeaderValue> UserAgents => new() { new ProductInfoHeaderValue("L0Test", "0.0") };
 
-        public RunnerWebProxy WebProxy => new RunnerWebProxy();
+        public RunnerWebProxy WebProxy => new();
 
         public async Task Delay(TimeSpan delay, CancellationToken token)
         {
