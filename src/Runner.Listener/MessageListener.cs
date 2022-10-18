@@ -211,6 +211,7 @@ namespace GitHub.Runner.Listener
                                                                 _session.SessionId,
                                                                 _lastMessageId,
                                                                 runnerStatus,
+                                                                BuildConstants.RunnerPackage.Version,
                                                                 _getMessagesTokenSource.Token);
 
                     // Decrypt the message body if the session is using encryption
