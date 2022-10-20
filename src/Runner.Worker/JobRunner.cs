@@ -258,9 +258,9 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            if (jobContext.JobContext.ContainsKey("Node12ActionsWarnings"))
+            if (jobContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
             {
-                var actions = string.Join(", ", jobContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Select(action => action.ToString()));
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<List<string>>(node12Warnings));
                 jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
             }
 

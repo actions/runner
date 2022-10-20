@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7,8 +8,8 @@ using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Container.ContainerHooks;
 
@@ -137,13 +138,24 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node12Warning) ?? false))
             {
-                if (!ExecutionContext.JobContext.ContainsKey("Node12ActionsWarnings"))
-                {
-                    ExecutionContext.JobContext["Node12ActionsWarnings"] = new ArrayContextData();
-                }
                 var repoAction = Action as RepositoryPathReference;
-                var actionDisplayName = new StringContextData(repoAction.Name ?? repoAction.Path); // local actions don't have a 'Name'
-                ExecutionContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Add(actionDisplayName);
+                var warningActions = new List<string>();
+                if (ExecutionContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
+                {
+                    warningActions = StringUtil.ConvertFromJson<List<string>>(node12Warnings);
+                }
+
+                if (string.IsNullOrEmpty(repoAction.Name))
+                {
+                    warningActions.Add(repoAction.Path); // local actions don't have a 'Name'
+                }
+                else
+                {
+                    var repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/');
+                    warningActions.Add($"{repoActionFullName}@{repoAction.Ref}");
+                }
+
+                ExecutionContext.Global.Variables.Set("Node12ActionsWarnings", StringUtil.ConvertToJson(warningActions));
             }
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))

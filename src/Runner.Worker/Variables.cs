@@ -2,9 +2,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using GitHub.DistributedTask.WebApi;
 using GitHub.DistributedTask.Logging;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
@@ -134,6 +134,12 @@ namespace GitHub.Runner.Worker
             }
 
             return null;
+        }
+
+        public void Set(string name, string val)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            _variables[name] = new Variable(name, val, false);
         }
 
         public bool TryGetValue(string name, out string val)
