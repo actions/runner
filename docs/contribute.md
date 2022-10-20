@@ -159,6 +159,13 @@ cat (Runner/Worker)_TIMESTAMP.log # view your log file
 We use the .NET Foundation and CoreCLR style guidelines [located here](
 https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)
 
+### Format C# Code
+
+```
+cd ./src
+./dev.(cmd|sh) format
+```
+
 ### Linting Locally
 
 In our CI we use [github/super-linter](https://github.com/github/super-linter) to format code using `dotnet-format`.

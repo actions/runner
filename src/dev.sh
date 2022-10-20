@@ -301,6 +301,13 @@ function package ()
     popd > /dev/null
 }
 
+function format()
+{
+    heading "Formatting..."
+
+    dotnet-format ${SCRIPT_DIR}/ActionsRunner.sln || failed "failed formatting"
+}
+
 if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet") ]]; then
 
     # Download dotnet SDK to ../_dotnetsdk directory
@@ -360,7 +367,9 @@ case $DEV_CMD in
     "l") layout;;
     "package") package;;
     "p") package;;
-    *) echo "Invalid cmd.  Use build(b), test(t), layout(l) or package(p)";;
+    "format") format;;
+    "f") format;;
+    *) echo "Invalid cmd.  Use build(b), test(t), layout(l), package(p), or format(f)";;
 esac
 
 popd
