@@ -1,4 +1,4 @@
-﻿// Microsoft Confidential
+// Microsoft Confidential
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 
 using System;
@@ -44,7 +44,7 @@ namespace GitHub.Services.Common
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class GenerateAllConstantsAttribute : GenerateConstantAttribute
     {
-        public GenerateAllConstantsAttribute(string alternateName = null) 
+        public GenerateAllConstantsAttribute(string alternateName = null)
             : base(alternateName)
         {
         }

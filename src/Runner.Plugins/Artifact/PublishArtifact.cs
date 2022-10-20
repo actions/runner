@@ -97,7 +97,7 @@ namespace GitHub.Runner.Plugins.Artifact
                     size,
                     token);
 
-                context.Output($"Associated artifact {artifactName} ({artifact.ContainerId}) with run #{buildId}"); 
+                context.Output($"Associated artifact {artifactName} ({artifact.ContainerId}) with run #{buildId}");
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

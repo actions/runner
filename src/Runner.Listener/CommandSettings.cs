@@ -29,8 +29,8 @@ namespace GitHub.Runner.Listener
         private readonly Dictionary<string, string[]> validOptions = new()
         {
             // Valid configure flags and args
-            [Constants.Runner.CommandLine.Commands.Configure] = 
-                new string[] 
+            [Constants.Runner.CommandLine.Commands.Configure] =
+                new string[]
                 {
                     Constants.Runner.CommandLine.Flags.DisableUpdate,
                     Constants.Runner.CommandLine.Flags.Ephemeral,
@@ -178,7 +178,7 @@ namespace GitHub.Runner.Listener
             {
                 command = Constants.Runner.CommandLine.Commands.Warmup;
             }
-            
+
             return command;
         }
 

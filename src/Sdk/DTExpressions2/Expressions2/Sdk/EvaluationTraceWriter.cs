@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.DistributedTask.Logging;
 using GitHub.Services.Common;
 

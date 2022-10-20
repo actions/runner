@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using Newtonsoft.Json.Linq;
 
@@ -13,8 +13,8 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
         }
 
         public static PipelineContextData ToPipelineContextData(
-            this JToken value, 
-            Int32 depth, 
+            this JToken value,
+            Int32 depth,
             Int32 maxDepth)
         {
             if (depth < maxDepth)

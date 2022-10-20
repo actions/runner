@@ -1,4 +1,4 @@
-﻿// Defines the data protocol for reading and writing strings on our stream
+// Defines the data protocol for reading and writing strings on our stream
 using System;
 using System.IO;
 using System.Text;

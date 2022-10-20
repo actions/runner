@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 
@@ -11,4 +11,4 @@ namespace GitHub.Actions.Pipelines.WebApi
         Unknown = 0,
         Actions_Storage = 1
     }
-} 
+}

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
@@ -376,7 +376,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     // string-definition-properties
                     mappingDefinition = new MappingDefinition();
                     mappingDefinition.Properties.Add(TemplateConstants.Constant, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
-                    mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(new StringToken(null, null, null,TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.RequireNonEmpty, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.StringDefinitionProperties, mappingDefinition);
 

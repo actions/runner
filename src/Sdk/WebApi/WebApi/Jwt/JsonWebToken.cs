@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -321,7 +321,7 @@ namespace GitHub.Services.WebApi.Jwt
 
             this._header = JsonWebTokenUtilities.JsonDecode<JWTHeader>(fields[0]);
             this._payload = JsonWebTokenUtilities.JsonDecode<JWTPayload>(fields[1]);
-            if(!string.IsNullOrEmpty(fields[2]))
+            if (!string.IsNullOrEmpty(fields[2]))
             {
                 this._signature = fields[2].FromBase64StringNoPadding();
             }
@@ -340,7 +340,7 @@ namespace GitHub.Services.WebApi.Jwt
             protected T TryGetValueOrDefault<T>(string key)
             {
                 object ret;
-                if(TryGetValue(key, out ret))
+                if (TryGetValue(key, out ret))
                 {
                     //we have to special case DateTime
                     if (typeof(T) == typeof(DateTime))
@@ -359,7 +359,7 @@ namespace GitHub.Services.WebApi.Jwt
 
             protected System.DateTime ConvertDateTime(object obj)
             {
-                if(obj is DateTime)
+                if (obj is DateTime)
                 {
                     return (DateTime)obj;
                 }
@@ -426,7 +426,7 @@ namespace GitHub.Services.WebApi.Jwt
                 }
                 set
                 {
-                    if(string.IsNullOrEmpty(value))
+                    if (string.IsNullOrEmpty(value))
                     {
                         this.Remove(JsonWebTokenHeaderParameters.X509CertificateThumbprint);
                     }

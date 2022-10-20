@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -153,8 +153,8 @@ namespace GitHub.DistributedTask.WebApi
         {
             this.ActionsEnvironment = actionsEnvironment;
             this.ActionsStepsTelemetry = actionsStepsTelemetry;
-        }        
-        
+        }
+
         public JobCompletedEvent(
             Int64 requestId,
             Guid jobId,

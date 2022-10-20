@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Worker;
+using GitHub.Runner.Worker;
 using System;
 using System.Collections.Generic;
 using System.Linq;

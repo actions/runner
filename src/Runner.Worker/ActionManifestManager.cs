@@ -448,7 +448,7 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase)||
+                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(usingToken.Value, "node16", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))

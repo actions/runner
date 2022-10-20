@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Security.Claims;
 
 namespace GitHub.Services.WebApi.Jwt
@@ -85,8 +85,8 @@ namespace GitHub.Services.WebApi.Jwt
 
         public string IdentityNameClaimType
         {
-            get; 
-            set; 
+            get;
+            set;
         }
     }
 }

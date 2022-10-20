@@ -1,4 +1,4 @@
-﻿using System.Runtime.Serialization;
+using System.Runtime.Serialization;
 using GitHub.Actions.Pipelines.WebApi.Contracts;
 using Newtonsoft.Json;
 
@@ -42,5 +42,5 @@ namespace GitHub.Actions.Pipelines.WebApi
             get;
             set;
         }
-     }
+    }
 }

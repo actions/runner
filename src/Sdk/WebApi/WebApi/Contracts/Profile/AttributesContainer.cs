@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common;
+using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,7 +26,8 @@ namespace GitHub.Services.Profile
         /// The name of the container.
         /// </summary>
         [DataMember(IsRequired = true, EmitDefaultValue = false)]
-        public string ContainerName { 
+        public string ContainerName
+        {
             get
             {
                 return m_containerName;

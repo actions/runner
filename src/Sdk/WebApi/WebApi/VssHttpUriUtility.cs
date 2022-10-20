@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
@@ -28,7 +28,7 @@ namespace GitHub.Services.WebApi
             routeReplacementOptions |= requireExplicitRouteParams ? RouteReplacementOptions.RequireExplicitRouteParams : 0;
 
             return ReplaceRouteValues(
-                routeTemplate, 
+                routeTemplate,
                 routeValues,
                 routeReplacementOptions);
         }

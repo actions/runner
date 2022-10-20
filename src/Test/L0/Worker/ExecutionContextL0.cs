@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -884,7 +884,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var expected = new DictionaryContextData();
                 expected["VARIABLE_1"] = new StringContextData("value1");
                 expected["VARIABLE_2"] = new StringContextData("value1");
-                
+
                 Assert.True(ExpressionValuesAssertEqual(expected, jobContext.ExpressionValues["vars"] as DictionaryContextData));
             }
         }

@@ -615,7 +615,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             int retryCount = 0;
-            while(retryCount < 3)
+            while (retryCount < 3)
             {
                 using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                 using (var httpClient = new HttpClient(httpClientHandler))
@@ -625,7 +625,7 @@ namespace GitHub.Runner.Listener.Configuration
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-                    
+
                     var responseStatus = System.Net.HttpStatusCode.OK;
                     try
                     {
@@ -646,7 +646,7 @@ namespace GitHub.Runner.Listener.Configuration
                             response.EnsureSuccessStatusCode();
                         }
                     }
-                    catch(Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
                         Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
@@ -694,7 +694,7 @@ namespace GitHub.Runner.Listener.Configuration
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
 
-                        if(response.IsSuccessStatusCode)
+                        if (response.IsSuccessStatusCode)
                         {
                             Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
                             var jsonResponse = await response.Content.ReadAsStringAsync();
@@ -708,7 +708,7 @@ namespace GitHub.Runner.Listener.Configuration
                             response.EnsureSuccessStatusCode();
                         }
                     }
-                    catch(Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
                         Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");

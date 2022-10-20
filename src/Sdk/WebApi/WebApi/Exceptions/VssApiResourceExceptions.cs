@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using GitHub.Services.Common;
@@ -57,7 +57,7 @@ namespace GitHub.Services.WebApi
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
     [ExceptionMapping("0.0", "3.0", "VssApiResourceDuplicateIdException", "GitHub.Services.WebApi.VssApiResourceDuplicateIdException, GitHub.Services.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
-    public class VssApiResourceDuplicateIdException: VssApiRouteRegistrationException
+    public class VssApiResourceDuplicateIdException : VssApiRouteRegistrationException
     {
         public VssApiResourceDuplicateIdException(Guid locationId)
             : base(WebApiResources.ApiResourceDuplicateIdMessage(locationId))

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.Serialization;
 
 namespace GitHub.Services.WebApi
@@ -19,7 +19,7 @@ namespace GitHub.Services.WebApi
                 this.m_token = securedObject.GetToken();
             }
         }
-        
+
         Guid ISecuredObject.NamespaceId
         {
             get

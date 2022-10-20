@@ -204,8 +204,8 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                var attachmentName = !context.IsEmbedded 
-                    ? context.Id.ToString() 
+                var attachmentName = !context.IsEmbedded
+                    ? context.Id.ToString()
                     : context.EmbeddedId.ToString();
 
                 Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
@@ -271,7 +271,7 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class EnvFileKeyValuePairs: IEnumerable<KeyValuePair<string, string>>
+    public sealed class EnvFileKeyValuePairs : IEnumerable<KeyValuePair<string, string>>
     {
         private IExecutionContext _context;
         private string _filePath;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
@@ -194,7 +194,7 @@ namespace GitHub.Services.FileContainer
             base(message, ex)
         {
         }
-}
+    }
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
@@ -215,7 +215,7 @@ namespace GitHub.Services.FileContainer
             base(message, ex)
         {
         }
-}
+    }
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
@@ -231,7 +231,7 @@ namespace GitHub.Services.FileContainer
             base(message, ex)
         {
         }
-}
+    }
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]
@@ -252,7 +252,7 @@ namespace GitHub.Services.FileContainer
             base(message, ex)
         {
         }
-}
+    }
 
     [Serializable]
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors")]

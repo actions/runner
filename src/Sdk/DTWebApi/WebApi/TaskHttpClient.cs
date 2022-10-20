@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common;
+using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
@@ -50,7 +50,7 @@ namespace GitHub.DistributedTask.WebApi
             : base(baseUrl, pipeline, disposeHandler)
         {
         }
-        
+
         public Task AppendTimelineRecordFeedAsync(
             Guid scopeIdentifier,
             String planType,
@@ -91,7 +91,7 @@ namespace GitHub.DistributedTask.WebApi
                                                  userState,
                                                  cancellationToken);
         }
-        
+
         public Task AppendTimelineRecordFeedAsync(
             Guid scopeIdentifier,
             String planType,

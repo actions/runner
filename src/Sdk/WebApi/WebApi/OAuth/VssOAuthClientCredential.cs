@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using GitHub.Services.Common;
 
@@ -56,7 +56,7 @@ namespace GitHub.Services.OAuth
         }
 
         protected virtual void Dispose(Boolean disposing)
-        {     
+        {
         }
 
         /// <summary>

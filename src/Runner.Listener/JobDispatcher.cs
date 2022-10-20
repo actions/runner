@@ -658,7 +658,7 @@ namespace GitHub.Runner.Listener
             finally
             {
                 Busy = false;
-                
+
                 if (JobStatus != null)
                 {
                     JobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Online));

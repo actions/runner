@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation.  All rights reserved.
+// Copyright (c) Microsoft Corporation.  All rights reserved.
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -333,7 +333,7 @@ namespace GitHub.Services.Identity
             string identityType = obj.IdentityType;
 
             //until all service principals are in the system store, we treat them as Claims identities for hash code
-            if(obj.IsSystemServicePrincipalType())
+            if (obj.IsSystemServicePrincipalType())
             {
                 identityType = IdentityConstants.ClaimsType;
             }

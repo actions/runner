@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -213,7 +213,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Operators
             resultMemory = null;
             return null;
         }
-        
+
         private class FilteredArray : IReadOnlyArray
         {
             public FilteredArray()

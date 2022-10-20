@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using System;
 
 namespace GitHub.Runner.Common.Util

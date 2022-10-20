@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using GitHub.DistributedTask.Expressions2.Sdk;
@@ -21,12 +21,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-           return omitSource ? new NullToken(null, null, null) : new NullToken(FileId, Line, Column);
+            return omitSource ? new NullToken(null, null, null) : new NullToken(FileId, Line, Column);
         }
 
         public override String ToString()
         {
-           return String.Empty;
+            return String.Empty;
         }
     }
 }

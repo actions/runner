@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Net;
 using GitHub.Services.Common.Internal;
@@ -13,7 +13,7 @@ namespace GitHub.Services.Common
     {
         protected FederatedCredential(IssuedToken initialToken)
             : base(initialToken)
-        { 
+        {
         }
 
         public override bool IsAuthenticationChallenge(IHttpResponse webResponse)

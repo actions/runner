@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.Expressions2.Sdk.Operators;
 

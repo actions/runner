@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -15,7 +15,7 @@ namespace GitHub.Services.Common
     public class VssHttpRetryOptions
     {
         public VssHttpRetryOptions()
-            : this (new VssHttpRetryableStatusCodeFilter[] { s_hostShutdownFilter } )
+            : this(new VssHttpRetryableStatusCodeFilter[] { s_hostShutdownFilter })
         {
         }
 

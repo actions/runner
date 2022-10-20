@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -271,7 +271,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 List<String> nonDuplicates = new List<String>();
                 foreach (String key in hitCount.Keys)
                 {
-                    if(hitCount[key] == 1)
+                    if (hitCount[key] == 1)
                     {
                         nonDuplicates.Add(key);
                     }

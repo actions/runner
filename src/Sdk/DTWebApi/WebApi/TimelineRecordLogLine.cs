@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-        [DataMember (EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false)]
         public long? LineNumber
         {
             get;

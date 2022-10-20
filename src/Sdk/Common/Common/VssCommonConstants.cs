@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -163,7 +163,7 @@ namespace GitHub.Services.Common
 
         public static readonly IReadOnlyDictionary<String, String> IdentityTypeMap;
     }
-   
+
     /// <summary>
     /// Common attributes tags used in the collection of properties of TeamFoundationIdentity.
     /// </summary>

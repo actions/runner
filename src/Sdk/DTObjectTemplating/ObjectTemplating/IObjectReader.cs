@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.ObjectTemplating

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -242,7 +242,7 @@ namespace GitHub.Services.WebApi.Xml
             public override int GetHashCode()
             {
                 int hashCode = 7443; // "large" prime to start the seed
-                
+
                 // Bitshifting and subtracting once is an efficient way to multiply by our second "large" prime, 0x7ffff = 524287
                 hashCode = (hashCode << 19) - hashCode + (RootNamespace?.GetHashCode() ?? 0);
                 hashCode = (hashCode << 19) - hashCode + ElementName.GetHashCode();

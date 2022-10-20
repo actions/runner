@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -60,7 +60,7 @@ namespace GitHub.Services.WebApi
             }
             return false;
         }
-        
+
         public HttpStatusCode HttpStatusCode { get; private set; }
 
         public Guid ActivityId { get; private set; }

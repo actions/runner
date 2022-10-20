@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -62,4 +62,4 @@ namespace AsyncFixer
     public class BlockCaller : System.Attribute
     { }
 }
-    
+

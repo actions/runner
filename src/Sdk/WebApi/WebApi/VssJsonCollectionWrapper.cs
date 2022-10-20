@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -23,14 +23,14 @@ namespace GitHub.Services.WebApi
             {
                 this.Count = ((ICollection)source).Count;
             }
-            else 
+            else
             {
                 this.Count = source.Cast<Object>().Count();
             }
             this._value = source;
         }
 
-        [DataMember(Order=0)]
+        [DataMember(Order = 0)]
         public Int32 Count { get; private set; }
 
         //not serialized from here, see sub class...
@@ -99,7 +99,7 @@ namespace GitHub.Services.WebApi
         }
 
         public VssJsonCollectionWrapper(IEnumerable source)
-            :base (source)
+            : base(source)
         {
         }
 

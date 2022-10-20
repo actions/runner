@@ -182,7 +182,7 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     _getMessagesTokenSource?.Cancel();
-                } 
+                }
                 catch (ObjectDisposedException)
                 {
                     Trace.Info("_getMessagesTokenSource is already disposed.");
@@ -288,7 +288,7 @@ namespace GitHub.Runner.Listener
                         await HostContext.Delay(_getNextMessageRetryInterval, token);
                     }
                 }
-                finally 
+                finally
                 {
                     _getMessagesTokenSource.Dispose();
                 }

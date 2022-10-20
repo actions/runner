@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.Expressions2.Sdk;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using System;
 using System.Collections.Generic;
 using System.Globalization;

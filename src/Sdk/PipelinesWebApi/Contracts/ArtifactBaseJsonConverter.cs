@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using GitHub.Services.WebApi;
 using Newtonsoft.Json;

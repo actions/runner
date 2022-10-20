@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.Serialization;
@@ -26,7 +26,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-           return omitSource ? new NumberToken(null, null, null, m_value) : new NumberToken(FileId, Line, Column, m_value);
+            return omitSource ? new NumberToken(null, null, null, m_value) : new NumberToken(FileId, Line, Column, m_value);
         }
 
         public override String ToString()

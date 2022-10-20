@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common;
+using GitHub.Services.Common;
 using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
@@ -10,7 +10,7 @@ namespace GitHub.Services.WebApi
     {
         public const String TFSOnPremisesString = "87966EAA-CB2A-443F-BE3C-47BD3B5BF3CB";
         public static readonly Guid TFSOnPremises = new Guid(TFSOnPremisesString);
-    }   
+    }
 
     /// <summary>
     ///     Enumeration of the options that can be passed in on Connect.

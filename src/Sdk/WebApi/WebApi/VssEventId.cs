@@ -6,10 +6,10 @@ namespace GitHub.Services.WebApi
     /// This corresponds with values in Framework\Server\Common\EventLog.cs
     public static class VssEventId
     {
-        public static readonly int DefaultEventId                       = 0;
+        public static readonly int DefaultEventId = 0;
 
         // Errors
-        public static readonly int ExceptionBaseEventId                 = 3000;
+        public static readonly int ExceptionBaseEventId = 3000;
 
         private static readonly int EtmBaseEventId = ExceptionBaseEventId + 1200; // 4200
         public static readonly int VssIdentityServiceException = EtmBaseEventId + 7;

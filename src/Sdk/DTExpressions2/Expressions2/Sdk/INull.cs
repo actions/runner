@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace GitHub.DistributedTask.Expressions2.Sdk
 {

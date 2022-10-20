@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common;
+using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
@@ -78,7 +78,7 @@ namespace GitHub.Services.Profile
                 return false;
             }
 
-            return CompareTo((AttributeDescriptor) obj) == 0;
+            return CompareTo((AttributeDescriptor)obj) == 0;
         }
 
         public override int GetHashCode()
@@ -93,7 +93,7 @@ namespace GitHub.Services.Profile
 
         public override string ToString()
         {
-            return string.Concat(ContainerName,";",AttributeName);
+            return string.Concat(ContainerName, ";", AttributeName);
         }
     }
 

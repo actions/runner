@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,7 +58,8 @@ namespace GitHub.DistributedTask.WebApi
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
-            var payload = new {
+            var payload = new
+            {
                 StreamID = messageId
             };
 

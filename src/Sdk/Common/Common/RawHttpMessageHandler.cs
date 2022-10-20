@@ -9,7 +9,7 @@ using GitHub.Services.OAuth;
 
 namespace GitHub.Services.Common
 {
-    public class RawHttpMessageHandler: HttpMessageHandler
+    public class RawHttpMessageHandler : HttpMessageHandler
     {
         public RawHttpMessageHandler(
             VssOAuthCredential credentials)

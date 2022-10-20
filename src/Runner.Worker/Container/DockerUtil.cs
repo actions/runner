@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -96,7 +96,7 @@ namespace GitHub.Runner.Worker.Container
             // https://docs.microsoft.com/en-us/dotnet/api/system.environment.getcommandlineargs?redirectedfrom=MSDN&view=net-6.0#remarks
 
             // First, find any \ followed by a " and double the number of \ + 1.
-             value = QuoteEscape.Replace(value, @"$1$1\" + "\"");
+            value = QuoteEscape.Replace(value, @"$1$1\" + "\"");
             // Next, what if it ends in `\`, it would escape the end quote. So, we need to detect that at the end of the string and perform the same escape
             // Luckily, we can just use the $ character with detects the end of string in regex
             value = EndOfStringEscape.Replace(value, @"$1$1");

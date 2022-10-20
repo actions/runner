@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -63,7 +63,7 @@ namespace GitHub.Services.Common.Internal
                     }
 
                     file = new FileStream(path, fileMode, fileAccess, sharing);
-                    
+
                     if (loadAsXmlDocument)
                     {
                         XmlReaderSettings settings = new XmlReaderSettings()

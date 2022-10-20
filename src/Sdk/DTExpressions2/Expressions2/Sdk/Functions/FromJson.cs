@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using Newtonsoft.Json;
@@ -21,4 +21,5 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                 return token.ToPipelineContextData();
             }
         }
-    }}
+    }
+}

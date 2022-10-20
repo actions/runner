@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,7 +38,7 @@ namespace GitHub.DistributedTask.WebApi
         [DataMember(EmitDefaultValue = false)]
         public Guid StepId { get; set; }
 
-        [DataMember (EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false)]
         public Int64? StartLine { get; private set; }
     }
 }

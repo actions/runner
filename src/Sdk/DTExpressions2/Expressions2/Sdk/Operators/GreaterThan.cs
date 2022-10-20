@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 
 namespace GitHub.DistributedTask.Expressions2.Sdk.Operators

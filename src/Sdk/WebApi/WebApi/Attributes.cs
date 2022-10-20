@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.Services.WebApi.Internal;
 
 namespace GitHub.Services.WebApi
@@ -65,7 +65,7 @@ namespace GitHub.Services.WebApi
         /// <summary>
         /// Set to false if you need the item to appear in the TypeScript declare (d.ts) file for use by extensions.
         /// </summary>
-        public bool OmitFromTypeScriptDeclareFile { get;  set; }
+        public bool OmitFromTypeScriptDeclareFile { get; set; }
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

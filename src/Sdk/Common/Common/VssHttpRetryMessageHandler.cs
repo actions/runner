@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common.Diagnostics;
+using GitHub.Services.Common.Diagnostics;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;

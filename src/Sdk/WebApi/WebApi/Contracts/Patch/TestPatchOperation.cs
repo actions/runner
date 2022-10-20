@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi.Patch.Json;
 
@@ -9,13 +9,13 @@ namespace GitHub.Services.WebApi.Patch
     /// </summary>
     /// <typeparam name="TModel">The model the patch operation applies to.</typeparam>
     public class TestPatchOperation<TModel> : PatchOperation<TModel>
-    { 
+    {
         public TestPatchOperation()
         {
             this.Operation = Operation.Test;
         }
 
-        public TestPatchOperation(string path, object value): this()
+        public TestPatchOperation(string path, object value) : this()
         {
             this.Path = path;
             this.Value = value;

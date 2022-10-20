@@ -36,7 +36,7 @@ namespace GitHub.Runner.Plugins.Artifact
 
             return await _pipelinesHttpClient.CreateArtifactAsync(
                 parameters,
-                pipelineId, 
+                pipelineId,
                 runId,
                 cancellationToken: cancellationToken) as Pipelines.ActionsStorageArtifact;
         }

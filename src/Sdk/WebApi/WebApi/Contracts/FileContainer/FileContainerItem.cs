@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using System.Text;
@@ -21,7 +21,7 @@ namespace GitHub.Services.FileContainer
         /// Project Id.
         /// </summary>
         [DataMember(IsRequired = false)]
-        public Guid ScopeIdentifier { get;[EditorBrowsable(EditorBrowsableState.Never)] set; }
+        public Guid ScopeIdentifier { get; [EditorBrowsable(EditorBrowsableState.Never)] set; }
 
         /// <summary>
         /// Unique path that identifies the item.
@@ -33,7 +33,7 @@ namespace GitHub.Services.FileContainer
             {
                 return m_path;
             }
-            [EditorBrowsable(EditorBrowsableState.Never)] 
+            [EditorBrowsable(EditorBrowsableState.Never)]
             set
             {
                 m_path = EnsurePathFormat(value);
@@ -127,7 +127,7 @@ namespace GitHub.Services.FileContainer
         [EditorBrowsable(EditorBrowsableState.Never)]
         [DataMember(IsRequired = false, EmitDefaultValue = false)]
         public String Ticket { get; set; }
-        
+
         public static string EnsurePathFormat(string path)
         {
             if (string.IsNullOrWhiteSpace(path))

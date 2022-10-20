@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
@@ -42,7 +42,7 @@ namespace GitHub.DistributedTask.Pipelines
                 {
                     return s;
                 }
-                
+
                 s = name.Expression;
                 if (!String.IsNullOrEmpty(s))
                 {

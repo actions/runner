@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -16,7 +16,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
         protected Definition(MappingToken definition)
         {
-            for (var i = 0; i < definition.Count; )
+            for (var i = 0; i < definition.Count;)
             {
                 var definitionKey = definition[i].Key.AssertString($"{TemplateConstants.Definition} key");
                 if (String.Equals(definitionKey.Value, TemplateConstants.Context, StringComparison.Ordinal))

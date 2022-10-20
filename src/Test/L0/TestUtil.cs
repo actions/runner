@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using Xunit;
 using GitHub.Runner.Sdk;
 using System.Runtime.CompilerServices;

@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using GitHub.Services.Common;
 using GitHub.Services.Common.ClientStorage;
 

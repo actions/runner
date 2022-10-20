@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation.  All rights reserved.
+// Copyright (c) Microsoft Corporation.  All rights reserved.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -137,8 +137,8 @@ namespace GitHub.Services.Common
             info.AddValue("m_eventId", EventId);
         }
 
-            /// <summary>Indicate whether this exception instance should be logged</summary>
-            /// <value>True (false) if the exception should (should not) be logged</value>
+        /// <summary>Indicate whether this exception instance should be logged</summary>
+        /// <value>True (false) if the exception should (should not) be logged</value>
         public bool LogException
         {
             get
@@ -213,7 +213,7 @@ namespace GitHub.Services.Common
                     typeName = GetBackCompatAssemblyQualifiedName(exceptionType);
                 }
             }
-            
+
             if (typeName == null)
             {
 

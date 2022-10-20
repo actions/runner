@@ -1,4 +1,4 @@
-﻿namespace GitHub.Services.OAuth
+namespace GitHub.Services.OAuth
 {
     /// <summary>
     /// Lists the supported client credential types

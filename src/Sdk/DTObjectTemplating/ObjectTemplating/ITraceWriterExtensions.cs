@@ -1,4 +1,4 @@
-﻿namespace GitHub.DistributedTask.ObjectTemplating
+namespace GitHub.DistributedTask.ObjectTemplating
 {
     internal static class ITraceWriterExtensions
     {

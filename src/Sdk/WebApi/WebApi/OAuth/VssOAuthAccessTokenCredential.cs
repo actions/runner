@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi.Jwt;
@@ -66,11 +66,11 @@ namespace GitHub.Services.OAuth
         private class VssOAuthAccessTokenProvider : IssuedTokenProvider
         {
             public VssOAuthAccessTokenProvider(
-                IssuedTokenCredential credential, 
-                Uri serverUrl, 
-                Uri signInUrl) 
+                IssuedTokenCredential credential,
+                Uri serverUrl,
+                Uri signInUrl)
                 : base(credential, serverUrl, signInUrl)
-            { 
+            {
             }
 
             public override Boolean GetTokenIsInteractive

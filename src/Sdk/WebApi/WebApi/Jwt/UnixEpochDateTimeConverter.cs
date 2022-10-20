@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -9,7 +9,7 @@ namespace GitHub.Services.WebApi.Jwt
     {
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            long unixVal = reader.Value is string ? long.Parse((string) reader.Value) : (long)reader.Value;
+            long unixVal = reader.Value is string ? long.Parse((string)reader.Value) : (long)reader.Value;
 
             return unixVal.FromUnixEpochTime();
         }

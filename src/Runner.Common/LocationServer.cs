@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using GitHub.Services.WebApi;
 using GitHub.Services.Location.Client;

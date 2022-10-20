@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.ComponentModel;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi.Patch.Json;
@@ -16,7 +16,7 @@ namespace GitHub.Services.WebApi.Patch
             this.Operation = Operation.Add;
         }
 
-        public AddPatchOperation(string path, object value): this()
+        public AddPatchOperation(string path, object value) : this()
         {
             this.Path = path;
             this.Value = value;

@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common;
+using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using System;
 using System.Diagnostics;
@@ -16,7 +16,7 @@ namespace GitHub.Services.Location
         public AccessMapping() { }
 
         public AccessMapping(String moniker, String displayName, String accessPoint, Guid serviceOwner = new Guid())
-            :this (moniker, displayName, accessPoint, serviceOwner, null)
+            : this(moniker, displayName, accessPoint, serviceOwner, null)
         {
         }
 

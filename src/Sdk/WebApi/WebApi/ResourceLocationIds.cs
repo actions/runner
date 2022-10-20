@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.Services.Common;
 
 namespace GitHub.Services.FileContainer

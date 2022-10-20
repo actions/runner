@@ -1,4 +1,4 @@
-﻿namespace GitHub.Runner.Sdk
+namespace GitHub.Runner.Sdk
 {
     public interface ITraceWriter
     {

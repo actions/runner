@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using GitHub.DistributedTask.Expressions2.Sdk;
@@ -23,25 +23,25 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public String Value
         {
-           get
-           {
-               if (m_value == null)
-               {
-                   m_value = String.Empty;
-               }
+            get
+            {
+                if (m_value == null)
+                {
+                    m_value = String.Empty;
+                }
 
-               return m_value;
-           }
+                return m_value;
+            }
         }
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-           return omitSource ? new StringToken(null, null, null, m_value) : new StringToken(FileId, Line, Column, m_value);
+            return omitSource ? new StringToken(null, null, null, m_value) : new StringToken(FileId, Line, Column, m_value);
         }
 
         public override String ToString()
         {
-           return m_value ?? String.Empty;
+            return m_value ?? String.Empty;
         }
 
         String IString.GetString()

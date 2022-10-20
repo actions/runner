@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using GitHub.Runner.Worker.Container;
 using Xunit;
@@ -177,7 +177,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         [InlineData("foo", "bar", "foo=bar")]
         [InlineData("foo\\", "bar", "foo\\=bar")]
         [InlineData("foo\\", "bar\\", "foo\\=bar\\\\")]
-        [InlineData("foo \\","bar \\", "foo \\=bar \\\\")]
+        [InlineData("foo \\", "bar \\", "foo \\=bar \\\\")]
         public void CreateEscapedOption_keyValue(string keyInput, string valueInput, string escapedString)
         {
             var flag = "--example";

@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common;
+using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using System;
 using System.Runtime.Serialization;
@@ -27,7 +27,7 @@ namespace GitHub.DistributedTask.WebApi
             this.Type = type;
             this.Name = name;
         }
-        
+
 
         [DataMember]
         public String Type

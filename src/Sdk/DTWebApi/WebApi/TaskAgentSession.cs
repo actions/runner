@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.Serialization;
 
 namespace GitHub.DistributedTask.WebApi
@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="ownerName">The name of the owner for this session. This should typically be the agent machine</param>
         /// <param name="agent">The target agent for the session</param>
         public TaskAgentSession(
-            String ownerName, 
+            String ownerName,
             TaskAgentReference agent)
         {
             this.Agent = agent;

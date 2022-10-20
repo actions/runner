@@ -1,4 +1,4 @@
-﻿using GitHub.Services.WebApi;
+using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;

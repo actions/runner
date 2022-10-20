@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker

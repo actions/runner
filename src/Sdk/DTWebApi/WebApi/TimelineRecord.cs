@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -60,7 +60,7 @@ namespace GitHub.DistributedTask.WebApi
                 };
             }
 
-            if (recordToBeCloned.m_issues?.Count> 0)
+            if (recordToBeCloned.m_issues?.Count > 0)
             {
                 this.Issues.AddRange(recordToBeCloned.Issues.Select(i => i.Clone()));
             }

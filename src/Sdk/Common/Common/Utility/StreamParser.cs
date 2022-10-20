@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.IO;
 using System.Threading;
@@ -58,7 +58,7 @@ namespace GitHub.Services.Common
 
         public override bool CanRead
         {
-            get 
+            get
             {
                 return m_stream.CanRead && m_stream.Position <= this.EndingPostionOnOuterStream;
             }
@@ -81,7 +81,7 @@ namespace GitHub.Services.Common
 
         public override long Length
         {
-            get 
+            get
             {
                 return m_length;
             }
@@ -150,7 +150,7 @@ namespace GitHub.Services.Common
             }
             else if (origin == SeekOrigin.End && 0 >= offset && offset > -m_length)
             {
-                return m_stream.Seek(offset - ((m_stream.Length-1) - this.EndingPostionOnOuterStream), origin);
+                return m_stream.Seek(offset - ((m_stream.Length - 1) - this.EndingPostionOnOuterStream), origin);
             }
             else if (origin == SeekOrigin.Current && (offset + m_stream.Position) >= this.StartingPostionOnOuterStream && (offset + m_stream.Position) < this.EndingPostionOnOuterStream)
             {

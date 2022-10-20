@@ -1,4 +1,4 @@
-﻿namespace GitHub.Services.WebApi
+namespace GitHub.Services.WebApi
 {
     public enum VssConnectMode
     {

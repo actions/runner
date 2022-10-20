@@ -1,4 +1,4 @@
-﻿using System.Runtime.Serialization;
+using System.Runtime.Serialization;
 using GitHub.Services.WebApi;
 
 namespace GitHub.Actions.Pipelines.WebApi
@@ -15,7 +15,7 @@ namespace GitHub.Actions.Pipelines.WebApi
         /// File Container ID
         /// </summary>
         [DataMember]
-        public long ContainerId 
+        public long ContainerId
         {
             get;
             set;
