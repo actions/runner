@@ -18,6 +18,7 @@ jobs:
         uses: github/super-linter@v4
         env:
           DEFAULT_BRANCH: ${{ github.base_ref }}
+          DISABLE_ERRORS: true
           EDITORCONFIG_FILE_NAME: .editorconfig
           LINTER_RULES_PATH: /src/
           VALIDATE_ALL_CODEBASE: false
