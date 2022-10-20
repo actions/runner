@@ -14,11 +14,8 @@ jobs:
         with:
           # Ensure full list of changed files within `super-linter`
           fetch-depth: 0
+      - run: cat .github/super-linter.env >> "$GITHUB_ENV"
       - name: Run linters
         uses: github/super-linter@v4
         env:
           DEFAULT_BRANCH: ${{ github.base_ref }}
-          EDITORCONFIG_FILE_NAME: .editorconfig
-          LINTER_RULES_PATH: /src/
-          VALIDATE_ALL_CODEBASE: false
-          VALIDATE_CSHARP: true

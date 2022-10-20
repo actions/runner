@@ -27,3 +27,4 @@ TestResults
 TestLogs
 .DS_Store
 **/*.DotSettings.user
+**/super-linter.log
