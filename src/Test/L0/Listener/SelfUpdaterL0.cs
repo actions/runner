@@ -82,7 +82,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync()
@@ -143,7 +143,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_NoUpdateOnOldVersion()
@@ -196,7 +196,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_DownloadRetry()
@@ -251,7 +251,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_ValidateHash()
@@ -306,7 +306,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_CloneHash_RuntimeAndExternals()
@@ -381,7 +381,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_Cancel_CloneHashTask_WhenNotNeeded()
@@ -445,7 +445,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_UseExternalsTrimmedPackage()
@@ -531,7 +531,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_UseExternalsRuntimeTrimmedPackage()
@@ -624,7 +624,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_NotUseExternalsRuntimeTrimmedPackageOnHashMismatch()
@@ -711,7 +711,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
+        [Fact (Skip = "specific reason")]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_FallbackToFullPackage()
