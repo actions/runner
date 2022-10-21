@@ -73,13 +73,12 @@ namespace GitHub.Runner.Listener
                 // we will just go with the full package.
                 var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 _cloneAndCalculateContentHashTask = CloneAndCalculateAssetsHash(_dotnetRuntimeCloneDirectory, _externalsCloneDirectory, linkedTokenSource.Token);
-
+                _terminal.WriteLine("Self-update");
                 if (!await UpdateNeeded(updateMessage.TargetVersion, token))
                 {
                     Trace.Info($"Can't find available update package.");
                     return false;
                 }
-
                 Trace.Info($"An update is available.");
                 _updateTrace.Enqueue($"RunnerPlatform: {_targetPackage.Platform}");
 
@@ -171,9 +170,12 @@ namespace GitHub.Runner.Listener
             // old server won't send target version as part of update message.
             if (string.IsNullOrEmpty(targetVersion))
             {
+                _terminal.WriteLine("Debug 1");
                 var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, true, token);
+                _terminal.WriteLine("Debug 2");
                 if (packages == null || packages.Count == 0)
                 {
+                    _terminal.WriteLine("Debug 3");
                     Trace.Info($"There is no package for {_packageType} and {_platform}.");
                     return false;
                 }
@@ -182,14 +184,19 @@ namespace GitHub.Runner.Listener
             }
             else
             {
-                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, true, token);
+                _terminal.WriteLine("Debug 4");
+                _targetPackage = new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, 
+                                                Version = new PackageVersion(targetVersion), 
+                                                DownloadUrl = $"https://github.com/actions/runner/releases/download/v{targetVersion}/actions-runner-{BuildConstants.RunnerPackage.PackageName}-{targetVersion}.tar.gz" };
+                _terminal.WriteLine("Debug 5");
                 if (_targetPackage == null)
                 {
+                    _terminal.WriteLine("Debug 6");
                     Trace.Info($"There is no package for {_packageType} and {_platform} with version {targetVersion}.");
                     return false;
                 }
             }
-
+            _terminal.WriteLine("Debug 7");
             Trace.Info($"Version '{_targetPackage.Version}' of '{_targetPackage.Type}' package available in server.");
             PackageVersion serverVersion = new PackageVersion(_targetPackage.Version);
             Trace.Info($"Current running runner version is {BuildConstants.RunnerPackage.Version}");

@@ -466,12 +466,20 @@ namespace GitHub.Runner.Listener
                                     Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
                                 }
                             }
-                            else if (string.Equals(message.MessageType, "BrokerAgentRefresh", StringComparison.OrdinalIgnoreCase))
+                            else if (string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
-                                    var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+                                    var runnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
+
+                                    //////////////////////////////
+                                    _term.WriteLine($"TargetVersion: {runnerUpdateMessage.TargetVersion}");
+                                    _term.WriteLine($"AgentId: {runnerUpdateMessage.AgentId}");
+                                    _term.WriteLine($"Timeout: {runnerUpdateMessage.Timeout.ToString()}");
+                                    //////////////////////////////
+
+                                    var agentRefreshMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, runnerUpdateMessage.TargetVersion, TimeSpan.FromMilliseconds(runnerUpdateMessage.Timeout));
 #if DEBUG
                                     // Can mock the update for testing
                                     if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
@@ -488,17 +496,13 @@ namespace GitHub.Runner.Listener
                                                 var mockTargetVersion = mockUpdateMessages[BuildConstants.RunnerPackage.Version].TargetVersion;
                                                 _term.WriteLine($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
                                                 Trace.Info($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
-                                                runnerUpdateMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, mockTargetVersion, runnerUpdateMessage.Timeout);
+                                                agentRefreshMessage = new AgentRefreshMessage(agentRefreshMessage.AgentId, mockTargetVersion, agentRefreshMessage.Timeout);
                                             }
                                         }
                                     }
 #endif
-                                    // var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    // selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
-                                    _term.WriteLine("BrokerAgentRefresh message received, kick-off selfupdate background process.");
-                                    _term.WriteLine($"TargetVersion: {runnerUpdateMessage.TargetVersion}");
-                                    _term.WriteLine($"AgentId: {runnerUpdateMessage.AgentId}");
-                                    _term.WriteLine($"Timeout: {runnerUpdateMessage.Timeout.ToString()}");
+                                   var selfUpdater = HostContext.GetService<ISelfUpdater>();
+                                    selfUpdateTask = selfUpdater.SelfUpdate(agentRefreshMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
