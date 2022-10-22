@@ -260,7 +260,7 @@ namespace GitHub.Runner.Worker
 
             if (jobContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
             {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<List<string>>(node12Warnings));
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings));
                 jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
             }
 

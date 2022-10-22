@@ -139,22 +139,23 @@ namespace GitHub.Runner.Worker.Handlers
             if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node12Warning) ?? false))
             {
                 var repoAction = Action as RepositoryPathReference;
-                var warningActions = new List<string>();
+                var warningActions = new HashSet<string>();
                 if (ExecutionContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
                 {
-                    warningActions = StringUtil.ConvertFromJson<List<string>>(node12Warnings);
+                    warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings);
                 }
 
+                var repoActionFullName = "";
                 if (string.IsNullOrEmpty(repoAction.Name))
                 {
-                    warningActions.Add(repoAction.Path); // local actions don't have a 'Name'
+                    repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
                 }
                 else
                 {
-                    var repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/');
-                    warningActions.Add($"{repoActionFullName}@{repoAction.Ref}");
+                    repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}";
                 }
 
+                warningActions.Add(repoActionFullName);
                 ExecutionContext.Global.Variables.Set("Node12ActionsWarnings", StringUtil.ConvertToJson(warningActions));
             }
 
