@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # runner will replace key words in the template and generate a batch script to run.
 # Keywords: 

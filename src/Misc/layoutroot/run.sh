@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Change directory to the script root directory
 # https://stackoverflow.com/questions/59895/getting-the-source-directory-of-a-bash-script-from-within

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 SVC_NAME="{{SvcNameVar}}"
 SVC_NAME=${SVC_NAME// /_}
