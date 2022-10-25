@@ -295,7 +295,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 trace.Info("Ensuring service generation mode fails when on un-configured runners");
                 await configManager.ConfigureAsync(command);
 
-                _runnerServer.Verify(x => x.GenerateScripts(It.IsAny<RunnerSettings>()), Times.Once);
+                _serviceControlManager.Verify(x => x.GenerateScripts(It.IsAny<RunnerSettings>()), Times.Once);
             }
         }
 #endif
