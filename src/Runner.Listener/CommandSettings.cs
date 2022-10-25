@@ -86,8 +86,6 @@ namespace GitHub.Runner.Listener
         public bool Help => TestFlag(Constants.Runner.CommandLine.Flags.Help);
         public bool Unattended => TestFlag(Constants.Runner.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
-        
-        
 
         // Keep this around since customers still relies on it
         public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
