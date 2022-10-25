@@ -235,6 +235,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             }
         }
 
+#if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "ConfigurationManagement")]
@@ -269,7 +270,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "ConfigurationManagement")]
-        public async Task ConfigureRunnerServiceCreatesServiceFileOnLinux()
+        public async Task ConfigureRunnerServiceCreatesService()
         {
             using (TestHostContext tc = CreateTestContext())
             {
@@ -288,13 +289,13 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "--generateServiceConfig",
                     });
                 trace.Info("Constructed");
+
                 _store.Setup(x => x.IsConfigured()).Returns(true);
 
                 trace.Info("Ensuring service generation mode fails when on un-configured runners");
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => configManager.ConfigureAsync(command));
-
-                Assert.Contains("requires that the runner is already configured", ex.Message);
+                await configManager.ConfigureAsync(command);
             }
         }
+#endif
     }
 }
