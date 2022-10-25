@@ -97,7 +97,7 @@ namespace GitHub.Runner.Listener.Configuration
                 
                 return;
 #else
-                throw new InvalidOperationException("--generateServiceConfig is only supported in Linux.");
+                throw new NotSupportedException("--generateServiceConfig is only supported in Linux.");
 #endif
             }
 
