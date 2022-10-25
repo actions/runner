@@ -82,7 +82,6 @@ namespace GitHub.Runner.Listener.Configuration
 
             Trace.Info(nameof(ConfigureAsync));
 
-
             if (command.GenerateServiceConfig)
             {
 #if OS_LINUX
@@ -91,16 +90,15 @@ namespace GitHub.Runner.Listener.Configuration
                     throw new InvalidOperationException("--generateServiceConfig requires that the runner is already configured. For configuring a new runner as a service, run './config.sh'.");
                 }
                 // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
-                RunnerSettings _runnerSettings = new();
-                var _serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
-                _serviceControlManager.GenerateScripts(_runnerSettings);
+                RunnerSettings settings = _store.GetSettings();
+                var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
+                serviceControlManager.GenerateScripts(settings);
                 
                 return;
 #else
                 throw new NotSupportedException("--generateServiceConfig is only supported in Linux.");
 #endif
             }
-
 
             if (IsConfigured())
             {
