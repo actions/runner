@@ -185,10 +185,10 @@ namespace GitHub.Runner.Listener
             else
             {
                 _terminal.WriteLine("Debug 4");
-                // _targetPackage = new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, 
-                //                                 Version = new PackageVersion(targetVersion), 
-                //                                 DownloadUrl = $"https://github.com/actions/runner/releases/download/v{targetVersion}/actions-runner-{BuildConstants.RunnerPackage.PackageName}-{targetVersion}.tar.gz" };
-                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, true, token);
+                _targetPackage = new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, 
+                                                Version = new PackageVersion(targetVersion), 
+                                                DownloadUrl = $"https://github.com/actions/runner/releases/download/v{targetVersion}/actions-runner-{BuildConstants.RunnerPackage.PackageName}-{targetVersion}.tar.gz" };
+                // _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, true, token);
                 _terminal.WriteLine("Debug 5");
                 if (_targetPackage == null)
                 {
