@@ -207,6 +207,7 @@ namespace GitHub.Runner.Listener
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
                 {
+                    _term.WriteLine($"Get new message");
                     message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 _session.SessionId,
                                                                 _lastMessageId,
@@ -216,7 +217,7 @@ namespace GitHub.Runner.Listener
 
                     // Decrypt the message body if the session is using encryption
                     message = DecryptMessage(message);
-
+                    _term.WriteLine($"Message type: {message.MessageType}");
                     if (message != null)
                     {
                         _lastMessageId = message.MessageId;
