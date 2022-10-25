@@ -91,11 +91,11 @@ namespace GitHub.Runner.Listener.Configuration
                 }
 
                 RunnerSettings settings = _store.GetSettings();
-                var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
 
                 Trace.Info($"generate service config for runner: {settings.AgentId}");
-                serviceControlManager.GenerateScripts(settings);
-                
+                var controlManager = HostContext.GetService<ILinuxServiceControlManager>();
+                controlManager.GenerateScripts(settings);
+
                 return;
 #else
                 throw new NotSupportedException("--generateServiceConfig is only supported on Linux.");
