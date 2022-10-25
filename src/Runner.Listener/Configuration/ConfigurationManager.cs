@@ -89,14 +89,15 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     throw new InvalidOperationException("--generateServiceConfig requires that the runner is already configured. For configuring a new runner as a service, run './config.sh'.");
                 }
-                // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
+
+                Trace.Info($"generate service config for runner: {setting.RunnerId}");
                 RunnerSettings settings = _store.GetSettings();
                 var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
                 serviceControlManager.GenerateScripts(settings);
                 
                 return;
 #else
-                throw new NotSupportedException("--generateServiceConfig is only supported in Linux.");
+                throw new NotSupportedException("--generateServiceConfig is only supported on Linux.");
 #endif
             }
 

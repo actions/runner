@@ -77,14 +77,15 @@ namespace GitHub.Runner.Common
                 Uri accountUri = new(this.ServerUrl);
                 string repoOrOrgName = string.Empty;
 
-                if (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+                if (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(this.GitHubUrl))
                 {
                     Uri gitHubUrl = new(this.GitHubUrl);
 
                     // Use the "NWO part" from the GitHub URL path
                     repoOrOrgName = gitHubUrl.AbsolutePath.Trim('/');
                 }
-                else
+
+                if (string.IsNullOrEmpty(repoOrOrgName))
                 {
                     repoOrOrgName = accountUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
                 }
