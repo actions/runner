@@ -90,9 +90,10 @@ namespace GitHub.Runner.Listener.Configuration
                     throw new InvalidOperationException("--generateServiceConfig requires that the runner is already configured. For configuring a new runner as a service, run './config.sh'.");
                 }
 
-                Trace.Info($"generate service config for runner: {setting.RunnerId}");
                 RunnerSettings settings = _store.GetSettings();
                 var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
+
+                Trace.Info($"generate service config for runner: {setting.RunnerId}");
                 serviceControlManager.GenerateScripts(settings);
                 
                 return;
