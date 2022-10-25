@@ -466,6 +466,50 @@ namespace GitHub.Runner.Listener
                                     Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
                                 }
                             }
+                            else if (string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (autoUpdateInProgress == false)
+                                {
+                                    autoUpdateInProgress = true;
+                                    var runnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
+
+                                    //////////////////////////////
+                                    _term.WriteLine($"TargetVersion: {runnerUpdateMessage.TargetVersion}");
+                                    _term.WriteLine($"AgentId: {runnerUpdateMessage.AgentId}");
+                                    _term.WriteLine($"Timeout: {runnerUpdateMessage.Timeout.ToString()}");
+                                    //////////////////////////////
+
+                                    var agentRefreshMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, runnerUpdateMessage.TargetVersion, TimeSpan.FromMilliseconds(runnerUpdateMessage.Timeout));
+#if DEBUG
+                                    // Can mock the update for testing
+                                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
+                                    {
+
+                                        // The mock_update_messages.json file should be an object with keys being the current version and values being the targeted mock version object
+                                        // Example: { "2.283.2": {"targetVersion":"2.284.1"}, "2.284.1": {"targetVersion":"2.285.0"}}
+                                        var mockUpdatesPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "mock_update_messages.json");
+                                        if (File.Exists(mockUpdatesPath))
+                                        {
+                                            var mockUpdateMessages = JsonUtility.FromString<Dictionary<string, AgentRefreshMessage>>(File.ReadAllText(mockUpdatesPath));
+                                            if (mockUpdateMessages.ContainsKey(BuildConstants.RunnerPackage.Version))
+                                            {
+                                                var mockTargetVersion = mockUpdateMessages[BuildConstants.RunnerPackage.Version].TargetVersion;
+                                                _term.WriteLine($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                Trace.Info($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                agentRefreshMessage = new AgentRefreshMessage(agentRefreshMessage.AgentId, mockTargetVersion, agentRefreshMessage.Timeout);
+                                            }
+                                        }
+                                    }
+#endif
+                                   var selfUpdater = HostContext.GetService<ISelfUpdater>();
+                                    selfUpdateTask = selfUpdater.SelfUpdate(agentRefreshMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                    Trace.Info("Refresh message received, kick-off selfupdate background process.");
+                                }
+                                else
+                                {
+                                    Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
+                                }
+                            }
                             else if (string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress || runOnceJobReceived)
