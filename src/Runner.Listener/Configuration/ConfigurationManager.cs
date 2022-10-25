@@ -93,7 +93,7 @@ namespace GitHub.Runner.Listener.Configuration
                 RunnerSettings settings = _store.GetSettings();
                 var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
 
-                Trace.Info($"generate service config for runner: {setting.RunnerId}");
+                Trace.Info($"generate service config for runner: {settings.RunnerId}");
                 serviceControlManager.GenerateScripts(settings);
                 
                 return;
