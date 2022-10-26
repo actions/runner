@@ -81,6 +81,27 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteLine("--------------------------------------------------------------------------------");
 
             Trace.Info(nameof(ConfigureAsync));
+
+            if (command.GenerateServiceConfig)
+            {
+#if OS_LINUX
+                if (!IsConfigured())
+                {
+                    throw new InvalidOperationException("--generateServiceConfig requires that the runner is already configured. For configuring a new runner as a service, run './config.sh'.");
+                }
+
+                RunnerSettings settings = _store.GetSettings();
+
+                Trace.Info($"generate service config for runner: {settings.AgentId}");
+                var controlManager = HostContext.GetService<ILinuxServiceControlManager>();
+                controlManager.GenerateScripts(settings);
+
+                return;
+#else
+                throw new NotSupportedException("--generateServiceConfig is only supported on Linux.");
+#endif
+            }
+
             if (IsConfigured())
             {
                 throw new InvalidOperationException("Cannot configure the runner because it is already configured. To reconfigure the runner, run 'config.cmd remove' or './config.sh remove' first.");
