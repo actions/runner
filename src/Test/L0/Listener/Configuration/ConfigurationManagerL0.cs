@@ -234,5 +234,103 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(1));
             }
         }
+
+#if OS_LINUX
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureRunnerServiceFailsOnUnconfiguredRunners()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--generateServiceConfig",
+                    });
+                trace.Info("Constructed");
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+
+                trace.Info("Ensuring service generation mode fails when on un-configured runners");
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => configManager.ConfigureAsync(command));
+
+                Assert.Contains("requires that the runner is already configured", ex.Message);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureRunnerServiceCreatesService()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--generateServiceConfig",
+                    });
+                trace.Info("Constructed");
+
+                _store.Setup(x => x.IsConfigured()).Returns(true);
+
+                trace.Info("Ensuring service generation mode fails when on un-configured runners");
+                await configManager.ConfigureAsync(command);
+
+                _serviceControlManager.Verify(x => x.GenerateScripts(It.IsAny<RunnerSettings>()), Times.Once);
+            }
+        }
+#endif
+
+#if !OS_LINUX
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureRunnerServiceFailsOnUnsupportedPlatforms()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--generateServiceConfig",
+                    });
+                trace.Info("Constructed");
+                _store.Setup(x => x.IsConfigured()).Returns(true);
+
+                trace.Info("Ensuring service generation mode fails on unsupported runner platforms");
+                var ex = await Assert.ThrowsAsync<NotSupportedException>(() => configManager.ConfigureAsync(command));
+
+                Assert.Contains("only supported on Linux", ex.Message);
+            }
+        }
+#endif
     }
 }
