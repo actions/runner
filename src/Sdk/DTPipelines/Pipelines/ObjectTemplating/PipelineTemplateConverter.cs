@@ -316,6 +316,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             if (String.IsNullOrEmpty(result.Image))
             {
+                context.TraceWriter.Info($"Container image is empty, no jobContainer will be started.");
                 return null;
             }
 
