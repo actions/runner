@@ -415,21 +415,8 @@
       ],
       "one-of": [
         "non-empty-string",
-        "services-container-mapping"
+        "container-mapping"
       ]
-    },
-
-    "services-container-mapping": {
-      "mapping": {
-        "properties": {
-          "image": "non-empty-string",
-          "options": "non-empty-string",
-          "env": "container-env",
-          "ports": "sequence-of-non-empty-string",
-          "volumes": "sequence-of-non-empty-string",
-          "credentials": "container-registry-credentials"
-        }
-      }
     },
 
     "container-registry-credentials": {
