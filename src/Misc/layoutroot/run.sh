@@ -10,27 +10,51 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-# Set job control
-set -m
+run() {
+    # run the helper process which keep the listener alive
+    while :;
+    do
+        cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
+        "$DIR"/run-helper.sh $*
+        returnCode=$?
+        if [[ $returnCode -eq 2 ]]; then
+            echo "Restarting runner..."
+        else
+            echo "Exiting runner..."
+            exit 0
+        fi
+    done
+}
 
-trap 'kill -INT -$PID' INT TERM
+runWithManualTrap() {
+    # Set job control
+    set -m
 
-# run the helper process which keep the listener alive
-while :;
-do
-    cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
-    "$DIR"/run-helper.sh $* &
-    PID=$!
-    wait -f $PID
-    returnCode=$?
-    if [[ $returnCode -eq 2 ]]; then
-        echo "Restarting runner..."
-    else
-        echo "Exiting runner..."
-        # Unregister signal handling before exit
-        trap - INT TERM
-        # wait for last parts to be logged
-        wait $PID
-        exit 0
-    fi
-done
+    trap 'kill -INT -$PID' INT TERM
+
+    # run the helper process which keep the listener alive
+    while :;
+    do
+        cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
+        "$DIR"/run-helper.sh $* &
+        PID=$!
+        wait -f $PID
+        returnCode=$?
+        if [[ $returnCode -eq 2 ]]; then
+            echo "Restarting runner..."
+        else
+            echo "Exiting runner..."
+            # Unregister signal handling before exit
+            trap - INT TERM
+            # wait for last parts to be logged
+            wait $PID
+            exit 0
+        fi
+    done
+}
+
+if [[ $RUNNER_MANUALLY_TRAP_SIG == "true" ]]; then
+    runWithManualTrap
+else
+    run
+fi
