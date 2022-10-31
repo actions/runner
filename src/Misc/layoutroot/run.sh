@@ -53,8 +53,8 @@ runWithManualTrap() {
     done
 }
 
-if [[ $RUNNER_MANUALLY_TRAP_SIG == "true" ]]; then
-    runWithManualTrap
+if [[ -z "$RUNNER_MANUALLY_TRAP_SIG" ]]; then
+   run
 else
-    run
+    runWithManualTrap
 fi
