@@ -686,8 +686,11 @@ namespace GitHub.Runner.Worker
             // Endpoints
             Global.Endpoints = message.Resources.Endpoints;
 
-            // Variables
-            Global.Variables = new Variables(HostContext, message.Variables);
+            // Ser debug using vars context if debug variables are not already present.
+            var variables = message.Variables;
+            SetDebugUsingVars(variables, message.ContextData);
+
+            Global.Variables = new Variables(HostContext, variables);
 
             if (Global.Variables.GetBoolean("DistributedTask.ForceInternalNodeVersionOnRunnerTo12") ?? false)
             {
@@ -1075,6 +1078,31 @@ namespace GitHub.Runner.Worker
 
             var newGuid = Guid.NewGuid();
             return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, ActionRunStage.Post, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
+        }
+
+        // Sets debug using vars context in case debug variables are not present.
+        private static void SetDebugUsingVars(IDictionary<string, VariableValue> variables, IDictionary<string, PipelineContextData> contextData)
+        {
+            if (contextData != null &&
+                contextData.TryGetValue(PipelineTemplateConstants.Vars, out var varsPipelineContextData) &&
+                varsPipelineContextData != null && 
+                varsPipelineContextData is DictionaryContextData varsContextData)
+            {
+                // Set debug variables only when StepDebug/RunnerDebug variables are not present.
+                if (!variables.ContainsKey(Constants.Variables.Actions.StepDebug) &&
+                    varsContextData.TryGetValue(Constants.Variables.Actions.StepDebug, out var stepDebugValue) &&
+                    stepDebugValue is StringContextData)
+                {
+                    variables[Constants.Variables.Actions.StepDebug] = stepDebugValue.ToString();
+                }
+
+                if (!variables.ContainsKey(Constants.Variables.Actions.RunnerDebug) &&
+                    varsContextData.TryGetValue(Constants.Variables.Actions.RunnerDebug, out var runDebugValue) &&
+                    runDebugValue is StringContextData)
+                {
+                    variables[Constants.Variables.Actions.RunnerDebug] = runDebugValue.ToString();
+                }
+            }
         }
 
         public void ApplyContinueOnError(TemplateToken continueOnErrorToken)

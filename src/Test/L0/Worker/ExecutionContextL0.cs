@@ -889,6 +889,95 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ActionVariables_DebugUsingVars()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var inputVarsContext = new DictionaryContextData();
+
+                inputVarsContext[Constants.Variables.Actions.StepDebug] = new StringContextData("true");
+                inputVarsContext[Constants.Variables.Actions.RunnerDebug] = new StringContextData("true");
+                jobRequest.ContextData["vars"] = inputVarsContext;
+
+                // Arrange: Setup the paging logger. 
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                
+                Assert.Equal("true", jobContext.Global.Variables.Get(Constants.Variables.Actions.StepDebug));
+                Assert.Equal("true", jobContext.Global.Variables.Get(Constants.Variables.Actions.RunnerDebug));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ActionVariables_SecretsPrecedenceForDebugUsingVars()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var inputVarsContext = new DictionaryContextData();
+
+                inputVarsContext[Constants.Variables.Actions.StepDebug] = new StringContextData("true");
+                inputVarsContext[Constants.Variables.Actions.RunnerDebug] = new StringContextData("true");
+                jobRequest.ContextData["vars"] = inputVarsContext;
+
+                jobRequest.Variables[Constants.Variables.Actions.StepDebug] = "false";
+                jobRequest.Variables[Constants.Variables.Actions.RunnerDebug] = "false";
+
+                // Arrange: Setup the paging logger. 
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                
+                Assert.Equal("false", jobContext.Global.Variables.Get(Constants.Variables.Actions.StepDebug));
+                Assert.Equal("false", jobContext.Global.Variables.Get(Constants.Variables.Actions.RunnerDebug));
+            }
+        }
+
         private bool ExpressionValuesAssertEqual(DictionaryContextData expect, DictionaryContextData actual)
         {
             foreach (var key in expect.Keys.ToList())
