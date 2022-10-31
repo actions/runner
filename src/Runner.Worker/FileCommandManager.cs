@@ -182,6 +182,9 @@ namespace GitHub.Runner.Worker
                     return;
                 }
 
+                var scrubbedFilePath = filePath + "-scrubbed";
+                
+                Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
                 if (fileSize > AttachmentSizeLimit)
                 {
                     context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, AttachmentSizeLimit / 1024, fileSize / 1024));
@@ -191,7 +194,6 @@ namespace GitHub.Runner.Worker
                 }
 
                 Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
-                var scrubbedFilePath = filePath + "-scrubbed";
 
                 using (var streamReader = new StreamReader(filePath))
                 using (var streamWriter = new StreamWriter(scrubbedFilePath))
@@ -208,9 +210,20 @@ namespace GitHub.Runner.Worker
                     ? context.Id.ToString() 
                     : context.EmbeddedId.ToString();
 
-                Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
-                // Attachments must be added to the parent context (job), not the current context (step)
-                context.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
+                context.Global.Variables.TryGetValue("system.github.results_endpoint", out string resultsReceiverEndpoint);
+                if (resultsReceiverEndpoint != null) 
+                {
+                    Trace.Info($"Queueing results file ({filePath}) for attachment upload ({attachmentName})");
+                    var stepId = context.Id.ToString();
+                    // Attachments must be added to the parent context (job), not the current context (step)
+                    context.Root.QueueResultsFile(ChecksAttachmentType.ResultsStepSummary, attachmentName, scrubbedFilePath, stepId);
+                }
+                else 
+                {
+                    Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
+                    // Attachments must be added to the parent context (job), not the current context (step)
+                    context.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
+                }
             }
             catch (Exception e)
             {
