@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -233,7 +233,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        internal static JobContainer ConvertToJobContainer(
+        internal static JobContainer ConvertToContainer(
             TemplateContext context,
             TemplateToken value,
             bool allowExpressions = false)
@@ -340,7 +340,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             foreach (var servicePair in servicesMapping)
             {
                 var networkAlias = servicePair.Key.AssertString("services key").Value;
-                var container = ConvertToJobContainer(context, servicePair.Value);
+                var container = ConvertToContainer(context, servicePair.Value);
                 result.Add(new KeyValuePair<String, JobContainer>(networkAlias, container));
             }
 
