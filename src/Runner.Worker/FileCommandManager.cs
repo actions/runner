@@ -5,6 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using GitHub.Services.Results.Client;
+using System.Threading;
+using System.Net.Http;
 
 namespace GitHub.Runner.Worker
 {
@@ -182,35 +185,75 @@ namespace GitHub.Runner.Worker
                     return;
                 }
 
-                if (fileSize > AttachmentSizeLimit)
-                {
-                    context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, AttachmentSizeLimit / 1024, fileSize / 1024));
-                    Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
-
-                    return;
-                }
-
                 Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
-                var scrubbedFilePath = filePath + "-scrubbed";
+                if (context.Global.Variables.Get("ResultsReceiverEndpoint") != null) {
+                    Trace.Info("Using new Actions Results Job Summaries upload");
 
-                using (var streamReader = new StreamReader(filePath))
-                using (var streamWriter = new StreamWriter(scrubbedFilePath))
-                {
-                    string line;
-                    while ((line = streamReader.ReadLine()) != null)
+                    var ResultsReceiverEndpointAddr = context.Global.Variables.Get("ResultsReceiverEndpoint");
+
+                    var token = context.Global.Variables.Get("System.AccessToken");
+                    var resultsClient = new ResultsHttpClient(token, ResultsReceiverEndpointAddr);
+                    var planId = context.Global.Variables.Get("System.PlanId");
+                    var jobId = context.Global.Variables.Get("System.JobId");
+                    var stepId = context.Global.Variables.Get("System.StepId");
+                    var stepSummaryUploadUrl = await resultsClient.GetStepSummaryUploadUrlAsync(jobId, planId, stepId, new CancellationToken());
+                    
+                    // Do file size check
+                    if (fileSize > stepSummaryUploadUrl.Size)
                     {
-                        var maskedLine = HostContext.SecretMasker.MaskSecrets(line);
-                        streamWriter.WriteLine(maskedLine);
+                        context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, stepSummaryUploadUrl.Size / 1024, fileSize / 1024));
+                        Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
+
+                        return;
                     }
+
+                    // Upload the file to the url
+                    var httpClient = new HttpClient();
+                    var request = new HttpRequestMessage(HttpMethod.Put, stepSummaryUploadUrl.SummaryUrl);
+                    // Get response with the storage type, set the correct headers for Azure vs. S3 (only worry about Azure for now)
+                    using (var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead)) {
+                        if (!response.IsSuccessStatusCode) {
+                            context.Error(String.Format(Constants.Runner.SummaryUploadError, response.StatusCode));
+                            Trace.Info($"Step Summary file ({filePath}) failed to upload with status code {response.StatusCode} and message {response.Content}; skipping attachment upload");
+                            return;
+                        }
+                    }
+                    
+                    // Make upload complete call to url
+                    var stepSummaryUploadCompleteResponse = await resultsClient.StepSummaryUploadCompleteAsync(jobId, planId, stepId, fileSize, new CancellationToken());
+                    Trace.Info($"Step Summary file ({filePath}) upload marked as complete, response ok: {stepSummaryUploadCompleteResponse.Ok}");
+                } else {
+                    Trace.Info("Using Attachment for Job Summary upload");
+                    if (fileSize > AttachmentSizeLimit)
+                    {
+                        context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, AttachmentSizeLimit / 1024, fileSize / 1024));
+                        Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
+
+                        return;
+                    }
+
+                    Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
+                    var scrubbedFilePath = filePath + "-scrubbed";
+
+                    using (var streamReader = new StreamReader(filePath))
+                    using (var streamWriter = new StreamWriter(scrubbedFilePath))
+                    {
+                        string line;
+                        while ((line = streamReader.ReadLine()) != null)
+                        {
+                            var maskedLine = HostContext.SecretMasker.MaskSecrets(line);
+                            streamWriter.WriteLine(maskedLine);
+                        }
+                    }
+
+                    var attachmentName = !context.IsEmbedded 
+                        ? context.Id.ToString() 
+                        : context.EmbeddedId.ToString();
+
+                    Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
+                    // Attachments must be added to the parent context (job), not the current context (step)
+                    context.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
                 }
-
-                var attachmentName = !context.IsEmbedded 
-                    ? context.Id.ToString() 
-                    : context.EmbeddedId.ToString();
-
-                Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
-                // Attachments must be added to the parent context (job), not the current context (step)
-                context.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
             }
             catch (Exception e)
             {
