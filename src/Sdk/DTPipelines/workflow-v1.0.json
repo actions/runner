@@ -414,7 +414,7 @@
         "vars"
       ],
       "one-of": [
-        "non-empty-string",
+        "string",
         "container-mapping"
       ]
     },
