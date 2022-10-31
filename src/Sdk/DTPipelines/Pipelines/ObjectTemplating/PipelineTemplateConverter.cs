@@ -248,7 +248,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 if (String.IsNullOrEmpty(containerLiteral.Value))
                 {
-                    context.TraceWriter.Info($"Container value is empty, this container will not be started.");
+                    context.TraceWriter.Info($"Container value is empty, ignoring.");
                     return null;
                 }
 
@@ -317,7 +317,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             if (String.IsNullOrEmpty(result.Image))
             {
-                context.TraceWriter.Info($"Container image is empty, this container will not be started.");
+                context.TraceWriter.Info($"Container image is empty, ignoring.");
                 return null;
             }
 
@@ -339,7 +339,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 if (container == null)
                 {
-                    context.TraceWriter.Info($"Service container with key ${ networkAlias } cannot be parsed, this container will not be started.");
+                    context.TraceWriter.Info($"An image was not found in the container definition for service with key '${ networkAlias }'. This service will not be started.");
                     continue;
                 }
 
