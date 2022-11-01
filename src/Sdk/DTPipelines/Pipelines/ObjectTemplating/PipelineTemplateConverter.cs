@@ -326,9 +326,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         internal static List<KeyValuePair<String, JobContainer>> ConvertToJobServiceContainers(
             TemplateContext context,
-            TemplateToken services)
+            TemplateToken services,
+            bool allowExpressions = false)
         {
             var result = new List<KeyValuePair<String, JobContainer>>();
+
+            if (allowExpressions && services.Traverse().Any(x => x is ExpressionToken))
+            {
+                return result;
+            }
 
             var servicesMapping = services.AssertMapping("services");
 
