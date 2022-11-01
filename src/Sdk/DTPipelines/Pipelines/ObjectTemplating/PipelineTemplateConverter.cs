@@ -233,7 +233,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        internal static JobContainer ConvertToContainer(
+        internal static JobContainer ConvertToJobContainer(
             TemplateContext context,
             TemplateToken value,
             bool allowExpressions = false)
@@ -341,14 +341,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             foreach (var servicePair in servicesMapping)
             {
                 var networkAlias = servicePair.Key.AssertString("services key").Value;
-                var container = ConvertToContainer(context, servicePair.Value);
-
-                if (container == null)
-                {
-                    context.TraceWriter.Info($"An image was not found in the container definition for service with key '${ networkAlias }'. This service will not be started.");
-                    continue;
-                }
-
+                var container = ConvertToJobContainer(context, servicePair.Value);
                 result.Add(new KeyValuePair<String, JobContainer>(networkAlias, container));
             }
 
