@@ -230,10 +230,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.Container, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToJobContainer(context, token);
-                    if (result == null)
-                    {
-                        context.TraceWriter.Info("A job container was requested in the job definition but the container image value was empty. The job will run without a job container.");
-                    }
                 }
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {

@@ -248,7 +248,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 if (String.IsNullOrEmpty(containerLiteral.Value))
                 {
-                    context.TraceWriter.Info($"Container value is empty, ignoring.");
                     return null;
                 }
 
@@ -317,7 +316,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             if (String.IsNullOrEmpty(result.Image))
             {
-                context.TraceWriter.Info($"Container image is empty, ignoring.");
                 return null;
             }
 
