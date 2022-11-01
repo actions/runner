@@ -749,6 +749,10 @@ namespace GitHub.Runner.Worker
             {
                 githubContext["job"] = new StringContextData(githubJob);
             }
+            if (!string.IsNullOrEmpty(message.JobDisplayName))
+            {
+                githubContext["job_display_name"] = new StringContextData(message.JobDisplayName);
+            }
             var githubDictionary = ExpressionValues["github"].AssertDictionary("github");
             foreach (var pair in githubDictionary)
             {
