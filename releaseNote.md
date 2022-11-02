@@ -1,13 +1,18 @@
 ## Features
-- [REVERTED] Service containers startup error logs are now included in workflow's logs (#2110)
-  - Reverted due to https://github.com/actions/runner/issues/2173
+- Displays the error logs in dedicated sub-sections of the Initialize containers section (#2182)
+- Add generateServiceConfig option for configure command (#2226)
+- Setting debug using GitHub Action variables (#2234)
+- run.sh installs SIGINT and SIGTERM traps to gracefully stop runner (#2233)
+
 
 ## Bugs
-- Fixed missing SHA for Windows arm64 release archive (#2171)
+- Use Global.Variables instead of JobContext and include action path/ref in the message. (#2214)
 
 ## Misc
-- Added a feature flag to start warning on `save-state` and `set-output` deprecation (#2164)
-- Prepare supporting `vars` in workflow templates (#2096)
+- Allow '--disableupdate' in create-latest-svc.sh (#2201)
+- Fix markup for support link (#2114)
+- Add runner devcontainer (#2187)
+- Setup linter for Runner (#2211, #2213, #2216)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
