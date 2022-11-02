@@ -2,7 +2,7 @@
 - Displays the error logs in dedicated sub-sections of the Initialize containers section (#2182)
 - Add generateServiceConfig option for configure command (#2226)
 - Setting debug using GitHub Action variables (#2234)
-- run.sh installs SIGINT and SIGTERM traps to gracefully stop runner (#2233)
+- run.sh installs SIGINT and SIGTERM traps to gracefully stop runner (#2233, 2240)
 
 
 ## Bugs
