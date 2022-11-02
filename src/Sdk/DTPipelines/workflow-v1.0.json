@@ -45,6 +45,7 @@
     "workflow-env": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "secrets"
       ],
@@ -128,6 +129,7 @@
       "context": [
         "github",
         "needs",
+        "vars",
         "inputs",
         "strategy",
         "matrix"
@@ -157,6 +159,7 @@
       "context": [
         "github",
         "needs",
+        "vars",
         "inputs",
         "secrets",
         "strategy",
@@ -175,6 +178,7 @@
     "job-if": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "always(0,0)",
@@ -188,6 +192,7 @@
     "job-if-result": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "always(0,0)",
@@ -208,6 +213,7 @@
     "strategy": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs"
       ],
@@ -247,6 +253,7 @@
     "runs-on": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -261,6 +268,7 @@
     "job-env": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -284,6 +292,7 @@
     "job-defaults-run": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "strategy",
         "matrix",
@@ -308,6 +317,7 @@
     "environment": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -350,6 +360,7 @@
     "workflow-concurrency": {
       "context":[
         "github",
+        "vars",
         "inputs"
       ],
       "one-of": ["non-empty-string", "concurrency-mapping" ]
@@ -357,6 +368,7 @@
     "job-concurrency": {
       "context":[
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -426,6 +438,7 @@
     "step-if": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -446,6 +459,7 @@
     "step-if-result": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "strategy",
         "matrix",
@@ -472,6 +486,7 @@
     "step-env": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -492,6 +507,7 @@
     "step-with": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -512,6 +528,7 @@
     "container": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -539,6 +556,7 @@
     "services": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -553,6 +571,7 @@
     "services-container": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -569,6 +588,7 @@
         "secrets",
         "env",
         "github",
+        "vars",
         "inputs"
       ],
       "mapping": {
@@ -601,6 +621,7 @@
     "boolean-strategy-context": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -612,6 +633,7 @@
     "number-strategy-context": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -623,6 +645,7 @@
     "string-strategy-context": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -634,6 +657,7 @@
     "boolean-steps-context": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -651,6 +675,7 @@
     "number-steps-context": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -668,6 +693,7 @@
     "string-runner-context": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -684,6 +710,7 @@
     "string-runner-context-no-secrets": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -699,6 +726,7 @@
     "string-steps-context": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "needs",
         "strategy",
@@ -801,6 +829,7 @@
     "workflow_call-output-context": {
       "context": [
         "github",
+        "vars",
         "inputs",
         "jobs"
       ],
@@ -844,6 +873,7 @@
     "workflow-run-name": {
       "context": [
         "github",
+        "vars",
         "inputs"
       ],
       "string": {}
