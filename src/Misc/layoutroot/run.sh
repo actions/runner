@@ -54,7 +54,7 @@ runWithManualTrap() {
 }
 
 if [[ -z "$RUNNER_MANUALLY_TRAP_SIG" ]]; then
-   run
+    run $*
 else
-    runWithManualTrap
+    runWithManualTrap $*
 fi
