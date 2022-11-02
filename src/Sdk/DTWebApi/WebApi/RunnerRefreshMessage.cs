@@ -16,24 +16,24 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         public RunnerRefreshMessage(
-            Int32 agentId,
+            Int32 runnerId,
             String targetVersion,
-            int? timeout = null)
+            int? timeoutInSeconds = null)
         {
-            this.AgentId = agentId;
-            this.Timeout = timeout ?? TimeSpan.FromMinutes(60).Milliseconds;
+            this.RunnerId = runnerId;
+            this.TimeoutInSeconds = timeoutInSeconds ?? TimeSpan.FromMinutes(60).Seconds;
             this.TargetVersion = targetVersion;
         }
 
         [DataMember]
-        public Int32 AgentId
+        public Int32 RunnerId
         {
             get;
             private set;
         }
 
         [DataMember]
-        public int Timeout
+        public int TimeoutInSeconds
         {
             get;
             private set;
