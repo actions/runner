@@ -133,7 +133,8 @@ namespace GitHub.Runner.Sdk
         private static bool IsPathValid(string path, ITraceWriter trace = null)
         {
             var fileInfo = new FileInfo(path);
-            if(fileInfo.LinkTarget == null || File.Exists(fileInfo.LinkTarget)) return true;
+            var linkTargetFullPath = fileInfo.Directory?.FullName + Path.DirectorySeparatorChar + fileInfo.LinkTarget;
+            if(fileInfo.LinkTarget == null || File.Exists(linkTargetFullPath) || File.Exists(fileInfo.LinkTarget)) return true;
             trace?.Info($"the target '{fileInfo.LinkTarget}' of the symbolic link '{path}', does not exist");
             return false;
         }

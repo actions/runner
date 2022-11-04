@@ -93,6 +93,73 @@ namespace GitHub.Runner.Common.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+        public void WhichHandlesSymlinkToTargetFullPath()
+        {
+            // Arrange
+            using TestHostContext hc = new TestHostContext(this);
+            Tracing trace = hc.GetTrace();
+            string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
+            string newValue = oldValue + Path.GetTempPath();
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
+            string symlink = Path.GetTempPath() + "symlink.exe";
+            string target = Path.GetTempPath() + "target.exe";
+
+            using (File.Create(target))
+            {
+                File.CreateSymbolicLink(symlink, target);
+
+                // Act.
+                var result = WhichUtil.Which("symlink", require: true, trace: trace);
+
+                // Assert
+                Assert.True(!string.IsNullOrEmpty(result) && File.Exists(result), $"Unable to find symlink through: {nameof(WhichUtil.Which)}");
+
+            }
+
+
+            // Cleanup
+            File.Delete(symlink);
+            File.Delete(target);
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, oldValue);
+
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WhichHandlesSymlinkToTargetRelativePath()
+        {
+            // Arrange
+            using TestHostContext hc = new TestHostContext(this);
+            Tracing trace = hc.GetTrace();
+            string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
+            string newValue = oldValue + Path.GetTempPath();
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
+            string symlinkName = "symlink.exe";
+            string symlink = Path.GetTempPath() + symlinkName;
+            string targetName = "target.exe";
+            string target = Path.GetTempPath() + targetName;
+
+            using (File.Create(target))
+            {
+                File.CreateSymbolicLink(symlink, targetName);
+
+                // Act.
+                var result = WhichUtil.Which("symlink", require: true, trace: trace);
+
+                // Assert
+                Assert.True(!string.IsNullOrEmpty(result) && File.Exists(result), $"Unable to find {symlinkName} through: {nameof(WhichUtil.Which)}");
+            }
+
+            // Cleanup
+            File.Delete(symlink);
+            File.Delete(target);
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, oldValue);
+
+        }
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
         public void WhichThrowsWhenSymlinkBroken()
         {
             // Arrange
