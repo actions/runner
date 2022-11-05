@@ -103,32 +103,29 @@ namespace Runner.Client
         }
 
         private class Parameters {
-            public string[] workflow { get; set; }
-            public string server { get; set; }
-            public string payload { get; set; }
-
-            public string eventpath { get => payload; set => payload = value; }
+            public string[] WorkflowFiles { get; set; }
+            public string Server { get; set; }
+            public string Payload { get; set; }
             public string Event { get; set; }
-            public string[] env { get; set; }
-            public string[] envFile { get; set; }
-            public string[] secret { get; set; }
-            public string[] secretFile { get; set; }
-            public string job { get; set; }
-            public string[] matrix { get; set; }
-            public bool list { get; set; }
-            public string workflows { get; set; }
-            public string[] platform { get; set; }
-            public string actor { get; set; }
-            public bool watch { get; set; }
-            public bool quiet { get; set; }
-            public bool privileged { get; set; }
-            public string userns { get; set; }
-            public string containerPlatform { get; set; }
-            public string containerArchitecture { get => containerPlatform; set => containerPlatform = value; }
-            public string defaultbranch { get; set; }
-            public string directory { get; set; }
-            public bool verbose { get; set; }
-            public int? parallel { get; set; }
+            public string[] Env { get; set; }
+            public string[] EnvFile { get; set; }
+            public string[] Secrets { get; set; }
+            public string[] SecretFiles { get; set; }
+            public string Job { get; set; }
+            public string[] Matrix { get; set; }
+            public bool List { get; set; }
+            public string Workflows { get; set; }
+            public string[] Platform { get; set; }
+            public string Actor { get; set; }
+            public bool Watch { get; set; }
+            public bool Quiet { get; set; }
+            public bool Privileged { get; set; }
+            public string Userns { get; set; }
+            public string ContainerPlatform { get; set; }
+            public string DefaultBranch { get; set; }
+            public string Directory { get; set; }
+            public bool Verbose { get; set; }
+            public int? Parallel { get; set; }
             public bool StartServer { get; set; }
             public bool StartRunner { get; set; }
             public bool NoCopyGitDir { get; set; }
@@ -163,6 +160,11 @@ namespace Runner.Client
             public string RunnerVersion { get; set; }
             public bool Interactive { get; internal set; }
             public string[] LocalRepositories { get; set; }
+
+            public Parameters ShallowCopy()
+            {
+                return (Parameters) this.MemberwiseClone();
+            }
         }
 
         class WorkflowEventArgs {
@@ -272,8 +274,8 @@ namespace Runner.Client
                 int attempt = 1;
                 while(!source.IsCancellationRequested) {
                     try {
-                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                        if(parameters.verbose) {
+                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                        if(parameters.Verbose) {
                             inv.OutputDataReceived += _out;
                             inv.ErrorDataReceived += _out;
                         }
@@ -288,20 +290,20 @@ namespace Runner.Client
                         if(!parameters.NoSharedToolcache && Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") == null) {
                             runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "tool_cache");
                         }
-                        if(parameters.containerArchitecture != null) {
-                            runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
+                        if(parameters.ContainerPlatform != null) {
+                            runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.ContainerPlatform;
                         }
-                        if(parameters.privileged) {
+                        if(parameters.Privileged) {
                             runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
                         }
-                        if(parameters.userns != null) {
-                            runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
+                        if(parameters.Userns != null) {
+                            runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.Userns;
                         }
                         if(parameters.KeepContainer) {
                             runnerEnv["RUNNER_CONTAINER_KEEP"] = "1";
                         }
 
-                        var arguments = $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
+                        var arguments = $"Configure --name {agentname} --unattended --url {parameters.Server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                         arguments = $"\"{runner}\" {arguments}";
 #endif
@@ -310,8 +312,8 @@ namespace Runner.Client
                         int execAttempt = 1;                    
                         while(true) {
                             try {
-                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                if(parameters.verbose) {
+                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                if(parameters.Verbose) {
                                     runnerlistener.OutputDataReceived += _out;
                                     runnerlistener.ErrorDataReceived += _out;
                                 }
@@ -455,8 +457,8 @@ namespace Runner.Client
                 int attempt = 1;
                 while(!source.IsCancellationRequested) {
                     try {
-                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                        if(parameters.verbose) {
+                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                        if(parameters.Verbose) {
                             inv.OutputDataReceived += _out;
                             inv.ErrorDataReceived += _out;
                         }
@@ -477,7 +479,7 @@ namespace Runner.Client
                         }
 
                         // PAT Auth is only possible via https for azure devops agents, fallback to negotiate with dummy credentials otherwise it wouldn't work on linux without https
-                        var arguments = azure ? parameters.server.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ?  $"configure --auth pat --token {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.server} --work w" : $"configure --auth negotiate --userName token --password {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.server} --work w" : $"configure --name {agentname} --unattended --url {parameters.server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
+                        var arguments = azure ? parameters.Server.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ?  $"configure --auth pat --token {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.Server} --work w" : $"configure --auth negotiate --userName token --password {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.Server} --work w" : $"configure --name {agentname} --unattended --url {parameters.Server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
                         if(!azure) {
                             // Use embedded runner to configure external github agent, otherwise only port 80 or 443 are possible to use for configuration
                         #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
@@ -492,8 +494,8 @@ namespace Runner.Client
                         while(true) {
                             file = runner;
                             try {
-                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                if(parameters.verbose) {
+                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                if(parameters.Verbose) {
                                     runnerlistener.OutputDataReceived += _out;
                                     runnerlistener.ErrorDataReceived += _out;
                                 }
@@ -1014,25 +1016,25 @@ namespace Runner.Client
             // Note that the parameters of the handler method are matched according to the names of the options
             Func<Parameters, Task<int>> handler = async (parameters) =>
             {
-                if(parameters.parallel == null && !parameters.StartServer && !parameters.list) {
-                    parameters.parallel = 1;
+                if(parameters.Parallel == null && !parameters.StartServer && !parameters.List) {
+                    parameters.Parallel = 1;
                 }
-                if(parameters.actor == null) {
-                    parameters.actor = "runnerclient";
+                if(parameters.Actor == null) {
+                    parameters.Actor = "runnerclient";
                 }
                 List<string> errors = new List<string>();
-                if(parameters.matrix?.Length > 0) {
-                    if(parameters.job == null) {
+                if(parameters.Matrix?.Length > 0) {
+                    if(parameters.Job == null) {
                         errors.Add("--matrix is only supported together with --job");
                     }
-                    foreach(var p in parameters.matrix) {
+                    foreach(var p in parameters.Matrix) {
                         if(!p.Contains(":")) {
                             errors.Add($"Invalid Argument for `--matrix`: `{p}`, missing `:`");
                         }
                     }
                 }
-                if(parameters.platform?.Length > 0) {
-                    foreach(var p in parameters.platform) {
+                if(parameters.Platform?.Length > 0) {
+                    foreach(var p in parameters.Platform) {
                         if(!p.Contains("=")) {
                             errors.Add($"Invalid Argument for `--platform`: `{p}`, missing `=`");
                         }
@@ -1070,7 +1072,7 @@ namespace Runner.Client
                     canceled = true;
                     source.Cancel();
                 };
-                if(parameters.parallel > 0) {
+                if(parameters.Parallel > 0) {
                     var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
                     if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
                         parameters.RunnerVersion = "2.210.0";
@@ -1081,18 +1083,18 @@ namespace Runner.Client
                 }
                 List<Task> listener = new List<Task>();
                 try {
-                    if(parameters.server == null || parameters.StartServer || parameters.StartRunner) {
+                    if(parameters.Server == null || parameters.StartServer || parameters.StartRunner) {
                         var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                         EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
                             Console.WriteLine(e.Data);
                         };
                         if(parameters.StartRunner) {
-                            if(parameters.server == null) {
-                                parameters.server = "http://localhost:5000";
+                            if(parameters.Server == null) {
+                                parameters.Server = "http://localhost:5000";
                             }
                         } else {
                             Console.WriteLine("Starting Server...");
-                            if(parameters.server == null) {
+                            if(parameters.Server == null) {
                                 try {
                                     // From https://stackoverflow.com/a/27376368
                                     using (System.Net.Sockets.Socket socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Dgram, 0))
@@ -1103,11 +1105,11 @@ namespace Runner.Client
                                         builder.Host = endPoint.Address.ToString();
                                         builder.Scheme = "http";
                                         builder.Port = 0;
-                                        parameters.server = builder.Uri.ToString().Trim('/');
+                                        parameters.Server = builder.Uri.ToString().Trim('/');
                                     }
                                 } catch {
                                 }
-                                if(parameters.server == null) {
+                                if(parameters.Server == null) {
                                     try {
                                         foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
                                             if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
@@ -1115,20 +1117,20 @@ namespace Runner.Client
                                                 builder.Host = ip.ToString();
                                                 builder.Scheme = "http";
                                                 builder.Port = 0;
-                                                parameters.server = builder.Uri.ToString().Trim('/');
+                                                parameters.Server = builder.Uri.ToString().Trim('/');
                                                 break;
                                             }
                                         }
                                     } catch {
                                     }
                                 }
-                                if(parameters.server == null) {
+                                if(parameters.Server == null) {
                                     Console.WriteLine("Failed to autodetect non loopback ip, docker actions will fail to connect");
-                                    parameters.server = "http://localhost:0";
+                                    parameters.Server = "http://localhost:0";
                                 }
                             }
-                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                            if(parameters.verbose) {
+                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                            if(parameters.Verbose) {
                                 invoker.OutputDataReceived += _out;
                                 invoker.ErrorDataReceived += _out;
                             }
@@ -1151,7 +1153,7 @@ namespace Runner.Client
                             connectionopts["sqlite"] = "";
                             serverconfig["ConnectionStrings"] = connectionopts;
                             
-                            serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.server } } });
+                            serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.Server } } });
                             var rsconfig = new { 
                                 GitServerUrl = parameters.GitServerUrl,
                                 GitApiServerUrl = parameters.GitApiServerUrl,
@@ -1206,7 +1208,7 @@ namespace Runner.Client
                                             foreach(var kv in new Dictionary<string, string>{ {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "RUNNER_CLIENT_PIPE_IN", shutdownPipe.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}) {
                                                 serverEnv[kv.Key] = kv.Value;
                                             }
-                                            if(parameters.verbose) {
+                                            if(parameters.Verbose) {
                                                 Console.WriteLine($"serverEnv: {(serverEnv.Select(kv => $"{kv.Key}={kv.Value}").Aggregate((l, nl) => string.IsNullOrEmpty(l) ? nl : $"{l}\n{nl}"))}");
                                             }
                                             var x = await invoker.ExecuteAsync(binpath, file, arguments, serverEnv, false, null, true, runToken.Token);
@@ -1220,7 +1222,7 @@ namespace Runner.Client
                                         {
                                             var line = rd.ReadLine();
                                             timer.Change(-1, -1);
-                                            parameters.server = line;
+                                            parameters.Server = line;
                                             Console.WriteLine($"The server is listening on {line}");
                                         }
                                     });
@@ -1234,10 +1236,10 @@ namespace Runner.Client
                             }
                         }
 
-                        if(parameters.parallel > 0) {
-                            Console.WriteLine($"Starting {parameters.parallel} Runner{(parameters.parallel != 1 ? "s" : "")}...");
+                        if(parameters.Parallel > 0) {
+                            Console.WriteLine($"Starting {parameters.Parallel} Runner{(parameters.Parallel != 1 ? "s" : "")}...");
                             var workerchannel = Channel.CreateBounded<bool>(1);
-                            for(int i = 0; i < parameters.parallel; i++) {
+                            for(int i = 0; i < parameters.Parallel; i++) {
                                 if(string.IsNullOrEmpty(parameters.RunnerPath)) {
                                     listener.Add(CreateRunner(binpath, parameters, listener, workerchannel, source));
                                 } else {
@@ -1255,7 +1257,7 @@ namespace Runner.Client
                         }
 
                         if(parameters.StartServer || parameters.StartRunner) {
-                            Console.WriteLine($"Press {(Debugger.IsAttached ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
+                            Console.WriteLine($"Press {(Debugger.IsAttached ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.Parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
                                 if(Debugger.IsAttached) {
@@ -1273,14 +1275,16 @@ namespace Runner.Client
                     }
                     bool first = true;
                     bool skipAskToSaveArtifact = false;
-                    while(!source.IsCancellationRequested && (parameters.Interactive || parameters.watch || first)) {
+                    var orgParameters = parameters.ShallowCopy();
+                    while(!source.IsCancellationRequested && (parameters.Interactive || parameters.Watch || first)) {
                         cancelWorkflow = null;
                         var ret = await Task.Run<int>(async () => {
                             Action<QueryBuilder> queryParam = null;
                             if(parameters.Interactive) {
                                 string command = "";
-                                parameters.list = false;
-                                parameters.job = null;
+                                parameters.List = false;
+                                parameters.Job = null;
+                                parameters.Matrix = null;
                                 Console.Write("gharun> ");
                                 try {
                                     command = await Console.In.ReadLineAsync().WithCancellation(source.Token);
@@ -1290,10 +1294,12 @@ namespace Runner.Client
                                 var interactiveCommand = new Command("gharun>");
                                 var runCommand = new Command("run", "Create a new run, this is the default action of this tool");
                                 runCommand.Add(jobOpt);
-                                runCommand.SetHandler(job => {
-                                    parameters.job = job;
+                                runCommand.Add(matrixOpt);
+                                runCommand.SetHandler((job, matrix) => {
+                                    parameters.Job = job;
+                                    parameters.Matrix = matrix;
                                     queryParam = _ => {};
-                                }, jobOpt);
+                                }, jobOpt, matrixOpt);
 
                                 interactiveCommand.Add(runCommand);
                                 var rerunCommand = new Command("rerun", "Rerun an completed workflow instead of starting a new one, you can keep completed jobs and artifacts during reruns");
@@ -1331,18 +1337,20 @@ namespace Runner.Client
 
                                 var listCommand = new Command("list", "Lists jobs of the selected workflows");
                                 listCommand.Add(jobOpt);
-                                listCommand.SetHandler(job => {
-                                    parameters.job = job;
-                                    parameters.list = true;
+                                listCommand.Add(matrixOpt);
+                                listCommand.SetHandler((job, matrix) => {
+                                    parameters.Job = job;
+                                    parameters.Matrix = matrix;
+                                    parameters.List = true;
                                     queryParam = _ => {};
-                                }, jobOpt);
+                                }, jobOpt, matrixOpt);
                                 interactiveCommand.Add(listCommand);
 
                                 var deleteCommand = new Command("delete", "Delete Artifacts or Cache");
                                 var deleteCacheCommand = new Command("cache", "Delete Cache, can be used to recreate the Cache and free storage");
                                 deleteCacheCommand.SetHandler(async () => {
                                     var client = new HttpClient();
-                                    var deleteUri = new UriBuilder(parameters.server);
+                                    var deleteUri = new UriBuilder(parameters.Server);
                                     deleteUri.Path = "_apis/artifactcachemanagement/cache";
                                     await client.DeleteAsync(deleteUri.ToString());
                                 });
@@ -1350,7 +1358,7 @@ namespace Runner.Client
                                 var deleteArtifactsCommand = new Command("artifacts", "Delete all Artifacts and free storage");
                                 deleteArtifactsCommand.SetHandler(async () => {
                                     var client = new HttpClient();
-                                    var deleteUri = new UriBuilder(parameters.server);
+                                    var deleteUri = new UriBuilder(parameters.Server);
                                     deleteUri.Path = "_apis/artifactcachemanagement/artifacts";
                                     await client.DeleteAsync(deleteUri.ToString());
                                 });
@@ -1358,6 +1366,8 @@ namespace Runner.Client
                                 interactiveCommand.Add(deleteCommand);
 
                                 var updateCommand = new Command("update", "Update provided env and secrets");
+                                updateCommand.Add(workflowOption);
+                                updateCommand.Add(DirectoryOpt);
                                 updateCommand.Add(payloadOpt);
                                 updateCommand.Add(envOpt);
                                 updateCommand.Add(secretOpt);
@@ -1385,71 +1395,25 @@ namespace Runner.Client
                                 updateCommand.Add(environmentVarFileOpt);
                                 updateCommand.Add(workflowInputsOpt);
                                 updateCommand.SetHandler(_ => {}, new MyCustomBinder(bindingContext => {
-                                    if(bindingContext.ParseResult.GetValueForOption(resetOpt)) {
-                                        parameters.payload = null;
-                                        parameters.env = null;
-                                        parameters.Vars = null;
-                                        parameters.EnvironmentVars = null;
-                                        parameters.secret = null;
-                                        parameters.envFile = null;
-                                        parameters.secretFile = null;
-                                        parameters.EnvironmentSecrets = null;
-                                        parameters.EnvironmentSecretFiles = null;
-                                        parameters.EnvironmentVarFiles = null;
-                                        parameters.Inputs = null;
+                                    var pResult = bindingContext.ParseResult;
+                                    if(pResult.GetValueForOption(resetOpt)) {
+                                        parameters = orgParameters.ShallowCopy();
                                     }
-                                    var payload = bindingContext.ParseResult.GetValueForOption(payloadOpt);
-                                    if(payload != null) {
-                                        parameters.payload = payload;
-                                    }
-                                    var envs = bindingContext.ParseResult.GetValueForOption(envOpt);
-                                    if(envs != null) {
-                                        parameters.env = parameters.env == null ? envs : parameters.env.Concat(envs).ToArray();
-                                    }
-                                    var secrets = bindingContext.ParseResult.GetValueForOption(secretOpt);
-                                    if(secrets != null) {
-                                        parameters.secret = parameters.secret == null ? secrets : parameters.secret.Concat(secrets).ToArray();
-                                    }
-                                    var _event = bindingContext.ParseResult.GetValueForOption(eventOpt);
-                                    if(_event != null) {
-                                        parameters.Event = _event;
-                                    }
-                                    var envFile = bindingContext.ParseResult.GetValueForOption(envFileOpt);
-                                    if(envFile != null) {
-                                        parameters.envFile = parameters.envFile == null ? envFile : parameters.envFile.Concat(envFile).ToArray();
-                                    }
-                                    var vars = bindingContext.ParseResult.GetValueForOption(varOpt);
-                                    if(vars != null) {
-                                        parameters.Vars = parameters.Vars == null ? vars : parameters.Vars.Concat(vars).ToArray();
-                                    }
-                                    var varFiles = bindingContext.ParseResult.GetValueForOption(varFileOpt);
-                                    if(varFiles != null) {
-                                        parameters.VarFiles = parameters.VarFiles == null ? varFiles : parameters.VarFiles.Concat(varFiles).ToArray();
-                                    }
-                                    var secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
-                                    if(secretFile != null) {
-                                        parameters.secretFile = parameters.secretFile == null ? secretFile : parameters.secretFile.Concat(secretFile).ToArray();
-                                    }
-                                    var environmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretOpt);
-                                    if(environmentSecrets != null) {
-                                        parameters.EnvironmentSecrets = parameters.EnvironmentSecrets == null ? environmentSecrets : parameters.EnvironmentSecrets.Concat(environmentSecrets).ToArray();
-                                    }
-                                    var environmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
-                                    if(environmentSecretFiles != null) {
-                                        parameters.EnvironmentSecretFiles = parameters.EnvironmentSecretFiles == null ? environmentSecretFiles : parameters.EnvironmentSecretFiles.Concat(environmentSecretFiles).ToArray();
-                                    }
-                                    var environmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
-                                    if(environmentVarFiles != null) {
-                                        parameters.EnvironmentVarFiles = parameters.EnvironmentVarFiles == null ? environmentVarFiles : parameters.EnvironmentVarFiles.Concat(environmentVarFiles).ToArray();
-                                    }
-                                    var inputs = bindingContext.ParseResult.GetValueForOption(workflowInputsOpt);
-                                    if(inputs != null) {
-                                        parameters.Inputs = parameters.Inputs == null ? inputs : parameters.Inputs.Concat(inputs).ToArray();
-                                    }
-                                    var environmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
-                                    if(environmentVars != null) {
-                                        parameters.EnvironmentVars = parameters.EnvironmentVars == null ? environmentVars : parameters.EnvironmentVars.Concat(environmentVars).ToArray();
-                                    }
+                                    parameters.Event = pResult.GetValueForOption(eventOpt) ?? parameters.Event;
+                                    parameters.Payload = pResult.GetValueForOption(payloadOpt) ?? parameters.Payload;
+                                    parameters.Directory = pResult.GetValueForOption(DirectoryOpt) ?? parameters.Directory;
+                                    parameters.WorkflowFiles = parameters.WorkflowFiles.SafeConcatArray(pResult.GetValueForOption(workflowOption));
+                                    parameters.Env = parameters.Env.SafeConcatArray(pResult.GetValueForOption(envOpt));
+                                    parameters.Secrets = parameters.Secrets.SafeConcatArray(pResult.GetValueForOption(secretOpt));
+                                    parameters.EnvFile = parameters.EnvFile.SafeConcatArray(pResult.GetValueForOption(envFile));
+                                    parameters.Vars = parameters.Vars.SafeConcatArray(pResult.GetValueForOption(varOpt));
+                                    parameters.VarFiles = parameters.VarFiles.SafeConcatArray(pResult.GetValueForOption(varFileOpt));
+                                    parameters.SecretFiles = parameters.SecretFiles.SafeConcatArray(pResult.GetValueForOption(secretFileOpt));
+                                    parameters.EnvironmentSecrets = parameters.EnvironmentSecrets.SafeConcatArray(pResult.GetValueForOption(environmentSecretOpt));
+                                    parameters.EnvironmentSecretFiles = parameters.EnvironmentSecretFiles.SafeConcatArray(pResult.GetValueForOption(environmentSecretFileOpt));
+                                    parameters.EnvironmentVarFiles = parameters.EnvironmentVarFiles.SafeConcatArray(pResult.GetValueForOption(environmentVarFileOpt));
+                                    parameters.Inputs = parameters.Inputs.SafeConcatArray(pResult.GetValueForOption(workflowInputsOpt));
+                                    parameters.EnvironmentVars = parameters.EnvironmentVars.SafeConcatArray(pResult.GetValueForOption(environmentVarOpt));
                                     return parameters;
                                 }));
                                 interactiveCommand.Add(updateCommand);
@@ -1474,25 +1438,25 @@ namespace Runner.Client
                             List<string> changedFiles = new List<string>();
                             List<string> removedFiles = new List<string>();
                             if(!first && !parameters.Interactive) {
-                                using(FileSystemWatcher watcher = new FileSystemWatcher(parameters.directory ?? ".") {IncludeSubdirectories = true}) {
+                                using(FileSystemWatcher watcher = new FileSystemWatcher(parameters.Directory ?? ".") {IncludeSubdirectories = true}) {
                                     watcher.Created += (s, f) => {
-                                        var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
+                                        var path = Path.GetRelativePath(parameters.Directory ?? ".", f.FullPath);
                                         Console.WriteLine($"Added {path}");
                                         added.Enqueue(path);
                                     };
                                     watcher.Deleted += (s, f) => {
-                                        var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
+                                        var path = Path.GetRelativePath(parameters.Directory ?? ".", f.FullPath);
                                         Console.WriteLine($"Removed {path}");
                                         removed.Enqueue(path);
                                     };
                                     watcher.Changed += (s, f) => {
-                                        var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
+                                        var path = Path.GetRelativePath(parameters.Directory ?? ".", f.FullPath);
                                         Console.WriteLine($"Changed {path}");
                                         changed.Enqueue(path);
                                     };
                                     watcher.Renamed += (s, f) => {
-                                        var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
-                                        var oldpath = Path.GetRelativePath(parameters.directory ?? ".", f.OldFullPath);
+                                        var path = Path.GetRelativePath(parameters.Directory ?? ".", f.FullPath);
+                                        var oldpath = Path.GetRelativePath(parameters.Directory ?? ".", f.OldFullPath);
                                         Console.WriteLine($"Renamed {oldpath} to {path}");
                                         if(oldpath != f.OldFullPath) {
                                             removed.Enqueue(oldpath);
@@ -1512,24 +1476,24 @@ namespace Runner.Client
                                     try {
                                         do {
                                             await Task.Delay(2000, source.Token);
-                                        } while(!(added.TryDequeue(out addedFile) && !await IsIgnored(parameters.directory ?? ".", addedFile)) && !(changed.TryDequeue(out changedFile) && !await IsIgnored(parameters.directory ?? ".", changedFile)) && !(removed.TryDequeue(out removedFile) && !await IsIgnored(parameters.directory ?? ".", removedFile)));
+                                        } while(!(added.TryDequeue(out addedFile) && !await IsIgnored(parameters.Directory ?? ".", addedFile)) && !(changed.TryDequeue(out changedFile) && !await IsIgnored(parameters.Directory ?? ".", changedFile)) && !(removed.TryDequeue(out removedFile) && !await IsIgnored(parameters.Directory ?? ".", removedFile)));
                                     } catch(TaskCanceledException) {
 
                                     }
                                     while(addedFile != null || added.TryDequeue(out addedFile)) {
-                                        if(!await IsIgnored(parameters.directory ?? ".", addedFile)) {
+                                        if(!await IsIgnored(parameters.Directory ?? ".", addedFile)) {
                                             addedFiles.Add(addedFile.Replace('\\', '/'));
                                         }
                                         addedFile = null;
                                     }
                                     while(changedFile != null || changed.TryDequeue(out changedFile)) {
-                                        if(!await IsIgnored(parameters.directory ?? ".", changedFile)) {
+                                        if(!await IsIgnored(parameters.Directory ?? ".", changedFile)) {
                                             changedFiles.Add(changedFile.Replace('\\', '/'));
                                         }
                                         changedFile = null;
                                     }
                                     while(removedFile != null || removed.TryDequeue(out removedFile)) {
-                                        if(!await IsIgnored(parameters.directory ?? ".", removedFile)) {
+                                        if(!await IsIgnored(parameters.Directory ?? ".", removedFile)) {
                                             removedFiles.Add(removedFile.Replace('\\', '/'));
                                         }
                                         removedFile = null;
@@ -1541,26 +1505,27 @@ namespace Runner.Client
                                 }
                             }
                             first = false;
-                            var workflows = parameters.workflow;
+                            var workflows = parameters.WorkflowFiles;
                             if(workflows == null || workflows.Length == 0) {
-                                if(string.IsNullOrEmpty(parameters.workflows)) {
-                                    parameters.workflows = Path.Join(parameters.directory ?? ".", ".github/workflows");
+                                var pWorkflows = parameters.Workflows;
+                                if(string.IsNullOrEmpty(pWorkflows)) {
+                                    pWorkflows = Path.Join(parameters.Directory ?? ".", ".github/workflows");
                                 }
-                                if(Directory.Exists(parameters.workflows)) {
+                                if(Directory.Exists(pWorkflows)) {
                                     try {
-                                        workflows = Directory.GetFiles(parameters.workflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Concat(Directory.GetFiles(parameters.workflows, "*.yaml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })).ToArray();
+                                        workflows = Directory.GetFiles(pWorkflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Concat(Directory.GetFiles(pWorkflows, "*.yaml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })).ToArray();
                                         if((workflows == null || workflows.Length == 0)) {
-                                            Console.Error.WriteLine($"No workflow *.yml / *.yaml file found inside of {parameters.workflows}");
+                                            Console.Error.WriteLine($"No workflow *.yml / *.yaml file found inside of {pWorkflows}");
                                             return 1;
                                         }
                                     } catch {
-                                        Console.Error.WriteLine($"Failed to read directory {parameters.workflows}");
+                                        Console.Error.WriteLine($"Failed to read directory {pWorkflows}");
                                         return 1;
                                     }
-                                } else if (File.Exists(parameters.workflows)) {
-                                    workflows = new[] { parameters.workflows };
+                                } else if (File.Exists(pWorkflows)) {
+                                    workflows = new[] { pWorkflows };
                                 } else {
-                                    Console.Error.WriteLine($"No such file or directory {parameters.workflows}");
+                                    Console.Error.WriteLine($"No such file or directory {pWorkflows}");
                                     return 1;
                                 }
                             }
@@ -1570,7 +1535,7 @@ namespace Runner.Client
                                 };  
                                 var client = new HttpClient(handler);
                                 client.DefaultRequestHeaders.Add("X-GitHub-Event", parameters.Event);
-                                var b = new UriBuilder(parameters.server);
+                                var b = new UriBuilder(parameters.Server);
                                 var query = new QueryBuilder();
                                 b.Path = "_apis/v1/Message/schedule2";
                                 var mp = new MultipartFormDataContent();
@@ -1581,7 +1546,7 @@ namespace Runner.Client
                                         try {
                                             var workflow = File.OpenRead(w);
                                             workflowsToDispose.Add(workflow);
-                                            var name = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
+                                            var name = Path.GetRelativePath(parameters.Directory ?? ".", w).Replace('\\', '/');
                                             mp.Add(new StreamContent(workflow), name, name);
                                         } catch(Exception ex) {
                                             Console.WriteLine($"Failed to read file: {w}, Details: {ex.Message}");
@@ -1591,8 +1556,8 @@ namespace Runner.Client
                                     
                                     List<string> wenv = new List<string>();
                                     List<string> wsecrets = new List<string>();
-                                    if(parameters.envFile?.Length > 0) {
-                                        foreach(var file in parameters.envFile) {
+                                    if(parameters.EnvFile?.Length > 0) {
+                                        foreach(var file in parameters.EnvFile) {
                                             try {
                                                 wenv.AddRange(Util.ReadEnvFile(file));
                                             } catch(Exception ex) {
@@ -1601,8 +1566,8 @@ namespace Runner.Client
                                             }
                                         }
                                     }
-                                    if(parameters.secretFile?.Length > 0) {
-                                        foreach(var file in parameters.secretFile) {
+                                    if(parameters.SecretFiles?.Length > 0) {
+                                        foreach(var file in parameters.SecretFiles) {
                                             try {
                                                 wsecrets.AddRange(Util.ReadEnvFile(file));
                                             } catch(Exception ex) {
@@ -1611,24 +1576,24 @@ namespace Runner.Client
                                             }
                                         }
                                     }
-                                    if(parameters.job != null) {
-                                        query.Add("job", parameters.job);
+                                    if(parameters.Job != null) {
+                                        query.Add("job", parameters.Job);
                                     }
-                                    if(parameters.matrix?.Length > 0) {
-                                        query.Add("matrix", parameters.matrix);
+                                    if(parameters.Matrix?.Length > 0) {
+                                        query.Add("matrix", parameters.Matrix);
                                     }
-                                    if(parameters.list) {
+                                    if(parameters.List) {
                                         query.Add("list", "1");
                                     }
-                                    if(parameters.platform?.Length > 0) {
-                                        query.Add("platform", parameters.platform);
+                                    if(parameters.Platform?.Length > 0) {
+                                        query.Add("platform", parameters.Platform);
                                     }
                                     if(parameters.LocalRepositories?.Length > 0) {
                                         query.Add("taskNames", (from r in parameters.LocalRepositories select r.Substring(0, r.IndexOf('='))));
                                     }
-                                    if(parameters.env?.Length > 0) {
-                                        for(int i = 0; i < parameters.env.Length; i++ ) {
-                                            var e = parameters.env[i];
+                                    if(parameters.Env?.Length > 0) {
+                                        for(int i = 0; i < parameters.Env.Length; i++ ) {
+                                            var e = parameters.Env[i];
                                             if(e.IndexOf('=') > 0) {
                                                 wenv.Add(e);
                                             } else {
@@ -1636,15 +1601,15 @@ namespace Runner.Client
                                                 if(envvar == null) {
                                                     await Console.Out.WriteAsync($"{e}=");
                                                     envvar = await Console.In.ReadLineAsync();
-                                                    parameters.env[i] = $"{e}={envvar}";
+                                                    parameters.Env[i] = $"{e}={envvar}";
                                                 }
                                                 wenv.Add($"{e}={envvar}");
                                             }
                                         }
                                     }
-                                    if(parameters.secret?.Length > 0) {
-                                        for(int i = 0; i < parameters.secret.Length; i++ ) {
-                                            var e = parameters.secret[i];
+                                    if(parameters.Secrets?.Length > 0) {
+                                        for(int i = 0; i < parameters.Secrets.Length; i++ ) {
+                                            var e = parameters.Secrets[i];
                                             if(e.IndexOf('=') > 0) {
                                                 wsecrets.Add(e);
                                             } else {
@@ -1652,7 +1617,7 @@ namespace Runner.Client
                                                 if(envvar == null) {
                                                     await Console.Out.WriteAsync($"{e}=");
                                                     envvar = ReadSecret();
-                                                    parameters.secret[i] = $"{e}={envvar}";
+                                                    parameters.Secrets[i] = $"{e}={envvar}";
                                                 }
                                                 wsecrets.Add($"{e}={envvar}");
                                             }
@@ -1673,7 +1638,7 @@ namespace Runner.Client
                                         payloadContent["commits"] = acommits;
                                         var sha = parameters.Sha;
                                         var bf = "0000000000000000000000000000000000000000";
-                                        var user = JObject.FromObject(new { login = parameters.actor, name = parameters.actor, email = $"{parameters.actor}@runner.server.localhost", id = 976638, type = "user" });
+                                        var user = JObject.FromObject(new { login = parameters.Actor, name = parameters.Actor, email = $"{parameters.Actor}@runner.server.localhost", id = 976638, type = "user" });
                                         payloadContent["sender"] = user;
                                         payloadContent["pusher"] = user;
                                         var repoowner = user;
@@ -1690,18 +1655,18 @@ namespace Runner.Client
                                             var git = WhichUtil.Which("git", true);
                                             GitHub.Runner.Sdk.ProcessInvoker gitinvoker;
                                             if(string.IsNullOrEmpty(Ref)) {
-                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
                                                 gitinvoker.OutputDataReceived += handleoutput;
                                                 var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "tag --points-at HEAD", new Dictionary<string, string>(), source.Token);
+                                                await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, "tag --points-at HEAD", new Dictionary<string, string>(), source.Token);
                                                 if(line != null) {
                                                     Ref = "refs/tags/" + line;
                                                 }
                                             }
                                             if(string.IsNullOrEmpty(Ref) || string.IsNullOrEmpty(repofullname)) {
-                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
                                                 gitinvoker.OutputDataReceived += handleoutput;
-                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "symbolic-ref HEAD", new Dictionary<string, string>(), source.Token);
+                                                await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, "symbolic-ref HEAD", new Dictionary<string, string>(), source.Token);
                                                 if(line != null) {
                                                     var _ref = line;
                                                     if(string.IsNullOrEmpty(Ref)) {
@@ -1709,25 +1674,25 @@ namespace Runner.Client
                                                     }
                                                     if(string.IsNullOrEmpty(repofullname)) {
                                                         line = null;
-                                                        gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                        gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
                                                         gitinvoker.OutputDataReceived += handleoutput;
-                                                        await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"for-each-ref --format=%(upstream:short) {_ref}", new Dictionary<string, string>(), source.Token);
+                                                        await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, $"for-each-ref --format=%(upstream:short) {_ref}", new Dictionary<string, string>(), source.Token);
                                                         if(line != null && line != "") {
                                                             var remote = line.Substring(0, line.IndexOf('/'));
-                                                            if(parameters.defaultbranch == null) {
+                                                            if(parameters.DefaultBranch == null) {
                                                                 line = null;
-                                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
                                                                 gitinvoker.OutputDataReceived += handleoutput;
-                                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"symbolic-ref refs/remotes/{remote}/HEAD", new Dictionary<string, string>(), source.Token);
+                                                                await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, $"symbolic-ref refs/remotes/{remote}/HEAD", new Dictionary<string, string>(), source.Token);
                                                                 if(line != null && line.StartsWith($"refs/remotes/{remote}/")) {
                                                                     var defbranch = line.Substring($"refs/remotes/{remote}/".Length);
-                                                                    parameters.defaultbranch = defbranch;
+                                                                    parameters.DefaultBranch = defbranch;
                                                                 }
                                                             }
                                                             line = null;
-                                                            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
                                                             gitinvoker.OutputDataReceived += handleoutput;
-                                                            await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"remote get-url {remote}", new Dictionary<string, string>(), source.Token);
+                                                            await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, $"remote get-url {remote}", new Dictionary<string, string>(), source.Token);
                                                             if(line != null) {
                                                                 Regex repoRegex = new Regex("^.*[:/\\\\]([^:/\\\\]+)[/\\\\]([^:/\\\\]+)(.git)?$", RegexOptions.IgnoreCase);
                                                                 var repoMatchResult = repoRegex.Match(line);
@@ -1748,9 +1713,9 @@ namespace Runner.Client
                                             }
                                             if(string.IsNullOrEmpty(sha)) {
                                                 line = null;
-                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
                                                 gitinvoker.OutputDataReceived += handleoutput;
-                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "rev-parse HEAD", new Dictionary<string, string>(), source.Token);
+                                                await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, "rev-parse HEAD", new Dictionary<string, string>(), source.Token);
                                                 if(line != null && line != "HEAD" /* on failure git returns HEAD instead of a sha */) {
                                                     sha = line;
                                                     line = null;
@@ -1778,14 +1743,14 @@ namespace Runner.Client
                                         var commit = JObject.FromObject(new { message = "Untraced changes", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
                                         acommits.AddFirst(commit);
                                         payloadContent["head_commit"] = commit;
-                                        var repository = JObject.FromObject(new { owner = repoowner, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = repofullname.Split('/', 2)[1], full_name = repofullname });
+                                        var repository = JObject.FromObject(new { owner = repoowner, default_branch = parameters.DefaultBranch ?? "main", master_branch = parameters.DefaultBranch ?? "master", name = repofullname.Split('/', 2)[1], full_name = repofullname });
                                         payloadContent["repository"] = repository;
                                     }
                                     
-                                    if(!string.IsNullOrEmpty(parameters.payload)) {
+                                    if(!string.IsNullOrEmpty(parameters.Payload)) {
                                         try {
                                             // 
-                                            var filec = await File.ReadAllTextAsync(parameters.payload, Encoding.UTF8);
+                                            var filec = await File.ReadAllTextAsync(parameters.Payload, Encoding.UTF8);
                                             var obj = JObject.Parse(filec);
 
                                             if(parameters.NoDefaultPayload) {  
@@ -1794,7 +1759,7 @@ namespace Runner.Client
                                                 payloadContent.Merge(obj, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
                                             }
                                         } catch(Exception ex) {
-                                            Console.WriteLine($"Failed to read file: {parameters.payload}, Details: {ex.Message}");
+                                            Console.WriteLine($"Failed to read file: {parameters.Payload}, Details: {ex.Message}");
                                             return 1;
                                         }
                                     } else if(parameters.NoDefaultPayload) {
@@ -1981,7 +1946,7 @@ namespace Runner.Client
                                             if(line == "event: ") {
                                                 break;
                                             }
-                                            if(!parameters.quiet && line == "event: log") {
+                                            if(!parameters.Quiet && line == "event: log") {
                                                 var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
                                                 TimeLineEntry rec;
                                                 if(!timelineRecords.TryGetValue(e.timelineId, out rec)) {
@@ -2061,7 +2026,7 @@ namespace Runner.Client
                                                     }
                                                     timelineRecords[e.timelineId].Pending.RemoveAt(0);
                                                 }
-                                                if(!parameters.quiet && timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords != null && e.timeline[0].State == TimelineRecordState.Completed) {
+                                                if(!parameters.Quiet && timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords != null && e.timeline[0].State == TimelineRecordState.Completed) {
                                                     var record = e.timeline.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
                                                     if(record != null && record.Result.HasValue) {
                                                         var rec = timelineRecords[e.timelineId];
@@ -2078,12 +2043,12 @@ namespace Runner.Client
                                                         var rnameAndRef = r.Split("@", 2);
                                                         return lnameAndRef?.Length == 2 && rnameAndRef?.Length == 2 && string.Equals(lnameAndRef[0], rnameAndRef[0], StringComparison.OrdinalIgnoreCase) && lnameAndRef[1] == rnameAndRef[1];
                                                     };
-                                                    var reporoot = endpoint.Repository == null ? Path.GetFullPath(parameters.directory ?? ".") : (from r in parameters.LocalRepositories where matchRepository(r, endpoint.Repository) select Path.GetFullPath(r.Substring($"{endpoint.Repository}=".Length))).LastOrDefault();
+                                                    var reporoot = endpoint.Repository == null ? Path.GetFullPath(parameters.Directory ?? ".") : (from r in parameters.LocalRepositories where matchRepository(r, endpoint.Repository) select Path.GetFullPath(r.Substring($"{endpoint.Repository}=".Length))).LastOrDefault();
                                                     if(string.Equals(endpoint.Format, "repoexists", StringComparison.OrdinalIgnoreCase) && endpoint.Path == null) {
                                                         if(reporoot == null) {
-                                                            await client.DeleteAsync(parameters.server + endpoint.Url, token);
+                                                            await client.DeleteAsync(parameters.Server + endpoint.Url, token);
                                                         } else {
-                                                            await client.PostAsync(parameters.server + endpoint.Url, new StringContent("Ok"), token);
+                                                            await client.PostAsync(parameters.Server + endpoint.Url, new StringContent("Ok"), token);
                                                         }
                                                     } else if(reporoot != null && endpoint.Path == null && endpoint.Format == null) {
                                                         var repodownload = new MultipartFormDataContent();
@@ -2135,7 +2100,7 @@ namespace Runner.Client
                                                                 }
                                                             }
                                                             repodownload.Headers.ContentType.MediaType = "application/octet-stream";
-                                                            await client.PostAsync(parameters.server + endpoint.Url, repodownload, token);
+                                                            await client.PostAsync(parameters.Server + endpoint.Url, repodownload, token);
                                                         } finally {
                                                             foreach(var fstream in streamsToDispose) {
                                                                 await fstream.DisposeAsync();
@@ -2148,10 +2113,10 @@ namespace Runner.Client
                                                             using(var file = File.OpenRead(w)) {
                                                                 var content = new StreamContent(file);
                                                                 content.Headers.ContentType = new MediaTypeHeaderValue("text/plain") { CharSet = "utf8" };
-                                                                (await client.PostAsync(parameters.server + endpoint.Url, content, token)).EnsureSuccessStatusCode();
+                                                                (await client.PostAsync(parameters.Server + endpoint.Url, content, token)).EnsureSuccessStatusCode();
                                                             }
                                                         } catch {
-                                                            await client.DeleteAsync(parameters.server + endpoint.Url, token);
+                                                            await client.DeleteAsync(parameters.Server + endpoint.Url, token);
                                                         }
                                                     } else if(reporoot != null && (string.Equals(endpoint.Format, "zip", StringComparison.OrdinalIgnoreCase) || string.Equals(endpoint.Format, "taskzip", StringComparison.OrdinalIgnoreCase))) {
                                                         try {
@@ -2168,10 +2133,10 @@ namespace Runner.Client
                                                                     }
                                                                 }
                                                                 stream.Position = 0;
-                                                                (await client.PostAsync(parameters.server + endpoint.Url, new StreamContent(stream), token)).EnsureSuccessStatusCode();
+                                                                (await client.PostAsync(parameters.Server + endpoint.Url, new StreamContent(stream), token)).EnsureSuccessStatusCode();
                                                             }
                                                         } catch {
-                                                            await client.DeleteAsync(parameters.server + endpoint.Url, token);
+                                                            await client.DeleteAsync(parameters.Server + endpoint.Url, token);
                                                         }
                                                     } else if(reporoot != null && string.Equals(endpoint.Format, "tar", StringComparison.OrdinalIgnoreCase)) {
                                                         try {
@@ -2183,15 +2148,15 @@ namespace Runner.Client
                                                                 proc.StartInfo.WorkingDirectory = cwd.FullName;
                                                                 proc.StartInfo.RedirectStandardOutput = true;
                                                                 proc.Start();
-                                                                (await client.PostAsync(parameters.server + endpoint.Url, new StreamContent(proc.StandardOutput.BaseStream), token)).EnsureSuccessStatusCode();
+                                                                (await client.PostAsync(parameters.Server + endpoint.Url, new StreamContent(proc.StandardOutput.BaseStream), token)).EnsureSuccessStatusCode();
                                                                 proc.WaitForExit();
                                                             }
                                                             
                                                         } catch {
-                                                            await client.DeleteAsync(parameters.server + endpoint.Url, token);
+                                                            await client.DeleteAsync(parameters.Server + endpoint.Url, token);
                                                         }
                                                     } else {
-                                                        await client.DeleteAsync(parameters.server + endpoint.Url, token);
+                                                        await client.DeleteAsync(parameters.Server + endpoint.Url, token);
                                                     }
                                                 });
                                             }
@@ -2225,7 +2190,7 @@ namespace Runner.Client
                                         var runIds = (from j in jobs select j.runid).ToHashSet();
                                         foreach(var runId in runIds) {
                                             try {
-                                                var artifactUri = new UriBuilder(parameters.server);
+                                                var artifactUri = new UriBuilder(parameters.Server);
                                                 artifactUri.Path = $"/_apis/pipelines/workflows/{runId}/artifacts";
                                                 var artifacts = JsonConvert.DeserializeObject<VssJsonCollectionWrapper<ArtifactResponse[]>>(await client.GetStringAsync(artifactUri.ToString()));
                                                 if(artifacts.Count > 0 && string.IsNullOrEmpty(parameters.ArtifactOutputDir)) {
@@ -2271,13 +2236,13 @@ namespace Runner.Client
                                                 var logBasePath = Path.Combine(parameters.LogOutputDir, job.runid.ToString(), special.Replace(job.name, "-"));
                                                 Directory.CreateDirectory(logBasePath);
                                                 Console.WriteLine($"Downloading Logs {job.runid}/{special.Replace(job.name, "-")}");
-                                                var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.server + $"/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
+                                                var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.Server + $"/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
                                                 foreach(var timeLineRecord in timeLineRecords) {
                                                     try {
                                                         if(timeLineRecord?.Log?.Id != null) {
                                                             var destpath = Path.Combine(logBasePath, timeLineRecord.Log.Id + "-" + special.Replace(timeLineRecord.Name, "-"));
                                                             Directory.CreateDirectory(Path.GetDirectoryName(destpath));
-                                                            var logFileUri = new UriBuilder(parameters.server);
+                                                            var logFileUri = new UriBuilder(parameters.Server);
                                                             logFileUri.Path = $"/_apis/v1/Logfiles/{timeLineRecord.Log.Id}";
                                                             using(var content = await client.GetStreamAsync(logFileUri.ToString()))
                                                             using(var targetStream = new FileStream(destpath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
@@ -2309,7 +2274,7 @@ namespace Runner.Client
                                 cancelWorkflow = null;
                             }
                         });
-                        if(!parameters.watch && !parameters.Interactive) {
+                        if(!parameters.Watch && !parameters.Interactive) {
                             return ret;
                         }
                     }
@@ -2330,37 +2295,37 @@ namespace Runner.Client
                 description: "custom runner token to use");
             var binder = new MyCustomBinder(bindingContext => {
                 var parameters = new Parameters();
-                parameters.workflow = bindingContext.ParseResult.GetValueForOption(workflowOption);
-                parameters.server = bindingContext.ParseResult.GetValueForOption(serverOpt);
-                parameters.payload = bindingContext.ParseResult.GetValueForOption(payloadOpt);
+                parameters.WorkflowFiles = bindingContext.ParseResult.GetValueForOption(workflowOption);
+                parameters.Server = bindingContext.ParseResult.GetValueForOption(serverOpt);
+                parameters.Payload = bindingContext.ParseResult.GetValueForOption(payloadOpt);
                 parameters.NoDefaultPayload = bindingContext.ParseResult.GetValueForOption(noDefaultPayloadOpt);
                 parameters.Event = bindingContext.ParseResult.GetValueForOption(eventOpt);
-                parameters.env = bindingContext.ParseResult.GetValueForOption(envOpt);
-                parameters.envFile = bindingContext.ParseResult.GetValueForOption(envFile);
+                parameters.Env = bindingContext.ParseResult.GetValueForOption(envOpt);
+                parameters.EnvFile = bindingContext.ParseResult.GetValueForOption(envFile);
                 parameters.Vars = bindingContext.ParseResult.GetValueForOption(varOpt);
                 parameters.VarFiles = bindingContext.ParseResult.GetValueForOption(varFileOpt);
-                parameters.secret = bindingContext.ParseResult.GetValueForOption(secretOpt);
-                parameters.secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
+                parameters.Secrets = bindingContext.ParseResult.GetValueForOption(secretOpt);
+                parameters.SecretFiles = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
                 parameters.EnvironmentSecrets = bindingContext.ParseResult.GetValueForOption(environmentSecretOpt);
                 parameters.EnvironmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
                 parameters.EnvironmentVars = bindingContext.ParseResult.GetValueForOption(environmentVarOpt);
                 parameters.EnvironmentVarFiles = bindingContext.ParseResult.GetValueForOption(environmentVarFileOpt);
-                parameters.job = bindingContext.ParseResult.GetValueForOption(jobOpt);
-                parameters.matrix = bindingContext.ParseResult.GetValueForOption(matrixOpt);
-                parameters.list = bindingContext.ParseResult.GetValueForOption(listOpt);
-                parameters.workflows = bindingContext.ParseResult.GetValueForOption(workflowsOpt);
-                parameters.platform = bindingContext.ParseResult.GetValueForOption(platformOption);
-                parameters.actor = bindingContext.ParseResult.GetValueForOption(actorOpt);
-                parameters.watch = bindingContext.ParseResult.GetValueForOption(watchOpt);
+                parameters.Job = bindingContext.ParseResult.GetValueForOption(jobOpt);
+                parameters.Matrix = bindingContext.ParseResult.GetValueForOption(matrixOpt);
+                parameters.List = bindingContext.ParseResult.GetValueForOption(listOpt);
+                parameters.Workflows = bindingContext.ParseResult.GetValueForOption(workflowsOpt);
+                parameters.Platform = bindingContext.ParseResult.GetValueForOption(platformOption);
+                parameters.Actor = bindingContext.ParseResult.GetValueForOption(actorOpt);
+                parameters.Watch = bindingContext.ParseResult.GetValueForOption(watchOpt);
                 parameters.Interactive = bindingContext.ParseResult.GetValueForOption(interactiveOpt);
-                parameters.quiet = bindingContext.ParseResult.GetValueForOption(quietOpt);
-                parameters.privileged = bindingContext.ParseResult.GetValueForOption(privilegedOpt);
-                parameters.userns = bindingContext.ParseResult.GetValueForOption(usernsOpt);
-                parameters.containerPlatform = bindingContext.ParseResult.GetValueForOption(containerPlatformOpt);
+                parameters.Quiet = bindingContext.ParseResult.GetValueForOption(quietOpt);
+                parameters.Privileged = bindingContext.ParseResult.GetValueForOption(privilegedOpt);
+                parameters.Userns = bindingContext.ParseResult.GetValueForOption(usernsOpt);
+                parameters.ContainerPlatform = bindingContext.ParseResult.GetValueForOption(containerPlatformOpt);
                 parameters.KeepContainer = bindingContext.ParseResult.GetValueForOption(keepContainerOpt);
-                parameters.directory = bindingContext.ParseResult.GetValueForOption(DirectoryOpt);
-                parameters.verbose = bindingContext.ParseResult.GetValueForOption(verboseOpt);
-                parameters.parallel = bindingContext.ParseResult.GetValueForOption(parallelOpt);
+                parameters.Directory = bindingContext.ParseResult.GetValueForOption(DirectoryOpt);
+                parameters.Verbose = bindingContext.ParseResult.GetValueForOption(verboseOpt);
+                parameters.Parallel = bindingContext.ParseResult.GetValueForOption(parallelOpt);
                 parameters.NoCopyGitDir = bindingContext.ParseResult.GetValueForOption(noCopyGitDirOpt);
                 parameters.KeepRunnerDirectory = bindingContext.ParseResult.GetValueForOption(keepRunnerDirectoryOpt);
                 parameters.RunnerDirectory = bindingContext.ParseResult.GetValueForOption(runnerDirectoryOpt);
@@ -2502,7 +2467,7 @@ namespace Runner.Client
                         } else if(file.StartsWith("120")) {
                             //Symlink
                             submoduleTasks.Add(async () => {
-                                GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
                                 string dest = null;
                                 gitinvoker.OutputDataReceived += (s, e) => {
                                     dest = e.Data;
@@ -2528,7 +2493,7 @@ namespace Runner.Client
                     }
                 }
             };
-            GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+            GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
             gitinvoker.OutputDataReceived += handleoutput;
             var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var git = WhichUtil.Which("git", true);
@@ -2537,7 +2502,7 @@ namespace Runner.Client
             foreach (var submodule in submoduleTasks) {
                 await submodule();
             }
-            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
             gitinvoker.OutputDataReceived += (s, e) => {
                 var files = e.Data.Split('\0');
                 foreach(var filename in files) {

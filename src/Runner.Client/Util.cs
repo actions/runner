@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using YamlDotNet.Serialization;
 
 namespace Runner.Client {
-    public class Util {
+    public static class Util {
         public static List<string> ReadEnvFile(string filePath) {
             var ret = new List<string>();
             Action<string, string> SetEnvironmentVariable = (name, value) => {
@@ -116,6 +117,10 @@ namespace Runner.Client {
             index = lfIndex + 1; // Skip over LF
             newline = "\n";
             return text.Substring(originalIndex, lfIndex - originalIndex);
+        }
+
+        public static string[] SafeConcatArray(this string[] left, string[] right) {
+            return right == null ? left : left?.Concat(right)?.ToArray() ?? right;
         }
     }
 }
