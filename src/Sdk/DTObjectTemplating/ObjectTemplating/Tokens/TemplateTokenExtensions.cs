@@ -102,6 +102,26 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(SequenceToken)}' was expected.");
         }
 
+        public static SequenceToken AssertScalarOrSequence(this TemplateToken token, string objectDescription) {
+            switch(token.Type) {
+                case TokenType.Boolean:
+                case TokenType.Number:
+                case TokenType.String:
+                    var seq = new SequenceToken(null, null, null);
+                    seq.Add(token);
+                    return seq;
+                default:
+                    return token.AssertSequence(objectDescription);
+            }
+        }
+
+        public static string AssertLiteralString(this TemplateToken value, string objectDescription) {
+            if(value is LiteralToken literalToken) {
+                return literalToken.ToString();
+            }
+            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' was expected.");
+        }
+
         internal static void AssertUnexpectedValue(
             this LiteralToken literal,
             string objectDescription)

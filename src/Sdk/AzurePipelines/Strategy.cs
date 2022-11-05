@@ -9,6 +9,7 @@ namespace Runner.Server.Azure.Devops {
 public class Strategy {
     public int? Parallel { get; set; }
     public Dictionary<string, Dictionary<string, string>> Matrix { get; set; }
+    public string MatrixExpression { get; set; }
     public int? MaxParallel { get; set; }
     public RunOnceStrategy RunOnce { get; internal set; }
     public CanaryStrategy Canary { get; internal set; }
@@ -18,13 +19,13 @@ public class Strategy {
         public List<TaskStep> Steps { get; set; }
         public Pool Pool { get; set; }
 
-        public DeploymentHook Parse(Context context, TemplateToken src, Dictionary<string, TaskMetaData> tasksByNameAndVersion) {
+        public DeploymentHook Parse(Context context, TemplateToken src) {
             foreach(var kv in src.AssertMapping("")) {
                 switch(kv.Key.AssertString("").Value) {
                     case "steps":
                         Steps = new List<TaskStep>();
                         foreach(var step2 in kv.Value.AssertSequence("")) {
-                            AzureDevops.ParseSteps(context, Steps, step2, tasksByNameAndVersion);
+                            AzureDevops.ParseSteps(context, Steps, step2);
                         }
                     break;
                     case "pool":
@@ -56,7 +57,7 @@ public class Strategy {
         public DeploymentHook PostRouteTraffic { get; set; }
         public DeploymentHook OnFailure { get; set; }
         public DeploymentHook OnSuccess { get; set; }
-        public DictionaryContextData ToContextData() {
+        public virtual DictionaryContextData ToContextData() {
             var runOnceStrategy = new DictionaryContextData();
             if(PreDeploy != null) {
                 runOnceStrategy["preDeploy"] = PreDeploy.ToContextData();
@@ -85,11 +86,32 @@ public class Strategy {
     }
 
     public class CanaryStrategy : RunOnceStrategy {
-        public string[] Increments { get; set; }
+        public double[] Increments { get; set; }
+        public override DictionaryContextData ToContextData() {
+            var data = base.ToContextData();
+            if(Increments != null) {
+                var incr = new ArrayContextData();
+                data["increments"] = incr;
+                foreach(var inc in Increments) {
+                    incr.Add(new NumberContextData(inc));
+                }
+            }
+            return data;
+        }
     }
 
     public class RollingStrategy : RunOnceStrategy {
-        public int MaxParallel { get; set; }
+        public int? MaxParallel { get; set; }
+        public int? MaxParallelPercent { get; set; }
+        public override DictionaryContextData ToContextData() {
+            var data = base.ToContextData();
+            if(MaxParallel != null) {
+                data["maxParallel"] = new NumberContextData(MaxParallel.Value);
+            } else if(MaxParallelPercent != null) {
+                data["maxParallel"] = new StringContextData($"{MaxParallelPercent}%");
+            }
+            return data;
+        }
     }
 
 
@@ -98,18 +120,22 @@ public class Strategy {
         var strategy = new DictionaryContextData();
         if(Parallel != null) {
             strategy["parallel"] = new NumberContextData(Parallel.Value);
-        } else if(Matrix != null) {
+        } else if(Matrix != null || MatrixExpression != null) {
             if(MaxParallel != null) {
                 strategy["maxParallel"] = new NumberContextData(MaxParallel.Value);
             }
-            var matrix = new DictionaryContextData();
-            strategy["matrix"] = matrix;
-            foreach(var job in Matrix) {
-                var vars = new DictionaryContextData();
-                foreach(var v in job.Value) {
-                    vars[v.Key] = new StringContextData(v.Value);
+            if(Matrix != null) {
+                var matrix = new DictionaryContextData();
+                strategy["matrix"] = matrix;
+                foreach(var job in Matrix) {
+                    var vars = new DictionaryContextData();
+                    foreach(var v in job.Value) {
+                        vars[v.Key] = new StringContextData(v.Value);
+                    }
+                    matrix[job.Key] = vars;
                 }
-                matrix[job.Key] = vars;
+            } else {
+                strategy["matrix"] = new StringContextData(MatrixExpression);
             }
         } else if(RunOnce != null) {
             strategy["runOnce"] = RunOnce.ToContextData();

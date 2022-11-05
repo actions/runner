@@ -19,7 +19,7 @@ public class Stage {
     public Dictionary<string, Azure.Devops.Stage> Dependencies { get; set; }
     public Pool Pool { get; set; }
 
-    public Stage Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source, Dictionary<string, TaskMetaData> tasksByNameAndVersion) {
+    public Stage Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var jobToken = source.AssertMapping("job-root");
         foreach(var kv in jobToken) {
             switch(kv.Key.AssertString("key").Value) {
@@ -33,7 +33,7 @@ public class Stage {
                     DependsOn = (from dep in kv.Value.AssertScalarOrSequence("dependsOn") select dep.AssertString("dep").Value).ToArray();
                 break;
                 case "condition":
-                    Condition = kv.Value is BooleanToken b ? b.ToString() : kv.Value.AssertString("condition").Value;
+                    Condition = kv.Value.AssertLiteralString("condition");
                 break;
                 case "variables":
                     Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
@@ -41,7 +41,7 @@ public class Stage {
                 break;
                 case "jobs":
                     Jobs = new List<Job>();
-                    Job.ParseJobs(context, Jobs, kv.Value.AssertSequence(""), tasksByNameAndVersion);
+                    Job.ParseJobs(context, Jobs, kv.Value.AssertSequence(""));
                 break;
                 case "templateContext":
                     TemplateContext = kv.Value;
@@ -54,15 +54,15 @@ public class Stage {
         return this;
     }
 
-    public static void ParseStages(Runner.Server.Azure.Devops.Context context, List<Stage> stages, SequenceToken stagesToken, Dictionary<string, TaskMetaData> tasksByNameAndVersion) {
+    public static void ParseStages(Runner.Server.Azure.Devops.Context context, List<Stage> stages, SequenceToken stagesToken) {
         foreach(var job in stagesToken) {
             if(job is MappingToken mstep && mstep.Count > 0) {
                 if((mstep[0].Key as StringToken)?.Value == "template") {
                     var path = (mstep[0].Value as StringToken)?.Value;
                     var file = AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null);
-                    ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""), tasksByNameAndVersion);
+                    ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
                 } else {
-                    stages.Add(new Stage().Parse(context, mstep, tasksByNameAndVersion));
+                    stages.Add(new Stage().Parse(context, mstep));
                 }
             }
         }

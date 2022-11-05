@@ -29,4 +29,10 @@
             <LogicalName>GitHub.DistributedTask.Pipelines.ObjectTemplating.workflow-v1.0.json</LogicalName>
         </EmbeddedResource>
     </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="AzurePipelines\azurepiplines.json">
+            <LogicalName>azurepiplines.json</LogicalName>
+        </EmbeddedResource>
+    </ItemGroup>
 </Project>

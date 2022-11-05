@@ -1,0 +1,29 @@
+jobs:
+
+# Set an output variable from a job with a matrix
+- job: A
+  strategy:
+    maxParallel: 2
+    matrix:
+      debugJob:
+        configuration: debug
+        platform: x64
+      releaseJob:
+        configuration: release
+        platform: x64
+  steps:
+  - bash: echo "##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the $(configuration) value"
+    name: setvarStep
+  - bash: echo $(setvarStep.myOutputVar)
+    name: echovar
+
+# Map the variable from the debug job
+- job: B
+  dependsOn: A
+  variables:
+    myVarFromJobADebug: $[ dependencies.A.outputs['debugJob.setvarStep.myOutputVar'] ]
+  steps:
+  - script: echo $(myVarFromJobADebug)
+    name: echovar
+  - script: exit 1
+    condition: ne(variables.myVarFromJobADebug, 'this is the debug value')

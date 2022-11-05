@@ -43,6 +43,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Actions.Pipelines.WebApi;
 using YamlDotNet.Serialization;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace Runner.Server.Controllers
 {
@@ -364,12 +365,16 @@ namespace Runner.Server.Controllers
                 RequestId = Interlocked.Increment(ref reqId);
                 ActionStatusQueue = new System.Threading.Tasks.Dataflow.ActionBlock<Func<Task>>(action => action().Wait());
                 Cancel = new CancellationTokenSource();
+                RefPrefix = "";
             }
             public CancellationTokenSource Cancel {get;}
 
             public System.Threading.Tasks.Dataflow.ActionBlock<Func<Task>> ActionStatusQueue {get;}
 
             public string name {get;set;}
+
+            public string RefPrefix { get; set; }
+
             public string Stage {get;set;}
             public string DisplayName {get;set;}
             public ISet<string> Needs {get;set;}
@@ -883,6 +888,10 @@ namespace Runner.Server.Controllers
             public IDictionary<string, string> FeatureToggles { get; set; }
             public ExpressionFlags Flags { get; internal set; }
 
+            public WorkflowState WorkflowState { get; set; }
+
+            public Runner.Server.Azure.Devops.Context AzContext { get; set; }
+
             public bool HasFeature(string name, bool def = false) {
                 return FeatureToggles.TryGetValue(name, out var anchors) ? string.Equals(anchors, "true", StringComparison.OrdinalIgnoreCase) : def;
             }
@@ -964,6 +973,39 @@ namespace Runner.Server.Controllers
                 }
             }
             return templateContext;
+        }
+
+        private static bool TryParseJobSelector(string selectedJob, out string jobname, out string matrix, out string child) {
+            jobname = null;
+            matrix = null;
+            child = null;
+            if(selectedJob == null) {
+                return false;
+            }
+            var jobidEnd = selectedJob.IndexOf("/");
+            var matrixBeg = selectedJob.IndexOf("(");
+            if(jobidEnd == -1 && matrixBeg == -1) {
+                jobname = selectedJob;
+                return true;
+            }
+            if(matrixBeg != -1 && (matrixBeg < jobidEnd || jobidEnd == -1)) {
+                var matrixEndDel = selectedJob.IndexOf("{", matrixBeg + 1);
+                if(matrixEndDel == -1) {
+                    return false;
+                }
+                var matrixDel = $"}}{selectedJob.Substring(matrixBeg + 1, matrixEndDel - (matrixBeg + 1))})";
+                var matrixEnd = selectedJob.IndexOf(matrixDel, matrixEndDel + 1);
+                if(matrixEnd == -1) {
+                    return false;
+                }
+                jobname = selectedJob.Substring(0, matrixBeg);
+                matrix = selectedJob.Substring(matrixEndDel, matrixEnd - matrixEndDel + 1);
+                child = selectedJob.Length > (matrixEnd + matrixDel.Length + 1) && selectedJob[matrixEnd + matrixDel.Length] == '/' ? selectedJob.Substring(matrixEnd + matrixDel.Length + 1) : null;
+                return true;
+            }
+            jobname = selectedJob.Substring(0, jobidEnd);
+            child = selectedJob.Substring(jobidEnd + 1);
+            return true;
         }
 
         private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null, ISecretsProvider secretsProvider = null, List<TemplateToken> parentEnv = null) {
@@ -1707,14 +1749,37 @@ namespace Runner.Server.Controllers
                             var jobitem = new JobItem() { name = jobname, Id = Guid.NewGuid() };
                             dependentjobgroup.Add(jobitem);
 
+                            var skipDependencies = workflowContext.HasFeature("system.runner.server.skipDependencies");
                             var needs = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "needs" select r).FirstOrDefault().Value?.AssertScalarOrSequence("jobs.{jobname}.needs");
                             List<string> neededJobs = new List<string>();
                             if (needs != null) {
                                 neededJobs.AddRange(from need in needs select need.AssertString($"jobs.{jobname}.needs.*").Value);
                             }
+                            jobitem.Needs = neededJobs.ToHashSet(StringComparer.OrdinalIgnoreCase);
                             var contextData = createContext(jobname);
                             
                             var needsctx = new DictionaryContextData();
+
+                            if(skipDependencies) {
+                                neededJobs.Clear();
+                                Func<string, DictionaryContextData> parseDeps = name => {
+                                    if(workflowContext.FeatureToggles.TryGetValue(name, out var value)) {
+                                        DictionaryContextData ret;
+                                        var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
+                                        using (var stringReader = new StringReader(value)) {
+                                            var yamlObjectReader = new YamlObjectReader(null, stringReader);
+                                            ret = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _).ToContextData().AssertDictionary(name);
+                                        }
+                                        templateContext.Errors.Check();
+                                        return ret;
+                                    }
+                                    return new DictionaryContextData();
+                                };
+                                needsctx = parseDeps("system.runner.server.needs");
+                                foreach(var childneed in parseDeps($"system.runner.server.{jobname.PrefixJobIdIfNotNull(callingJob?.Id)}.needs")) {
+                                    needsctx[childneed.Key] = childneed.Value;
+                                }
+                            }
                             contextData.Add("needs", needsctx);
 
                             FinishJobController.JobCompleted handler = e => {
@@ -1735,6 +1800,26 @@ namespace Runner.Server.Controllers
                                             return false;
                                         }) == 0 || neededJobs.Count > 0) {
                                             return;
+                                        }
+                                    }
+
+                                    if(skipDependencies) {
+                                        foreach(var kv in jobitem.Dependencies) {
+                                            var status = needsctx.TryGetValue(kv.Key, out var jobdata) && jobdata is DictionaryContextData jobdatadict && jobdatadict.TryGetValue("result", out var jobresult) && jobresult is StringContextData jobresultstr ? Enum.Parse<NeedsTaskResult>(jobresultstr.Value, true) : NeedsTaskResult.Success;
+                                            switch(status) {
+                                            case NeedsTaskResult.Success:
+                                                jobitem.Dependencies[kv.Key].Status = TaskResult.Succeeded;
+                                            break;
+                                            case NeedsTaskResult.Skipped:
+                                                jobitem.Dependencies[kv.Key].Status = TaskResult.Skipped;
+                                            break;
+                                            case NeedsTaskResult.Failure:
+                                                jobitem.Dependencies[kv.Key].Status = TaskResult.Failed;
+                                            break;
+                                            case NeedsTaskResult.Cancelled:
+                                                jobitem.Dependencies[kv.Key].Status = TaskResult.Canceled;
+                                            break;
+                                            }
                                         }
                                     }
 
@@ -1768,7 +1853,9 @@ namespace Runner.Server.Controllers
                                         needsctx = new DictionaryContextData();
                                         contextData["needs"] = needsctx;
                                         foreach(var need in jobitem.Needs) {
-                                            needsctx[need] = recursiveNeedsctx[need];
+                                            if(recursiveNeedsctx.TryGetValue(need, out var val)) {
+                                                needsctx[need] = val;
+                                            }
                                         }
                                     }
                                     bool matrixIf = false;
@@ -1935,16 +2022,29 @@ namespace Runner.Server.Controllers
                                         }
 
                                         // Filter matrix from cli
-                                        if(selectedJob != null && (string.Equals(jobname, selectedJob, StringComparison.OrdinalIgnoreCase) || selectedJob.StartsWith(jobname + "/", StringComparison.OrdinalIgnoreCase)) && _matrix?.Length > 0) {
+                                        if(TryParseJobSelector(selectedJob, out var cjob, out var cmatrix, out var cselector) && string.Equals(jobname, cjob, StringComparison.OrdinalIgnoreCase) && (cmatrix != null || cselector == null && _matrix?.Length > 0)) {
                                             var mdict = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
-                                            foreach(var m_ in _matrix) {
-                                                var i = m_.IndexOf(":");
+                                            if(cmatrix != null) {
                                                 var templateContext = CreateTemplateContext(jobTraceWriter, workflowContext, contextData);
-                                                using (var stringReader = new StringReader(m_.Substring(i + 1))) {
+                                                TemplateToken cm;
+                                                using (var stringReader = new StringReader(cmatrix)) {
                                                     var yamlObjectReader = new YamlObjectReader(null, stringReader);
-                                                    mdict[m_.Substring(0, i)] = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _);
+                                                    cm = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _);
                                                 }
                                                 templateContext.Errors.Check();
+                                                foreach(var m_ in cm.AssertMapping("selectedJob matrix")) {
+                                                    mdict[m_.Key.ToString()] = m_.Value;
+                                                }
+                                            } else {
+                                                foreach(var m_ in _matrix) {
+                                                    var i = m_.IndexOf(":");
+                                                    var templateContext = CreateTemplateContext(jobTraceWriter, workflowContext, contextData);
+                                                    using (var stringReader = new StringReader(m_.Substring(i + 1))) {
+                                                        var yamlObjectReader = new YamlObjectReader(null, stringReader);
+                                                        mdict[m_.Substring(0, i)] = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _);
+                                                    }
+                                                    templateContext.Errors.Check();
+                                                }
                                             }
                                             Predicate<Dictionary<string, TemplateToken>> match = dict => {
                                                 foreach(var kv in mdict) {
@@ -2304,7 +2404,6 @@ namespace Runner.Server.Controllers
                                 }
                             };
                             jobitem.OnJobEvaluatable = handler;
-                            jobitem.Needs = neededJobs.ToHashSet(StringComparer.OrdinalIgnoreCase);
                         }
                         break;
                         case "defaults":
@@ -2326,37 +2425,6 @@ namespace Runner.Server.Controllers
                 }
                 if(!dependentjobgroup.Any()) {
                     throw new Exception("Your workflow is invalid, you have to define at least one job");
-                }
-                if(selectedJob != null) {
-                    List<JobItem> next = new List<JobItem>();
-                    dependentjobgroup.RemoveAll(j => {
-                        if(string.Equals(j.name, selectedJob, StringComparison.OrdinalIgnoreCase) || selectedJob.StartsWith(j.name + "/", StringComparison.OrdinalIgnoreCase)) {
-                            next.Add(j);
-                            return true;
-                        }
-                        return false;
-                    });
-                    while(true) {
-                        int oldCount = next.Count;
-                        dependentjobgroup.RemoveAll(j => {
-                            foreach(var j2 in next) {
-                                foreach(var need in j2.Needs) {
-                                    if(string.Equals(j.name, need, StringComparison.OrdinalIgnoreCase)) {
-                                        next.Add(j);
-                                        return true;
-                                    }
-                                }
-                            }
-                            return false;
-                        });
-                        if(oldCount == next.Count) {
-                            break;
-                        }
-                    }
-                    dependentjobgroup = next;
-                    if(dependentjobgroup.Count == 0) {
-                        return skipWorkflow();
-                    }
                 }
                 dependentjobgroup.ForEach(ji => {
                     if(ji.Needs?.Any() == true) {
@@ -2402,6 +2470,39 @@ namespace Runner.Server.Controllers
                             ji.Dependencies = pred(ji, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
                     }
                 });
+                if(selectedJob != null) {
+                    List<JobItem> next = new List<JobItem>();
+                    dependentjobgroup.RemoveAll(j => {
+                        if(TryParseJobSelector(selectedJob, out var cjob, out _, out _) && string.Equals(j.name, cjob, StringComparison.OrdinalIgnoreCase)) {
+                            next.Add(j);
+                            return true;
+                        }
+                        return false;
+                    });
+                    if(!workflowContext.HasFeature("system.runner.server.skipDependencies")) {
+                        while(true) {
+                            int oldCount = next.Count;
+                            dependentjobgroup.RemoveAll(j => {
+                                foreach(var j2 in next.ToArray()) {
+                                    foreach(var need in j2.Needs) {
+                                        if(string.Equals(j.name, need, StringComparison.OrdinalIgnoreCase)) {
+                                            next.Add(j);
+                                            return true;
+                                        }
+                                    }
+                                }
+                                return false;
+                            });
+                            if(oldCount == next.Count) {
+                                break;
+                            }
+                        }
+                    }
+                    dependentjobgroup = next;
+                    if(dependentjobgroup.Count == 0) {
+                        return skipWorkflow();
+                    }
+                }
                 if(list) {
                     workflowTraceWriter.Info("{0}", $"Found {dependentjobgroup.Count} matching jobs for the requested event {e}");
                     foreach(var j in dependentjobgroup) {
@@ -2870,7 +2971,7 @@ namespace Runner.Server.Controllers
                     Cancel = ctoken,
                     ForceCancel = cforceCancelWorkflow
                 };
-                var workflowContext = new WorkflowContext() { FileName = fileRelativePath };
+                var workflowContext = new WorkflowContext() { FileName = fileRelativePath, WorkflowState = state };
                 if(WorkflowStates.TryAdd(runid, state)) {
                     workflowContext.CancellationToken = ctoken.Token;
                     cancellationToken = ctoken;
@@ -2916,34 +3017,37 @@ namespace Runner.Server.Controllers
                     rootVariables[v.Key] = v.Value;
                 }
                 var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, VariablesProvider = new AzurePipelinesVariablesProvider(secretsProvider, rootVariables), Flags = flags };
+                workflowContext.AzContext = context;
                 var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, null);
-                Func<Dictionary<string, TaskMetaData>> getOrCreateTaskCache = () => {
+                bool forceTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.forceTaskCacheUpdate");
+                bool skipTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.skipTaskCacheUpdate");
+                bool taskCacheUpdate = workflowContext.HasFeature("system.runner.server.taskCacheUpdate");
+                Func<string, Dictionary<string, TaskMetaData>> getOrCreateTaskCache = name => {
                     var cacheKey = "tasksByNameAndVersion";
-                    bool forceTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.forceTaskCacheUpdate");
-                    bool skipTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.skipTaskCacheUpdate");
-                    if(!forceTaskCacheUpdate && _cache.TryGetValue(cacheKey, out Dictionary<string, TaskMetaData> res)){
+                    if(name == null && !forceTaskCacheUpdate && _cache.TryGetValue(cacheKey, out Dictionary<string, TaskMetaData> res)){
                         return res;
                     }
                     var azureTasks = Path.Join(GharunUtil.GetLocalStorage(), "AzureTasks");
-                    workflowTraceWriter.Info("Downloading and update default Azure Devops Tasks from nuget registry");
+                    workflowTraceWriter.Info($"Downloading and update {name ?? "default"} Azure Pipeline Tasks from nuget registry");
                     if(WaitHandle.WaitAny(new [] { taskCacheLock, cancellationToken.Token.WaitHandle } ) != 0) {
                         workflowTraceWriter.Error($"Cancelled downloading or updating the cached Tasks");
                         return null;
                     }
                     try {
-                        if(!forceTaskCacheUpdate && _cache.TryGetValue(cacheKey, out res)){
+                        if(name == null && !forceTaskCacheUpdate && _cache.TryGetValue(cacheKey, out res)){
                             return res;
                         }
                         var ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(azureTasks);
-                        if(!skipTaskCacheUpdate) {
+                        if(!skipTaskCacheUpdate && (name != null || forceTaskCacheUpdate)) {
                             var client = new HttpClient();
+                            var nameprefix = "mseng.ms.tf.distributedtask.tasks.";
+                            var filter = name == null ? "" : $"q={nameprefix}{Uri.EscapeDataString(name)}&";
                             var pageSize = 10;
                             for(int j = 0; ; j += pageSize) {
-                                var feed = JsonConvert.DeserializeObject<NugetFeed>(client.GetStringAsync($"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/query2/?skip={j}&take={pageSize}&prerelease=true", cancellationToken.Token).GetAwaiter().GetResult());
+                                var feed = JsonConvert.DeserializeObject<NugetFeed>(client.GetStringAsync($"https://pkgs.dev.azure.com/mseng/c86767d8-af79-4303-a7e6-21da0ba435e2/_packaging/e10d0795-57cd-4d7f-904e-5f39703cb096/nuget/v3/query2/?{filter}skip={j}&take={pageSize}&prerelease=true", cancellationToken.Token).GetAwaiter().GetResult());
                                 for(int i = 0; i < feed.Data.Length; i++) {
                                     var lowerId = feed.Data[i].Id.ToLower();
                                     var lowerVersion = feed.Data[i].Versions[0].Version.ToLower();
-                                    var nameprefix = "mseng.ms.tf.distributedtask.tasks.";
                                     if(lowerId.StartsWith(nameprefix) && lowerId[lowerId.Length - 2] == 'v' && tasksByNameAndVersion.TryGetValue($"{lowerId.Substring(nameprefix.Length, lowerId.Length  - 2 - nameprefix.Length)}@{lowerVersion}", out _)) {
                                         continue;
                                     }
@@ -2992,21 +3096,20 @@ namespace Runner.Server.Controllers
                         taskCacheLock.ReleaseMutex();
                     }
                 };
-                var tasksByNameAndVersion = new Dictionary<string, TaskMetaData>(getOrCreateTaskCache(), StringComparer.OrdinalIgnoreCase);
+                var tasksByNameAndVersion = new Dictionary<string, TaskMetaData>(getOrCreateTaskCache(null), StringComparer.OrdinalIgnoreCase);
                 state.TasksByNameAndVersion = tasksByNameAndVersion;
+                try {
+                    TaskMetaData.Load(tasksByNameAndVersion, Path.Join(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "wwwroot", "localcheckoutazure.zip"));
+                } catch(Exception ex) {
+                    workflowTraceWriter.Error($"Failed to read the localcheckoutazure inbox task: {ex}");
+                }
                 if(taskNames?.Length > 0) {
                     var config = Configuration;
                     var cache = this._cache;
                     foreach(var tn in taskNames) {
                         if(TryGetFile(runid, "task.json", out var taskMetaData, tn)) {
                             var metaData = JsonConvert.DeserializeObject<TaskMetaData>(taskMetaData);
-                            metaData.ArchiveCallback = controllerContext => {
-                                var handler = new MessageController(config, cache, null);
-                                handler.ControllerContext = controllerContext;
-                                handler.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
-                                handler.GetZip(runid, false, false, tn, true).GetAwaiter().GetResult();
-                                return new EmptyResult();
-                            };
+                            metaData.ArchivePath = $"localtaskzip://{tn}";
                             tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}"] = metaData;
                             tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}"] = metaData;
                             tasksByNameAndVersion[$"{metaData.Id}@{metaData.Version.Major}"] = metaData;
@@ -3015,7 +3118,23 @@ namespace Runner.Server.Controllers
                     }
                 }
 
-                var pipeline = new Azure.Devops.Pipeline().Parse(context.ChildContext(evaluatedRoot, fileRelativePath), evaluatedRoot, tasksByNameAndVersion);
+                context.TaskByNameAndVersion = skipTaskCacheUpdate || forceTaskCacheUpdate ? new Azure.Devops.StaticTaskCache { TasksByNameAndVersion = tasksByNameAndVersion } : new LambdaTaskCache { Resolver = name => {
+                    if(!taskCacheUpdate && state.TasksByNameAndVersion.TryGetValue(name, out var meta)) {
+                        return meta;
+                    }
+                    var namever = name.Split("@", 2);
+                    var endver = namever[1].IndexOf('.');
+                    if(endver != -1) {
+                        namever[1] = namever[1].Substring(0, endver);
+                    }
+                    state.TasksByNameAndVersion = getOrCreateTaskCache($"{namever[0]}v{namever[1]}");
+                    if(state.TasksByNameAndVersion.TryGetValue(name, out meta)) {
+                        return meta;
+                    }
+                    return null;
+                } };
+
+                var pipeline = new Azure.Devops.Pipeline().Parse(context.ChildContext(evaluatedRoot, fileRelativePath), evaluatedRoot);
 
                 var localJobCompletedEvents = new LocalJobCompletedEvents();
                 Action<JobCompletedEvent> jobCompleted = e => {
@@ -3059,8 +3178,10 @@ namespace Runner.Server.Controllers
                     needsctx[name] = jobctx;
                     var outputsctx = new DictionaryContextData();
                     jobctx["outputs"] = outputsctx;
-                    foreach(var output in from v in _context.TimelineVariables where v.Record.ParentId == job.Id select new { Name = $"{v.Record.RefName}.{v.Name}", v.Value }) {
-                        outputsctx[output.Name] = new StringContextData(output.Value);
+                    foreach(var j in (IEnumerable<JobItem>) job.Childs ?? new [] { job }) {
+                        foreach(var output in from v in _context.TimelineVariables where v.Record.ParentId == j.Id select new { Name = $"{j.RefPrefix}{v.Record.RefName}.{v.Name}", v.Value }) {
+                            outputsctx[output.Name] = new StringContextData(output.Value);
+                        }
                     }
                     job.Status = e.Result;
                     jobctx.Add("result", new StringContextData(e.Result.ToString()));
@@ -3136,11 +3257,13 @@ namespace Runner.Server.Controllers
                         var jobitem = new JobItem() { name = jobname, Id = Guid.NewGuid(), Stage = stage.Name };
                         dependentjobgroup.Add(jobitem);
 
+                        var skipDependencies = workflowContext.HasFeature("system.runner.server.skipDependencies");
                         var needs = job.DependsOn;
                         List<string> neededJobs = new List<string>();
                         if (needs != null) {
                             neededJobs.AddRange(needs);
                         }
+                        jobitem.Needs = neededJobs.ToHashSet(StringComparer.OrdinalIgnoreCase);
                         List<string> neededStages = new List<string>();
                         if (stage.DependsOn != null) {
                             neededStages.AddRange(stage.DependsOn);
@@ -3148,11 +3271,31 @@ namespace Runner.Server.Controllers
                         var contextData = createContext(jobname);
                         
                         var needsctx = new DictionaryContextData();
-                        contextData.Add("dependencies", needsctx);
                         var stageDependencies = new DictionaryContextData();
-                        contextData.Add("stageDependencies", stageDependencies);
                         var neededStageJobs = new Dictionary<string, List<string>>();
                         DictionaryContextData stageToStageDependencies = new DictionaryContextData();
+                        if(skipDependencies) {
+                            neededJobs.Clear();
+                            neededStages.Clear();
+                            Func<string, DictionaryContextData> parseDeps = name => {
+                                if(workflowContext.FeatureToggles.TryGetValue(name, out var value)) {
+                                    DictionaryContextData ret;
+                                    var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
+                                    using (var stringReader = new StringReader(value)) {
+                                        var yamlObjectReader = new YamlObjectReader(null, stringReader);
+                                        ret = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _).ToContextData().AssertDictionary(name);
+                                    }
+                                    templateContext.Errors.Check();
+                                    return ret;
+                                }
+                                return new DictionaryContextData();
+                            };
+                            needsctx = parseDeps("system.runner.server.dependencies");
+                            stageDependencies = parseDeps("system.runner.server.stageDependencies");
+                            stageToStageDependencies = parseDeps("system.runner.server.stageToStageDependencies");
+                        }
+                        contextData.Add("dependencies", needsctx);
+                        contextData.Add("stageDependencies", stageDependencies);
 
                         FinishJobController.JobCompleted handler = e => {
                             try {
@@ -3196,8 +3339,10 @@ namespace Runner.Server.Controllers
                                                     coutputctx = new DictionaryContextData();
                                                     cneedsctx["outputs"] = coutputctx;
                                                 }
-                                                foreach(var output in from v in _context.TimelineVariables where v.Record.ParentId == job.Id select new { Name = $"{job.name}.{v.Record.RefName}.{v.Name}", v.Value }) {
-                                                    coutputctx[output.Name] = new StringContextData(output.Value);
+                                                foreach(var j in (IEnumerable<JobItem>) job.Childs ?? new [] { job }) {
+                                                    foreach(var output in from v in _context.TimelineVariables where v.Record.ParentId == j.Id select new { Name = $"{j.name}.{j.RefPrefix}{v.Record.RefName}.{v.Name}", v.Value }) {
+                                                        coutputctx[output.Name] = new StringContextData(output.Value);
+                                                    }
                                                 }
                                                 var result = e.Result;
                                                 if(cneedsctx.TryGetValue("result", out var cresultTMp) && cresultTMp is StringContextData cresult) {
@@ -3233,6 +3378,12 @@ namespace Runner.Server.Controllers
                                         return;
                                     }
                                 }
+                                if(skipDependencies) {
+                                    foreach(var kv in jobitem.Dependencies) {
+                                        var status = needsctx.TryGetValue(kv.Key, out var jobdata) && jobdata is DictionaryContextData jobdatadict && jobdatadict.TryGetValue("result", out var jobresult) && jobresult is StringContextData jobresultstr ? Enum.Parse<TaskResult>(jobresultstr.Value, true) : TaskResult.Succeeded;
+                                        jobitem.Dependencies[kv.Key].Status = status;
+                                    }
+                                }
 
                                 dependentjobgroup.Remove(jobitem);
                                 if(!dependentjobgroup.Any()) {
@@ -3261,41 +3412,49 @@ namespace Runner.Server.Controllers
                                     needsctx = new DictionaryContextData();
                                     contextData["dependencies"] = needsctx;
                                     foreach(var need in jobitem.Needs) {
-                                        needsctx[need] = recursiveNeedsctx[need];
+                                        if(recursiveNeedsctx.TryGetValue(need, out var val)) {
+                                            needsctx[need] = val;
+                                        }
+                                    }
+                                }
+                                DictionaryContextData workflowVariables = new DictionaryContextData();
+                                // Provide all env vars as normal variables
+                                if(env?.Length > 0) {
+                                    LoadEnvSec(env, (k, v) => workflowVariables[k] = new StringContextData(v));
+                                }
+                                // Provide normal variables from cli
+                                foreach(var secr in secretsProvider.GetVariablesForEnvironment("")) {
+                                    workflowVariables[secr.Key] = new StringContextData(secr.Value);
+                                }
+                                // Provide normal secrets from cli
+                                foreach(var secr in secretsProvider.GetSecretsForEnvironment(jobTraceWriter, "")) {
+                                    workflowVariables[secr.Key] = new StringContextData(secr.Value);
+                                }
+                                if(pipeline.Variables != null) {
+                                    foreach (var v in pipeline.Variables) {
+                                        workflowVariables[v.Key] = new StringContextData(v.Value.Value);
+                                    }
+                                }
+                                if(stage.Variables != null) {
+                                    foreach (var v in stage.Variables) {
+                                        workflowVariables[v.Key] = new StringContextData(v.Value.Value);
+                                    }
+                                }
+                                DictionaryContextData jobVariables = workflowVariables.Clone() as DictionaryContextData;
+                                if(job.Variables != null) {
+                                    foreach (var v in job.Variables) {
+                                        jobVariables[v.Key] = new StringContextData(v.Value.Value);
                                     }
                                 }
                                 jobitem.EvaluateIf = (traceWriter) => {
                                     var templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, flags, contextData);
                                     // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                     templateContext.ExpressionValues["dependencies"] = stageToStageDependencies;
-                                    DictionaryContextData matrixContext = new DictionaryContextData();
-                                    // Provide all env vars as normal variables
-                                    if(env?.Length > 0) {
-                                        LoadEnvSec(env, (k, v) => matrixContext[k] = new StringContextData(v));
-                                    }
-                                    // Provide normal variables from cli
-                                    foreach(var secr in secretsProvider.GetVariablesForEnvironment("")) {
-                                        matrixContext[secr.Key] = new StringContextData(secr.Value);
-                                    }
-                                    // Provide normal secrets from cli
-                                    foreach(var secr in secretsProvider.GetSecretsForEnvironment(traceWriter, "")) {
-                                        matrixContext[secr.Key] = new StringContextData(secr.Value);
-                                    }
-                                    if(pipeline.Variables != null) {
-                                        foreach (var v in pipeline.Variables) {
-                                            matrixContext[v.Key] = new StringContextData(v.Value.Value);
-                                        }
-                                    }
-                                    if(stage.Variables != null) {
-                                        foreach (var v in stage.Variables) {
-                                            matrixContext[v.Key] = new StringContextData(v.Value.Value);
-                                        }
-                                    }
-                                    templateContext.ExpressionValues["variables"] = matrixContext;
+                                    templateContext.ExpressionValues["variables"] = workflowVariables;
                                     var exctx = new ExecutionContext() { Cancelled = workflowContext.CancellationToken, JobContext = new JobItem() { Dependencies = new Dictionary<string, JobItem>(StringComparer.OrdinalIgnoreCase) } };
                                     if(stage.Dependencies != null) {
                                         foreach(var kv in stage.Dependencies) {
-                                            var status = Enum.Parse<TaskResult>(((StringContextData)((DictionaryContextData)stageToStageDependencies[kv.Key])["result"]).Value);
+                                            var status = stageToStageDependencies.TryGetValue(kv.Key, out var jobdata) && jobdata is DictionaryContextData jobdatadict && jobdatadict.TryGetValue("result", out var jobresult) && jobresult is StringContextData jobresultstr ? Enum.Parse<TaskResult>(jobresultstr.Value, true) : TaskResult.Succeeded;
                                             exctx.JobContext.Dependencies[kv.Key] = new JobItem { Status = status };
                                         }
                                     }
@@ -3315,12 +3474,7 @@ namespace Runner.Server.Controllers
                                     // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                     templateContext.ExpressionValues["stageDependencies"] = stageDependencies;
                                     templateContext.ExpressionValues["dependencies"] = recursiveNeedsctx;
-                                    if(job.Variables != null) {
-                                        foreach (var v in job.Variables) {
-                                            matrixContext[v.Key] = new StringContextData(v.Value.Value);
-                                        }
-                                    }
-                                    templateContext.ExpressionValues["variables"] = matrixContext;
+                                    templateContext.ExpressionValues["variables"] = jobVariables;
                                     // canceled is always false if the stage condition is true, by using CancellationToken.None 
                                     templateContext.State[nameof(ExecutionContext)] = new ExecutionContext() { Cancelled = CancellationToken.None, JobContext = jobitem };
                                     templateContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
@@ -3357,6 +3511,23 @@ namespace Runner.Server.Controllers
                                     var keys = flatmatrix.First().Keys.ToArray();
                                     var deploymentStrategy = job?.Strategy?.RunOnce ?? (Azure.Devops.Strategy.RunOnceStrategy) job?.Strategy?.Rolling ?? (Azure.Devops.Strategy.RunOnceStrategy) job?.Strategy?.Canary; 
                                 
+                                    if(job?.Strategy?.MatrixExpression != null) {
+                                        Func<string, string> evalMatrix = val => {
+                                            if(!(val.StartsWith("$[") && val.EndsWith("]"))) {
+                                                return val;
+                                            }
+                                            var templateContext = AzureDevops.CreateTemplateContext(jobTraceWriter, workflowContext.FileTable, workflowContext.Flags, contextData);
+                                            templateContext.ExpressionValues["variables"] = jobVariables;
+                                            var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "variable-result", new BasicExpressionToken(null, null, null, val.Substring(2, val.Length - 3)), 0, null, true);
+                                            templateContext.Errors.Check();
+                                            return eval.AssertString("variable").Value;
+                                        };
+                                        var result = evalMatrix(job.Strategy.MatrixExpression);
+                                        job.Strategy.Matrix = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(result);
+                                        if(job.Strategy.Matrix == null) {
+                                            job.Strategy = null;
+                                        }
+                                    }
                                     if(job?.Strategy?.Parallel > 0) {
                                         for(int i = 0; i < job.Strategy.Parallel; i++) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
@@ -3364,49 +3535,59 @@ namespace Runner.Server.Controllers
                                             mvars["System.TotalJobsInPhase"] = new StringToken(null, null, null, job.Strategy.Parallel.ToString());
                                             includematrix.Add(mvars);
                                         }
-                                    } else if(job?.Strategy?.Matrix != null){
+                                    } else if(job?.Strategy?.Matrix != null) {
+                                        int i = 0;
                                         foreach(var kv in job.Strategy.Matrix) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             foreach(var vars in kv.Value) {
                                                 mvars[vars.Key] = new StringToken(null, null, null, vars.Value);
                                             }
+                                            mvars["System.JobPositionInPhase"] = new StringToken(null, null, null, i.ToString());
                                             includematrix.Add(mvars);
+                                            i++;
                                         }
                                     } else if(deploymentStrategy != null) {
                                         if(deploymentStrategy.PreDeploy != null) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             mvars["stage"] = new StringToken(null, null, null, "preDeploy");
+                                            mvars["Strategy.CycleName"] = new StringToken(null, null, null, "PreIteration");
                                             includematrix.Add(mvars);
                                         }
                                         if(deploymentStrategy.Deploy != null) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             mvars["stage"] = new StringToken(null, null, null, "deploy");
+                                            mvars["Strategy.CycleName"] = new StringToken(null, null, null, "Iteration");
                                             includematrix.Add(mvars);
                                         }
                                         if(deploymentStrategy.RouteTraffic != null) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             mvars["stage"] = new StringToken(null, null, null, "routeTraffic");
+                                            mvars["Strategy.CycleName"] = new StringToken(null, null, null, "Iteration");
                                             includematrix.Add(mvars);
                                         }
                                         if(deploymentStrategy.PostRouteTraffic != null) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             mvars["stage"] = new StringToken(null, null, null, "postRouteTraffic");
+                                            mvars["Strategy.CycleName"] = new StringToken(null, null, null, "Iteration");
                                             includematrix.Add(mvars);
                                         }
                                         if(deploymentStrategy.OnSuccess != null) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             mvars["stage"] = new StringToken(null, null, null, "onSuccess");
+                                            mvars["Strategy.CycleName"] = new StringToken(null, null, null, "PostIteration");
                                             includematrix.Add(mvars);
                                         }
                                         if(deploymentStrategy.OnFailure != null) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             mvars["stage"] = new StringToken(null, null, null, "onFailure");
+                                            mvars["Strategy.CycleName"] = new StringToken(null, null, null, "PostIteration");
                                             includematrix.Add(mvars);
                                         }
                                     }
+                                    var rawCount = includematrix.Count;
 
                                     // Filter matrix from cli
-                                    if(selectedJob != null && (string.Equals(jobname, selectedJob, StringComparison.OrdinalIgnoreCase) || selectedJob.StartsWith(jobname + "/", StringComparison.OrdinalIgnoreCase)) && _matrix?.Length > 0) {
+                                    if(selectedJob != null && (string.Equals($"{jobitem.Stage}/{jobitem.name}", selectedJob, StringComparison.OrdinalIgnoreCase) || string.Equals($"{jobitem.Stage}", selectedJob, StringComparison.OrdinalIgnoreCase) || pipeline.Stages.Count == 1 && string.Equals($"{jobitem.name}", selectedJob, StringComparison.OrdinalIgnoreCase)) && _matrix?.Length > 0) {
                                         var mdict = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                         foreach(var m_ in _matrix) {
                                             var i = m_.IndexOf(":");
@@ -3545,6 +3726,21 @@ namespace Runner.Server.Controllers
                                                     providedVars[mk.Key] = new VariableValue((mk.Value as StringToken)?.Value ?? "");
                                                 }
                                             }
+                                            Action<string, string> addMatrixVar = (name, value) => {
+                                                matrixContext[name] = new StringContextData(value ?? "");
+                                                providedVars[name] = new VariableValue(value ?? "");
+                                            };
+                                            if(job?.Strategy?.RunOnce != null) {
+                                                addMatrixVar("Strategy.Name", new StringContextData("runOnce"));
+                                            } else if(job?.Strategy?.Rolling != null) {
+                                                addMatrixVar("Strategy.Name", "rolling");
+                                            } else if(job?.Strategy?.Canary != null) {
+                                                addMatrixVar("Strategy.Name", "canary");
+                                            }
+                                            if(job?.EnvironmentName != null) {
+                                                addMatrixVar("Environment.Name", job.EnvironmentName);
+                                            }
+                                            
                                             contextData["matrix"] = null;
                                             contextData["variables"] = matrixContext;
                                             if(finishedJobs != null) {
@@ -3552,6 +3748,9 @@ namespace Runner.Server.Controllers
                                                     foreach(var fjob in fjobs) {
                                                         if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new NullToken(null, null, null), fjob.MatrixToken)) {
                                                             var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true, Stage = stage.Name } : jobitem;
+                                                            if(!string.IsNullOrEmpty(displaySuffix)) {
+                                                                _next.RefPrefix = $"{displaySuffix}.";
+                                                            }
                                                             _next.TimelineId = fjob.TimeLineId;
                                                             _next.NoStatusCheck = true;
                                                             jobitem.Childs?.Add(_next);
@@ -3580,6 +3779,9 @@ namespace Runner.Server.Controllers
                                                 });
                                             }
                                             var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid(), Stage = stage.Name } : jobitem;
+                                            if(!string.IsNullOrEmpty(displaySuffix)) {
+                                                next.RefPrefix = $"{displaySuffix}.";
+                                            }
                                             Func<string, string> defJobName = jobname => string.IsNullOrEmpty(displaySuffix) ? jobname : $"{jobname} {displaySuffix}";
                                             var _prejobdisplayname = defJobName(_jobdisplayname);
                                             if(jobTotal > 1) {
@@ -3608,6 +3810,13 @@ namespace Runner.Server.Controllers
                                                 var cancelTimeoutMinutes = job.CancelTimeoutInMinutes != 0 ? job.CancelTimeoutInMinutes : 5;
                                                 next.NoStatusCheck = false;
                                                 next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
+                                                addMatrixVar("System.StageName", stage.Name);
+                                                addMatrixVar("System.StageDisplayName", stage.DisplayName);
+                                                addMatrixVar("System.PhaseName", job.Name);
+                                                addMatrixVar("System.PhaseDisplayName", next.DisplayName);
+                                                addMatrixVar("System.JobName", "__default");
+                                                addMatrixVar("System.JobDisplayName", next.DisplayName);
+                                                
                                                 return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, providedVars, env, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                             } catch(Exception ex) {
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
@@ -3702,7 +3911,8 @@ namespace Runner.Server.Controllers
                                                     cancelAll(cancelreqmsg);
                                                     return;
                                                 }
-                                                var j = act(job.Strategy?.Matrix?.Keys?.ElementAtOrDefault(counter) ?? counter.ToString(), item);
+                                                var position = item.TryGetValue("System.JobPositionInPhase", out var rawposition) && int.TryParse(rawposition.AssertString("System.JobPositionInPhase").Value, out var rpos) ? rpos : counter;
+                                                var j = act(job.Strategy?.Matrix?.Keys?.ElementAtOrDefault(position) ?? $"job{position}", item);
                                                 if(j != null) {
                                                     jobs.Enqueue(j);
                                                 }
@@ -3841,7 +4051,11 @@ namespace Runner.Server.Controllers
                                                 }
                                                 stages[ct2] = counter;
 
-                                                var j = act(getStageName(counter), item);
+
+                                                var hasResourceName = workflowContext.FeatureToggles.TryGetValue($"system.runner.server.job.{jobitem.name}.resourcename", out var resourcename) || workflowContext.FeatureToggles.TryGetValue("system.runner.server.resourcename", out resourcename);
+
+                                                // Stage Deploy is renamed to jobitem.name the jobid if it is a runOnce Job https://learn.microsoft.com/en-us/azure/devops/pipelines/process/deployment-jobs?view=azure-devops#support-for-output-variables, but only if it only has a single deploy step
+                                                var j = act(!hasResourceName && job?.Strategy?.RunOnce != null && rawCount == 1 ? jobitem.name : hasResourceName ? $"{getStageName(counter)}_{resourcename}" : getStageName(counter), item);
                                                 if(j != null) {
                                                     jobs.Enqueue(j);
                                                 }
@@ -3878,42 +4092,10 @@ namespace Runner.Server.Controllers
                             }
                         };
                         jobitem.OnJobEvaluatable = handler;
-                        jobitem.Needs = neededJobs.ToHashSet(StringComparer.OrdinalIgnoreCase);
                     }
                 }
                 if(!dependentjobgroup.Any()) {
                     throw new Exception("Your workflow is invalid, you have to define at least one job");
-                }
-                if(selectedJob != null) {
-                    List<JobItem> next = new List<JobItem>();
-                    dependentjobgroup.RemoveAll(j => {
-                        if(string.Equals(j.name, selectedJob, StringComparison.OrdinalIgnoreCase) || selectedJob.StartsWith(j.name + "/", StringComparison.OrdinalIgnoreCase)) {
-                            next.Add(j);
-                            return true;
-                        }
-                        return false;
-                    });
-                    while(true) {
-                        int oldCount = next.Count;
-                        dependentjobgroup.RemoveAll(j => {
-                            foreach(var j2 in next) {
-                                foreach(var need in j2.Needs) {
-                                    if(string.Equals(j.name, need, StringComparison.OrdinalIgnoreCase)) {
-                                        next.Add(j);
-                                        return true;
-                                    }
-                                }
-                            }
-                            return false;
-                        });
-                        if(oldCount == next.Count) {
-                            break;
-                        }
-                    }
-                    dependentjobgroup = next;
-                    if(dependentjobgroup.Count == 0) {
-                        return skipWorkflow();
-                    }
                 }
                 dependentjobgroup.ForEach(ji => {
                     if(ji.Needs?.Any() == true) {
@@ -3962,7 +4144,9 @@ namespace Runner.Server.Controllers
                             ji.Dependencies = pred(ji, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
                     }
                 });
+                var stagesByName = new Dictionary<string, Azure.Devops.Stage>(StringComparer.OrdinalIgnoreCase);
                 pipeline.Stages.ForEach(ji => {
+                    stagesByName[ji.Name] = ji;
                     if(ji.DependsOn?.Any() == true) {
                         Func<Azure.Devops.Stage, ISet<string>, Dictionary<string, Azure.Devops.Stage>> pred = null;
                         pred = (cur, cyclic) => {
@@ -4006,6 +4190,44 @@ namespace Runner.Server.Controllers
                             ji.Dependencies = pred(ji, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
                     }
                 });
+                if(selectedJob != null) {
+                    List<JobItem> next = new List<JobItem>();
+                    dependentjobgroup.RemoveAll(j => {
+                        if(string.Equals($"{j.Stage}/{j.name}", selectedJob, StringComparison.OrdinalIgnoreCase) || string.Equals($"{j.Stage}", selectedJob, StringComparison.OrdinalIgnoreCase) || pipeline.Stages.Count == 1 && string.Equals($"{j.name}", selectedJob, StringComparison.OrdinalIgnoreCase)) {
+                            next.Add(j);
+                            return true;
+                        }
+                        return false;
+                    });
+                    if(!workflowContext.HasFeature("system.runner.server.skipDependencies")) {
+                        while(true) {
+                            int oldCount = next.Count;
+                            dependentjobgroup.RemoveAll(j => {
+                                foreach(var j2 in next.ToArray()) {
+                                    if(string.Equals(j.Stage, j2.Stage, StringComparison.OrdinalIgnoreCase)) {
+                                        foreach(var need in j2.Needs) {
+                                            if(string.Equals(j.name, need, StringComparison.OrdinalIgnoreCase)) {
+                                                next.Add(j);
+                                                return true;
+                                            }
+                                        }
+                                    } else if(stagesByName[j2.Stage].Dependencies.ContainsKey(j.Stage)) {
+                                        next.Add(j);
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            });
+                            if(oldCount == next.Count) {
+                                break;
+                            }
+                        }
+                    }
+                    dependentjobgroup = next;
+                    if(dependentjobgroup.Count == 0) {
+                        return skipWorkflow();
+                    }
+                }
                 allJobs = dependentjobgroup.ToArray();
                 if(list) {
                     workflowTraceWriter.Info("{0}", $"Found {dependentjobgroup.Count} matching jobs for the requested event {e}");
@@ -4770,7 +4992,7 @@ namespace Runner.Server.Controllers
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                 }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value.Where(val => TemplateTokenEqual(val.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new NullToken(null, null, null), contextData["matrix"]?.ToTemplateToken() ?? new NullToken(null, null, null))).ToList(), StringComparer.OrdinalIgnoreCase);
-                                var sjob = selectedJob?.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase) == true ? selectedJob.Substring(name.Length + 1) : null;
+                                var sjob = TryParseJobSelector(selectedJob, out var cjob, out _, out var cselector) && string.Equals(name, cjob, StringComparison.OrdinalIgnoreCase) ? cselector : null;
                                 if(reusableWorkflowInheritEnv) {
                                     for(int i = 0; i < environment.Count; i++) {
                                         if(environment[i] is MappingToken menv) {
@@ -5253,6 +5475,9 @@ namespace Runner.Server.Controllers
                         var myIssuer = "http://githubactionsserver";
                         var myAudience = "http://githubactionsserver";
 
+                        var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
+                        fileContainerId = resp.Id;
+
                         var tokenHandler = new JwtSecurityTokenHandler();
                         var tokenDescriptor = new SecurityTokenDescriptor
                         {
@@ -5265,6 +5490,7 @@ namespace Runner.Server.Controllers
                                 new Claim("attempt", attempt.Attempt.ToString()),
                                 new Claim("artifactsMinAttempt", attempt.ArtifactsMinAttempt.ToString()),
                                 new Claim("localcheckout", localcheckout ? "actions/checkout" : ""),
+                                new Claim("containerid", fileContainerId.ToString()),
                                 new Claim("runid", runid.ToString()),
                             }),
                             Expires = DateTime.UtcNow.AddMinutes(timeoutMinutes + 10),
@@ -5292,19 +5518,31 @@ namespace Runner.Server.Controllers
                         // For actions/upload-artifact@v1, actions/download-artifact@v1
                         variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                         variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
-
-                        variables["System.CollectionId"] = new VariableValue(Guid.NewGuid().ToString(), false);
-                        variables["System.DefinitionId"] = new VariableValue(Guid.NewGuid().ToString(), false);
+                        variables["system"] = new VariableValue("build", false);
+                        variables["System.HostType"] = new VariableValue("build", false);
+                        variables["System.servertype"] = new VariableValue("Hosted", false);
+                        variables["system.culture"] = new VariableValue("en-US", false);
+                        variables["System.CollectionId"] = new VariableValue(Guid.Empty.ToString(), false);
+                        variables["system.collectionUri"] = new VariableValue(apiUrl, false);
+                        variables["system.teamFoundationCollectionUri"] = new VariableValue(apiUrl, false);
+                        variables["system.taskDefinitionsUri"] = new VariableValue(apiUrl, false);
+                        variables["system.teamProject"] = new VariableValue("runner.server", false);
+                        // If this is not a non zero guid upload artifact tasks refuse to work
+                        variables["system.teamProjectId"] = new VariableValue("667b63ea-5b23-4619-9431-f2cff4e16a11", false);
+                        variables["System.DefinitionId"] = new VariableValue(Guid.Empty.ToString(), false);
+                        variables["system.definitionName"] = new VariableValue(Guid.Empty.ToString(), false);
                         variables["Build.Clean"] = new VariableValue("true", false);
                         variables["Build.SyncSources"] = new VariableValue("true", false);
-                        variables["Build.DefinitionName"] = new VariableValue(Guid.NewGuid().ToString(), false);
+                        variables["Build.DefinitionName"] = new VariableValue(Guid.Empty.ToString(), false);
                         // for azurelocalcheckout
                         variables["System.RunId"] = new VariableValue(runid.ToString(), false);
                         // ff for agent to enforce readonly vars
                         variables["agent.readOnlyVariables"] = "true";
-                        var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
-                        fileContainerId = resp.Id;
-                        variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
+                        variables["agent.retainDefaultEncoding"] = "true";
+                        variables["agent.taskRestrictionsEnforcementMode"] = "Enabled";
+                        variables["agent.disablelogplugin.TestResultLogPlugin"] = "true";
+                        variables["agent.disablelogplugin.TestFilePublisherPlugin"] = "true";
+                        variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(fileContainerId.ToString(), false));
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
                             variables["github_token"] = variables["system.github.token"] = github_token;
                         }
@@ -5404,6 +5642,48 @@ namespace Runner.Server.Controllers
                         // checkoutTask.Inputs["lfs"] = "false";
 
                         var steps = rjob.Steps/*.Prepend(checkoutTask)*/.Where(s => s.Enabled).ToList();
+                        var checkoutGuid = Guid.Parse("6d15af64-176c-496d-b583-fd2ae21d4df4");
+                        var tasksByNameAndVersion = workflowContext?.WorkflowState?.TasksByNameAndVersion;
+                        if(rjob.DeploymentJob) {
+                            steps.RemoveAll(step => step.Reference?.Name != null && (string.Equals(step.Reference.Name, "DownloadPipelineArtifact", StringComparison.OrdinalIgnoreCase) || string.Equals(step.Reference.Name, "DownloadBuildArtifacts", StringComparison.OrdinalIgnoreCase)) && (step.Inputs.TryGetValue("buildType", out var buildType) || step.Inputs.TryGetValue("source", out buildType)) && buildType == "none");
+                        } else {
+                            var localcheckoutRef = localcheckout && tasksByNameAndVersion != null && tasksByNameAndVersion.TryGetValue("localcheckoutazure@0", out var localcheckoutazure) ? new TaskStepDefinitionReference {
+                                Id = localcheckoutazure.Id,
+                                Name = localcheckoutazure.Name,
+                                Version = $"{localcheckoutazure.Version.Major}.{localcheckoutazure.Version.Minor}.{localcheckoutazure.Version.Patch}"
+                            } : null;
+                            
+                            if(localcheckoutRef != null && !steps.Any(step => step.Reference?.Id == checkoutGuid)) {
+                                steps.Insert(0, new TaskStep {
+                                    DisplayName = "Default Checkout Task",
+                                    Reference = localcheckoutRef
+                                });
+                            } else {
+                                // checkout: none triggers an error in the builtin checkout task
+                                steps.RemoveAll(step => step.Reference?.Id == checkoutGuid && step.Inputs.TryGetValue("repository", out var repo) && repo == "none");
+                                if(localcheckout) {
+                                    var count = steps.Count(step => step.Reference?.Id == checkoutGuid);
+                                    foreach(var step in steps) {
+                                        if(step.Reference?.Id == checkoutGuid) {
+                                            step.Reference = localcheckoutRef;
+                                            if(step.Inputs.TryGetValue("repository", out var repo)) {
+                                                if(count > 1 && (!step.Inputs.TryGetValue("path", out var path) || path == "")) {
+                                                    step.Inputs["path"] = repo == "self" ? "CurrentRepo" : repo;
+                                                }
+                                                if(repo == "self") {
+                                                    step.Inputs["repository"] = "";
+                                                    step.Inputs["ref"] = "";
+                                                } else if(workflowContext.AzContext.Repositories.TryGetValue(repo, out var nameAndRef)) {
+                                                    var nref = nameAndRef.Split("@", 2);
+                                                    step.Inputs["repository"] = nref[0];
+                                                    step.Inputs["ref"] = nref[1];
+                                                }
+                                            }                                        
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         List<string> errors = new List<string>();
                         for(int i = 0; i < steps.Count; i++) {
                             var clone = new TaskStep();

@@ -14,11 +14,16 @@ namespace Runner.Server.Azure.Devops {
         public string CWD { get; set; }
         public Dictionary<string, string> Repositories { get; set; }
 
+        public ITaskByNameAndVersionProvider TaskByNameAndVersion { get; set; }
+
         public Context Clone() {
-            return new Context { FileProvider = FileProvider, TraceWriter = TraceWriter, VariablesProvider = VariablesProvider, RepositoryAndRef = RepositoryAndRef, CWD = CWD, Repositories = Repositories, Flags = Flags };
+            return MemberwiseClone() as Context;
         }
 
         public Context ChildContext(MappingToken template, string path = null) {
+            if(Repositories == null) {
+                Repositories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            }
             var childContext = Clone();
             foreach(var kv in template) {
                 switch(kv.Key.AssertString("key").Value) {
@@ -26,7 +31,8 @@ namespace Runner.Server.Azure.Devops {
                         foreach(var resource in kv.Value.AssertMapping("resources")) {
                             switch(resource.Key.AssertString("").Value) {
                                 case "repositories":
-                                    childContext.Repositories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                    // Use a global dictionary, since resources needs to be resolved for the localcheckout step
+                                    // childContext.Repositories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                                     foreach(var rawresource in resource.Value.AssertSequence("cres")) {
                                         string alias = null;
                                         string name = null;

@@ -62,7 +62,7 @@ public class AzureDevops {
                 if(onlyStaticVars && (kv.Key is ExpressionToken || kv.Value is ExpressionToken)) {
                     continue;
                 }
-                vars[kv.Key.AssertString("variables").Value] = kv.Value.AssertString("variables").Value;
+                vars[kv.Key.AssertString("variables").Value] = kv.Value.AssertLiteralString("variables");
             }
         } else {
             foreach(var rawdef in rawvars.AssertSequence("")) {
@@ -90,7 +90,7 @@ public class AzureDevops {
                             name = kv.Value.AssertString("variables").Value;
                         break;
                         case "value":
-                            value = kv.Value.AssertString("variables").Value;
+                            value = kv.Value.AssertLiteralString("variables");
                         break;
                         case "readonly":
                             isReadonly = kv.Value.AssertBoolean("variables").Value;
@@ -120,7 +120,7 @@ public class AzureDevops {
             }
         }
     }
-    public static void ParseSteps(Runner.Server.Azure.Devops.Context context, IList<TaskStep> steps, TemplateToken step, Dictionary<string, TaskMetaData> tasksByNameAndVersion) {
+    public static void ParseSteps(Runner.Server.Azure.Devops.Context context, IList<TaskStep> steps, TemplateToken step) {
         if(step is MappingToken mstep && mstep.Count >= 1) {
             var tstep = new TaskStep();
             MappingToken unparsedTokens = new MappingToken(null, null, null);
@@ -133,7 +133,7 @@ public class AzureDevops {
                 }
                 switch(mstep[i].Key.AssertString("step key").Value) {
                     case "condition":
-                        tstep.Condition = mstep[i].Value is BooleanToken b ? b.ToString() : mstep[i].Value.AssertString("step value").Value;
+                        tstep.Condition = mstep[i].Value.AssertLiteralString("step value");
                     break;
                     case "continueOnError":
                         tstep.ContinueOnError = mstep[i].Value.AssertBoolean("step value").Clone(true);
@@ -198,8 +198,11 @@ public class AzureDevops {
                         RawNameAndVersion = task
                     };
                 }
-                if(tasksByNameAndVersion != null) {
-                    var metaData = tasksByNameAndVersion[task];
+                if(context.TaskByNameAndVersion != null) {
+                    var metaData = context.TaskByNameAndVersion.Resolve(task);
+                    if(metaData == null) {
+                        throw new Exception($"Failed to resolve task {task}");
+                    }
                     return new TaskStepDefinitionReference() { Id = metaData.Id, Name = metaData.Name, Version = $"{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}", RawNameAndVersion = task };
                 }
                 return new TaskStepDefinitionReference() { RawNameAndVersion = task };
@@ -268,7 +271,7 @@ public class AzureDevops {
                     for(int i = 0; i < unparsedTokens.Count; i++) {
                         tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
                     }
-                    tstep.Inputs["source"] = primaryValue;
+                    tstep.Inputs["buildType"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "downloadBuild":
@@ -277,8 +280,7 @@ public class AzureDevops {
                     for(int i = 0; i < unparsedTokens.Count; i++) {
                         tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
                     }
-                    // Unknown if this is correct...
-                    tstep.Inputs["definition"] = primaryValue;
+                    tstep.Inputs["buildType"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "getPackage":
@@ -312,7 +314,7 @@ public class AzureDevops {
                 case "template":
                     var file = ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null);
                     foreach(var step2 in (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence("")) {
-                        ParseSteps(context.ChildContext(file, primaryValue), steps, step2, tasksByNameAndVersion);
+                        ParseSteps(context.ChildContext(file, primaryValue), steps, step2);
                     }
                 break;
                 default:
@@ -340,14 +342,14 @@ public class AzureDevops {
             if(val.Type == TokenType.Null) {
                 return null;
             }
-            ParseSteps(context, steps, val, null);
+            ParseSteps(context, steps, val);
             return steps[0].ToContextData();
             case "stepList":
             if(val.Type == TokenType.Null) {
                 return new ArrayContextData();
             }
             foreach(var step2 in val.AssertSequence("")) {
-                ParseSteps(context, steps, step2, null);
+                ParseSteps(context, steps, step2);
             }
             var stepList = new ArrayContextData();
             foreach(var step in steps) {
@@ -358,12 +360,12 @@ public class AzureDevops {
             if(val.Type == TokenType.Null) {
                 return null;
             }
-            return new Job().Parse(context, val, null).ToContextData();
+            return new Job().Parse(context, val).ToContextData();
             case "jobList":
             if(val.Type == TokenType.Null) {
                 return new ArrayContextData();
             }
-            Job.ParseJobs(context, jobs, val.AssertSequence(""), null);
+            Job.ParseJobs(context, jobs, val.AssertSequence(""));
             var jobList = new ArrayContextData();
             foreach(var job in jobs) {
                 jobList.Add(job.ToContextData());
@@ -373,14 +375,14 @@ public class AzureDevops {
             if(val.Type == TokenType.Null) {
                 return null;
             }
-            var djob = new Job().Parse(context, val, null);
+            var djob = new Job().Parse(context, val);
             if(!djob.DeploymentJob) throw new Exception("Only Deployment Jobs are valid");
             return djob.ToContextData();
             case "deploymentList":
             if(val.Type == TokenType.Null) {
                 return new ArrayContextData();
             }
-            Job.ParseJobs(context, jobs, val.AssertSequence(""), null);
+            Job.ParseJobs(context, jobs, val.AssertSequence(""));
             var djobList = new ArrayContextData();
             foreach(var job in jobs) {
                 if(!job.DeploymentJob) throw new Exception("Only Deployment Jobs are valid");
@@ -391,12 +393,12 @@ public class AzureDevops {
             if(val.Type == TokenType.Null) {
                 return null;
             }
-            return new Stage().Parse(context, val, null).ToContextData();
+            return new Stage().Parse(context, val).ToContextData();
             case "stageList":
             if(val.Type == TokenType.Null) {
                 return new ArrayContextData();
             }
-            Stage.ParseStages(context, stages, val.AssertSequence(""), null);
+            Stage.ParseStages(context, stages, val.AssertSequence(""));
             var stageList = new ArrayContextData();
             foreach(var stage in stages) {
                 stageList.Add(stage.ToContextData());

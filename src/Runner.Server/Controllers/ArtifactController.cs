@@ -103,6 +103,10 @@ namespace Runner.Server.Controllers {
             var req = await FromBody<CreateActionsStorageArtifactParameters>();
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
             var artifactsMinAttempt = Int64.Parse(User.FindFirst("artifactsMinAttempt")?.Value ?? "-1");
+            // azp build artifact / parse "{\"id\":0,\"name\":\"drop\",\"source\":null,\"resource\":{\"type\":\"Container\",\"data\":\"#/10/drop\",\"properties\":{\"localpath\":\"/home/christopher/.local/share/gharun/a/l53fnlmg.djp/w/1/a\",\"artifactsize\":\"28710\"}}}"
+            if(req.ContainerId <= 0) {
+                req.ContainerId = Int64.Parse(User.FindFirst("containerid")?.Value ?? "0");
+            }
             var filecontainer = await CreateContainer(run, attempt, req, artifactsMinAttempt);
             return await Ok(new ArtifactResponse { name = req.Name, type = "actions_storage", containerId = filecontainer.Id, fileContainerResourceUrl = new Uri(new Uri(ServerUrl), $"_apis/pipelines/workflows/container/{filecontainer.Id}").ToString() } );
         }

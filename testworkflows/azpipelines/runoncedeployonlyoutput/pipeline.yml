@@ -1,0 +1,25 @@
+jobs:
+# Set an output variable in a lifecycle hook of a deployment job executing runOnce strategy.
+- deployment: A
+  pool:
+    vmImage: 'ubuntu-latest'
+  environment: staging
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - bash: echo "##vso[task.setvariable variable=myOutputVar;isOutput=true]this is the deployment variable value"
+          name: setvarStep
+        - bash: echo $(setvarStep.myOutputVar)
+          name: echovar
+
+# Map the variable from the job.
+- job: B
+  dependsOn: A
+  variables:
+    myVarFromDeploymentJob: $[ dependencies.A.outputs['A.setvarStep.myOutputVar'] ]
+  steps:
+  - script: "echo $(myVarFromDeploymentJob)"
+    name: echovar
+  - script: exit 1
+    condition: ne(variables.myVarFromDeploymentJob, 'this is the deployment variable value')

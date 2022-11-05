@@ -80,11 +80,14 @@ public class Container {
         return this;
     }
 
-    public PipelineContextData ToContextData() {
+    public PipelineContextData ToContextData(string name = null) {
         if(StringSource) {
             return new StringContextData(Image);
         }
         var container = new DictionaryContextData();
+        if(name != null) {
+            container["container"] = new StringContextData(name);
+        }
         container["image"] = new StringContextData(Image);
         if(MapDockerSocket) {
             container["mapDockerSocket"] = new BooleanContextData(MapDockerSocket);

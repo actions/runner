@@ -11,6 +11,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -74,13 +75,19 @@ namespace Runner.Server.Controllers
         [AllowAnonymous]
         public IActionResult GetTaskArchive(Guid taskid, string version) {
             var srunid = User.FindFirst("runid")?.Value;
-            var tasksByNameAndVersion = srunid != null && long.TryParse(srunid, out var runid) && MessageController.WorkflowStates.TryGetValue(runid, out var state) && state.TasksByNameAndVersion != null ? state.TasksByNameAndVersion : cache.GetOrCreate("tasksByNameAndVersion", ce => {
+            long runid = -1;
+            var tasksByNameAndVersion = srunid != null && long.TryParse(srunid, out runid) && MessageController.WorkflowStates.TryGetValue(runid, out var state) && state.TasksByNameAndVersion != null ? state.TasksByNameAndVersion : cache.GetOrCreate("tasksByNameAndVersion", ce => {
                 var ( tasks, tasksByNameAndVersion ) = TaskMetaData.LoadTasks(Path.Combine(GharunUtil.GetLocalStorage(), "AzureTasks"));
                 return tasksByNameAndVersion;
             });
-            var callback = tasksByNameAndVersion[$"{taskid}@{version}"].ArchiveCallback;
-            if(callback != null) {
-                return callback(ControllerContext);
+            var archivePath = tasksByNameAndVersion[$"{taskid}@{version}"].ArchivePath;
+            var prefix = "localtaskzip://";
+            if(archivePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
+                var handler = new MessageController(Configuration, cache, null);
+                handler.ControllerContext = ControllerContext;
+                handler.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
+                handler.GetZip(runid, false, false, archivePath.Substring(prefix.Length), true).GetAwaiter().GetResult();
+                return new EmptyResult();
             }
             return new FileStreamResult(System.IO.File.OpenRead(tasksByNameAndVersion[$"{taskid}@{version}"].ArchivePath), "application/zip") { EnableRangeProcessing = true };
         }
