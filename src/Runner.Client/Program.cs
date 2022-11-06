@@ -1379,6 +1379,10 @@ namespace Runner.Client
                                     "--reset",
                                     description: "Discard cached cli options");
                                 updateCommand.Add(resetOpt);
+                                var cleanOpt = new Option<bool>(
+                                    "--clean",
+                                    description: "Discard cached cli and initial provided options, initial provided options can be restored by --reset");
+                                updateCommand.Add(cleanOpt);
                                 var envFileOpt = new Option<string[]>(
                                     "--env-file",
                                     description: "Environment variables for your workflow");
@@ -1396,7 +1400,23 @@ namespace Runner.Client
                                 updateCommand.Add(workflowInputsOpt);
                                 updateCommand.SetHandler(_ => {}, new MyCustomBinder(bindingContext => {
                                     var pResult = bindingContext.ParseResult;
-                                    if(pResult.GetValueForOption(resetOpt)) {
+                                    if(pResult.GetValueForOption(cleanOpt)) {
+                                        parameters = orgParameters.ShallowCopy();
+                                        parameters.Payload = null;
+                                        parameters.Directory = null;
+                                        parameters.WorkflowFiles = null;
+                                        parameters.Env = null;
+                                        parameters.Secrets = null;
+                                        parameters.EnvFile = null;
+                                        parameters.Vars = null;
+                                        parameters.VarFiles = null;
+                                        parameters.SecretFiles = null;
+                                        parameters.EnvironmentSecrets = null;
+                                        parameters.EnvironmentSecretFiles = null;
+                                        parameters.EnvironmentVarFiles = null;
+                                        parameters.Inputs = null;
+                                        parameters.EnvironmentVars = null;
+                                    } else if(pResult.GetValueForOption(resetOpt)) {
                                         parameters = orgParameters.ShallowCopy();
                                     }
                                     parameters.Event = pResult.GetValueForOption(eventOpt) ?? parameters.Event;
