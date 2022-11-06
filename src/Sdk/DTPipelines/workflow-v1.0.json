@@ -261,6 +261,23 @@
       ],
       "one-of": [
         "non-empty-string",
+        "sequence-of-non-empty-string",
+        "runs-on-mapping"
+      ]
+    },
+    
+    "runs-on-mapping": {
+      "mapping": {
+        "properties": {
+          "group": "non-empty-string",
+          "labels": "runs-on-labels"
+        }
+      }
+    },
+    
+    "runs-on-labels": {
+      "one-of": [
+        "non-empty-string",
         "sequence-of-non-empty-string"
       ]
     },

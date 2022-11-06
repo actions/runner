@@ -5069,15 +5069,17 @@ namespace Runner.Server.Controllers
                     templateContext.Errors.Check();
                 }
                 var runsOn = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "runs-on" select r).FirstOrDefault().Value;
-                HashSet<string> runsOnMap = new HashSet<string>();
-                if (runsOn != null) {
+                HashSet<string> runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if(runsOn != null) {
                     matrixJobTraceWriter.Info("{0}", "Evaluate runs-on");
                     templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                     var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.RunsOn, runsOn, 0, null, true);
                     templateContext.Errors.Check();
-                    runsOnMap.UnionWith(from t in eval.AssertScalarOrSequence($"jobs.{name}.runs-on") select t.AssertString($"jobs.{name}.runs-on.*").Value.ToLowerInvariant());
-                }
-                if(runsOnMap.Count <= 0) {
+                    var runsOnLabels = eval is MappingToken mt ? (from r in mt where r.Key.AssertString($"jobs.{name}.runs-on mapping key").Value == "labels" select r).FirstOrDefault().Value : eval;
+                    if(runsOnLabels != null) {
+                        runsOnMap.UnionWith(from t in runsOnLabels.AssertScalarOrSequence($"jobs.{name}.runs-on") select t.AssertString($"jobs.{name}.runs-on.*").Value);
+                    }
+                } else {
                     throw new Exception($"jobs.{name}.runs-on empty set of runner labels");
                 }
 
@@ -5086,10 +5088,10 @@ namespace Runner.Server.Controllers
 
                 foreach(var p in platform.Reverse()) {
                     var eq = p.IndexOf('=');
-                    var set = p.Substring(0, eq).Split(",").Select(e => e.ToLowerInvariant()).ToHashSet();
+                    var set = p.Substring(0, eq).Split(",").ToHashSet(StringComparer.OrdinalIgnoreCase);
                     if(runsOnMap.IsSubsetOf(set) && p.Length > (eq + 1)) {
                         if(p[eq + 1] == '-') {
-                            runsOnMap = p.Substring(eq + 2, p.Length - (eq + 2)).Split(',').Select(e => e.ToLowerInvariant()).ToHashSet();
+                            runsOnMap = p.Substring(eq + 2, p.Length - (eq + 2)).Split(',').ToHashSet(StringComparer.OrdinalIgnoreCase);
                         } else {
                             runsOnMap = new HashSet<string> { "self-hosted", "container-host" };
                             if(jobContainer == null) {
@@ -5150,7 +5152,7 @@ namespace Runner.Server.Controllers
                     });
                 } else if(!QueueJobsWithoutRunner) {
                     var sessionsfreeze = sessions.ToArray();
-                    var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()) select s.Key).FirstOrDefault();
+                    var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name) select s.Key).FirstOrDefault();
                     if(x == null) {
                         StringBuilder b = new StringBuilder();
                         int i = 0;
@@ -5782,12 +5784,12 @@ namespace Runner.Server.Controllers
                     }
                 }, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = name.PrefixJobIdIfNotNull(parentId), name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = requestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])?.ToJToken()?.ToString() };
                 AddJob(job);
-                var runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "azure_devops" };
+                var runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
                 // Add capabilities to the map
                 if(rjob.Pool != null) {
                     if(rjob.Pool.Demands != null) {
                         foreach(var demand in rjob.Pool.Demands) {
-                            var sd = demand.ToLowerInvariant().Split("-equals", 2);
+                            var sd = demand.Split("-equals", 2);
                             if(sd.Length == 1) {
                                 runsOnMap.Add(sd[0].Trim());
                             } else {
@@ -5795,7 +5797,7 @@ namespace Runner.Server.Controllers
                             }
                         }
                     } else if(rjob.Pool.VmImage != null) {
-                        runsOnMap.Add(rjob.Pool.VmImage.ToLowerInvariant());
+                        runsOnMap.Add(rjob.Pool.VmImage);
                     }
                 }
                 //ConcurrencyGroup
@@ -5807,7 +5809,7 @@ namespace Runner.Server.Controllers
                         new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = result ?? TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                     } else {
                         Action _queueJob = () => {
-                            Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+                            Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
 
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
                             queue.Writer.WriteAsync(job);
@@ -5887,11 +5889,12 @@ namespace Runner.Server.Controllers
                 foreach (var item in l) {
                     b.AppendJoin(',', item);
                 }
-                return b.ToString().GetHashCode();
+                return b.ToString().ToLowerInvariant().GetHashCode();
             }
         }
 
         private static ConcurrentDictionary<HashSet<string>, Channel<Job>> jobqueue = new ConcurrentDictionary<HashSet<string>, Channel<Job>>(new EqualityComparer());
+        private static ConcurrentDictionary<HashSet<string>, Channel<Job>> jobqueueAzure = new ConcurrentDictionary<HashSet<string>, Channel<Job>>(new EqualityComparer());
         private static int id = 0;
 
         // private string Decrypt(byte[] key, byte[] iv, byte[] message) {
@@ -5939,29 +5942,32 @@ namespace Runner.Server.Controllers
                         this.HttpContext.Response.StatusCode = 403;
                         return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This agent has been removed by Ephemeral"), true, new Version(2, 0)));
                     }
-                    var labels = session.Agent.TaskAgent.SystemCapabilities?.Count > 0 ? session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).SelectMany(kv => new [] { kv.Key.ToLowerInvariant(), $"{kv.Key}={kv.Value}".ToLowerInvariant() } ).Prepend("azure_devops").ToArray() : session.Agent.TaskAgent.Labels.Select(l => l.Name.ToLowerInvariant()).ToArray();
-                    if(session.Agent.TaskAgent.SystemCapabilities?.Count > 0) {
+                    var isAzureAgent = session.Agent.TaskAgent.SystemCapabilities?.Count > 0;
+                    var labels = isAzureAgent ? session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).SelectMany(kv => new [] { kv.Key, $"{kv.Key}={kv.Value}" } ).ToArray() : session.Agent.TaskAgent.Labels.Select(l => l.Name).ToArray();
+                    var agentJobQueue = isAzureAgent ? jobqueueAzure : jobqueue;
+                    var defLabels = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
+                    var defChannel = agentJobQueue.GetOrAdd(defLabels, (a) => Channel.CreateUnbounded<Job>());
+                    if(isAzureAgent) {
                     //     var caps = session.Agent.TaskAgent.SystemCapabilities.Concat(session.Agent.TaskAgent.UserCapabilities ?? new Dictionary<string, string>()).ToArray();
                     //     foreach(var cap in caps) {
                     //         foreach(var cap2 in caps) {
-                    //             jobqueue.TryAdd(label, (a) => Channel.CreateUnbounded<Job>());
+                    //             agentJobQueue.TryAdd(label, (a) => Channel.CreateUnbounded<Job>());
                     //         }
                     //     }
-                        jobqueue.GetOrAdd(new HashSet<string>{ "azure_devops" } , (a) => Channel.CreateUnbounded<Job>());
                     } else {
-                        HashSet<HashSet<string>> labelcom = labels.Select(l => new HashSet<string>{l}).ToHashSet(new EqualityComparer());
+                        HashSet<HashSet<string>> labelcom = labels.Select(l => new HashSet<string>(StringComparer.OrdinalIgnoreCase){l}).ToHashSet(new EqualityComparer());
                         for(long j = 0; j < labels.LongLength; j++) {
                             var it = labelcom.ToArray();
                             for(long i = 0, size = it.LongLength; i < size; i++) {
-                                var res = it[i].Append(labels[j]).ToHashSet();
+                                var res = it[i].Append(labels[j]).ToHashSet(StringComparer.OrdinalIgnoreCase);
                                 labelcom.Add(res);
                             }
                         }
                         foreach(var label in labelcom) {
-                            Channel<Job> queue = jobqueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
+                            Channel<Job> queue = agentJobQueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
                         }
                     }
-                    var queues = jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(labels)).ToArray();
+                    var queues = agentJobQueue.ToArray().Where(e => e.Key.IsSubsetOf(labels)).Append(new KeyValuePair<HashSet<string>, Channel<Job>>(defLabels, defChannel)).ToArray();
                     while(!ts.IsCancellationRequested) {
                         var poll = queues.Select(q => q.Value.Reader.WaitToReadAsync(ts.Token).AsTask()).ToArray();
                         await Task.WhenAny(poll);
