@@ -1455,6 +1455,7 @@ namespace Runner.Server.Controllers
                                     if(rawdef != null) {
                                         workflowTraceWriter.Info($"Evaluate {defassertMessage}");
                                         var contextData = createContext("");
+                                        contextData["inputs"] = callingJob?.DispatchInputs;
                                         var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                                         rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-input-context", rawdef, 0, null, true);
                                         templateContext.Errors.Check();

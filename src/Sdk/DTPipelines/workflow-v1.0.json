@@ -817,7 +817,9 @@
 
     "workflow_call-input-context": {
       "context": [
-        "github"
+        "github",
+        "vars",
+        "inputs"
       ],
       "one-of":[
         "boolean",
