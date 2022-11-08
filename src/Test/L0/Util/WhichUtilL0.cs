@@ -99,17 +99,18 @@ namespace GitHub.Runner.Common.Tests.Util
             using TestHostContext hc = new TestHostContext(this);
             Tracing trace = hc.GetTrace();
             string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
-            string newValue = oldValue + Path.GetTempPath();
+            string newValue = oldValue + @$";{Path.GetTempPath()}";
             Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
-            string symlink = Path.GetTempPath() + "symlink.exe";
-            string target = Path.GetTempPath() + "target.exe";
+            string symlinkName = $"symlink-{Guid.NewGuid()}";
+            string symlink = Path.GetTempPath() + $"{symlinkName}.exe" ;
+            string target = Path.GetTempPath() + $"target-{Guid.NewGuid()}.exe";
 
             using (File.Create(target))
             {
                 File.CreateSymbolicLink(symlink, target);
 
                 // Act.
-                var result = WhichUtil.Which("symlink", require: true, trace: trace);
+                var result = WhichUtil.Which(symlinkName, require: true, trace: trace);
 
                 // Assert
                 Assert.True(!string.IsNullOrEmpty(result) && File.Exists(result), $"Unable to find symlink through: {nameof(WhichUtil.Which)}");
@@ -133,11 +134,11 @@ namespace GitHub.Runner.Common.Tests.Util
             using TestHostContext hc = new TestHostContext(this);
             Tracing trace = hc.GetTrace();
             string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
-            string newValue = oldValue + Path.GetTempPath();
+            string newValue = oldValue + @$";{Path.GetTempPath()}";
             Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
-            string symlinkName = "symlink.exe";
-            string symlink = Path.GetTempPath() + symlinkName;
-            string targetName = "target.exe";
+            string symlinkName = $"symlink-{Guid.NewGuid()}";
+            string symlink = Path.GetTempPath() + $"{symlinkName}.exe";
+            string targetName = $"target-{Guid.NewGuid()}.exe";
             string target = Path.GetTempPath() + targetName;
 
             using (File.Create(target))
@@ -145,7 +146,7 @@ namespace GitHub.Runner.Common.Tests.Util
                 File.CreateSymbolicLink(symlink, targetName);
 
                 // Act.
-                var result = WhichUtil.Which("symlink", require: true, trace: trace);
+                var result = WhichUtil.Which(symlinkName, require: true, trace: trace);
 
                 // Assert
                 Assert.True(!string.IsNullOrEmpty(result) && File.Exists(result), $"Unable to find {symlinkName} through: {nameof(WhichUtil.Which)}");
@@ -169,15 +170,16 @@ namespace GitHub.Runner.Common.Tests.Util
             string newValue = oldValue + Path.GetTempPath();
             Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
 
-            string brokenSymlink = Path.GetTempPath() + "broken-symlink.exe";
+            string brokenSymlinkName = $"broken-symlink-{Guid.NewGuid()}";
+            string brokenSymlink = Path.GetTempPath() + $"{brokenSymlinkName}.exe";
             string target = "no-such-file-cf7e351f";
             File.CreateSymbolicLink(brokenSymlink, target);
 
             // Act.
-            var exception = Assert.Throws<FileNotFoundException>(()=>WhichUtil.Which("broken-symlink", require: true, trace: trace));
+            var exception = Assert.Throws<FileNotFoundException>(()=>WhichUtil.Which(brokenSymlinkName, require: true, trace: trace));
 
             // Assert
-            Assert.Equal("broken-symlink", exception.FileName);
+            Assert.Equal(brokenSymlinkName, exception.FileName);
 
             // Cleanup
             File.Delete(brokenSymlink);
