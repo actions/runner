@@ -99,11 +99,20 @@ namespace GitHub.Runner.Common.Tests.Util
             using TestHostContext hc = new TestHostContext(this);
             Tracing trace = hc.GetTrace();
             string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
+#if OS_WINDOWS
             string newValue = oldValue + @$";{Path.GetTempPath()}";
-            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
             string symlinkName = $"symlink-{Guid.NewGuid()}";
-            string symlink = Path.GetTempPath() + $"{symlinkName}.exe" ;
+            string symlink = Path.GetTempPath() + $"{symlinkName}.exe";
             string target = Path.GetTempPath() + $"target-{Guid.NewGuid()}.exe";
+#else
+            string newValue = oldValue + @$":{Path.GetTempPath()}";
+            string symlinkName = $"symlink-{Guid.NewGuid()}";
+            string symlink = Path.GetTempPath() + $"{symlinkName}";
+            string target = Path.GetTempPath() + $"target-{Guid.NewGuid()}";
+#endif
+
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
+
 
             using (File.Create(target))
             {
@@ -134,12 +143,21 @@ namespace GitHub.Runner.Common.Tests.Util
             using TestHostContext hc = new TestHostContext(this);
             Tracing trace = hc.GetTrace();
             string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
+#if OS_WINDOWS
             string newValue = oldValue + @$";{Path.GetTempPath()}";
-            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
             string symlinkName = $"symlink-{Guid.NewGuid()}";
             string symlink = Path.GetTempPath() + $"{symlinkName}.exe";
             string targetName = $"target-{Guid.NewGuid()}.exe";
             string target = Path.GetTempPath() + targetName;
+#else
+            string newValue = oldValue + @$":{Path.GetTempPath()}";
+            string symlinkName = $"symlink-{Guid.NewGuid()}";
+            string symlink = Path.GetTempPath() + $"{symlinkName}";
+            string targetName = $"target-{Guid.NewGuid()}";
+            string target = Path.GetTempPath() + targetName;
+#endif
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
+
 
             using (File.Create(target))
             {
@@ -167,12 +185,21 @@ namespace GitHub.Runner.Common.Tests.Util
             using TestHostContext hc = new TestHostContext(this);
             Tracing trace = hc.GetTrace();
             string oldValue = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
-            string newValue = oldValue + Path.GetTempPath();
-            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
 
+#if OS_WINDOWS
+            string newValue = oldValue + @$";{Path.GetTempPath()}";
             string brokenSymlinkName = $"broken-symlink-{Guid.NewGuid()}";
             string brokenSymlink = Path.GetTempPath() + $"{brokenSymlinkName}.exe";
+#else
+            string newValue = oldValue + @$":{Path.GetTempPath()}";
+            string brokenSymlinkName = $"broken-symlink-{Guid.NewGuid()}";
+            string brokenSymlink = Path.GetTempPath() + $"{brokenSymlinkName}";
+#endif
+
+
             string target = "no-such-file-cf7e351f";
+            Environment.SetEnvironmentVariable(PathUtil.PathVariable, newValue);
+
             File.CreateSymbolicLink(brokenSymlink, target);
 
             // Act.
