@@ -141,6 +141,9 @@ namespace GitHub.Runner.Listener
             {
                 terminal.WriteError($"An error occurred: {e.Message}");
                 trace.Error(e);
+                if (e.Message.EndsWith("is deprecated and cannot receive messages.")) {
+                    return Constants.Runner.ReturnCode.TerminatedError;
+                }
                 return Constants.Runner.ReturnCode.RetryableError;
             }
         }
