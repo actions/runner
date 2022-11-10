@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: nikola-jokic/actions-runner
+  IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
 
 jobs:
   build:
@@ -60,5 +60,5 @@ jobs:
             RUNNER_VERSION=${{ steps.image.outputs.version }}
           push: true
           labels: |
-            org.opencontainers.image.source="https://github.com/nikola-jokic/runner"
+            org.opencontainers.image.source="${{github.server_url}}/${{github.repository}}"
 
