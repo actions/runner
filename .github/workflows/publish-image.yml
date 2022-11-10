@@ -27,7 +27,6 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const core = require('@actions/core')
             const fs = require('fs');
             const inputRunnerVersion = "${{ github.event.inputs.runnerVersion }}"
             if (inputRunnerVersion) {
