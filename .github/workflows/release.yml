@@ -707,5 +707,5 @@ jobs:
           push: true
           labels: |
             org.opencontainers.image.source="${{github.server_url}}/${{github.repository}}"
-            org.opencontainers.image.description="https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}"
+            org.opencontainers.image.description=[Release Note](https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }})
             org.opencontainers.image.licenses="MIT"
