@@ -53,7 +53,9 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./images
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           build-args: |
             RUNNER_VERSION=${{ steps.image.outputs.version }}
           push: true
