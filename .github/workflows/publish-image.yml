@@ -26,6 +26,7 @@ jobs:
         id: image
         uses: actions/github-script@0.3.0
         with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const core = require('@actions/core')
             const fs = require('fs');
