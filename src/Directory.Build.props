@@ -44,6 +44,9 @@
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'linux-arm64'">
     <DefineConstants>$(DefineConstants);ARM64</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'linux-s390x'">
+    <DefineConstants>$(DefineConstants);S390X</DefineConstants>
+  </PropertyGroup>
 
   <!-- Set TRACE/DEBUG vars -->
   <PropertyGroup>
