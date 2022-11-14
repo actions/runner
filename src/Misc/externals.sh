@@ -159,9 +159,9 @@ fi
 # Download the external tools for Linux PACKAGERUNTIMEs.
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-x64.tar.gz" node16 fix_nested_dir
-    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE16_VERSION}/alpine/x64/node-v${NODE16_VERSION}-alpine-x64.tar.gz" node16_alpine
+    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-x64.tar.gz" node16_alpine
     acquireExternalTool "$NODE_URL/v${NODE18_VERSION}/node-v${NODE18_VERSION}-linux-x64.tar.gz" node18 fix_nested_dir
-    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE18_VERSION}/alpine/x64/node-v${NODE18_VERSION}-alpine-x64.tar.gz" node18_alpine
+    acquireExternalTool "$NODE_URL/v${NODE18_VERSION}/node-v${NODE18_VERSION}-linux-x64.tar.gz" node18_alpine
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
