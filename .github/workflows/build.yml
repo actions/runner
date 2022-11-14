@@ -32,6 +32,10 @@ jobs:
           os: ubuntu-latest
           devScript: ./dev.sh
 
+        - runtime: linux-s390x
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
         - runtime: osx-x64
           os: macOS-latest
           devScript: ./dev.sh
@@ -86,7 +90,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'linux-s390x' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64'
 
     # Create runner package tar.gz/zip
     - name: Package Release
