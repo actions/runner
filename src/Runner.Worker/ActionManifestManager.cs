@@ -448,8 +448,8 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase)||
-                         string.Equals(usingToken.Value, "node16", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(usingToken.Value, "node16", StringComparison.OrdinalIgnoreCase)||
+                         string.Equals(usingToken.Value, "node18", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
                     {
@@ -489,7 +489,7 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
-                    throw new ArgumentOutOfRangeException($"'using: {usingToken.Value}' is not supported, use 'docker', 'node12' or 'node16' instead.");
+                    throw new ArgumentOutOfRangeException($"'using: {usingToken.Value}' is not supported, use 'docker', 'node16' or 'node18' instead.");
                 }
             }
             else if (pluginToken != null)
@@ -500,7 +500,7 @@ namespace GitHub.Runner.Worker
                 };
             }
 
-            throw new NotSupportedException("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12' or 'node16'.");
+            throw new NotSupportedException("Missing 'using' value. 'using' requires 'composite', 'docker', 'node16' or 'node18'.");
         }
 
         private void ConvertInputs(

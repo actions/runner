@@ -408,7 +408,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var nodeAction = result.Execution as NodeJSActionExecutionData;
 
                 Assert.Equal("main.js", nodeAction.Script);
-                Assert.Equal("node12", nodeAction.NodeVersion);
+                Assert.Equal("node18", nodeAction.NodeVersion);
             }
             finally
             {
@@ -715,7 +715,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Assert
                 var err = Assert.Throws<ArgumentException>(() => actionManifest.Load(_ec.Object, action_path));
                 Assert.Contains($"Fail to load {action_path}", err.Message);
-                _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12' or 'node16'.")), It.IsAny<string>()), Times.Once);
+                _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node16' or 'node18'.")), It.IsAny<string>()), Times.Once);
             }
             finally
             {

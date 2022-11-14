@@ -1288,7 +1288,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void LoadsNode12ActionDefinition()
+        public void LoadsNode18ActionDefinition()
         {
             try
             {
@@ -1313,7 +1313,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node18'
   main: 'task.js'
 ";
                 Pipelines.ActionStep instance;
@@ -1346,7 +1346,7 @@ runs:
 
                 Assert.NotNull(definition.Data.Execution as NodeJSActionExecutionData);
                 Assert.Equal("task.js", (definition.Data.Execution as NodeJSActionExecutionData).Script);
-                Assert.Equal("node12", (definition.Data.Execution as NodeJSActionExecutionData).NodeVersion);
+                Assert.Equal("node18", (definition.Data.Execution as NodeJSActionExecutionData).NodeVersion);
             }
             finally
             {
@@ -1451,7 +1451,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node18'
   main: 'task.js'
 ";
                 Pipelines.ActionStep instance;
@@ -1730,7 +1730,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node18'
   main: 'task.js'
 ";
                 Pipelines.ActionStep instance;
@@ -1798,7 +1798,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node18'
   main: 'task.js'
   post: 'cleanup.js'
 ";
@@ -2064,7 +2064,7 @@ author: 'GitHub'
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node18'
   main: 'task.js'
 ";
             CreateAction(yamlContent: Content, instance: out _, directory: out string directory);
