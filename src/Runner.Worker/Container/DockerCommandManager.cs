@@ -222,7 +222,7 @@ namespace GitHub.Runner.Worker.Container
             }
             if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
             {
-                dockerOptions.Add($"--entrypoint \"{container.ContainerEntryPoint}\"");
+                dockerOptions.Add($"--entrypoint {DockerUtil.EscapeString(container.ContainerEntryPoint)}");
             }
             // IMAGE
             dockerOptions.Add($"{container.ContainerImage}");
@@ -294,7 +294,7 @@ namespace GitHub.Runner.Worker.Container
 
             if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
             {
-                dockerOptions.Add($"--entrypoint \"{container.ContainerEntryPoint}\"");
+                dockerOptions.Add($"--entrypoint {DockerUtil.EscapeString(container.ContainerEntryPoint)}");
             }
 
             if (!string.IsNullOrEmpty(container.ContainerNetwork))
@@ -309,12 +309,12 @@ namespace GitHub.Runner.Worker.Container
                 if (String.IsNullOrEmpty(volume.SourceVolumePath))
                 {
                     // Anonymous docker volume
-                    volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    volumeArg = $"-v {DockerUtil.EscapeString(volume.TargetVolumePath)}";
                 }
                 else
                 {
                     // Named Docker volume / host bind mount
-                    volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    volumeArg = $"-v {DockerUtil.EscapeString($"{volume.SourceVolumePath}:{volume.TargetVolumePath}")}";
                 }
                 if (volume.ReadOnly)
                 {
