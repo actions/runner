@@ -49,12 +49,20 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 {
                     definition.RemoveAt(i);
                 }
+                else if (String.Equals(definitionKey.Value, "actionsIfExpression", StringComparison.Ordinal))
+                {
+                    var actionifexpr = definition[i].Value.AssertBoolean($"actionsIfExpression");
+                    definition.RemoveAt(i);
+                    ActionsIfExpression = actionifexpr.Value;
+                }
                 else
                 {
                     i++;
                 }
             }
         }
+
+        public bool ActionsIfExpression { get; private set; }
 
         internal abstract DefinitionType DefinitionType { get; }
 

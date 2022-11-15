@@ -186,6 +186,7 @@
         "cancelled(0,0)",
         "success(0,MAX)"
       ],
+      "actionsIfExpression": true,
       "string": {}
     },
 
@@ -470,6 +471,7 @@
         "success(0,0)",
         "hashFiles(1,255)"
       ],
+      "actionsIfExpression": true,
       "string": {}
     },
 

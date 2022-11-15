@@ -325,6 +325,12 @@ namespace GitHub.Runner.Worker
             if(executionContext.Global.Variables.GetBoolean("system.runner.server.allowAnyForInsert") == true) {
                 flags |= ExpressionFlags.AllowAnyForInsert;
             }
+            if(executionContext.Global.Variables.GetBoolean("system.runner.server.FixInvalidActionsIfExpression") == true) {
+                flags |= ExpressionFlags.FixInvalidActionsIfExpression;
+            }
+            if(executionContext.Global.Variables.GetBoolean("system.runner.server.FailInvalidActionsIfExpression") == true) {
+                flags |= ExpressionFlags.FailInvalidActionsIfExpression;
+            }
             var result = new TemplateContext
             {
                 Flags = flags,

@@ -75,7 +75,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             // Scalar
             if (m_objectReader.AllowLiteral(out LiteralToken literal))
             {
-                var scalar = ParseScalar(literal, definition.AllowedContext);
+                var scalar = ParseScalar(literal, definition.AllowedContext, definition.Definition.ActionsIfExpression);
                 Validate(ref scalar, definition);
                 m_memory.AddBytes(scalar);
                 return scalar;
@@ -492,7 +492,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         private ScalarToken ParseScalar(
             LiteralToken token,
-            String[] allowedContext)
+            String[] allowedContext,
+            bool actionsIfExpression = false)
         {
             // Not a string
             if (token.Type != TokenType.String)
@@ -599,6 +600,27 @@ namespace GitHub.DistributedTask.ObjectTemplating
             if (segments.Count == 1)
             {
                 return segments[0];
+            }
+
+            if (actionsIfExpression && (m_context.Flags & Expressions2.ExpressionFlags.FailInvalidActionsIfExpression) != Expressions2.ExpressionFlags.None)
+            {
+                m_context.Error(token, $"If condition has been converted to format expression and won't evaluate correctly: {raw}");
+            }
+            if (actionsIfExpression && (m_context.Flags & Expressions2.ExpressionFlags.FixInvalidActionsIfExpression) != Expressions2.ExpressionFlags.None)
+            {
+                var fixedExpression = new StringBuilder();
+                foreach (var segment in segments)
+                {
+                    if (segment is StringToken literal)
+                    {
+                        fixedExpression.Append(literal.Value);
+                    }
+                    else
+                    {
+                        fixedExpression.Append((segment as BasicExpressionToken).Expression);
+                    }
+                }
+                return new BasicExpressionToken(m_fileId, token.Line, token.Column, fixedExpression.ToString());
             }
 
             // Build the new expression, using the format function

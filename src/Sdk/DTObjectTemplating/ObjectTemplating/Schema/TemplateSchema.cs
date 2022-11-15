@@ -108,6 +108,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                                         case TemplateConstants.Context:
                                         case TemplateConstants.Description:
+                                        case "actionsIfExpression":
                                             continue;
 
                                         default:
@@ -371,6 +372,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.String, new PropertyValue(new StringToken(null, null, null, TemplateConstants.StringDefinitionProperties)));
+                    mappingDefinition.Properties.Add("actionsIfExpression", new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.StringDefinition, mappingDefinition);
 
                     // string-definition-properties

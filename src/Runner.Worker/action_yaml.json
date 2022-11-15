@@ -250,6 +250,7 @@
               "success(0,0)",
               "hashFiles(1,255)"
             ],
+            "actionsIfExpression": true,
             "string": {}
         },
         "step-with": {

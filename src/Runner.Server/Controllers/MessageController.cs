@@ -959,6 +959,12 @@ namespace Runner.Server.Controllers
             if(context.HasFeature("system.runner.server.allowAnyForInsert")) {
                 flags |= ExpressionFlags.AllowAnyForInsert;
             }
+            if(context.HasFeature("system.runner.server.FixInvalidActionsIfExpression")) {
+                flags |= ExpressionFlags.FixInvalidActionsIfExpression;
+            }
+            if(context.HasFeature("system.runner.server.FailInvalidActionsIfExpression")) {
+                flags |= ExpressionFlags.FailInvalidActionsIfExpression;
+            }
             var templateContext = new TemplateContext() {
                 Flags = flags,
                 CancellationToken = CancellationToken.None,

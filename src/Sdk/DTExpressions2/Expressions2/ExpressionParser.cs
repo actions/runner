@@ -18,6 +18,8 @@ namespace GitHub.DistributedTask.Expressions2
         ExtendedDirectives = 4,
         ExtendedFunctions = 8,
         AllowAnyForInsert = 16,
+        FailInvalidActionsIfExpression = 32,
+        FixInvalidActionsIfExpression = 64,
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
