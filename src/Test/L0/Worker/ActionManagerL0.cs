@@ -737,7 +737,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Reference = new Pipelines.RepositoryPathReference()
                         {
                             Name = "actions/setup-node",
-                            Ref = "v1",
+                            Ref = "v3",
                             RepositoryType = "GitHub"
                         }
                     }
@@ -887,7 +887,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "louis-bompart/runner_L0", "CompositeBasic.completed");
                 Assert.True(File.Exists(watermarkFile));
                 // Comes from the composite action
-                var watermarkFile2 = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/setup-node", "v2", "action.yml");
+                var watermarkFile2 = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/setup-node", "v3", "action.yml");
                 Assert.True(File.Exists(watermarkFile2));
             }
             finally

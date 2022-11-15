@@ -54,8 +54,8 @@ jobs:
     - id: step1
       uses: actions/setup-python@v1
     - id: step2
-      uses: actions/setup-node@v2
-    - uses: actions/checkout@v2
+      uses: actions/setup-node@v3
+    - uses: actions/checkout@v3
     - uses: user/composite@v1
     - name: workflow step 1
       run: echo hello world 3
