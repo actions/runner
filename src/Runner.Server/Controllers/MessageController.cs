@@ -934,6 +934,7 @@ namespace Runner.Server.Controllers
             public ISet<string> ProvidedInputs { get; set; }
             public ISet<string> ProvidedSecrets { get; set; }
 
+            public string WorkflowSha {get;set;}
             public string WorkflowRef {get;set;}
             public string WorkflowRepo {get;set;}
             public string WorkflowPath {get;set;}
@@ -1173,12 +1174,16 @@ namespace Runner.Server.Controllers
             foreach(var t in secretsProvider.GetReservedSecrets()) {
                 workflowContext.FeatureToggles[t.Key] = t.Value;
             }
+            PipelineContextData contextsTemplate = null;
             Func<string, DictionaryContextData> createContext = jobname => {
-                var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
+                var contextData = contextsTemplate?.Clone() as DictionaryContextData ?? new DictionaryContextData();
                 contextData["inputs"] = inputs;
                 contextData["vars"] = vars;
                 contextData["env"] = globalEnv;
                 contextData["secrets"] = null;
+                if(contextData.ContainsKey("github")) {
+                    return contextData;
+                }
                 var githubctx = new DictionaryContextData();
                 contextData.Add("github", githubctx);
                 githubctx.Add("server_url", new StringContextData(GitServerUrl));
@@ -1197,9 +1202,10 @@ namespace Runner.Server.Controllers
                     githubctx.Add("job", new StringContextData(jobname));
                 }
                 if(workflowContext.HasFeature("system.runner.server.workflowinfo")) {
-                    var workflowRef = callingJob?.WorkflowRef ?? Sha;
+                    var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
                     var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
                     var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
+                    githubctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
                     githubctx["job_workflow_ref"] = new StringContextData(job_workflow_ref);
                     githubctx["job_workflow_ref_repository"] = new StringContextData(workflowRepo);
                     githubctx["job_workflow_ref_repository_owner"] = new StringContextData(workflowRepo.Split('/', 2)[0]);
@@ -1283,23 +1289,64 @@ namespace Runner.Server.Controllers
                 if(globalEnvToken != null) {
                     workflowEnvironment.Add(globalEnvToken);
                 }
-                if(workflowEnvironment.Count > 0) {
-                    globalEnv = new DictionaryContextData();
-                    foreach(var cEnv in workflowEnvironment) {
-                        var contextData = createContext("");
-                        var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
-                        var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-env", cEnv, 0, null, true);
-                        // Best effort, don't check for errors
-                        // templateContext.Errors.Check();
-                        // Best effort, make global env available this is not available on github actions
-                        if(workflowEnv is MappingToken genvToken) {
-                            foreach(var kv in genvToken) {
-                                if(kv.Key is StringToken key && kv.Value is StringToken val) {
-                                    globalEnv[key.Value] = new StringContextData(val.Value);
+                Action initGlobalEnvAndContexts = () => {
+                    if(!workflowContext.HasFeature("system.runner.server.disablecontextTemplate") && (workflowContext.FeatureToggles.TryGetValue("system.runner.server.contextTemplate", out var contextTemplate) || (contextTemplate = PipelineTemplateSchemaFactory.LoadResource("contextTemplate.yml")) != null)) {
+                        using(var reader = new StringReader(contextTemplate)) {
+                            var objectReader = new YamlObjectReader(null, reader, true, true, true);
+                            var contextData = new DictionaryContextData();
+                            var serverctx = new DictionaryContextData();
+                            contextData["server"] = serverctx;
+                            serverctx["event"] = payloadObject.ToPipelineContextData();
+                            serverctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
+                            serverctx.Add("server_url", new StringContextData(GitServerUrl));
+                            serverctx.Add("api_url", new StringContextData(GitApiServerUrl));
+                            serverctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
+                            serverctx.Add("workflow", new StringContextData(workflowname));
+                            serverctx.Add("repository", new StringContextData(repository_name));
+                            serverctx.Add("sha", new StringContextData(Sha));
+                            serverctx.Add("ref", new StringContextData(Ref));
+                            serverctx.Add("run_id", new StringContextData(runid.ToString()));
+                            serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
+                            serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
+                            var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
+                            var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
+                            serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
+                            serverctx["job_workflow_ref"] = new StringContextData(job_workflow_ref);
+                            serverctx["job_workflow_ref_repository"] = new StringContextData(workflowRepo);
+                            serverctx["job_workflow_ref_repository_owner"] = new StringContextData(workflowRepo.Split('/', 2)[0]);
+                            serverctx["job_workflow_ref_repository_name"] = new StringContextData(workflowRepo.Split('/', 2)[1]);
+                            serverctx["job_workflow_ref_ref"] = new StringContextData(workflowRef);
+                            var templateContext = CreateTemplateContext(workflowContext.HasFeature("system.runner.server.debugcontextTemplate") ? workflowTraceWriter : new EmptyTraceWriter(), workflowContext, contextData);
+                            templateContext.Schema = PipelineTemplateSchemaFactory.LoadSchema("contextTemplateSchema.json");
+                            templateContext.Flags |= ExpressionFlags.ExtendedDirectives | ExpressionFlags.ExtendedFunctions | ExpressionFlags.AllowAnyForInsert;
+                            var token = TemplateReader.Read(templateContext, "context-root", objectReader, null, out _);
+                            templateContext.Errors.Check();
+                            contextsTemplate = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true).AssertMapping("context-root").ToContextData();
+                        }
+                    }
+                    if(workflowEnvironment.Count > 0) {
+                        globalEnv = new DictionaryContextData();
+                        foreach(var cEnv in workflowEnvironment) {
+                            var contextData = createContext("");
+                            var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
+                            var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-env", cEnv, 0, null, true);
+                            // Best effort, don't check for errors
+                            // templateContext.Errors.Check();
+                            // Best effort, make global env available this is not available on github actions
+                            if(workflowEnv is MappingToken genvToken) {
+                                foreach(var kv in genvToken) {
+                                    if(kv.Key is StringToken key && kv.Value is StringToken val) {
+                                        globalEnv[key.Value] = new StringContextData(val.Value);
+                                    }
                                 }
                             }
                         }
                     }
+                };
+                // Delay initialize the template for workflow_dispatch, since the inputs in the event payload are modified
+                if(e != "workflow_dispatch") {
+                    initGlobalEnvAndContexts();
                 }
 
                 TemplateToken tk = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "on" select r).FirstOrDefault().Value;
@@ -1508,6 +1555,8 @@ namespace Runner.Server.Controllers
                                 throw new Exception($"This workflow doesn't define input {providedInput.Key}");
                             }
                         }
+                        // Initialize the custom GitHub context and global env
+                        initGlobalEnvAndContexts();
                     }
                     if(e == "workflow_call") {
                         allowed.Add("inputs");
@@ -5031,7 +5080,7 @@ namespace Runner.Server.Controllers
                             }
                             var calledWorkflowRepo = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowRepo : reference.Name;
                             var calledWorkflowRef = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowRef : reference.Ref;
-                            Action<string, string> workflow_call = (filename, filecontent) => {
+                            Action<string, string, string> workflow_call = (filename, filecontent, sha) => {
                                 var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
                                 var ghook = hook.ToObject<GiteaHook>();
 
@@ -5068,7 +5117,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
+                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value.Where(val => TemplateTokenEqual(val.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new NullToken(null, null, null), contextData["matrix"]?.ToTemplateToken() ?? new NullToken(null, null, null))).ToList(), StringComparer.OrdinalIgnoreCase);
                                 var sjob = TryParseJobSelector(selectedJob, out var cjob, out _, out var cselector) && string.Equals(name, cjob, StringComparison.OrdinalIgnoreCase) ? cselector : null;
                                 if(reusableWorkflowInheritEnv) {
@@ -5084,9 +5133,15 @@ namespace Runner.Server.Controllers
                                 }
                                 clone.ConvertYaml2(filename, filecontent, repo, GitServerUrl, ghook, hook, "workflow_call", sjob, false, null, null, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: fjobs, secretsProvider: reuseableSecretsProvider, parentEnv: reusableWorkflowInheritEnv ? environment : null);
                             };
-                            if((string.Equals(calledWorkflowRepo, repo, StringComparison.OrdinalIgnoreCase) && (("refs/heads/" + calledWorkflowRef) == Ref || ("refs/tags/" + calledWorkflowRef) == Ref) || calledWorkflowRef == Sha) && (workflows != null && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content) || localcheckout && TryGetFile(runid, reference.Path, out _content)) || localcheckout && TryGetFile(runid, reference.Path, out _content, $"{calledWorkflowRepo}@{calledWorkflowRef}")) {
+                            if((string.Equals(calledWorkflowRepo, repo, StringComparison.OrdinalIgnoreCase) && (calledWorkflowRef == Ref || ("refs/heads/" + calledWorkflowRef) == Ref || ("refs/tags/" + calledWorkflowRef) == Ref) || calledWorkflowRef == Sha) && (workflows != null && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content) || localcheckout && TryGetFile(runid, reference.Path, out _content))) {
                                 try {
-                                    workflow_call(reference.Path, _content);
+                                    workflow_call(reference.Path, _content, Sha);
+                                } catch (Exception ex) {
+                                    failedtoInstantiateWorkflow(ex.Message);
+                                }
+                            } else if(localcheckout && TryGetFile(runid, reference.Path, out _content, $"{calledWorkflowRepo}@{calledWorkflowRef}")) {
+                                try {
+                                    workflow_call(reference.Path, _content, calledWorkflowRef);
                                 } catch (Exception ex) {
                                     failedtoInstantiateWorkflow(ex.Message);
                                 }
@@ -5121,7 +5176,7 @@ namespace Runner.Server.Controllers
                                             try {
                                                 var fileRes = await client.GetAsync(item.download_url);
                                                 var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                                workflow_call(item.path, filecontent);
+                                                workflow_call(item.path, filecontent, item.Sha);
                                             } catch (Exception ex) {
                                                 failedtoInstantiateWorkflow(ex.Message);
                                             }

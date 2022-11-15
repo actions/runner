@@ -1,0 +1,21 @@
+{
+    "version": "workflow-v1.0",
+
+    "definitions": {
+        "context-root": {
+            "context": [
+                "server"
+            ],
+            "mapping": {
+                "loose-key-type": "string",
+                "loose-value-type": "context-data"
+            }
+        },
+        "context-data": {
+            "mapping": {
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        }
+    }
+}

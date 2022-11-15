@@ -32,5 +32,26 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         }
 
         private static TemplateSchema s_schema;
+
+        public static string LoadResource(string resource, Assembly assembly = null)
+        {
+            if (assembly == null)
+            {
+                assembly = Assembly.GetCallingAssembly();
+            }
+            using (var stream = assembly.GetManifestResourceStream(resource))
+            using (var streamReader = new StreamReader(stream))
+            {
+                return streamReader.ReadToEnd();
+            }
+        }
+        public static TemplateSchema LoadSchema(string resource)
+        {
+            var assembly = Assembly.GetCallingAssembly();
+            var json = LoadResource(resource, assembly);
+
+            var objectReader = new JsonObjectReader(null, json);
+            return TemplateSchema.Load(objectReader);
+        }
     }
 }

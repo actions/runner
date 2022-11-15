@@ -1,0 +1,26 @@
+github:
+  ${{ each prop in server }}:
+    ${{ if !startsWith(prop.key, 'job_workflow_') }}:
+      ${{ prop.key }}: ${{ prop.value }}
+  workflow_ref: ${{ server.job_workflow_ref }}
+  workflow_sha: ${{ server.job_workflow_ref_ref }}
+  repository_owner: ${{ server.event.repository.owner.login }}
+  repository_owner_id: ${{ format('{0}', server.event.repository.owner.id) }}
+  repository_id: ${{ format('{0}', server.event.repository.id) }}
+  repository_visibility: ${{ server.event.repository.visibility || server.event.repository.private && 'private' || 'public' }}
+  ${{ if startsWith(server.ref, 'refs/tags/') }}:
+    ref_name: ${{ split(server.ref, 'refs/tags/')[1] }}
+    ref_type: tag
+  ${{ elseif startsWith(server.ref, 'refs/heads/') }}:
+    ref_name: ${{ split(server.ref, 'refs/heads/')[1] }}
+    ref_type: branch
+  ref_protected: false
+  secret_source: Actions
+  retention_days: "90"
+  artifact_cache_size_limit: "10"
+  base_ref: ${{ server.event.pull_request.base.ref || '' }}
+  head_ref: ${{ server.event.pull_request.head.ref || '' }}
+  actor: ${{ server.event.sender.login }}
+  actor_id: ${{ format('{0}', server.event.sender.id) }}
+  repositoryUrl: ${{ server.event.repository.clone_url || format('{0}/{1}.git', server.server_url, server.repository) }}
+  triggering_actor: ${{ server.event.sender.login }}
