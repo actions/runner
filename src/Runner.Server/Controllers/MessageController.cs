@@ -903,6 +903,7 @@ namespace Runner.Server.Controllers
             public CancellationToken? ForceCancellationToken {get;set;}
             public IList<string> FileTable { get; set; }
             public string FileName { get; set; }
+            public JObject EventPayload { get; set; }
             public HashSet<string> ReferencedWorkflows { get; } = new HashSet<string>();
             public IDictionary<string, string> FeatureToggles { get; set; }
             public ExpressionFlags Flags { get; internal set; }
@@ -1169,7 +1170,7 @@ namespace Runner.Server.Controllers
             foreach(var kv in globalVars) {
                 vars[kv.Key] = new StringContextData(kv.Value);
             }
-            var workflowContext = new WorkflowContext() { FileName = fileRelativePath };
+            var workflowContext = new WorkflowContext() { FileName = fileRelativePath, EventPayload = payloadObject };
             workflowContext.FeatureToggles = globalVars;
             foreach(var t in secretsProvider.GetReservedSecrets()) {
                 workflowContext.FeatureToggles[t.Key] = t.Value;
@@ -4866,7 +4867,7 @@ namespace Runner.Server.Controllers
                 var calculatedPermissions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 bool isFork = false;
                 {
-                    var _hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
+                    var _hook = workflowContext.EventPayload;
                     var _ghook = _hook.ToObject<GiteaHook>();
                     isFork = !WriteAccessForPullRequestsFromForks && wevent == "pull_request" && (_ghook?.pull_request?.head?.Repo?.Fork ?? false);
                     calculatedPermissions["metadata"] = "read";
@@ -5081,7 +5082,7 @@ namespace Runner.Server.Controllers
                             var calledWorkflowRepo = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowRepo : reference.Name;
                             var calledWorkflowRef = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowRef : reference.Ref;
                             Action<string, string, string> workflow_call = (filename, filecontent, sha) => {
-                                var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
+                                var hook = workflowContext.EventPayload;
                                 var ghook = hook.ToObject<GiteaHook>();
 
                                 var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
@@ -5339,7 +5340,7 @@ namespace Runner.Server.Controllers
                         var myAudience = "http://githubactionsserver";
 
                         var tokenHandler = new JwtSecurityTokenHandler();
-                        var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
+                        var hook = workflowContext.EventPayload;
                         var ghook = hook.ToObject<GiteaHook>();
                         var resources = new JobResources();
                         var systemVssConnection = new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri(apiUrl) };
