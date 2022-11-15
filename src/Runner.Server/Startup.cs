@@ -34,6 +34,9 @@ using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Quartz;
+using Microsoft.Data.Sqlite;
+using System.Reflection;
 
 namespace Runner.Server
 {
@@ -130,7 +133,36 @@ namespace Runner.Server
                 var b = new DbContextOptionsBuilder<SqLiteDb>();
                 optionsAction(b);
                 new SqLiteDb(b.Options).Database.Migrate();
+                try {
+                    using(var schema = Assembly.GetExecutingAssembly().GetManifestResourceStream("quartz/tables_sqlite.sql"))
+                    using(var reader = new StreamReader(schema))
+                    using (var connection = new SqliteConnection(sqlitecon))
+                    {
+                        connection.Open();
+                        string sql = reader.ReadToEnd();
+                        var command = new SqliteCommand(sql, connection);
+                        command.ExecuteNonQuery();
+                        connection.Close();
+                    }
+                } catch(SqliteException) {
+                } catch(Exception ex) when (!(ex is SqliteException sqlex)) {
+                    Console.WriteLine($"Failed to initialize sqlite for cron schedules: {ex.Message}\n{ex.StackTrace}");
+                }
             }
+            services.AddQuartz(c => {
+                if(useSqlite) {
+                    c.UsePersistentStore(configure => {
+                        configure.UseProperties = true;
+                        configure.UseMicrosoftSQLite(sqlitecon);
+                        configure.UseJsonSerializer();
+                    });
+                } else {
+                    c.UseInMemoryStore();
+                }
+                c.UseMicrosoftDependencyInjectionJobFactory();
+            });
+            services.AddQuartzHostedService();
+
             var sessionCookieLifetime = Configuration.GetValue("SessionCookieLifetimeMinutes", 60);
             services.AddSingleton<IAuthorizationHandler, DevModeOrAuthenticatedUser>();
 

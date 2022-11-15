@@ -44,6 +44,8 @@ using GitHub.Actions.Pipelines.WebApi;
 using YamlDotNet.Serialization;
 using System.Diagnostics;
 using System.Reflection;
+using Quartz;
+using Quartz.Impl.Matchers;
 
 namespace Runner.Server.Controllers
 {
@@ -57,6 +59,7 @@ namespace Runner.Server.Controllers
         private string GitGraphQlServerUrl;
         private IMemoryCache _cache;
         private SqLiteDb _context;
+        private ISchedulerFactory factory;
         private string GITHUB_TOKEN;
         private string GITHUB_TOKEN_READ_ONLY;
         private string GITHUB_TOKEN_NONE;
@@ -89,7 +92,7 @@ namespace Runner.Server.Controllers
         private string OnQueueJobProgram { get; }
         private string OnQueueJobArgs { get; }
         private MessageController Clone() {
-            var nc = new MessageController(Configuration, _cache, new SqLiteDb(_context.Options));
+            var nc = new MessageController(Configuration, _cache, new SqLiteDb(_context.Options), factory);
             // We have no access to the HttpContext in the clone
             nc.ServerUrl = ServerUrl;
             return nc;
@@ -100,7 +103,22 @@ namespace Runner.Server.Controllers
             public string Value {get;set;}
         }
 
-        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context) : base(configuration)
+        public class QuartzScheduleWorkflowJob : IJob
+        {
+            private MessageController controller;
+            public QuartzScheduleWorkflowJob(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, ISchedulerFactory factory = null) {
+                controller = new MessageController(configuration, memoryCache, context, factory);
+            }
+
+            public async Task Execute(IJobExecutionContext context)
+            {
+                var payload = context.MergedJobDataMap.GetString("payload");
+                var jobj = JObject.Parse(payload);
+                await controller.ExecuteWebhook("schedule", new KeyValuePair<GiteaHook, JObject>(jobj.ToObject<GiteaHook>(), jobj));
+            }
+        }
+
+        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, ISchedulerFactory factory = null) : base(configuration)
         {
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<string>("GitServerUrl") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<string>("GitApiServerUrl") ?? "";
@@ -136,6 +154,7 @@ namespace Runner.Server.Controllers
             workflowRootFolder = configuration.GetSection("Runner.Server").GetValue<string>("WorkflowRootFolder", ".github/workflows");
             _cache = memoryCache;
             _context = context;
+            this.factory = factory;
         }
 
         [HttpDelete("{poolId}/{messageId}")]
@@ -1280,6 +1299,58 @@ namespace Runner.Server.Controllers
                 TemplateToken tk = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "on" select r).FirstOrDefault().Value;
                 if(tk == null) {
                     throw new Exception("Your workflow is invalid, missing 'on' property");
+                }
+                if((e == "push" || e == "schedule") && factory != null && Ref == ("refs/heads/" + (hook?.repository?.default_branch ?? "main"))) {
+                    var schedules = tk is MappingToken scheduleMapping ? (from r in tk.AssertMapping("on") where r.Key.AssertString("schedule").Value == "schedule" select r).FirstOrDefault().Value?.AssertSequence("on.schedule.*.cron") : null;
+                    var cm = schedules != null ? (from cron in schedules select cron.AssertMapping("cron").FirstOrDefault().Value?.AssertString("cronval")?.Value).ToList() : new List<string>();
+                    var groupName = $"workflowscheduler_{repository_name}_{fileRelativePath}";
+                    ((Action)(async () => {
+                        var scheduler = await factory.GetScheduler();
+                        var currentSchedules = await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(groupName));
+                        foreach(var sched in currentSchedules) {
+                            if(cm.Contains(sched.Name)) {
+                                cm.Remove(sched.Name);
+                            } else {
+                                await scheduler.DeleteJob(sched);
+                            }
+                        }
+                        foreach(var sched in cm) {
+                            try {
+                                var schedArray = sched.Split(" ");
+                                var regex = new Regex("[0-9]+");
+                                schedArray[2] = regex.Replace(schedArray[2], m => (int.Parse(m.Value)-1).ToString());
+                                schedArray[3] = regex.Replace(schedArray[3], m => (int.Parse(m.Value)-1).ToString());
+                                // Needs to be delayed, otherwise it ends up with -1/2, if it uses */2
+                                schedArray = schedArray.Select(s => s.Replace("*/", "0/")).ToArray();
+                                schedArray[4] = regex.Replace(schedArray[4], m => (int.Parse(m.Value)+1).ToString());
+                                List<string> scheds = new List<string>();
+                                if(schedArray[4] != "*") {
+                                    scheds.Add($"0 {schedArray[0]} {schedArray[1]} * ? {schedArray[4]}");
+                                }
+                                if(schedArray[2] != "*" || schedArray[3] != "*" || !scheds.Any()) {
+                                    scheds.Add($"0 {schedArray[0]} {schedArray[1]} {schedArray[2]} {schedArray[3]} ?");
+                                }
+                                var payload = new JObject();
+                                payload["schedule"] = sched;
+                                if(payloadObject.TryGetValue("sender", out var v)) {
+                                    payload["sender"] = v;
+                                }
+                                if(payloadObject.TryGetValue("repository", out v)) {
+                                    payload["repository"] = v;
+                                }
+                                if(payloadObject.TryGetValue("organization", out v)) {
+                                    payload["organization"] = v;
+                                }
+                                if(payloadObject.TryGetValue("enterprise", out v)) {
+                                    payload["enterprise"] = v;
+                                }
+                                var details = JobBuilder.Create<QuartzScheduleWorkflowJob>().WithIdentity(sched, groupName).UsingJobData("payload", payload.ToString()).Build();
+                                await scheduler.ScheduleJob(details, (from s in scheds select TriggerBuilder.Create().WithCronSchedule(s).Build()).ToList(), true);
+                            } catch {
+
+                            }
+                        }
+                    }))();
                 }
                 Func<HookResponse> skipWorkflow = () => {
                     if(callingJob != null) {
@@ -6284,6 +6355,10 @@ namespace Runner.Server.Controllers
             if(Request.Headers.TryGetValue("X-GitHub-Event", out ev) && ev.Count == 1 && ev.First().Length > 0) {
                 e = ev.First();
             }
+            return await ExecuteWebhook(e, obj);
+        }
+
+        private async Task<ActionResult> ExecuteWebhook(string e, KeyValuePair<GiteaHook, JObject> obj) {
             var hook = obj.Key;
             string githubAppToken = null;
             if(!string.IsNullOrEmpty(hook?.repository?.full_name)) {
@@ -6570,6 +6645,8 @@ namespace Runner.Server.Controllers
             if(WebhookSecret.Length > 0) {
                 return NotFound();
             }
+            // Prevent register schedule events, if a workflow is triggered manually
+            this.factory = null;
             var rrunid = runid;
             var form = await Request.ReadFormAsync();
             KeyValuePair<GiteaHook, JObject> obj;

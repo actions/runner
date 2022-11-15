@@ -21,6 +21,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="6.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.3" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="6.0.2" />
+    <PackageReference Include="Quartz" Version="3.5.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.5.0" />
+    <PackageReference Include="Quartz.Serialization.Json" Version="3.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.0" />
     <PackageReference Include="System.Diagnostics.EventLog" Version="6.0.0" />
     <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
@@ -40,5 +43,11 @@
     <None Include="wwwroot\**" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" Link="wwwroot\%(RecursiveDir)\%(Filename)%(Extension)" />
     <None Include="appsettings*.json" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" />
   </ItemGroup>
+
+  <ItemGroup>
+        <EmbeddedResource Include="quartz/tables_sqlite.sql">
+            <LogicalName>quartz/tables_sqlite.sql</LogicalName>
+        </EmbeddedResource>
+    </ItemGroup>
 
 </Project>
