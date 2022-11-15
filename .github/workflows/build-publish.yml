@@ -37,11 +37,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-dotnet@v2
+      - uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 6.0.x
       - run: dotnet msbuild src/dir.proj -t:GenerateConstant -p:RunnerVersion=${{ inputs.version || '3.0.0' }} -p:PackageRuntime=${{ !matrix.fxdependent && matrix.runtime || 'Any' }}
-      - run: dotnet publish src/Runner.Client ${{ matrix.fxdependent && '--no-self-contained' || '--sc' }} -c Release -p:BUILD_OS=${{ matrix.fxdependent && 'Any' || startsWith(matrix.runtime, 'win-') && 'Windows' || startsWith(matrix.runtime, 'osx-') && 'OSX' || 'Linux' }} -r ${{ matrix.runtime }} -p:Version=${{ inputs.version || '3.0.0' }} -o output
+      - run: dotnet publish src/Runner.Client ${{ matrix.fxdependent && '--no-self-contained -p:RuntimeFrameworkVersion=6.0.0' || '--sc' }} -c Release -p:BUILD_OS=${{ matrix.fxdependent && 'Any' || startsWith(matrix.runtime, 'win-') && 'Windows' || startsWith(matrix.runtime, 'osx-') && 'OSX' || 'Linux' }} -r ${{ matrix.runtime }} -p:Version=${{ inputs.version || '3.0.0' }} -o output
       - name: Package tar
         if: ${{ !startsWith(matrix.runtime, 'win-') }}
         run: |
@@ -52,7 +52,7 @@ jobs:
         run: |
           zip -r ../runner.server-${{matrix.runtime}}${{ matrix.fxdependent && '-fxdependent' || '' }}.zip ./*
         working-directory: output
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: runner.server-${{matrix.runtime}}${{ matrix.fxdependent && '-fxdependent' || '' }}
           path: 'runner.server-${{matrix.runtime}}*'
@@ -80,8 +80,8 @@ jobs:
     needs: publish-to-github
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-dotnet@v1
+    - uses: actions/checkout@v3
+    - uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '6.0.x'
     - name: GenerateConstant
@@ -102,7 +102,7 @@ jobs:
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: nupkg
         path: src/Runner.Client/nupkg

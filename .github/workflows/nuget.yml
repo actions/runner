@@ -11,8 +11,8 @@ jobs:
     outputs:
       version: ${{ steps.build.outputs.version }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-dotnet@v1
+    - uses: actions/checkout@v3
+    - uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '6.0.x'
     - name: GenerateConstant
@@ -38,7 +38,7 @@ jobs:
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: nupkg
         path: src/Runner.Client/nupkg
@@ -83,14 +83,14 @@ jobs:
     runs-on: ${{matrix.os}}
     container: ${{matrix.image}}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - if: matrix.dotnet-version
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v3
       with:
         dotnet-version: ${{matrix.dotnet-version}}
     - run: mkdir src/Runner.Client/nupkg
     - name: Download Artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: nupkg
         path: src/Runner.Client/nupkg
