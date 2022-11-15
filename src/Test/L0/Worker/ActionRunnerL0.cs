@@ -351,7 +351,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Reference = new Pipelines.RepositoryPathReference()
                 {
                     Name = "actions/test",
-                    Ref = "master"
+                    Ref = "main"
                 },
                 Inputs = actionInputs
             };
@@ -371,7 +371,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             //Assert
             _ec.Verify(x => x.SetGitHubContext("action_repository", "actions/test"), Times.Once);
-            _ec.Verify(x => x.SetGitHubContext("action_ref", "master"), Times.Once);
+            _ec.Verify(x => x.SetGitHubContext("action_ref", "main"), Times.Once);
 
             action = new Pipelines.ActionStep()
             {

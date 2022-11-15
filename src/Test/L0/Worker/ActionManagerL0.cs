@@ -212,7 +212,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Reference = new Pipelines.RepositoryPathReference()
                         {
                             Name = "actions/download-artifact",
-                            Ref = "master",
+                            Ref = "main",
                             RepositoryType = "GitHub"
                         }
                     }
@@ -222,10 +222,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "master.completed");
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "main.completed");
                 Assert.True(File.Exists(watermarkFile));
 
-                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "master", "action.yml");
+                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "main", "action.yml");
                 Assert.True(File.Exists(actionYamlFile));
                 _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
             }
