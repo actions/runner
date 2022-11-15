@@ -17,5 +17,7 @@ RUN curl -f -L -o runner-container-hooks.zip https://github.com/actions/runner-c
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:6.0
 
+ENV RUNNER_ALLOW_RUNASROOT=1
+
 WORKDIR /actions-runner
 COPY --from=build /actions-runner .
