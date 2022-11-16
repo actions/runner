@@ -4780,23 +4780,11 @@ namespace Runner.Server.Controllers
 
         [HttpGet("idtoken")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
-        public async Task<IActionResult> GenerateIdToken([FromQuery] string sig, [FromQuery] string run_id, [FromQuery] string run_number, [FromQuery] string environment, [FromQuery] string head_ref, [FromQuery] string base_ref, [FromQuery] string actor, [FromQuery] string workflow, [FromQuery] string event_name, [FromQuery] string job_workflow_ref, [FromQuery] string sha, [FromQuery] string audience) {
+        public async Task<IActionResult> GenerateIdToken([FromQuery] string sig, [FromQuery] string content, [FromQuery] string audience) {
             var rsa = RSA.Create(Startup.AccessTokenParameter);
             using(var memstr = new MemoryStream()) {
                 using(var wr = new StreamWriter(memstr)) {
-                    await wr.WriteLineAsync($"repository: {User.FindFirstValue("repository")}");
-                    await wr.WriteLineAsync($"run_attempt: {User.FindFirstValue("attempt")}");
-                    await wr.WriteLineAsync($"ref: {User.FindFirstValue("ref")}");
-                    await wr.WriteLineAsync($"run_id: {run_id}");
-                    await wr.WriteLineAsync($"run_number: {run_number}");
-                    await wr.WriteLineAsync($"environment: {environment}");
-                    await wr.WriteLineAsync($"head_ref: {head_ref}");
-                    await wr.WriteLineAsync($"base_ref: {base_ref}");
-                    await wr.WriteLineAsync($"actor: {actor}");
-                    await wr.WriteLineAsync($"workflow: {workflow}");
-                    await wr.WriteLineAsync($"event_name: {event_name}");
-                    await wr.WriteLineAsync($"job_workflow_ref: {job_workflow_ref}");
-                    await wr.WriteLineAsync($"sha: {sha}");
+                    await wr.WriteLineAsync(content);
                     wr.Flush();
                     memstr.Seek(0, SeekOrigin.Begin);
                     if(!rsa.VerifyData(memstr, Base64UrlEncoder.DecodeBytes(sig), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)) {
@@ -4810,30 +4798,21 @@ namespace Runner.Server.Controllers
             var myAudience = audience ?? new Uri(new Uri(GitServerUrl), User.FindFirstValue("repository").Split('/', 2)[0]).ToString();
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            IEnumerable<Claim> claims = new Claim[]
+            List<Claim> claims = new List<Claim>
             {
-                new Claim("ref", User.FindFirstValue("ref") ?? ""),
-                new Claim("sha", sha ?? ""),
-                new Claim("repository", User.FindFirstValue("repository") ?? ""),
-                new Claim("repository_owner", User.FindFirstValue("repository").Split('/', 2)[0]),
-                new Claim("run_id", run_id ?? ""),
-                new Claim("run_number", run_number ?? ""),
-                new Claim("run_attempt", User.FindFirstValue("attempt") ?? ""),
-                new Claim("actor", actor ?? ""),
-                new Claim("workflow", workflow ?? ""),
-                new Claim("head_ref", head_ref ?? ""),
-                new Claim("base_ref", base_ref ?? ""),
-                new Claim("event_name", event_name ?? ""),
-                new Claim("ref_type", User.FindFirstValue("ref").StartsWith("refs/heads/") ? "branch" : User.FindFirstValue("ref").StartsWith("refs/tags/") ? "tag" : ""),
-                new Claim("job_workflow_ref", job_workflow_ref ?? ""),
                 new Claim("jti", Guid.NewGuid().ToString()),
             };
-            if(string.IsNullOrEmpty(environment)) {
-                // It seems if we have no environment, the oidc token doesn't has the environment claim and the subject includes ref
-                claims = claims.Append(new Claim("sub", $"repo:{User.FindFirstValue("repository")}:ref:{User.FindFirstValue("ref") ?? ""}"));
+            Dictionary<string, string> sclaims = JsonConvert.DeserializeObject<Dictionary<string, string>>(content);
+            if(sclaims.TryGetValue("environment", out var environment) && !string.IsNullOrEmpty(environment)) {
+                claims.Add(new Claim("sub", $"repo:{User.FindFirstValue("repository")}:environment:{environment}"));
             } else {
-                claims = claims.Append(new Claim("sub", $"repo:{User.FindFirstValue("repository")}:environment:{environment}"));
-                claims = claims.Append(new Claim("environment", environment ?? ""));
+                // It seems if we have no environment, the oidc token doesn't has the environment claim and the subject includes ref
+                claims.Add(new Claim("sub", $"repo:{User.FindFirstValue("repository")}:ref:{User.FindFirstValue("ref") ?? ""}"));
+            }
+            foreach(var cl in sclaims) {
+                if(cl.Value != null) {
+                    claims.Add(new Claim(cl.Key, cl.Value));
+                }
             }
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -5349,38 +5328,36 @@ namespace Runner.Server.Controllers
                         feedStreamUrl.Scheme = feedStreamUrl.Scheme == "http" ? "ws" : "wss";
                         systemVssConnection.Data["FeedStreamUrl"] = feedStreamUrl.ToString();
                         if(calculatedPermissions.TryGetValue("id_token", out var p_id_token) && p_id_token == "write") {
-                            var run_id = attempt?.WorkflowRun?.Id ?? 0;
-                            var run_number = attempt?.WorkflowRun?.Id ?? 0;
                             var environment = deploymentEnvironmentValue?.Name ?? ("");
-                            var head_ref = ((DictionaryContextData) contextData["github"])["head_ref"].ToString();
-                            var base_ref = ((DictionaryContextData) contextData["github"])["base_ref"].ToString();
-                            var actor = ((DictionaryContextData) contextData["github"])["actor"].ToString();
-                            var workflow = ((DictionaryContextData) contextData["github"])["workflow"].ToString();
-                            var event_name = ((DictionaryContextData) contextData["github"])["event_name"].ToString();
-                            var sha = Sha;
                             var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
-                            var repository = repo;
-                            var run_attempt = attempt?.Attempt ?? 1;
-                            var run_ref = Ref;
+                            var claims = new Dictionary<string, string>();
+                            claims["repository"] = repo;
+                            claims["run_attempt"] = attempt?.Attempt.ToString() ?? "1";
+                            claims["ref"] = Ref;
+                            claims["run_id"] = attempt?.WorkflowRun?.Id.ToString() ?? "0";
+                            claims["run_number"] = attempt?.WorkflowRun?.Id.ToString() ?? "0";
+                            if(!string.IsNullOrEmpty(environment)) {
+                                claims["environment"] = environment;
+                            }
+                            claims["head_ref"] = contextData.GetPath("github", "head_ref")?.ToString();
+                            claims["base_ref"] = contextData.GetPath("github", "base_ref")?.ToString();
+                            claims["actor"] = contextData.GetPath("github", "actor")?.ToString();
+                            claims["actor_id"] = contextData.GetPath("github", "actor_id")?.ToString();
+                            claims["repository_id"] = contextData.GetPath("github", "repository_id")?.ToString();
+                            claims["repository_owner_id"] = contextData.GetPath("github", "repository_owner_id")?.ToString();
+                            claims["workflow"] = contextData.GetPath("github", "workflow")?.ToString();
+                            claims["event_name"] = contextData.GetPath("github", "event_name")?.ToString();
+                            claims["ref_type"] = contextData.GetPath("github", "ref_type")?.ToString();
+                            claims["job_workflow_ref"] = job_workflow_ref;
+                            claims["sha"] = Sha;
+                            var content = JsonConvert.SerializeObject(claims);
                             using(var rsa = RSA.Create(Startup.AccessTokenParameter))
                             using(var memstr = new MemoryStream()) {
                                 using(var wr = new StreamWriter(memstr)) {
-                                    wr.WriteLine($"repository: {repository}");
-                                    wr.WriteLine($"run_attempt: {run_attempt}");
-                                    wr.WriteLine($"ref: {run_ref}");
-                                    wr.WriteLine($"run_id: {run_id}");
-                                    wr.WriteLine($"run_number: {run_number}");
-                                    wr.WriteLine($"environment: {environment}");
-                                    wr.WriteLine($"head_ref: {head_ref}");
-                                    wr.WriteLine($"base_ref: {base_ref}");
-                                    wr.WriteLine($"actor: {actor}");
-                                    wr.WriteLine($"workflow: {workflow}");
-                                    wr.WriteLine($"event_name: {event_name}");
-                                    wr.WriteLine($"job_workflow_ref: {job_workflow_ref}");
-                                    wr.WriteLine($"sha: {sha}");
+                                    wr.WriteLineAsync(content);
                                     wr.Flush();
                                     memstr.Seek(0, SeekOrigin.Begin);
-                                    systemVssConnection.Data["GenerateIdTokenUrl"] = new Uri(new Uri(apiUrl), $"_apis/v1/Message/idtoken?sig={Uri.EscapeDataString(Base64UrlEncoder.Encode(rsa.SignData(memstr, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)))}&run_id={run_id}&run_number={run_number}&environment={Uri.EscapeDataString(environment)}&head_ref={Uri.EscapeDataString(head_ref)}&base_ref={Uri.EscapeDataString(base_ref)}&actor={Uri.EscapeDataString(actor)}&workflow={Uri.EscapeDataString(workflow)}&event_name={Uri.EscapeDataString(event_name)}&sha={Uri.EscapeDataString(sha)}&job_workflow_ref={Uri.EscapeDataString(job_workflow_ref)}").ToString();
+                                    systemVssConnection.Data["GenerateIdTokenUrl"] = new Uri(new Uri(apiUrl), $"_apis/v1/Message/idtoken?sig={Uri.EscapeDataString(Base64UrlEncoder.Encode(rsa.SignData(memstr, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)))}&content={Uri.EscapeDataString(content)}").ToString();
                                 }
                             }
                         }

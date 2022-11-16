@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Newtonsoft.Json.Linq;
 
@@ -298,6 +299,16 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             private Boolean m_isKey;
             public PipelineContextData Current;
             public TraversalState Parent;
+        }
+
+        public static PipelineContextData GetPath(this PipelineContextData data, params string[] path) {
+            if(data is DictionaryContextData dict && dict.TryGetValue(path[0], out var val)) {
+                if(path.Length == 1) {
+                    return val;
+                }
+                return GetPath(val, path.Skip(1).ToArray());
+            }
+            return null;
         }
     }
 }

@@ -1,0 +1,13 @@
+on:
+  push:
+jobs:
+  _:
+    permissions: write-all
+    runs-on: self-hosted
+    steps:
+    - uses: ChristopherHX/oidc@v2
+      id: odic
+    - run: echo $${{ runner.os == 'windows' && 'env:' || '' }}OIDC
+      env:
+        OIDC: ${{ tojson(steps.odic.outputs) }}
+    - run: exit ${{ steps.odic.outputs.event_name == github.event_name && steps.odic.outputs.repository == github.repository && steps.odic.outputs.ref == github.ref && steps.odic.outputs.ref_type == github.ref_type && steps.odic.outputs.actor == github.actor && '0' || '1' }}

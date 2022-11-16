@@ -147,6 +147,7 @@ jobs:
         gharun -C testworkflows/workflow_dispatch workflow_dispatch -i misc=myInput -i si=UdHe -i bval=true -i bval2=false
         gharun -C testworkflows/workflow_dispatch workflow_dispatch -i Misc=myInput -i SI=UdHe -i bVal=true -i BVAL2=false
         gharun -C testworkflows/matrix-selector push -j test -m fail:false
+        gharun -C testworkflows/oidc-provider
         gharun --event azpipelines -C testworkflows/azpipelines/typedtemplates -W testworkflows/azpipelines/typedtemplates/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/untypedtemplates -W testworkflows/azpipelines/untypedtemplates/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/stagetostagedeps -W testworkflows/azpipelines/stagetostagedeps/pipeline.yml
