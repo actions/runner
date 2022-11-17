@@ -244,6 +244,11 @@ namespace GitHub.Runner.Listener
                     _accessTokenRevoked = true;
                     throw;
                 }
+                catch (InvalidTaskAgentVersionException) 
+                {
+                    Trace.Info("Runner version has been depricated");
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     Trace.Error("Catch exception during get next message.");
