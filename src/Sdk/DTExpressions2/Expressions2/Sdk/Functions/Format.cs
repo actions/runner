@@ -254,6 +254,10 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                     {
                         result = argValue.StringResult;
                     }
+                    else if(argValue.EvaluationResult.Raw is Runner.Server.Azure.Devops.DateTimeWrapper dt)
+                    {
+                        result = dt.DateTime.ToString(formatSpecifiers);
+                    }
                     // Invalid
                     else
                     {

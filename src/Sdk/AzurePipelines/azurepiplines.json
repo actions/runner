@@ -36,7 +36,10 @@
       "context": [
         "variables",
         "dependencies",
-        "stageDependencies"
+        "stageDependencies",
+        "pipeline",
+        "resources",
+        "Counter(0,2)"
       ],
       "string": {}
     },

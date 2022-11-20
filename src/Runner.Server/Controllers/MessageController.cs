@@ -3291,6 +3291,36 @@ namespace Runner.Server.Controllers
                     }
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                 };
+                var startTime = DateTime.Now;
+                if(!string.IsNullOrEmpty(pipeline.Name)) {
+                    var macroexpr = new Regex("\\$\\(([^)]+)\\)");
+                    Func<string, int, string> evalMacro = null;
+                    evalMacro = (macro, depth) => {
+                        return macroexpr.Replace(macro, v => {
+                            var keyFormat = v.Groups[1].Value.Split(":", 2);
+                            switch(keyFormat[0].ToLower()) {
+                                case "date":
+                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "yyyyMMdd" : keyFormat[1]);
+                                case "year":
+                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "yyyy" : keyFormat[1]);
+                                case "seconds":
+                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "s" : keyFormat[1]);
+                                case "minutes":
+                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "m" : keyFormat[1]);
+                                case "hours":
+                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "H" : keyFormat[1]);
+                                case "dayOfmonth":
+                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "d" : keyFormat[1]);
+                                case "dayofyear":
+                                return startTime.DayOfYear.ToString();
+                                case "rev":
+                                return "0";
+                            }
+                            return pipeline.Variables.TryGetValue(keyFormat[0], out var val) ? (depth <= 10 ? evalMacro(val.Value, depth + 1) : val.Value) : v.Groups[0].Value;
+                        });
+                    };
+                    pipeline.Name = evalMacro(pipeline.Name, 0);
+                }
                 
                 workflowname = pipeline.Name ?? fileRelativePath;
                 if(callingJob == null) {
@@ -3639,18 +3669,109 @@ namespace Runner.Server.Controllers
                                     var keys = flatmatrix.First().Keys.ToArray();
                                     var deploymentStrategy = job?.Strategy?.RunOnce ?? (Azure.Devops.Strategy.RunOnceStrategy) job?.Strategy?.Rolling ?? (Azure.Devops.Strategy.RunOnceStrategy) job?.Strategy?.Canary; 
                                 
-                                    if(job?.Strategy?.MatrixExpression != null) {
-                                        Func<string, string> evalMatrix = val => {
+                                    var variables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
+                                    variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
+                                    Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
+                                    variables.Add("system.runnerGroupName", new VariableValue("misc", false));
+                                    variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
+                                    // For actions/upload-artifact@v1, actions/download-artifact@v1
+                                    variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
+                                    variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
+                                    variables["system"] = new VariableValue("build", false);
+                                    variables["System.HostType"] = new VariableValue("build", false);
+                                    variables["System.servertype"] = new VariableValue("Hosted", false);
+                                    variables["system.culture"] = new VariableValue("en-US", false);
+                                    variables["System.CollectionId"] = new VariableValue(Guid.Empty.ToString(), false);
+                                    variables["system.teamProject"] = new VariableValue("runner.server", false);
+                                    // If this is not a non zero guid upload artifact tasks refuse to work
+                                    variables["system.teamProjectId"] = new VariableValue("667b63ea-5b23-4619-9431-f2cff4e16a11", false);
+                                    variables["System.DefinitionId"] = new VariableValue(Guid.Empty.ToString(), false);
+                                    variables["system.definitionName"] = new VariableValue(Guid.Empty.ToString(), false);
+                                    variables["Build.Clean"] = new VariableValue("true", false);
+                                    variables["Build.SyncSources"] = new VariableValue("true", false);
+                                    variables["Build.DefinitionName"] = new VariableValue(Guid.Empty.ToString(), false);
+                                    // for azurelocalcheckout
+                                    variables["System.RunId"] = new VariableValue(runid.ToString(), false);
+                                    // ff for agent to enforce readonly vars
+                                    variables["agent.readOnlyVariables"] = "true";
+                                    variables["agent.retainDefaultEncoding"] = "true";
+                                    variables["agent.taskRestrictionsEnforcementMode"] = "Enabled";
+                                    variables["agent.disablelogplugin.TestResultLogPlugin"] = "true";
+                                    variables["agent.disablelogplugin.TestFilePublisherPlugin"] = "true";
+
+                                    foreach(var v in variables) {
+                                        v.Value.IsReadonly = true;
+                                    }
+                                    // Provide all env vars as normal variables
+                                    if(env?.Length > 0) {
+                                        LoadEnvSec(env, (k, v) => variables[k] = v);
+                                    }
+                                    // Provide normal variables from cli
+                                    foreach(var secr in secretsProvider.GetVariablesForEnvironment("")) {
+                                        variables[secr.Key] = new VariableValue(secr.Value, false);
+                                    }
+                                    var pipelinecontext = new PipelineContext(startTime);
+                                    {
+                                        var resourcesCtx = new DictionaryContextData();
+                                        var repositoriesCtx = new DictionaryContextData();
+                                        resourcesCtx["repositories"] = repositoriesCtx;
+                                        if(workflowContext.AzContext.Repositories != null) {
+                                            foreach(var repo in workflowContext.AzContext.Repositories) {
+                                                var repoCtx = new DictionaryContextData();
+                                                var nref = repo.Value.Split("@", 2);
+                                                repoCtx["name"] = new StringContextData(nref[0]);
+                                                repoCtx["ref"] = new StringContextData(nref[1]);
+                                                repositoriesCtx[repo.Key] = repoCtx;
+                                            }
+                                        }
+                                        var containersCtx = new DictionaryContextData();
+                                        resourcesCtx["containers"] = containersCtx;
+                                        if(pipeline.ContainerResources != null) {
+                                            foreach(var container in pipeline.ContainerResources) {
+                                                containersCtx[container.Key] = container.Value.ToContextData();
+                                            }
+                                        }
+                                        contextData["resources"] = resourcesCtx;
+                                    }
+                                    Func<GitHub.DistributedTask.ObjectTemplating.ITraceWriter, DictionaryContextData, Func<string, string>> createEvalVariable = (traceWriter, contextData) => {
+                                        return val => {
                                             if(!(val.StartsWith("$[") && val.EndsWith("]"))) {
                                                 return val;
                                             }
-                                            var templateContext = AzureDevops.CreateTemplateContext(jobTraceWriter, workflowContext.FileTable, workflowContext.Flags, contextData);
-                                            templateContext.ExpressionValues["variables"] = jobVariables;
+                                            var templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, workflowContext.Flags, contextData);
+                                            templateContext.ExpressionValues["pipeline"] = pipelinecontext;
+                                            templateContext.ExpressionFunctions.Add(new FunctionInfo<CounterFunction>("counter", 0, 2));
                                             var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "variable-result", new BasicExpressionToken(null, null, null, val.Substring(2, val.Length - 3)), 0, null, true);
                                             templateContext.Errors.Check();
                                             return eval.AssertString("variable").Value;
                                         };
-                                        var result = evalMatrix(job.Strategy.MatrixExpression);
+                                    };
+                                    var evalVariable = createEvalVariable(jobTraceWriter, contextData);
+                                    {
+                                        contextData["variables"] = jobVariables;
+                                        if(pipeline.Variables != null) {
+                                            foreach(var v in pipeline.Variables) {
+                                                variables[v.Key] = new VariableValue(evalVariable(v.Value.Value), v.Value.IsSecret, v.Value.IsReadonly);
+                                            }
+                                        }
+                                        if(stage.Variables != null) {
+                                            foreach(var v in stage.Variables) {
+                                                variables[v.Key] = new VariableValue(evalVariable(v.Value.Value), v.Value.IsSecret, v.Value.IsReadonly);
+                                            }
+                                        }
+                                        if(job.Variables != null) {
+                                            foreach(var v in job.Variables) {
+                                                variables[v.Key] = new VariableValue(evalVariable(v.Value.Value), v.Value.IsSecret, v.Value.IsReadonly);
+                                            }
+                                        }
+                                        var vars = new DictionaryContextData();
+                                        foreach(var v in variables) {
+                                            vars[v.Key] = new StringContextData(v.Value.Value);
+                                        }
+                                        contextData["variables"] = vars;
+                                    }
+                                    if(job?.Strategy?.MatrixExpression != null) {
+                                        var result = evalVariable(job.Strategy.MatrixExpression);
                                         job.Strategy.Matrix = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(result);
                                         if(job.Strategy.Matrix == null) {
                                             job.Strategy = null;
@@ -3827,26 +3948,7 @@ namespace Runner.Server.Controllers
                                         Func<string, Dictionary<string, TemplateToken>, Func<TaskResult?, Job>> act = (displaySuffix, item) => {
                                             var providedVars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
                                             int c = i++;
-                                            //strategyctx["job-index"] = new NumberContextData((double)(c));
                                             DictionaryContextData matrixContext = new DictionaryContextData();
-                                            if(pipeline.Variables != null) {
-                                                foreach (var v in pipeline.Variables) {
-                                                    matrixContext[v.Key] = new StringContextData(v.Value.Value);
-                                                    providedVars[v.Key] = v.Value;
-                                                }
-                                            }
-                                            if(stage.Variables != null) {
-                                                foreach (var v in stage.Variables) {
-                                                    matrixContext[v.Key] = new StringContextData(v.Value.Value);
-                                                    providedVars[v.Key] = v.Value;
-                                                }
-                                            }
-                                            if(job.Variables != null) {
-                                                foreach (var v in job.Variables) {
-                                                    matrixContext[v.Key] = new StringContextData(v.Value.Value);
-                                                    providedVars[v.Key] = v.Value;
-                                                }
-                                            }
                                             if(item.Any()) {
                                                 foreach (var mk in item) {
                                                     PipelineContextData data = mk.Value.ToContextData();
@@ -3870,7 +3972,6 @@ namespace Runner.Server.Controllers
                                             }
                                             
                                             contextData["matrix"] = null;
-                                            contextData["variables"] = matrixContext;
                                             if(finishedJobs != null) {
                                                 if(finishedJobs.TryGetValue(jobname, out var fjobs)) {
                                                     foreach(var fjob in fjobs) {
@@ -3944,8 +4045,19 @@ namespace Runner.Server.Controllers
                                                 addMatrixVar("System.PhaseDisplayName", next.DisplayName);
                                                 addMatrixVar("System.JobName", "__default");
                                                 addMatrixVar("System.JobDisplayName", next.DisplayName);
-                                                
-                                                return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, providedVars, env, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
+                                                var svariables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
+                                                if(providedVars != null) {
+                                                    foreach(var v in providedVars) {
+                                                        svariables[v.Key] = v.Value;
+                                                    }
+                                                }
+                                                var vars = new DictionaryContextData();
+                                                foreach(var v in svariables) {
+                                                    vars[v.Key] = new StringContextData(v.Value.Value);
+                                                }
+                                                var jcontextData = contextData.Clone() as DictionaryContextData;
+                                                jcontextData["variables"] = vars;
+                                                return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, createEvalVariable(matrixJobTraceWriter, jcontextData), env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                             } catch(Exception ex) {
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
                                                 return failJob();
@@ -5554,7 +5666,7 @@ namespace Runner.Server.Controllers
             }
         }
 
-        private Func<TaskResult?, Job> queueAzureJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, string displayname, Runner.Server.Azure.Devops.Job rjob, Runner.Server.Azure.Devops.Pipeline pipeline, IDictionary<string, VariableValue> jobInstanceVariables, string[] env, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
+        private Func<TaskResult?, Job> queueAzureJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, string displayname, Runner.Server.Azure.Devops.Job rjob, Runner.Server.Azure.Devops.Pipeline pipeline, Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue> variables, Func<string, string> evalVariable, string[] env, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
         {
             int fileContainerId = -1;
             Func<Func<TaskResult?, Job>> failJob = () => {
@@ -5564,7 +5676,7 @@ namespace Runner.Server.Controllers
                 new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                 return cancel => _job;
             };
-            try {
+            try {                
                 var cleanupClone = Clone();
                 string runnerToken = null;
                 var job = new Job() { CleanUp = () => {
@@ -5590,6 +5702,16 @@ namespace Runner.Server.Controllers
 
                         var resp = new ArtifactController(cleanupClone._context, cleanupClone.Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
                         fileContainerId = resp.Id;
+
+                        var svariables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
+                        // Provide normal secrets from cli
+                        foreach(var secr in secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, "")) {
+                            svariables[secr.Key] = new VariableValue(secr.Value, true);
+                        }
+                        svariables[SdkConstants.Variables.Build.ContainerId] = fileContainerId.ToString();
+                        svariables["system.collectionUri"] = new VariableValue(apiUrl, false);
+                        svariables["system.teamFoundationCollectionUri"] = new VariableValue(apiUrl, false);
+                        svariables["system.taskDefinitionsUri"] = new VariableValue(apiUrl, false);
 
                         var tokenHandler = new JwtSecurityTokenHandler();
                         var tokenDescriptor = new SecurityTokenDescriptor
@@ -5619,78 +5741,6 @@ namespace Runner.Server.Controllers
                         var systemVssConnection = new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri(apiUrl) };
                         resources.Endpoints.Add(systemVssConnection);
 
-                        // Enshure secrets.github_token is available in the runner
-                        VariableValue github_token = new VariableValue(GITHUB_TOKEN_NONE, true);
-                        var variables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
-                        variables.Add("system.github.job", new VariableValue(name, false));
-                        variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
-                        Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
-                        variables.Add("system.phaseDisplayName", new VariableValue(special.Replace($"{workflowname}_{parentId}_{name}", "-"), false));
-                        variables.Add("system.runnerGroupName", new VariableValue("misc", false));
-                        variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
-                        // For actions/upload-artifact@v1, actions/download-artifact@v1
-                        variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
-                        variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
-                        variables["system"] = new VariableValue("build", false);
-                        variables["System.HostType"] = new VariableValue("build", false);
-                        variables["System.servertype"] = new VariableValue("Hosted", false);
-                        variables["system.culture"] = new VariableValue("en-US", false);
-                        variables["System.CollectionId"] = new VariableValue(Guid.Empty.ToString(), false);
-                        variables["system.collectionUri"] = new VariableValue(apiUrl, false);
-                        variables["system.teamFoundationCollectionUri"] = new VariableValue(apiUrl, false);
-                        variables["system.taskDefinitionsUri"] = new VariableValue(apiUrl, false);
-                        variables["system.teamProject"] = new VariableValue("runner.server", false);
-                        // If this is not a non zero guid upload artifact tasks refuse to work
-                        variables["system.teamProjectId"] = new VariableValue("667b63ea-5b23-4619-9431-f2cff4e16a11", false);
-                        variables["System.DefinitionId"] = new VariableValue(Guid.Empty.ToString(), false);
-                        variables["system.definitionName"] = new VariableValue(Guid.Empty.ToString(), false);
-                        variables["Build.Clean"] = new VariableValue("true", false);
-                        variables["Build.SyncSources"] = new VariableValue("true", false);
-                        variables["Build.DefinitionName"] = new VariableValue(Guid.Empty.ToString(), false);
-                        // for azurelocalcheckout
-                        variables["System.RunId"] = new VariableValue(runid.ToString(), false);
-                        // ff for agent to enforce readonly vars
-                        variables["agent.readOnlyVariables"] = "true";
-                        variables["agent.retainDefaultEncoding"] = "true";
-                        variables["agent.taskRestrictionsEnforcementMode"] = "Enabled";
-                        variables["agent.disablelogplugin.TestResultLogPlugin"] = "true";
-                        variables["agent.disablelogplugin.TestFilePublisherPlugin"] = "true";
-                        variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(fileContainerId.ToString(), false));
-                        if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
-                            variables["github_token"] = variables["system.github.token"] = github_token;
-                        }
-
-                        foreach(var v in variables) {
-                            v.Value.IsReadonly = true;
-                        }
-                        // Provide all env vars as normal variables
-                        if(env?.Length > 0) {
-                            LoadEnvSec(env, (k, v) => variables[k] = v);
-                        }
-                        // Provide normal variables from cli
-                        foreach(var secr in secretsProvider.GetVariablesForEnvironment("")) {
-                            variables[secr.Key] = new VariableValue(secr.Value, false);
-                        }
-                        // Provide normal secrets from cli
-                        foreach(var secr in secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, "")) {
-                            variables[secr.Key] = new VariableValue(secr.Value, true);
-                        }
-                        Func<string, string> evalVariable = val => {
-                            if(!(val.StartsWith("$[") && val.EndsWith("]"))) {
-                                return val;
-                            }
-                            var templateContext = AzureDevops.CreateTemplateContext(matrixJobTraceWriter, workflowContext.FileTable, workflowContext.Flags, contextData);
-                            var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "variable-result", new BasicExpressionToken(null, null, null, val.Substring(2, val.Length - 3)), 0, null, true);
-                            templateContext.Errors.Check();
-                            return eval.AssertString("variable").Value;
-                        };
-
-                        if(jobInstanceVariables != null) {
-                            foreach(var v in jobInstanceVariables) {
-                                variables[v.Key] = new VariableValue(evalVariable(v.Value.Value), v.Value.IsSecret, v.Value.IsReadonly);
-                            }
-                        }
-
                         string jobcontainer = null;
                         Func<string, string, Azure.Devops.Container, ContainerResource> convert = (alias, image, container) => {
                             var cr = new ContainerResource {
@@ -5716,24 +5766,26 @@ namespace Runner.Server.Controllers
                             }
                             return cr;
                         };
+                        Action<string, Azure.Devops.Container> addContainer = (id, c) => {
+                            var image = evalVariable(c.Image);
+                            if(c.StringSource) {
+                                if(pipeline.ContainerResources != null && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
+                                    resources.Containers.Add(convert(id, cresource.Image, cresource));
+                                } else {
+                                    cresource = JsonConvert.DeserializeObject<Azure.Devops.Container>(image);
+                                    resources.Containers.Add(convert(id, cresource.Image, cresource));
+                                }
+                            } else {
+                                resources.Containers.Add(convert(id, image, c));
+                            }
+                        };
                         if(rjob.Container != null) {
                             jobcontainer = Guid.NewGuid().ToString();
-                            var image = evalVariable(rjob.Container.Image);
-                            if(rjob.Container.StringSource && pipeline.ContainerResources != null && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
-                                resources.Containers.Add(convert(jobcontainer, cresource.Image, cresource));
-                            } else {
-                                resources.Containers.Add(convert(jobcontainer, image, rjob.Container));
-                            }
+                            addContainer(jobcontainer, rjob.Container);
                         }
                         if(rjob.Services != null) {
                             foreach(var service in rjob.Services) {
-                                var c = service.Value;
-                                var image = evalVariable(c.Image);
-                                if(c.StringSource && pipeline.ContainerResources != null && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
-                                    resources.Containers.Add(convert(service.Key, cresource.Image, cresource));
-                                } else {
-                                    resources.Containers.Add(convert(service.Key, image, c));
-                                }
+                                addContainer(service.Key, service.Value);
                             }
                         }
 
@@ -5846,7 +5898,7 @@ namespace Runner.Server.Controllers
                             new GitHub.DistributedTask.WebApi.TimelineReference {
                                 Id = timelineId
                             }, jobId, displayname, name, new StringToken(null, null, null, jobcontainer ?? ""), null, null,
-                            variables,
+                            svariables,
                             new List<MaskHint>(),
                             resources, null,
                             new WorkspaceOptions() {
@@ -5898,17 +5950,39 @@ namespace Runner.Server.Controllers
                 var runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
                 // Add capabilities to the map
                 if(rjob.Pool != null) {
+                    var macroexpr = new Regex("\\$\\(([^)]+)\\)");
+                    Func<string, int, string> evalMacro = null;
+                    evalMacro = (macro, depth) => {
+                        return macroexpr.Replace(macro, v => {
+                            var keyFormat = v.Groups[1].Value.Split(":", 2);
+                            return variables.TryGetValue(keyFormat[0], out var val) ? (depth <= 10 ? evalMacro(val.Value, depth + 1) : val.Value) : v.Groups[0].Value;
+                        });
+                    };
+                    string[] demands = null;
+                    string vmImage = null;
+                    string poolName = null;
                     if(rjob.Pool.Demands != null) {
-                        foreach(var demand in rjob.Pool.Demands) {
-                            var sd = demand.Split("-equals", 2);
-                            if(sd.Length == 1) {
-                                runsOnMap.Add(sd[0].Trim());
-                            } else {
-                                runsOnMap.Add($"{sd[0].Trim()}={sd[1].Trim()}");
+                        demands = (from d in rjob.Pool.Demands select evalMacro(d, 0)).ToArray();
+                    }
+                    if(rjob.Pool.VmImage != null) {
+                        vmImage = evalMacro(rjob.Pool.VmImage, 0);
+                    }
+                    if(rjob.Pool.Name != null) {
+                        poolName = evalMacro(rjob.Pool.Name, 0);
+                    }
+                    if(!string.IsNullOrEmpty(vmImage)) {
+                        runsOnMap.Add(vmImage);
+                    } if(demands != null) {
+                        foreach(var demand in demands) {
+                            if(!string.IsNullOrEmpty(demand)) {
+                                var sd = demand.Split("-equals", 2);
+                                if(sd.Length == 1) {
+                                    runsOnMap.Add(sd[0].Trim());
+                                } else {
+                                    runsOnMap.Add($"{sd[0].Trim()}={sd[1].Trim()}");
+                                }
                             }
                         }
-                    } else if(rjob.Pool.VmImage != null) {
-                        runsOnMap.Add(rjob.Pool.VmImage);
                     }
                 }
                 //ConcurrencyGroup
