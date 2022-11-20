@@ -23,7 +23,6 @@ namespace GitHub.Services.Common.ClientStorage
         private readonly string m_filePath;
         private readonly VssFileStorageReader m_reader;
         private readonly IVssClientStorageWriter m_writer;
-
         private const char c_defaultPathSeparator = '\\';
         private const bool c_defaultIgnoreCaseInPaths = false;
 
@@ -192,7 +191,7 @@ namespace GitHub.Services.Common.ClientStorage
                 // Windows Impersonation is being used.
 
                 // Check to see if we can find the user's local application data directory.
-                string subDir = "GitHub\\ActionsService";
+                string subDir = Path.Combine("GitHub", "ActionsService");
                 string path = Environment.GetEnvironmentVariable("localappdata");
                 SafeGetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 if (string.IsNullOrEmpty(path))

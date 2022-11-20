@@ -395,6 +395,35 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Matcher_MultiplePatterns_DefaultSeverityNotice()
+        {
+            var config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""severity"": ""notice"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^(.+)$"",
+          ""message"": 1
+        }
+      ]
+    }
+  ]
+}
+");
+            config.Validate();
+            var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
+
+            var match = matcher.Match("just-a-notice");
+            Assert.Equal("notice", match.Severity);
+            Assert.Equal("just-a-notice", match.Message);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Matcher_MultiplePatterns_Loop_AccumulatesStatePerLine()
         {
             var config = JsonUtility.FromString<IssueMatchersConfig>(@"

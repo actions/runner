@@ -40,7 +40,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         /// <summary>
         /// Gets the maximum error message length before the message will be truncated.
         /// </summary>
-        public Int32 MaxErrorMessageLength => 500;
+        public Int32 MaxErrorMessageLength { get; set; } = 500;
 
         /// <summary>
         /// Gets the maximum number of errors that can be recorded when parsing a pipeline.
@@ -465,6 +465,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             PipelineTemplateConstants.Job,
             PipelineTemplateConstants.Runner,
             PipelineTemplateConstants.Env,
+            PipelineTemplateConstants.Vars,
         };
         private readonly String[] s_expressionFunctionNames = new[]
         {

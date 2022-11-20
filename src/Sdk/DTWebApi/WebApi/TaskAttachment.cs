@@ -102,4 +102,10 @@ namespace GitHub.DistributedTask.WebApi
         public static readonly String FileAttachment = "DistributedTask.Core.FileAttachment";
         public static readonly String DiagnosticLog = "DistributedTask.Core.DiagnosticLog";
     }
+
+    [GenerateAllConstants]
+    public class ChecksAttachmentType
+    {
+        public static readonly String StepSummary = "Checks.Step.Summary";
+    }
 }

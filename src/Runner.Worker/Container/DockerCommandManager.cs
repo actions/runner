@@ -46,7 +46,7 @@ namespace GitHub.Runner.Worker.Container
         {
             base.Initialize(hostContext);
             DockerPath = WhichUtil.Which("docker", true, Trace);
-            DockerInstanceLabel = IOUtil.GetPathHash(hostContext.GetDirectory(WellKnownDirectory.Root)).Substring(0, 6);
+            DockerInstanceLabel = IOUtil.GetSha256Hash(hostContext.GetDirectory(WellKnownDirectory.Root)).Substring(0, 6);
         }
 
         public async Task<DockerVersion> DockerVersion(IExecutionContext context)
@@ -60,7 +60,7 @@ namespace GitHub.Runner.Worker.Container
             context.Output($"Docker client API version: {clientVersionStr}");
 
             // we interested about major.minor.patch version
-            Regex verRegex = new Regex("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
+            Regex verRegex = new("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
 
             Version serverVersion = null;
             var serverVersionMatchResult = verRegex.Match(serverVersionStr);
@@ -131,11 +131,11 @@ namespace GitHub.Runner.Worker.Container
             {
                 if (String.IsNullOrEmpty(env.Value))
                 {
-                    dockerOptions.Add($"-e \"{env.Key}\"");
+                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
                 }
                 else
                 {
-                    dockerOptions.Add($"-e \"{env.Key}={env.Value.Replace("\"", "\\\"")}\"");
+                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key, env.Value));
                 }
             }
 
@@ -202,7 +202,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
                 // the value directly in the command
-                dockerOptions.Add($"-e {env.Key}");
+                dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
             }
 
             // Watermark for GitHub Action environment
@@ -309,7 +309,7 @@ namespace GitHub.Runner.Worker.Container
             string arg = $"exec {options} {containerId} {command}".Trim();
             context.Command($"{DockerPath} {arg}");
 
-            object outputLock = new object();
+            object outputLock = new();
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
             processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
@@ -447,7 +447,7 @@ namespace GitHub.Runner.Worker.Container
             string arg = $"{command} {options}".Trim();
             context.Command($"{DockerPath} {arg}");
 
-            List<string> output = new List<string>();
+            List<string> output = new();
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
             processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {

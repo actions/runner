@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using Moq;
@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Xunit;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
@@ -40,7 +39,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
         {
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = null;
             Guid jobId = Guid.NewGuid();
             return new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
@@ -149,11 +148,14 @@ namespace GitHub.Runner.Common.Tests.Listener
                     _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                     _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
                     _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.AtLeastOnce());
+
+                    // verify that we didn't try to delete local settings file (since we're not ephemeral)
+                    _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Never());
                 }
             }
         }
 
-        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new TheoryData<string[], bool, Times>()
+        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new()
                                                                     {
                                                                         // staring with run command, configured as run as service, should start the runner
                                                                         { new [] { "run" }, true, Times.Once() },
@@ -243,7 +245,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
-                    PoolId = 43242
+                    PoolId = 43242,
+                    Ephemeral = true
                 };
 
                 var message = new TaskAgentMessage()
@@ -294,7 +297,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
-                var command = new CommandSettings(hc, new string[] { "run", "--once" });
+                var command = new CommandSettings(hc, new string[] { "run" });
                 Task<int> runnerTask = runner.ExecuteCommand(command);
 
                 //Assert
@@ -311,6 +314,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.AtLeastOnce());
+
+                // verify that we did try to delete local settings file (since we're ephemeral)
+                _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Once());
             }
         }
 
@@ -332,7 +338,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
-                    PoolId = 43242
+                    PoolId = 43242,
+                    Ephemeral = true
                 };
 
                 var message1 = new TaskAgentMessage()
@@ -390,7 +397,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
-                var command = new CommandSettings(hc, new string[] { "run", "--once" });
+                var command = new CommandSettings(hc, new string[] { "run" });
                 Task<int> runnerTask = runner.ExecuteCommand(command);
 
                 //Assert
@@ -431,7 +438,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var settings = new RunnerSettings
                 {
                     PoolId = 43242,
-                    AgentId = 5678
+                    AgentId = 5678,
+                    Ephemeral = true
                 };
 
                 var message1 = new TaskAgentMessage()
@@ -475,7 +483,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
-                var command = new CommandSettings(hc, new string[] { "run", "--once" });
+                var command = new CommandSettings(hc, new string[] { "run" });
                 Task<int> runnerTask = runner.ExecuteCommand(command);
 
                 //Assert

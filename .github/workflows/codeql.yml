@@ -1,7 +1,12 @@
 name: "Code Scanning - Action"
 
+permissions:
+  security-events: write
+
 on:
   push:
+    branches: 
+      - main
   pull_request:
   schedule:
     - cron: '0 0 * * 0'
@@ -18,7 +23,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -28,7 +33,7 @@ jobs:
       #   languages: go, javascript, csharp, python, cpp, java
 
     - name: Manual build
-      run : | 
+      run : |
         ./dev.sh layout Release linux-x64
       working-directory: src
 

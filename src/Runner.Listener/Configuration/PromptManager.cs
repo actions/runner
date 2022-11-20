@@ -1,5 +1,4 @@
 using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
 
@@ -72,7 +71,7 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     return defaultValue;
                 }
-                else if (isOptional) 
+                else if (isOptional)
                 {
                     return string.Empty;
                 }
@@ -85,13 +84,14 @@ namespace GitHub.Runner.Listener.Configuration
             while (true)
             {
                 // Write the message prompt.
-                _terminal.Write($"{description} ", ConsoleColor.White);
+                _terminal.Write($"{description} ");
 
-                if(!string.IsNullOrEmpty(defaultValue))
+                if (!string.IsNullOrEmpty(defaultValue))
                 {
                     _terminal.Write($"[press Enter for {defaultValue}] ");
                 }
-                else if (isOptional){
+                else if (isOptional)
+                {
                     _terminal.Write($"[press Enter to skip] ");
                 }
 
@@ -112,7 +112,7 @@ namespace GitHub.Runner.Listener.Configuration
                         return string.Empty;
                     }
                 }
-                
+
                 // Return the value if it is not empty and it is valid.
                 // Otherwise try the loop again.
                 if (!string.IsNullOrEmpty(value))

@@ -13,6 +13,7 @@ using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Logging;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
@@ -50,12 +51,12 @@ namespace GitHub.Runner.Common
         private static int _defaultLogRetentionDays = 30;
         private static int[] _vssHttpMethodEventIds = new int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 24 };
         private static int[] _vssHttpCredentialEventIds = new int[] { 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 27, 29 };
-        private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
-        private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
+        private readonly ConcurrentDictionary<Type, object> _serviceInstances = new();
+        private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new();
         private readonly ISecretMasker _secretMasker = new SecretMasker();
-        private readonly List<ProductInfoHeaderValue> _userAgents = new List<ProductInfoHeaderValue>() { new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version) };
-        private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
-        private object _perfLock = new object();
+        private readonly List<ProductInfoHeaderValue> _userAgents = new() { new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version) };
+        private CancellationTokenSource _runnerShutdownTokenSource = new();
+        private object _perfLock = new();
         private Tracing _trace;
         private Tracing _actionsHttpTrace;
         private Tracing _netcoreHttpTrace;
@@ -65,7 +66,7 @@ namespace GitHub.Runner.Common
         private IDisposable _diagListenerSubscription;
         private StartupType _startupType;
         private string _perfFile;
-        private RunnerWebProxy _webProxy = new RunnerWebProxy();
+        private RunnerWebProxy _webProxy = new();
 
         public event EventHandler Unloading;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
@@ -90,20 +91,22 @@ namespace GitHub.Runner.Common
             this.SecretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.XmlDataEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
 
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))
             {
                 int logPageSize;
                 string logSizeEnv = Environment.GetEnvironmentVariable($"{hostType.ToUpperInvariant()}_LOGSIZE");
-                if (!string.IsNullOrEmpty(logSizeEnv) || !int.TryParse(logSizeEnv, out logPageSize))
+                if (string.IsNullOrEmpty(logSizeEnv) || !int.TryParse(logSizeEnv, out logPageSize))
                 {
                     logPageSize = _defaultLogPageSize;
                 }
 
                 int logRetentionDays;
                 string logRetentionDaysEnv = Environment.GetEnvironmentVariable($"{hostType.ToUpperInvariant()}_LOGRETENTION");
-                if (!string.IsNullOrEmpty(logRetentionDaysEnv) || !int.TryParse(logRetentionDaysEnv, out logRetentionDays))
+                if (string.IsNullOrEmpty(logRetentionDaysEnv) || !int.TryParse(logRetentionDaysEnv, out logRetentionDays))
                 {
                     logRetentionDays = _defaultLogRetentionDays;
                 }
@@ -191,6 +194,11 @@ namespace GitHub.Runner.Common
                 _trace.Info($"No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)");
             }
 
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+            {
+                _trace.Warning($"Runner is running under insecure mode: HTTPS server certifcate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
+            }
+
             var credFile = GetConfigFile(WellKnownConfigFile.Credentials);
             if (File.Exists(credFile))
             {
@@ -198,9 +206,19 @@ namespace GitHub.Runner.Common
                 if (credData != null &&
                     credData.Data.TryGetValue("clientId", out var clientId))
                 {
-                    _userAgents.Add(new ProductInfoHeaderValue($"RunnerId", clientId));
+                    _userAgents.Add(new ProductInfoHeaderValue("ClientId", clientId));
                 }
             }
+
+            var runnerFile = GetConfigFile(WellKnownConfigFile.Runner);
+            if (File.Exists(runnerFile))
+            {
+                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile);
+                _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
+                _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
+            }
+
+            _userAgents.Add(new ProductInfoHeaderValue("CommitSHA", BuildConstants.Source.CommitHash));
         }
 
         public string GetDirectory(WellKnownDirectory directory)
@@ -339,6 +357,12 @@ namespace GitHub.Runner.Common
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
                         ".setup_info");
+                    break;
+
+                case WellKnownConfigFile.Telemetry:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Diag),
+                        ".telemetry");
                     break;
 
                 default:
@@ -617,6 +641,31 @@ namespace GitHub.Runner.Common
         {
             var handlerFactory = context.GetService<IHttpClientHandlerFactory>();
             return handlerFactory.CreateClientHandler(context.WebProxy);
+        }
+
+        public static string GetDefaultShellForScript(this IHostContext hostContext, string path, string prependPath)
+        {
+            var trace = hostContext.GetTrace(nameof(GetDefaultShellForScript));
+            switch (Path.GetExtension(path))
+            {
+                case ".sh":
+                    // use 'sh' args but prefer bash
+                    if (WhichUtil.Which("bash", false, trace, prependPath) != null)
+                    {
+                        return "bash";
+                    }
+                    return "sh";
+                case ".ps1":
+                    if (WhichUtil.Which("pwsh", false, trace, prependPath) != null)
+                    {
+                        return "pwsh";
+                    }
+                    return "powershell";
+                case ".js":
+                    return Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}";
+                default:
+                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh', '.ps1' or '.js'.");
+            }
         }
     }
 

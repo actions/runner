@@ -81,7 +81,7 @@ namespace GitHub.Runner.Common
             }
 
             // Trace whether a value was entered.
-            string val = new String(chars.ToArray());
+            string val = new(chars.ToArray());
             if (!string.IsNullOrEmpty(val))
             {
                 HostContext.SecretMasker.AddValue(val);
@@ -164,9 +164,8 @@ namespace GitHub.Runner.Common
             if (!Silent)
             {
                 Console.WriteLine();
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"# {message}");
                 Console.ResetColor();
+                Console.WriteLine($"# {message}");
                 Console.WriteLine();
             }
         }
@@ -177,9 +176,8 @@ namespace GitHub.Runner.Common
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write("√ ");
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine(message);
                 Console.ResetColor();
+                Console.WriteLine(message);
             }
         }
 

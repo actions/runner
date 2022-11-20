@@ -316,7 +316,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             if (String.IsNullOrEmpty(result.Image))
             {
-                context.Error(value, "Container image cannot be empty");
+                return null;
             }
 
             return result;
@@ -631,6 +631,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Vars),
         };
         private static readonly INamedValueInfo[] s_stepNamedValues = new INamedValueInfo[]
         {
@@ -638,10 +639,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Matrix),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Steps),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Inputs),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Env),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Vars),
         };
         private static readonly IFunctionInfo[] s_stepConditionFunctions = new IFunctionInfo[]
         {

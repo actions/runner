@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common.Tests
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
+                CommandLineParser clp = new(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed");
 
                 Assert.NotNull(clp);
@@ -30,7 +30,7 @@ namespace GitHub.Runner.Common.Tests
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
-                CommandLineParser clp = new CommandLineParser(
+                CommandLineParser clp = new(
                     hc,
                     secretArgNames: new[] { "SecretArg1", "SecretArg2" });
 
@@ -61,7 +61,7 @@ namespace GitHub.Runner.Common.Tests
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
+                CommandLineParser clp = new(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[] { "cmd1", "cmd2", "--arg1", "arg1val", "badcmd" });
@@ -81,7 +81,7 @@ namespace GitHub.Runner.Common.Tests
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
+                CommandLineParser clp = new(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[] { "cmd1", "--arg1", "arg1val", "--arg2", "arg2val" });
@@ -105,7 +105,7 @@ namespace GitHub.Runner.Common.Tests
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
+                CommandLineParser clp = new(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[] { "cmd1", "--flag1", "--arg1", "arg1val", "--flag2" });
@@ -120,7 +120,7 @@ namespace GitHub.Runner.Common.Tests
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
-            TestHostContext hc = new TestHostContext(this, testName);
+            TestHostContext hc = new(this, testName);
             return hc;
         }
     }

@@ -10,10 +10,11 @@ if [ -f ".path" ]; then
     echo ".path=${PATH}"
 fi
 
-# insert anything to setup env when running as a service
+nodever=${GITHUB_ACTIONS_RUNNER_FORCED_NODE_VERSION:-node16}
 
+# insert anything to setup env when running as a service
 # run the host process which keep the listener alive
-./externals/node12/bin/node ./bin/RunnerService.js &
+./externals/$nodever/bin/node ./bin/RunnerService.js &
 PID=$!
 wait $PID
 trap - TERM INT

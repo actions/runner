@@ -9,7 +9,7 @@ namespace GitHub.Runner.Common.Tests
 {
     public sealed class CommandSettingsL0
     {
-        private readonly Mock<IPromptManager> _promptManager = new Mock<IPromptManager>();
+        private readonly Mock<IPromptManager> _promptManager = new();
 
         // It is sufficient to test one arg only. All individual args are tested by the PromptsFor___ methods.
         // The PromptsFor___ methods suffice to cover the interesting differences between each of the args.
@@ -547,6 +547,7 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+#if OS_WINDOWS
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
@@ -603,7 +604,7 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal("some windows logon password", actual);
             }
         }
-
+#endif
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
@@ -707,33 +708,85 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
-        [Fact]
+        [Theory]
+        [InlineData("configure", "once")]
+        [InlineData("remove", "disableupdate")]
+        [InlineData("remove", "ephemeral")]
+        [InlineData("remove", "once")]
+        [InlineData("remove", "replace")]
+        [InlineData("remove", "runasservice")]
+        [InlineData("remove", "unattended")]
+        [InlineData("run", "disableupdate")]
+        [InlineData("run", "ephemeral")]
+        [InlineData("run", "replace")]
+        [InlineData("run", "runasservice")]
+        [InlineData("run", "unattended")]
+        [InlineData("warmup", "disableupdate")]      
+        [InlineData("warmup", "ephemeral")]     
+        [InlineData("warmup", "once")]   
+        [InlineData("warmup", "replace")]      
+        [InlineData("warmup", "runasservice")]   
+        [InlineData("warmup", "unattended")]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void ValidateFlags()
+        public void ValidateInvalidFlagCommandCombination(string validCommand, string flag)
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
-                var command = new CommandSettings(hc, args: new string[] { "--badflag" });
+                var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{flag}" });
 
                 // Assert.
-                Assert.Contains("badflag", command.Validate());
+                Assert.Contains(flag, command.Validate());
             }
         }
 
-        [Fact]
+        [Theory]
+        [InlineData("remove", "auth", "bar arg value")]
+        [InlineData("remove", "labels", "bar arg value")]
+        [InlineData("remove", "monitorsocketaddress", "bar arg value")]
+        [InlineData("remove", "name", "bar arg value")]
+        [InlineData("remove", "runnergroup", "bar arg value")]
+        [InlineData("remove", "url", "bar arg value")]
+        [InlineData("remove", "username", "bar arg value")]
+        [InlineData("remove", "windowslogonaccount", "bar arg value")]
+        [InlineData("remove", "windowslogonpassword", "bar arg value")]
+        [InlineData("remove", "work", "bar arg value")]
+        [InlineData("run", "auth", "bad arg value")]
+        [InlineData("run", "labels", "bad arg value")]
+        [InlineData("run", "monitorsocketaddress", "bad arg value")]
+        [InlineData("run", "name", "bad arg value")]
+        [InlineData("run", "pat", "bad arg value")]
+        [InlineData("run", "runnergroup", "bad arg value")]
+        [InlineData("run", "token", "bad arg value")]
+        [InlineData("run", "url", "bad arg value")]
+        [InlineData("run", "username", "bad arg value")]
+        [InlineData("run", "windowslogonaccount", "bad arg value")]
+        [InlineData("run", "windowslogonpassword", "bad arg value")]
+        [InlineData("run", "work", "bad arg value")]
+        [InlineData("warmup", "auth", "bad arg value")]
+        [InlineData("warmup", "labels", "bad arg value")]
+        [InlineData("warmup", "monitorsocketaddress", "bad arg value")]
+        [InlineData("warmup", "name", "bad arg value")]
+        [InlineData("warmup", "pat", "bad arg value")]
+        [InlineData("warmup", "runnergroup", "bad arg value")]
+        [InlineData("warmup", "token", "bad arg value")]
+        [InlineData("warmup", "url", "bad arg value")]
+        [InlineData("warmup", "username", "bad arg value")]
+        [InlineData("warmup", "windowslogonaccount", "bad arg value")]
+        [InlineData("warmup", "windowslogonpassword", "bad arg value")]
+        [InlineData("warmup", "work", "bad arg value")]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void ValidateArgs()
+        public void ValidateInvalidArgCommandCombination(string validCommand, string arg, string argValue)
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
-                var command = new CommandSettings(hc, args: new string[] { "--badargname", "bad arg value" });
+                var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{arg}", argValue });
 
                 // Assert.
-                Assert.Contains("badargname", command.Validate());
+                Assert.Contains(arg, command.Validate());
             }
         }
 
@@ -757,9 +810,76 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+        [Theory]
+        [InlineData("configure", "help")]
+        [InlineData("configure", "version")]
+        [InlineData("configure", "commit")]
+        [InlineData("configure", "check")]
+        [InlineData("configure", "disableupdate")]
+        [InlineData("configure", "ephemeral")]
+        [InlineData("configure", "replace")]
+        [InlineData("configure", "runasservice")]
+        [InlineData("configure", "unattended")]
+        [InlineData("remove", "help")]
+        [InlineData("remove", "version")]
+        [InlineData("remove", "commit")]
+        [InlineData("remove", "check")]
+        [InlineData("run", "help")]
+        [InlineData("run", "version")]
+        [InlineData("run", "commit")]
+        [InlineData("run", "check")]
+        [InlineData("run", "once")]
+        [InlineData("warmup", "help")]
+        [InlineData("warmup", "version")]
+        [InlineData("warmup", "commit")]
+        [InlineData("warmup", "check")]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
+        public void ValidateGoodFlagCommandCombination(string validCommand, string flag)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{flag}" });
+
+                // Assert.
+                Assert.True(command.Validate().Count == 0);
+            }
+        }
+
+        [Theory]
+        [InlineData("configure", "auth", "good arg value")]
+        [InlineData("configure", "labels", "good arg value")]
+        [InlineData("configure", "monitorsocketaddress", "good arg value")]
+        [InlineData("configure", "name", "good arg value")]
+        [InlineData("configure", "pat", "good arg value")]
+        [InlineData("configure", "runnergroup", "good arg value")]
+        [InlineData("configure", "token", "good arg value")]
+        [InlineData("configure", "url", "good arg value")]
+        [InlineData("configure", "username", "good arg value")]
+        [InlineData("configure", "windowslogonaccount", "good arg value")]
+        [InlineData("configure", "windowslogonpassword", "good arg value")]
+        [InlineData("configure", "work", "good arg value")]
+        [InlineData("remove", "token", "good arg value")]
+        [InlineData("remove", "pat", "good arg value")]
+        [InlineData("run", "startuptype", "good arg value")]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
+        public void ValidateGoodArgCommandCombination(string validCommand, string arg, string argValue)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{arg}", argValue });
+
+                // Assert.
+                Assert.True(command.Validate().Count == 0);
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
-            TestHostContext hc = new TestHostContext(this, testName);
+            TestHostContext hc = new(this, testName);
             hc.SetSingleton<IPromptManager>(_promptManager.Object);
             return hc;
         }

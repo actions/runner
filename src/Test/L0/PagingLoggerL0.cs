@@ -1,4 +1,3 @@
-﻿using GitHub.Runner.Common.Util;
 using Moq;
 using System;
 using System.IO;
@@ -20,7 +19,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         private void CleanLogFolder()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 //clean test data if any old test forgot
                 string pagesFolder = Path.Combine(hc.GetDirectory(WellKnownDirectory.Diag), PagingLogger.PagingFolder);

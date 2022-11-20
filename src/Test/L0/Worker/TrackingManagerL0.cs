@@ -16,14 +16,14 @@ namespace GitHub.Runner.Common.Tests.Worker
         public TestHostContext Setup([CallerMemberName] string name = "")
         {
             // Setup the host context.
-            TestHostContext hc = new TestHostContext(this, name);
+            TestHostContext hc = new(this, name);
 
             // Create a random work path.
             _workFolder = hc.GetDirectory(WellKnownDirectory.Work);
 
             // Setup the execution context.
             _ec = new Mock<IExecutionContext>();
-            GitHubContext githubContext = new GitHubContext();
+            GitHubContext githubContext = new();
             _ec.Setup(x => x.GetGitHubContext("repository")).Returns("actions/runner");
 
             // Setup the tracking manager.
@@ -113,7 +113,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = Setup())
             {
                 // Arrange.
-                TrackingConfig config = new TrackingConfig() { RepositoryName = "actions/runner" };
+                TrackingConfig config = new() { RepositoryName = "actions/runner" };
                 string trackingFile = Path.Combine(_workFolder, "trackingconfig.json");
 
                 // Act.

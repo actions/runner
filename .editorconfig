@@ -1,0 +1,9 @@
+# https://editorconfig.org/
+
+[*]
+charset = utf-8 # Set default charset to utf-8
+insert_final_newline = true # ensure all files end with a single newline
+trim_trailing_whitespace = true # attempt to remove trailing whitespace on save
+
+[*.md]
+trim_trailing_whitespace = false # in markdown, "two trailing spaces" is unfortunately meaningful; it means `<br>`

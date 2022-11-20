@@ -6,10 +6,10 @@
 
 ## Context
 
-In addition to action's regular execution, action author may wants their action has a chance to participate in:
-- Job initialize  
-  My Action will collect machine resource usage (CPU/RAM/Disk) during a workflow job execution, we need to start perf recorder at the begin of the job.
-- Job cleanup  
+In addition to action's regular execution, action author may wants their action to have a chance to participate in:
+- Job initialization
+  My Action will collect machine resource usage (CPU/RAM/Disk) during a workflow job execution, we need to start perf recorder at the beginning of the job.
+- Job cleanup
   My Action will dirty local workspace or machine environment during execution, we need to cleanup these changes at the end of the job.  
   Ex: `actions/checkout@v2` will write `github.token` into local `.git/config` during execution, it has post job cleanup defined to undo the changes.
 
@@ -46,12 +46,12 @@ Container Action Example:
    post-if: 'success()' // Optional
 ```
 
-Both `pre` and `post` will has default `pre-if/post-if` sets to `always()`.  
+Both `pre` and `post` will have default `pre-if/post-if` set to `always()`.  
 Setting `pre` to `always()` will make sure no matter what condition evaluate result the `main` gets at runtime, the `pre` has always run already.   
 `pre` executes in order of how the steps are defined.  
 `pre` will always be added to job steps list during job setup.  
-> Action referenced from local repository (`./my-action`) won't get `pre` setup correctly since the repository haven't checkout during job initialize.  
-> We can't use GitHub api to download the repository since there is a about 3 mins delay between `git push` and the new commit available to download using GitHub api.
+> Action referenced from local repository (`./my-action`) won't get `pre` setup correctly since the repository haven't checked-out during job initialization.
+> We can't use GitHub api to download the repository since there is about a 3 minute delay between `git push` and the new commit available to download using GitHub api.
 
 `post` will be pushed into a `poststeps` stack lazily when the action's `pre` or `main` execution passed `if` condition check and about to run, you can't have an action that only contains a `post`, we will pop and run each `post` after all `pre` and `main` finished.
 > Currently `post` works for both repository action (`org/repo@v1`) and local action (`./my-action`)
@@ -60,7 +60,7 @@ Valid action:
 - only has `main`
 - has `pre` and `main`
 - has `main` and `post`
-- has `pre`, `main` and `post`
+- has `pre`, `main`, and `post`
 
 Invalid action:
 - only has `pre`
