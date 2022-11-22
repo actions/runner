@@ -153,6 +153,7 @@ namespace GitHub.Runner.Common
                 public static readonly string Node12Warning = "DistributedTask.AddWarningToNode12Action";
                 public static readonly string UseContainerPathForTemplate = "DistributedTask.UseContainerPathForTemplate";
                 public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks"; 
+                public static readonly string UsePowershellNormalView = "DistributedTask.UsePowershellNormalView"; 
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";

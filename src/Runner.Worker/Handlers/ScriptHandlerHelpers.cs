@@ -48,7 +48,7 @@ namespace GitHub.Runner.Worker.Handlers
             return "";
         }
 
-        internal static string FixUpScriptContents(string scriptType, string contents)
+        internal static string FixUpScriptContents(string scriptType, string contents, bool isPwshNormalView = false)
         {
             switch (scriptType)
             {
@@ -59,7 +59,11 @@ namespace GitHub.Runner.Worker.Handlers
                     break;
                 case "powershell":
                 case "pwsh":
-                    var prepend = "$ErrorActionPreference = 'stop'\n$ErrorView = 'NormalView'";
+                    var prepend = "$ErrorActionPreference = 'stop'";
+                    if (isPwshNormalView)
+                    {
+                        prepend += "\n$ErrorView = 'NormalView'";
+                    }
                     var append = @"if ((Test-Path -LiteralPath variable:\LASTEXITCODE)) { exit $LASTEXITCODE }";
                     contents = $"{prepend}{Environment.NewLine}{contents}{Environment.NewLine}{append}";
                     break;
