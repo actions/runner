@@ -237,7 +237,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Set action_status to the success of the current composite action
                 var actionResult = ExecutionContext.Result?.ToActionResult() ?? ActionResult.Success;
-                step.ExecutionContext.SetGitHubContext("action_status", actionResult.ToString());
+                step.ExecutionContext.SetGitHubContext("action_status", actionResult.ToString().ToLowerInvariant());
 
                 // Initialize env context
                 Trace.Info("Initialize Env context for embedded step");
