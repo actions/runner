@@ -267,7 +267,7 @@ namespace GitHub.Runner.Worker.Handlers
             var arguments = string.Format(argFormat, resolvedScriptPath);
 
             // Fix up and write the script
-            contents = ScriptHandlerHelpers.FixUpScriptContents(shellCommand, contents, ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.UsePowershellNormalView) ?? false);
+            contents = ScriptHandlerHelpers.FixUpScriptContents(shellCommand, contents, ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.RunnerUsePowershellNormalView) ?? false);
 #if OS_WINDOWS
             // Normalize Windows line endings
             contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");

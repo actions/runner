@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -29,7 +28,7 @@ namespace GitHub.Runner.Listener
         private IMessageListener _listener;
         private ITerminal _term;
         private bool _inConfigStage;
-        private ManualResetEvent _completedCommand = new ManualResetEvent(false);
+        private ManualResetEvent _completedCommand = new(false);
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -360,6 +359,8 @@ namespace GitHub.Runner.Listener
                     bool runOnceJobReceived = false;
                     jobDispatcher = HostContext.CreateService<IJobDispatcher>();
 
+                    jobDispatcher.JobStatus += _listener.OnJobStatus;
+
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
                         TaskAgentMessage message = null;
@@ -429,12 +430,22 @@ namespace GitHub.Runner.Listener
 
                             message = await getNextMessage; //get next message
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
-                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
-                                    var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+                                    AgentRefreshMessage runnerUpdateMessage = null;
+                                    if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+                                    }
+                                    else
+                                    {
+                                        var brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
+                                        runnerUpdateMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds));
+                                    }
 #if DEBUG
                                     // Can mock the update for testing
                                     if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
@@ -495,16 +506,26 @@ namespace GitHub.Runner.Listener
                                 else
                                 {
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
+                                    Pipelines.AgentJobRequestMessage jobRequestMessage = null;
 
                                     // Create connection
                                     var credMgr = HostContext.GetService<ICredentialManager>();
                                     var creds = credMgr.LoadCredentials();
 
-                                    var runServer = HostContext.CreateService<IRunServer>();
-                                    await runServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-                                    var jobMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                    if (string.IsNullOrEmpty(messageRef.RunServiceUrl))
+                                    {
+                                        var actionsRunServer = HostContext.CreateService<IActionsRunServer>();
+                                        await actionsRunServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+                                        jobRequestMessage = await actionsRunServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                    }
+                                    else
+                                    {
+                                        var runServer = HostContext.CreateService<IRunServer>();
+                                        await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
+                                        jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                    }
 
-                                    jobDispatcher.Run(jobMessage, runOnce);
+                                    jobDispatcher.Run(jobRequestMessage, runOnce);
                                     if (runOnce)
                                     {
                                         Trace.Info("One time used runner received job message.");
@@ -561,6 +582,7 @@ namespace GitHub.Runner.Listener
                 {
                     if (jobDispatcher != null)
                     {
+                        jobDispatcher.JobStatus -= _listener.OnJobStatus;
                         await jobDispatcher.ShutdownAsync();
                     }
 

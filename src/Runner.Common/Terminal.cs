@@ -81,7 +81,7 @@ namespace GitHub.Runner.Common
             }
 
             // Trace whether a value was entered.
-            string val = new String(chars.ToArray());
+            string val = new(chars.ToArray());
             if (!string.IsNullOrEmpty(val))
             {
                 HostContext.SecretMasker.AddValue(val);

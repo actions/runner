@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using Moq;
@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Xunit;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
@@ -40,7 +39,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
         {
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = null;
             Guid jobId = Guid.NewGuid();
             return new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
@@ -156,7 +155,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new TheoryData<string[], bool, Times>()
+        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new()
                                                                     {
                                                                         // staring with run command, configured as run as service, should start the runner
                                                                         { new [] { "run" }, true, Times.Once() },

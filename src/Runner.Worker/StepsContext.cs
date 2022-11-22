@@ -16,8 +16,8 @@ namespace GitHub.Runner.Worker
     /// </summary>
     public sealed class StepsContext
     {
-        private static readonly Regex _propertyRegex = new Regex("^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
-        private readonly DictionaryContextData _contextData = new DictionaryContextData();
+        private static readonly Regex _propertyRegex = new("^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
+        private readonly DictionaryContextData _contextData = new();
 
         /// <summary>
         /// Clears memory for a composite action's isolated "steps" context, after the action

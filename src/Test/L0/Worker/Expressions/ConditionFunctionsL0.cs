@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Expressions;
 using Moq;
@@ -121,8 +119,8 @@ namespace GitHub.Runner.Common.Tests.Worker.Expressions
 
                 var executionContext = InitializeExecutionContext(hc);
                 executionContext.Setup(x => x.GetGitHubContext("action_status")).Returns(actionStatus.ToString());
-                executionContext.Setup( x=> x.IsEmbedded).Returns(true);
-                executionContext.Setup( x=> x.Stage).Returns(ActionRunStage.Main);
+                executionContext.Setup(x => x.IsEmbedded).Returns(true);
+                executionContext.Setup(x => x.Stage).Returns(ActionRunStage.Main);
 
                 _jobContext.Status = jobStatus;
 
@@ -181,8 +179,8 @@ namespace GitHub.Runner.Common.Tests.Worker.Expressions
 
                 var executionContext = InitializeExecutionContext(hc);
                 executionContext.Setup(x => x.GetGitHubContext("action_status")).Returns(actionStatus.ToString());
-                executionContext.Setup( x=> x.IsEmbedded).Returns(true);
-                executionContext.Setup( x=> x.Stage).Returns(ActionRunStage.Main);
+                executionContext.Setup(x => x.IsEmbedded).Returns(true);
+                executionContext.Setup(x => x.Stage).Returns(ActionRunStage.Main);
 
                 _jobContext.Status = jobStatus;
 

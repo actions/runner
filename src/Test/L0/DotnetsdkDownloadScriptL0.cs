@@ -21,7 +21,7 @@ namespace GitHub.Runner.Common.Tests
 
             string shDownloadUrl = "https://dot.net/v1/dotnet-install.sh";
 
-            using (HttpClient downloadClient = new HttpClient())
+            using (HttpClient downloadClient = new())
             {
                 var response = await downloadClient.GetAsync("https://www.bing.com");
                 if (!response.IsSuccessStatusCode)
@@ -51,7 +51,7 @@ namespace GitHub.Runner.Common.Tests
 
             string ps1DownloadUrl = "https://dot.net/v1/dotnet-install.ps1";
 
-            using (HttpClient downloadClient = new HttpClient())
+            using (HttpClient downloadClient = new())
             {
                 var response = await downloadClient.GetAsync("https://www.bing.com");
                 if (!response.IsSuccessStatusCode)

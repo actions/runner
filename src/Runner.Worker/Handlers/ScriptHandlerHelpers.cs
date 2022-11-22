@@ -10,7 +10,7 @@ namespace GitHub.Runner.Worker.Handlers
 {
     internal static class ScriptHandlerHelpers
     {
-        private static readonly Dictionary<string, string> _defaultArguments = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, string> _defaultArguments = new(StringComparer.OrdinalIgnoreCase)
         {
             ["cmd"] = "/D /E:ON /V:OFF /S /C \"CALL \"{0}\"\"",
             ["pwsh"] = "-command \". '{0}'\"",
@@ -20,7 +20,7 @@ namespace GitHub.Runner.Worker.Handlers
             ["python"] = "{0}"
         };
 
-        private static readonly Dictionary<string, string> _extensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, string> _extensions = new(StringComparer.OrdinalIgnoreCase)
         {
             ["cmd"] = ".cmd",
             ["pwsh"] = ".ps1",

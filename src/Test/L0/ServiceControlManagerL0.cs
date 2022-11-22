@@ -1,7 +1,4 @@
-using System;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
-using GitHub.Runner.Common;
 using GitHub.Runner.Listener.Configuration;
 using Xunit;
 
@@ -14,7 +11,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Service")]
         public void CalculateServiceName()
         {
-            RunnerSettings settings = new RunnerSettings();
+            RunnerSettings settings = new();
 
             settings.AgentName = "thisiskindofalongrunnerabcde";
             settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
@@ -25,7 +22,7 @@ namespace GitHub.Runner.Common.Tests
 
             using (TestHostContext hc = CreateTestContext())
             {
-                ServiceControlManager scm = new ServiceControlManager();
+                ServiceControlManager scm = new();
 
                 scm.Initialize(hc);
                 scm.CalculateServiceName(
@@ -53,7 +50,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Service")]
         public void CalculateServiceName80Chars()
         {
-            RunnerSettings settings = new RunnerSettings();
+            RunnerSettings settings = new();
 
             settings.AgentName = "thisiskindofalongrunnernabcde";
             settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
@@ -64,7 +61,7 @@ namespace GitHub.Runner.Common.Tests
 
             using (TestHostContext hc = CreateTestContext())
             {
-                ServiceControlManager scm = new ServiceControlManager();
+                ServiceControlManager scm = new();
 
                 scm.Initialize(hc);
                 scm.CalculateServiceName(
@@ -172,7 +169,7 @@ namespace GitHub.Runner.Common.Tests
             [Trait("Category", "Service")]
             public void CalculateServiceNameLimitsServiceNameTo150Chars()
             {
-                RunnerSettings settings = new RunnerSettings();
+                RunnerSettings settings = new();
 
                 settings.AgentName = "thisisareallyreallylongbutstillvalidagentnameiamusingforthisexampletotestverylongnamelimits";
                 settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
@@ -183,7 +180,7 @@ namespace GitHub.Runner.Common.Tests
 
                 using (TestHostContext hc = CreateTestContext())
                 {
-                    ServiceControlManager scm = new ServiceControlManager();
+                    ServiceControlManager scm = new();
 
                     scm.Initialize(hc);
                     scm.CalculateServiceName(
@@ -209,7 +206,7 @@ namespace GitHub.Runner.Common.Tests
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
-            TestHostContext hc = new TestHostContext(this, testName);
+            TestHostContext hc = new(this, testName);
 
             return hc;
         }

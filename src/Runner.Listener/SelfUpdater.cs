@@ -32,14 +32,14 @@ namespace GitHub.Runner.Listener
         private static string _platform = BuildConstants.RunnerPackage.PackageName;
         private static string _dotnetRuntime = "dotnetRuntime";
         private static string _externals = "externals";
-        private readonly Dictionary<string, string> _contentHashes = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _contentHashes = new();
 
         private PackageMetadata _targetPackage;
         private ITerminal _terminal;
         private IRunnerServer _runnerServer;
         private int _poolId;
         private int _agentId;
-        private readonly ConcurrentQueue<string> _updateTrace = new ConcurrentQueue<string>();
+        private readonly ConcurrentQueue<string> _updateTrace = new();
         private Task _cloneAndCalculateContentHashTask;
         private string _dotnetRuntimeCloneDirectory;
         private string _externalsCloneDirectory;
@@ -131,8 +131,10 @@ namespace GitHub.Runner.Listener
                 // For L0, we will skip execute update script.
                 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_EXECUTE_UPDATE_SCRIPT")))
                 {
+                    string flagFile = "update.finished";
+                    IOUtil.DeleteFile(flagFile);
                     // kick off update script
-                    Process invokeScript = new Process();
+                    Process invokeScript = new();
 #if OS_WINDOWS
                     invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
                     invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
@@ -189,9 +191,9 @@ namespace GitHub.Runner.Listener
             }
 
             Trace.Info($"Version '{_targetPackage.Version}' of '{_targetPackage.Type}' package available in server.");
-            PackageVersion serverVersion = new PackageVersion(_targetPackage.Version);
+            PackageVersion serverVersion = new(_targetPackage.Version);
             Trace.Info($"Current running runner version is {BuildConstants.RunnerPackage.Version}");
-            PackageVersion runnerVersion = new PackageVersion(BuildConstants.RunnerPackage.Version);
+            PackageVersion runnerVersion = new(BuildConstants.RunnerPackage.Version);
 
             return serverVersion.CompareTo(runnerVersion) > 0;
         }
@@ -294,12 +296,12 @@ namespace GitHub.Runner.Listener
                         archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.tar.gz");
                     }
 
-                    if (File.Exists(archiveFile)) 
+                    if (File.Exists(archiveFile))
                     {
                         _updateTrace.Enqueue($"Mocking update with file: '{archiveFile}' and targetVersion: '{targetVersion}', nothing is downloaded");
                         _terminal.WriteLine($"Mocking update with file: '{archiveFile}' and targetVersion: '{targetVersion}', nothing is downloaded");
                     }
-                    else 
+                    else
                     {
                         archiveFile = null;
                         _terminal.WriteLine($"Mock runner archive not found at {archiveFile} for target version {targetVersion}, proceeding with download instead");
@@ -474,7 +476,7 @@ namespace GitHub.Runner.Listener
                         long downloadSize = 0;
 
                         //open zip stream in async mode
-                        using (HttpClient httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
+                        using (HttpClient httpClient = new(HostContext.CreateHttpClientHandler()))
                         {
                             if (!string.IsNullOrEmpty(_targetPackage.Token))
                             {
@@ -484,7 +486,7 @@ namespace GitHub.Runner.Listener
 
                             Trace.Info($"Downloading {packageDownloadUrl}");
 
-                            using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                            using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                             using (Stream result = await httpClient.GetStreamAsync(packageDownloadUrl))
                             {
                                 //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
@@ -594,7 +596,7 @@ namespace GitHub.Runner.Listener
                     int exitCode = await processInvoker.ExecuteAsync(extractDirectory, tar, $"-xzf \"{archiveFile}\"", null, token);
                     if (exitCode != 0)
                     {
-                        throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
+                        throw new NotSupportedException($"Can't use 'tar -xzf' to extract archive file: {archiveFile}. return code: {exitCode}.");
                     }
                 }
             }

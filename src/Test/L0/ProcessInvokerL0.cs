@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using GitHub.Runner.Common.Util;
 using System.Threading.Channels;
 using GitHub.Runner.Sdk;
 using System.Linq;
@@ -64,7 +63,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task SuccessExitsWithCodeZero()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -87,7 +86,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task SetCIEnv()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 var existingCI = Environment.GetEnvironmentVariable("CI");
                 try
@@ -135,7 +134,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task KeepExistingCIEnv()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 var existingCI = Environment.GetEnvironmentVariable("CI");
                 try
@@ -186,7 +185,7 @@ namespace GitHub.Runner.Common.Tests
         public async Task TestCancel()
         {
             const int SecondsToRun = 20;
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             using (var tokenSource = new CancellationTokenSource())
             {
                 Tracing trace = hc.GetTrace();
@@ -235,13 +234,13 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RedirectSTDINCloseStream()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                CancellationTokenSource cancellationTokenSource = new();
                 Int32 exitCode = -1;
                 Channel<string> redirectSTDIN = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                List<string> stdout = new List<string>();
+                List<string> stdout = new();
                 redirectSTDIN.Writer.TryWrite("Single line of STDIN");
 
                 var processInvoker = new ProcessInvokerWrapper();
@@ -285,13 +284,13 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RedirectSTDINKeepStreamOpen()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                CancellationTokenSource cancellationTokenSource = new();
                 Int32 exitCode = -1;
                 Channel<string> redirectSTDIN = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                List<string> stdout = new List<string>();
+                List<string> stdout = new();
                 redirectSTDIN.Writer.TryWrite("Single line of STDIN");
 
                 var processInvoker = new ProcessInvokerWrapper();
@@ -340,7 +339,7 @@ namespace GitHub.Runner.Common.Tests
             string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
             if (File.Exists(testProcPath))
             {
-                using (TestHostContext hc = new TestHostContext(this))
+                using (TestHostContext hc = new(this))
                 using (var tokenSource = new CancellationTokenSource())
                 {
                     Tracing trace = hc.GetTrace();
@@ -376,7 +375,7 @@ namespace GitHub.Runner.Common.Tests
             string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
             if (File.Exists(testProcPath))
             {
-                using (TestHostContext hc = new TestHostContext(this))
+                using (TestHostContext hc = new(this))
                 using (var tokenSource = new CancellationTokenSource())
                 {
                     Tracing trace = hc.GetTrace();
@@ -416,7 +415,7 @@ namespace GitHub.Runner.Common.Tests
             {
                 int testProcOomScoreAdj = 123;
                 File.WriteAllText(testProcPath, testProcOomScoreAdj.ToString());
-                using (TestHostContext hc = new TestHostContext(this))
+                using (TestHostContext hc = new(this))
                 using (var tokenSource = new CancellationTokenSource())
                 {
                     Tracing trace = hc.GetTrace();

@@ -1,4 +1,3 @@
-﻿using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
 using Xunit;
@@ -12,7 +11,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Equal_MatchesObjectEquality()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -30,12 +29,12 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Equal_MatchesReferenceEquality()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
                 // Arrange.
-                object expected = new object();
+                object expected = new();
                 object actual = expected;
 
                 // Act/Assert.
@@ -48,7 +47,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Equal_MatchesStructEquality()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -66,12 +65,12 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Equal_ThrowsWhenActualObjectIsNull()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
                 // Arrange.
-                object expected = new object();
+                object expected = new();
                 object actual = null;
 
                 // Act/Assert.
@@ -87,13 +86,13 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Equal_ThrowsWhenExpectedObjectIsNull()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
                 // Arrange.
                 object expected = null;
-                object actual = new object();
+                object actual = new();
 
                 // Act/Assert.
                 Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -108,13 +107,13 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Equal_ThrowsWhenObjectsAreNotEqual()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
                 // Arrange.
-                object expected = new object();
-                object actual = new object();
+                object expected = new();
+                object actual = new();
 
                 // Act/Assert.
                 Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -129,7 +128,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Equal_ThrowsWhenStructsAreNotEqual()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 

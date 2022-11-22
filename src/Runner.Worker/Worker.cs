@@ -22,10 +22,10 @@ namespace GitHub.Runner.Worker
     public sealed class Worker : RunnerService, IWorker
     {
         private readonly TimeSpan _workerStartTimeout = TimeSpan.FromSeconds(30);
-        private ManualResetEvent _completedCommand = new ManualResetEvent(false);
+        private ManualResetEvent _completedCommand = new(false);
 
         // Do not mask the values of these secrets
-        private static HashSet<String> SecretVariableMaskWhitelist = new HashSet<String>(StringComparer.OrdinalIgnoreCase)
+        private static HashSet<String> SecretVariableMaskWhitelist = new(StringComparer.OrdinalIgnoreCase)
         {
             Constants.Variables.Actions.StepDebug,
             Constants.Variables.Actions.RunnerDebug

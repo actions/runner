@@ -4,7 +4,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -12,7 +11,7 @@ namespace GitHub.Runner.Listener
 {
     public sealed class CommandSettings
     {
-        private readonly Dictionary<string, string> _envArgs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _envArgs = new(StringComparer.OrdinalIgnoreCase);
         private readonly CommandLineParser _parser;
         private readonly IPromptManager _promptManager;
         private readonly Tracing _trace;
@@ -27,7 +26,7 @@ namespace GitHub.Runner.Listener
         };
 
         // Valid flags and args for specific command - key: command, value: array of valid flags and args
-        private readonly Dictionary<string, string[]> validOptions = new Dictionary<string, string[]>
+        private readonly Dictionary<string, string[]> validOptions = new()
         {
             // Valid configure flags and args
             [Constants.Runner.CommandLine.Commands.Configure] = 
@@ -35,6 +34,7 @@ namespace GitHub.Runner.Listener
                 {
                     Constants.Runner.CommandLine.Flags.DisableUpdate,
                     Constants.Runner.CommandLine.Flags.Ephemeral,
+                    Constants.Runner.CommandLine.Flags.GenerateServiceConfig,
                     Constants.Runner.CommandLine.Flags.Replace,
                     Constants.Runner.CommandLine.Flags.RunAsService,
                     Constants.Runner.CommandLine.Flags.Unattended,
@@ -80,11 +80,12 @@ namespace GitHub.Runner.Listener
         // Flags.
         public bool Check => TestFlag(Constants.Runner.CommandLine.Flags.Check);
         public bool Commit => TestFlag(Constants.Runner.CommandLine.Flags.Commit);
+        public bool DisableUpdate => TestFlag(Constants.Runner.CommandLine.Flags.DisableUpdate);
+        public bool Ephemeral => TestFlag(Constants.Runner.CommandLine.Flags.Ephemeral);
+        public bool GenerateServiceConfig => TestFlag(Constants.Runner.CommandLine.Flags.GenerateServiceConfig);
         public bool Help => TestFlag(Constants.Runner.CommandLine.Flags.Help);
         public bool Unattended => TestFlag(Constants.Runner.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
-        public bool Ephemeral => TestFlag(Constants.Runner.CommandLine.Flags.Ephemeral);
-        public bool DisableUpdate => TestFlag(Constants.Runner.CommandLine.Flags.DisableUpdate);
 
         // Keep this around since customers still relies on it
         public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
@@ -138,7 +139,7 @@ namespace GitHub.Runner.Listener
         // Validate commandline parser result
         public List<string> Validate()
         {
-            List<string> unknowns = new List<string>();
+            List<string> unknowns = new();
 
             // detect unknown commands
             unknowns.AddRange(_parser.Commands.Where(x => !validOptions.Keys.Contains(x, StringComparer.OrdinalIgnoreCase)));

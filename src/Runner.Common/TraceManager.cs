@@ -1,4 +1,3 @@
-﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -15,7 +14,7 @@ namespace GitHub.Runner.Common
 
     public sealed class TraceManager : ITraceManager
     {
-        private readonly ConcurrentDictionary<string, Tracing> _sources = new ConcurrentDictionary<string, Tracing>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, Tracing> _sources = new(StringComparer.OrdinalIgnoreCase);
         private readonly HostTraceListener _hostTraceListener;
         private TraceSetting _traceSetting;
         private ISecretMasker _secretMasker;

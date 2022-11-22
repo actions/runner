@@ -13,7 +13,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void UseWhichFindGit()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 //Arrange
                 Tracing trace = hc.GetTrace();
@@ -33,7 +33,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void WhichReturnsNullWhenNotFound()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 //Arrange
                 Tracing trace = hc.GetTrace();
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void WhichThrowsWhenRequireAndNotFound()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 //Arrange
                 Tracing trace = hc.GetTrace();
@@ -76,7 +76,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void WhichHandleFullyQualifiedPath()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 //Arrange
                 Tracing trace = hc.GetTrace();

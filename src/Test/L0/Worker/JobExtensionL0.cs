@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using Moq;
 using System;
@@ -8,7 +8,6 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker
@@ -68,10 +67,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
 
             _tokenSource = new CancellationTokenSource();
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = new Timeline(Guid.NewGuid());
 
-            List<Pipelines.ActionStep> steps = new List<Pipelines.ActionStep>()
+            List<Pipelines.ActionStep> steps = new()
             {
                 new Pipelines.ActionStep()
                 {
@@ -102,7 +101,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             Guid jobId = Guid.NewGuid();
             _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), steps, null, null, null, null);
-            GitHubContext github = new GitHubContext();
+            GitHubContext github = new();
             github["repository"] = new Pipelines.ContextData.StringContextData("actions/runner");
             github["secret_source"] = new Pipelines.ContextData.StringContextData("Actions");
             _message.ContextData.Add("github", github);

@@ -1,9 +1,8 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using GitHub.Services.Common;
 using GitHub.Runner.Sdk;
@@ -39,7 +38,7 @@ namespace GitHub.Runner.Common
         Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken);
         Task DeleteAgentMessageAsync(Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken);
         Task DeleteAgentSessionAsync(Int32 poolId, Guid sessionId, CancellationToken cancellationToken);
-        Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken);
+        Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, CancellationToken cancellationToken);
 
         // job request
         Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken);
@@ -180,31 +179,6 @@ namespace GitHub.Runner.Common
             }
         }
 
-        private async Task<VssConnection> EstablishVssConnection(Uri serverUrl, VssCredentials credentials, TimeSpan timeout)
-        {
-            Trace.Info($"Establish connection with {timeout.TotalSeconds} seconds timeout.");
-            int attemptCount = 5;
-            while (attemptCount-- > 0)
-            {
-                var connection = VssUtil.CreateConnection(serverUrl, credentials, timeout: timeout);
-                try
-                {
-                    await connection.ConnectAsync();
-                    return connection;
-                }
-                catch (Exception ex) when (attemptCount > 0)
-                {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attempt left.");
-                    Trace.Error(ex);
-
-                    await HostContext.Delay(TimeSpan.FromMilliseconds(100), CancellationToken.None);
-                }
-            }
-
-            // should never reach here.
-            throw new InvalidOperationException(nameof(EstablishVssConnection));
-        }
-
         private void CheckConnection(RunnerConnectionType connectionType)
         {
             switch (connectionType)
@@ -298,10 +272,10 @@ namespace GitHub.Runner.Common
             return _messageTaskAgentClient.DeleteAgentSessionAsync(poolId, sessionId, cancellationToken: cancellationToken);
         }
 
-        public Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken)
+        public Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, CancellationToken cancellationToken)
         {
             CheckConnection(RunnerConnectionType.MessageQueue);
-            return _messageTaskAgentClient.GetMessageAsync(poolId, sessionId, lastMessageId, cancellationToken: cancellationToken);
+            return _messageTaskAgentClient.GetMessageAsync(poolId, sessionId, lastMessageId, status, runnerVersion, cancellationToken: cancellationToken);
         }
 
         //-----------------------------------------------------------------

@@ -16,7 +16,7 @@ We should give them that option, and publish examples how how they can create th
   - For example, the current runner overrides `HOME`, we can do that in the hook, but we shouldn't pass that hook as an ENV with the other env's the user has set, as that is not user input, it is how the runner invokes containers
 
 ## Interface
-- You will set the variable `ACTIONS_RUNNER_CONTAINER_HOOK=/Users/foo/runner/hooks.js` which is the entrypoint to your hook handler.
+- You will set the variable `ACTIONS_RUNNER_CONTAINER_HOOKS=/Users/foo/runner/hooks.js` which is the entrypoint to your hook handler.
   - There is no partial opt in, you must handle every hook 
 - We will pass a command and some args via `stdin`
 - An exit code of 0 is a success, every other exit code is a failure

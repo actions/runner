@@ -4,9 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Text;
-using System.Diagnostics;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -24,7 +22,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
         private const string _tagRefsPrefix = "refs/tags/";
 
         // min git version that support add extra auth header.
-        private Version _minGitVersionSupportAuthHeader = new Version(2, 9);
+        private Version _minGitVersionSupportAuthHeader = new(2, 9);
 
 #if OS_WINDOWS
         // min git version that support override sslBackend setting.
@@ -32,7 +30,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
 #endif
 
         // min git-lfs version that support add extra auth header.
-        private Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
+        private Version _minGitLfsVersionSupportAuthHeader = new(2, 1);
 
         public static string ProblemMatcher => @"    
 {
@@ -64,9 +62,9 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
         {
             // Validate args.
             ArgUtil.NotNull(executionContext, nameof(executionContext));
-            Dictionary<string, string> configModifications = new Dictionary<string, string>();
+            Dictionary<string, string> configModifications = new();
             executionContext.Output($"Syncing repository: {repoFullName}");
-            Uri repositoryUrl = new Uri($"https://github.com/{repoFullName}");
+            Uri repositoryUrl = new($"https://github.com/{repoFullName}");
             if (!repositoryUrl.IsAbsoluteUri)
             {
                 throw new InvalidOperationException("Repository url need to be an absolute uri.");
@@ -104,7 +102,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             executionContext.Debug($"gitLfsSupport={gitLfsSupport}");
 
             // Initialize git command manager with additional environment variables.
-            Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> gitEnv = new(StringComparer.OrdinalIgnoreCase);
 
             // Disable git prompt
             gitEnv["GIT_TERMINAL_PROMPT"] = "0";
@@ -127,7 +125,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                 gitEnv[formattedKey] = variable.Value?.Value ?? string.Empty;
             }
 
-            GitCliManager gitCommandManager = new GitCliManager(gitEnv);
+            GitCliManager gitCommandManager = new(gitEnv);
             await gitCommandManager.LoadGitExecutionInfo(executionContext);
 
             // Make sure the build machine met all requirements for the git repository
@@ -279,8 +277,8 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                 await RemoveGitConfig(executionContext, gitCommandManager, targetPath, $"http.{repositoryUrl.AbsoluteUri}.extraheader", string.Empty);
             }
 
-            List<string> additionalFetchArgs = new List<string>();
-            List<string> additionalLfsFetchArgs = new List<string>();
+            List<string> additionalFetchArgs = new();
+            List<string> additionalLfsFetchArgs = new();
 
             // Add http.https://github.com.extraheader=... to gitconfig
             // accessToken as basic auth header to handle any auth challenge from github.com 
@@ -305,7 +303,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                 }
             }
 
-            List<string> additionalFetchSpecs = new List<string>();
+            List<string> additionalFetchSpecs = new();
             additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
 
             if (IsPullRequest(sourceBranch))
@@ -380,7 +378,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                     throw new InvalidOperationException($"Git submodule sync failed with exit code: {exitCode_submoduleSync}");
                 }
 
-                List<string> additionalSubmoduleUpdateArgs = new List<string>();
+                List<string> additionalSubmoduleUpdateArgs = new();
 
                 int exitCode_submoduleUpdate = await gitCommandManager.GitSubmoduleUpdate(executionContext, targetPath, fetchDepth, string.Join(" ", additionalSubmoduleUpdateArgs), checkoutNestedSubmodules, cancellationToken);
                 if (exitCode_submoduleUpdate != 0)
@@ -406,7 +404,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             executionContext.Output($"Cleanup cached git credential from {repositoryPath}.");
 
             // Initialize git command manager
-            GitCliManager gitCommandManager = new GitCliManager();
+            GitCliManager gitCommandManager = new();
             await gitCommandManager.LoadGitExecutionInfo(executionContext);
 
             executionContext.Debug("Remove any extraheader setting from git config.");
@@ -501,7 +499,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                     string gitConfig = Path.Combine(targetPath, ".git/config");
                     if (File.Exists(gitConfig))
                     {
-                        List<string> safeGitConfig = new List<string>();
+                        List<string> safeGitConfig = new();
                         var gitConfigContents = File.ReadAllLines(gitConfig);
                         foreach (var line in gitConfigContents)
                         {
