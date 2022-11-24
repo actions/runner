@@ -86,6 +86,8 @@ namespace GitHub.Runner.Worker.Container
         public string RegistryAuthPassword { get; set; }
         public bool IsJobContainer { get; set; }
 
+        public bool FailedInitialization { get; set; }
+
         public IDictionary<string, string> ContainerEnvironmentVariables
         {
             get

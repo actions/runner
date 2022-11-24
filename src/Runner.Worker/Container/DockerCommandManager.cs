@@ -182,11 +182,11 @@ namespace GitHub.Runner.Worker.Container
             {
                 if (String.IsNullOrEmpty(env.Value))
                 {
-                    dockerOptions.Add($"-e \"{env.Key}\"");
+                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
                 }
                 else
                 {
-                    dockerOptions.Add($"-e \"{env.Key}={env.Value.Replace("\"", "\\\"")}\"");
+                    dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key, env.Value));
                 }
             }
 
@@ -222,7 +222,7 @@ namespace GitHub.Runner.Worker.Container
             }
             if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
             {
-                dockerOptions.Add($"--entrypoint \"{container.ContainerEntryPoint}\"");
+                dockerOptions.Add($"--entrypoint {DockerUtil.EscapeString(container.ContainerEntryPoint)}");
             }
             // IMAGE
             dockerOptions.Add($"{container.ContainerImage}");
@@ -279,7 +279,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
                 // the value directly in the command
-                dockerOptions.Add($"-e {env.Key}");
+                dockerOptions.Add(DockerUtil.CreateEscapedOption("-e", env.Key));
             }
 
             // Watermark for GitHub Action environment
@@ -294,7 +294,7 @@ namespace GitHub.Runner.Worker.Container
 
             if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
             {
-                dockerOptions.Add($"--entrypoint \"{container.ContainerEntryPoint}\"");
+                dockerOptions.Add($"--entrypoint {DockerUtil.EscapeString(container.ContainerEntryPoint)}");
             }
 
             if (!string.IsNullOrEmpty(container.ContainerNetwork))
@@ -309,12 +309,12 @@ namespace GitHub.Runner.Worker.Container
                 if (String.IsNullOrEmpty(volume.SourceVolumePath))
                 {
                     // Anonymous docker volume
-                    volumeArg = $"-v \"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    volumeArg = $"-v {DockerUtil.EscapeString(volume.TargetVolumePath)}";
                 }
                 else
                 {
                     // Named Docker volume / host bind mount
-                    volumeArg = $"-v \"{volume.SourceVolumePath.Replace("\"", "\\\"")}\":\"{volume.TargetVolumePath.Replace("\"", "\\\"")}\"";
+                    volumeArg = $"-v {DockerUtil.EscapeString($"{volume.SourceVolumePath}:{volume.TargetVolumePath}")}";
                 }
                 if (volume.ReadOnly)
                 {

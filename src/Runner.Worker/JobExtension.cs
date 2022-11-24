@@ -213,6 +213,11 @@ namespace GitHub.Runner.Worker
                         {
                             var networkAlias = pair.Key;
                             var serviceContainer = pair.Value;
+                            if (serviceContainer == null)
+                            {
+                                context.Output($"The service '{networkAlias}' will not be started because the container definition has an empty image.");
+                                continue;
+                            }
                             jobContext.Global.ServiceContainers.Add(new Container.ContainerInfo(HostContext, serviceContainer, false, networkAlias));
                         }
                     }
