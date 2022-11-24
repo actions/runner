@@ -1324,7 +1324,8 @@ namespace Runner.Server.Controllers
                             templateContext.Flags |= ExpressionFlags.ExtendedDirectives | ExpressionFlags.ExtendedFunctions | ExpressionFlags.AllowAnyForInsert;
                             var token = TemplateReader.Read(templateContext, "context-root", objectReader, null, out _);
                             templateContext.Errors.Check();
-                            contextsTemplate = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true).AssertMapping("context-root").ToContextData();
+                            contextsTemplate = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true)?.AssertMapping("context-root").ToContextData();
+                            templateContext.Errors.Check();
                         }
                     }
                     if(workflowEnvironment.Count > 0) {
@@ -2392,7 +2393,7 @@ namespace Runner.Server.Controllers
                                                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                                                     var _jobdisplayname = _prejobdisplayname;
                                                     if(jobNameToken != null && !(jobNameToken is StringToken)) {
-                                                        _jobdisplayname = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", jobNameToken, 0, null, true).AssertString($"jobs.{jobname}.name must be a string").Value?.PrefixJobNameIfNotNull(callingJob?.Name);
+                                                        _jobdisplayname = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", jobNameToken, 0, null, true)?.AssertString($"jobs.{jobname}.name must be a string").Value?.PrefixJobNameIfNotNull(callingJob?.Name);
                                                         templateContext.Errors.Check();
                                                     }
                                                     next.DisplayName = _jobdisplayname;
@@ -2700,7 +2701,7 @@ namespace Runner.Server.Controllers
                                         foreach(var entry in workflowOutputs) {
                                             var key = entry.Key.AssertString("on.workflow_call.outputs mapping key").Value;
                                             templateContext.TraceWriter.Info("{0}", $"Evaluate on.workflow_call.outputs.{key}.value");
-                                            var value = entry.Value != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping($"on.workflow_call.outputs.{key}") where kv.Key.AssertString($"on.workflow_call.outputs.{key} mapping key").Value == "value" select kv.Value).First(), 0, null, true).AssertString($"on.workflow_call.outputs.{key}.value").Value : null;
+                                            var value = entry.Value != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping($"on.workflow_call.outputs.{key}") where kv.Key.AssertString($"on.workflow_call.outputs.{key} mapping key").Value == "value" select kv.Value).First(), 0, null, true)?.AssertString($"on.workflow_call.outputs.{key}.value").Value : null;
                                             templateContext.Errors.Check();
                                             outputs[key] = new VariableValue(value, false);
                                         }
@@ -5093,15 +5094,15 @@ namespace Runner.Server.Controllers
                 }
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job continueOnError" }), ji.TimelineId, ji.Id);
                 templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                ji.ContinueOnError = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, null, true).AssertBoolean($"jobs.{name}.continue-on-error be a boolean").Value).FirstOrDefault();
+                ji.ContinueOnError = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, null, true)?.AssertBoolean($"jobs.{name}.continue-on-error be a boolean").Value).FirstOrDefault() ?? false;
                 templateContext.Errors.Check();
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job timeoutMinutes" }), ji.TimelineId, ji.Id);
                 templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                var timeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true).AssertNumber($"jobs.{name}.timeout-minutes be a number").Value).Append(360).First();
+                var timeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true)?.AssertNumber($"jobs.{name}.timeout-minutes be a number").Value).Append(360).First() ?? 360;
                 templateContext.Errors.Check();
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job cancelTimeoutMinutes" }), ji.TimelineId, ji.Id);
                 templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                var cancelTimeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true).AssertNumber($"jobs.{name}.cancel-timeout-minutes be a number").Value).Append(5).First();
+                var cancelTimeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true)?.AssertNumber($"jobs.{name}.cancel-timeout-minutes be a number").Value).Append(5).First() ?? 5;
                 templateContext.Errors.Check();
                 var jobConcurrency = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "concurrency" select r).FirstOrDefault().Value;
                 if(jobConcurrency != null) {
@@ -5292,6 +5293,7 @@ namespace Runner.Server.Controllers
                 {
                     templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                     var evaluatedSteps = TemplateEvaluator.Evaluate(templateContext, "steps", rawSteps, 0, null, true) ?? rawSteps;
+                    templateContext.Errors.Check();
                     steps = PipelineTemplateConverter.ConvertToSteps(templateContext, evaluatedSteps);
                     templateContext.Errors.Check();
                 }
@@ -6713,7 +6715,7 @@ namespace Runner.Server.Controllers
                 var templateContext = CreateTemplateContext(secureTraceWriter, workflowContext, contextData);
                 templateContext.ExpressionValues["env"] = jobEnvCtx;
                 templateContext.ExpressionValues["secrets"] = result;
-                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", secretsMapping, 0, null, true).AssertMapping($"jobs.{name}.secrets") : null;
+                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", secretsMapping, 0, null, true)?.AssertMapping($"jobs.{name}.secrets") : null;
                 templateContext.Errors.Check();
                 IDictionary<string, string> ret = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if(evalSec != null) {
