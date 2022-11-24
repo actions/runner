@@ -1286,6 +1286,7 @@ namespace Runner.Server.Controllers
                         }
                     }
                 };
+                workflowname = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? workflowname;
                 TemplateToken globalEnvToken = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "env" select r).FirstOrDefault().Value;
                 if(globalEnvToken != null) {
                     workflowEnvironment.Add(globalEnvToken);
@@ -1782,17 +1783,18 @@ namespace Runner.Server.Controllers
                         return skipWorkflow();
                     }
                 }
-                Func<string> tryEvalRunName = () => {
-                    var runName = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "run-name" select r).FirstOrDefault().Value;
+                Func<GitHub.DistributedTask.ObjectTemplating.ITraceWriter, TemplateToken, string> evalRunName = (traceWriter, runName) => {
                     if(runName == null) {
                         return null;
                     }
                     var contextData = createContext("");
-                    var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
+                    var templateContext = CreateTemplateContext(traceWriter, workflowContext, contextData);
                     var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-run-name", runName, 0, null, true);
-                    return workflowEnv?.AssertString("run-name")?.Value;
+                    templateContext.Errors.Check();
+                    var ret = workflowEnv?.AssertString("run-name")?.Value;
+                    return string.IsNullOrWhiteSpace(ret) ? null : ret;
                 };
-                workflowname = callingJob?.WorkflowName ?? tryEvalRunName() ?? (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? fileRelativePath;
+                workflowname = callingJob?.WorkflowName ?? evalRunName(workflowTraceWriter, (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "run-name" select r).FirstOrDefault().Value) ?? evalRunName(workflowContext.HasFeature("system.runner.server.debugdefrunname") ? workflowTraceWriter : new EmptyTraceWriter(), new BasicExpressionToken(null, null, null, "github.event_name == 'push' && github.event.head_commit.message || startswith(github.event_name, 'pull_request') && github.event.pull_request.title || ''")) ?? workflowname;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
                     if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
@@ -3322,7 +3324,7 @@ namespace Runner.Server.Controllers
                     pipeline.Name = evalMacro(pipeline.Name, 0);
                 }
                 
-                workflowname = pipeline.Name ?? fileRelativePath;
+                workflowname = pipeline.Name ?? workflowname;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
                     if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
