@@ -264,7 +264,19 @@ namespace GitHub.Runner.Sdk
             {
                 foreach (KeyValuePair<string, string> kvp in environment)
                 {
+#if OS_WINDOWS
+                     if(!String.IsNullOrWhiteSpace(kvp.Key) && !String.IsNullOrWhiteSpace(kvp.Value))
+                    {
+                        string tempKey = kvp.Key.Split("\0")[0];
+                        if(!String.IsNullOrWhiteSpace(tempKey))
+                        {
+                             _proc.StartInfo.Environment[tempKey.Trim()] = kvp.Value.Split("\0")[0].Trim();
+                        }
+                    }
+#else
                     _proc.StartInfo.Environment[kvp.Key] = kvp.Value;
+
+#endif
                 }
             }
 
