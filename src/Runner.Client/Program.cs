@@ -1760,7 +1760,7 @@ namespace Runner.Client
                                         query.Add("Repository", repofullname);
                                         payloadContent["ref"] = Ref;
                                         payloadContent["after"] = sha;
-                                        var commit = JObject.FromObject(new { message = "Untraced changes", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
+                                        var commit = JObject.FromObject(new { message = "", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
                                         acommits.AddFirst(commit);
                                         payloadContent["head_commit"] = commit;
                                         var repository = JObject.FromObject(new { owner = repoowner, default_branch = parameters.DefaultBranch ?? "main", master_branch = parameters.DefaultBranch ?? "master", name = repofullname.Split('/', 2)[1], full_name = repofullname });
