@@ -29,7 +29,7 @@ jobs:
         $d = Get-Date
         $runnerversion = $($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
         dotnet build --no-restore -c Release /p:BUILD_OS=Any /p:Version=$runnerversion /p:RuntimeFrameworkVersion=6.0.0
-        echo $('::set-output name=version::' + $runnerversion)
+        echo "version=$runnerversion" > $env:GITHUB_OUTPUT
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Pack
@@ -70,7 +70,7 @@ jobs:
         - ubuntu-latest
         - macos-latest
         dotnet-version:
-        - '6.0.100'
+        # - '6.0.100'
         - '6.0.x'
         image:
         - ''
