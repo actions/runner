@@ -48,7 +48,7 @@ runWithManualTrap() {
             trap - INT TERM
             # wait for last parts to be logged
             wait $PID
-            exit 0
+            exit $returnCode
         fi
     done
 }
