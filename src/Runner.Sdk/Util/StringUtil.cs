@@ -123,5 +123,43 @@ namespace GitHub.Runner.Sdk
         {
             return value?.Substring(0, Math.Min(value.Length, count));
         }
+
+        public static bool AreBracketsBalanced(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+            {
+                return true;
+            }
+
+            var openingBracketCount = 0;
+            foreach (var c in s)
+            {
+                if (c == '(')
+                {
+                    openingBracketCount++;
+                }
+                else if (c == ')')
+                {
+                    if (openingBracketCount == 0)
+                    {
+                        return false;
+                    }
+                    openingBracketCount--;
+                }
+            }
+            // If we have any opening bracket left, we have an unbalanced string
+            return openingBracketCount == 0;
+        }
+
+        public static string SanitizeUserAgentHeader(string header)
+        {
+            header = header.Trim();
+            if (AreBracketsBalanced(header))
+            {
+                return header;
+            }
+            return header.Replace("(", "").Replace(")", "");
+        }
+
     }
 }

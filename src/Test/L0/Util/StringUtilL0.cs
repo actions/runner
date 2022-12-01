@@ -1,5 +1,4 @@
-﻿using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
+﻿using GitHub.Runner.Sdk;
 using System.Globalization;
 using Xunit;
 
@@ -185,6 +184,34 @@ namespace GitHub.Runner.Common.Tests.Util
                 Assert.False(result8, $"'{undefineString2}' should convert to false.");
                 Assert.False(result9, $"'{undefineString3}' should convert to false.");
             }
+        }
+
+        [Theory]
+        [InlineData("", true)]
+        [InlineData("(())", true)]
+        [InlineData("()()", true)]
+        [InlineData("Liquorix kernel OS Description is poorly formatted (linux version", false)]
+        [InlineData("()((", false)]
+        [InlineData("(opening never closed", false)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void AreBracketsBalanced(string input, bool result)
+        {
+            Assert.Equal(result, StringUtil.AreBracketsBalanced(input));
+        }
+
+        [Theory]
+        [InlineData("", "")]
+        [InlineData("(())", "(())")]
+        [InlineData("()()", "()()")]
+        [InlineData("Liquorix kernel OS Description is poorly formatted (linux version", "Liquorix kernel OS Description is poorly formatted linux version")]
+        [InlineData("()((", "")]
+        [InlineData("(opening never closed", "opening never closed")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SanitizeUserAgentHeader(string input, string result)
+        {
+            Assert.Equal(result, StringUtil.SanitizeUserAgentHeader(input));
         }
     }
 }
