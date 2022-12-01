@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
@@ -35,6 +36,10 @@ namespace GitHub.Runner.Common
         {
             base.Initialize(hostContext);
             Console.CancelKeyPress += Console_CancelKeyPress;
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer)))
+            {
+                Silent = true;
+            }
         }
 
         private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
