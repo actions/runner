@@ -92,7 +92,7 @@ namespace GitHub.Runner.Common
         }
 
         public override void Write(string message)
-        {         
+        {
             base.Write(message);
             if (_enablePageLog)
             {
