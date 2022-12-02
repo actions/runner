@@ -27,6 +27,7 @@ namespace GitHub.Runner.Common
             }
 
             _traceSource.Listeners.Add(traceListener);
+            _traceSource.Listeners.Add(new StdoutTraceListener());
         }
 
         public void Info(string message)

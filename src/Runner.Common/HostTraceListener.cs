@@ -89,11 +89,6 @@ namespace GitHub.Runner.Common
             }
 
             Flush();
-
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout)))
-            {
-                Console.WriteLine(message);
-            }
         }
 
         public override void Write(string message)
@@ -106,11 +101,6 @@ namespace GitHub.Runner.Common
             }
 
             Flush();
-
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout)))
-            {
-                Console.Write(message);
-            }
         }
 
         internal bool IsEnabled(TraceOptions opts)
