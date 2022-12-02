@@ -2,8 +2,6 @@ using GitHub.Runner.Sdk;
 using System;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
-using System.Text;
 
 namespace GitHub.Runner.Common
 {
