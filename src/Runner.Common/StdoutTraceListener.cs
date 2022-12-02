@@ -7,6 +7,7 @@ namespace GitHub.Runner.Common
 {
     public sealed class StdoutTraceListener : RunnerTraceListener
     {
+        // Console.Out is the stdout stream
         public StdoutTraceListener() : base(Console.Out) { }
 
         // Copied and modified slightly from .Net Core source code. Modification was required to make it compile.
