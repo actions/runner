@@ -178,7 +178,7 @@ public class Job {
             if(job is MappingToken mstep && mstep.Count > 0) {
                 if((mstep[0].Key as StringToken)?.Value == "template") {
                     var path = (mstep[0].Value as StringToken)?.Value;
-                    var file = AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null);
+                    var file = AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "job-template-root");
                     ParseJobs(context.ChildContext(file, path), jobs, (from e in file where e.Key.AssertString("").Value == "jobs" select e.Value).First().AssertSequence(""));
                 } else {
                     jobs.Add(new Job().Parse(context, mstep));

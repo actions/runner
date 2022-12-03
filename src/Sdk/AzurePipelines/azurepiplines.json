@@ -32,6 +32,222 @@
       ]
     },
 
+    "pipeline-container": {
+      "description": "Pipeline container as of https://learn.microsoft.com/en-us/azure/devops/release-notes/2022/pipelines/sprint-212-update",
+      "mapping": {
+        "properties": {
+          "container": {
+            "type": "string",
+            "required": true
+          },
+          "image": "string",
+          "env": "mapping",
+          "mapDockerSocket": "boolean",
+          "mountReadOnly": "any",
+          "endpoint": "workflow-value",
+          "volumes": "workflow-value",
+          "ports": "workflow-value",
+          "options": "workflow-value"
+        }
+      }
+    },
+
+    "pipeline-containers": {
+      "sequence": {
+        "item-type": "pipeline-container"
+      }
+    },
+
+    "pipeline-repository": {
+      "description": "Pipeline repository as of https://learn.microsoft.com/en-us/azure/devops/release-notes/2022/pipelines/sprint-212-update",
+      "mapping": {
+        "properties": {
+          "repository": {
+            "type": "string",
+            "required": true
+          },
+          "name": "mapping",
+          "type": "string",
+          "endpoint": "string",
+          "ref": "workflow-value"
+        }
+      }
+    },
+
+    "pipeline-repositories": {
+      "sequence": {
+        "item-type": "pipeline-repository"
+      }
+    },
+
+    "pipeline-resources": {
+      "description": "Pipeline resources",
+      "mapping": {
+        "properties": {
+          "containers": "pipeline-containers",
+          "repositories": "pipeline-repositories",
+          "pipelines": "any",
+          "builds": "any",
+          "packages": "any"
+        }
+      }
+    },
+
+    "pipeline-root": {
+      "description": "Pipeline file",
+      "one-of": [
+        "extends-pipeline-root",
+        "stage-pipeline-root",
+        "job-pipeline-root",
+        "steps-pipeline-root"
+      ]
+    },
+
+    "extends-pipeline-root": {
+      "description": "Extends Pipeline file",
+      "mapping": {
+        "properties": {
+          "trigger": "any",
+          "pr": "any",
+          "schedules": "any",
+          "name": "string",
+          "appendCommitMessageToRunName": "boolean",
+          "resources": "workflow-value",
+          "pool": "any",
+          "lockBehavior": "any",
+          "variables": "workflow-value",
+          "parameters": "any",
+          "extends": {
+            "type": "workflow-value",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "stage-pipeline-root": {
+      "description": "Stage Pipeline file",
+      "mapping": {
+        "properties": {
+          "trigger": "any",
+          "pr": "any",
+          "schedules": "any",
+          "name": "string",
+          "appendCommitMessageToRunName": "boolean",
+          "resources": "workflow-value",
+          "pool": "any",
+          "lockBehavior": "any",
+          "variables": "workflow-value",
+          "parameters": "any",
+          "stages": {
+            "type": "workflow-value",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "job-pipeline-root": {
+      "description": "Job Pipeline file",
+      "mapping": {
+        "properties": {
+          "trigger": "any",
+          "pr": "any",
+          "schedules": "any",
+          "name": "string",
+          "appendCommitMessageToRunName": "boolean",
+          "resources": "workflow-value",
+          "pool": "any",
+          "lockBehavior": "any",
+          "variables": "workflow-value",
+          "parameters": "any",
+          "jobs": {
+            "type": "workflow-value",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "steps-pipeline-root": {
+      "description": "Steps Pipeline file",
+      "mapping": {
+        "properties": {
+          "trigger": "any",
+          "pr": "any",
+          "schedules": "any",
+          "name": "string",
+          "appendCommitMessageToRunName": "boolean",
+          "resources": "workflow-value",
+          "pool": "any",
+          "lockBehavior": "any",
+          "variables": "workflow-value",
+          "parameters": "any",
+          "steps": {
+            "type": "workflow-value",
+            "required": true
+          },
+          "workspace": "any",
+          "services": "any",
+          "container": "any",
+          "continueOnError": "any",
+          "strategy": "any"
+        }
+      }
+    },
+
+    "stage-template-root": {
+      "description": "Stage Template file",
+      "mapping": {
+        "properties": {
+          "parameters": "any",
+          "stages": {
+            "type": "workflow-value",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "job-template-root": {
+      "description": "Job Template file",
+      "mapping": {
+        "properties": {
+          "parameters": "any",
+          "jobs": {
+            "type": "workflow-value",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "step-template-root": {
+      "description": "Step Template file",
+      "mapping": {
+        "properties": {
+          "parameters": "any",
+          "steps": {
+            "type": "workflow-value",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "variable-template-root": {
+      "description": "Variable Template file",
+      "mapping": {
+        "properties": {
+          "parameters": "any",
+          "variables": {
+            "type": "workflow-value",
+            "required": true
+          }
+        }
+      }
+    },
+
     "variable-result": {
       "context": [
         "variables",

@@ -112,7 +112,7 @@ public class AzureDevops {
                         }
                     }
                 } else if(template != null) {
-                    var file = ReadTemplate(context, template, parameters != null ? parameters.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null);
+                    var file = ReadTemplate(context, template, parameters != null ? parameters.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
                     ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First());
                 } else {
                     vars[name] = new VariableValue(value, isReadonly: isReadonly);
@@ -312,7 +312,7 @@ public class AzureDevops {
                     steps.Add(tstep);
                 break;
                 case "template":
-                    var file = ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null);
+                    var file = ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
                     foreach(var step2 in (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence("")) {
                         ParseSteps(context.ChildContext(file, primaryValue), steps, step2);
                     }
@@ -424,7 +424,7 @@ public class AzureDevops {
         return string.Join('/', path.ToArray());
     }
 
-    public static MappingToken ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null) {
+    public static MappingToken ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null) {
         var variables = context.VariablesProvider?.GetVariablesForEnvironment("");
         var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), new List<string>(), context.Flags);
         var afilenameAndRef = filenameAndRef.Split("@", 2);
@@ -437,7 +437,7 @@ public class AzureDevops {
         using (var stringReader = new StringReader(fileContent))
         {
             var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
-            token = TemplateReader.Read(templateContext, "workflow-root", yamlObjectReader, fileId, out _);
+            token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
         }
 
         templateContext.Errors.Check();
@@ -530,7 +530,7 @@ public class AzureDevops {
 
         templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
 
-        var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, "workflow-root", pipelineroot, 0, fileId);
+        var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
         templateContext.Errors.Check();
         return evaluatedResult.AssertMapping("root");
     }
