@@ -172,6 +172,7 @@ namespace Runner.Client
                         { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
                         { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
                         { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
+                        { "osx/arm64", dest => DownloadTool(AURL("osx-arm64", "tar.gz"), dest, token, unwrap: false)},
                     };
                 } else {
                     Func<string, string, string> AURL = (arch, ext) => $"https://github.com/actions/runner/releases/download/v{version}/actions-runner-{arch}-{version}.{ext}";

@@ -3706,6 +3706,7 @@ namespace Runner.Server.Controllers
                                     // If this is not a non zero guid upload artifact tasks refuse to work
                                     variables["system.teamProjectId"] = new VariableValue("667b63ea-5b23-4619-9431-f2cff4e16a11", false);
                                     variables["System.DefinitionId"] = new VariableValue(Guid.Empty.ToString(), false);
+                                    variables["System.planid"] = new VariableValue(Guid.Empty.ToString(), false);
                                     variables["system.definitionName"] = new VariableValue(Guid.Empty.ToString(), false);
                                     variables["Build.Clean"] = new VariableValue("true", false);
                                     variables["Build.SyncSources"] = new VariableValue("true", false);
@@ -5730,9 +5731,11 @@ namespace Runner.Server.Controllers
                             svariables[secr.Key] = new VariableValue(secr.Value, true);
                         }
                         svariables[SdkConstants.Variables.Build.ContainerId] = fileContainerId.ToString();
-                        svariables["system.collectionUri"] = new VariableValue(apiUrl, false);
-                        svariables["system.teamFoundationCollectionUri"] = new VariableValue(apiUrl, false);
-                        svariables["system.taskDefinitionsUri"] = new VariableValue(apiUrl, false);
+                        svariables["system.collectionUri"] = new VariableValue(apiUrl, false, true);
+                        svariables["system.teamFoundationCollectionUri"] = new VariableValue(apiUrl, false, true);
+                        svariables["system.taskDefinitionsUri"] = new VariableValue(apiUrl, false, true);
+                        svariables["system.jobid"] = new VariableValue(jobId.ToString(), false, true);
+                        svariables["system.timelineid"] = new VariableValue(timelineId.ToString(), false, true);
 
                         var tokenHandler = new JwtSecurityTokenHandler();
                         var tokenDescriptor = new SecurityTokenDescriptor
