@@ -468,8 +468,10 @@ namespace Runner.Client
                             runnerEnv[e as string] = systemEnv[e] as string;
                         }
                         if(azure) {
-                            // Otherwise we have trouble to detect if the agent is ready for receiving jobs, althougt Runner.Server can tell us the state of the runner
+                            // Otherwise we have trouble to detect if the agent is ready for receiving jobs, although Runner.Server can tell us the state of the runner
                             runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"] = "1";
+                            // the 3.x.x azure agents don't use PredefinedCulturesOnly https://learn.microsoft.com/en-US/dotnet/core/runtime-config/globalization#predefined-cultures, however actions/runner added it
+                            runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY"] = "false";
                         } else {
                             runnerEnv["RUNNER_SERVER_CONFIG_ROOT"] = tmpdir;
                         }
