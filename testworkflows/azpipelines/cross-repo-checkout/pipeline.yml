@@ -1,0 +1,11 @@
+resources:
+  repositories:
+  - repository: r
+    name: az/containermatrix
+    ref: main
+    type: github
+steps:
+- checkout: r
+  path: containermatrix
+- bash: |
+    ls containermatrix

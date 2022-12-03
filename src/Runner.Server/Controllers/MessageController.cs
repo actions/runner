@@ -3258,7 +3258,10 @@ namespace Runner.Server.Controllers
                     if(endver != -1) {
                         namever[1] = namever[1].Substring(0, endver);
                     }
-                    state.TasksByNameAndVersion = getOrCreateTaskCache($"{namever[0]}v{namever[1]}");
+                    // Do not assign state.TasksByNameAndVersion, because it is possible to loose the localcheckout task
+                    foreach(var entry in getOrCreateTaskCache($"{namever[0]}v{namever[1]}")) {
+                        state.TasksByNameAndVersion[entry.Key] = entry.Value;
+                    }
                     if(state.TasksByNameAndVersion.TryGetValue(name, out meta)) {
                         return meta;
                     }
@@ -5822,15 +5825,15 @@ namespace Runner.Server.Controllers
                                 Version = $"{localcheckoutazure.Version.Major}.{localcheckoutazure.Version.Minor}.{localcheckoutazure.Version.Patch}"
                             } : null;
                             
-                            if(localcheckoutRef != null && !steps.Any(step => step.Reference?.Id == checkoutGuid)) {
-                                steps.Insert(0, new TaskStep {
-                                    DisplayName = "Default Checkout Task",
-                                    Reference = localcheckoutRef
-                                });
-                            } else {
-                                // checkout: none triggers an error in the builtin checkout task
-                                steps.RemoveAll(step => step.Reference?.Id == checkoutGuid && step.Inputs.TryGetValue("repository", out var repo) && repo == "none");
-                                if(localcheckout) {
+                            if(localcheckoutRef != null) {
+                                if(!steps.Any(step => step.Reference?.Id == checkoutGuid)) {
+                                    steps.Insert(0, new TaskStep {
+                                        DisplayName = "Default Checkout Task",
+                                        Reference = localcheckoutRef
+                                    });
+                                } else {
+                                    // checkout: none triggers an error in the builtin checkout task
+                                    steps.RemoveAll(step => step.Reference?.Id == checkoutGuid && step.Inputs.TryGetValue("repository", out var repo) && repo == "none");
                                     var count = steps.Count(step => step.Reference?.Id == checkoutGuid);
                                     foreach(var step in steps) {
                                         if(step.Reference?.Id == checkoutGuid) {

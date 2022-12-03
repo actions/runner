@@ -1,0 +1,20 @@
+resources:
+  repositories:
+  - repository: typedtemplates
+    type: github
+    name: az/typedtemplates
+    ref: main
+  - repository: untypedtemplates
+    type: github
+    name: az/untypedtemplates
+    ref: main
+stages:
+- template: pipeline.yml@typedtemplates
+- template: printStages.yml
+  parameters:
+    stages:
+    - template: pipeline.yml@untypedtemplates
+- template: printStages.yml
+  parameters:
+    stages:
+    - template: pipeline.yml@typedtemplates

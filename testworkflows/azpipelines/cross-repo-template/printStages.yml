@@ -1,0 +1,10 @@
+parameters:
+  stages: []
+stages:
+  - stage:
+    jobs:
+      - job:
+        steps:
+          - pwsh: echo "$env:STAGES"
+            env:
+              STAGES: ${{ converttojson(parameters.stages) }}
