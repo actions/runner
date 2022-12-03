@@ -450,6 +450,8 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="poolId"></param>
         /// <param name="sessionId"></param>
         /// <param name="lastMessageId"></param>
+        /// <param name="status"></param>
+        /// <param name="runnerVersion"></param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -458,6 +460,7 @@ namespace GitHub.DistributedTask.WebApi
             Guid sessionId,
             long? lastMessageId = null,
             TaskAgentStatus? status = null,
+            string runnerVersion = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -475,12 +478,16 @@ namespace GitHub.DistributedTask.WebApi
             {
                 queryParams.Add("status", status.Value.ToString());
             }
+            if (runnerVersion != null)
+            {
+                queryParams.Add("runnerVersion", runnerVersion);
+            }
 
             return SendAsync<TaskAgentMessage>(
                 httpMethod,
                 locationId,
                 routeValues: routeValues,
-                version: new ApiResourceVersion(5.1, 1),
+                version: new ApiResourceVersion(6.0, 1),
                 queryParameters: queryParams,
                 userState: userState,
                 cancellationToken: cancellationToken);
