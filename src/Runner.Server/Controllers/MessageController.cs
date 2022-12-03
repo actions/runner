@@ -4479,9 +4479,9 @@ namespace Runner.Server.Controllers
                     workflowTraceWriter.Info("{0}", $"Found {dependentjobgroup.Count} matching jobs for the requested event {e}");
                     foreach(var j in dependentjobgroup) {
                         if(j.Needs.Any()) {
-                            workflowTraceWriter.Info("{0}", $"{j.name} depends on {string.Join(", ", j.Needs)}");
+                            workflowTraceWriter.Info("{0}", $"{j.Stage}/{j.name} depends on {string.Join(", ", j.Needs)}");
                         } else {
-                            workflowTraceWriter.Info("{0}", $"{j.name}");
+                            workflowTraceWriter.Info("{0}", $"{j.Stage}/{j.name}");
                         }
                     }
                     return skipWorkflow();
