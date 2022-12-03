@@ -526,6 +526,10 @@ public class AzureDevops {
             if(cparameters != null && providedParameter != cparameters?.Count) {
                 throw new Exception("Provided undeclared parameters");
             }
+        } else {
+            if(cparameters != null && 0 != cparameters.Count) {
+                throw new Exception("Provided undeclared parameters");
+            }
         }
 
         templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);

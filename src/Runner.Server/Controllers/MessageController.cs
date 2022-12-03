@@ -3149,7 +3149,21 @@ namespace Runner.Server.Controllers
                 }
                 var context = new Azure.Devops.Context { FileProvider = fileProvider, TraceWriter = workflowTraceWriter, VariablesProvider = new AzurePipelinesVariablesProvider(secretsProvider, rootVariables), Flags = flags };
                 workflowContext.AzContext = context;
-                var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, null);
+                Dictionary<string, TemplateToken> workflowParameters = null;
+                if(workflowContext.FeatureToggles.TryGetValue("system.runner.server.parameters", out var rawparameters)) {
+                    workflowParameters = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
+                    MappingToken pparameters;
+                    var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, null);
+                    using (var stringReader = new StringReader(rawparameters)) {
+                        var yamlObjectReader = new YamlObjectReader(null, stringReader);
+                        pparameters = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _)?.AssertMapping("parameters");
+                    }
+                    templateContext.Errors.Check();
+                    foreach(var kv in pparameters) {
+                        workflowParameters[kv.Key.ToString()] = kv.Value;
+                    }
+                }
+                var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, workflowParameters);
                 bool forceTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.forceTaskCacheUpdate");
                 bool skipTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.skipTaskCacheUpdate");
                 bool taskCacheUpdate = workflowContext.HasFeature("system.runner.server.taskCacheUpdate");
