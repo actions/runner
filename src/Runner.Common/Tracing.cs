@@ -12,7 +12,7 @@ namespace GitHub.Runner.Common
         private ISecretMasker _secretMasker;
         private TraceSource _traceSource;
 
-        public Tracing(string name, ISecretMasker secretMasker, SourceSwitch sourceSwitch, HostTraceListener traceListener)
+        public Tracing(string name, ISecretMasker secretMasker, SourceSwitch sourceSwitch, HostTraceListener traceListener, StdoutTraceListener stdoutTraceListener = null)
         {
             ArgUtil.NotNull(secretMasker, nameof(secretMasker));
             _secretMasker = secretMasker;
@@ -27,10 +27,9 @@ namespace GitHub.Runner.Common
             }
 
             _traceSource.Listeners.Add(traceListener);
-
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout)))
+            if (stdoutTraceListener != null)
             {
-                _traceSource.Listeners.Add(new StdoutTraceListener());
+                _traceSource.Listeners.Add(stdoutTraceListener);
             }
         }
 
