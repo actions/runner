@@ -8,6 +8,13 @@ namespace GitHub.Runner.Common
 {
     public sealed class StdoutTraceListener : ConsoleTraceListener
     {
+        private string hostType;
+
+        public StdoutTraceListener(string hostType)
+        {
+            this.hostType = hostType;
+        }
+
         // Copied and modified slightly from .Net Core source code. Modification was required to make it compile.
         // There must be some TraceFilter extension class that is missing in this source code.
         public override void TraceEvent(TraceEventCache eventCache, string source, TraceEventType eventType, int id, string message)
@@ -53,7 +60,7 @@ namespace GitHub.Runner.Common
                     break;
             }
 
-            Write(StringUtil.Format("[{0:u} {1} {2}] ", DateTime.UtcNow, type, source));
+            Write(StringUtil.Format("[{0} {1:u} {2} {3}] ", hostType.ToUpperInvariant(), DateTime.UtcNow, type, source));
         }
 
         // Copied and modified slightly from .Net Core source code to make it compile. The original code

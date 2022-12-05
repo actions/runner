@@ -98,7 +98,7 @@ namespace GitHub.Runner.Common
             StdoutTraceListener stdoutTraceListener = null;
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout)))
             {
-                stdoutTraceListener = new StdoutTraceListener();
+                stdoutTraceListener = new StdoutTraceListener(hostType);
             }
 
             // Create the trace manager.
