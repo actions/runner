@@ -111,8 +111,12 @@ namespace GitHub.Runner.Common
                     logRetentionDays = _defaultLogRetentionDays;
                 }
 
-                // this should give us _diag folder under runner root directory
-                string diagLogDirectory = Path.Combine(new DirectoryInfo(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).Parent.FullName, Constants.Path.DiagDirectory);
+                string rootDir = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_ROOT_DIR");
+                if (string.IsNullOrEmpty(rootDir))
+                {
+                    rootDir = new DirectoryInfo(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).Parent.FullName;
+                }
+                string diagLogDirectory = Path.Combine(rootDir, Constants.Path.DiagDirectory);
                 _traceManager = new TraceManager(new HostTraceListener(diagLogDirectory, hostType, logPageSize, logRetentionDays), this.SecretMasker);
             }
             else
@@ -243,7 +247,11 @@ namespace GitHub.Runner.Common
                     break;
 
                 case WellKnownDirectory.Root:
-                    path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
+                    path = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_ROOT_DIR");
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
+                    }
                     break;
 
                 case WellKnownDirectory.Temp:
