@@ -14,7 +14,7 @@ namespace GitHub.Runner.Common
     {
         event EventHandler CancelKeyPress;
 
-        bool PrintLogToStdout { get; set; }
+        bool Silent { get; set; }
         string ReadLine();
         string ReadSecret();
         void Write(string message, ConsoleColor? colorCode = null);
@@ -28,7 +28,7 @@ namespace GitHub.Runner.Common
 
     public sealed class Terminal : RunnerService, ITerminal
     {
-        public bool PrintLogToStdout { get; set; }
+        public bool Silent { get; set; }
 
         public event EventHandler CancelKeyPress;
 
@@ -36,7 +36,7 @@ namespace GitHub.Runner.Common
         {
             base.Initialize(hostContext);
             Console.CancelKeyPress += Console_CancelKeyPress;
-            PrintLogToStdout = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout));
+            Silent = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout));
         }
 
         private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
@@ -96,7 +96,7 @@ namespace GitHub.Runner.Common
         public void Write(string message, ConsoleColor? colorCode = null)
         {
             Trace.Info($"WRITE: {message}");
-            if (!PrintLogToStdout)
+            if (!Silent)
             {
                 if (colorCode != null)
                 {
@@ -121,7 +121,7 @@ namespace GitHub.Runner.Common
         public void WriteLine(string line, ConsoleColor? colorCode = null)
         {
             Trace.Info($"WRITE LINE: {line}");
-            if (!PrintLogToStdout)
+            if (!Silent)
             {
                 if (colorCode != null)
                 {
@@ -140,7 +140,7 @@ namespace GitHub.Runner.Common
         {
             Trace.Error("WRITE ERROR (exception):");
             Trace.Error(ex);
-            if (!PrintLogToStdout)
+            if (!Silent)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.Error.WriteLine(ex.Message);
@@ -153,7 +153,7 @@ namespace GitHub.Runner.Common
         public void WriteError(string line)
         {
             Trace.Error($"WRITE ERROR: {line}");
-            if (!PrintLogToStdout)
+            if (!Silent)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.Error.WriteLine(line);
@@ -163,7 +163,7 @@ namespace GitHub.Runner.Common
 
         public void WriteSection(string message)
         {
-            if (!PrintLogToStdout)
+            if (!Silent)
             {
                 Console.WriteLine();
                 Console.ResetColor();
@@ -178,7 +178,7 @@ namespace GitHub.Runner.Common
 
         public void WriteSuccessMessage(string message)
         {
-            if (!PrintLogToStdout)
+            if (!Silent)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write("√ ");

@@ -65,7 +65,7 @@ namespace GitHub.Runner.Common.Tests
             // inject a terminal in silent mode so all console output
             // goes to the test trace file
             _term = new Terminal();
-            _term.PrintLogToStdout = true;
+            _term.Silent = true;
             SetSingleton<ITerminal>(_term);
             EnqueueInstance<ITerminal>(_term);
         }
