@@ -430,12 +430,22 @@ namespace GitHub.Runner.Listener
 
                             message = await getNextMessage; //get next message
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
-                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
-                                    var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+                                    AgentRefreshMessage runnerUpdateMessage = null;
+                                    if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+                                    }
+                                    else
+                                    {
+                                        var brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
+                                        runnerUpdateMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds));
+                                    }
 #if DEBUG
                                     // Can mock the update for testing
                                     if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
