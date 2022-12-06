@@ -33,7 +33,7 @@ namespace GitHub.Services.Results.Client
                 step_backend_id = stepId
             };
 
-            var stepSummaryUploadRequest = m_resultsServiceUrl+"twirp/results.services.receiver.Receiver/GetStepSummarySignedBlobURL";
+            var stepSummaryUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepSummarySignedBlobURL");
 
             HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, stepSummaryUploadRequest);
             requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", m_token);
@@ -58,7 +58,7 @@ namespace GitHub.Services.Results.Client
                 uploaded_at = timestamp
             };
 
-            var stepSummaryUploadCompleteRequest = m_resultsServiceUrl+"twirp/results.services.receiver.Receiver/CreateStepSummaryMetadata";
+            var stepSummaryUploadCompleteRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/CreateStepSummaryMetadata");
 
             HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, stepSummaryUploadCompleteRequest);
             requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", m_token);

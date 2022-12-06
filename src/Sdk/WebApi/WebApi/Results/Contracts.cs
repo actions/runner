@@ -29,7 +29,6 @@ namespace GitHub.Services.Results.Contracts
         public bool ok;
     }
 
-
     public static class BlobStorageTypes {
         public static readonly string AzureBlobStorage = "BLOB_STORAGE_TYPE_AZURE";
         public static readonly string Unspecified = "BLOB_STORAGE_TYPE_UNSPECIFIED";

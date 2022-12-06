@@ -80,7 +80,7 @@ namespace GitHub.Runner.Worker
         // logging
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
-        void QueueResultsFile(string type, string name, string filePath, string stepId);
+        void QueueResultsSummaryFile(string type, string name, string filePath, string stepId);
 
         // timeline record update methods
         void Start(string currentOperation = null);
@@ -848,7 +848,7 @@ namespace GitHub.Runner.Worker
             _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
         }
 
-        public void QueueResultsFile(string type, string name, string filePath, string stepId)
+        public void QueueResultsSummaryFile(string type, string name, string filePath, string stepId)
         {
             ArgUtil.NotNullOrEmpty(type, nameof(type));
             ArgUtil.NotNullOrEmpty(name, nameof(name));
@@ -859,7 +859,7 @@ namespace GitHub.Runner.Worker
                 throw new FileNotFoundException($"Can't upload (type:{type} name:{name}) file: {filePath}. File does not exist.");
             }
 
-            _jobServerQueue.QueueResultsUpload(_mainTimelineId, _record.Id, type, name, filePath, stepId, deleteSource: false);
+            _jobServerQueue.QueueResultsSummaryUpload(_mainTimelineId, _record.Id, type, name, filePath, stepId, deleteSource: false);
         }
 
         // Add OnMatcherChanged
