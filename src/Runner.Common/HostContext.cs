@@ -94,6 +94,13 @@ namespace GitHub.Runner.Common
             this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
 
+            // Create StdoutTraceListener if ENV is set
+            StdoutTraceListener stdoutTraceListener = null;
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout)))
+            {
+                stdoutTraceListener = new StdoutTraceListener(hostType);
+            }
+
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))
             {
@@ -113,11 +120,11 @@ namespace GitHub.Runner.Common
 
                 // this should give us _diag folder under runner root directory
                 string diagLogDirectory = Path.Combine(new DirectoryInfo(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).Parent.FullName, Constants.Path.DiagDirectory);
-                _traceManager = new TraceManager(new HostTraceListener(diagLogDirectory, hostType, logPageSize, logRetentionDays), this.SecretMasker);
+                _traceManager = new TraceManager(new HostTraceListener(diagLogDirectory, hostType, logPageSize, logRetentionDays), stdoutTraceListener, this.SecretMasker);
             }
             else
             {
-                _traceManager = new TraceManager(new HostTraceListener(logFile), this.SecretMasker);
+                _traceManager = new TraceManager(new HostTraceListener(logFile), stdoutTraceListener, this.SecretMasker);
             }
 
             _trace = GetTrace(nameof(HostContext));
