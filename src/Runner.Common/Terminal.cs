@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
@@ -36,7 +35,6 @@ namespace GitHub.Runner.Common
         {
             base.Initialize(hostContext);
             Console.CancelKeyPress += Console_CancelKeyPress;
-            Silent = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout));
         }
 
         private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
@@ -170,10 +168,6 @@ namespace GitHub.Runner.Common
                 Console.WriteLine($"# {message}");
                 Console.WriteLine();
             }
-            else
-            {
-                Trace.Info($"# {message}");
-            }
         }
 
         public void WriteSuccessMessage(string message)
@@ -184,10 +178,6 @@ namespace GitHub.Runner.Common
                 Console.Write("√ ");
                 Console.ResetColor();
                 Console.WriteLine(message);
-            }
-            else
-            {
-                Trace.Info($"√ {message}");
             }
         }
 
