@@ -512,14 +512,14 @@ namespace GitHub.Runner.Listener
                             var completedTask = await Task.WhenAny(renewJobRequest, workerProcessTask, Task.Delay(-1, jobRequestCancellationToken));
                             if (completedTask == workerProcessTask)
                             {
+                                var detailInfo = string.Join(Environment.NewLine, workerOutput);
+                                Trace.Info(detailInfo);
                                 // worker finished successfully, complete job request with result, attach unhandled exception reported by worker, stop renew lock, job has finished.
                                 int returnCode = await workerProcessTask;
                                 Trace.Info($"Worker finished for job {message.JobId}. Code: " + returnCode);
 
-                                string detailInfo = null;
                                 if (!TaskResultUtil.IsValidReturnCode(returnCode))
                                 {
-                                    detailInfo = string.Join(Environment.NewLine, workerOutput);
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
 
                                     var jobServer = HostContext.GetService<IJobServer>();
