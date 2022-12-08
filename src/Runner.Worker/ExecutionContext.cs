@@ -750,7 +750,6 @@ namespace GitHub.Runner.Worker
             {
                 githubContext["job"] = new StringContextData(githubJob);
             }
-
             var githubDictionary = ExpressionValues["github"].AssertDictionary("github");
             foreach (var pair in githubDictionary)
             {

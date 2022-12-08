@@ -148,9 +148,10 @@ namespace GitHub.Runner.Common
             InitializeWebsocketClient(TimeSpan.Zero);
         }
 
-        public void InitializeResultsClient(Uri uri, string token) {
+        public void InitializeResultsClient(Uri uri, string token)
+        {
             var httpMessageHandler = HostContext.CreateHttpClientHandler();
-            this._resultsClient = new ResultsHttpClient(uri, httpMessageHandler, token, true);
+            this._resultsClient = new ResultsHttpClient(uri, httpMessageHandler, token, disposeHandler: true);
         }
 
         public ValueTask DisposeAsync()

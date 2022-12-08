@@ -769,7 +769,7 @@ namespace GitHub.Runner.Common
             }
         }
 
-    private async Task UploadResultsSummaryFile(ResultsSummaryUploadFileInfo file)
+        private async Task UploadResultsSummaryFile(ResultsSummaryUploadFileInfo file)
         {
             bool uploadSucceed = false;
             try

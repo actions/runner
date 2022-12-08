@@ -75,7 +75,8 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        public static async Task<HttpResponseMessage> UploadFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken) {
+        public static async Task<HttpResponseMessage> UploadFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken)
+        {
             // Upload the file to the url
             var httpClient = new HttpClient();
             var request = new HttpRequestMessage(HttpMethod.Put, url)
@@ -83,12 +84,15 @@ namespace GitHub.Services.Results.Client
                 Content = new StreamContent(file)
             };
 
-            if (blobStorageType == BlobStorageTypes.AzureBlobStorage) {
+            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            {
                 request.Content.Headers.Add("x-ms-blob-type", "BlockBlob");
             }
 
-            using (var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)) {
-                if (!response.IsSuccessStatusCode) {
+            using (var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
                     throw new Exception($"Failed to upload file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}, blobStorageType: {blobStorageType}");
                 }
                 return response;
@@ -98,7 +102,8 @@ namespace GitHub.Services.Results.Client
         // Handle file upload for step summary
         public async Task UploadStepSummaryAsync(string jobId, string planId, string stepId, string file, CancellationToken cancellationToken)
         {
-            try {
+            try
+            {
                 // Get the upload url
                 var uploadUrlResponse = await GetStepSummaryUploadUrlAsync(jobId, planId, stepId, cancellationToken);
 
@@ -118,7 +123,8 @@ namespace GitHub.Services.Results.Client
                 // Send step summary upload complete message
                 await StepSummaryUploadCompleteAsync(jobId, planId, stepId, fileSize, cancellationToken);
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 throw new Exception("Failed to upload step summary to results", ex);
             }
         }
