@@ -400,6 +400,7 @@ namespace GitHub.Runner.Listener
                     Task<int> workerProcessTask = null;
                     object _outputLock = new();
                     List<string> workerOutput = new();
+                    bool printToStdout = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout));
                     using (var processChannel = HostContext.CreateService<IProcessChannel>())
                     using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
@@ -421,7 +422,15 @@ namespace GitHub.Runner.Listener
                                         {
                                             lock (_outputLock)
                                             {
-                                                workerOutput.Add(stdout.Data);
+                                                if (!stdout.Data.StartsWith("[WORKER"))
+                                                {
+                                                    workerOutput.Add(stdout.Data);
+                                                }
+                                                
+                                                if (printToStdout)
+                                                {
+                                                    term.WriteLine(stdout.Data, skipTracing: true);
+                                                }
                                             }
                                         }
                                     };
@@ -512,14 +521,14 @@ namespace GitHub.Runner.Listener
                             var completedTask = await Task.WhenAny(renewJobRequest, workerProcessTask, Task.Delay(-1, jobRequestCancellationToken));
                             if (completedTask == workerProcessTask)
                             {
-                                var detailInfo = string.Join(Environment.NewLine, workerOutput);
-                                Trace.Info(detailInfo);
                                 // worker finished successfully, complete job request with result, attach unhandled exception reported by worker, stop renew lock, job has finished.
                                 int returnCode = await workerProcessTask;
                                 Trace.Info($"Worker finished for job {message.JobId}. Code: " + returnCode);
 
+                                string detailInfo = null;
                                 if (!TaskResultUtil.IsValidReturnCode(returnCode))
                                 {
+                                    detailInfo = string.Join(Environment.NewLine, workerOutput);
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
 
                                     var jobServer = HostContext.GetService<IJobServer>();
@@ -658,7 +667,7 @@ namespace GitHub.Runner.Listener
             finally
             {
                 Busy = false;
-                
+
                 if (JobStatus != null)
                 {
                     JobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Online));
