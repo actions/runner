@@ -120,6 +120,7 @@ namespace GitHub.Services.Common
             Boolean succeeded = false;
             HttpResponseMessageWrapper responseWrapper;
 
+            Boolean lastResponseDemandedProxyAuth = false;
             Int32 retries = m_maxAuthRetries;
             try
             {
@@ -138,7 +139,13 @@ namespace GitHub.Services.Common
 
                     // Let's start with sending a token
                     IssuedToken token = await m_tokenProvider.GetTokenAsync(null, tokenSource.Token).ConfigureAwait(false);
-                    ApplyToken(request, token);
+                    ApplyToken(request, token, applyICredentialsToWebProxy: lastResponseDemandedProxyAuth);
+
+                    // The WinHttpHandler will chunk any content that does not have a computed length which is
+                    // not what we want. By loading into a buffer up-front we bypass this behavior and there is
+                    // no difference in the normal HttpClientHandler behavior here since this is what they were
+                    // already doing.
+                    await BufferRequestContentAsync(request, tokenSource.Token).ConfigureAwait(false);
 
                     // ConfigureAwait(false) enables the continuation to be run outside any captured
                     // SyncronizationContext (such as ASP.NET's) which keeps things from deadlocking...
@@ -147,7 +154,8 @@ namespace GitHub.Services.Common
                     responseWrapper = new HttpResponseMessageWrapper(response);
 
                     var isUnAuthorized = responseWrapper.StatusCode == HttpStatusCode.Unauthorized;
-                    if (!isUnAuthorized)
+                    lastResponseDemandedProxyAuth = responseWrapper.StatusCode == HttpStatusCode.ProxyAuthenticationRequired;
+                    if (!isUnAuthorized && !lastResponseDemandedProxyAuth)
                     {
                         // Validate the token after it has been successfully authenticated with the server.
                         m_tokenProvider?.ValidateToken(token, responseWrapper);
@@ -211,15 +219,42 @@ namespace GitHub.Services.Common
             }
         }
 
+       private static async Task BufferRequestContentAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            if (request.Content != null &&
+                request.Headers.TransferEncodingChunked != true)
+            {
+                Int64? contentLength = request.Content.Headers.ContentLength;
+                if (contentLength == null)
+                {
+                    await request.Content.LoadIntoBufferAsync().EnforceCancellation(cancellationToken).ConfigureAwait(false);
+                }
+
+                // Explicitly turn off chunked encoding since we have computed the request content size
+                request.Headers.TransferEncodingChunked = false;
+            }
+        }
+
         private void ApplyToken(
             HttpRequestMessage request,
-            IssuedToken token)
+            IssuedToken token,
+            bool applyICredentialsToWebProxy = false)
         {
             switch (token)
             {
                 case null:
                     return;
                 case ICredentials credentialsToken:
+                    if (applyICredentialsToWebProxy)
+                    {
+                        HttpClientHandler httpClientHandler = m_transportHandler as HttpClientHandler;
+                        if (httpClientHandler != null && httpClientHandler.Proxy != null)
+                        {
+                            httpClientHandler.Proxy.Credentials = credentialsToken;
+                        }
+                    }
                     m_credentialWrapper.InnerCredentials = credentialsToken;
                     break;
                 default:
