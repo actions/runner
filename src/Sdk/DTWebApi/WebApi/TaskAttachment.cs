@@ -28,7 +28,6 @@ namespace GitHub.DistributedTask.WebApi
             this.Name = name;
         }
 
-
         [DataMember]
         public String Type
         {
