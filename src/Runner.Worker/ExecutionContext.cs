@@ -124,8 +124,10 @@ namespace GitHub.Runner.Worker
 
         private readonly TimelineRecord _record = new();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new();
+        private readonly List<Issue> _embeddedIssueCollector;
         private readonly object _loggerLock = new();
         private readonly object _matchersLock = new();
+        private readonly ExecutionContext _parentExecutionContext;
 
         private event OnMatcherChanged _onMatcherChanged;
 
@@ -133,7 +135,6 @@ namespace GitHub.Runner.Worker
 
         private IPagingLogger _logger;
         private IJobServerQueue _jobServerQueue;
-        private ExecutionContext _parentExecutionContext;
 
         private Guid _mainTimelineId;
         private Guid _detailTimelineId;
@@ -147,6 +148,29 @@ namespace GitHub.Runner.Worker
         private long _totalThrottlingDelayInMilliseconds = 0;
         private bool _stepTelemetryPublished = false;
 
+        public ExecutionContext()
+            : this(null, false)
+        {
+        }
+
+        private ExecutionContext(ExecutionContext parent, bool embedded)
+        {
+            if (embedded)
+            {
+                ArgUtil.NotNull(parent, nameof(parent));
+            }
+
+            _parentExecutionContext = parent;
+            this.IsEmbedded = embedded;
+            this.StepTelemetry = new ActionsStepTelemetry
+            {
+                IsEmbedded = embedded
+            };
+
+            //Embedded Execution Contexts pseudo-inherit their parent's embeddedIssueCollector.
+            _embeddedIssueCollector = embedded ? parent._embeddedIssueCollector : new();
+        }
+
         public Guid Id => _record.Id;
         public Guid EmbeddedId { get; private set; }
         public string ScopeName { get; private set; }
@@ -159,7 +183,7 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
 
         public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
-        public ActionsStepTelemetry StepTelemetry { get; } = new ActionsStepTelemetry();
+        public ActionsStepTelemetry StepTelemetry { get; private init; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -184,7 +208,7 @@ namespace GitHub.Runner.Worker
 
         // An embedded execution context shares the same record ID, record name, and logger
         // as its enclosing execution context.
-        public bool IsEmbedded { get; private set; }
+        public bool IsEmbedded { get; private init; }
 
         public TaskResult? Result
         {
@@ -319,7 +343,7 @@ namespace GitHub.Runner.Worker
         {
             Trace.Entering();
 
-            var child = new ExecutionContext();
+            var child = new ExecutionContext(this, isEmbedded);
             child.Initialize(HostContext);
             child.Global = Global;
             child.ScopeName = scopeName;
@@ -344,7 +368,6 @@ namespace GitHub.Runner.Worker
                 child.ExpressionFunctions.Add(item);
             }
             child._cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
-            child._parentExecutionContext = this;
             child.EchoOnActionCommand = EchoOnActionCommand;
 
             if (recordOrder != null)
@@ -365,11 +388,9 @@ namespace GitHub.Runner.Worker
                 child._logger.Setup(_mainTimelineId, recordId);
             }
 
-            child.IsEmbedded = isEmbedded;
             child.StepTelemetry.StepId = recordId;
             child.StepTelemetry.Stage = stage.ToString();
-            child.StepTelemetry.IsEmbedded = isEmbedded;
-            child.StepTelemetry.StepContextName = child.GetFullyQualifiedContextName(); ;
+            child.StepTelemetry.StepContextName = child.GetFullyQualifiedContextName();
 
             return child;
         }
@@ -411,12 +432,20 @@ namespace GitHub.Runner.Worker
                 this.Warning($"The job has experienced {TimeSpan.FromMilliseconds(_totalThrottlingDelayInMilliseconds).TotalSeconds} seconds total delay caused by server throttling.");
             }
 
+            DateTime now = DateTime.UtcNow;
             _record.CurrentOperation = currentOperation ?? _record.CurrentOperation;
             _record.ResultCode = resultCode ?? _record.ResultCode;
-            _record.FinishTime = DateTime.UtcNow;
+            _record.FinishTime = now;
             _record.PercentComplete = 100;
             _record.Result = _record.Result ?? TaskResult.Succeeded;
             _record.State = TimelineRecordState.Completed;
+
+            foreach (var issue in _embeddedIssueCollector)
+            {
+                // Before our main timeline's final QueueTimelineRecordUpdate,
+                //    inject any issues collected by embedded ExecutionContexts.
+                AddIssue(issue);
+            }
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
 
@@ -425,7 +454,7 @@ namespace GitHub.Runner.Worker
             {
                 foreach (var record in _detailRecords)
                 {
-                    record.Value.FinishTime = record.Value.FinishTime ?? DateTime.UtcNow;
+                    record.Value.FinishTime = record.Value.FinishTime ?? now;
                     record.Value.PercentComplete = record.Value.PercentComplete ?? 100;
                     record.Value.Result = record.Value.Result ?? TaskResult.Succeeded;
                     record.Value.State = TimelineRecordState.Completed;
@@ -614,7 +643,17 @@ namespace GitHub.Runner.Worker
                 _record.NoticeCount++;
             }
 
-            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            // Embedded ExecutionContexts (a.k.a. Composite actions) should never upload a timeline record to the server.
+            //    Instead, we store processed issues on a shared (psuedo-inherited) list (belonging to the closest
+            //    non-embedded ancestor ExecutionContext) so that they can be processed when that ancestor completes.
+            if (this.IsEmbedded)
+            {
+                _embeddedIssueCollector.Add(issue);
+            }
+            else
+            {
+                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            }
         }
 
         public void UpdateDetailTimelineRecord(TimelineRecord record)
@@ -1085,7 +1124,7 @@ namespace GitHub.Runner.Worker
         {
             if (contextData != null &&
                 contextData.TryGetValue(PipelineTemplateConstants.Vars, out var varsPipelineContextData) &&
-                varsPipelineContextData != null && 
+                varsPipelineContextData != null &&
                 varsPipelineContextData is DictionaryContextData varsContextData)
             {
                 // Set debug variables only when StepDebug/RunnerDebug variables are not present.
