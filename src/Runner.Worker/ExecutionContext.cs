@@ -440,11 +440,14 @@ namespace GitHub.Runner.Worker
             _record.Result = _record.Result ?? TaskResult.Succeeded;
             _record.State = TimelineRecordState.Completed;
 
-            foreach (var issue in _embeddedIssueCollector)
+            // Before our main timeline's final QueueTimelineRecordUpdate,
+            //    inject any issues collected by embedded ExecutionContexts.
+            if (!this.IsEmbedded)
             {
-                // Before our main timeline's final QueueTimelineRecordUpdate,
-                //    inject any issues collected by embedded ExecutionContexts.
-                AddIssue(issue);
+                foreach (var issue in _embeddedIssueCollector)
+                {
+                    AddIssue(issue);
+                }
             }
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
