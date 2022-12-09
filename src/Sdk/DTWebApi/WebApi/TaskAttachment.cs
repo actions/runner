@@ -27,7 +27,7 @@ namespace GitHub.DistributedTask.WebApi
             this.Type = type;
             this.Name = name;
         }
-        
+
 
         [DataMember]
         public String Type
@@ -107,6 +107,5 @@ namespace GitHub.DistributedTask.WebApi
     public class ChecksAttachmentType
     {
         public static readonly String StepSummary = "Checks.Step.Summary";
-        public static readonly String ResultsStepSummary = "Checks.Results.Step.Summary";
     }
 }

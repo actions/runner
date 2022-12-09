@@ -196,19 +196,19 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                var attachmentName = !context.IsEmbedded 
-                    ? context.Id.ToString() 
+                var attachmentName = !context.IsEmbedded
+                    ? context.Id.ToString()
                     : context.EmbeddedId.ToString();
 
                 context.Global.Variables.TryGetValue("system.github.results_endpoint", out string resultsReceiverEndpoint);
-                if (resultsReceiverEndpoint != null) 
+                if (resultsReceiverEndpoint != null)
                 {
                     Trace.Info($"Queueing results file ({filePath}) for attachment upload ({attachmentName})");
                     var stepId = context.Id.ToString();
                     // Attachments must be added to the parent context (job), not the current context (step)
-                    context.Root.QueueResultsSummaryFile(ChecksAttachmentType.ResultsStepSummary, attachmentName, scrubbedFilePath, stepId);
+                    context.Root.QueueSummaryFile(attachmentName, scrubbedFilePath, stepId);
                 }
-                else 
+                else
                 {
                     if (fileSize > AttachmentSizeLimit)
                     {

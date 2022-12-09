@@ -20,7 +20,7 @@ namespace GitHub.Runner.Common
         void Start(Pipelines.AgentJobRequestMessage jobRequest);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
-        void QueueResultsSummaryUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, string stepId, bool deleteSource);
+        void QueueSummaryUpload(Guid timelineId, Guid timelineRecordId, string stepId, string name, string path, bool deleteSource);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
     }
 
@@ -31,7 +31,7 @@ namespace GitHub.Runner.Common
         private static readonly TimeSpan _delayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForTimelineUpdateDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForFileUploadDequeue = TimeSpan.FromMilliseconds(1000);
-        private static readonly TimeSpan _delayForResultsSummaryUploadDequeue = TimeSpan.FromMilliseconds(1000);
+        private static readonly TimeSpan _delayForSummaryUploadDequeue = TimeSpan.FromMilliseconds(1000);
 
         // Job message information
         private Guid _scopeIdentifier;
@@ -46,7 +46,7 @@ namespace GitHub.Runner.Common
         // queue for file upload (log file or attachment)
         private readonly ConcurrentQueue<UploadFileInfo> _fileUploadQueue = new();
 
-        private readonly ConcurrentQueue<ResultsSummaryUploadFileInfo> _resultsSummaryFileUploadQueue = new();
+        private readonly ConcurrentQueue<SummaryUploadFileInfo> _summaryFileUploadQueue = new();
 
         // queue for timeline or timeline record update (one queue per timeline)
         private readonly ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>> _timelineUpdateQueue = new();
@@ -60,7 +60,7 @@ namespace GitHub.Runner.Common
         // Task for each queue's dequeue process
         private Task _webConsoleLineDequeueTask;
         private Task _fileUploadDequeueTask;
-        private Task _resultsSummaryUploadDequeueTask;
+        private Task _summaryUploadDequeueTask;
         private Task _timelineUpdateDequeueTask;
 
         // common
@@ -104,7 +104,7 @@ namespace GitHub.Runner.Common
 
             if (serviceEndPoint?.Authorization != null &&
                 serviceEndPoint.Authorization.Parameters.TryGetValue("AccessToken", out var accessToken) &&
-                !string.IsNullOrEmpty(accessToken) && 
+                !string.IsNullOrEmpty(accessToken) &&
                 !string.IsNullOrEmpty(resultsReceiverEndpoint))
             {
                 Trace.Info("Initializing results client");
@@ -140,12 +140,12 @@ namespace GitHub.Runner.Common
             _fileUploadDequeueTask = ProcessFilesUploadQueueAsync();
 
             Trace.Info("Start results file upload queue.");
-            _resultsSummaryUploadDequeueTask = ProcessResultsSummaryUploadQueueAsync();
+            _summaryUploadDequeueTask = ProcessSummaryUploadQueueAsync();
 
             Trace.Info("Start process timeline update queue.");
             _timelineUpdateDequeueTask = ProcessTimelinesUpdateQueueAsync();
 
-            _allDequeueTasks = new Task[] { _webConsoleLineDequeueTask, _fileUploadDequeueTask, _timelineUpdateDequeueTask, _resultsSummaryUploadDequeueTask };
+            _allDequeueTasks = new Task[] { _webConsoleLineDequeueTask, _fileUploadDequeueTask, _timelineUpdateDequeueTask, _summaryUploadDequeueTask };
             _queueInProcess = true;
         }
 
@@ -177,7 +177,7 @@ namespace GitHub.Runner.Common
             Trace.Info("File upload queue drained.");
 
             Trace.Verbose("Draining results summary upload queue.");
-            await ProcessResultsSummaryUploadQueueAsync(runOnce: true);
+            await ProcessSummaryUploadQueueAsync(runOnce: true);
             Trace.Info("Results summary upload queue drained.");
 
             // ProcessTimelinesUpdateQueueAsync() will throw exception during shutdown
@@ -230,17 +230,16 @@ namespace GitHub.Runner.Common
             _fileUploadQueue.Enqueue(newFile);
         }
 
-        public void QueueResultsSummaryUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, string stepId, bool deleteSource)
+        public void QueueSummaryUpload(Guid timelineId, Guid timelineRecordId, string stepId, string name, string path, bool deleteSource)
         {
             ArgUtil.NotEmpty(timelineId, nameof(timelineId));
             ArgUtil.NotEmpty(timelineRecordId, nameof(timelineRecordId));
 
             // all parameter not null, file path exist.
-            var newFile = new ResultsSummaryUploadFileInfo()
+            var newFile = new SummaryUploadFileInfo()
             {
                 TimelineId = timelineId,
                 TimelineRecordId = timelineRecordId,
-                Type = type,
                 Name = name,
                 Path = path,
                 PlanId = _planId.ToString(),
@@ -250,7 +249,7 @@ namespace GitHub.Runner.Common
             };
 
             Trace.Verbose("Enqueue results file upload queue: file '{0}' attach to record {1}", newFile.Path, timelineRecordId);
-            _resultsSummaryFileUploadQueue.Enqueue(newFile);
+            _summaryFileUploadQueue.Enqueue(newFile);
         }
 
         public void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord)
@@ -348,7 +347,7 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
-                                // Give at most 60s for each request. 
+                                // Give at most 60s for each request.
                                 using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
                                 {
                                     await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
@@ -443,15 +442,15 @@ namespace GitHub.Runner.Common
             }
         }
 
-        private async Task ProcessResultsSummaryUploadQueueAsync(bool runOnce = false)
+        private async Task ProcessSummaryUploadQueueAsync(bool runOnce = false)
         {
             Trace.Info("Starting results-based upload queue...");
 
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
-                List<ResultsSummaryUploadFileInfo> filesToUpload = new();
-                ResultsSummaryUploadFileInfo dequeueFile;
-                while (_resultsSummaryFileUploadQueue.TryDequeue(out dequeueFile))
+                List<SummaryUploadFileInfo> filesToUpload = new();
+                SummaryUploadFileInfo dequeueFile;
+                while (_summaryFileUploadQueue.TryDequeue(out dequeueFile))
                 {
                     filesToUpload.Add(dequeueFile);
                     // process at most 10 file upload.
@@ -473,7 +472,7 @@ namespace GitHub.Runner.Common
                     {
                         try
                         {
-                            await UploadResultsSummaryFile(file);
+                            await UploadSummaryFile(file);
                         }
                         catch (Exception ex)
                         {
@@ -492,7 +491,7 @@ namespace GitHub.Runner.Common
                 }
                 else
                 {
-                    await Task.Delay(_delayForResultsSummaryUploadDequeue);
+                    await Task.Delay(_delayForSummaryUploadDequeue);
                 }
             }
         }
@@ -769,22 +768,15 @@ namespace GitHub.Runner.Common
             }
         }
 
-        private async Task UploadResultsSummaryFile(ResultsSummaryUploadFileInfo file)
+        private async Task UploadSummaryFile(SummaryUploadFileInfo file)
         {
             bool uploadSucceed = false;
             try
             {
-                Trace.Info($"Starting to upload summary file to results service {file.Type}, {file.Name}, {file.Path}");
-                
-
-                if (String.Equals(file.Type, ChecksAttachmentType.ResultsStepSummary, StringComparison.OrdinalIgnoreCase))
-                {
-                    Trace.Info($"Actually uploading summary file to results {file.Type}, {file.Name}, {file.Path}");
-
-                    // Upload the step summary
-                    var cancellationTokenSource = new CancellationTokenSource();
-                    await _jobServer.CreateResultsStepSymmaryAsync(file.PlanId, file.JobId, file.StepId, file.Path, cancellationTokenSource.Token);
-                }
+                // Upload the step summary
+                Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
+                var cancellationTokenSource = new CancellationTokenSource();
+                await _jobServer.CreateStepSymmaryAsync(file.PlanId, file.JobId, file.StepId, file.Path, cancellationTokenSource.Token);
 
                 uploadSucceed = true;
             }
@@ -822,11 +814,10 @@ namespace GitHub.Runner.Common
         public bool DeleteSource { get; set; }
     }
 
-    internal class ResultsSummaryUploadFileInfo
+    internal class SummaryUploadFileInfo
     {
         public Guid TimelineId { get; set; }
         public Guid TimelineRecordId { get; set; }
-        public string Type { get; set; }
         public string Name { get; set; }
         public string Path { get; set; }
         public string PlanId { get; set; }

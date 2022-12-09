@@ -30,7 +30,7 @@ namespace GitHub.Runner.Common
         Task<TaskLog> AppendLogContentAsync(Guid scopeIdentifier, string hubName, Guid planId, int logId, Stream uploadStream, CancellationToken cancellationToken);
         Task AppendTimelineRecordFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken);
         Task<TaskAttachment> CreateAttachmentAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, String type, String name, Stream uploadStream, CancellationToken cancellationToken);
-        Task CreateResultsStepSymmaryAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken);
+        Task CreateStepSymmaryAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken);
         Task<TaskLog> CreateLogAsync(Guid scopeIdentifier, string hubName, Guid planId, TaskLog log, CancellationToken cancellationToken);
         Task<Timeline> CreateTimelineAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, CancellationToken cancellationToken);
         Task<List<TimelineRecord>> UpdateTimelineRecordsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
@@ -316,14 +316,13 @@ namespace GitHub.Runner.Common
             return _taskClient.CreateAttachmentAsync(scopeIdentifier, hubName, planId, timelineId, timelineRecordId, type, name, uploadStream, cancellationToken: cancellationToken);
         }
 
-        public Task CreateResultsStepSymmaryAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken)
+        public Task CreateStepSymmaryAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken)
         {
-            if (_resultsClient != null) 
+            if (_resultsClient != null)
             {
-                return _resultsClient.UploadStepSummaryAsync(jobId, planId, stepId, file, cancellationToken: cancellationToken);
+                return _resultsClient.UploadStepSummaryAsync(planId, jobId, stepId, file, cancellationToken: cancellationToken);
             }
-            Trace.Info("Results client is not initialized. Skipping the step summary upload.");
-            return Task.CompletedTask;
+            throw new InvalidOperationException("Results client is not initialized.");
         }
 
 

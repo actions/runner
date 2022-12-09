@@ -80,7 +80,7 @@ namespace GitHub.Runner.Worker
         // logging
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
-        void QueueResultsSummaryFile(string type, string name, string filePath, string stepId);
+        void QueueSummaryFile(string name, string filePath, string stepId);
 
         // timeline record update methods
         void Start(string currentOperation = null);
@@ -847,18 +847,17 @@ namespace GitHub.Runner.Worker
             _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
         }
 
-        public void QueueResultsSummaryFile(string type, string name, string filePath, string stepId)
+        public void QueueSummaryFile(string name, string filePath, string stepId)
         {
-            ArgUtil.NotNullOrEmpty(type, nameof(type));
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             ArgUtil.NotNullOrEmpty(filePath, nameof(filePath));
 
             if (!File.Exists(filePath))
             {
-                throw new FileNotFoundException($"Can't upload (type:{type} name:{name}) file: {filePath}. File does not exist.");
+                throw new FileNotFoundException($"Can't upload (name:{name}) file: {filePath}. File does not exist.");
             }
 
-            _jobServerQueue.QueueResultsSummaryUpload(_mainTimelineId, _record.Id, type, name, filePath, stepId, deleteSource: false);
+            _jobServerQueue.QueueSummaryUpload(_mainTimelineId, _record.Id, stepId, name, filePath, deleteSource: false);
         }
 
         // Add OnMatcherChanged
@@ -1100,7 +1099,7 @@ namespace GitHub.Runner.Worker
         {
             if (contextData != null &&
                 contextData.TryGetValue(PipelineTemplateConstants.Vars, out var varsPipelineContextData) &&
-                varsPipelineContextData != null && 
+                varsPipelineContextData != null &&
                 varsPipelineContextData is DictionaryContextData varsContextData)
             {
                 // Set debug variables only when StepDebug/RunnerDebug variables are not present.
