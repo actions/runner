@@ -101,6 +101,7 @@ jobs:
         echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
     - name: Test
       run: |
+        set -x
         gharun -W testworkflows/testlocalcheckout.yml
         gharun -W testworkflows/testhashfiles.yml
         gharun -W testworkflows/dumpcontexts.yml
@@ -148,6 +149,7 @@ jobs:
         gharun -C testworkflows/workflow_dispatch workflow_dispatch -i Misc=myInput -i SI=UdHe -i bVal=true -i BVAL2=false
         gharun -C testworkflows/matrix-selector push -j test -m fail:false
         gharun -C testworkflows/oidc-provider
+        gharun -C testworkflows/reusablesConsistentWorkflowName
         gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-checkout -W testworkflows/azpipelines/cross-repo-checkout/pipeline.yml --local-repository az/containermatrix@main=testworkflows/azpipelines/containermatrix
         gharun --event azpipelines -C testworkflows/azpipelines/typedtemplates -W testworkflows/azpipelines/typedtemplates/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/untypedtemplates -W testworkflows/azpipelines/untypedtemplates/pipeline.yml

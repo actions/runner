@@ -903,6 +903,7 @@ namespace Runner.Server.Controllers
             public CancellationToken? ForceCancellationToken {get;set;}
             public IList<string> FileTable { get; set; }
             public string FileName { get; set; }
+            public string WorkflowRunName { get;set; }
             public JObject EventPayload { get; set; }
             public HashSet<string> ReferencedWorkflows { get; } = new HashSet<string>();
             public IDictionary<string, string> FeatureToggles { get; set; }
@@ -922,6 +923,7 @@ namespace Runner.Server.Controllers
             public Guid TimelineId {get;set;}
             public Guid RecordId {get;set;}
             public string WorkflowName {get;set;}
+            public string WorkflowRunName {get;set;}
             public string Name {get;set;}
             public string Event {get;set;}
             public PipelineContextData DispatchInputs {get;set;}
@@ -1080,7 +1082,7 @@ namespace Runner.Server.Controllers
             MappingToken workflowOutputs = null;
             var jobsctx = new DictionaryContextData();
 
-            var workflowname = fileRelativePath;
+            var workflowname = callingJob?.WorkflowName ?? fileRelativePath;
             Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
                 var effective_event = callingJob?.Event ?? event_name;
                 if(!string.IsNullOrEmpty(hook?.repository?.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
@@ -1286,7 +1288,7 @@ namespace Runner.Server.Controllers
                         }
                     }
                 };
-                workflowname = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? workflowname;
+                workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? workflowname;
                 TemplateToken globalEnvToken = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "env" select r).FirstOrDefault().Value;
                 if(globalEnvToken != null) {
                     workflowEnvironment.Add(globalEnvToken);
@@ -1795,11 +1797,11 @@ namespace Runner.Server.Controllers
                     var ret = workflowEnv?.AssertString("run-name")?.Value;
                     return string.IsNullOrWhiteSpace(ret) ? null : ret;
                 };
-                workflowname = callingJob?.WorkflowName ?? evalRunName(workflowTraceWriter, (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "run-name" select r).FirstOrDefault().Value) ?? evalRunName(workflowContext.HasFeature("system.runner.server.debugdefrunname") ? workflowTraceWriter : new EmptyTraceWriter(), new BasicExpressionToken(null, null, null, "github.event_name == 'push' && github.event.head_commit.message || startswith(github.event_name, 'pull_request') && github.event.pull_request.title || ''")) ?? workflowname;
+                workflowContext.WorkflowRunName = callingJob?.WorkflowRunName ?? evalRunName(workflowTraceWriter, (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "run-name" select r).FirstOrDefault().Value) ?? evalRunName(workflowContext.HasFeature("system.runner.server.debugdefrunname") ? workflowTraceWriter : new EmptyTraceWriter(), new BasicExpressionToken(null, null, null, "github.event_name == 'push' && github.event.head_commit.message || startswith(github.event_name, 'pull_request') && github.event.pull_request.title || ''")) ?? workflowname;
                 if(callingJob == null) {
-                    workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
-                    if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
-                        attempt.WorkflowRun.DisplayName = workflowname;
+                    workflowTraceWriter.Info($"Updated Workflow Name: {workflowContext.WorkflowRunName}");
+                    if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowContext.WorkflowRunName)) {
+                        attempt.WorkflowRun.DisplayName = workflowContext.WorkflowRunName;
                         _context.SaveChanges();
                     }
                 }
@@ -5230,7 +5232,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
+                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, WorkflowRunName = workflowContext.WorkflowRunName, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value.Where(val => TemplateTokenEqual(val.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new NullToken(null, null, null), contextData["matrix"]?.ToTemplateToken() ?? new NullToken(null, null, null))).ToList(), StringComparer.OrdinalIgnoreCase);
                                 var sjob = TryParseJobSelector(selectedJob, out var cjob, out _, out var cselector) && string.Equals(name, cjob, StringComparison.OrdinalIgnoreCase) ? cselector : null;
                                 if(reusableWorkflowInheritEnv) {

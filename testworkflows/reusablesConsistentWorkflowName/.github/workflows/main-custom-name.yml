@@ -1,0 +1,15 @@
+name: custom-name
+on:
+  push:
+jobs:
+  pre:
+    runs-on: {}
+    steps:
+    - run: exit ${{ github.workflow == 'custom-name' && '0' || '1' }}
+    outputs:
+      workflowName: ${{ github.workflow }}
+  main:
+    needs: pre
+    uses: ./.github/workflows/reusable.yml
+    with:
+      workflowName: ${{ needs.pre.outputs.workflowName }}

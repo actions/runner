@@ -1,0 +1,11 @@
+on:
+  workflow_call:
+    inputs:
+      workflowName:
+        type: string
+jobs:
+  test:
+    runs-on: {}
+    steps:
+    - run: exit ${{ inputs.workflowName != github.workflow && '1' || '0' }}
+    - run: exit ${{ github.event_name != 'push' && '1' || '0' }}
