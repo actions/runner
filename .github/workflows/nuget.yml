@@ -150,6 +150,7 @@ jobs:
         gharun -C testworkflows/matrix-selector push -j test -m fail:false
         gharun -C testworkflows/oidc-provider
         gharun -C testworkflows/reusablesConsistentWorkflowName
+        gharun -C testworkflows/matrix-partial-test
         gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-checkout -W testworkflows/azpipelines/cross-repo-checkout/pipeline.yml --local-repository az/containermatrix@main=testworkflows/azpipelines/containermatrix
         gharun --event azpipelines -C testworkflows/azpipelines/typedtemplates -W testworkflows/azpipelines/typedtemplates/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/untypedtemplates -W testworkflows/azpipelines/untypedtemplates/pipeline.yml

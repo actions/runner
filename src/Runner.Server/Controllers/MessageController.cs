@@ -176,9 +176,11 @@ namespace Runner.Server.Controllers
 
         class Equality : IEqualityComparer<TemplateToken>
         {
+            public bool PartialMatch { get; set; }
+
             public bool Equals(TemplateToken x, TemplateToken y)
             {
-                return TemplateTokenEqual(x, y);
+                return TemplateTokenEqual(x, y, PartialMatch);
             }
 
             public int GetHashCode([DisallowNull] TemplateToken obj)
@@ -189,7 +191,7 @@ namespace Runner.Server.Controllers
         private static Exception UnexpectedTemplateTokenType(TemplateToken token) {
             return new NotSupportedException($"Unexpected {nameof(TemplateToken)} type '{token.Type}'");
         }
-        private static bool TemplateTokenEqual(TemplateToken token, TemplateToken other) {
+        private static bool TemplateTokenEqual(TemplateToken token, TemplateToken other, bool partialMatch = false) {
             switch(token.Type) {
             case TokenType.Null:
             case TokenType.Boolean:
@@ -222,7 +224,7 @@ namespace Runner.Server.Controllers
                 }
                 var mapping = token as MappingToken;
                 var othermapping = other as MappingToken;
-                if(mapping.Count != othermapping.Count) {
+                if(partialMatch ? mapping.Count < othermapping.Count : mapping.Count != othermapping.Count) {
                     return false;
                 }
                 Dictionary<string, TemplateToken> dictionary = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
@@ -239,9 +241,9 @@ namespace Runner.Server.Controllers
                     {
                         var keyLiteral = pair.Key.AssertString("dictionary context data key");
                         var key = keyLiteral.Value;
-                        var value = pair.Value;
-                        TemplateToken otherv;
-                        if(!dictionary.TryGetValue(key, out otherv) || !TemplateTokenEqual(value, otherv)) {
+                        var otherv = pair.Value;
+                        TemplateToken value;
+                        if(!dictionary.TryGetValue(key, out value) || !TemplateTokenEqual(value, otherv, partialMatch)) {
                             return false;
                         }
                     }
@@ -263,10 +265,10 @@ namespace Runner.Server.Controllers
                 }
                 var sequence = token as SequenceToken;
                 var otherseq = other as SequenceToken;
-                if(sequence.Count != otherseq.Count) {
+                if(partialMatch ? sequence.Count < otherseq.Count : sequence.Count != otherseq.Count) {
                     return false;
                 }
-                return sequence.SequenceEqual(otherseq, new Equality());
+                return (partialMatch ? sequence.Take(otherseq.Count) : sequence).SequenceEqual(otherseq, new Equality() { PartialMatch = partialMatch });
 
             default:
                 throw UnexpectedTemplateTokenType(token);
@@ -2029,6 +2031,8 @@ namespace Runner.Server.Controllers
                                         double? max_parallel = null;
                                         // Allow including and excluding via list properties https://github.com/orgs/community/discussions/7835
                                         // https://github.com/actions/runner/issues/857
+                                        // Matrix has partial subobject matching reported here https://github.com/rhysd/actionlint/issues/249
+                                        // It also reveals that sequences are matched partially, if the left seqence starts with the right sequence they are matched
                                         var matrixexcludeincludelists = workflowContext.HasFeature("system.runner.server.matrixexcludeincludelists");
                                         if (rawstrategy != null) {
                                             jobTraceWriter.Info("{0}", "Evaluate strategy");
@@ -2081,7 +2085,7 @@ namespace Runner.Server.Controllers
                                                                     // The official github actions service reject this matrix, return false would just ignore it
                                                                     throw new Exception($"Tried to exclude a matrix key {item.Key} which isn't defined by the matrix");
                                                                 }
-                                                                if (!(matrixexcludeincludelists && val is SequenceToken seq ? seq.Any(t => TemplateTokenEqual(t, item.Value)) : TemplateTokenEqual(item.Value, val))) {
+                                                                if (!(matrixexcludeincludelists && val is SequenceToken seq ? seq.Any(t => TemplateTokenEqual(t, item.Value, true)) : TemplateTokenEqual(val, item.Value, true))) {
                                                                     return false;
                                                                 }
                                                             }
@@ -2103,7 +2107,7 @@ namespace Runner.Server.Controllers
                                             sendFinishJob(TaskResult.Failed);
                                             return;
                                         }
-                                        var keys = flatmatrix.First().Keys.ToArray();
+                                        var keys = flatmatrix.First().Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
                                         if (include != null) {
                                             foreach(var map in include.SelectMany(item => {
                                                 var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.include.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.include.* mapping key").Value, k => k.Value, StringComparer.OrdinalIgnoreCase);
@@ -2131,11 +2135,11 @@ namespace Runner.Server.Controllers
                                                 }
                                             })) {
                                                 bool matched = false;
-                                                if(keys.Length > 0) {
+                                                if(keys.Count > 0) {
                                                     flatmatrix.ForEach(dict => {
                                                         foreach (var item in keys) {
                                                             TemplateToken val;
-                                                            if (map.TryGetValue(item, out val) && !TemplateTokenEqual(dict[item], val)) {
+                                                            if (map.TryGetValue(item, out val) && !TemplateTokenEqual(dict[item], val, true)) {
                                                                 return;
                                                             }
                                                         }
@@ -2143,7 +2147,9 @@ namespace Runner.Server.Controllers
                                                         // Add missing keys
                                                         jobTraceWriter.Info("{0}", $"Add missing keys to {string.Join(',', from m in dict select m.Key + ":" + (m.Value?.ToContextData()?.ToJToken()?.ToString() ?? "null"))}, due to include entry {string.Join(',', from m in map select m.Key + ":" + (m.Value?.ToContextData()?.ToJToken()?.ToString() ?? "null"))}");
                                                         foreach (var item in map) {
-                                                            dict[item.Key] = item.Value;
+                                                            if(!keys.Contains(item.Key)) {
+                                                                dict[item.Key] = item.Value;
+                                                            }
                                                         }
                                                     });
                                                 }
@@ -2182,7 +2188,7 @@ namespace Runner.Server.Controllers
                                             Predicate<Dictionary<string, TemplateToken>> match = dict => {
                                                 foreach(var kv in mdict) {
                                                     TemplateToken val;
-                                                    if(!dict.TryGetValue(kv.Key, out val) || !TemplateTokenEqual(kv.Value, val)) {
+                                                    if(!dict.TryGetValue(kv.Key, out val) || !TemplateTokenEqual(kv.Value, val, true)) {
                                                         return true;
                                                     }
                                                 }
@@ -2197,7 +2203,7 @@ namespace Runner.Server.Controllers
                                             }
                                         }
                                         var jobTotal = flatmatrix.Count + includematrix.Count;
-                                        if(flatmatrix.Count == 1 && keys.Length == 0 && jobTotal > 1) {
+                                        if(flatmatrix.Count == 1 && keys.Count == 0 && jobTotal > 1) {
                                             jobTotal--;
                                         }
                                         // Enforce job matrix limit of github
@@ -2232,7 +2238,7 @@ namespace Runner.Server.Controllers
                                         strategyctx["fail-fast"] = new BooleanContextData(failFast);
                                         // The official actions-service only sets it to > 1 if the matrix isn't empty
                                         // The matrix is empty if you omit matrix in strategy or exclude all entries of the matrix without including new ones
-                                        strategyctx["max-parallel"] = new NumberContextData(keys.Length == 0 ? 1 : max_parallel.HasValue ? max_parallel.Value : jobTotal);
+                                        strategyctx["max-parallel"] = new NumberContextData(keys.Count == 0 ? 1 : max_parallel.HasValue ? max_parallel.Value : jobTotal);
                                         strategyctx["job-total"] = new NumberContextData(jobTotal);
                                         if(jobTotal > 1) {
                                             jobitem.Childs = new List<JobItem>();
@@ -2475,7 +2481,7 @@ namespace Runner.Server.Controllers
                                                 }
                                             };
                                             localJobCompletedEvents.JobCompleted += handler2;
-                                            if(keys.Length != 0 || includematrix.Count == 0) {
+                                            if(keys.Count != 0 || includematrix.Count == 0) {
                                                 foreach (var item in flatmatrix) {
                                                     if(cancelRequest()) {
                                                         cancelAll(cancelreqmsg);
