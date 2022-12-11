@@ -16,6 +16,8 @@ on:
     # - '**.md'
   pull_request:
 
+run-name: ${{ github.event_name == 'workflow_dispatch' && (inputs.version && format('Publish version:{0} sha:{1}', inputs.version, github.sha) || format('Emulator CI/CD sha:{0}', github.sha)) || '' }}
+
 jobs:
   build:
     strategy:
@@ -63,7 +65,7 @@ jobs:
     needs: build
     continue-on-error: true
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           path: "artifacts"
       - uses: ncipollo/release-action@v1
