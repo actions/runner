@@ -3,6 +3,7 @@ using System.Runtime.Serialization;
 namespace GitHub.Services.Results.Contracts
 {
     [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
     public class GetSignedStepSummaryURLRequest
     {
         [DataMember]
@@ -14,6 +15,7 @@ namespace GitHub.Services.Results.Contracts
     }
 
     [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
     public class GetSignedStepSummaryURLResponse
     {
         [DataMember]
@@ -25,6 +27,7 @@ namespace GitHub.Services.Results.Contracts
     }
 
     [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
     public class StepSummaryMetadataCreate
     {
         [DataMember]
@@ -40,6 +43,7 @@ namespace GitHub.Services.Results.Contracts
     }
 
     [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
     public class CreateStepSummaryMetadataResponse
     {
         [DataMember]
