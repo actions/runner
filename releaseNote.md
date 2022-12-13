@@ -1,18 +1,18 @@
 ## Features
-- Displays the error logs in dedicated sub-sections of the Initialize containers section (#2182)
-- Add generateServiceConfig option for configure command (#2226)
-- Setting debug using GitHub Action variables (#2234)
-- run.sh installs SIGINT and SIGTERM traps to gracefully stop runner (#2233, #2240)
-
+- Expose github.actor_id, github.workflow_ref & github.workflow_sha as environment variable (#2249)
+- Added worker and listener logs to stdout (#2291, #2307)
 
 ## Bugs
 - Use Global.Variables instead of JobContext and include action path/ref in the message. (#2214)
+- Made github.action_status output lowercase to be consistent with  job.status' output (#1944)
 
 ## Misc
-- Allow '--disableupdate' in create-latest-svc.sh (#2201)
-- Fix markup for support link (#2114)
-- Add runner devcontainer (#2187)
-- Setup linter for Runner (#2211, #2213, #2216)
+- Added small size runner image for ARC (#2250)
+- Small change to Node.js 12 deprecation message (#2262)
+- Added the option to use the --replace argument to the create-latest-svc.sh (#2273)
+- Made runner_name optional defaulting to hostname in delete.sh script (#1871)
+- Return exit code when MANUALLY_TRAP_SIG is exported (#2285)
+
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
