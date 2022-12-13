@@ -195,6 +195,20 @@ namespace GitHub.Runner.Worker
                         }
                         else
                         {
+                            // This is our last, best chance to expand the display name.  (At this point, all the requirements for successful expansion should be met.)
+                            try
+                            {
+                                if (step is IActionRunner actionRunner && actionRunner.Stage == ActionRunStage.Main &&
+                                    actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
+                                {
+                                    step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Info("Caught exception while attempting to evaulate/update the step's DisplayName.  Exception Details:  {0}", ex);
+                            }
+
                             try
                             {
                                 var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
@@ -256,14 +270,6 @@ namespace GitHub.Runner.Worker
 
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)
         {
-            // Check to see if we can expand the display name
-            if (step is IActionRunner actionRunner &&
-                actionRunner.Stage == ActionRunStage.Main &&
-                actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
-            {
-                step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
-            }
-
             // Start the step
             Trace.Info("Starting the step.");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
