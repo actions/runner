@@ -182,14 +182,6 @@ namespace GitHub.Runner.Worker
                     return;
                 }
 
-                if (fileSize > AttachmentSizeLimit)
-                {
-                    context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, AttachmentSizeLimit / 1024, fileSize / 1024));
-                    Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
-
-                    return;
-                }
-
                 Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
                 var scrubbedFilePath = filePath + "-scrubbed";
 
@@ -204,13 +196,32 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                var attachmentName = !context.IsEmbedded 
-                    ? context.Id.ToString() 
+                var attachmentName = !context.IsEmbedded
+                    ? context.Id.ToString()
                     : context.EmbeddedId.ToString();
 
-                Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
-                // Attachments must be added to the parent context (job), not the current context (step)
-                context.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
+                context.Global.Variables.TryGetValue("system.github.results_endpoint", out string resultsReceiverEndpoint);
+                if (resultsReceiverEndpoint != null)
+                {
+                    Trace.Info($"Queueing results file ({filePath}) for attachment upload ({attachmentName})");
+                    var stepId = context.Id.ToString();
+                    // Attachments must be added to the parent context (job), not the current context (step)
+                    context.Root.QueueSummaryFile(attachmentName, scrubbedFilePath, stepId);
+                }
+                else
+                {
+                    if (fileSize > AttachmentSizeLimit)
+                    {
+                        context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, AttachmentSizeLimit / 1024, fileSize / 1024));
+                        Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
+
+                        return;
+                    }
+
+                    Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
+                    // Attachments must be added to the parent context (job), not the current context (step)
+                    context.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
+                }
             }
             catch (Exception e)
             {
