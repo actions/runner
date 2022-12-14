@@ -271,7 +271,6 @@ namespace GitHub.Runner.Sdk
                     {
                          _proc.StartInfo.Environment[tempKey] = tempValue;
                     }
-                }
 #else
                     _proc.StartInfo.Environment[kvp.Key] = kvp.Value;
 
