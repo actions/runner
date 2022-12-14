@@ -3,7 +3,6 @@
 - Added worker and listener logs to stdout (#2291, #2307)
 
 ## Bugs
-- Use Global.Variables instead of JobContext and include action path/ref in the message. (#2214)
 - Made github.action_status output lowercase to be consistent with job.status' output (#1944)
 
 ## Misc
