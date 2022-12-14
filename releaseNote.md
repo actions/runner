@@ -12,6 +12,7 @@
 - Added the option to use the --replace argument to the create-latest-svc.sh (#2273)
 - Made runner_name optional defaulting to hostname in delete.sh script (#1871)
 - Return exit code when MANUALLY_TRAP_SIG is exported (#2285)
+- Use results for uploading step summaries (#2301)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
