@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:6.0 as build
 
 ARG RUNNER_VERSION
 ARG RUNNER_ARCH="x64"
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.1.3
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.2.0
 
 RUN apt update -y && apt install curl unzip -y
 
