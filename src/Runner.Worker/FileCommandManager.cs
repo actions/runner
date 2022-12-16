@@ -182,6 +182,14 @@ namespace GitHub.Runner.Worker
                     return;
                 }
 
+                if (fileSize > AttachmentSizeLimit)
+                {
+                    context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, AttachmentSizeLimit / 1024, fileSize / 1024));
+                    Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
+
+                    return;
+                }
+
                 Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
                 var scrubbedFilePath = filePath + "-scrubbed";
 
