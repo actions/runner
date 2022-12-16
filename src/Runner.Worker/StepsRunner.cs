@@ -196,6 +196,12 @@ namespace GitHub.Runner.Worker
                         else
                         {
                             // This is our last, best chance to expand the display name.  (At this point, all the requirements for successful expansion should be met.)
+                            // That being said, evaluating the display name should still be considered as a "best effort" exercise.  (It's not critical or paramount.)
+                            // For that reason, we use a try/catch to ensure that any potential problems we encounter in evaluating the display name
+                            // don't interfere with our ultimate goal within this code block:  evaluation of the condition.
+                            //
+                            // REVIEW:  This try/catch can be removed if some future implementation of TryEvaluateDisplayName and UpdateTimelineRecordDisplayName
+                            // can make reasonable guarantees that they won't throw an exception.
                             try
                             {
                                 if (step is IActionRunner actionRunner && actionRunner.Stage == ActionRunStage.Main &&
