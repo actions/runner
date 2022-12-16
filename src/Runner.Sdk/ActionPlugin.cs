@@ -73,7 +73,7 @@ namespace GitHub.Runner.Sdk
         {
             var headerValues = new List<ProductInfoHeaderValue>();
             headerValues.Add(new ProductInfoHeaderValue($"GitHubActionsRunner-Plugin", BuildConstants.RunnerPackage.Version));
-            headerValues.Add(new ProductInfoHeaderValue(StringUtil.SanitizeUserAgentHeader(RuntimeInformation.OSDescription));
+            headerValues.Add(new ProductInfoHeaderValue(StringUtil.SanitizeUserAgentHeader(RuntimeInformation.OSDescription)));
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
             {
