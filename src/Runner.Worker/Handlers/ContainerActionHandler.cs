@@ -38,8 +38,17 @@ namespace GitHub.Runner.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
 
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
-            var containerHookManager = HostContext.GetService<IContainerHookManager>();
+            IDockerCommandManager dockerManager = null;
+            IContainerHookManager containerHookManager = null;
+            if (FeatureManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
+            {
+                containerHookManager = HostContext.GetService<IContainerHookManager>();
+            }
+            else
+            {
+                dockerManager = HostContext.GetService<IDockerCommandManager>();
+            }
+
             string dockerFile = null;
 
             // container image haven't built/pull
