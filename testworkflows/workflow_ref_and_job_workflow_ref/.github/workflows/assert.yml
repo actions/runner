@@ -1,0 +1,25 @@
+on:
+  workflow_call:
+    inputs:
+      expected_workflow_ref:
+        type: string
+      expected_workflow_sha:
+        type: string
+      expected_job_workflow_ref:
+        type: string
+      expected_job_workflow_sha:
+        type: string
+jobs:
+  assert:
+    runs-on: {}
+    steps:
+    - run: |
+        echo 'github.workflow_ref:${{ github.workflow_ref }}'
+        echo 'github.workflow_sha:${{ github.workflow_sha }}'
+        echo 'github.job_workflow_ref:${{ github.job_workflow_ref }}'
+        echo 'github.job_workflow_sha:${{ github.job_workflow_sha }}'
+        echo 'expected_workflow_ref:${{ inputs.expected_workflow_ref }}'
+        echo 'expected_workflow_sha:${{ inputs.expected_workflow_sha }}'
+        echo 'expected_job_workflow_ref:${{ inputs.expected_job_workflow_ref }}'
+        echo 'expected_job_workflow_sha:${{ inputs.expected_job_workflow_sha }}'
+        exit ${{ github.workflow_ref == inputs.expected_workflow_ref && github.workflow_sha == inputs.expected_workflow_sha && github.job_workflow_ref == inputs.expected_job_workflow_ref && github.job_workflow_sha == inputs.expected_job_workflow_sha && '0' || '1' }}

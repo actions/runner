@@ -1166,6 +1166,7 @@ namespace Runner.Client
                                         ZipballUrl = parameters.GitZipballUrl ?? parameters.GitServerUrl + "/{0}/archive/{1}.zip",
                                         GitApiServerUrl = "",
                                         GITHUB_TOKEN = "",
+                                        ReturnWithoutResolvingSha = false,
                                     }
                                 }.ToList()
                             };
@@ -1175,6 +1176,7 @@ namespace Runner.Client
                                     ZipballUrl = "https://github.com/{0}/archive/{1}.zip",
                                     GitApiServerUrl = "https://api.github.com",
                                     GITHUB_TOKEN = parameters.GitHubConnectToken,
+                                    ReturnWithoutResolvingSha = string.IsNullOrEmpty(parameters.GitHubConnectToken),
                                 });
                             }
                             serverconfig["Runner.Server"] = JObject.FromObject(rsconfig);

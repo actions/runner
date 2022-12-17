@@ -151,6 +151,7 @@ jobs:
         gharun -C testworkflows/oidc-provider
         gharun -C testworkflows/reusablesConsistentWorkflowName
         gharun -C testworkflows/matrix-partial-test
+        gharun -C testworkflows/workflow_ref_and_job_workflow_ref
         gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-checkout -W testworkflows/azpipelines/cross-repo-checkout/pipeline.yml --local-repository az/containermatrix@main=testworkflows/azpipelines/containermatrix
         gharun --event azpipelines -C testworkflows/azpipelines/typedtemplates -W testworkflows/azpipelines/typedtemplates/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/untypedtemplates -W testworkflows/azpipelines/untypedtemplates/pipeline.yml

@@ -1,9 +1,12 @@
 github:
   ${{ each prop in server }}:
-    ${{ if !startsWith(prop.key, 'job_workflow_') }}:
+    ${{ if ((server.variables['system.runner.server.workflowinfo'] == 'true' || !startsWith(prop.key, 'job_workflow_')) && !in(prop.key, 'workflow_file_name', 'variables')) }}:
       ${{ prop.key }}: ${{ prop.value }}
-  workflow_ref: ${{ server.job_workflow_ref }}
-  workflow_sha: ${{ server.job_workflow_ref_ref }}
+  workflow_ref: ${{ server.repository }}/${{ server.workflow_file_name }}@${{ server.ref }}
+  workflow_sha: ${{ server.sha }}
+  ${{ if (server.variables['system.runner.server.workflowinforefsha'] == 'true') }}:
+    job_workflow_ref: ${{ server.job_workflow_ref }}
+    job_workflow_sha: ${{ server.job_workflow_sha }}
   repository_owner: ${{ server.event.repository.owner.login }}
   repository_owner_id: ${{ format('{0}', server.event.repository.owner.id) }}
   repository_id: ${{ format('{0}', server.event.repository.id) }}

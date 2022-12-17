@@ -926,6 +926,7 @@ namespace Runner.Server.Controllers
             public Guid RecordId {get;set;}
             public string WorkflowName {get;set;}
             public string WorkflowRunName {get;set;}
+            public string WorkflowFileName {get;set;}
             public string Name {get;set;}
             public string Event {get;set;}
             public PipelineContextData DispatchInputs {get;set;}
@@ -1174,7 +1175,7 @@ namespace Runner.Server.Controllers
             foreach(var kv in globalVars) {
                 vars[kv.Key] = new StringContextData(kv.Value);
             }
-            var workflowContext = new WorkflowContext() { FileName = fileRelativePath, EventPayload = payloadObject };
+            var workflowContext = new WorkflowContext() { FileName = callingJob?.WorkflowFileName ?? fileRelativePath, EventPayload = payloadObject };
             workflowContext.FeatureToggles = globalVars;
             foreach(var t in secretsProvider.GetReservedSecrets()) {
                 workflowContext.FeatureToggles[t.Key] = t.Value;
@@ -1207,7 +1208,7 @@ namespace Runner.Server.Controllers
                     githubctx.Add("job", new StringContextData(jobname));
                 }
                 if(workflowContext.HasFeature("system.runner.server.workflowinfo")) {
-                    var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
+                    var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
                     var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
                     var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
                     githubctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
@@ -1314,7 +1315,9 @@ namespace Runner.Server.Controllers
                             serverctx.Add("run_id", new StringContextData(runid.ToString()));
                             serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
                             serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
-                            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Sha;
+                            serverctx["workflow_file_name"] = new StringContextData(workflowContext?.FileName ?? "");
+                            serverctx["variables"] = vars;
+                            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
                             var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
                             var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
                             serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
@@ -4971,7 +4974,7 @@ namespace Runner.Server.Controllers
         }
         private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
         {
-            var workflowRef = callingJob?.WorkflowRef ?? Sha;
+            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
             var workflowRepo = callingJob?.WorkflowRepo ?? repo;
             int fileContainerId = -1;
             Func<Func<bool, Job>> failJob = () => {
@@ -5238,7 +5241,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
-                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, WorkflowRunName = workflowContext.WorkflowRunName, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
+                                }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, WorkflowRunName = workflowContext.WorkflowRunName, WorkflowFileName = workflowContext.FileName, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value.Where(val => TemplateTokenEqual(val.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new NullToken(null, null, null), contextData["matrix"]?.ToTemplateToken() ?? new NullToken(null, null, null))).ToList(), StringComparer.OrdinalIgnoreCase);
                                 var sjob = TryParseJobSelector(selectedJob, out var cjob, out _, out var cselector) && string.Equals(name, cjob, StringComparison.OrdinalIgnoreCase) ? cselector : null;
                                 if(reusableWorkflowInheritEnv) {
@@ -5271,11 +5274,14 @@ namespace Runner.Server.Controllers
                                 client.DefaultRequestHeaders.Add("accept", "application/json");
                                 client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                                 string githubAppToken = null;
+                                // Ref is better than nothing
+                                string workflow_sha = calledWorkflowRef;
                                 try {
+                                    string token = null;
                                     if(secretsProvider?.GetReservedSecrets()?.TryGetValue("GITHUB_TOKEN", out var providedToken) == true && !string.IsNullOrEmpty(providedToken)) {
-                                        client.DefaultRequestHeaders.Add("Authorization", $"token {providedToken}");
+                                        token = providedToken;
                                     } else if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                                        token = GITHUB_TOKEN;
                                     } else {
                                         if(AllowPrivateActionAccess) {
                                             githubAppToken = await CreateGithubAppToken(calledWorkflowRepo);
@@ -5284,11 +5290,24 @@ namespace Runner.Server.Controllers
                                             githubAppToken = await CreateGithubAppToken(repo);
                                         }
                                         if(githubAppToken != null) {
-                                            client.DefaultRequestHeaders.Add("Authorization", $"token {githubAppToken}");
+                                            token = githubAppToken;
+                                        }
+                                    }
+                                    if(!string.IsNullOrEmpty(token)) {
+                                        client.DefaultRequestHeaders.Add("Authorization", $"token {token}");
+                                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{calledWorkflowRepo}/commits"));
+                                        urlBuilder.Query = $"?sha={Uri.EscapeDataString(calledWorkflowRef)}&page=1&limit=1&per_page=1";
+                                        var resolvedSha = await client.GetAsync(urlBuilder.ToString());
+                                        if(resolvedSha.StatusCode == System.Net.HttpStatusCode.OK) {
+                                            var content = await resolvedSha.Content.ReadAsStringAsync();
+                                            var o = JsonConvert.DeserializeObject<MessageController.GitCommit[]>(content)[0];
+                                            if(!string.IsNullOrEmpty(o.Sha)) {
+                                                workflow_sha = o.Sha;
+                                            }
                                         }
                                     }
                                     var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{calledWorkflowRepo}/contents/{Uri.EscapeDataString(reference.Path)}"));
-                                    url.Query = $"ref={Uri.EscapeDataString(calledWorkflowRef)}";
+                                    url.Query = $"ref={Uri.EscapeDataString(workflow_sha)}";
                                     var res = await client.GetAsync(url.ToString());
                                     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                                         var content = await res.Content.ReadAsStringAsync();
@@ -5297,7 +5316,7 @@ namespace Runner.Server.Controllers
                                             try {
                                                 var fileRes = await client.GetAsync(item.download_url);
                                                 var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                                workflow_call(item.path, filecontent, item.Sha);
+                                                workflow_call(item.path, filecontent, workflow_sha);
                                             } catch (Exception ex) {
                                                 failedtoInstantiateWorkflow(ex.Message);
                                             }
@@ -5486,12 +5505,17 @@ namespace Runner.Server.Controllers
                             claims["actor"] = contextData.GetPath("github", "actor")?.ToString();
                             claims["actor_id"] = contextData.GetPath("github", "actor_id")?.ToString();
                             claims["repository_id"] = contextData.GetPath("github", "repository_id")?.ToString();
+                            claims["repository_owner"] = contextData.GetPath("github", "repository_owner")?.ToString();
                             claims["repository_owner_id"] = contextData.GetPath("github", "repository_owner_id")?.ToString();
                             claims["workflow"] = contextData.GetPath("github", "workflow")?.ToString();
                             claims["event_name"] = contextData.GetPath("github", "event_name")?.ToString();
                             claims["ref_type"] = contextData.GetPath("github", "ref_type")?.ToString();
                             claims["job_workflow_ref"] = job_workflow_ref;
+                            claims["job_workflow_sha"] = callingJob?.WorkflowSha ?? Sha;
                             claims["sha"] = Sha;
+                            claims["repository_visibility"] = contextData.GetPath("github", "repository_visibility")?.ToString();
+                            claims["workflow_ref"] = contextData.GetPath("github", "workflow_ref")?.ToString();
+                            claims["workflow_sha"] = contextData.GetPath("github", "workflow_sha")?.ToString();
                             var content = JsonConvert.SerializeObject(claims);
                             using(var rsa = RSA.Create(Startup.AccessTokenParameter))
                             using(var memstr = new MemoryStream()) {

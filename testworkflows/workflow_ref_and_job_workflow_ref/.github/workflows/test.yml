@@ -1,0 +1,9 @@
+on: push
+jobs:
+  test:
+    uses: ./.github/workflows/assert.yml
+    with:
+      expected_workflow_ref: ${{ github.workflow_ref }}
+      expected_workflow_sha: ${{ github.workflow_sha }}
+      expected_job_workflow_ref:
+      expected_job_workflow_sha:
