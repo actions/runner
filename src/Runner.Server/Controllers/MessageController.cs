@@ -1181,8 +1181,10 @@ namespace Runner.Server.Controllers
                 workflowContext.FeatureToggles[t.Key] = t.Value;
             }
             PipelineContextData contextsTemplate = null;
-            Func<string, DictionaryContextData> createContext = jobname => {
-                var contextData = contextsTemplate?.Clone() as DictionaryContextData ?? new DictionaryContextData();
+            bool dynamicContextTemplate = workflowContext.HasFeature("system.runner.server.dynamicContextTemplate");
+            Func<JobItem, DictionaryContextData> evalContextTemplate = null;
+            Func<JobItem, DictionaryContextData> createContext = job => {
+                var contextData = (dynamicContextTemplate && evalContextTemplate != null ? evalContextTemplate(job) : contextsTemplate?.Clone() as DictionaryContextData) ?? new DictionaryContextData();
                 contextData["inputs"] = inputs;
                 contextData["vars"] = vars;
                 contextData["env"] = globalEnv;
@@ -1205,7 +1207,7 @@ namespace Runner.Server.Controllers
                 githubctx.Add("ref_type", new StringContextData(Ref.StartsWith("refs/tags/") ? "tag" : Ref.StartsWith("refs/heads/") ? "branch" : ""));
                 githubctx.Add("ref_name", new StringContextData(Ref.StartsWith("refs/tags/") ? Ref.Substring("refs/tags/".Length) : Ref.StartsWith("refs/heads/") ? Ref.Substring("refs/heads/".Length) : ""));
                 if(AllowJobNameOnJobProperties) {
-                    githubctx.Add("job", new StringContextData(jobname));
+                    githubctx.Add("job", new StringContextData(job.name));
                 }
                 if(workflowContext.HasFeature("system.runner.server.workflowinfo")) {
                     var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
@@ -1298,47 +1300,68 @@ namespace Runner.Server.Controllers
                 }
                 Action initGlobalEnvAndContexts = () => {
                     if(!workflowContext.HasFeature("system.runner.server.disablecontextTemplate") && (workflowContext.FeatureToggles.TryGetValue("system.runner.server.contextTemplate", out var contextTemplate) || (contextTemplate = PipelineTemplateSchemaFactory.LoadResource("contextTemplate.yml")) != null)) {
-                        using(var reader = new StringReader(contextTemplate)) {
-                            var objectReader = new YamlObjectReader(null, reader, true, true, true);
-                            var contextData = new DictionaryContextData();
-                            var serverctx = new DictionaryContextData();
-                            contextData["server"] = serverctx;
-                            serverctx["event"] = payloadObject.ToPipelineContextData();
-                            serverctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
-                            serverctx.Add("server_url", new StringContextData(GitServerUrl));
-                            serverctx.Add("api_url", new StringContextData(GitApiServerUrl));
-                            serverctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
-                            serverctx.Add("workflow", new StringContextData(workflowname));
-                            serverctx.Add("repository", new StringContextData(repository_name));
-                            serverctx.Add("sha", new StringContextData(Sha));
-                            serverctx.Add("ref", new StringContextData(Ref));
-                            serverctx.Add("run_id", new StringContextData(runid.ToString()));
-                            serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
-                            serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
-                            serverctx["workflow_file_name"] = new StringContextData(workflowContext?.FileName ?? "");
-                            serverctx["variables"] = vars;
-                            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
-                            var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
-                            var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
-                            serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
-                            serverctx["job_workflow_ref"] = new StringContextData(job_workflow_ref);
-                            serverctx["job_workflow_ref_repository"] = new StringContextData(workflowRepo);
-                            serverctx["job_workflow_ref_repository_owner"] = new StringContextData(workflowRepo.Split('/', 2)[0]);
-                            serverctx["job_workflow_ref_repository_name"] = new StringContextData(workflowRepo.Split('/', 2)[1]);
-                            serverctx["job_workflow_ref_ref"] = new StringContextData(workflowRef);
-                            var templateContext = CreateTemplateContext(workflowContext.HasFeature("system.runner.server.debugcontextTemplate") ? workflowTraceWriter : new EmptyTraceWriter(), workflowContext, contextData);
-                            templateContext.Schema = PipelineTemplateSchemaFactory.LoadSchema("contextTemplateSchema.json");
-                            templateContext.Flags |= ExpressionFlags.ExtendedDirectives | ExpressionFlags.ExtendedFunctions | ExpressionFlags.AllowAnyForInsert;
-                            var token = TemplateReader.Read(templateContext, "context-root", objectReader, null, out _);
-                            templateContext.Errors.Check();
-                            contextsTemplate = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true)?.AssertMapping("context-root").ToContextData();
-                            templateContext.Errors.Check();
-                        }
+                        evalContextTemplate = job => {
+                            using(var reader = new StringReader(contextTemplate)) {
+                                var objectReader = new YamlObjectReader(null, reader, true, true, true);
+                                var contextData = new DictionaryContextData();
+                                var serverctx = new DictionaryContextData();
+                                contextData["server"] = serverctx;
+                                serverctx["event"] = payloadObject.ToPipelineContextData();
+                                serverctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
+                                serverctx.Add("server_url", new StringContextData(GitServerUrl));
+                                serverctx.Add("api_url", new StringContextData(GitApiServerUrl));
+                                serverctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
+                                serverctx.Add("workflow", new StringContextData(workflowname));
+                                serverctx.Add("repository", new StringContextData(repository_name));
+                                serverctx.Add("sha", new StringContextData(Sha));
+                                serverctx.Add("ref", new StringContextData(Ref));
+                                serverctx.Add("run_id", new StringContextData(runid.ToString()));
+                                serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
+                                serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                                if(job != null) {
+                                    var jobctx = new DictionaryContextData();
+                                    jobctx["name"] = new StringContextData(job.name);
+                                    if(job.DisplayName != null) {
+                                        jobctx["displayName"] = new StringContextData(job.DisplayName);
+                                    }
+                                    jobctx["instance_id"] = new StringContextData(job.Id.ToString());
+                                    var needs = new ArrayContextData();
+                                    foreach(var dep in job.Needs) {
+                                        needs.Add(new StringContextData(dep));
+                                    }
+                                    jobctx["needs"] = needs;
+                                    serverctx["job"] = jobctx;
+                                }
+                                serverctx["workflow_file_name"] = new StringContextData(workflowContext?.FileName ?? "");
+                                if(workflowContext.WorkflowRunName != null) {
+                                    serverctx["workflow_run_name"] = new StringContextData(workflowContext.WorkflowRunName);
+                                }
+                                serverctx["variables"] = vars;
+                                var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
+                                var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
+                                var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
+                                serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
+                                serverctx["job_workflow_ref"] = new StringContextData(job_workflow_ref);
+                                serverctx["job_workflow_ref_repository"] = new StringContextData(workflowRepo);
+                                serverctx["job_workflow_ref_repository_owner"] = new StringContextData(workflowRepo.Split('/', 2)[0]);
+                                serverctx["job_workflow_ref_repository_name"] = new StringContextData(workflowRepo.Split('/', 2)[1]);
+                                serverctx["job_workflow_ref_ref"] = new StringContextData(workflowRef);
+                                var templateContext = CreateTemplateContext(workflowContext.HasFeature("system.runner.server.debugcontextTemplate") ? workflowTraceWriter : new EmptyTraceWriter(), workflowContext, contextData);
+                                templateContext.Schema = PipelineTemplateSchemaFactory.LoadSchema("contextTemplateSchema.json");
+                                templateContext.Flags |= ExpressionFlags.ExtendedDirectives | ExpressionFlags.ExtendedFunctions | ExpressionFlags.AllowAnyForInsert;
+                                var token = TemplateReader.Read(templateContext, "context-root", objectReader, null, out _);
+                                templateContext.Errors.Check();
+                                var ret = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true)?.AssertMapping("context-root").ToContextData();
+                                templateContext.Errors.Check();
+                                return ret;
+                            }
+                        };
+                        contextsTemplate = evalContextTemplate(null);
                     }
                     if(workflowEnvironment.Count > 0) {
                         globalEnv = new DictionaryContextData();
                         foreach(var cEnv in workflowEnvironment) {
-                            var contextData = createContext("");
+                            var contextData = createContext(null);
                             var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                             var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-env", cEnv, 0, null, true);
                             // Best effort, don't check for errors
@@ -1590,7 +1613,7 @@ namespace Runner.Server.Controllers
                                     var rawdef = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "default" select r.Value).FirstOrDefault();
                                     if(rawdef != null) {
                                         workflowTraceWriter.Info($"Evaluate {defassertMessage}");
-                                        var contextData = createContext("");
+                                        var contextData = createContext(null);
                                         contextData["inputs"] = callingJob?.DispatchInputs;
                                         var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                                         rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-input-context", rawdef, 0, null, true);
@@ -1795,7 +1818,7 @@ namespace Runner.Server.Controllers
                     if(runName == null) {
                         return null;
                     }
-                    var contextData = createContext("");
+                    var contextData = createContext(null);
                     var templateContext = CreateTemplateContext(traceWriter, workflowContext, contextData);
                     var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-run-name", runName, 0, null, true);
                     templateContext.Errors.Check();
@@ -1854,7 +1877,7 @@ namespace Runner.Server.Controllers
                         case "jobs":
                         TemplateToken evaluatedJobs = null;
                         {
-                            var contextData = createContext("");
+                            var contextData = createContext(null);
                             var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                             evaluatedJobs = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "jobs", actionPair.Value, 0, null, true);
                             templateContext.Errors.Check();
@@ -1894,7 +1917,7 @@ namespace Runner.Server.Controllers
                                 neededJobs.AddRange(from need in needs select need.AssertString($"jobs.{jobname}.needs.*").Value);
                             }
                             jobitem.Needs = neededJobs.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                            var contextData = createContext(jobname);
+                            var contextData = createContext(jobitem);
                             
                             var needsctx = new DictionaryContextData();
 
@@ -2557,7 +2580,7 @@ namespace Runner.Server.Controllers
                         case "concurrency":
                         {
                             workflowTraceWriter.Info("{0}", $"Evaluate workflow concurrency");
-                            var contextData = createContext("");
+                            var contextData = createContext(null);
                             var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                             workflowConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-concurrency", actionPair.Value, 0, null, true);
                             templateContext.Errors.Check();
@@ -2705,7 +2728,7 @@ namespace Runner.Server.Controllers
                                 if(workflowOutputs != null) {
                                     try {
                                         workflowTraceWriter.Info("{0}", $"Evaluate on.workflow_call.outputs outputs");
-                                        var contextData = createContext("");
+                                        var contextData = createContext(null);
                                         contextData.Add("jobs", jobsctx);
                                         var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                                         var outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
