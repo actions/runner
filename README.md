@@ -516,6 +516,18 @@ othername=value2
 othername2=value3
 ```
 
+### Use as an actions artifact and cache server
+
+You can disable the authentication layer, then you can point the artifact / cache api to this server.
+
+```
+Runner.Server --Runner.Server:byPassAuth=true --urls "http://*:4555"
+´´´
+
+You can now point act or nodejs to this server, then you can use the actions artifact and cache apis locally.
+
+act -W cache.yml --env ACTIONS_CACHE_URL=http://host.docker.internal:4555/
+
 ### Dev
 ```
 dotnet build ./src/Runner.Server/ /p:EFMigration=ON

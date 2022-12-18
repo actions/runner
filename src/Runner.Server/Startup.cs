@@ -266,11 +266,13 @@ namespace Runner.Server
         {
             private IConfiguration configuration;
             private PolicyEvaluator policyEvaluator;
+            private bool byPassAuth;
 
             public AgentAuthenticationPolicyEvaluator(IConfiguration configuration, IAuthorizationService authorization)
             {
                 this.configuration = configuration;
                 this.policyEvaluator = new PolicyEvaluator(authorization);
+                this.byPassAuth = configuration.GetSection("Runner.Server")?.GetValue<bool>("byPassAuth") ?? false;
             }
 
             public async Task<AuthenticateResult> AuthenticateAsync(AuthorizationPolicy policy, HttpContext context)
@@ -292,7 +294,12 @@ namespace Runner.Server
                         }
                     }
                 }
-                return await policyEvaluator.AuthenticateAsync(policy, context);
+                var authResult = await policyEvaluator.AuthenticateAsync(policy, context);
+                if(!authResult.Succeeded && byPassAuth) {
+                    var authenticationTicket = new AuthenticationTicket(new ClaimsPrincipal(), new AuthenticationProperties(), JwtBearerDefaults.AuthenticationScheme);
+                    return AuthenticateResult.Success(authenticationTicket);
+                }
+                return authResult;
             }
 
             public async Task<PolicyAuthorizationResult> AuthorizeAsync(AuthorizationPolicy policy, AuthenticateResult authenticationResult, HttpContext context, object resource)
@@ -312,7 +319,11 @@ namespace Runner.Server
                         }
                     }
                 }
-                return await policyEvaluator.AuthorizeAsync(policy, authenticationResult, context, resource);
+                var authResult = await policyEvaluator.AuthorizeAsync(policy, authenticationResult, context, resource);
+                if(!authResult.Succeeded && byPassAuth) {
+                    return PolicyAuthorizationResult.Success();
+                }
+                return authResult;
             }
         }
 
