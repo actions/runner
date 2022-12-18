@@ -52,25 +52,6 @@ namespace Runner.Server.Controllers
             return null;
         }
 
-        public class PushStreamResult: IActionResult
-        {
-            private readonly Func<Stream, Task> _onStreamAvailabe;
-            private readonly string _contentType;
-
-            public PushStreamResult(Func<Stream, Task> onStreamAvailabe, string contentType)
-            {
-                _onStreamAvailabe = onStreamAvailabe;
-                _contentType = contentType;
-            }
-
-            public async Task ExecuteResultAsync(ActionContext context)
-            {
-                var stream = context.HttpContext.Response.Body;
-                context.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue(_contentType);
-                await _onStreamAvailabe(stream);
-            }
-        }
-
         public delegate void LogFeedEvent(object sender, Guid timelineId, Guid recordId, TimelineRecordFeedLinesWrapper record);
         public static event LogFeedEvent logfeed;
 
@@ -78,7 +59,7 @@ namespace Runner.Server.Controllers
         public IActionResult Message([FromQuery] Guid timelineId, [FromQuery] long[] runid)
         {
             var requestAborted = HttpContext.RequestAborted;
-            return new PushStreamResult(async stream => {
+            return new MessageController.PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
                 await using(var writer = new StreamWriter(stream) { NewLine = "\n" } ) {
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });

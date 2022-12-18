@@ -7289,9 +7289,13 @@ namespace Runner.Server.Controllers
 
             public async Task ExecuteResultAsync(ActionContext context)
             {
-                var stream = context.HttpContext.Response.Body;
-                context.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue(_contentType);
-                await _onStreamAvailabe(stream);
+                try {
+                    var stream = context.HttpContext.Response.Body;
+                    context.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue(_contentType);
+                    await _onStreamAvailabe(stream);
+                } catch(Exception ex) {
+                    Console.Error.WriteLine($"{ex.Message}\nStacktrace: {ex.StackTrace}");
+                }
             }
         }
 
