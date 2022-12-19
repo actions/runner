@@ -6,11 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.Results.Contracts;
 using System.Net.Http.Formatting;
-using GitHub.Services.WebApi;
+using Sdk.WebApi.WebApi;
 
 namespace GitHub.Services.Results.Client
 {
-    public class ResultsHttpClient : VssHttpClientBase
+    public class ResultsHttpClient : RawHttpClientBase
     {
         public ResultsHttpClient(
             Uri baseUrl,
