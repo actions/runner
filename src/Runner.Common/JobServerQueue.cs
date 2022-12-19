@@ -20,7 +20,7 @@ namespace GitHub.Runner.Common
         void Start(Pipelines.AgentJobRequestMessage jobRequest);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
-        void QueueSummaryUpload(Guid timelineId, Guid timelineRecordId, string stepId, string name, string path, bool deleteSource);
+        void QueueSummaryUpload(Guid stepRecordId, string name, string path, bool deleteSource);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
     }
 
@@ -230,25 +230,20 @@ namespace GitHub.Runner.Common
             _fileUploadQueue.Enqueue(newFile);
         }
 
-        public void QueueSummaryUpload(Guid timelineId, Guid timelineRecordId, string stepId, string name, string path, bool deleteSource)
+        public void QueueSummaryUpload(Guid stepRecordId, string name, string path, bool deleteSource)
         {
-            ArgUtil.NotEmpty(timelineId, nameof(timelineId));
-            ArgUtil.NotEmpty(timelineRecordId, nameof(timelineRecordId));
-
             // all parameter not null, file path exist.
             var newFile = new SummaryUploadFileInfo()
             {
-                TimelineId = timelineId,
-                TimelineRecordId = timelineRecordId,
                 Name = name,
                 Path = path,
                 PlanId = _planId.ToString(),
                 JobId = _jobTimelineRecordId.ToString(),
-                StepId = stepId,
+                StepId = stepRecordId.ToString(),
                 DeleteSource = deleteSource
             };
 
-            Trace.Verbose("Enqueue results file upload queue: file '{0}' attach to record {1}", newFile.Path, timelineRecordId);
+            Trace.Verbose("Enqueue results file upload queue: file '{0}' attach to job {1} step {2}", newFile.Path, _jobTimelineRecordId, stepRecordId);
             _summaryFileUploadQueue.Enqueue(newFile);
         }
 
@@ -816,8 +811,6 @@ namespace GitHub.Runner.Common
 
     internal class SummaryUploadFileInfo
     {
-        public Guid TimelineId { get; set; }
-        public Guid TimelineRecordId { get; set; }
         public string Name { get; set; }
         public string Path { get; set; }
         public string PlanId { get; set; }

@@ -212,7 +212,7 @@ namespace GitHub.Runner.Worker
                 if (resultsReceiverEndpoint != null)
                 {
                     Trace.Info($"Queueing results file ({filePath}) for attachment upload ({attachmentName})");
-                    var stepId = context.Id.ToString();
+                    var stepId = context.Id;
                     // Attachments must be added to the parent context (job), not the current context (step)
                     context.Root.QueueSummaryFile(attachmentName, scrubbedFilePath, stepId);
                 }
