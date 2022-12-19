@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
+using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Sdk
 {
