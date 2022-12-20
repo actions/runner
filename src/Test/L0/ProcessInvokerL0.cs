@@ -189,7 +189,7 @@ namespace GitHub.Runner.Common.Tests
                     stderr.Add(e.Data);
                 };
 
-                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TESTU+0009second", "first" } }, CancellationToken.None);
+                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TEST\u0009second", "first" } }, CancellationToken.None);
 
                 trace.Info("Exit Code: {0}", exitCode);
                 Assert.Equal(0, exitCode);
@@ -257,7 +257,7 @@ namespace GitHub.Runner.Common.Tests
                     stderr.Add(e.Data);
                 };
 
-                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TEST", "firstU+0009second" } }, CancellationToken.None);
+                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TEST", "first\u0009second" } }, CancellationToken.None);
 
                 trace.Info("Exit Code: {0}", exitCode);
                 Assert.Equal(0, exitCode);
