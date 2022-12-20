@@ -471,24 +471,18 @@ namespace GitHub.Runner.Common
                         }
                         catch (Exception ex)
                         {
-                            try
-                            {
+                            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception during summary file upload to results. {ex.Message}" };
+                            issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
 
-                                var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception during summary file upload to results. {ex.Message}" };
-                                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
-
-                                var telemetryRecord = new TimelineRecord()
-                                {
-                                    Id = _jobTimelineRecordId,
-                                };
-                                telemetryRecord.Issues.Add(issue);
-                                QueueTimelineRecordUpdate(_jobTimelineId, telemetryRecord);
-                            }
-                            catch (Exception e)
+                            var telemetryRecord = new TimelineRecord()
                             {
-                                Trace.Info("Catch exception during summary file upload to results, keep going since the process is best effort.");
-                                Trace.Error(e);
-                            }
+                                Id = _jobTimelineRecordId,
+                            };
+                            telemetryRecord.Issues.Add(issue);
+                            QueueTimelineRecordUpdate(_jobTimelineId, telemetryRecord);
+
+                            Trace.Info("Catch exception during summary file upload to results, keep going since the process is best effort.");
+                            Trace.Error(ex);
                         }
                         finally
                         {
