@@ -3741,9 +3741,6 @@ namespace Runner.Server.Controllers
                                     var deploymentStrategy = job?.Strategy?.RunOnce ?? (Azure.Devops.Strategy.RunOnceStrategy) job?.Strategy?.Rolling ?? (Azure.Devops.Strategy.RunOnceStrategy) job?.Strategy?.Canary; 
                                 
                                     var variables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
-                                    variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
-                                    Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
-                                    variables.Add("system.runnerGroupName", new VariableValue("misc", false));
                                     variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
                                     // For actions/upload-artifact@v1, actions/download-artifact@v1
                                     variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
@@ -5031,6 +5028,9 @@ namespace Runner.Server.Controllers
         {
             var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
             var workflowRepo = callingJob?.WorkflowRepo ?? repo;
+            var workflowPath = callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "";
+            var job_workflow_full_path = $"{workflowRepo}/{workflowPath}";
+            var job_workflow_ref = $"{job_workflow_full_path}@{workflowRef}";
             int fileContainerId = -1;
             Func<Func<bool, Job>> failJob = () => {
                 var jid = jobId;
@@ -5545,7 +5545,6 @@ namespace Runner.Server.Controllers
                         systemVssConnection.Data["FeedStreamUrl"] = feedStreamUrl.ToString();
                         if(calculatedPermissions.TryGetValue("id_token", out var p_id_token) && p_id_token == "write") {
                             var environment = deploymentEnvironmentValue?.Name ?? ("");
-                            var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
                             var claims = new Dictionary<string, string>();
                             claims["repository"] = repo;
                             claims["run_attempt"] = attempt?.Attempt.ToString() ?? "1";
@@ -5598,10 +5597,14 @@ namespace Runner.Server.Controllers
                         }
                         var variables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
                         variables.Add("system.github.job", new VariableValue(name, false));
-                        variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
-                        Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
-                        variables.Add("system.phaseDisplayName", new VariableValue(special.Replace($"{workflowname}_{parentId}_{name}", "-"), false));
-                        variables.Add("system.runnerGroupName", new VariableValue("misc", false));
+                        // actions/runner throws if ${{ inputs == null }}, due to AssertDictionary without null check
+                        if(contextData.GetPath("inputs") != null) {
+                            variables.Add("system.workflowFileFullPath", new VariableValue(job_workflow_full_path, false));
+                        }
+                        variables.Add("system.workflowFilePath", new VariableValue(workflowPath, false));
+                        Regex special = new Regex("[^a-zA-Z_\\-]");
+                        variables.Add("system.phaseDisplayName", new VariableValue(special.Replace($"{name}", "-"), false));
+                        variables.Add("system.runnerGroupName", new VariableValue("Default", false));
                         variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
                         variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
                         variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
