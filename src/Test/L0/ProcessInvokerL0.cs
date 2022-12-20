@@ -167,6 +167,40 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+        public async Task SetTestEnvWithTabInKey()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                Int32 exitCode = -1;
+                var processInvoker = new ProcessInvokerWrapper();
+                processInvoker.Initialize(hc);
+                var stdout = new List<string>();
+                var stderr = new List<string>();
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    trace.Info(e.Data);
+                    stdout.Add(e.Data);
+                };
+                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    trace.Info(e.Data);
+                    stderr.Add(e.Data);
+                };
+
+                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TEST\u0009second", "first" } }, CancellationToken.None);
+
+                trace.Info("Exit Code: {0}", exitCode);
+                Assert.Equal(0, exitCode);
+                Assert.Equal("first", stdout.First(x => !string.IsNullOrWhiteSpace(x)));
+
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
         public async Task SetTestEnvWithNullInValue()
         {
             using (TestHostContext hc = new(this))
@@ -190,6 +224,40 @@ namespace GitHub.Runner.Common.Tests
                 };
 
                 exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TEST", "first\0second" } }, CancellationToken.None);
+
+                trace.Info("Exit Code: {0}", exitCode);
+                Assert.Equal(0, exitCode);
+                Assert.Equal("first", stdout.First(x => !string.IsNullOrWhiteSpace(x)));
+
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task SetTestEnvWithTabInValue()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                Int32 exitCode = -1;
+                var processInvoker = new ProcessInvokerWrapper();
+                processInvoker.Initialize(hc);
+                var stdout = new List<string>();
+                var stderr = new List<string>();
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    trace.Info(e.Data);
+                    stdout.Add(e.Data);
+                };
+                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    trace.Info(e.Data);
+                    stderr.Add(e.Data);
+                };
+
+                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TEST", "first\u0009second" } }, CancellationToken.None);
 
                 trace.Info("Exit Code: {0}", exitCode);
                 Assert.Equal(0, exitCode);

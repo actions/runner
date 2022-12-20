@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
+using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Sdk
 {
@@ -265,8 +266,8 @@ namespace GitHub.Runner.Sdk
                 foreach (KeyValuePair<string, string> kvp in environment)
                 {
 #if OS_WINDOWS
-                    string tempKey = String.IsNullOrWhiteSpace(kvp.Key) ? kvp.Key : kvp.Key.Split('\0')[0];
-                    string tempValue = String.IsNullOrWhiteSpace(kvp.Value) ? kvp.Value : kvp.Value.Split('\0')[0];
+                    string tempKey = String.IsNullOrWhiteSpace(kvp.Key) ? kvp.Key : Regex.Split(kvp.Key, @"\p{C}")[0];
+                    string tempValue = String.IsNullOrWhiteSpace(kvp.Value) ? kvp.Value :  Regex.Split(kvp.Value, @"\p{C}")[0];
                     if(!String.IsNullOrWhiteSpace(tempKey))
                     {
                          _proc.StartInfo.Environment[tempKey] = tempValue;
