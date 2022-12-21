@@ -5027,6 +5027,7 @@ namespace Runner.Server.Controllers
         private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
         {
             var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
+            var workflowSha = callingJob?.WorkflowSha ?? Sha;
             var workflowRepo = callingJob?.WorkflowRepo ?? repo;
             var workflowPath = callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "";
             var job_workflow_full_path = $"{workflowRepo}/{workflowPath}";
@@ -5259,6 +5260,7 @@ namespace Runner.Server.Controllers
                             }
                             var calledWorkflowRepo = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowRepo : reference.Name;
                             var calledWorkflowRef = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowRef : reference.Ref;
+                            var calledWorkflowSha = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowSha : null;
                             Action<string, string, string> workflow_call = (filename, filecontent, sha) => {
                                 var hook = workflowContext.EventPayload;
                                 var ghook = hook.ToObject<GiteaHook>();
@@ -5330,7 +5332,7 @@ namespace Runner.Server.Controllers
                                 client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                                 string githubAppToken = null;
                                 // Ref is better than nothing
-                                string workflow_sha = calledWorkflowRef;
+                                string workflow_sha = calledWorkflowSha ?? calledWorkflowRef;
                                 try {
                                     string token = null;
                                     if(secretsProvider?.GetReservedSecrets()?.TryGetValue("GITHUB_TOKEN", out var providedToken) == true && !string.IsNullOrEmpty(providedToken)) {
@@ -5348,7 +5350,7 @@ namespace Runner.Server.Controllers
                                             token = githubAppToken;
                                         }
                                     }
-                                    if(!string.IsNullOrEmpty(token)) {
+                                    if(!string.IsNullOrEmpty(token) && calledWorkflowSha == null) {
                                         client.DefaultRequestHeaders.Add("Authorization", $"token {token}");
                                         var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{calledWorkflowRepo}/commits"));
                                         urlBuilder.Query = $"?sha={Uri.EscapeDataString(calledWorkflowRef)}&page=1&limit=1&per_page=1";
