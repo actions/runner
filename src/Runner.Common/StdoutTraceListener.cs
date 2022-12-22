@@ -1,8 +1,8 @@
-using GitHub.Runner.Sdk;
 using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
@@ -24,9 +24,16 @@ namespace GitHub.Runner.Common
                 return;
             }
 
-            WriteHeader(source, eventType, id);
-            WriteLine(message);
-            WriteFooter(eventCache);
+            if (!string.IsNullOrEmpty(message))
+            {
+                var messageLines = message.Split(Environment.NewLine);
+                foreach (var messageLine in messageLines)
+                {
+                    WriteHeader(source, eventType, id);
+                    WriteLine(messageLine);
+                    WriteFooter(eventCache);
+                }
+            }
         }
 
         internal bool IsEnabled(TraceOptions opts)
@@ -87,4 +94,3 @@ namespace GitHub.Runner.Common
         }
     }
 }
-
