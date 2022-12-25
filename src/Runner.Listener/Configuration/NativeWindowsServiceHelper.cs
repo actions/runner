@@ -376,7 +376,8 @@ namespace GitHub.Runner.Listener.Configuration
 
             return sid.Equals(networkServiceSid) ||
                    sid.Equals(localServiceSid) ||
-                   sid.Equals(localSystemSid);
+                   sid.Equals(localSystemSid) ||
+                   accountName.EndsWith('$');
         }
 
         public bool IsValidCredential(string domain, string userName, string logonPassword)
