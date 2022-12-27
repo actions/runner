@@ -221,8 +221,11 @@ namespace GitHub.Runner.Common
             if (File.Exists(runnerFile))
             {
                 var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile);
-                _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
-                _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
+                if (runnerSettings != null)
+                {
+                    _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
+                    _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
+                }
             }
 
             _userAgents.Add(new ProductInfoHeaderValue("CommitSHA", BuildConstants.Source.CommitHash));
