@@ -339,7 +339,7 @@ namespace GitHub.Runner.Listener
 
                 HostContext.WritePerfCounter("SessionCreated");
 
-                _term.WriteLine($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
+                _term.WriteLine($"Current runner (motorola) version: '{BuildConstants.RunnerPackage.Version}'");
                 _term.WriteLine($"{DateTime.UtcNow:u}: Listening for Jobs");
 
                 IJobDispatcher jobDispatcher = null;
