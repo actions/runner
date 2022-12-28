@@ -476,7 +476,7 @@ namespace GitHub.Runner.Common
 
                             var telemetryRecord = new TimelineRecord()
                             {
-                                Id = _jobTimelineRecordId,
+                                Id = Constants.Runner.TelemetryRecordId,
                             };
                             telemetryRecord.Issues.Add(issue);
                             QueueTimelineRecordUpdate(_jobTimelineId, telemetryRecord);
