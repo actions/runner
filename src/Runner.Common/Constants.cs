@@ -158,9 +158,11 @@ namespace GitHub.Runner.Common
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
+            public static readonly Guid TelemetryRecordId = new Guid("11111111-1111-1111-1111-111111111111");
             public static readonly string WorkerCrash = "WORKER_CRASH";
             public static readonly string LowDiskSpace = "LOW_DISK_SPACE";
             public static readonly string UnsupportedCommand = "UNSUPPORTED_COMMAND";
+            public static readonly string ResultsUploadFailure = "RESULTS_UPLOAD_FAILURE";
             public static readonly string UnsupportedCommandMessage = "The `{0}` command is deprecated and will be disabled soon. Please upgrade to using Environment Files. For more information see: https://github.blog/changelog/2022-10-11-github-actions-deprecating-save-state-and-set-output-commands/";
             public static readonly string UnsupportedCommandMessageDisabled = "The `{0}` command is disabled. Please upgrade to using Environment Files or opt into unsecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_COMMANDS` environment variable to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
             public static readonly string UnsupportedStopCommandTokenDisabled = "You cannot use a endToken that is an empty string, the string 'pause-logging', or another workflow command. For more information see: https://docs.github.com/actions/learn-github-actions/workflow-commands-for-github-actions#example-stopping-and-starting-workflow-commands or opt into insecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS` environment variable to `true`.";
