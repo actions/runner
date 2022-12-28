@@ -113,6 +113,10 @@ namespace GitHub.Services.Results.Client
         {
             // Get the upload url
             var uploadUrlResponse = await GetStepSummaryUploadUrlAsync(planId, jobId, stepId, cancellationToken);
+            if (uploadUrlResponse == null)
+            {
+                throw new Exception("Failed to get step summary upload url");
+            }
 
             // Do we want to throw an exception here or should we just be uploading/truncating the data
             var fileSize = new FileInfo(file).Length;
