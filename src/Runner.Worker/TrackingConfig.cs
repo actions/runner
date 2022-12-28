@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
@@ -59,7 +59,7 @@ namespace GitHub.Runner.Worker
 
             // Set the directories.
             PipelineDirectory = repoName.ToString(CultureInfo.InvariantCulture);
-            WorkspaceDirectory = Path.Combine(PipelineDirectory, repoName);
+            WorkspaceDirectory = Path.Combine(repoName, "s");
 
             Repositories[repoFullName] = new RepositoryTrackingConfig()
             {
