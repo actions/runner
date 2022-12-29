@@ -1183,7 +1183,8 @@ namespace Runner.Server.Controllers
                     }
                 }
             };
-            PipelineContextData inputs = null;
+            // It seems like the inputs context is never null as of December 2022
+            PipelineContextData inputs = new DictionaryContextData();
             DictionaryContextData globalEnv = null;
             DictionaryContextData vars = new DictionaryContextData();
             var globalVars = secretsProvider.GetVariablesForEnvironment("");
