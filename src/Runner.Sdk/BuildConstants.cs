@@ -7,12 +7,12 @@ namespace GitHub.Runner.Sdk
     {
         public static class Source
         {
-            public static readonly string CommitHash = "N/A";
+            public static readonly string CommitHash = "0000000000000000000000000000000000000000";
         }
 
         public static class RunnerPackage
         {
-            public static readonly string PackageName = "N/A";
+            public static readonly string PackageName = "Unknown";
             public static readonly string Version = "0";
         }
     }
