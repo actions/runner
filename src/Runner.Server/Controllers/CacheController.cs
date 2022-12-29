@@ -50,9 +50,9 @@ namespace Runner.Server.Controllers {
         public async Task<FileStreamResult> ReserveCache(string owner, string repo) {
             var req = await FromBody<ReserveCacheRequest>();
             var filename = Path.GetRandomFileName();
-            var reference = User.FindFirst("ref");
-            var repository = User.FindFirst("repository");
-            var record = new CacheRecord() { Key = req.key, LastUpdated = DateTime.Now, Ref = reference.Value, Version = req.version, Storage = filename, Repo = repository.Value };
+            var reference = User.FindFirst("ref")?.Value ?? "refs/heads/main";
+            var repository = User.FindFirst("repository")?.Value ?? "Unknown/Unknown";
+            var record = new CacheRecord() { Key = req.key, LastUpdated = DateTime.Now, Ref = reference, Version = req.version, Storage = filename, Repo = repository };
             _context.Caches.Add(record);
             await _context.SaveChangesAsync();
             return await Ok(new ReserveCacheResponse { cacheId = record.Id });
@@ -61,19 +61,19 @@ namespace Runner.Server.Controllers {
         [HttpGet("cache")]
         public async Task<IActionResult> GetCacheEntry( string owner, string repo, [FromQuery] string keys, [FromQuery] string version) {
             var a = keys.Split(',');
-            var defaultRef = User.FindFirst("defaultRef");
-            var reference = User.FindFirst("ref");
-            var repository = User.FindFirst("repository");
-            foreach(var cref in reference.Value != defaultRef.Value ? new [] { reference.Value, defaultRef.Value } : new [] { reference.Value }) {
+            var defaultRef = User.FindFirst("defaultRef")?.Value ?? "refs/heads/main";
+            var reference = User.FindFirst("ref")?.Value ?? "refs/heads/main";
+            var repository = User.FindFirst("repository")?.Value ?? "Unknown/Unknown";
+            foreach(var cref in reference != defaultRef ? new [] { reference, defaultRef } : new [] { reference }) {
                 foreach (var item in a) {
-                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.Value.ToLower() && rec.Ref == cref && rec.Key.ToLower() == item.ToLower() && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
+                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower() == item.ToLower() && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null) {
                         return await Ok(new ArtifactCacheEntry{ cacheKey = item, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = new Uri(new Uri(ServerUrl), $"_apis/artifactcache/get/{record.Id}").ToString() });
                     }
                 }
                 CacheRecord partialMatch = null;
                 foreach (var item in a.Skip(1)) {
-                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.Value.ToLower() && rec.Ref == cref && rec.Key.ToLower().StartsWith(item.ToLower()) && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
+                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower().StartsWith(item.ToLower()) && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null && (partialMatch == null || record.LastUpdated > partialMatch.LastUpdated)) {
                         partialMatch = record;
                     }

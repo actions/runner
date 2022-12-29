@@ -755,15 +755,30 @@ namespace Runner.Server.Controllers
             return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs);
         }
 
-        private HookResponse ConvertYamlAzure(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, string[] taskNames = null) {
+        private HookResponse ConvertYamlAzure(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, int? rrunid = null, string jobId = null, bool? failed = null, bool? rresetArtifacts = null, bool? refresh = null, string[] taskNames = null) {
             string owner_name = repository.Split('/', 2)[0];
             string repo_name = repository.Split('/', 2)[1];
             Func<Workflow> getWorkflow = () => (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault();
             var run = new WorkflowRun { FileName = fileRelativePath, Workflow = getWorkflow() };
             long attempt = 1;
             var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt++, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha };
+            Dictionary<string, List<Job>> finishedJobs = null;
+            if(rrunid != null) {
+                run = (from r in _context.Set<WorkflowRun>() where r.Id == rrunid select r).First();
+                var lastAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt descending select a).First();
+                var firstAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt ascending select a).First();
+                attempt = lastAttempt.Attempt + 1;
+                _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha, TimeLineId = firstAttempt.TimeLineId, ArtifactsMinAttempt = rresetArtifacts == true ? (int) attempt : lastAttempt.ArtifactsMinAttempt };
+                if(failed == true) {
+                    finishedJobs = getFailedJobs(rrunid.Value);
+                } else if(!string.IsNullOrEmpty(jobId)) {
+                    finishedJobs = getPreviousJobs(rrunid.Value).Where(kv => !(string.Equals(kv.Key, jobId, StringComparison.OrdinalIgnoreCase) || kv.Key.StartsWith(jobId + "/", StringComparison.OrdinalIgnoreCase))).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+                } else if(refresh == true) {
+                    finishedJobs = getPreviousJobs(rrunid.Value);
+                }
+            }
             _context.Artifacts.Add(new ArtifactContainer() { Attempt = _attempt } );
-            if(run.Workflow == null) {
+            if(run.Workflow == null && rrunid == null) {
                 // Fix creating duplicated repositories
                 lock(concurrencyGroups) {
                     if((run.Workflow = getWorkflow()) == null) {
@@ -834,7 +849,7 @@ namespace Runner.Server.Controllers
                     Sha = hook.After;
                 }
             }
-            return AzureDevopsMain(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, taskNames: taskNames);
+            return AzureDevopsMain(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs, taskNames: taskNames);
         }
 
         private void AddJob(Job job) {
@@ -1168,7 +1183,8 @@ namespace Runner.Server.Controllers
                     }
                 }
             };
-            PipelineContextData inputs = null;
+            // It seems like the inputs context is never null as of December 2022
+            PipelineContextData inputs = new DictionaryContextData();
             DictionaryContextData globalEnv = null;
             DictionaryContextData vars = new DictionaryContextData();
             var globalVars = secretsProvider.GetVariablesForEnvironment("");
@@ -1181,8 +1197,10 @@ namespace Runner.Server.Controllers
                 workflowContext.FeatureToggles[t.Key] = t.Value;
             }
             PipelineContextData contextsTemplate = null;
-            Func<string, DictionaryContextData> createContext = jobname => {
-                var contextData = contextsTemplate?.Clone() as DictionaryContextData ?? new DictionaryContextData();
+            bool dynamicContextTemplate = workflowContext.HasFeature("system.runner.server.dynamicContextTemplate");
+            Func<JobItem, DictionaryContextData> evalContextTemplate = null;
+            Func<JobItem, DictionaryContextData> createContext = job => {
+                var contextData = (dynamicContextTemplate && evalContextTemplate != null ? evalContextTemplate(job) : contextsTemplate?.Clone() as DictionaryContextData) ?? new DictionaryContextData();
                 contextData["inputs"] = inputs;
                 contextData["vars"] = vars;
                 contextData["env"] = globalEnv;
@@ -1205,7 +1223,7 @@ namespace Runner.Server.Controllers
                 githubctx.Add("ref_type", new StringContextData(Ref.StartsWith("refs/tags/") ? "tag" : Ref.StartsWith("refs/heads/") ? "branch" : ""));
                 githubctx.Add("ref_name", new StringContextData(Ref.StartsWith("refs/tags/") ? Ref.Substring("refs/tags/".Length) : Ref.StartsWith("refs/heads/") ? Ref.Substring("refs/heads/".Length) : ""));
                 if(AllowJobNameOnJobProperties) {
-                    githubctx.Add("job", new StringContextData(jobname));
+                    githubctx.Add("job", new StringContextData(job.name));
                 }
                 if(workflowContext.HasFeature("system.runner.server.workflowinfo")) {
                     var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
@@ -1298,47 +1316,68 @@ namespace Runner.Server.Controllers
                 }
                 Action initGlobalEnvAndContexts = () => {
                     if(!workflowContext.HasFeature("system.runner.server.disablecontextTemplate") && (workflowContext.FeatureToggles.TryGetValue("system.runner.server.contextTemplate", out var contextTemplate) || (contextTemplate = PipelineTemplateSchemaFactory.LoadResource("contextTemplate.yml")) != null)) {
-                        using(var reader = new StringReader(contextTemplate)) {
-                            var objectReader = new YamlObjectReader(null, reader, true, true, true);
-                            var contextData = new DictionaryContextData();
-                            var serverctx = new DictionaryContextData();
-                            contextData["server"] = serverctx;
-                            serverctx["event"] = payloadObject.ToPipelineContextData();
-                            serverctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
-                            serverctx.Add("server_url", new StringContextData(GitServerUrl));
-                            serverctx.Add("api_url", new StringContextData(GitApiServerUrl));
-                            serverctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
-                            serverctx.Add("workflow", new StringContextData(workflowname));
-                            serverctx.Add("repository", new StringContextData(repository_name));
-                            serverctx.Add("sha", new StringContextData(Sha));
-                            serverctx.Add("ref", new StringContextData(Ref));
-                            serverctx.Add("run_id", new StringContextData(runid.ToString()));
-                            serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
-                            serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
-                            serverctx["workflow_file_name"] = new StringContextData(workflowContext?.FileName ?? "");
-                            serverctx["variables"] = vars;
-                            var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
-                            var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
-                            var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
-                            serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
-                            serverctx["job_workflow_ref"] = new StringContextData(job_workflow_ref);
-                            serverctx["job_workflow_ref_repository"] = new StringContextData(workflowRepo);
-                            serverctx["job_workflow_ref_repository_owner"] = new StringContextData(workflowRepo.Split('/', 2)[0]);
-                            serverctx["job_workflow_ref_repository_name"] = new StringContextData(workflowRepo.Split('/', 2)[1]);
-                            serverctx["job_workflow_ref_ref"] = new StringContextData(workflowRef);
-                            var templateContext = CreateTemplateContext(workflowContext.HasFeature("system.runner.server.debugcontextTemplate") ? workflowTraceWriter : new EmptyTraceWriter(), workflowContext, contextData);
-                            templateContext.Schema = PipelineTemplateSchemaFactory.LoadSchema("contextTemplateSchema.json");
-                            templateContext.Flags |= ExpressionFlags.ExtendedDirectives | ExpressionFlags.ExtendedFunctions | ExpressionFlags.AllowAnyForInsert;
-                            var token = TemplateReader.Read(templateContext, "context-root", objectReader, null, out _);
-                            templateContext.Errors.Check();
-                            contextsTemplate = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true)?.AssertMapping("context-root").ToContextData();
-                            templateContext.Errors.Check();
-                        }
+                        evalContextTemplate = job => {
+                            using(var reader = new StringReader(contextTemplate)) {
+                                var objectReader = new YamlObjectReader(null, reader, true, true, true);
+                                var contextData = new DictionaryContextData();
+                                var serverctx = new DictionaryContextData();
+                                contextData["server"] = serverctx;
+                                serverctx["event"] = payloadObject.ToPipelineContextData();
+                                serverctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
+                                serverctx.Add("server_url", new StringContextData(GitServerUrl));
+                                serverctx.Add("api_url", new StringContextData(GitApiServerUrl));
+                                serverctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
+                                serverctx.Add("workflow", new StringContextData(workflowname));
+                                serverctx.Add("repository", new StringContextData(repository_name));
+                                serverctx.Add("sha", new StringContextData(Sha));
+                                serverctx.Add("ref", new StringContextData(Ref));
+                                serverctx.Add("run_id", new StringContextData(runid.ToString()));
+                                serverctx.Add("run_number", new StringContextData(runnumber.ToString()));
+                                serverctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                                if(job != null) {
+                                    var jobctx = new DictionaryContextData();
+                                    jobctx["name"] = new StringContextData(job.name);
+                                    if(job.DisplayName != null) {
+                                        jobctx["displayName"] = new StringContextData(job.DisplayName);
+                                    }
+                                    jobctx["instance_id"] = new StringContextData(job.Id.ToString());
+                                    var needs = new ArrayContextData();
+                                    foreach(var dep in job.Needs) {
+                                        needs.Add(new StringContextData(dep));
+                                    }
+                                    jobctx["needs"] = needs;
+                                    serverctx["job"] = jobctx;
+                                }
+                                serverctx["workflow_file_name"] = new StringContextData(workflowContext?.FileName ?? "");
+                                if(workflowContext.WorkflowRunName != null) {
+                                    serverctx["workflow_run_name"] = new StringContextData(workflowContext.WorkflowRunName);
+                                }
+                                serverctx["variables"] = vars;
+                                var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
+                                var workflowRepo = callingJob?.WorkflowRepo ?? repository_name;
+                                var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
+                                serverctx["job_workflow_sha"] = new StringContextData(callingJob?.WorkflowSha ?? Sha);
+                                serverctx["job_workflow_ref"] = new StringContextData(job_workflow_ref);
+                                serverctx["job_workflow_ref_repository"] = new StringContextData(workflowRepo);
+                                serverctx["job_workflow_ref_repository_owner"] = new StringContextData(workflowRepo.Split('/', 2)[0]);
+                                serverctx["job_workflow_ref_repository_name"] = new StringContextData(workflowRepo.Split('/', 2)[1]);
+                                serverctx["job_workflow_ref_ref"] = new StringContextData(workflowRef);
+                                var templateContext = CreateTemplateContext(workflowContext.HasFeature("system.runner.server.debugcontextTemplate") ? workflowTraceWriter : new EmptyTraceWriter(), workflowContext, contextData);
+                                templateContext.Schema = PipelineTemplateSchemaFactory.LoadSchema("contextTemplateSchema.json");
+                                templateContext.Flags |= ExpressionFlags.ExtendedDirectives | ExpressionFlags.ExtendedFunctions | ExpressionFlags.AllowAnyForInsert;
+                                var token = TemplateReader.Read(templateContext, "context-root", objectReader, null, out _);
+                                templateContext.Errors.Check();
+                                var ret = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "context-root", token, 0, null, true)?.AssertMapping("context-root").ToContextData();
+                                templateContext.Errors.Check();
+                                return ret as DictionaryContextData;
+                            }
+                        };
+                        contextsTemplate = evalContextTemplate(null);
                     }
                     if(workflowEnvironment.Count > 0) {
                         globalEnv = new DictionaryContextData();
                         foreach(var cEnv in workflowEnvironment) {
-                            var contextData = createContext("");
+                            var contextData = createContext(null);
                             var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                             var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-env", cEnv, 0, null, true);
                             // Best effort, don't check for errors
@@ -1590,7 +1629,7 @@ namespace Runner.Server.Controllers
                                     var rawdef = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "default" select r.Value).FirstOrDefault();
                                     if(rawdef != null) {
                                         workflowTraceWriter.Info($"Evaluate {defassertMessage}");
-                                        var contextData = createContext("");
+                                        var contextData = createContext(null);
                                         contextData["inputs"] = callingJob?.DispatchInputs;
                                         var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                                         rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-input-context", rawdef, 0, null, true);
@@ -1795,7 +1834,7 @@ namespace Runner.Server.Controllers
                     if(runName == null) {
                         return null;
                     }
-                    var contextData = createContext("");
+                    var contextData = createContext(null);
                     var templateContext = CreateTemplateContext(traceWriter, workflowContext, contextData);
                     var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-run-name", runName, 0, null, true);
                     templateContext.Errors.Check();
@@ -1854,7 +1893,7 @@ namespace Runner.Server.Controllers
                         case "jobs":
                         TemplateToken evaluatedJobs = null;
                         {
-                            var contextData = createContext("");
+                            var contextData = createContext(null);
                             var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                             evaluatedJobs = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "jobs", actionPair.Value, 0, null, true);
                             templateContext.Errors.Check();
@@ -1894,7 +1933,7 @@ namespace Runner.Server.Controllers
                                 neededJobs.AddRange(from need in needs select need.AssertString($"jobs.{jobname}.needs.*").Value);
                             }
                             jobitem.Needs = neededJobs.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                            var contextData = createContext(jobname);
+                            var contextData = createContext(jobitem);
                             
                             var needsctx = new DictionaryContextData();
 
@@ -2557,7 +2596,7 @@ namespace Runner.Server.Controllers
                         case "concurrency":
                         {
                             workflowTraceWriter.Info("{0}", $"Evaluate workflow concurrency");
-                            var contextData = createContext("");
+                            var contextData = createContext(null);
                             var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                             workflowConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-concurrency", actionPair.Value, 0, null, true);
                             templateContext.Errors.Check();
@@ -2705,7 +2744,7 @@ namespace Runner.Server.Controllers
                                 if(workflowOutputs != null) {
                                     try {
                                         workflowTraceWriter.Info("{0}", $"Evaluate on.workflow_call.outputs outputs");
-                                        var contextData = createContext("");
+                                        var contextData = createContext(null);
                                         contextData.Add("jobs", jobsctx);
                                         var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
                                         var outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
@@ -2995,6 +3034,7 @@ namespace Runner.Server.Controllers
                 initializingJobs.TryAdd(workflowTimelineId, new Job() { JobId = workflowTimelineId, TimeLineId = workflowTimelineId, runid = runid } );
                 if(attempt.Attempt > 1) {
                     workflowRecordId = Guid.NewGuid();
+                    TimelineController.dict[workflowTimelineId] = (new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}" } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                     new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}" } }));
                 } else {
                     new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
@@ -3402,6 +3442,7 @@ namespace Runner.Server.Controllers
                         throw new Exception(b.ToString());
                     }
                 }
+                var stagesByName = new Dictionary<string, Azure.Devops.Stage>(StringComparer.OrdinalIgnoreCase);
                 var allJobs = new JobItem[0];
                 for(int s = 0; s < pipeline.Stages.Count; s++) {
                     var stage = pipeline.Stages[s];
@@ -3676,7 +3717,7 @@ namespace Runner.Server.Controllers
                                     return PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
                                 };
                                 Action<TaskResult> sendFinishJob = result => {
-                                    var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = jobitem.name.PrefixJobIdIfNotNull(callingJob?.Id), name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
+                                    var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = jobitem.name.PrefixJobIdIfNotNull(stage.Name), name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                     AddJob(_job);
                                     new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = result, RequestId = jobitem.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                 };
@@ -3701,9 +3742,6 @@ namespace Runner.Server.Controllers
                                     var deploymentStrategy = job?.Strategy?.RunOnce ?? (Azure.Devops.Strategy.RunOnceStrategy) job?.Strategy?.Rolling ?? (Azure.Devops.Strategy.RunOnceStrategy) job?.Strategy?.Canary; 
                                 
                                     var variables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
-                                    variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
-                                    Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
-                                    variables.Add("system.runnerGroupName", new VariableValue("misc", false));
                                     variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
                                     // For actions/upload-artifact@v1, actions/download-artifact@v1
                                     variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
@@ -3930,7 +3968,7 @@ namespace Runner.Server.Controllers
                                     if(jobTotal > 1) {
                                         jobitem.Childs = new List<JobItem>();
                                         jobitem.NoStatusCheck = true;
-                                        var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = jobitem.name.PrefixJobIdIfNotNull(callingJob?.Id), name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
+                                        var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = jobitem.name.PrefixJobIdIfNotNull(stage.Name), name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                         var clone = Clone();
                                         Task.Run(async () => {
                                             try {
@@ -4005,9 +4043,9 @@ namespace Runner.Server.Controllers
                                             
                                             contextData["matrix"] = null;
                                             if(finishedJobs != null) {
-                                                if(finishedJobs.TryGetValue(jobname, out var fjobs)) {
+                                                if(finishedJobs.TryGetValue($"{stage.Name}/{jobname}", out var fjobs)) {
                                                     foreach(var fjob in fjobs) {
-                                                        if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new NullToken(null, null, null), fjob.MatrixToken)) {
+                                                        if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new MappingToken(null, null, null), fjob.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new MappingToken(null, null, null))) {
                                                             var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true, Stage = stage.Name } : jobitem;
                                                             if(!string.IsNullOrEmpty(displaySuffix)) {
                                                                 _next.RefPrefix = $"{displaySuffix}.";
@@ -4028,11 +4066,20 @@ namespace Runner.Server.Controllers
                                                 }
                                                 Array.ForEach(finishedJobs.ToArray(), fjobs => {
                                                     foreach(var djob in dependentjobgroup) {
-                                                        if(djob.Dependencies != null && (string.Equals(fjobs.Key, djob.name, StringComparison.OrdinalIgnoreCase) || fjobs.Key.StartsWith(djob.name + "/", StringComparison.OrdinalIgnoreCase))) {
-                                                            foreach(var dep in djob.Dependencies) {
-                                                                if(string.Equals(dep.Key, jobname, StringComparison.OrdinalIgnoreCase)) {
-                                                                    finishedJobs.Remove(fjobs.Key);
-                                                                    return;
+                                                        if(djob.Dependencies != null && (string.Equals(fjobs.Key, $"{djob.Stage}/{djob.name}", StringComparison.OrdinalIgnoreCase) || fjobs.Key.StartsWith($"{djob.Stage}/{djob.name}" + "/", StringComparison.OrdinalIgnoreCase))) {
+                                                            if(string.Equals(djob.Stage, stage.Name, StringComparison.OrdinalIgnoreCase)) {
+                                                                foreach(var dep in djob.Dependencies) {
+                                                                    if(string.Equals(dep.Key, jobname, StringComparison.OrdinalIgnoreCase)) {
+                                                                        finishedJobs.Remove(fjobs.Key);
+                                                                        return;
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                foreach(var dep in stagesByName[djob.Stage].Dependencies) {
+                                                                    if(string.Equals(dep.Key, stage.Name, StringComparison.OrdinalIgnoreCase)) {
+                                                                        finishedJobs.Remove(fjobs.Key);
+                                                                        return;
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -4089,7 +4136,7 @@ namespace Runner.Server.Controllers
                                                 }
                                                 var jcontextData = contextData.Clone() as DictionaryContextData;
                                                 jcontextData["variables"] = vars;
-                                                return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, createEvalVariable(matrixJobTraceWriter, jcontextData), env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
+                                                return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, createEvalVariable(matrixJobTraceWriter, jcontextData), env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, stage.Name, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                             } catch(Exception ex) {
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
                                                 return failJob();
@@ -4416,7 +4463,6 @@ namespace Runner.Server.Controllers
                             ji.Dependencies = pred(ji, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
                     }
                 });
-                var stagesByName = new Dictionary<string, Azure.Devops.Stage>(StringComparer.OrdinalIgnoreCase);
                 pipeline.Stages.ForEach(ji => {
                     stagesByName[ji.Name] = ji;
                     if(ji.DependsOn?.Any() == true) {
@@ -4504,8 +4550,15 @@ namespace Runner.Server.Controllers
                 if(list) {
                     workflowTraceWriter.Info("{0}", $"Found {dependentjobgroup.Count} matching jobs for the requested event {e}");
                     foreach(var j in dependentjobgroup) {
+                        var depMessages = new List<string>();
                         if(j.Needs.Any()) {
-                            workflowTraceWriter.Info("{0}", $"{j.Stage}/{j.name} depends on {string.Join(", ", j.Needs)}");
+                            depMessages.Add($"jobs: {string.Join(", ", j.Needs)}");
+                        }
+                        if(stagesByName[j.Stage].DependsOn?.Any() ?? false) {
+                            depMessages.Add($"stages: {string.Join(", ", stagesByName[j.Stage].DependsOn)}");
+                        }
+                        if(depMessages.Any()) {
+                            workflowTraceWriter.Info("{0}", $"{j.Stage}/{j.name} depends on {string.Join(" and ", depMessages.ToArray())}");
                         } else {
                             workflowTraceWriter.Info("{0}", $"{j.Stage}/{j.name}");
                         }
@@ -4975,7 +5028,11 @@ namespace Runner.Server.Controllers
         private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
         {
             var workflowRef = callingJob?.WorkflowRef ?? callingJob?.WorkflowSha ?? Ref ?? Sha;
+            var workflowSha = callingJob?.WorkflowSha ?? Sha;
             var workflowRepo = callingJob?.WorkflowRepo ?? repo;
+            var workflowPath = callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "";
+            var job_workflow_full_path = $"{workflowRepo}/{workflowPath}";
+            var job_workflow_ref = $"{job_workflow_full_path}@{workflowRef}";
             int fileContainerId = -1;
             Func<Func<bool, Job>> failJob = () => {
                 var jid = jobId;
@@ -5204,6 +5261,7 @@ namespace Runner.Server.Controllers
                             }
                             var calledWorkflowRepo = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowRepo : reference.Name;
                             var calledWorkflowRef = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowRef : reference.Ref;
+                            var calledWorkflowSha = reference.RepositoryType == PipelineConstants.SelfAlias ? workflowSha : null;
                             Action<string, string, string> workflow_call = (filename, filecontent, sha) => {
                                 var hook = workflowContext.EventPayload;
                                 var ghook = hook.ToObject<GiteaHook>();
@@ -5275,7 +5333,7 @@ namespace Runner.Server.Controllers
                                 client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                                 string githubAppToken = null;
                                 // Ref is better than nothing
-                                string workflow_sha = calledWorkflowRef;
+                                string workflow_sha = calledWorkflowSha ?? calledWorkflowRef;
                                 try {
                                     string token = null;
                                     if(secretsProvider?.GetReservedSecrets()?.TryGetValue("GITHUB_TOKEN", out var providedToken) == true && !string.IsNullOrEmpty(providedToken)) {
@@ -5293,7 +5351,7 @@ namespace Runner.Server.Controllers
                                             token = githubAppToken;
                                         }
                                     }
-                                    if(!string.IsNullOrEmpty(token)) {
+                                    if(!string.IsNullOrEmpty(token) && calledWorkflowSha == null) {
                                         client.DefaultRequestHeaders.Add("Authorization", $"token {token}");
                                         var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{calledWorkflowRepo}/commits"));
                                         urlBuilder.Query = $"?sha={Uri.EscapeDataString(calledWorkflowRef)}&page=1&limit=1&per_page=1";
@@ -5490,7 +5548,6 @@ namespace Runner.Server.Controllers
                         systemVssConnection.Data["FeedStreamUrl"] = feedStreamUrl.ToString();
                         if(calculatedPermissions.TryGetValue("id_token", out var p_id_token) && p_id_token == "write") {
                             var environment = deploymentEnvironmentValue?.Name ?? ("");
-                            var job_workflow_ref = $"{workflowRepo}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{workflowRef}";
                             var claims = new Dictionary<string, string>();
                             claims["repository"] = repo;
                             claims["run_attempt"] = attempt?.Attempt.ToString() ?? "1";
@@ -5543,10 +5600,14 @@ namespace Runner.Server.Controllers
                         }
                         var variables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
                         variables.Add("system.github.job", new VariableValue(name, false));
-                        variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
-                        Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
-                        variables.Add("system.phaseDisplayName", new VariableValue(special.Replace($"{workflowname}_{parentId}_{name}", "-"), false));
-                        variables.Add("system.runnerGroupName", new VariableValue("misc", false));
+                        // actions/runner throws if ${{ inputs == null }}, due to AssertDictionary without null check
+                        if(contextData.GetPath("inputs") != null) {
+                            variables.Add("system.workflowFileFullPath", new VariableValue(job_workflow_full_path, false));
+                        }
+                        variables.Add("system.workflowFilePath", new VariableValue(workflowPath, false));
+                        Regex special = new Regex("[^a-zA-Z_\\-]");
+                        variables.Add("system.phaseDisplayName", new VariableValue(special.Replace($"{name}", "-"), false));
+                        variables.Add("system.runnerGroupName", new VariableValue("Default", false));
                         variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
                         variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
                         variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
@@ -6931,7 +6992,7 @@ namespace Runner.Server.Controllers
                         if(workflow.Any()) {
                             foreach (var w in workflow) {
                                 HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
-                                                                     : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, taskNames: taskNames);
+                                                                     : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
                                 if(response.skipped || response.failed) {
                                     runid.Remove(response.run_id);
                                     if(response.failed) {
@@ -7234,9 +7295,13 @@ namespace Runner.Server.Controllers
 
             public async Task ExecuteResultAsync(ActionContext context)
             {
-                var stream = context.HttpContext.Response.Body;
-                context.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue(_contentType);
-                await _onStreamAvailabe(stream);
+                try {
+                    var stream = context.HttpContext.Response.Body;
+                    context.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue(_contentType);
+                    await _onStreamAvailabe(stream);
+                } catch(Exception ex) {
+                    Console.Error.WriteLine($"{ex.Message}\nStacktrace: {ex.StackTrace}");
+                }
             }
         }
 
