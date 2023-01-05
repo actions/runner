@@ -25,7 +25,7 @@ namespace GitHub.Runner.Worker
     public interface IActionRunner : IStep, IRunnerService
     {
         ActionRunStage Stage { get; set; }
-        bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context);
+        bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated);
         Pipelines.ActionStep Action { get; set; }
     }
 
@@ -285,16 +285,20 @@ namespace GitHub.Runner.Worker
 
         }
 
-        public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context)
+        /// <summary>
+        /// Attempts to evaluate the DisplayName of this IActionRunner.
+        /// Returns true if the DisplayName is already present or it was successfully evaluated.
+        /// </summary>
+        public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated)
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(Action, nameof(Action));
 
-            // If we have already expanded the display name, there is no need to expand it again
-            // TODO: Remove the ShouldEvaluateDisplayName check and field post m158 deploy, we should do it by default once the server is updated
+            updated = false;
+            // If we have already expanded the display name, don't bother attempting [re-]expansion.
             if (_didFullyEvaluateDisplayName || !string.IsNullOrEmpty(Action.DisplayName))
             {
-                return false;
+                return true;
             }
 
             bool didFullyEvaluate;
@@ -304,6 +308,7 @@ namespace GitHub.Runner.Worker
             if (didFullyEvaluate)
             {
                 _displayName = HostContext.SecretMasker.MaskSecrets(_displayName);
+                updated = true;
             }
             context.Debug($"Set step '{Action.Name}' display name to: '{_displayName}'");
             _didFullyEvaluateDisplayName = didFullyEvaluate;
