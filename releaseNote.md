@@ -1,3 +1,7 @@
+Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
+To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
+See https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/adding-self-hosted-runners
+
 ## Features
 - Expose github.actor_id, github.workflow_ref & github.workflow_sha as environment variable (#2249)
 - Added worker and listener logs to stdout (#2291, #2307)
