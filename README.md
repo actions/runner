@@ -522,11 +522,13 @@ You can disable the authentication layer, then you can point the artifact / cach
 
 ```
 Runner.Server --Runner.Server:byPassAuth=true --urls "http://*:4555"
-´´´
+```
 
 You can now point act or nodejs to this server, then you can use the actions artifact and cache apis locally.
 
+```
 act -W cache.yml --env ACTIONS_CACHE_URL=http://host.docker.internal:4555/
+```
 
 ### Dev
 ```
