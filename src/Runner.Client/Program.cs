@@ -1658,15 +1658,10 @@ namespace Runner.Client
                                     }
                                     JObject payloadContent = new JObject();
                                     {
-                                        var acommits = new JArray();
-                                        payloadContent["commits"] = acommits;
                                         var sha = parameters.Sha;
                                         var bf = "0000000000000000000000000000000000000000";
                                         var user = JObject.FromObject(new { login = parameters.Actor, name = parameters.Actor, email = $"{parameters.Actor}@runner.server.localhost", id = 976638, type = "user" });
                                         payloadContent["sender"] = user;
-                                        payloadContent["pusher"] = user;
-                                        var repoowner = user;
-                                        payloadContent["before"] = bf;
                                         var Ref = parameters.Ref;
                                         string repofullname = parameters.Repository;
                                         try {
@@ -1762,11 +1757,19 @@ namespace Runner.Client
                                         query.Add("Ref", Ref);
                                         query.Add("Sha", sha);
                                         query.Add("Repository", repofullname);
-                                        payloadContent["ref"] = Ref;
-                                        payloadContent["after"] = sha;
-                                        var commit = JObject.FromObject(new { message = "", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
-                                        acommits.AddFirst(commit);
-                                        payloadContent["head_commit"] = commit;
+                                        if(parameters.Event == "push") {
+                                            var acommits = new JArray();
+                                            var commit = JObject.FromObject(new { message = "", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
+                                            acommits.AddFirst(commit);
+                                            payloadContent["head_commit"] = commit;
+                                            payloadContent["commits"] = acommits;
+                                            payloadContent["pusher"] = user;
+                                            payloadContent["before"] = bf;
+                                            payloadContent["ref"] = Ref;
+                                            payloadContent["after"] = sha;
+                                        }
+                                        var reposownername = repofullname.Split('/', 2)[0];
+                                        var repoowner = String.Equals(parameters.Actor, reposownername, StringComparison.OrdinalIgnoreCase) ? user : JObject.FromObject(new { login = reposownername, name = reposownername, email = $"{reposownername}@runner.server.localhost", id = 976639, type = "user" });
                                         var repository = JObject.FromObject(new { owner = repoowner, default_branch = parameters.DefaultBranch ?? "main", master_branch = parameters.DefaultBranch ?? "master", name = repofullname.Split('/', 2)[1], full_name = repofullname });
                                         payloadContent["repository"] = repository;
                                     }
@@ -2065,7 +2068,8 @@ namespace Runner.Client
                                                     Func<string, string, bool> matchRepository = (l, r) => {
                                                         var lnameAndRef = l.Split("=", 2).FirstOrDefault()?.Split("@", 2);
                                                         var rnameAndRef = r.Split("@", 2);
-                                                        return lnameAndRef?.Length == 2 && rnameAndRef?.Length == 2 && string.Equals(lnameAndRef[0], rnameAndRef[0], StringComparison.OrdinalIgnoreCase) && lnameAndRef[1] == rnameAndRef[1];
+                                                        // Fallback to exact match, this should allow bad repository names to match for local azure tasks
+                                                        return lnameAndRef?.Length == 2 && rnameAndRef?.Length == 2 ? string.Equals(lnameAndRef[0], rnameAndRef[0], StringComparison.OrdinalIgnoreCase) && lnameAndRef[1] == rnameAndRef[1] : l == r;
                                                     };
                                                     var reporoot = endpoint.Repository == null ? Path.GetFullPath(parameters.Directory ?? ".") : (from r in parameters.LocalRepositories where matchRepository(r, endpoint.Repository) select Path.GetFullPath(r.Substring($"{endpoint.Repository}=".Length))).LastOrDefault();
                                                     if(string.Equals(endpoint.Format, "repoexists", StringComparison.OrdinalIgnoreCase) && endpoint.Path == null) {
