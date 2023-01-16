@@ -144,7 +144,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should report success with no updated required if there's already a valid display name.
-            var validDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
             Assert.True(validDisplayName);
@@ -178,7 +178,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var validDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
             Assert.True(validDisplayName);
@@ -214,7 +214,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should ignore the displayNameToken since there's already an explicit value for DisplayName
-            var validDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
             Assert.True(validDisplayName);
@@ -251,7 +251,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var validDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
             Assert.True(validDisplayName);
@@ -280,7 +280,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var validDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
             Assert.True(validDisplayName);
@@ -307,7 +307,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should not do anything if we don't have context on the display name
-            var validDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
             Assert.False(validDisplayName);

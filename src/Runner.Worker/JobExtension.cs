@@ -306,13 +306,13 @@ namespace GitHub.Runner.Worker
                                 }
                             }
 
-                            actionRunner.TryEvaluateDisplayName(contextData, context, out _);
+                            actionRunner.EvaluateDisplayName(contextData, context, out _);
                             jobSteps.Add(actionRunner);
 
                             if (prepareResult.PreStepTracker.TryGetValue(step.Id, out var preStep))
                             {
                                 Trace.Info($"Adding pre-{action.DisplayName}.");
-                                preStep.TryEvaluateDisplayName(contextData, context, out _);
+                                preStep.EvaluateDisplayName(contextData, context, out _);
                                 preStep.DisplayName = $"Pre {preStep.DisplayName}";
                                 preJobSteps.Add(preStep);
                             }
