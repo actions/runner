@@ -27,6 +27,18 @@ namespace GitHub.Services.Common
             }
         }
 
+        public static string TrimExcess(string text, int maxLength)
+        {
+            string result = text;
+
+            if (!string.IsNullOrEmpty(text) && text.Length > maxLength)
+            {
+                result = text.Substring(0, maxLength);
+            }
+
+            return result;
+        }
+
         public static string ToBase64StringNoPaddingFromString(string utf8String)
         {
             return ToBase64StringNoPadding(Encoding.UTF8.GetBytes(utf8String));
@@ -46,7 +58,7 @@ namespace GitHub.Services.Common
 
         //These methods convert To and From base64 strings without padding
         //for JWT scenarios
-        //code taken from the JWS spec here: 
+        //code taken from the JWS spec here:
         //http://tools.ietf.org/html/draft-ietf-jose-json-web-signature-08#appendix-C
         public static String ToBase64StringNoPadding(this byte[] bytes)
         {

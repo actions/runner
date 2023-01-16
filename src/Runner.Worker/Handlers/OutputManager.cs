@@ -108,7 +108,6 @@ namespace GitHub.Runner.Worker.Handlers
                         try
                         {
                             match = matcher.Match(stripped);
-
                             break;
                         }
                         catch (RegexMatchTimeoutException ex)
@@ -116,7 +115,7 @@ namespace GitHub.Runner.Worker.Handlers
                             if (attempt < _maxAttempts)
                             {
                                 // Debug
-                                _executionContext.Debug($"Timeout processing issue matcher '{matcher.Owner}' against line '{stripped}'. Exception: {ex.ToString()}");
+                                _executionContext.Debug($"Timeout processing issue matcher '{matcher.Owner}' against line '{stripped}'. Exception: {ex}");
                             }
                             else
                             {
@@ -139,12 +138,10 @@ namespace GitHub.Runner.Worker.Handlers
 
                         // Convert to issue
                         var issue = ConvertToIssue(match);
-
                         if (issue != null)
                         {
                             // Log issue
-                            _executionContext.AddIssue(issue, stripped);
-
+                            _executionContext.AddIssue(issue, writeToLog: true);
                             return;
                         }
                     }

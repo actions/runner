@@ -16,6 +16,7 @@ using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Handlers;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -90,7 +91,7 @@ namespace GitHub.Runner.Worker
         void SetGitHubContext(string name, string value);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
-        void AddIssue(Issue issue, string message = null);
+        void AddIssue(Issue issue, bool writeToLog);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
 
@@ -446,7 +447,7 @@ namespace GitHub.Runner.Worker
             {
                 foreach (var issue in _embeddedIssueCollector)
                 {
-                    AddIssue(issue);
+                    AddIssue(issue, writeToLog: false);
                 }
             }
 
@@ -577,73 +578,50 @@ namespace GitHub.Runner.Worker
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
         }
 
-        // This is not thread safe, the caller need to take lock before calling issue()
-        public void AddIssue(Issue issue, string logMessage = null)
+        // This is not thread safe, the caller needs to take lock before calling issue()
+        public void AddIssue(Issue issue, bool writeToLog)
         {
             ArgUtil.NotNull(issue, nameof(issue));
 
-            if (string.IsNullOrEmpty(logMessage))
-            {
-                logMessage = issue.Message;
-            }
+            string refinedMessage = PrimitiveExtensions.TrimExcess(HostContext.SecretMasker.MaskSecrets(issue.Message), _maxIssueMessageLength);
+            issue.Message = refinedMessage;
 
-            issue.Message = HostContext.SecretMasker.MaskSecrets(issue.Message);
-            if (issue.Message.Length > _maxIssueMessageLength)
-            {
-                issue.Message = issue.Message[.._maxIssueMessageLength];
-            }
-
-            // Tracking the line number (logFileLineNumber) and step number (stepNumber) for each issue that gets created
-            // Actions UI from the run summary page use both values to easily link to an exact locations in logs where annotations originate from
+            // It's important to keep track of the step number (key:stepNumber) and the line number (key:logFileLineNumber) of every issue that gets logged.
+            // Actions UI from the run summary page use both values to easily link to an exact locations in logs where annotations originate from.
             if (_record.Order != null)
             {
                 issue.Data["stepNumber"] = _record.Order.ToString();
             }
 
-            if (issue.Type == IssueType.Error)
+            string wellKnownTag = null;
+            Int32? previousCountForIssueType = null;
+            switch (issue.Type)
             {
-                if (!string.IsNullOrEmpty(logMessage))
-                {
-                    long logLineNumber = Write(WellKnownTags.Error, logMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
-                }
-
-                if (_record.ErrorCount < _maxIssueCount)
-                {
-                    _record.Issues.Add(issue);
-                }
-
-                _record.ErrorCount++;
+                case IssueType.Error:
+                    wellKnownTag = WellKnownTags.Error;
+                    previousCountForIssueType = _record.ErrorCount++;
+                    break;
+                case IssueType.Warning:
+                    wellKnownTag = WellKnownTags.Warning;
+                    previousCountForIssueType = _record.WarningCount++;
+                    break;
+                case IssueType.Notice:
+                    wellKnownTag = WellKnownTags.Notice;
+                    previousCountForIssueType = _record.NoticeCount++;
+                    break;
             }
-            else if (issue.Type == IssueType.Warning)
+
+            if (!string.IsNullOrEmpty(wellKnownTag))
             {
-                if (!string.IsNullOrEmpty(logMessage))
+                if (writeToLog && !string.IsNullOrEmpty(refinedMessage))
                 {
-                    long logLineNumber = Write(WellKnownTags.Warning, logMessage);
+                    long logLineNumber = Write(wellKnownTag, refinedMessage);
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
-
-                if (_record.WarningCount < _maxIssueCount)
+                if (previousCountForIssueType.GetValueOrDefault(0) < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
                 }
-
-                _record.WarningCount++;
-            }
-            else if (issue.Type == IssueType.Notice)
-            {
-                if (!string.IsNullOrEmpty(logMessage))
-                {
-                    long logLineNumber = Write(WellKnownTags.Notice, logMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
-                }
-
-                if (_record.NoticeCount < _maxIssueCount)
-                {
-                    _record.Issues.Add(issue);
-                }
-
-                _record.NoticeCount++;
             }
 
             // Embedded ExecutionContexts (a.k.a. Composite actions) should never upload a timeline record to the server.
@@ -1017,16 +995,7 @@ namespace GitHub.Runner.Worker
                             if ((issue.Type == IssueType.Error || issue.Type == IssueType.Warning) &&
                                 !string.IsNullOrEmpty(issue.Message))
                             {
-                                string issueTelemetry;
-                                if (issue.Message.Length > _maxIssueMessageLengthInTelemetry)
-                                {
-                                    issueTelemetry = $"{issue.Message[.._maxIssueMessageLengthInTelemetry]}";
-                                }
-                                else
-                                {
-                                    issueTelemetry = issue.Message;
-                                }
-
+                                string issueTelemetry = PrimitiveExtensions.TrimExcess(issue.Message, _maxIssueMessageLengthInTelemetry);
                                 StepTelemetry.ErrorMessages.Add(issueTelemetry);
 
                                 // Only send over the first 3 issues to avoid sending too much data.
@@ -1200,19 +1169,22 @@ namespace GitHub.Runner.Worker
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Error(this IExecutionContext context, string message)
         {
-            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message });
+            var issue = new Issue() { Type = IssueType.Error, Message = message };
+            context.AddIssue(issue, writeToLog: true);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void InfrastructureError(this IExecutionContext context, string message)
         {
-            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true });
+            var issue = new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true };
+            context.AddIssue(issue, writeToLog: true);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Warning(this IExecutionContext context, string message)
         {
-            context.AddIssue(new Issue() { Type = IssueType.Warning, Message = message });
+            var issue = new Issue() { Type = IssueType.Warning, Message = message };
+            context.AddIssue(issue, writeToLog: true);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
