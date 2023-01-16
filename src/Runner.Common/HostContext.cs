@@ -226,6 +226,20 @@ namespace GitHub.Runner.Common
             }
 
             _userAgents.Add(new ProductInfoHeaderValue("CommitSHA", BuildConstants.Source.CommitHash));
+
+            var extraUserAgent = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_EXTRA_USER_AGENT");
+            if (!string.IsNullOrEmpty(extraUserAgent))
+            {
+                var extraUserAgentSplit = extraUserAgent.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (extraUserAgentSplit.Length != 2)
+                {
+                    _trace.Error($"GITHUB_ACTIONS_RUNNER_EXTRA_USER_AGENT is not in the format of 'name/version'.");
+                }
+
+                var extraUserAgentHeader = new ProductInfoHeaderValue(extraUserAgentSplit[0], extraUserAgentSplit[1]);
+                _trace.Info($"Adding extra user agent '{extraUserAgentHeader}' to all HTTP requests.");
+                _userAgents.Add(extraUserAgentHeader);
+            }
         }
 
         public string GetDirectory(WellKnownDirectory directory)
