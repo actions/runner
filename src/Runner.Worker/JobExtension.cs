@@ -341,11 +341,11 @@ namespace GitHub.Runner.Worker
                                 context.Output("##[endgroup]");
                             }
                         }
+                    }
 
-                        if (!string.IsNullOrWhiteSpace(message.JobDisplayName)) 
-                        {
-                            context.Output($"Complete job name: {message.JobDisplayName}");
-                        }
+                    if (!string.IsNullOrWhiteSpace(message.JobDisplayName))
+                    {
+                        context.Output($"Complete job name: {message.JobDisplayName}");
                     }
 
                     var intraActionStates = new Dictionary<Guid, Dictionary<string, string>>();
