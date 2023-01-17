@@ -8,6 +8,28 @@ namespace GitHub.Runner.Worker
 {
     public delegate void OnMatcherChanged(object sender, MatcherChangedEventArgs e);
 
+
+    public sealed class IssueMetadata
+    {
+        public IssueMetadata(string key, string value)
+            : this(null, false, null, new []{ KeyValuePair.Create(key, value) })
+        {
+        }
+
+        public IssueMetadata(string category, bool infrastructureIssue, string logMessageOverride, IEnumerable<KeyValuePair<string, string>> data)
+        {
+            this.Category = category;
+            this.IsInfrastructureIssue = infrastructureIssue;
+            this.LogMessageOverride = logMessageOverride;
+            this.Data = data;
+        }
+
+        public readonly string Category;
+        public readonly bool IsInfrastructureIssue;
+        public readonly string LogMessageOverride;
+        public readonly IEnumerable<KeyValuePair<string, string>> Data;
+    }
+
     public sealed class MatcherChangedEventArgs : EventArgs
     {
         public MatcherChangedEventArgs(IssueMatcherConfig config)
@@ -69,7 +91,7 @@ namespace GitHub.Runner.Worker
 
                 if (regexMatch.Success)
                 {
-                    return new IssueMatch(null, pattern, regexMatch.Groups, DefaultSeverity);
+                    return new IssueMatch(line, null, pattern, regexMatch.Groups, DefaultSeverity);
                 }
 
                 return null;
@@ -110,13 +132,13 @@ namespace GitHub.Runner.Worker
                                 }
 
                                 // Return
-                                return new IssueMatch(runningMatch, pattern, regexMatch.Groups, DefaultSeverity);
+                                return new IssueMatch(line, runningMatch, pattern, regexMatch.Groups, DefaultSeverity);
                             }
                             // Not the last pattern
                             else
                             {
                                 // Store the match
-                                _state[i] = new IssueMatch(runningMatch, pattern, regexMatch.Groups);
+                                _state[i] = new IssueMatch(line, runningMatch, pattern, regexMatch.Groups);
                             }
                         }
                         // Not matched
@@ -184,8 +206,9 @@ namespace GitHub.Runner.Worker
 
     public sealed class IssueMatch
     {
-        public IssueMatch(IssueMatch runningMatch, IssuePattern pattern, GroupCollection groups, string defaultSeverity = null)
+        public IssueMatch(string sourceText, IssueMatch runningMatch, IssuePattern pattern, GroupCollection groups, string defaultSeverity = null)
         {
+            SourceText = sourceText;
             File = runningMatch?.File ?? GetValue(groups, pattern.File);
             Line = runningMatch?.Line ?? GetValue(groups, pattern.Line);
             Column = runningMatch?.Column ?? GetValue(groups, pattern.Column);
@@ -199,6 +222,8 @@ namespace GitHub.Runner.Worker
                 Severity = defaultSeverity;
             }
         }
+
+        public string SourceText { get; }
 
         public string File { get; }
 
@@ -455,7 +480,7 @@ namespace GitHub.Runner.Worker
             if (Loop && Message == null)
             {
                 throw new ArgumentException($"The {_loopPropertyName} pattern must set '{_messagePropertyName}'");
-            }   
+            }
 
             var regex = new Regex(Pattern ?? string.Empty, RegexOptions);
             var groupCount = regex.GetGroupNumbers().Length;

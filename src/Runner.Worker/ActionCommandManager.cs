@@ -648,7 +648,7 @@ namespace GitHub.Runner.Worker
             var filteredDictionaryEntries = command.Properties
                                                    .Where(kvp => !string.Equals(kvp.Key, keyToExclude, StringComparison.OrdinalIgnoreCase));
 
-            var metadata = new IssueMetadata(issueCategory, false, filteredDictionaryEntries);
+            var metadata = new IssueMetadata(issueCategory, false, null, filteredDictionaryEntries);
             var issue = context.CreateIssue(this.Type, command.Data, metadata, true);
             context.AddIssue(issue);
         }

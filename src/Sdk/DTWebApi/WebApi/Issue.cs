@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using GitHub.Services.Common;
 
 namespace GitHub.DistributedTask.WebApi
 {
@@ -14,48 +15,25 @@ namespace GitHub.DistributedTask.WebApi
         string this[string key] { get; }
     }
 
-    public class IssueMetadata
-    {
-
-        public IssueMetadata(string key, string value)
-            : this(null, false, new []{ KeyValuePair.Create(key, value) })
-        {
-        }
-
-        public IssueMetadata(string category, bool infrastructureIssue, IEnumerable<KeyValuePair<string, string>> data)
-        {
-            this.Category = category;
-            this.IsInfrastructureIssue = infrastructureIssue;
-            this.Data = data;
-        }
-
-
-        public readonly string Category;
-        public readonly bool IsInfrastructureIssue;
-        public readonly IEnumerable<KeyValuePair<string, string>> Data;
-    }
-
     [DataContract]
     public class Issue : IReadOnlyIssue
     {
 
         public Issue()
+            : this(null)
         {
         }
 
         private Issue(Issue original)
         {
-            this.Type = original.Type;
-            this.Category = original.Category;
-            this.Message = original.Message;
-            this.IsInfrastructureIssue = original.IsInfrastructureIssue;
-
-            if (original.m_data != null)
+            m_data = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+            if (original != null)
             {
-                foreach (var item in original.m_data)
-                {
-                    this.Data.Add(item);
-                }
+                this.Type = original.Type;
+                this.Category = original.Category;
+                this.Message = original.Message;
+                this.IsInfrastructureIssue = original.IsInfrastructureIssue;
+                this.Data.AddRange(original.Data);
             }
         }
 
@@ -91,10 +69,6 @@ namespace GitHub.DistributedTask.WebApi
         {
             get
             {
-                if (m_data == null)
-                {
-                    m_data = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
-                }
                 return m_data;
             }
         }

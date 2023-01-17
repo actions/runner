@@ -620,10 +620,15 @@ namespace GitHub.Runner.Worker
 
             if (!string.IsNullOrEmpty(wellKnownTag))
             {
-                if (writeToLog && !string.IsNullOrEmpty(refinedMessage))
+                if (writeToLog)
                 {
-                    long logLineNumber = Write(wellKnownTag, refinedMessage);
-                    result.Data["logFileLineNumber"] = logLineNumber.ToString();
+                    //Note that ::Write() has it's own secret masking logic
+                    string logText = metadata?.LogMessageOverride ?? result.Message;
+                    if (!string.IsNullOrEmpty(logText))
+                    {
+                        long logLineNumber = Write(wellKnownTag, logText);
+                        result.Data["logFileLineNumber"] = logLineNumber.ToString();
+                    }
                 }
                 if (previousCountForIssueType.GetValueOrDefault(0) < _maxIssueCount)
                 {
@@ -1192,7 +1197,7 @@ namespace GitHub.Runner.Worker
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void InfrastructureError(this IExecutionContext context, string message)
         {
-            var metadata = new IssueMetadata(null, true, Enumerable.Empty<KeyValuePair<string, string>>());
+            var metadata = new IssueMetadata(null, true, null, Enumerable.Empty<KeyValuePair<string, string>>());
             var issue = context.CreateIssue(IssueType.Error, message, metadata, true);
             context.AddIssue(issue);
         }

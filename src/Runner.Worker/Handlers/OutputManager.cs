@@ -98,7 +98,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var matchers = _matchers;
 
                 // Strip color codes
-                var stripped = line.Contains(_colorCodePrefix) ? _colorCodeRegex.Replace(line, string.Empty) : line;
+                var refinedLine = line.Contains(_colorCodePrefix) ? _colorCodeRegex.Replace(line, string.Empty) : line;
 
                 foreach (var matcher in matchers)
                 {
@@ -108,7 +108,7 @@ namespace GitHub.Runner.Worker.Handlers
                         // Match
                         try
                         {
-                            match = matcher.Match(stripped);
+                            match = matcher.Match(refinedLine);
                             break;
                         }
                         catch (RegexMatchTimeoutException ex)
@@ -116,7 +116,7 @@ namespace GitHub.Runner.Worker.Handlers
                             if (attempt < _maxAttempts)
                             {
                                 // Debug
-                                _executionContext.Debug($"Timeout processing issue matcher '{matcher.Owner}' against line '{stripped}'. Exception: {ex}");
+                                _executionContext.Debug($"Timeout processing issue matcher '{matcher.Owner}' against line '{refinedLine}'. Exception: {ex}");
                             }
                             else
                             {
@@ -324,7 +324,7 @@ namespace GitHub.Runner.Worker.Handlers
                 _executionContext.Debug($"Dropping file value '{match.File}' and fromPath value '{match.FromPath}'. Exception during validation: {ex}");
             }
 
-            var metadata = new IssueMetadata(null, false, issueData);
+            var metadata = new IssueMetadata(null, false, match.SourceText, issueData);
             var issue = _executionContext.CreateIssue(issueType, match.Message, metadata, true);
             return issue;
         }

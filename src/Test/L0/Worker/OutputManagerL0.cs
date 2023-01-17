@@ -983,8 +983,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _onMatcherChanged = handler;
                 });
-            _executionContext.Setup(x => x.CreateIssue(It.IsAny<DTWebApi.IssueType>(), It.IsAny<string>(), It.IsAny<DTWebApi.IssueMetadata>(), It.IsAny<bool>()))
-                .Returns((DTWebApi.IssueType type, string message, DTWebApi.IssueMetadata metadata, bool writeToLog) =>
+            _executionContext.Setup(x => x.CreateIssue(It.IsAny<DTWebApi.IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
+                .Returns((DTWebApi.IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
                 {
                     var result = new DTWebApi.Issue()
                     {
