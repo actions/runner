@@ -660,9 +660,10 @@ namespace GitHub.Runner.Worker
                 var freeSpaceInMB = driveInfo.AvailableFreeSpace / 1024 / 1024;
                 if (freeSpaceInMB < lowDiskSpaceThreshold)
                 {
-                    var issue = new Issue() { Type = IssueType.Warning, Message = $"You are running out of disk space. The runner will stop working when the machine runs out of disk space. Free space left: {freeSpaceInMB} MB" };
-                    issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.LowDiskSpace;
-                    context.AddIssue(issue, writeToLog: true);
+                    var message = $"You are running out of disk space. The runner will stop working when the machine runs out of disk space. Free space left: {freeSpaceInMB} MB";
+                    var metadata = new IssueMetadata(Constants.Runner.InternalTelemetryIssueDataKey, Constants.Runner.LowDiskSpace);
+                    var issue = context.CreateIssue(IssueType.Warning, message, metadata, true);
+                    context.AddIssue(issue);
                     return;
                 }
 

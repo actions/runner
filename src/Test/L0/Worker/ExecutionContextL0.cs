@@ -52,36 +52,36 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Act.
                 ec.InitializeJob(jobRequest, CancellationToken.None);
 
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
 
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
 
                 ec.Complete();
 
@@ -190,9 +190,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                     bigMessage += "a";
                 }
 
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = bigMessage });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = bigMessage });
-                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = bigMessage });
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, bigMessage, null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, bigMessage, null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Notice, bigMessage, null, true));
 
                 ec.Complete();
 
@@ -242,9 +242,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var embeddedStep = ec.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null, ActionRunStage.Main, isEmbedded: true);
                 embeddedStep.Start();
 
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error annotation that should have step and line number information" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning annotation that should have step and line number information" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice annotation that should have step and line number information" });
+                embeddedStep.AddIssue(embeddedStep.CreateIssue(IssueType.Error, "error annotation that should have step and line number information", null, true));
+                embeddedStep.AddIssue(embeddedStep.CreateIssue(IssueType.Warning, "warning annotation that should have step and line number information", null, true));
+                embeddedStep.AddIssue(embeddedStep.CreateIssue(IssueType.Notice, "notice annotation that should have step and line number information", null, true));
 
                 jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Error).Count() == 1)), Times.AtLeastOnce);
                 jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Warning).Count() == 1)), Times.AtLeastOnce);
@@ -626,12 +626,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.StepTelemetry.StepId = Guid.NewGuid();
                 ec.StepTelemetry.Stage = "main";
 
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Notice, "notice", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                ec.AddIssue(ec.CreateIssue(IssueType.Notice, "notice", null, true));
 
                 ec.Complete();
 
@@ -692,9 +692,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 embeddedStep.StepTelemetry.Action = "actions/checkout";
                 embeddedStep.StepTelemetry.Ref = "v2";
 
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
+                embeddedStep.AddIssue(ec.CreateIssue(IssueType.Error, "error", null, true));
+                embeddedStep.AddIssue(ec.CreateIssue(IssueType.Warning, "warning", null, true));
+                embeddedStep.AddIssue(ec.CreateIssue(IssueType.Notice, "notice", null, true));
 
                 embeddedStep.PublishStepTelemetry();
 
@@ -870,7 +870,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 inputVarsContext["VARIABLE_2"] = new StringContextData("value2");
                 jobRequest.ContextData["vars"] = inputVarsContext;
 
-                // Arrange: Setup the paging logger. 
+                // Arrange: Setup the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 hc.EnqueueInstance(pagingLogger1.Object);
@@ -884,7 +884,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var expected = new DictionaryContextData();
                 expected["VARIABLE_1"] = new StringContextData("value1");
                 expected["VARIABLE_2"] = new StringContextData("value1");
-                
+
                 Assert.True(ExpressionValuesAssertEqual(expected, jobContext.ExpressionValues["vars"] as DictionaryContextData));
             }
         }
@@ -915,7 +915,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 inputVarsContext[Constants.Variables.Actions.RunnerDebug] = new StringContextData("true");
                 jobRequest.ContextData["vars"] = inputVarsContext;
 
-                // Arrange: Setup the paging logger. 
+                // Arrange: Setup the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 hc.EnqueueInstance(pagingLogger1.Object);
@@ -926,7 +926,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 jobContext.InitializeJob(jobRequest, CancellationToken.None);
 
-                
+
                 Assert.Equal("true", jobContext.Global.Variables.Get(Constants.Variables.Actions.StepDebug));
                 Assert.Equal("true", jobContext.Global.Variables.Get(Constants.Variables.Actions.RunnerDebug));
             }
@@ -961,7 +961,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobRequest.Variables[Constants.Variables.Actions.StepDebug] = "false";
                 jobRequest.Variables[Constants.Variables.Actions.RunnerDebug] = "false";
 
-                // Arrange: Setup the paging logger. 
+                // Arrange: Setup the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 hc.EnqueueInstance(pagingLogger1.Object);
@@ -972,7 +972,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 jobContext.InitializeJob(jobRequest, CancellationToken.None);
 
-                
+
                 Assert.Equal("false", jobContext.Global.Variables.Get(Constants.Variables.Actions.StepDebug));
                 Assert.Equal("false", jobContext.Global.Variables.Get(Constants.Variables.Actions.RunnerDebug));
             }

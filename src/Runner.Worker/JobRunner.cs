@@ -84,8 +84,8 @@ namespace GitHub.Runner.Worker
                         default:
                             throw new ArgumentException(HostContext.RunnerShutdownReason.ToString(), nameof(HostContext.RunnerShutdownReason));
                     }
-                    var issue = new Issue() { Type = IssueType.Error, Message = errorMessage };
-                    jobContext.AddIssue(issue, writeToLog: true);
+                    var issue = jobContext.CreateIssue(IssueType.Error, errorMessage, null, true);
+                    jobContext.AddIssue(issue);
                 });
 
                 // Validate directory permissions.

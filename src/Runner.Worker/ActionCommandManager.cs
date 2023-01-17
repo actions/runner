@@ -270,13 +270,10 @@ namespace GitHub.Runner.Worker
                 if (string.Equals(blocked, envName, StringComparison.OrdinalIgnoreCase))
                 {
                     // Log Telemetry and let user know they shouldn't do this
-                    var issue = new Issue()
-                    {
-                        Type = IssueType.Error,
-                        Message = $"Can't update {blocked} environment variable using ::set-env:: command."
-                    };
-                    issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{envName}";
-                    context.AddIssue(issue, writeToLog: true);
+                    var message = $"Can't update {blocked} environment variable using ::set-env:: command.";
+                    var metadata = new IssueMetadata(Constants.Runner.InternalTelemetryIssueDataKey, $"{Constants.Runner.UnsupportedCommand}_{envName}");
+                    var issue = context.CreateIssue(IssueType.Error, message, metadata, true);
+                    context.AddIssue(issue);
 
                     return;
                 }
@@ -309,13 +306,10 @@ namespace GitHub.Runner.Worker
         {
             if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateStepOutputCommands") ?? false)
             {
-                var issue = new Issue()
-                {
-                    Type = IssueType.Warning,
-                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
-                };
-                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
-                context.AddIssue(issue, writeToLog: true);
+                var message = string.Format(Constants.Runner.UnsupportedCommandMessage, this.Command);
+                var metadata = new IssueMetadata(Constants.Runner.InternalTelemetryIssueDataKey, Constants.Runner.UnsupportedCommand);
+                var issue = context.CreateIssue(IssueType.Warning, message, metadata, true);
+                context.AddIssue(issue);
             }
 
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
@@ -344,13 +338,10 @@ namespace GitHub.Runner.Worker
         {
             if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateStepOutputCommands") ?? false)
             {
-                var issue = new Issue()
-                {
-                    Type = IssueType.Warning,
-                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
-                };
-                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
-                context.AddIssue(issue, writeToLog: true);
+                var message = string.Format(Constants.Runner.UnsupportedCommandMessage, this.Command);
+                var metadata = new IssueMetadata(Constants.Runner.InternalTelemetryIssueDataKey, Constants.Runner.UnsupportedCommand);
+                var issue = context.CreateIssue(IssueType.Warning, message, metadata, true);
+                context.AddIssue(issue);
             }
 
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
@@ -618,16 +609,11 @@ namespace GitHub.Runner.Worker
                 context.Debug("Enhanced Annotations not enabled on the server. The 'title', 'end_line', and 'end_column' fields are unsupported.");
             }
 
-            Issue issue = new()
-            {
-                Category = "General",
-                Type = this.Type,
-                Message = command.Data
-            };
+            var issueCategory = "General";
 
             if (!string.IsNullOrEmpty(file))
             {
-                issue.Category = "Code";
+                issueCategory = "Code";
 
                 if (container != null)
                 {
@@ -658,15 +644,13 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            foreach (var property in command.Properties)
-            {
-                if (!string.Equals(property.Key, Constants.Runner.InternalTelemetryIssueDataKey, StringComparison.OrdinalIgnoreCase))
-                {
-                    issue.Data[property.Key] = property.Value;
-                }
-            }
+            string keyToExclude = Constants.Runner.InternalTelemetryIssueDataKey;
+            var filteredDictionaryEntries = command.Properties
+                                                   .Where(kvp => !string.Equals(kvp.Key, keyToExclude, StringComparison.OrdinalIgnoreCase));
 
-            context.AddIssue(issue, writeToLog: true);
+            var metadata = new IssueMetadata(issueCategory, false, filteredDictionaryEntries);
+            var issue = context.CreateIssue(this.Type, command.Data, metadata, true);
+            context.AddIssue(issue);
         }
 
         public static void ValidateLinesAndColumns(ActionCommand command, IExecutionContext context)

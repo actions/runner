@@ -91,7 +91,8 @@ namespace GitHub.Runner.Worker
         void SetGitHubContext(string name, string value);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
-        void AddIssue(Issue issue, bool writeToLog);
+        IReadOnlyIssue CreateIssue(IssueType issueType, string rawMessage, IssueMetadata metadata, bool writeToLog);
+        void AddIssue(IReadOnlyIssue issue);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
 
@@ -125,7 +126,7 @@ namespace GitHub.Runner.Worker
 
         private readonly TimelineRecord _record = new();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new();
-        private readonly List<Issue> _embeddedIssueCollector;
+        private readonly List<IReadOnlyIssue> _embeddedIssueCollector;
         private readonly object _loggerLock = new();
         private readonly object _matchersLock = new();
         private readonly ExecutionContext _parentExecutionContext;
@@ -447,7 +448,7 @@ namespace GitHub.Runner.Worker
             {
                 foreach (var issue in _embeddedIssueCollector)
                 {
-                    AddIssue(issue, writeToLog: false);
+                    AddIssue(issue);
                 }
             }
 
@@ -579,23 +580,29 @@ namespace GitHub.Runner.Worker
         }
 
         // This is not thread safe, the caller needs to take lock before calling issue()
-        public void AddIssue(Issue issue, bool writeToLog)
+        public IReadOnlyIssue CreateIssue(IssueType issueType, string rawMessage, IssueMetadata metadata, bool writeToLog)
         {
-            ArgUtil.NotNull(issue, nameof(issue));
+            string refinedMessage = PrimitiveExtensions.TrimExcess(HostContext.SecretMasker.MaskSecrets(rawMessage), _maxIssueMessageLength);
 
-            string refinedMessage = PrimitiveExtensions.TrimExcess(HostContext.SecretMasker.MaskSecrets(issue.Message), _maxIssueMessageLength);
-            issue.Message = refinedMessage;
+            var result = new Issue() {
+                Type = issueType,
+                Category = metadata?.Category,
+                IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false,
+                Message = refinedMessage,
+            };
+
+            result.Data.AddRangeIfRangeNotNull(metadata?.Data);
 
             // It's important to keep track of the step number (key:stepNumber) and the line number (key:logFileLineNumber) of every issue that gets logged.
             // Actions UI from the run summary page use both values to easily link to an exact locations in logs where annotations originate from.
             if (_record.Order != null)
             {
-                issue.Data["stepNumber"] = _record.Order.ToString();
+                result.Data["stepNumber"] = _record.Order.ToString();
             }
 
             string wellKnownTag = null;
             Int32? previousCountForIssueType = null;
-            switch (issue.Type)
+            switch (issueType)
             {
                 case IssueType.Error:
                     wellKnownTag = WellKnownTags.Error;
@@ -616,13 +623,22 @@ namespace GitHub.Runner.Worker
                 if (writeToLog && !string.IsNullOrEmpty(refinedMessage))
                 {
                     long logLineNumber = Write(wellKnownTag, refinedMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                    result.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
                 if (previousCountForIssueType.GetValueOrDefault(0) < _maxIssueCount)
                 {
-                    _record.Issues.Add(issue);
+                    _record.Issues.Add(result);
                 }
             }
+
+            return result;
+        }
+
+
+        // This is not thread safe, the caller needs to take lock before calling issue()
+        public void AddIssue(IReadOnlyIssue issue)
+        {
+            ArgUtil.NotNull(issue, nameof(issue));
 
             // Embedded ExecutionContexts (a.k.a. Composite actions) should never upload a timeline record to the server.
             //    Instead, we store processed issues on a shared (psuedo-inherited) list (belonging to the closest
@@ -1169,22 +1185,23 @@ namespace GitHub.Runner.Worker
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Error(this IExecutionContext context, string message)
         {
-            var issue = new Issue() { Type = IssueType.Error, Message = message };
-            context.AddIssue(issue, writeToLog: true);
+            var issue = context.CreateIssue(IssueType.Error, message, null, true);
+            context.AddIssue(issue);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void InfrastructureError(this IExecutionContext context, string message)
         {
-            var issue = new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true };
-            context.AddIssue(issue, writeToLog: true);
+            var metadata = new IssueMetadata(null, true, Enumerable.Empty<KeyValuePair<string, string>>());
+            var issue = context.CreateIssue(IssueType.Error, message, metadata, true);
+            context.AddIssue(issue);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Warning(this IExecutionContext context, string message)
         {
-            var issue = new Issue() { Type = IssueType.Warning, Message = message };
-            context.AddIssue(issue, writeToLog: true);
+            var issue = context.CreateIssue(IssueType.Warning, message, null, true);
+            context.AddIssue(issue);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().

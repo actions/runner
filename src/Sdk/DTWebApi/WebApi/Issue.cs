@@ -4,24 +4,55 @@ using System.Runtime.Serialization;
 
 namespace GitHub.DistributedTask.WebApi
 {
+
+    public interface IReadOnlyIssue
+    {
+        IssueType Type { get; }
+        string Category { get; }
+        string Message { get; }
+        bool? IsInfrastructureIssue { get; }
+        string this[string key] { get; }
+    }
+
+    public class IssueMetadata
+    {
+
+        public IssueMetadata(string key, string value)
+            : this(null, false, new []{ KeyValuePair.Create(key, value) })
+        {
+        }
+
+        public IssueMetadata(string category, bool infrastructureIssue, IEnumerable<KeyValuePair<string, string>> data)
+        {
+            this.Category = category;
+            this.IsInfrastructureIssue = infrastructureIssue;
+            this.Data = data;
+        }
+
+
+        public readonly string Category;
+        public readonly bool IsInfrastructureIssue;
+        public readonly IEnumerable<KeyValuePair<string, string>> Data;
+    }
+
     [DataContract]
-    public class Issue
+    public class Issue : IReadOnlyIssue
     {
 
         public Issue()
         {
         }
 
-        private Issue(Issue issueToBeCloned)
+        private Issue(Issue original)
         {
-            this.Type = issueToBeCloned.Type;
-            this.Category = issueToBeCloned.Category;
-            this.Message = issueToBeCloned.Message;
-            this.IsInfrastructureIssue = issueToBeCloned.IsInfrastructureIssue;
+            this.Type = original.Type;
+            this.Category = original.Category;
+            this.Message = original.Message;
+            this.IsInfrastructureIssue = original.IsInfrastructureIssue;
 
-            if (issueToBeCloned.m_data != null)
+            if (original.m_data != null)
             {
-                foreach (var item in issueToBeCloned.m_data)
+                foreach (var item in original.m_data)
                 {
                     this.Data.Add(item);
                 }
@@ -67,6 +98,16 @@ namespace GitHub.DistributedTask.WebApi
                 return m_data;
             }
         }
+
+        public string this[string key]
+        {
+            get
+            {
+                m_data.TryGetValue(key, out string result);
+                return result;
+            }
+        }
+
 
         public Issue Clone()
         {

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
@@ -14,6 +13,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
+using GitHub.Services.Common;
 using Moq;
 using Moq.Protected;
 using Xunit;
@@ -2147,7 +2147,20 @@ runs:
             _ec.Object.Global.FileTable = new List<String>();
             _ec.Object.Global.Plan = new TaskOrchestrationPlanReference();
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
-            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
+            _ec.Setup(x => x.CreateIssue(It.IsAny<IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
+                .Returns((IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
+                {
+                    var result = new Issue()
+                    {
+                        Type = type,
+                        Message = message,
+                        Category = metadata?.Category,
+                        IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false
+                    };
+                    result.Data.AddRangeIfRangeNotNull(metadata?.Data);
+                    return result;
+                });
+            _ec.Setup(x => x.AddIssue(It.IsAny<IReadOnlyIssue>())).Callback((IReadOnlyIssue issue) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message}"); });
             _ec.Setup(x => x.GetGitHubContext("workspace")).Returns(Path.Combine(_workFolder, "actions", "actions"));
 
             _dockerManager = new Mock<IDockerCommandManager>();

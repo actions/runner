@@ -3,20 +3,15 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Handlers;
+using GitHub.Services.Common;
 using Moq;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -330,7 +325,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("invalid1", finialInputs["invalid1"]);
             Assert.Equal("invalid2", finialInputs["invalid2"]);
 
-            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input(s) 'invalid1', 'invalid2'")), It.IsAny<string>()), Times.Once);
+            _ec.Verify(x => x.AddIssue(It.Is<IReadOnlyIssue>(s => s.Message.Contains("Unexpected input(s) 'invalid1', 'invalid2'"))), Times.Once);
         }
 
         [Fact]
@@ -449,7 +444,21 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Object.Global.Variables = new Variables(_hc, new Dictionary<string, VariableValue>());
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
-            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
+            _ec.Setup(x => x.CreateIssue(It.IsAny<IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
+                .Returns((IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
+                {
+                    var result = new Issue()
+                    {
+                        Type = type,
+                        Message = message,
+                        Category = metadata?.Category,
+                        IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false
+                    };
+                    result.Data.AddRangeIfRangeNotNull(metadata?.Data);
+                    return result;
+                });
+
+            _ec.Setup(x => x.AddIssue(It.IsAny<IReadOnlyIssue>())).Callback((IReadOnlyIssue issue) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message}"); });
 
             _hc.SetSingleton<IActionManager>(_actionManager.Object);
             _hc.SetSingleton<IHandlerFactory>(_handlerFactory.Object);

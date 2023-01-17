@@ -1,17 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Container;
-using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Xunit;
 using DTWebApi = GitHub.DistributedTask.WebApi;
@@ -21,7 +15,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class SetEnvFileCommandL0
     {
         private Mock<IExecutionContext> _executionContext;
-        private List<Tuple<DTWebApi.Issue, string>> _issues;
+        private List<DTWebApi.IReadOnlyIssue> _issues;
         private string _rootDirectory;
         private SetEnvFileCommand _setEnvFileCommand;
         private ITraceWriter _trace;
@@ -389,7 +383,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private TestHostContext Setup([CallerMemberName] string name = "")
         {
-            _issues = new List<Tuple<DTWebApi.Issue, string>>();
+            _issues = new List<DTWebApi.IReadOnlyIssue>();
 
             var hostContext = new TestHostContext(this, name);
 
@@ -411,12 +405,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
                     WriteDebug = true,
                 });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<string>()))
-                .Callback((DTWebApi.Issue issue, string logMessage) =>
+            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.IReadOnlyIssue>()))
+                .Callback((DTWebApi.IReadOnlyIssue issue) =>
                 {
-                    _issues.Add(new Tuple<DTWebApi.Issue, string>(issue, logMessage));
-                    var message = !string.IsNullOrEmpty(logMessage) ? logMessage : issue.Message;
-                    _trace.Info($"Issue '{issue.Type}': {message}");
+                    _issues.Add(issue);
+                    _trace.Info($"Issue '{issue.Type}': {issue.Message}");
                 });
             _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((string tag, string message) =>

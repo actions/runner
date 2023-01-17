@@ -11,6 +11,7 @@ using Xunit;
 using DTWebApi = GitHub.DistributedTask.WebApi;
 using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -19,7 +20,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IExecutionContext> _executionContext;
         private Mock<IJobServerQueue> _jobServerQueue;
         private ExecutionContext _jobExecutionContext;
-        private List<Tuple<DTWebApi.Issue, string>> _issues;
+        private List<DTWebApi.IReadOnlyIssue> _issues;
         private Variables _variables;
         private string _rootDirectory;
         private CreateStepSummaryCommand _createStepCommand;
@@ -186,7 +187,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             var hostContext = new TestHostContext(this, name);
 
-            _issues = new List<Tuple<DTWebApi.Issue, string>>();
+            _issues = new List<DTWebApi.IReadOnlyIssue>();
 
             // Setup a job request
             TaskOrchestrationPlanReference plan = new();
@@ -247,13 +248,26 @@ namespace GitHub.Runner.Common.Tests.Worker
                     WriteDebug = true,
                     Variables = _variables,
                 });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<string>()))
-                .Callback((DTWebApi.Issue issue, string logMessage) =>
+            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.IReadOnlyIssue>()))
+                .Callback((DTWebApi.IReadOnlyIssue issue) =>
                 {
-                    _issues.Add(new Tuple<DTWebApi.Issue, string>(issue, logMessage));
-                    var message = !string.IsNullOrEmpty(logMessage) ? logMessage : issue.Message;
-                    _trace.Info($"Issue '{issue.Type}': {message}");
+                    _issues.Add(issue);
+                    _trace.Info($"Issue '{issue.Type}': {issue.Message}");
                 });
+            _executionContext.Setup(x => x.CreateIssue(It.IsAny<IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
+                .Returns((IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
+                {
+                    var result = new Issue()
+                    {
+                        Type = type,
+                        Message = message,
+                        Category = metadata?.Category,
+                        IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false
+                    };
+                    result.Data.AddRangeIfRangeNotNull(metadata?.Data);
+                    return result;
+                });
+
             _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((string tag, string message) =>
                 {

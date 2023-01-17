@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
@@ -141,7 +142,7 @@ namespace GitHub.Runner.Worker.Handlers
                         if (issue != null)
                         {
                             // Log issue
-                            _executionContext.AddIssue(issue, writeToLog: true);
+                            _executionContext.AddIssue(issue);
                             return;
                         }
                     }
@@ -193,7 +194,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        private DTWebApi.Issue ConvertToIssue(IssueMatch match)
+        private DTWebApi.IReadOnlyIssue ConvertToIssue(IssueMatch match)
         {
             // Validate the message
             if (string.IsNullOrWhiteSpace(match.Message))
@@ -222,18 +223,14 @@ namespace GitHub.Runner.Worker.Handlers
                 return null;
             }
 
-            var issue = new DTWebApi.Issue
-            {
-                Message = match.Message,
-                Type = issueType,
-            };
+            var issueData = new Dictionary<string, string>();
 
             // Line
             if (!string.IsNullOrEmpty(match.Line))
             {
                 if (int.TryParse(match.Line, NumberStyles.None, CultureInfo.InvariantCulture, out var line))
                 {
-                    issue.Data["line"] = line.ToString(CultureInfo.InvariantCulture);
+                    issueData["line"] = line.ToString(CultureInfo.InvariantCulture);
                 }
                 else
                 {
@@ -246,7 +243,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 if (int.TryParse(match.Column, NumberStyles.None, CultureInfo.InvariantCulture, out var column))
                 {
-                    issue.Data["col"] = column.ToString(CultureInfo.InvariantCulture);
+                    issueData["col"] = column.ToString(CultureInfo.InvariantCulture);
                 }
                 else
                 {
@@ -257,7 +254,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Code
             if (!string.IsNullOrWhiteSpace(match.Code))
             {
-                issue.Data["code"] = match.Code.Trim();
+                issueData["code"] = match.Code.Trim();
             }
 
             // File
@@ -309,7 +306,7 @@ namespace GitHub.Runner.Worker.Handlers
                             var relativePath = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar);
 
                             // Prefer `/` on all platforms
-                            issue.Data["file"] = relativePath.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                            issueData["file"] = relativePath.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         }
                         else
                         {
@@ -324,9 +321,11 @@ namespace GitHub.Runner.Worker.Handlers
             }
             catch (Exception ex)
             {
-                _executionContext.Debug($"Dropping file value '{match.File}' and fromPath value '{match.FromPath}'. Exception during validation: {ex.ToString()}");
+                _executionContext.Debug($"Dropping file value '{match.File}' and fromPath value '{match.FromPath}'. Exception during validation: {ex}");
             }
 
+            var metadata = new IssueMetadata(null, false, issueData);
+            var issue = _executionContext.CreateIssue(issueType, match.Message, metadata, true);
             return issue;
         }
 

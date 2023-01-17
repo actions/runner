@@ -4,10 +4,10 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Expressions;
+using GitHub.Services.Common;
 using Moq;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -670,7 +670,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Teardown();
             }
-        }        
+        }
 
         [Fact]
         [Trait("Level", "L0")]
@@ -715,7 +715,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Assert
                 var err = Assert.Throws<ArgumentException>(() => actionManifest.Load(_ec.Object, action_path));
                 Assert.Contains($"Fail to load {action_path}", err.Message);
-                _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12' or 'node16'.")), It.IsAny<string>()), Times.Once);
+                _ec.Verify(x => x.AddIssue(It.Is<IReadOnlyIssue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12' or 'node16'."))), Times.Once);
             }
             finally
             {
@@ -860,7 +860,22 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
-            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
+
+            _ec.Setup(x => x.CreateIssue(It.IsAny<IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
+                .Returns((IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
+                {
+                    var result = new Issue()
+                    {
+                        Type = type,
+                        Message = message,
+                        Category = metadata?.Category,
+                        IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false
+                    };
+                    result.Data.AddRangeIfRangeNotNull(metadata?.Data);
+                    return result;
+                });
+
+            _ec.Setup(x => x.AddIssue(It.IsAny<IReadOnlyIssue>())).Callback((IReadOnlyIssue issue) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message}"); });
         }
 
         private void Teardown()

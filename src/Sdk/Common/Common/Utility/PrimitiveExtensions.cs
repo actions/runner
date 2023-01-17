@@ -31,9 +31,9 @@ namespace GitHub.Services.Common
         {
             string result = text;
 
-            if (!string.IsNullOrEmpty(text) && text.Length > maxLength)
+            if (!string.IsNullOrEmpty(result) && result.Length > maxLength)
             {
-                result = text.Substring(0, maxLength);
+                result = result.Substring(0, maxLength);
             }
 
             return result;

@@ -6,6 +6,7 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
+using GitHub.Services.Common;
 using Moq;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -32,10 +33,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
-                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
-                   .Callback((Issue issue, string message) =>
+                _ec.Setup(x => x.AddIssue(It.IsAny<IReadOnlyIssue>()))
+                   .Callback((IReadOnlyIssue issue) =>
                    {
-                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message}");
                    });
 
                 _commandManager.EnablePluginInternalCommand();
@@ -59,10 +60,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
-                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
-                   .Callback((Issue issue, string message) =>
+                _ec.Setup(x => x.AddIssue(It.IsAny<IReadOnlyIssue>()))
+                   .Callback((IReadOnlyIssue issue) =>
                    {
-                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message}");
                    });
 
                 _commandManager.EnablePluginInternalCommand();
@@ -92,10 +93,24 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 return 1;
                             });
 
-                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
-                   .Callback((Issue issue, string message) =>
+                _ec.Setup(x => x.CreateIssue(It.IsAny<IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
+                    .Returns((IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
+                    {
+                        var result = new Issue()
+                        {
+                            Type = type,
+                            Message = message,
+                            Category = metadata?.Category,
+                            IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false
+                        };
+                        result.Data.AddRangeIfRangeNotNull(metadata?.Data);
+                        return result;
+                    });
+
+                _ec.Setup(x => x.AddIssue(It.IsAny<IReadOnlyIssue>()))
+                   .Callback((IReadOnlyIssue issue) =>
                    {
-                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message}");
                    });
 
                 _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();

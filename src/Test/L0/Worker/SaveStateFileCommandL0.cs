@@ -21,7 +21,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class SaveStateFileCommandL0
     {
         private Mock<IExecutionContext> _executionContext;
-        private List<Tuple<DTWebApi.Issue, string>> _issues;
+        private List<DTWebApi.IReadOnlyIssue> _issues;
         private string _rootDirectory;
         private SaveStateFileCommand _saveStateFileCommand;
         private Dictionary<string, string> _intraActionState;
@@ -390,7 +390,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private TestHostContext Setup([CallerMemberName] string name = "")
         {
-            _issues = new List<Tuple<DTWebApi.Issue, string>>();
+            _issues = new List<DTWebApi.IReadOnlyIssue>();
             _intraActionState = new Dictionary<string, string>();
 
             var hostContext = new TestHostContext(this, name);
@@ -413,12 +413,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
                     WriteDebug = true,
                 });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<string>()))
-                .Callback((DTWebApi.Issue issue, string logMessage) =>
+            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.IReadOnlyIssue>()))
+                .Callback((DTWebApi.IReadOnlyIssue issue) =>
                 {
-                    _issues.Add(new Tuple<DTWebApi.Issue, string>(issue, logMessage));
-                    var message = !string.IsNullOrEmpty(logMessage) ? logMessage : issue.Message;
-                    _trace.Info($"Issue '{issue.Type}': {message}");
+                    _issues.Add(issue);
+                    _trace.Info($"Issue '{issue.Type}': {issue.Message}");
                 });
             _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((string tag, string message) =>
