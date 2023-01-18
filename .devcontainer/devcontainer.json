@@ -6,7 +6,10 @@
 		"ghcr.io/devcontainers/features/docker-in-docker:1": {},
 		"ghcr.io/devcontainers/features/dotnet": {
 			"version": "6.0.300"
-		}
+		},
+		"ghcr.io/devcontainers/features/node:1":{
+			"version": "16"
+		  }
 	},
 	"customizations": {
 		"vscode": {
