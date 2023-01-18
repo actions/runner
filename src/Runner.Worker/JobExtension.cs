@@ -322,9 +322,17 @@ namespace GitHub.Runner.Worker
                     if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
                     {
                         var usesOutput = $"Uses: {workflowFileFullPath.Value}";
-                        if (message.Variables.TryGetValue("system.workflowFileRef", out VariableValue workflowFileRef))
+                        if (message.Variables.TryGetValue("system.workflowFileRef", out VariableValue workflowFileRef)
+                            && message.Variables.TryGetValue("system.workflowFileSha", out VariableValue workflowFileSha))
                         {
-                            usesOutput += $"@{workflowFileRef.Value}";
+                            if (string.IsNullOrEmpty(workflowFileRef.Value))
+                            {
+                                usesOutput += $"@{workflowFileSha.Value}";
+                            }
+                            else
+                            {
+                                usesOutput += $"@{workflowFileRef.Value} ({workflowFileSha.Value})";
+                            }
                         }
                         context.Output(usesOutput);
 
