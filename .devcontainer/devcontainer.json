@@ -9,7 +9,7 @@
 		},
 		"ghcr.io/devcontainers/features/node:1":{
 			"version": "16"
-		 }
+		}
 	},
 	"customizations": {
 		"vscode": {
