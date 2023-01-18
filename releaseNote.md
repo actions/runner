@@ -12,7 +12,7 @@
 - Update Node dependencies (#2381)
 
 ## Misc
-- Make runner image print diag log to STDOUT. (#2331)
+- Make runner image print diag log to STDOUT (#2331)
 - Update Node.js to 16.16.0 (#2371)
 - Add a disclaimer for which runner version is available to a given tenant (#2362)
 
