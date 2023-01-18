@@ -13,6 +13,10 @@
 - Return exit code when MANUALLY_TRAP_SIG is exported (#2285)
 - Use results for uploading step summaries (#2301) with limited size (#2321)
 
+_Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
+To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
+See https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/adding-self-hosted-runners_
+
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 
