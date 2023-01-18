@@ -321,20 +321,9 @@ namespace GitHub.Runner.Worker
 
                     if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
                     {
-                        var usesOutput = $"Uses: {workflowFileFullPath.Value}";
-                        if (message.Variables.TryGetValue("system.workflowFileRef", out VariableValue workflowFileRef)
-                            && message.Variables.TryGetValue("system.workflowFileSha", out VariableValue workflowFileSha))
-                        {
-                            if (string.IsNullOrEmpty(workflowFileRef.Value))
-                            {
-                                usesOutput += $"@{workflowFileSha.Value}";
-                            }
-                            else
-                            {
-                                usesOutput += $"@{workflowFileRef.Value} ({workflowFileSha.Value})";
-                            }
-                        }
-                        context.Output(usesOutput);
+                        var usesLogText = $"Uses: {workflowFileFullPath}";
+                        var reference = GetWorkflowReference(message.Variables);
+                        context.Output(usesLogText + reference);
 
                         if (message.ContextData.TryGetValue("inputs", out var pipelineContextData))
                         {
@@ -464,6 +453,24 @@ namespace GitHub.Runner.Worker
                     context.Complete();
                 }
             }
+        }
+
+        private string GetWorkflowReference(IDictionary<string, VariableValue> variables)
+        {
+            var reference = "";
+            if (variables.TryGetValue("system.workflowFileSha", out VariableValue workflowFileSha))
+            {
+                if (variables.TryGetValue("system.workflowFileRef", out VariableValue workflowFileRef)
+                    && !string.IsNullOrEmpty(workflowFileRef.Value))
+                {
+                    reference += $"@{workflowFileRef.Value} ({workflowFileSha.Value})";
+                }
+                else
+                {
+                    reference += $"@{workflowFileSha.Value}";
+                }
+            }
+            return reference;
         }
 
         public void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
