@@ -1,6 +1,6 @@
 ## Features
 - Log GitHub RequestId for better traceability (#2332)
-- Dual upload summary to Actions and Result service. (#2334)
+- Dual upload summary to Actions and Result service (#2334)
 - Allow provide extra User-Agent for better correlation. (#2370)
 - Show more information in the runner log (#2377)
 - New option to remove local config files (#2367)
