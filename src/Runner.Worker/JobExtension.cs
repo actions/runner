@@ -321,7 +321,7 @@ namespace GitHub.Runner.Worker
 
                     if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
                     {
-                        var usesLogText = $"Uses: {workflowFileFullPath}";
+                        var usesLogText = $"Uses: {workflowFileFullPath.Value}";
                         var reference = GetWorkflowReference(message.Variables);
                         context.Output(usesLogText + reference);
 
