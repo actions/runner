@@ -16,6 +16,7 @@ using Xunit;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
+#if !PPC64LE  // Self-update is not currently supported on ppc64le	
     public sealed class SelfUpdaterL0
     {
         private Mock<IRunnerServer> _runnerServer;
@@ -795,5 +796,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
     }
+#endif
 }
 #endif

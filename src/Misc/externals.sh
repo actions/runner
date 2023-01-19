@@ -173,3 +173,8 @@ if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-armv7l.tar.gz" node16 fix_nested_dir
 fi
+
+if [[ "$PACKAGERUNTIME" == "linux-ppc64le" ]]; then
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-ppc64le.tar.gz" node12 fix_nested_dir
+    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-ppc64le.tar.gz" node16 fix_nested_dir
+fi

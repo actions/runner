@@ -58,7 +58,8 @@ namespace GitHub.Runner.Common
             X86,
             X64,
             Arm,
-            Arm64
+            Arm64,
+	    Ppc64le
         }
 
         public static class Runner
@@ -79,6 +80,8 @@ namespace GitHub.Runner.Common
             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
 #elif ARM64
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#elif PPC64LE
+	    public static readonly Architecture PlatformArchitecture = Architecture.Ppc64le;
 #endif
 
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);

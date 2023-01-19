@@ -22,7 +22,7 @@ DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 PACKAGE_TRIMS_DIR="$SCRIPT_DIR/../_package_trims"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="6.0.300"
+DOTNETSDK_VERSION="7.0.100"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 RUNNER_VERSION=$(cat runnerversion)
 
@@ -44,6 +44,8 @@ if [[ ($(uname) == "Linux") || ($(uname) == "Darwin") ]]; then
     CURRENT_PLATFORM=$(uname | awk '{print tolower($0)}')
 fi
 
+echo "*** $CURRENT_PLATFORM **"
+
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     RUNTIME_ID='win-x64'
     if [[ "$PROCESSOR_ARCHITECTURE" == 'x86' ]]; then
@@ -59,6 +61,7 @@ elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
         case $CPU_NAME in
             armv7l) RUNTIME_ID="linux-arm";;
             aarch64) RUNTIME_ID="linux-arm64";;
+	    ppc64le) RUNTIME_ID="linux-ppc64le";;
         esac
     fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
@@ -70,11 +73,11 @@ elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
         esac
     fi
 fi
-
+echo "***RUNTIME_ID=$RUNTIME_ID"
 if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
     RUNTIME_ID="$DEV_TARGET_RUNTIME"
 fi
-
+echo "2nd ***RUNTIME_ID=$RUNTIME_ID"
 # Make sure current platform support publish the dotnet runtime
 # Windows can publish win-x86/x64/arm64
 # Linux can publish linux-x64/arm/arm64
@@ -85,7 +88,7 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
         exit 1
     fi
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
-    if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-x86') && ("$RUNTIME_ID" != 'linux-arm64') && ("$RUNTIME_ID" != 'linux-arm') ]]; then
+    if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-x86') && ("$RUNTIME_ID" != 'linux-arm64') && ("$RUNTIME_ID" != 'linux-arm') && ("$RUNTIME_ID" != 'linux-ppc64le') ]]; then
        echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
        exit 1
     fi
@@ -197,7 +200,7 @@ function runtest ()
     heading "Testing ..."
 
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
-        ulimit -n 1024
+        ulimit -n 100000
     fi
 
     dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests"
@@ -301,7 +304,9 @@ function package ()
     popd > /dev/null
 }
 
-if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet") ]]; then
+#if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet") ]]; then
+# On linux-ppc64le, there is no support for dotnet-install.sh, so we must rely on a pre-installed dotnet being present
+if [[ "${RUNTIME_ID}" != "linux-ppc64le" && ((! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet")) ]]; then
 
     # Download dotnet SDK to ../_dotnetsdk directory
     heading "Ensure Dotnet SDK"
@@ -325,9 +330,10 @@ if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTN
 
     echo "${DOTNETSDK_VERSION}" > "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}"
 fi
-
-echo "Prepend ${DOTNETSDK_INSTALLDIR} to %PATH%"
-export PATH=${DOTNETSDK_INSTALLDIR}:$PATH
+if [[ -d "${DOTNETSDK_INSTALLDIR}" ]]; then
+    echo "Prepend ${DOTNETSDK_INSTALLDIR} to %PATH%"
+    export PATH=${DOTNETSDK_INSTALLDIR}:$PATH
+fi
 
 heading "Dotnet SDK Version"
 dotnet --version

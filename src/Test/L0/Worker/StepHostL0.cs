@@ -54,7 +54,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("node12", nodeVersion);
             }
         }
-
+#if !PPC64LE  // Alpine not supported on ppc64le
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -81,7 +81,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("node16_alpine", nodeVersion);
             }
         }
-
+#endif
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]

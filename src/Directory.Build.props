@@ -45,6 +45,11 @@
     <DefineConstants>$(DefineConstants);ARM64</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'linux-ppc64le'">
+    <DefineConstants>$(DefineConstants);PPC64LE</DefineConstants>
+  </PropertyGroup>
+
+
   <!-- Set TRACE/DEBUG vars -->
   <PropertyGroup>
     <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
