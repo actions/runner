@@ -6,7 +6,6 @@
 - New option to remove local config files (#2367)
 
 ## Bugs
-- Split by regex (#2333)
 - Treat jitconfig as secret (#2335)
 - Add Header/Footer to multi-line message in StdoutTraceListener (#2336)
 - Update Node dependencies (#2381)
