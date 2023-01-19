@@ -58,7 +58,8 @@ namespace GitHub.Runner.Common
             X86,
             X64,
             Arm,
-            Arm64
+            Arm64,
+            S390x
         }
 
         public static class Runner
@@ -79,6 +80,8 @@ namespace GitHub.Runner.Common
             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
 #elif ARM64
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#elif S390X
+            public static readonly Architecture PlatformArchitecture = Architecture.S390x;
 #endif
 
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);

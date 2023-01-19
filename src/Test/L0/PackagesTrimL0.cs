@@ -151,6 +151,7 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+#if !S390X   // Self-contained publish not supported on s390x, so there is no runtime
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
@@ -211,7 +212,9 @@ namespace GitHub.Runner.Common.Tests
                 Assert.True(string.Equals(hashResult, File.ReadAllText(dotnetRuntimeHashFile).Trim()), $"Hash mismatch for dotnet runtime. You might need to update `Misc/contentHash/dotnetRuntime/{BuildConstants.RunnerPackage.PackageName}` or check if `hashFiles.ts` ever changed recently.");
             }
         }
+#endif
 
+#if !S390X  // Self-update is not supported on s390x, so there is no need to compare hashes
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
@@ -273,5 +276,6 @@ namespace GitHub.Runner.Common.Tests
                 Assert.True(string.Equals(hashResult, File.ReadAllText(externalsHashFile).Trim()), $"Hash mismatch for externals. You might need to update `Misc/contentHash/externals/{BuildConstants.RunnerPackage.PackageName}` or check if `hashFiles.ts` ever changed recently.");
             }
         }
+#endif
     }
 }

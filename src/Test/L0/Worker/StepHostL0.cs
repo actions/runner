@@ -55,6 +55,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+#if !S390X  // Alpine not supported on s390x
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -81,6 +82,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("node16_alpine", nodeVersion);
             }
         }
+#endif
 
         [Fact]
         [Trait("Level", "L0")]
