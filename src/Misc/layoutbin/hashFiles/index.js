@@ -15,6 +15,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -23,9 +30,15 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-//const glob = require('@actions/glob')
+const crypto = __importStar(__nccwpck_require__(6113));
+const fs = __importStar(__nccwpck_require__(7147));
 const glob = __importStar(__nccwpck_require__(8090));
+const path = __importStar(__nccwpck_require__(1017));
+const stream = __importStar(__nccwpck_require__(2781));
+const util = __importStar(__nccwpck_require__(3837));
 function run() {
+    var e_1, _a;
+    var _b;
     return __awaiter(this, void 0, void 0, function* () {
         // arg0 -> node
         // arg1 -> hashFiles.js
@@ -38,18 +51,61 @@ function run() {
             followSymbolicLinks = true;
         }
         console.log(`Match Pattern: ${matchPatterns}`);
+        let hasMatch = false;
+        console.log('runner cwd: ', process.cwd());
+        const githubWorkspace = (_b = process.env['GITHUB_WORKSPACE'], (_b !== null && _b !== void 0 ? _b : process.cwd()));
+        console.log('current workspace: ', process.env['GITHUB_WORKSPACE']);
+        const result = crypto.createHash('sha256');
+        let count = 0;
+        const globber = yield glob.create(matchPatterns, { followSymbolicLinks });
         try {
-            const result = yield glob.hashFiles(matchPatterns, { followSymbolicLinks }, true);
-            console.error(`__OUTPUT__${result}__OUTPUT__`);
-            process.exit(0);
+            for (var _c = __asyncValues(globber.globGenerator()), _d; _d = yield _c.next(), !_d.done;) {
+                const file = _d.value;
+                console.log(file);
+                if (!file.startsWith(`${githubWorkspace}${path.sep}`)) {
+                    console.log(`Ignore '${file}' since it is not under GITHUB_WORKSPACE.`);
+                    continue;
+                }
+                if (fs.statSync(file).isDirectory()) {
+                    console.log(`Skip directory '${file}'.`);
+                    continue;
+                }
+                const hash = crypto.createHash('sha256');
+                const pipeline = util.promisify(stream.pipeline);
+                yield pipeline(fs.createReadStream(file), hash);
+                result.write(hash.digest());
+                count++;
+                if (!hasMatch) {
+                    hasMatch = true;
+                }
+            }
         }
-        catch (error) {
-            console.log(error);
-            process.exit(1);
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (_d && !_d.done && (_a = _c.return)) yield _a.call(_c);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
+        result.end();
+        if (hasMatch) {
+            console.log(`Found ${count} files to hash.`);
+            console.error(`__OUTPUT__${result.digest('hex')}__OUTPUT__`);
+        }
+        else {
+            console.error(`__OUTPUT____OUTPUT__`);
         }
     });
 }
-run();
+run()
+    .then(out => {
+    console.log(out);
+    process.exit(0);
+})
+    .catch(err => {
+    console.error(err);
+    process.exit(1);
+});
 
 
 /***/ }),
@@ -1441,7 +1497,9 @@ function hashFiles(globber, verbose = false) {
     return __awaiter(this, void 0, void 0, function* () {
         const writeDelegate = verbose ? core.info : core.debug;
         let hasMatch = false;
+        console.log('globber cwd: ',process.cwd())
         const githubWorkspace = (_b = process.env['GITHUB_WORKSPACE']) !== null && _b !== void 0 ? _b : process.cwd();
+        console.log('workspace: ', githubWorkspace);
         const result = crypto.createHash('sha256');
         let count = 0;
         try {
