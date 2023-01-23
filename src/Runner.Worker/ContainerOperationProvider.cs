@@ -33,8 +33,14 @@ namespace GitHub.Runner.Worker
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            _dockerManager = HostContext.GetService<IDockerCommandManager>();
-            _containerHookManager = HostContext.GetService<IContainerHookManager>();
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)))
+            {
+                _dockerManager = HostContext.GetService<IDockerCommandManager>();
+            }
+            else
+            {
+                _containerHookManager = HostContext.GetService<IContainerHookManager>();
+            }
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)

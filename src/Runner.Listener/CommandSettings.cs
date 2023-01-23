@@ -56,7 +56,8 @@ namespace GitHub.Runner.Listener
                 new string[]
                 {
                     Constants.Runner.CommandLine.Args.Token,
-                    Constants.Runner.CommandLine.Args.PAT
+                    Constants.Runner.CommandLine.Args.PAT,
+                    Constants.Runner.CommandLine.Flags.Local
                 },
             // Valid run flags and args
             [Constants.Runner.CommandLine.Commands.Run] =
@@ -86,6 +87,7 @@ namespace GitHub.Runner.Listener
         public bool Help => TestFlag(Constants.Runner.CommandLine.Flags.Help);
         public bool Unattended => TestFlag(Constants.Runner.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
+        public bool RemoveLocalConfig => TestFlag(Constants.Runner.CommandLine.Flags.Local);
 
         // Keep this around since customers still relies on it
         public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
