@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Worker
 {
@@ -32,5 +33,18 @@ namespace GitHub.Runner.Worker
         {
             await _runAsync(ExecutionContext, _data);
         }
+
+        public bool TryUpdateDisplayName(out bool updated)
+        {
+            updated = false;
+            return !string.IsNullOrEmpty(this.DisplayName);
+        }
+
+        public bool EvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated)
+        {
+            updated = false;
+            return !string.IsNullOrEmpty(this.DisplayName);
+        }
+
     }
 }

@@ -25,7 +25,6 @@ namespace GitHub.Runner.Worker
     public interface IActionRunner : IStep, IRunnerService
     {
         ActionRunStage Stage { get; set; }
-        bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated);
         Pipelines.ActionStep Action { get; set; }
     }
 
@@ -286,10 +285,40 @@ namespace GitHub.Runner.Worker
         }
 
         /// <summary>
+        /// Attempts to update the DisplayName.
+        /// As the "Try..." name implies, this method should never throw an exception.
+        /// Returns true if the DisplayName is already present or it was successfully updated.
+        /// </summary>
+        public bool TryUpdateDisplayName(out bool updated)
+        {
+            updated = false;
+
+            // REVIEW:  This try/catch can be removed if some future implementation of EvaluateDisplayName and UpdateTimelineRecordDisplayName
+            // can make reasonable guarantees that they won't throw an exception.
+            try
+            {
+                if (this.Stage == ActionRunStage.Main && EvaluateDisplayName(this.ExecutionContext.ExpressionValues, this.ExecutionContext, out updated))
+                {
+                    if (updated)
+                    {
+                        this.ExecutionContext.UpdateTimelineRecordDisplayName(this.DisplayName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Warning("Caught exception while attempting to evaulate/update the step's DisplayName.  Exception Details:  {0}", ex);
+            }
+
+            return (this.DisplayName != null);
+        }
+
+
+        /// <summary>
         /// Attempts to evaluate the DisplayName of this IActionRunner.
         /// Returns true if the DisplayName is already present or it was successfully evaluated.
         /// </summary>
-        public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated)
+        public bool EvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated)
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(Action, nameof(Action));
@@ -301,10 +330,9 @@ namespace GitHub.Runner.Worker
                 return true;
             }
 
-            bool didFullyEvaluate;
-            _displayName = GenerateDisplayName(Action, contextData, context, out didFullyEvaluate);
+            _displayName = GenerateDisplayName(Action, contextData, context, out bool didFullyEvaluate);
 
-            // If we evaluated fully mask any secrets
+            // If we evaluated, fully mask any secrets
             if (didFullyEvaluate)
             {
                 _displayName = HostContext.SecretMasker.MaskSecrets(_displayName);

@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
@@ -14,8 +11,6 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Expressions;
-using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
-using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -26,6 +21,8 @@ namespace GitHub.Runner.Worker
         string DisplayName { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         TemplateToken Timeout { get; }
+        bool TryUpdateDisplayName(out bool updated);
+        bool EvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated);
         Task RunAsync();
     }
 
@@ -199,7 +196,7 @@ namespace GitHub.Runner.Worker
                             // That being said, evaluating the display name should still be considered as a "best effort" exercise.  (It's not critical or paramount.)
                             // For that reason, we call a safe "Try..." wrapper method to ensure that any potential problems we encounter in evaluating the display name
                             // don't interfere with our ultimate goal within this code block:  evaluation of the condition.
-                            TryUpdateDisplayName(step as IActionRunner, out _);
+                            step.TryUpdateDisplayName(out _);
 
                             try
                             {
@@ -258,37 +255,6 @@ namespace GitHub.Runner.Worker
 
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
             }
-        }
-
-        /// <summary>
-        /// Attempts to update the DisplayName of the supplied IActionRunner.
-        /// As the "Try..." name implies, this method should never throw an exception.
-        /// Returns true if the DisplayName is already present or it was successfully updated.
-        /// </summary>
-        private bool TryUpdateDisplayName(IActionRunner actionRunner, out bool updated)
-        {
-            updated = false;
-
-            // REVIEW:  This try/catch can be removed if some future implementation of TryEvaluateDisplayName and UpdateTimelineRecordDisplayName
-            // can make reasonable guarantees that they won't throw an exception.
-            try
-            {
-                if (actionRunner != null &&
-                    actionRunner.Stage == ActionRunStage.Main &&
-                    actionRunner.TryEvaluateDisplayName(actionRunner.ExecutionContext.ExpressionValues, actionRunner.ExecutionContext, out updated))
-                {
-                    if (updated)
-                    {
-                        actionRunner.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.Warning("Caught exception while attempting to evaulate/update the step's DisplayName.  Exception Details:  {0}", ex);
-            }
-
-            return (actionRunner != null && actionRunner.DisplayName != null);
         }
 
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)
