@@ -1,9 +1,4 @@
-import * as crypto from 'crypto'
-import * as fs from 'fs'
 import * as glob from '@actions/glob'
-import * as path from 'path'
-import * as stream from 'stream'
-import * as util from 'util'
 
 async function run(): Promise<void> {
   // arg0 -> node
@@ -16,50 +11,21 @@ async function run(): Promise<void> {
     console.log('Follow symbolic links')
     followSymbolicLinks = true
   }
-
+  const githubWorkspace = process.cwd()
   console.log(`Match Pattern: ${matchPatterns}`)
-  let hasMatch = false
-  console.log('runner cwd: ', process.cwd())
-  const githubWorkspace = process.env['GITHUB_WORKSPACE'] ?? process.cwd()
-  console.log('current workspace: ', process.env['GITHUB_WORKSPACE'])
-  const result = crypto.createHash('sha256')
-  let count = 0
-  const globber = await glob.create(matchPatterns, {followSymbolicLinks})
-  for await (const file of globber.globGenerator()) {
-    console.log(file)
-    if (!file.startsWith(`${githubWorkspace}${path.sep}`)) {
-      console.log(`Ignore '${file}' since it is not under GITHUB_WORKSPACE.`)
-      continue
-    }
-    if (fs.statSync(file).isDirectory()) {
-      console.log(`Skip directory '${file}'.`)
-      continue
-    }
-    const hash = crypto.createHash('sha256')
-    const pipeline = util.promisify(stream.pipeline)
-    await pipeline(fs.createReadStream(file), hash)
-    result.write(hash.digest())
-    count++
-    if (!hasMatch) {
-      hasMatch = true
-    }
-  }
-  result.end()
-
-  if (hasMatch) {
-    console.log(`Found ${count} files to hash.`)
-    console.error(`__OUTPUT__${result.digest('hex')}__OUTPUT__`)
-  } else {
-    console.error(`__OUTPUT____OUTPUT__`)
+  try {
+    const result = await glob.hashFiles(
+      matchPatterns,
+      githubWorkspace,
+      {followSymbolicLinks},
+      true
+    )
+    console.error(`__OUTPUT__${result}__OUTPUT__`)
+    process.exit(0)
+  } catch (error) {
+    console.log(error)
+    process.exit(1)
   }
 }
 
 run()
-  .then(out => {
-    console.log(out)
-    process.exit(0)
-  })
-  .catch(err => {
-    console.error(err)
-    process.exit(1)
-  })
