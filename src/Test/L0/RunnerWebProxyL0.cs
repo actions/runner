@@ -351,12 +351,13 @@ namespace GitHub.Runner.Common.Tests
                 Assert.False(proxy.IsBypassed(new Uri("https://actions.com")));
                 Assert.False(proxy.IsBypassed(new Uri("https://ggithub.com")));
                 Assert.False(proxy.IsBypassed(new Uri("https://github.comm")));
-                Assert.False(proxy.IsBypassed(new Uri("https://google.com")));
                 Assert.False(proxy.IsBypassed(new Uri("https://example.com")));
                 Assert.False(proxy.IsBypassed(new Uri("http://example.com:333")));
                 Assert.False(proxy.IsBypassed(new Uri("http://192.168.0.123:123")));
                 Assert.False(proxy.IsBypassed(new Uri("http://192.168.1.123/home")));
 
+                Assert.True(proxy.IsBypassed(new Uri("https://google.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://google.com:8080/inbox")));
                 Assert.True(proxy.IsBypassed(new Uri("https://github.com")));
                 Assert.True(proxy.IsBypassed(new Uri("https://GITHUB.COM")));
                 Assert.True(proxy.IsBypassed(new Uri("https://github.com/owner/repo")));
