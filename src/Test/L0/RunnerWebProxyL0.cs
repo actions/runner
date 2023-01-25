@@ -375,6 +375,44 @@ namespace GitHub.Runner.Common.Tests
                 CleanProxyEnv();
             }
         }
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void BypassAllOnWildcardNoProxy()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("http_proxy", "http://user1:pass1%40@127.0.0.1:8888");
+                Environment.SetEnvironmentVariable("https_proxy", "http://user2:pass2%40@127.0.0.1:9999");
+                Environment.SetEnvironmentVariable("no_proxy", "*");
+                var proxy = new RunnerWebProxy();
+
+                Assert.True(proxy.IsBypassed(new Uri("https://actions.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://ggithub.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://github.comm")));
+                Assert.True(proxy.IsBypassed(new Uri("https://example.com")));
+                Assert.True(proxy.IsBypassed(new Uri("http://example.com:333")));
+                Assert.True(proxy.IsBypassed(new Uri("http://192.168.0.123:123")));
+                Assert.True(proxy.IsBypassed(new Uri("http://192.168.1.123/home")));
+                Assert.True(proxy.IsBypassed(new Uri("https://google.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://google.com:8080/inbox")));
+                Assert.True(proxy.IsBypassed(new Uri("https://github.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://GITHUB.COM")));
+                Assert.True(proxy.IsBypassed(new Uri("https://github.com/owner/repo")));
+                Assert.True(proxy.IsBypassed(new Uri("https://actions.github.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://mails.google.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://MAILS.GOOGLE.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://mails.v2.google.com")));
+                Assert.True(proxy.IsBypassed(new Uri("http://mails.v2.v3.google.com/inbox")));
+                Assert.True(proxy.IsBypassed(new Uri("https://example.com:444")));
+                Assert.True(proxy.IsBypassed(new Uri("http://example.com:444")));
+                Assert.True(proxy.IsBypassed(new Uri("http://example.COM:444")));
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
 
         [Fact]
         [Trait("Level", "L0")]
