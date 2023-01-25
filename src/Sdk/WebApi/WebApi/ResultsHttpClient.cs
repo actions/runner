@@ -135,6 +135,29 @@ namespace GitHub.Services.Results.Client
             await StepSummaryUploadCompleteAsync(planId, jobId, stepId, fileSize, cancellationToken);
         }
 
+        // Handle file upload for step summary
+        public async Task UploadResultsLogAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken)
+        {
+            // Get the upload url
+            var uploadUrlResponse = await GetStepSummaryUploadUrlAsync(planId, jobId, stepId, cancellationToken);
+            if (uploadUrlResponse == null)
+            {
+                throw new Exception("Failed to get step summary upload url");
+            }
+
+            // Do we want to throw an exception here or should we just be uploading/truncating the data
+            var fileSize = new FileInfo(file).Length;
+
+            // Upload the file
+            using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+            {
+                var response = await UploadFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, fileStream, cancellationToken);
+            }
+
+            // Send step summary upload complete message
+            await StepSummaryUploadCompleteAsync(planId, jobId, stepId, fileSize, cancellationToken);
+        }
+
         private MediaTypeFormatter m_formatter;
         private Uri m_resultsServiceUrl;
         private string m_token;
