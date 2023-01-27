@@ -114,7 +114,10 @@ namespace GitHub.Runner.Common
                 _pageWriter.Dispose();
                 _pageWriter = null;
                 _pageData = null;
-                _jobServerQueue.QueueFileUpload(_timelineId, _timelineRecordId, "DistributedTask.Core.NotLog", "CustomToolLog", _dataFileName, true);
+                // Figure out if this is a results log and also queue the results log
+                _jobServerQueue.QueueFileUpload(_timelineId, _timelineRecordId, "DistributedTask.Core.Log", "CustomToolLog", _dataFileName, true);
+                // Need to get FF here
+                _jobServerQueue.QueueResultsUpload(_timelineRecordId, "CustomToolLog", _dataFileName, "DistributedTask.Core.Log", true);
             }
         }
     }
