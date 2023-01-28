@@ -168,29 +168,46 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
                     return CreateToken(TokenKind.PropertyName, str, startIndex);
                 }
 
-                // Null
-                if (str.Equals(ExpressionConstants.Null, StringComparison.Ordinal))
+                if((Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.DTExpressionsV1)
                 {
-                    return CreateToken(TokenKind.Null, str, startIndex);
+                    // azure devops supports true and false in OrdinalIgnoreCase, but GitHub Actions only in Ordinal
+                    // src: https://github.com/actions/runner/blob/c8afc848403652f31f84eb362fc0696ee23cffca/src/Sdk/DTExpressions/Expressions/LexicalAnalyzer.cs#L168-L177
+                    // null, Nan and Infinity are not available and cause an error
+                    if (str.Equals(ExpressionConstants.True, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return CreateToken(TokenKind.Boolean, str, startIndex, true);
+                    }
+                    else if (str.Equals(ExpressionConstants.False, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return CreateToken(TokenKind.Boolean, str, startIndex, false);
+                    }
                 }
-                // Boolean
-                else if (str.Equals(ExpressionConstants.True, StringComparison.Ordinal))
+                else
                 {
-                    return CreateToken(TokenKind.Boolean, str, startIndex, true);
-                }
-                else if (str.Equals(ExpressionConstants.False, StringComparison.Ordinal))
-                {
-                    return CreateToken(TokenKind.Boolean, str, startIndex, false);
-                }
-                // NaN
-                else if (str.Equals(ExpressionConstants.NaN, StringComparison.Ordinal))
-                {
-                    return CreateToken(TokenKind.Number, str, startIndex, Double.NaN);
-                }
-                // Infinity
-                else if (str.Equals(ExpressionConstants.Infinity, StringComparison.Ordinal))
-                {
-                    return CreateToken(TokenKind.Number, str, startIndex, Double.PositiveInfinity);
+                    // Null
+                    if (str.Equals(ExpressionConstants.Null, StringComparison.Ordinal))
+                    {
+                        return CreateToken(TokenKind.Null, str, startIndex);
+                    }
+                    // Boolean
+                    else if (str.Equals(ExpressionConstants.True, StringComparison.Ordinal))
+                    {
+                        return CreateToken(TokenKind.Boolean, str, startIndex, true);
+                    }
+                    else if (str.Equals(ExpressionConstants.False, StringComparison.Ordinal))
+                    {
+                        return CreateToken(TokenKind.Boolean, str, startIndex, false);
+                    }
+                    // NaN
+                    else if (str.Equals(ExpressionConstants.NaN, StringComparison.Ordinal))
+                    {
+                        return CreateToken(TokenKind.Number, str, startIndex, Double.NaN);
+                    }
+                    // Infinity
+                    else if (str.Equals(ExpressionConstants.Infinity, StringComparison.Ordinal))
+                    {
+                        return CreateToken(TokenKind.Number, str, startIndex, Double.PositiveInfinity);
+                    }
                 }
 
                 // Lookahead
