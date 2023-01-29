@@ -1,0 +1,6 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#type-casting
+variables:
+  coalesceLiteral: $[coalesce(variables.emptyString, '', 'literal value')]
+
+steps:
+- script: echo $(coalesceLiteral) # outputs literal value

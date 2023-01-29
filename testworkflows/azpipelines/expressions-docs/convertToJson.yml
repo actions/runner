@@ -1,0 +1,16 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#converttojson
+parameters:
+  - name: listOfValues
+    type: object
+    default:
+      this_is:
+        a_complex: object
+        with:
+          - one
+          - two
+
+steps:
+- script: |
+    echo "${MY_JSON}"
+  env:
+    MY_JSON: ${{ convertToJson(parameters.listOfValues) }}

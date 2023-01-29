@@ -164,6 +164,7 @@ jobs:
         gharun --event azpipelines -C testworkflows/azpipelines/runoncedeployonlyoutput -W testworkflows/azpipelines/runoncedeployonlyoutput/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/runoncedeployoutput -W testworkflows/azpipelines/runoncedeployoutput/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-template -W testworkflows/azpipelines/cross-repo-template/pipeline.yml --local-repository az/typedtemplates@main=testworkflows/azpipelines/typedtemplates --local-repository az/untypedtemplates@main=testworkflows/azpipelines/untypedtemplates
+        gharun --event azpipelines -C testworkflows/azpipelines/expressions-docs -W testworkflows/azpipelines/expressions-docs --var Build.SourceBranch=refs/heads/main
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
@@ -173,6 +174,7 @@ jobs:
     - name: Test Windows Container
       if: contains(matrix.os, 'windows') && !job.container
       run: |
+        set -x
         gharun -W testworkflows/windows.yml -P windows-latest=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
         gharun -W testworkflows/testlocalcheckout.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
         # depends on bash, therefore disabled for now
@@ -187,6 +189,7 @@ jobs:
     - name: Test Linux Container
       if: contains(matrix.os, 'ubuntu') && !job.container
       run: |
+        set -x
         gharun -W testworkflows/testlocalcheckout.yml -P self-hosted=ubuntu:latest
         gharun -W testworkflows/artifact.yml -P self-hosted=ubuntu:latest
         gharun -W testworkflows/cache.yml -P ubuntu-latest=ubuntu:latest
@@ -213,6 +216,7 @@ jobs:
         sleep 2
         echo "Send job"
         cd ..
+        set -x
         gharun --server http://localhost:5000 -W testworkflows/testlocalcheckout.yml
         gharun --server http://localhost:5000 -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
         gharun --server http://localhost:5000 -W testworkflows/testhashfiles.yml

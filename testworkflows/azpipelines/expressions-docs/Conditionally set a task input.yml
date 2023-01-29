@@ -1,0 +1,10 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditionally-set-a-task-input
+steps:
+- task: DotNetCoreInstaller@1
+  inputs:
+    installationPath: '$(Pipeline.Workspace)/dotnet'
+    ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+      packageType: 'runtime'
+    ${{ else }}:
+      packageType: 'sdk'
+    version: '7.0.x'

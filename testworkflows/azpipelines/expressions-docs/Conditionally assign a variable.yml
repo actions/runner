@@ -1,0 +1,7 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditionally-assign-a-variable
+variables:
+  ${{ if eq(variables['Build.SourceBranchName'], 'main') }}: # only works if you have a main branch
+    stageName: prod
+
+steps:
+- script: echo ${{variables.stageName}}

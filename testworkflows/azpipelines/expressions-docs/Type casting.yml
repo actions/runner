@@ -1,0 +1,8 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#type-casting
+variables:
+  firstEval: $[lt(False, True)] # 0 vs. 1, True
+  secondEval: $[lt(True, False)] # 1 vs. 0, False
+
+steps:
+- script: echo $(firstEval)
+- script: echo $(secondEval)

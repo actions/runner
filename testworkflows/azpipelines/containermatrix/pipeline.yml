@@ -12,8 +12,6 @@ resources:
 
 jobs:
 - job: RunInContainer
-  pool:
-    vmImage: 'ubuntu-18.04'
 
   strategy:
     matrix:

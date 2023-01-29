@@ -1,0 +1,7 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#split
+variables:
+- name: environments
+  value: prod1,prod2 
+steps:  
+  - ${{ each env in split(variables.environments, ',')}}:
+    - script: echo "./deploy.sh --environment ${{ env }}"

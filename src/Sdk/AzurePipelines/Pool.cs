@@ -19,7 +19,7 @@ public class Pool {
                 case "name":
                     Name = kv.Value is NullToken ? null : kv.Value.AssertString("name").Value;
                 break;
-                case "vmimage":
+                case "vmImage":
                     VmImage = kv.Value.AssertString("name").Value;
                 break;
                 case "demands":

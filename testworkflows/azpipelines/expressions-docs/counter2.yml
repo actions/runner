@@ -1,0 +1,7 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#counter
+jobs:
+- job:
+  variables:
+    a: $[counter(format('{0:yyyyMMdd}', pipeline.startTime), 100)]
+  steps:
+  - bash: echo $(a)

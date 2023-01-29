@@ -1,8 +1,6 @@
 jobs:
 # Set an output variable in a lifecycle hook of a deployment job executing runOnce strategy.
 - deployment: A
-  pool:
-    vmImage: 'ubuntu-latest'
   environment: staging
   strategy:
     runOnce:

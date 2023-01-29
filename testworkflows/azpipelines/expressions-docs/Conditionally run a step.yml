@@ -1,0 +1,13 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditionally-run-a-step
+variables:
+  - name: foo
+    value: contoso # triggers elseif condition
+
+steps:
+- script: echo "start"
+- ${{ if eq(variables.foo, 'adaptum') }}:
+  - script: echo "this is adaptum"
+- ${{ elseif eq(variables.foo, 'contoso') }}: # true
+  - script: echo "this is contoso" 
+- ${{ else }}:
+  - script: echo "the value is not adaptum or contoso"

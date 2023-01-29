@@ -1,0 +1,8 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#counter
+variables:
+  major: 1
+  # define minor as a counter with the prefix as variable major, and seed as 100.
+  minor: $[counter(variables['major'], 100)]
+
+steps:
+- bash: echo $(minor)

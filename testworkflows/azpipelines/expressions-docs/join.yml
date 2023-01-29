@@ -1,0 +1,14 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#join
+parameters:
+- name: myArray
+  type: object
+  default:
+    - FOO
+    - BAR
+    - ZOO
+
+variables:
+   A: ${{ join(';',parameters.myArray) }}
+
+steps:
+  - script: echo $A # outputs FOO;BAR;ZOO
