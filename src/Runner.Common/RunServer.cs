@@ -29,7 +29,7 @@ namespace GitHub.Runner.Common
         {
             requestUri = serverUri;
 
-            _connection = VssUtil.CreateRawConnection(new Uri(serverUri.Authority), credentials);
+            _connection = VssUtil.CreateRawConnection(serverUri, credentials);
             _runServiceHttpClient = await _connection.GetClientAsync<RunServiceHttpClient>();
             _hasConnection = true;
         }
