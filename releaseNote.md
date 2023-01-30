@@ -1,5 +1,7 @@
 ## Bugs
 - Fixed an issue where self hosted environments had their docker env's overwritten (#2107)
+- Sanitize Windows ENVs (#2280)
+
 ## Misc
 
 ## Windows x64
