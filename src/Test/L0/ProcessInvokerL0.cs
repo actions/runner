@@ -135,7 +135,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task SetTestEnvWithNullInKey()
         {
-            using (TestHostContext hc = new(this))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -170,7 +170,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task SetTestEnvWithNullInValue()
         {
-            using (TestHostContext hc = new(this))
+            using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
 
