@@ -288,6 +288,7 @@ jobs:
         release_name: "v${{ steps.releaseNote.outputs.version }}"
         body: |
           ${{ steps.releaseNote.outputs.note }}
+        prerelease: true
 
     # Upload release assets (full runner packages)
     - name: Upload Release Asset (win-x64)
