@@ -4125,6 +4125,10 @@ namespace Runner.Server.Controllers
                                                 addMatrixVar("System.JobName", "__default");
                                                 addMatrixVar("System.JobDisplayName", next.DisplayName);
                                                 var svariables = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
+                                                var userAgentName = "AZURE_HTTP_USER_AGENT";
+                                                if(!svariables.ContainsKey(userAgentName)) {
+                                                    svariables[userAgentName] = "gharun/1.0.0";
+                                                }
                                                 if(providedVars != null) {
                                                     foreach(var v in providedVars) {
                                                         svariables[v.Key] = v.Value;
@@ -5791,7 +5795,15 @@ namespace Runner.Server.Controllers
                 new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                 return cancel => _job;
             };
-            try {                
+            try {
+                var macroexpr = new Regex("\\$\\(([^)]+)\\)");
+                Func<Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>, string, int, string> evalMacro = null;
+                evalMacro = (vars, macro, depth) => {
+                    return macroexpr.Replace(macro, v => {
+                        var keyFormat = v.Groups[1].Value.Split(":", 2);
+                        return vars.TryGetValue(keyFormat[0], out var val) ? (depth <= 10 ? evalMacro(vars, val.Value, depth + 1) : val.Value) : v.Groups[0].Value;
+                    });
+                };
                 var cleanupClone = Clone();
                 string runnerToken = null;
                 var job = new Job() { CleanUp = () => {
@@ -5906,22 +5918,59 @@ namespace Runner.Server.Controllers
                             }
                         }
 
+                        var endpointPrefix = "system.runner.server.ServiceEndpoint.";
+                        var repositoryPrefix = "system.runner.server.RepositoryResource.";
+                        foreach(var variable in svariables) {
+                            if(variable.Key.StartsWith(endpointPrefix, StringComparison.OrdinalIgnoreCase)) {
+                                var endp = JsonConvert.DeserializeObject<ServiceEndpoint>(variable.Value.Value);
+                                if(string.IsNullOrEmpty(endp.Name)) {
+                                    endp.Name = variable.Key.Substring(endpointPrefix.Length);
+                                }
+                                if(endp.Id == Guid.Empty) {
+                                    endp.Id = Guid.NewGuid();
+                                }
+                                resources.Endpoints.Add(endp);
+                            } else if(variable.Key.StartsWith(repositoryPrefix, StringComparison.OrdinalIgnoreCase)) {
+                                var repo = JsonConvert.DeserializeObject<RepositoryResource>(variable.Value.Value);
+                                if(string.IsNullOrEmpty(repo.Alias)) {
+                                    repo.Alias = variable.Key.Substring(repositoryPrefix.Length);
+                                }
+                                if(string.IsNullOrEmpty(repo.Id)) {
+                                    repo.Id = Guid.NewGuid().ToString();
+                                }
+                                resources.Repositories.Add(repo);
+                            }
+                        }
+
+                        if(!resources.Repositories.Any(repo => string.Equals(repo.Alias, "self", StringComparison.OrdinalIgnoreCase))) {
+                            var dummyEndpoint = new ServiceEndpoint() {
+                                Name = Guid.NewGuid().ToString(),
+                                Url = new Uri("https://localhost/"),
+                                Id = Guid.NewGuid(),
+                                Type = "GithubEnterprise",
+                                Owner = "test",
+                                Description = "Some weird thingy",
+                                IsReady = true,
+                                IsShared = true,
+                                GroupScopeId = Guid.NewGuid(),
+                                OperationStatus = null,
+                                Data = null
+                            };
+                            resources.Endpoints.Add(dummyEndpoint);
+                            var repoResource = new RepositoryResource() {
+                                Alias = "self",
+                                Id = Guid.NewGuid().ToString(),
+                                Endpoint = new ServiceEndpointReference() { Id = dummyEndpoint.Id, Name = dummyEndpoint.Name },
+                                Url = new Uri("https://localhost/Unknown/Unknown"),
+                                Type = "GithubEnterprise",
+                                Version = "0000000000000000000000000000000000000000"
+                            };
+                            repoResource.Properties.Set("name", "repo1");
+                            repoResource.Properties.Set("ref", "main");
+                            resources.Repositories.Add(repoResource);
+                        }
+
                         var stepNames = new ReferenceNameBuilder(true);
-                        // var checkoutTask = new TaskStep {
-                        //     Id = Guid.NewGuid(),
-                        //     Enabled = true,
-                        //     Condition = "false",
-                        //     Name = "__system_1",
-                        //     Reference = new TaskStepDefinitionReference {
-                        //         Id = Guid.Parse("6d15af64-176c-496d-b583-fd2ae21d4df4"),
-                        //         Name = "Checkout",
-                        //         Version = "1.0.0"
-                        //     }
-                        // };
-                        // checkoutTask.Inputs["repository"] = "self";
-                        // checkoutTask.Inputs["clean"] = "true";
-                        // checkoutTask.Inputs["fetchDepth"] = "0";
-                        // checkoutTask.Inputs["lfs"] = "false";
 
                         var steps = rjob.Steps/*.Prepend(checkoutTask)*/.Where(s => s.Enabled).ToList();
                         var checkoutGuid = Guid.Parse("6d15af64-176c-496d-b583-fd2ae21d4df4");
@@ -5964,14 +6013,41 @@ namespace Runner.Server.Controllers
                                         }
                                     }
                                 }
+                            } else {
+                                if(!steps.Any(step => step.Reference?.Id == checkoutGuid)) {
+                                    var checkoutTask = new TaskStep {
+                                        DisplayName = "Default Checkout Task",
+                                        Reference = new TaskStepDefinitionReference {
+                                            Id = checkoutGuid,
+                                            Name = "Checkout",
+                                            Version = "1.0.0"
+                                        }
+                                    };
+                                    checkoutTask.Inputs["repository"] = "self";
+                                    checkoutTask.Inputs["clean"] = "true";
+                                    checkoutTask.Inputs["fetchDepth"] = "0";
+                                    checkoutTask.Inputs["lfs"] = "false";
+                                } else {
+                                    // checkout: none triggers an error in the builtin checkout task
+                                    steps.RemoveAll(step => step.Reference?.Id == checkoutGuid && step.Inputs.TryGetValue("repository", out var repo) && repo == "none");
+                                }
                             }
                         }
+                        var seNameToId = resources.Endpoints.ToOrdinalIgnoreCaseDictionary(s => s.Name, s => s.Id.ToString());
                         List<string> errors = new List<string>();
                         for(int i = 0; i < steps.Count; i++) {
                             var clone = new TaskStep();
                             var org = steps[i] as TaskStep;
+                            var metaData = org.Reference.Id == checkoutGuid ? null : tasksByNameAndVersion[$"{org.Reference.Id}@{org.Reference.Version}"];
+                            var inputs = metaData?.Inputs?.ToOrdinalIgnoreCaseDictionary(inp => inp.Name, inp => inp);
                             if(org.Inputs != null) {
                                 foreach(var kv in org.Inputs) {
+                                    if(inputs?.TryGetValue(kv.Key, out var inp) ?? false) {
+                                        if(inp.Type.StartsWith("connectedService:", StringComparison.OrdinalIgnoreCase) && seNameToId.TryGetValue(kv.Value, out var seId)) {
+                                            clone.Inputs[kv.Key] = seId;
+                                            continue;
+                                        }
+                                    }
                                     clone.Inputs[kv.Key] = kv.Value;
                                 }
                             }
@@ -5988,7 +6064,23 @@ namespace Runner.Server.Controllers
                             }
                             clone.DisplayName = org.DisplayName;
                             if(string.IsNullOrEmpty(clone.DisplayName)) {
-                                clone.DisplayName = org.Reference.Name;
+                                clone.DisplayName = string.IsNullOrEmpty(metaData?.InstanceNameFormat) ? org.Reference.Name : metaData.InstanceNameFormat;
+                            }
+                            if(!string.IsNullOrEmpty(clone.DisplayName)) {
+                                var displayNameVars = new Dictionary<string, GitHub.DistributedTask.WebApi.VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
+                                if(clone.Inputs != null) {
+                                    foreach(var inp in clone.Inputs) {
+                                        displayNameVars[inp.Key] = inp.Value;
+                                    }
+                                    if(inputs != null) {
+                                        foreach(var inp in inputs) {
+                                            if(!clone.Inputs.ContainsKey(inp.Key)) {
+                                                displayNameVars[inp.Key] = inp.Value.DefaultValue ?? "";
+                                            }
+                                        }
+                                    }
+                                }
+                                clone.DisplayName = evalMacro(displayNameVars, clone.DisplayName, 0);
                             }
                             clone.Enabled = org.Enabled;
                             clone.Condition = org.Condition;
@@ -6027,34 +6119,6 @@ namespace Runner.Server.Controllers
                             null,
                             null);
                         req.RequestId = requestId;
-                        req.Resources.Endpoints.Add(new ServiceEndpoint() {
-                            Name = "github",
-                            Url = new Uri("https://localhost/"),
-                            Id = Guid.NewGuid(),
-                            Type = "GithubEnterprise"
-                        });
-                        req.Resources.Repositories.Add(new RepositoryResource() {
-                            Alias = "self",
-                            Id = Guid.NewGuid().ToString(),
-                            Endpoint = new ServiceEndpointReference() { Id = req.Resources.Endpoints[1].Id, Name =  req.Resources.Endpoints[1].Name },
-                            Url = new Uri("https://localhost/Unknown/Unknown"),
-                            Type = "GithubEnterprise",
-                            Version = "0000000000000000000000000000000000000000"
-                        });
-                        req.Resources.Repositories.Add(new RepositoryResource() {
-                            Alias = "task",
-                            Id = Guid.NewGuid().ToString(),
-                            Endpoint = new ServiceEndpointReference() { Id = req.Resources.Endpoints[1].Id, Name =  req.Resources.Endpoints[1].Name },
-                            Url = new Uri("https://localhost/Unknown/Unknown"),
-                            Type = "GithubEnterprise",
-                            Version = "0000000000000000000000000000000000000000",
-                        });
-                        req.Resources.Repositories[0].Properties.Set("name", "repo1");
-                        req.Resources.Repositories[0].Properties.Set("ref", "main");
-                        req.Resources.Repositories[1].Properties.Set("name", "task");
-                        req.Resources.Repositories[1].Properties.Set("ref", "main");
-                        // req.Resources.Repositories[0].Properties[]
-                        // req.Resources.Repositories[0].Properties
                         var json = JsonConvert.SerializeObject(req, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}});
                         return req;
                     } catch(Exception ex) {
@@ -6067,25 +6131,17 @@ namespace Runner.Server.Controllers
                 var runsOnMap = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { };
                 // Add capabilities to the map
                 if(rjob.Pool != null) {
-                    var macroexpr = new Regex("\\$\\(([^)]+)\\)");
-                    Func<string, int, string> evalMacro = null;
-                    evalMacro = (macro, depth) => {
-                        return macroexpr.Replace(macro, v => {
-                            var keyFormat = v.Groups[1].Value.Split(":", 2);
-                            return variables.TryGetValue(keyFormat[0], out var val) ? (depth <= 10 ? evalMacro(val.Value, depth + 1) : val.Value) : v.Groups[0].Value;
-                        });
-                    };
                     string[] demands = null;
                     string vmImage = null;
                     string poolName = null;
                     if(rjob.Pool.Demands != null) {
-                        demands = (from d in rjob.Pool.Demands select evalMacro(d, 0)).ToArray();
+                        demands = (from d in rjob.Pool.Demands select evalMacro(variables, d, 0)).ToArray();
                     }
                     if(rjob.Pool.VmImage != null) {
-                        vmImage = evalMacro(rjob.Pool.VmImage, 0);
+                        vmImage = evalMacro(variables, rjob.Pool.VmImage, 0);
                     }
                     if(rjob.Pool.Name != null) {
-                        poolName = evalMacro(rjob.Pool.Name, 0);
+                        poolName = evalMacro(variables, rjob.Pool.Name, 0);
                     }
                     if(!string.IsNullOrEmpty(vmImage)) {
                         runsOnMap.Add(vmImage);

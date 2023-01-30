@@ -207,16 +207,21 @@ public class AzureDevops {
                 }
                 return new TaskStepDefinitionReference() { RawNameAndVersion = task };
             };
+            Action addUnparsedTokensAsInputs = () => {
+                for(int i = 0; i < unparsedTokens.Count; i++) {
+                    tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertLiteralString("step key");
+                }
+            };
+            tstep.Id = Guid.NewGuid();
             switch(primaryKey) {
                 case "task":
                     var task = primaryValue;
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference(task);
                     for(int i = 0; i < unparsedTokens.Count; i++) {
                         switch(unparsedTokens[i].Key.AssertString("step key").Value) {
                             case "inputs":
                                 foreach(var kv in unparsedTokens[i].Value.AssertMapping("inputs mapping")) {
-                                    tstep.Inputs[kv.Key.AssertString("inputs key").Value] = kv.Value.AssertString("inputs value").Value;
+                                    tstep.Inputs[kv.Key.AssertString("inputs key").Value] = kv.Value.AssertLiteralString("inputs value");
                                 }
                                 break;
                         }
@@ -225,11 +230,9 @@ public class AzureDevops {
                 break;
                 case "powershell":
                 case "pwsh":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("PowerShell@2");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
+ 
                     tstep.Inputs["targetType"] = "inline";
                     if(primaryKey == "pwsh") {
                         tstep.Inputs["pwsh"] = "true";
@@ -238,76 +241,52 @@ public class AzureDevops {
                     steps.Add(tstep);
                 break;
                 case "bash":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("Bash@3");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
                     tstep.Inputs["targetType"] = "inline";
                     tstep.Inputs["script"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "script":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("CmdLine@2");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
                     tstep.Inputs["script"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "checkout":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("Checkout@1");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
                     tstep.Inputs["repository"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "download":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("DownloadPipelineArtifact@2");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
                     tstep.Inputs["buildType"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "downloadBuild":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("DownloadBuildArtifacts@0");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
                     tstep.Inputs["buildType"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "getPackage":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("DownloadPackage@1");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
                     // Unknown if this is correct...
                     tstep.Inputs["definition"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "publish":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("PublishPipelineArtifact@1");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
                     tstep.Inputs["path"] = primaryValue;
                     steps.Add(tstep);
                 break;
                 case "reviewApp":
-                    tstep.Id = Guid.NewGuid();
                     tstep.Reference = nameToReference("ReviewApp@0");
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertString("step key").Value;
-                    }
+                    addUnparsedTokensAsInputs();
                     tstep.Inputs["resourceName"] = primaryValue;
                     steps.Add(tstep);
                 break;

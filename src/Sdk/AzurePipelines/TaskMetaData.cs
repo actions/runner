@@ -9,6 +9,14 @@ public class TaskMetaData {
     public string Name { get; set; }
     public TaskVersion Version { get; set; }
     public string ArchivePath { get; set; }
+    public class Input {
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string Label { get; set; }
+        public string DefaultValue { get; set; }
+    }
+    public Input[] Inputs { get; set; }
+    public string InstanceNameFormat { get; set; }
 
     public static bool ValidZipFile(string filePath) {
         try {
