@@ -147,7 +147,7 @@ namespace GitHub.Runner.Common
         {
             EndBlock(false);
             _blockByteCount = 0;
-            _resultsDataFileName = Path.Combine(_resultsBlockFolder, $"{_timelineId}_{_timelineRecordId}_{++_blockCount}.block");
+            _resultsDataFileName = Path.Combine(_resultsBlockFolder, $"{_timelineId}_{_timelineRecordId}.{++_blockCount}");
             _resultsBlockData = new FileStream(_resultsDataFileName, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite);
             _resultsBlockWriter = new StreamWriter(_resultsBlockData, System.Text.Encoding.UTF8);
         }
@@ -161,7 +161,7 @@ namespace GitHub.Runner.Common
                 _resultsBlockWriter.Dispose();
                 _resultsBlockWriter = null;
                 _resultsBlockData = null;
-                _jobServerQueue.QueueResultsUpload(_timelineRecordId, "ResultsLog", _resultsDataFileName, "Results.Core.Log", true, finalize);
+                _jobServerQueue.QueueResultsUpload(_timelineRecordId, "ResultsLog", _resultsDataFileName, "Results.Core.Log", true, finalize, _resultsDataFileName.EndsWith(".0"));
             }
         }
     }

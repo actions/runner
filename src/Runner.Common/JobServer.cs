@@ -31,7 +31,7 @@ namespace GitHub.Runner.Common
         Task AppendTimelineRecordFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken);
         Task<TaskAttachment> CreateAttachmentAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, String type, String name, Stream uploadStream, CancellationToken cancellationToken);
         Task CreateStepSymmaryAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken);
-        Task CreateResultsLogAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken);
+        Task CreateResultsLogAsync(string planId, string jobId, string stepId, string file, bool finalize, bool firstBlock, CancellationToken cancellationToken);
         Task<TaskLog> CreateLogAsync(Guid scopeIdentifier, string hubName, Guid planId, TaskLog log, CancellationToken cancellationToken);
         Task<Timeline> CreateTimelineAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, CancellationToken cancellationToken);
         Task<List<TimelineRecord>> UpdateTimelineRecordsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
@@ -326,11 +326,11 @@ namespace GitHub.Runner.Common
             throw new InvalidOperationException("Results client is not initialized.");
         }
 
-        public Task CreateResultsLogAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken)
+        public Task CreateResultsLogAsync(string planId, string jobId, string stepId, string file, bool finalize, bool firstBlock, CancellationToken cancellationToken)
         {
             if (_resultsClient != null)
             {
-                return _resultsClient.UploadResultsLogAsync(planId, jobId, stepId, file, cancellationToken: cancellationToken);
+                return _resultsClient.UploadResultsLogAsync(planId, jobId, stepId, file, finalize, firstBlock, cancellationToken: cancellationToken);
             }
             throw new InvalidOperationException("Results client is not initialized.");
         }

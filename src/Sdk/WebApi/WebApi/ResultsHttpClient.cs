@@ -169,6 +169,49 @@ namespace GitHub.Services.Results.Client
             }
         }
 
+        private async Task<HttpResponseMessage> CreateAppendFileAsync(string url, string blobStorageType, CancellationToken cancellationToken)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, url);
+            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            {
+                request.Content.Headers.Add("x-ms-blob-type", "AppendBlob");
+                request.Content.Headers.Add("Content-Length", "0");
+            }
+
+            using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Failed to create append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                }
+                return response;
+            }
+        }
+        
+        private async Task<HttpResponseMessage> UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, CancellationToken cancellationToken)
+        {
+            // Upload the file to the url
+            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StreamContent(file)
+            };
+
+            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            {
+                request.Content.Headers.Add("x-ms-blob-type", "AppendBlob");
+                request.Content.Headers.Add("x-ms-blob-sealed", finalize.ToString());
+            }
+
+            using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Failed to upload append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                }
+                return response;
+            }
+        }
+
         // Handle file upload for step summary
         public async Task UploadStepSummaryAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken)
         {
@@ -196,8 +239,8 @@ namespace GitHub.Services.Results.Client
             await StepSummaryUploadCompleteAsync(planId, jobId, stepId, fileSize, cancellationToken);
         }
 
-        // Handle file upload for step summary
-        public async Task UploadResultsLogAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken)
+        // Handle file upload for step log 
+        public async Task UploadResultsLogAsync(string planId, string jobId, string stepId, string file, bool finalize, bool firstBlock, CancellationToken cancellationToken)
         {
             // Get the upload url
             var uploadUrlResponse = await GetStepLogUploadUrlAsync(planId, jobId, stepId, cancellationToken);
@@ -210,9 +253,17 @@ namespace GitHub.Services.Results.Client
             var fileSize = new FileInfo(file).Length;
 
             // Upload the file
+            // if this is the first block, we need to create
+            // otherwise we just need to append
+            // if this is the last block we also need to seal
+            if (firstBlock)
+            {
+                var response = await CreateAppendFileAsync(uploadUrlResponse.BlobUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+            }
+
             using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
             {
-                var response = await UploadFileAsync(uploadUrlResponse.BlobUrl, uploadUrlResponse.BlobStorageType, fileStream, cancellationToken);
+                var response = await UploadAppendFileAsync(uploadUrlResponse.BlobUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, cancellationToken);
             }
 
             // Send step summary upload complete message
