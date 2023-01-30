@@ -857,7 +857,7 @@ namespace GitHub.Runner.Worker
                 throw new FileNotFoundException($"Can't upload (name:{name}) file: {filePath}. File does not exist.");
             }
 
-            _jobServerQueue.QueueResultsUpload(stepRecordId, name, filePath, ChecksAttachmentType.StepSummary, deleteSource: false);
+            _jobServerQueue.QueueResultsUpload(stepRecordId, name, filePath, ChecksAttachmentType.StepSummary, deleteSource: false, finalize: false);
         }
 
         // Add OnMatcherChanged

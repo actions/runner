@@ -45,7 +45,7 @@ namespace GitHub.Services.Results.Contracts
     public class GetSignedStepLogsURLResponse
     {
         [DataMember]
-        public string SummaryUrl;
+        public string BlobUrl;
         [DataMember]
         public long SoftSizeLimit;
         [DataMember]

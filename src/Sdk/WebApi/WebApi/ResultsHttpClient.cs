@@ -212,7 +212,7 @@ namespace GitHub.Services.Results.Client
             // Upload the file
             using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
             {
-                var response = await UploadFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, fileStream, cancellationToken);
+                var response = await UploadFileAsync(uploadUrlResponse.BlobUrl, uploadUrlResponse.BlobStorageType, fileStream, cancellationToken);
             }
 
             // Send step summary upload complete message

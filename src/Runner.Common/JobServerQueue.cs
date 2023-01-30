@@ -20,7 +20,7 @@ namespace GitHub.Runner.Common
         void Start(Pipelines.AgentJobRequestMessage jobRequest);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
-        void QueueResultsUpload(Guid stepRecordId, string name, string path, string type, bool deleteSource);
+        void QueueResultsUpload(Guid stepRecordId, string name, string path, string type, bool deleteSource, bool finalize);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
     }
 
@@ -248,7 +248,7 @@ namespace GitHub.Runner.Common
             
         }
 
-        public void QueueResultsUpload(Guid stepRecordId, string name, string path, string type, bool deleteSource)
+        public void QueueResultsUpload(Guid stepRecordId, string name, string path, string type, bool deleteSource, bool finalize)
         {
             // all parameter not null, file path exist.
             var newFile = new ResultsUploadFileInfo()
