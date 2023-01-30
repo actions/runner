@@ -21,7 +21,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<ITerminal> _term;
         private Mock<IConfigurationStore> _configStore;
         private Mock<IJobDispatcher> _jobDispatcher;
-        private AgentRefreshMessage _refreshMessage = new AgentRefreshMessage(1, "2.299.0");
+        private AgentRefreshMessage _refreshMessage = new AgentRefreshMessage(1, "2.999.0");
         private List<TrimmedPackageMetadata> _trimmedPackages = new List<TrimmedPackageMetadata>();
 
 #if !OS_WINDOWS
@@ -72,8 +72,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _trimmedPackages = StringUtil.ConvertFromJson<List<TrimmedPackageMetadata>>(json);
             }
 
-            _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl }));
+            _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl }));
 
         }
 
@@ -122,13 +122,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
                         Assert.True(result);
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0")));
                     }
                     finally
                     {
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0"), CancellationToken.None);
                     }
                 }
             }
@@ -214,8 +214,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                     hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
-                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = $"https://github.com/actions/runner/notexists" }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
+                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = $"https://github.com/actions/runner/notexists" }));
 
                     var p1 = new ProcessInvokerWrapper();
                     p1.Initialize(hc);
@@ -269,8 +269,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                     hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
-                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, HashValue = "bad_hash" }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
+                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, HashValue = "bad_hash" }));
 
                     var p1 = new ProcessInvokerWrapper();
                     p1.Initialize(hc);
@@ -335,8 +335,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.EnqueueInstance<IProcessInvoker>(p3);
                     updater.Initialize(hc);
 
-                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = new List<TrimmedPackageMetadata>() { new TrimmedPackageMetadata() } }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = new List<TrimmedPackageMetadata>() { new TrimmedPackageMetadata() } }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
                                  .Callback((int p, int a, string s, string t) =>
@@ -349,8 +349,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
                         Assert.True(result);
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0")));
 
                         FieldInfo contentHashesProperty = updater.GetType().GetField("_contentHashes", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                         Assert.NotNull(contentHashesProperty);
@@ -365,8 +365,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     }
                     finally
                     {
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0"), CancellationToken.None);
                     }
                 }
             }
@@ -481,8 +481,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     updater.Initialize(hc);
 
                     var trim = _trimmedPackages.Where(x => !x.TrimmedContents.ContainsKey("dotnetRuntime")).ToList();
-                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
                                  .Callback((int p, int a, string s, string t) =>
@@ -495,13 +495,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
                         Assert.True(result);
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0")));
                     }
                     finally
                     {
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0"), CancellationToken.None);
                     }
 
                     var traceFile = Path.GetTempFileName();
@@ -570,8 +570,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     updater.Initialize(hc);
 
                     var trim = _trimmedPackages.Where(x => x.TrimmedContents.ContainsKey("dotnetRuntime") && x.TrimmedContents.ContainsKey("externals")).ToList();
-                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
                                  .Callback((int p, int a, string s, string t) =>
@@ -584,13 +584,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
                         Assert.True(result);
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0")));
                     }
                     finally
                     {
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0"), CancellationToken.None);
                     }
 
                     var traceFile = Path.GetTempFileName();
@@ -671,8 +671,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                         }
                     }
 
-                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
 
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
@@ -686,13 +686,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
                         Assert.True(result);
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0")));
                     }
                     finally
                     {
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0"), CancellationToken.None);
                     }
 
                     var traceFile = Path.GetTempFileName();
@@ -749,8 +749,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                         package.HashValue = "mismatch";
                     }
 
-                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
                                  .Callback((int p, int a, string s, string t) =>
@@ -763,13 +763,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
                         Assert.True(result);
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
-                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0")));
                     }
                     finally
                     {
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
-                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.999.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.999.0"), CancellationToken.None);
                     }
 
                     var traceFile = Path.GetTempFileName();
