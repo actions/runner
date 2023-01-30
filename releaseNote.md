@@ -7,6 +7,7 @@
 
 ## Bugs
 - Use Global.Variables instead of JobContext and include action path/ref in the message. (#2214)
+- Sanitize Windows ENVs (#2280)
 
 ## Misc
 - Allow '--disableupdate' in create-latest-svc.sh (#2201)
