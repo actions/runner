@@ -1,6 +1,7 @@
 ## Features
 ## Bugs
 - Fixed an issue where container environment variables names or values could escape the docker command (#2108)
+- Sanitize Windows ENVs (#2280)
 
 ## Misc
 
