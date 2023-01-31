@@ -24,13 +24,13 @@ namespace GitHub.Services.Results.Client
             m_formatter = new JsonMediaTypeFormatter();
         }
 
-        public async Task<GetSignedStepSummaryURLResponse> GetStepSummaryUploadUrlAsync(string planId, string jobId, string stepId, CancellationToken cancellationToken)
+        public async Task<GetSignedStepSummaryURLResponse> GetStepSummaryUploadUrlAsync(string planId, string jobId, Guid stepId, CancellationToken cancellationToken)
         {
             var request = new GetSignedStepSummaryURLRequest()
             {
                 WorkflowJobRunBackendId= jobId,
                 WorkflowRunBackendId= planId,
-                StepBackendId= stepId
+                StepBackendId= stepId.ToString()
             };
 
             var stepSummaryUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepSummarySignedBlobURL");
@@ -51,13 +51,13 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        public async Task<GetSignedStepLogsURLResponse> GetStepLogUploadUrlAsync(string planId, string jobId, string stepId, CancellationToken cancellationToken)
+        public async Task<GetSignedStepLogsURLResponse> GetStepLogUploadUrlAsync(string planId, string jobId, Guid stepId, CancellationToken cancellationToken)
         {
             var request = new GetSignedStepLogsURLRequest()
             {
                 WorkflowJobRunBackendId= jobId,
                 WorkflowRunBackendId= planId,
-                StepBackendId= stepId
+                StepBackendId= stepId.ToString(),
             };
 
             var stepLogsUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepStepLogsSignedBlobURL");
@@ -78,14 +78,14 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        private async Task StepSummaryUploadCompleteAsync(string planId, string jobId, string stepId, long size, CancellationToken cancellationToken)
+        private async Task StepSummaryUploadCompleteAsync(string planId, string jobId, Guid stepId, long size, CancellationToken cancellationToken)
         {
             var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
             var request = new StepSummaryMetadataCreate()
             {
                 WorkflowJobRunBackendId= jobId,
                 WorkflowRunBackendId= planId,
-                StepBackendId = stepId,
+                StepBackendId = stepId.ToString(),
                 Size = size,
                 UploadedAt = timestamp
             };
@@ -112,14 +112,14 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        private async Task StepLogUploadCompleteAsync(string planId, string jobId, string stepId, CancellationToken cancellationToken)
+        private async Task StepLogUploadCompleteAsync(string planId, string jobId, Guid stepId, CancellationToken cancellationToken)
         {
             var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
             var request = new StepLogsMetadataCreate()
             {
                 WorkflowJobRunBackendId= jobId,
                 WorkflowRunBackendId= planId,
-                StepBackendId = stepId,
+                StepBackendId = stepId.ToString(),
                 UploadedAt = timestamp
             };
 
@@ -217,7 +217,7 @@ namespace GitHub.Services.Results.Client
         }
 
         // Handle file upload for step summary
-        public async Task UploadStepSummaryAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken)
+        public async Task UploadStepSummaryAsync(string planId, string jobId, Guid stepId, string file, CancellationToken cancellationToken)
         {
             // Get the upload url
             var uploadUrlResponse = await GetStepSummaryUploadUrlAsync(planId, jobId, stepId, cancellationToken);
@@ -244,7 +244,7 @@ namespace GitHub.Services.Results.Client
         }
 
         // Handle file upload for step log 
-        public async Task UploadResultsLogAsync(string planId, string jobId, string stepId, string file, bool finalize, bool firstBlock, CancellationToken cancellationToken)
+        public async Task UploadResultsStepLogAsync(string planId, string jobId, Guid stepId, string file, bool finalize, bool firstBlock, CancellationToken cancellationToken)
         {
             // Get the upload url
             var uploadUrlResponse = await GetStepLogUploadUrlAsync(planId, jobId, stepId, cancellationToken);

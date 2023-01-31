@@ -264,7 +264,7 @@ namespace GitHub.Runner.Common
                 Type = type,
                 PlanId = _planId.ToString(),
                 JobId = _jobTimelineRecordId.ToString(),
-                StepId = recordId.ToString(),
+                RecordId = recordId,
                 DeleteSource = deleteSource,
                 Finalize = finalize,
                 FirstBlock = firstBlock,
@@ -499,10 +499,12 @@ namespace GitHub.Runner.Common
                                 await UploadSummaryFile(file);
                             } else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
                             {
-                                Trace.Info($"Got a log file to send to results service.");
-                                await UploadResultsStepLogFile(file);
+                                if (file.RecordId != _jobTimelineRecordId)
+                                {
+                                    Trace.Info($"Got a step log file to send to results service.");
+                                    await UploadResultsStepLogFile(file);
+                                }
                             }
-                            
                         }
                         catch (Exception ex)
                         {
@@ -819,7 +821,7 @@ namespace GitHub.Runner.Common
                 // Upload the step summary
                 Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
                 var cancellationTokenSource = new CancellationTokenSource();
-                await _jobServer.CreateStepSymmaryAsync(file.PlanId, file.JobId, file.StepId, file.Path, cancellationTokenSource.Token);
+                await _jobServer.CreateStepSymmaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, cancellationTokenSource.Token);
 
                 uploadSucceed = true;
             }
@@ -847,7 +849,7 @@ namespace GitHub.Runner.Common
             {
                 Trace.Info($"Starting to step log file to results service {file.Name}, {file.Path}");
                 var cancellationTokenSource = new CancellationTokenSource();
-                await _jobServer.CreateResultsLogAsync(file.PlanId, file.JobId, file.StepId, file.Path, file.Finalize, file.FirstBlock, cancellationTokenSource.Token);
+                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, cancellationTokenSource.Token);
 
                 uploadSucceed = true;
             }
@@ -892,7 +894,7 @@ namespace GitHub.Runner.Common
         public string Path { get; set; }
         public string PlanId { get; set; }
         public string JobId { get; set; }
-        public string StepId { get; set; }
+        public Guid RecordId { get; set; }
         public bool DeleteSource { get; set; }
         public bool Finalize { get; set; }
         public bool FirstBlock { get; set; }
