@@ -161,7 +161,7 @@ namespace GitHub.Runner.Common
                 _resultsBlockWriter.Dispose();
                 _resultsBlockWriter = null;
                 _resultsBlockData = null;
-                _jobServerQueue.QueueResultsUpload(_timelineRecordId, "ResultsLog", _resultsDataFileName, "Results.Core.Log", true, finalize, _resultsDataFileName.EndsWith(".0"));
+                _jobServerQueue.QueueResultsUpload(_timelineRecordId, "ResultsLog", _resultsDataFileName, "Results.Core.Log", true, finalize, _resultsDataFileName.EndsWith(".1"));
             }
         }
     }

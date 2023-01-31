@@ -171,7 +171,10 @@ namespace GitHub.Services.Results.Client
 
         private async Task<HttpResponseMessage> CreateAppendFileAsync(string url, string blobStorageType, CancellationToken cancellationToken)
         {
-            var request = new HttpRequestMessage(HttpMethod.Put, url);
+            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent("")
+            };
             if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
                 request.Content.Headers.Add("x-ms-blob-type", "AppendBlob");
@@ -188,17 +191,19 @@ namespace GitHub.Services.Results.Client
             }
         }
         
-        private async Task<HttpResponseMessage> UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, CancellationToken cancellationToken)
+        private async Task<HttpResponseMessage> UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, long fileSize, CancellationToken cancellationToken)
         {
+            var comp = finalize ? "&comp=appendblock&seal=true" : "&comp=appendblock";
             // Upload the file to the url
-            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            var request = new HttpRequestMessage(HttpMethod.Put, url + comp)
             {
                 Content = new StreamContent(file)
             };
 
             if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
-                request.Content.Headers.Add("x-ms-blob-type", "AppendBlob");
+                // request.Content.Headers.Add("x-ms-blob-type", "AppendBlock");
+                request.Content.Headers.Add("Content-Length", fileSize.ToString());
                 request.Content.Headers.Add("x-ms-blob-sealed", finalize.ToString());
             }
 
@@ -206,7 +211,7 @@ namespace GitHub.Services.Results.Client
             {
                 if (!response.IsSuccessStatusCode)
                 {
-                    throw new Exception($"Failed to upload append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                    throw new Exception($"Failed to upload append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}, object: {response}, fileSize: {fileSize}");
                 }
                 return response;
             }
@@ -253,17 +258,14 @@ namespace GitHub.Services.Results.Client
             var fileSize = new FileInfo(file).Length;
 
             // Upload the file
-            // if this is the first block, we need to create
-            // otherwise we just need to append
-            // if this is the last block we also need to seal
             if (firstBlock)
             {
-                var response = await CreateAppendFileAsync(uploadUrlResponse.BlobUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+                await CreateAppendFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
             }
 
             using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
             {
-                var response = await UploadAppendFileAsync(uploadUrlResponse.BlobUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, cancellationToken);
+                var response = await UploadAppendFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
             }
 
             // Send step summary upload complete message

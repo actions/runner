@@ -267,6 +267,7 @@ namespace GitHub.Runner.Common
                 StepId = recordId.ToString(),
                 DeleteSource = deleteSource,
                 Finalize = finalize,
+                FirstBlock = firstBlock,
             };
 
             Trace.Verbose("Enqueue results file upload queue: file '{0}' attach to job {1} step {2}", newFile.Path, _jobTimelineRecordId, recordId);
@@ -517,9 +518,6 @@ namespace GitHub.Runner.Common
 
                             Trace.Info("Catch exception during file upload to results, keep going since the process is best effort.");
                             Trace.Error(ex);
-                        }
-                        finally
-                        {
                             errorCount++;
                         }
                     }
