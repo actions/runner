@@ -259,12 +259,12 @@ namespace GitHub.Services.Results.Client
             // Upload the file
             if (firstBlock)
             {
-                await CreateAppendFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+                await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
             }
 
             using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
             {
-                var response = await UploadAppendFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
+                var response = await UploadAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
             }
 
             if (finalize)
