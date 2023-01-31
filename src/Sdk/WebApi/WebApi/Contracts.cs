@@ -87,8 +87,6 @@ namespace GitHub.Services.Results.Contracts
         [DataMember]
         public string WorkflowJobRunBackendId;
         [DataMember]
-        public long Size;
-        [DataMember]
         public string UploadedAt;
     }
 

@@ -112,7 +112,7 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        private async Task StepLogUploadCompleteAsync(string planId, string jobId, string stepId, long size, CancellationToken cancellationToken)
+        private async Task StepLogUploadCompleteAsync(string planId, string jobId, string stepId, CancellationToken cancellationToken)
         {
             var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
             var request = new StepLogsMetadataCreate()
@@ -120,7 +120,6 @@ namespace GitHub.Services.Results.Client
                 WorkflowJobRunBackendId= jobId,
                 WorkflowRunBackendId= planId,
                 StepBackendId = stepId,
-                Size = size,
                 UploadedAt = timestamp
             };
 
@@ -139,7 +138,7 @@ namespace GitHub.Services.Results.Client
                         var jsonResponse = await ReadJsonContentAsync<CreateStepSummaryMetadataResponse>(response, cancellationToken);
                         if (!jsonResponse.Ok)
                         {
-                            throw new Exception($"Failed to mark step log upload as complete, status code: {response.StatusCode}, ok: {jsonResponse.Ok}, size: {size}, timestamp: {timestamp}");
+                            throw new Exception($"Failed to mark step log upload as complete, status code: {response.StatusCode}, ok: {jsonResponse.Ok}, timestamp: {timestamp}");
                         }
                     }
                 }
@@ -268,8 +267,11 @@ namespace GitHub.Services.Results.Client
                 var response = await UploadAppendFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
             }
 
-            // Send step summary upload complete message
-            await StepLogUploadCompleteAsync(planId, jobId, stepId, fileSize, cancellationToken);
+            if (finalize)
+            {
+                // Send step summary upload complete message
+                await StepLogUploadCompleteAsync(planId, jobId, stepId, cancellationToken);
+            }
         }
 
         private MediaTypeFormatter m_formatter;
