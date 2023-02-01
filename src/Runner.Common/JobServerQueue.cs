@@ -20,7 +20,7 @@ namespace GitHub.Runner.Common
         void Start(Pipelines.AgentJobRequestMessage jobRequest);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
-        void QueueResultsUpload(Guid recordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock);
+        void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines = 0);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
     }
 
@@ -248,7 +248,7 @@ namespace GitHub.Runner.Common
             
         }
 
-        public void QueueResultsUpload(Guid recordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock)
+        public void QueueResultsUpload(Guid recordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines)
         {
             if (recordId == _jobTimelineRecordId) 
             {
@@ -268,6 +268,7 @@ namespace GitHub.Runner.Common
                 DeleteSource = deleteSource,
                 Finalize = finalize,
                 FirstBlock = firstBlock,
+                TotalLines = totalLines,
             };
 
             Trace.Verbose("Enqueue results file upload queue: file '{0}' attach to job {1} step {2}", newFile.Path, _jobTimelineRecordId, recordId);
@@ -898,6 +899,7 @@ namespace GitHub.Runner.Common
         public bool DeleteSource { get; set; }
         public bool Finalize { get; set; }
         public bool FirstBlock { get; set; }
+        public long TotalLines { get; set; }
     }
 
 
