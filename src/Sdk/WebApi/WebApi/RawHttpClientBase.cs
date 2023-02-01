@@ -101,6 +101,17 @@ namespace Sdk.WebApi.WebApi
             }
         }
 
+        protected Task<T> SendAsync<T>(
+            HttpMethod method,
+            Uri requestUri,
+            HttpContent content = null,
+            IEnumerable<KeyValuePair<String, String>> queryParameters = null,
+            Object userState = null,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return SendAsync<T>(method, null, requestUri, content, queryParameters, userState, cancellationToken);
+        }
+
         protected async Task<T> SendAsync<T>(
             HttpMethod method,
             IEnumerable<KeyValuePair<String, String>> additionalHeaders,
