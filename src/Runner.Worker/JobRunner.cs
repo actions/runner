@@ -224,9 +224,9 @@ namespace GitHub.Runner.Worker
             {
                 return await CompleteJobAsync(server, jobContext, message, taskResult);
             }
-            else if (server is IJobServer jobServer)
+            else if (server is IJobServer)
             {
-                return await CompleteJobAsync(jobServer, jobContext, message, taskResult);
+                return await CompleteJobAsync(server, jobContext, message, taskResult);
             }
             else
             {
