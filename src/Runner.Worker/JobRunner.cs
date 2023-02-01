@@ -220,13 +220,13 @@ namespace GitHub.Runner.Worker
 
         private async Task<TaskResult> CompleteJobAsync(IRunnerService server, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
-            if (server is IRunServer)
+            if (server is IRunServer runServer)
             {
-                return await CompleteJobAsync(server, jobContext, message, taskResult);
+                return await CompleteJobAsync(runServer, jobContext, message, taskResult);
             }
-            else if (server is IJobServer)
+            else if (server is IJobServer jobServer)
             {
-                return await CompleteJobAsync(server, jobContext, message, taskResult);
+                return await CompleteJobAsync(jobServer, jobContext, message, taskResult);
             }
             else
             {
