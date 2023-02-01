@@ -39,20 +39,20 @@ namespace GitHub.Runner.Worker
             Trace.Info("Job ID {0}", message.JobId);
 
             DateTime jobStartTimeUtc = DateTime.UtcNow;
-            IJobServer jobServer = null;
-            IRunServer runServer = null;
+            IRunnerService server = null;
 
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
             {
-                runServer = HostContext.GetService<IRunServer>();
+                var runServer = HostContext.GetService<IRunServer>();
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
+                server = runServer;
             }
             else 
             {
                 // Setup the job server and job server queue.
-                jobServer = HostContext.GetService<IJobServer>();
+                var jobServer = HostContext.GetService<IJobServer>();
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 Uri jobServerUrl = systemConnection.Url;
 
@@ -63,6 +63,7 @@ namespace GitHub.Runner.Worker
                 await jobServer.ConnectAsync(jobConnection);
 
                 _jobServerQueue.Start(message);
+                server = jobServer;
             }
             
 
@@ -110,7 +111,7 @@ namespace GitHub.Runner.Worker
                 {
                     Trace.Error(ex);
                     jobContext.Error(ex);
-                    return await CompleteJobAsync(runServer, jobServer, jobContext, message, TaskResult.Failed);
+                    return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
                 }
 
                 if (jobContext.Global.WriteDebug)
@@ -147,7 +148,7 @@ namespace GitHub.Runner.Worker
                     // don't log error issue to job ExecutionContext, since server owns the job level issue
                     Trace.Error($"Job is cancelled during initialize.");
                     Trace.Error($"Caught exception: {ex}");
-                    return await CompleteJobAsync(runServer, jobServer, jobContext, message, TaskResult.Canceled);
+                    return await CompleteJobAsync(server, jobContext, message, TaskResult.Canceled);
                 }
                 catch (Exception ex)
                 {
@@ -155,7 +156,7 @@ namespace GitHub.Runner.Worker
                     // don't log error issue to job ExecutionContext, since server owns the job level issue
                     Trace.Error($"Job initialize failed.");
                     Trace.Error($"Caught exception from {nameof(jobExtension.InitializeJob)}: {ex}");
-                    return await CompleteJobAsync(runServer, jobServer, jobContext, message, TaskResult.Failed);
+                    return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
                 }
 
                 // trace out all steps
@@ -192,7 +193,7 @@ namespace GitHub.Runner.Worker
                     // Log the error and fail the job.
                     Trace.Error($"Caught exception from job steps {nameof(StepsRunner)}: {ex}");
                     jobContext.Error(ex);
-                    return await CompleteJobAsync(runServer, jobServer, jobContext, message, TaskResult.Failed);
+                    return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
                 }
                 finally
                 {
@@ -203,7 +204,7 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");
 
                 Trace.Info("Completing the job execution context.");
-                return await CompleteJobAsync(runServer, jobServer, jobContext, message);
+                return await CompleteJobAsync(server, jobContext, message);
             }
             finally
             {
@@ -217,15 +218,19 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task<TaskResult> CompleteJobAsync(IRunServer runServer, IJobServer jobServer, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)
+        private async Task<TaskResult> CompleteJobAsync(IRunnerService server, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
-            if (runServer != null)
+            if (server is IRunServer)
             {
-                return await CompleteJobAsync(runServer, jobContext, message, taskResult);
+                return await CompleteJobAsync(server, jobContext, message, taskResult);
+            }
+            else if (server is IJobServer jobServer)
+            {
+                return await CompleteJobAsync(jobServer, jobContext, message, taskResult);
             }
             else
             {
-                return await CompleteJobAsync(jobServer, jobContext, message, taskResult);
+                throw new NotSupportedException();
             }
         }
 
