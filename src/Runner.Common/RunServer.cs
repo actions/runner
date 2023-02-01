@@ -62,6 +62,5 @@ namespace GitHub.Runner.Common
             return RetryRequest(
                 async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken);
         }
-
     }
 }
