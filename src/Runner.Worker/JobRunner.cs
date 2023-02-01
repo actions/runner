@@ -244,7 +244,7 @@ namespace GitHub.Runner.Worker
                 jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
             }
 
-            // Clean TEMP after finish process jobserverqueue, since there might be a pending fileupload still use the TEMP dir.
+            // Make sure to clean temp after file upload since they may be pending fileupload still use the TEMP dir.
             _tempDirectoryManager?.CleanupTempDirectory();
 
             // Load any upgrade telemetry
