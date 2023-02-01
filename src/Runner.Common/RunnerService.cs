@@ -68,6 +68,19 @@ namespace GitHub.Runner.Common
             throw new InvalidOperationException(nameof(EstablishVssConnection));
         }
 
+        protected async Task RetryRequest(Func<Task> func,
+            CancellationToken cancellationToken,
+            int maxRetryAttemptsCount = 5
+        )
+        {
+            async Task<Unit> wrappedFunc()
+            {
+                await func();
+                return Unit.Value;
+            }
+            await RetryRequest<Unit>(wrappedFunc, cancellationToken, maxRetryAttemptsCount);
+        }
+        
         protected async Task<T> RetryRequest<T>(Func<Task<T>> func,
             CancellationToken cancellationToken,
             int maxRetryAttemptsCount = 5
@@ -85,7 +98,7 @@ namespace GitHub.Runner.Common
                 // TODO: Add handling of non-retriable exceptions: https://github.com/github/actions-broker/issues/122
                 catch (Exception ex) when (retryCount < maxRetryAttemptsCount)
                 {
-                    Trace.Error("Catch exception during get full job message");
+                    Trace.Error("Catch exception during request");
                     Trace.Error(ex);
                     var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
                     Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxRetryAttemptsCount - retryCount} attempt left.");
