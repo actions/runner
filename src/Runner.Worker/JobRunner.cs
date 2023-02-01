@@ -62,7 +62,6 @@ namespace GitHub.Runner.Worker
                 VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
                 await jobServer.ConnectAsync(jobConnection);
 
-                // yash: kicks start jobServerQueue
                 _jobServerQueue.Start(message);
             }
             
