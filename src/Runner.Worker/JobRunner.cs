@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
@@ -44,9 +42,6 @@ namespace GitHub.Runner.Worker
             IJobServer jobServer = null;
             IRunServer runServer = null;
 
-            // yash: now the job runner takes the URL and stuff from the message, jobServer is now the VSSF one
-            // I think here based on the type, we need to split the logic, because it has runner context and such, so new file doesn't seem right
-            Debugger.Launch();
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
             {
