@@ -297,6 +297,11 @@ namespace GitHub.Runner.Worker
             // can make reasonable guarantees that they won't throw an exception.
             try
             {
+                // This attempt is only worthwhile at the "Main" stage.
+                //    When the job starts, there's an initial attempt to evaluate the DisplayName.  (see JobExtension::InitializeJob)
+                //    During the "Pre" stage, we expect that no contexts will have changed since the initial evaluation.
+                //    "Main" stage is handled here.
+                //    During the "Post" stage, it no longer matters.
                 if (this.Stage == ActionRunStage.Main && EvaluateDisplayName(this.ExecutionContext.ExpressionValues, this.ExecutionContext, out updated))
                 {
                     if (updated)
