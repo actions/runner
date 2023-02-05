@@ -32,28 +32,28 @@ public class Container {
             foreach(var kv in jobToken) {
                 switch(kv.Key.AssertString("key").Value) {
                     case "image":
-                        Image = kv.Value.AssertString("image").Value;
+                        Image = kv.Value.AssertLiteralString("image");
                     break;
                     case "endpoint":
-                        Endpoint = kv.Value.AssertString("endpoint").Value;
+                        Endpoint = kv.Value.AssertLiteralString("endpoint");
                     break;
                     case "env":
                         Env = new Dictionary<string, string>();
                         foreach(var ekv in kv.Value.AssertMapping("env mapping")) {
-                            Env[ekv.Key.AssertString("env key").Value] = ekv.Value.AssertString("env value").Value;
+                            Env[ekv.Key.AssertString("env key").Value] = ekv.Value.AssertLiteralString("env value");
                         }
                     break;
                     case "mapDockerSocket":
                         MapDockerSocket = kv.Value.AssertBoolean("mapDockerSocket").Value;
                     break;
                     case "options":
-                        Options = kv.Value.AssertString("options").Value;
+                        Options = kv.Value.AssertLiteralString("options");
                     break;
                     case "ports":
-                        Ports = kv.Value.AssertSequence("ports").Select(p => p.AssertString("pm").Value).ToArray();
+                        Ports = kv.Value.AssertSequence("ports").Select(p => p.AssertLiteralString("pm")).ToArray();
                     break;
                     case "volumes":
-                        Volumes = kv.Value.AssertSequence("volumes").Select(p => p.AssertString("pm").Value).ToArray();
+                        Volumes = kv.Value.AssertSequence("volumes").Select(p => p.AssertLiteralString("pm")).ToArray();
                     break;
                     case "mountReadOnly":
                         MountReadonly = new MountReadonlyConfig();

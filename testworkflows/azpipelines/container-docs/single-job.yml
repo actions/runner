@@ -1,0 +1,22 @@
+# src:https://learn.microsoft.com/en-us/azure/devops/pipelines/process/service-containers?view=azure-devops&tabs=yaml#single-job
+resources:
+  containers:
+  - container: nginx
+    image: nginx
+    ports:
+    - 8080:80
+    env:
+      NGINX_PORT: 80
+  - container: redis
+    image: redis
+    ports:
+    - 6379
+
+services:
+  nginx: nginx
+  redis: redis
+
+steps:
+- script: |
+    curl localhost:8080
+    echo $AGENT_SERVICES_REDIS_PORTS_6379

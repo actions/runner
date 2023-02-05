@@ -1,0 +1,23 @@
+# src:https://learn.microsoft.com/en-us/azure/devops/pipelines/process/service-containers?view=azure-devops&tabs=yaml#multiple-jobs
+resources:
+  containers:
+  - container: my_container
+    image: ubuntu:22.04
+  - container: pg15
+    image: postgres:15
+  - container: pg14
+    image: postgres:14
+
+strategy:
+  matrix:
+    postgres15:
+      postgresService: pg15
+    postgres14:
+      postgresService: pg14
+
+container: my_container
+
+services:
+  postgres: $[ variables['postgresService'] ]
+steps:
+- script: printenv

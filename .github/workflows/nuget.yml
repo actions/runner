@@ -197,6 +197,7 @@ jobs:
         gharun -C testworkflows/linux-container-problem-matcher-test1
         gharun -C testworkflows/linux-container-i386
         gharun --event azpipelines -C testworkflows/azpipelines/containermatrix -W testworkflows/azpipelines/containermatrix/pipeline.yml
+        gharun --event azpipelines -C testworkflows/azpipelines/container-docs -W testworkflows/azpipelines/container-docs
       shell: bash
     - name: Test sqlite support
       if: contains(matrix.os, 'ubuntu') && !job.container

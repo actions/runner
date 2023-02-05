@@ -1,0 +1,16 @@
+# src:https://learn.microsoft.com/en-us/azure/devops/pipelines/process/service-containers?view=azure-devops&tabs=yaml#single-container-job
+resources:
+  containers:
+  - container: my_container
+    image: buildpack-deps:focal
+  - container: nginx
+    image: nginx
+
+container: my_container
+services:
+  nginx: nginx
+
+steps:
+- script: |
+    curl nginx
+  displayName: Show that nginx is running
