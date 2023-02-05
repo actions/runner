@@ -31,6 +31,7 @@ namespace Runner.Server.Models
                     job.SessionId = Guid.Empty;
                     try {
                         job.CleanUp?.Invoke();
+                        job.CleanUp = null;
                     } catch {
 
                     } finally {

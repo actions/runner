@@ -5518,23 +5518,27 @@ namespace Runner.Server.Controllers
                         return failJob();
                     }
                 }
-                var cleanupClone = Clone();
                 string runnerToken = null;
-                var job = new Job() { CleanUp = () => {
-                    if(!string.IsNullOrEmpty(runnerToken)) {
-                        try {
-                            DeleteGithubAppToken(runnerToken);
-                        } catch {
-
-                        }
-                    }
-                    if(fileContainerId != -1) {
-                        cleanupClone._context.ArtifactFileContainer.Remove(cleanupClone._context.ArtifactFileContainer.Find(fileContainerId));
-                        cleanupClone._context.SaveChanges();
-                    }
-                    cleanupClone._context.Dispose();
-                } , message = (apiUrl) => {
+                Job job = null;
+                job = new Job() { message = (caller, apiUrl) => {
                     try {
+                        var cleanupClone = caller.Clone();
+                        job.CleanUp?.Invoke();
+                        job.CleanUp = () => {
+                            if(!string.IsNullOrEmpty(runnerToken)) {
+                                try {
+                                    DeleteGithubAppToken(runnerToken);
+                                } catch {
+
+                                }
+                            }
+                            if(fileContainerId != -1) {
+                                cleanupClone._context.ArtifactFileContainer.Remove(cleanupClone._context.ArtifactFileContainer.Find(fileContainerId));
+                                cleanupClone._context.SaveChanges();
+                            }
+                            cleanupClone._context.Dispose();
+                        };
+
                         var auth = new GitHub.DistributedTask.WebApi.EndpointAuthorization() { Scheme = GitHub.DistributedTask.WebApi.EndpointAuthorizationSchemes.OAuth };
                         var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
 
@@ -5804,23 +5808,26 @@ namespace Runner.Server.Controllers
                         return vars.TryGetValue(keyFormat[0], out var val) ? (depth <= 10 ? evalMacro(vars, val.Value, depth + 1) : val.Value) : v.Groups[0].Value;
                     });
                 };
-                var cleanupClone = Clone();
                 string runnerToken = null;
-                var job = new Job() { CleanUp = () => {
-                    if(!string.IsNullOrEmpty(runnerToken)) {
-                        try {
-                            DeleteGithubAppToken(runnerToken);
-                        } catch {
-
-                        }
-                    }
-                    if(fileContainerId != -1) {
-                        cleanupClone._context.ArtifactFileContainer.Remove(cleanupClone._context.ArtifactFileContainer.Find(fileContainerId));
-                        cleanupClone._context.SaveChanges();
-                    }
-                    cleanupClone._context.Dispose();
-                } , message = (apiUrl) => {
+                Job job = null;
+                job = new Job() { message = (caller, apiUrl) => {
                     try {
+                        var cleanupClone = caller.Clone();
+                        job.CleanUp?.Invoke();
+                        job.CleanUp = () => {
+                            if(!string.IsNullOrEmpty(runnerToken)) {
+                                try {
+                                    DeleteGithubAppToken(runnerToken);
+                                } catch {
+
+                                }
+                            }
+                            if(fileContainerId != -1) {
+                                cleanupClone._context.ArtifactFileContainer.Remove(cleanupClone._context.ArtifactFileContainer.Find(fileContainerId));
+                                cleanupClone._context.SaveChanges();
+                            }
+                            cleanupClone._context.Dispose();
+                        };
                         var auth = new GitHub.DistributedTask.WebApi.EndpointAuthorization() { Scheme = GitHub.DistributedTask.WebApi.EndpointAuthorizationSchemes.OAuth };
                         var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
 
@@ -6234,7 +6241,7 @@ namespace Runner.Server.Controllers
             }
         }
 
-        public delegate AgentJobRequestMessage MessageFactory(string apiUrl);
+        public delegate AgentJobRequestMessage MessageFactory(MessageController self, string apiUrl);
 
         private class EqualityComparer : IEqualityComparer<HashSet<string>> {
             public bool Equals(HashSet<string> a, HashSet<string> b) {
@@ -6359,7 +6366,7 @@ namespace Runner.Server.Controllers
                                                 continue;
                                             }
                                             // Use Uri to enshure that a host only ServerUrl has a leading `/`, the actions cache api assumes the it ends with a slash
-                                            var res = req.message.Invoke(new Uri(new Uri(ServerUrl), "./").ToString());
+                                            var res = req.message.Invoke(this, new Uri(new Uri(ServerUrl), "./").ToString());
                                             if(res == null) {
                                                 Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", agentlabels)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
