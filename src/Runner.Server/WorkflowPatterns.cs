@@ -17,14 +17,20 @@ namespace Runner.Server {
 
         public static string PatternToRegex(string pattern) {
             var rpattern = new StringBuilder();
+            rpattern.Append("^");
             int pos = 0;
             var errors = new Dictionary<int, string>();
             while(pos < pattern.Length) {
                 switch(pattern[pos]) {
                     case '*':
                     if(pos + 1 < pattern.Length && pattern[pos + 1] == '*') {
-                        rpattern.Append(".*");
-                        pos += 2;
+                        if(pos + 2 < pattern.Length && pattern[pos + 2] == '/') {
+                            rpattern.Append("(.+/)?");
+                            pos += 3;
+                        } else {
+                            rpattern.Append(".*");
+                            pos += 2;
+                        }
                     } else {
                         rpattern.Append("[^/]*");
                         pos++;
@@ -108,6 +114,7 @@ namespace Runner.Server {
             if(errors.Any()) {
                 throw new Exception($"Invalid Pattern '{pattern}': {string.Join(", ", from error in errors select $"Position: {error.Key} Error: {error.Value}")}");
             }
+            rpattern.Append("$");
             return rpattern.ToString();
         }
         public bool Negative { get; }
