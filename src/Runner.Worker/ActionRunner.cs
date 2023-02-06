@@ -315,7 +315,10 @@ namespace GitHub.Runner.Worker
                 Trace.Warning("Caught exception while attempting to evaulate/update the step's DisplayName.  Exception Details:  {0}", ex);
             }
 
-            return (this.DisplayName != null);
+            // For consistency with other implementations of TryUpdateDisplayName we use !string.IsNullOrEmpty below,
+            // but note that (at the time of this writing) ActionRunner::DisplayName::get always returns a non-empty string due to its fallback logic.
+            // In other words, the net effect is that this particular implementation of TryUpdateDisplayName will always return true.
+            return !string.IsNullOrEmpty(this.DisplayName);
         }
 
 
