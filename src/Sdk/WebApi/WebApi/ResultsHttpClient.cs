@@ -60,7 +60,7 @@ namespace GitHub.Services.Results.Client
                 StepBackendId= stepId.ToString(),
             };
 
-            var stepLogsUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepStepLogsSignedBlobURL");
+            var stepLogsUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepLogsSignedBlobURL");
 
             using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, stepLogsUploadRequest))
             {
@@ -249,7 +249,7 @@ namespace GitHub.Services.Results.Client
         {
             // Get the upload url
             var uploadUrlResponse = await GetStepLogUploadUrlAsync(planId, jobId, stepId, cancellationToken);
-            if (uploadUrlResponse == null)
+            if (uploadUrlResponse == null || uploadUrlResponse.LogsUrl == null)
             {
                 throw new Exception("Failed to get step log upload url");
             }
