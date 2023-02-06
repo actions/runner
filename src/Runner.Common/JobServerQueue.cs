@@ -850,7 +850,7 @@ namespace GitHub.Runner.Common
             {
                 Trace.Info($"Starting to step log file to results service {file.Name}, {file.Path}");
                 var cancellationTokenSource = new CancellationTokenSource();
-                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, cancellationTokenSource.Token);
+                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, cancellationTokenSource.Token);
 
                 uploadSucceed = true;
             }

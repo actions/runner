@@ -112,7 +112,7 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        private async Task StepLogUploadCompleteAsync(string planId, string jobId, Guid stepId, CancellationToken cancellationToken)
+        private async Task StepLogUploadCompleteAsync(string planId, string jobId, Guid stepId, long lineCount, CancellationToken cancellationToken)
         {
             var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
             var request = new StepLogsMetadataCreate()
@@ -120,7 +120,8 @@ namespace GitHub.Services.Results.Client
                 WorkflowJobRunBackendId= jobId,
                 WorkflowRunBackendId= planId,
                 StepBackendId = stepId.ToString(),
-                UploadedAt = timestamp
+                UploadedAt = timestamp,
+                LineCount = lineCount,
             };
 
             var stepLogsUploadCompleteRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/CreateStepLogsMetadata");
@@ -244,7 +245,7 @@ namespace GitHub.Services.Results.Client
         }
 
         // Handle file upload for step log 
-        public async Task UploadResultsStepLogAsync(string planId, string jobId, Guid stepId, string file, bool finalize, bool firstBlock, CancellationToken cancellationToken)
+        public async Task UploadResultsStepLogAsync(string planId, string jobId, Guid stepId, string file, bool finalize, bool firstBlock, long lineCount, CancellationToken cancellationToken)
         {
             // Get the upload url
             var uploadUrlResponse = await GetStepLogUploadUrlAsync(planId, jobId, stepId, cancellationToken);
@@ -269,8 +270,8 @@ namespace GitHub.Services.Results.Client
 
             if (finalize)
             {
-                // Send step summary upload complete message
-                await StepLogUploadCompleteAsync(planId, jobId, stepId, cancellationToken);
+                // Send step log upload complete message
+                await StepLogUploadCompleteAsync(planId, jobId, stepId, lineCount, cancellationToken);
             }
         }
 
