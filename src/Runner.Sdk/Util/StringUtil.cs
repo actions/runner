@@ -124,44 +124,10 @@ namespace GitHub.Runner.Sdk
             return value?.Substring(0, Math.Min(value.Length, count));
         }
 
-        public static bool AreBracketsBalanced(string s)
-        {
-            if (string.IsNullOrEmpty(s))
-            {
-                return true;
-            }
-            var openingBracketCount = 0;
-            foreach (var c in s)
-            {
-                if (c == '(')
-                {
-                    // Count '(' so we can later pair it with ')'
-                    openingBracketCount++;
-                }
-                else if (c == ')')
-                {
-                    if (openingBracketCount == 0)
-                    {
-                        // All (if any) preceeding '(' have been paired, this ')' will never have a pair
-                        return false;
-                    }
-                    // Pair with previously counted '('
-                    openingBracketCount--;
-                }
-            }
-            // We have 'openingBracketCount' number of unpaired '(' left
-            return openingBracketCount == 0;
-        }
-
         // Fixes format violations e.g. https://github.com/actions/runner/issues/2165
         public static string SanitizeUserAgentHeader(string header)
         {
-            header = header.Trim();
-            if (AreBracketsBalanced(header))
-            {
-                return header;
-            }
-            return header.Replace("(", "").Replace(")", "");
+            return header.Replace("(", "[").Replace(")", "]").Trim();
         }
 
     }

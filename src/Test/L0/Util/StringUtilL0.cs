@@ -187,17 +187,17 @@ namespace GitHub.Runner.Common.Tests.Util
         }
 
         [Theory]
-        [InlineData("", true)]
-        [InlineData("(())", true)]
-        [InlineData("()()", true)]
-        [InlineData("Liquorix kernel OS Description is poorly formatted (linux version", false)]
-        [InlineData("()((", false)]
-        [InlineData("(opening never closed", false)]
+        [InlineData("", "")]
+        [InlineData("(())", "[[]]")]
+        [InlineData("()()", "[][]")]
+        [InlineData("  Liquorix kernel OS Description is poorly formatted (linux version ", "Liquorix kernel OS Description is poorly formatted [linux version")]
+        [InlineData("Liquorix kernel OS Description is poorly formatted (linux version", "Liquorix kernel OS Description is poorly formatted [linux version")]
+        [InlineData("()((.", "[][[.")]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void AreBracketsBalanced(string input, bool result)
+        public void AreBracketsBalanced(string input, string expected)
         {
-            Assert.Equal(result, StringUtil.AreBracketsBalanced(input));
+            Assert.Equal(expected, StringUtil.SanitizeUserAgentHeader(input));
         }
 
         [Theory]
