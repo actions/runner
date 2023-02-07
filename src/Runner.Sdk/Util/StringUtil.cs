@@ -130,27 +130,30 @@ namespace GitHub.Runner.Sdk
             {
                 return true;
             }
-
             var openingBracketCount = 0;
             foreach (var c in s)
             {
                 if (c == '(')
                 {
+                    // Count '(' so we can later pair it with ')'
                     openingBracketCount++;
                 }
                 else if (c == ')')
                 {
                     if (openingBracketCount == 0)
                     {
+                        // All (if any) preceeding '(' have been paired, this ')' will never have a pair
                         return false;
                     }
+                    // Pair with previously counted '('
                     openingBracketCount--;
                 }
             }
-            // If we have any opening bracket left, we have an unbalanced string
+            // We have 'openingBracketCount' number of unpaired '(' left
             return openingBracketCount == 0;
         }
 
+        // Fixes format violations e.g. https://github.com/actions/runner/issues/2165
         public static string SanitizeUserAgentHeader(string header)
         {
             header = header.Trim();
