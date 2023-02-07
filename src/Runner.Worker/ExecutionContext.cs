@@ -591,13 +591,20 @@ namespace GitHub.Runner.Worker
                 Message = refinedMessage,
             };
 
-            result.Data.AddRangeIfRangeNotNull(metadata?.Data);
+
+            if (metadata != null)
+            {
+                foreach (var kvp in metadata.Data)
+                {
+                    result[kvp.Key] = kvp.Value;
+                }
+            }
 
             // It's important to keep track of the step number (key:stepNumber) and the line number (key:logFileLineNumber) of every issue that gets logged.
             // Actions UI from the run summary page use both values to easily link to an exact locations in logs where annotations originate from.
             if (_record.Order != null)
             {
-                result.Data["stepNumber"] = _record.Order.ToString();
+                result["stepNumber"] = _record.Order.ToString();
             }
 
             string wellKnownTag = null;
@@ -627,7 +634,7 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(logText))
                     {
                         long logLineNumber = Write(wellKnownTag, logText);
-                        result.Data["logFileLineNumber"] = logLineNumber.ToString();
+                        result["logFileLineNumber"] = logLineNumber.ToString();
                     }
                 }
                 if (previousCountForIssueType.GetValueOrDefault(0) < _maxIssueCount)

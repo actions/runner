@@ -299,7 +299,7 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
-                                // Give at most 60s for each request. 
+                                // Give at most 60s for each request.
                                 using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
                                 {
                                     await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
@@ -600,8 +600,7 @@ namespace GitHub.Runner.Common
                 {
                     foreach (var issue in record.Issues)
                     {
-                        String source;
-                        issue.Data.TryGetValue("sourcepath", out source);
+                        string source = issue["sourcepath"];
                         Trace.Verbose($"        Issue: c={issue.Category}, t={issue.Type}, s={source ?? string.Empty}, m={issue.Message}");
                     }
                 }

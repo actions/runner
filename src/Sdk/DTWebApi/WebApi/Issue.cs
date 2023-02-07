@@ -5,7 +5,6 @@ using GitHub.Services.Common;
 
 namespace GitHub.DistributedTask.WebApi
 {
-
     public interface IReadOnlyIssue
     {
         IssueType Type { get; }
@@ -26,14 +25,14 @@ namespace GitHub.DistributedTask.WebApi
 
         private Issue(Issue original)
         {
-            m_data = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+            m_data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (original != null)
             {
                 this.Type = original.Type;
                 this.Category = original.Category;
                 this.Message = original.Message;
                 this.IsInfrastructureIssue = original.IsInfrastructureIssue;
-                this.Data.AddRange(original.Data);
+                m_data.AddRange(original.m_data);
             }
         }
 
@@ -45,14 +44,14 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Order = 2)]
-        public String Category
+        public string Category
         {
             get;
             set;
         }
 
         [DataMember(Order = 3)]
-        public String Message
+        public string Message
         {
             get;
             set;
@@ -65,14 +64,6 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-        public IDictionary<String, String> Data
-        {
-            get
-            {
-                return m_data;
-            }
-        }
-
         public string this[string key]
         {
             get
@@ -80,8 +71,11 @@ namespace GitHub.DistributedTask.WebApi
                 m_data.TryGetValue(key, out string result);
                 return result;
             }
+            set
+            {
+                m_data[key] = value;
+            }
         }
-
 
         public Issue Clone()
         {
@@ -107,8 +101,8 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Name = "Data", EmitDefaultValue = false, Order = 4)]
-        private IDictionary<String, String> m_serializedData;
+        private IDictionary<string, string> m_serializedData;
 
-        private IDictionary<String, String> m_data;
+        private IDictionary<string, string> m_data;
     }
 }

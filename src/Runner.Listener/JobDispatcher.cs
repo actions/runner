@@ -33,7 +33,7 @@ namespace GitHub.Runner.Listener
     // This implementation of IJobDispatcher is not thread safe.
     // It is based on the fact that the current design of the runner is a dequeue
     // and processes one message from the message queue at a time.
-    // In addition, it only executes one job every time, 
+    // In addition, it only executes one job every time,
     // and the server will not send another job while this one is still running.
     public sealed class JobDispatcher : RunnerService, IJobDispatcher
     {
@@ -426,7 +426,7 @@ namespace GitHub.Runner.Listener
                                                 {
                                                     workerOutput.Add(stdout.Data);
                                                 }
-                                                
+
                                                 if (printToStdout)
                                                 {
                                                     term.WriteLine(stdout.Data, skipTracing: true);
@@ -512,7 +512,7 @@ namespace GitHub.Runner.Listener
                         var accessToken = systemConnection?.Authorization?.Parameters["AccessToken"];
                         notification.JobStarted(message.JobId, accessToken, systemConnection.Url);
 
-                        HostContext.WritePerfCounter($"SentJobToWorker_{requestId.ToString()}");
+                        HostContext.WritePerfCounter($"SentJobToWorker_{requestId}");
 
                         try
                         {
@@ -620,7 +620,7 @@ namespace GitHub.Runner.Listener
                                 }
                             }
 
-                            // wait worker to exit 
+                            // wait worker to exit
                             // if worker doesn't exit within timeout, then kill worker.
                             completedTask = await Task.WhenAny(workerProcessTask, Task.Delay(-1, workerCancelTimeoutKillToken));
 
@@ -1014,7 +1014,7 @@ namespace GitHub.Runner.Listener
                 }
 
                 var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
-                unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
+                unhandledExceptionIssue[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
                 jobRecord.ErrorCount++;
                 jobRecord.Issues.Add(unhandledExceptionIssue);
                 await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
