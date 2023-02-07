@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -437,6 +438,17 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
+            var stepResult = new StepResult();
+            stepResult.ExternalID = _record.Id;
+            stepResult.Conclusion = _record.Result ?? TaskResult.Succeeded;
+            stepResult.Status = _record.State;
+            stepResult.Number = _record.Order;
+            stepResult.Name = _record.Name;
+            stepResult.StartedAt = _record.StartTime;
+            stepResult.CompletedAt = _record.FinishTime;
+
+            Global.StepsResult.Add(stepResult);
+
             if (Root != this)
             {
                 // only dispose TokenSource for step level ExecutionContext
@@ -709,6 +721,9 @@ namespace GitHub.Runner.Worker
 
             // ActionsStepTelemetry for entire job
             Global.StepsTelemetry = new List<ActionsStepTelemetry>();
+
+            // Steps results for entire job
+            Global.StepsResult = new List<StepResult>();
 
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
