@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
@@ -16,7 +18,7 @@ namespace GitHub.Runner.Common
 
         Task<AgentJobRequestMessage> GetJobMessageAsync(string id, CancellationToken token);
 
-        Task CompleteJobAsync(Guid planId, Guid jobId, CancellationToken token);
+        Task CompleteJobAsync(Guid planId, Guid jobId, TaskResult result, Dictionary<String, VariableValue> outputs, IList<StepResult> stepResults, CancellationToken token);
     }
 
     public sealed class RunServer : RunnerService, IRunServer
@@ -56,11 +58,11 @@ namespace GitHub.Runner.Common
             return jobMessage;
         }
 
-        public Task CompleteJobAsync(Guid planId, Guid jobId, CancellationToken cancellationToken)
+        public Task CompleteJobAsync(Guid planId, Guid jobId, TaskResult result, Dictionary<String, VariableValue> outputs, IList<StepResult> stepResults, CancellationToken cancellationToken)
         {
             CheckConnection();
             return RetryRequest(
-                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken);
+                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, cancellationToken), cancellationToken);
         }
     }
 }
