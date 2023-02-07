@@ -50,7 +50,6 @@ namespace GitHub.Runner.Worker
         Dictionary<string, VariableValue> JobOutputs { get; }
         ActionsEnvironmentReference ActionsEnvironment { get; }
         ActionsStepTelemetry StepTelemetry { get; }
-
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
