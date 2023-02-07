@@ -977,8 +977,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
             _executionContext.Setup(x => x.StepTelemetry)
                 .Returns(new DTWebApi.ActionsStepTelemetry());
-            _executionContext.Setup(x => x.StepResult)
-                .Returns(new StepResult());
             _executionContext.Setup(x => x.GetMatchers())
                 .Returns(matchers?.Matchers ?? new List<IssueMatcherConfig>());
             _executionContext.Setup(x => x.Add(It.IsAny<OnMatcherChanged>()))

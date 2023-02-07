@@ -51,7 +51,6 @@ namespace GitHub.Runner.Worker
         ActionsEnvironmentReference ActionsEnvironment { get; }
         ActionsStepTelemetry StepTelemetry { get; }
 
-        StepResult StepResult { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
@@ -164,7 +163,6 @@ namespace GitHub.Runner.Worker
 
         public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
         public ActionsStepTelemetry StepTelemetry { get; } = new ActionsStepTelemetry();
-        public StepResult StepResult { get; } = new StepResult();
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -372,7 +370,6 @@ namespace GitHub.Runner.Worker
 
             child.IsEmbedded = isEmbedded;
             child.StepTelemetry.StepId = recordId;
-            child.StepResult.ExternalID = recordId;
             child.StepTelemetry.Stage = stage.ToString();
             child.StepTelemetry.IsEmbedded = isEmbedded;
             child.StepTelemetry.StepContextName = child.GetFullyQualifiedContextName(); ;
@@ -442,14 +439,16 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
-            StepResult.Conclusion = _record.Result ?? TaskResult.Succeeded;
-            StepResult.Status = _record.State;
-            StepResult.Number = _record.Order;
-            StepResult.Name = _record.Name;
-            StepResult.StartedAt = _record.StartTime;
-            StepResult.CompletedAt = _record.FinishTime;
+            var stepResult = new StepResult();
+            stepResult.ExternalID = _record.Id;
+            stepResult.Conclusion = _record.Result ?? TaskResult.Succeeded;
+            stepResult.Status = _record.State;
+            stepResult.Number = _record.Order;
+            stepResult.Name = _record.Name;
+            stepResult.StartedAt = _record.StartTime;
+            stepResult.CompletedAt = _record.FinishTime;
 
-            Global.StepsResult.Add(StepResult);
+            Global.StepsResult.Add(stepResult);
 
             if (Root != this)
             {
