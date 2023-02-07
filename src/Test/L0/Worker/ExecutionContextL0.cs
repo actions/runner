@@ -760,8 +760,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
                 embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
 
-                embeddedStep.SetStepResult();
-
                 // Assert.
                 Assert.Equal(1, ec.Global.StepsResult.Count);
                 Assert.Null(ec.Global.StepsResult.Single().Conclusion);

@@ -111,7 +111,6 @@ namespace GitHub.Runner.Worker
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
         void PublishStepTelemetry();
-        void SetStepResult();
 
         void ApplyContinueOnError(TemplateToken continueOnError);
         void UpdateGlobalStepsContext();
@@ -151,7 +150,6 @@ namespace GitHub.Runner.Worker
         // only job level ExecutionContext will track throttling delay.
         private long _totalThrottlingDelayInMilliseconds = 0;
         private bool _stepTelemetryPublished = false;
-        private bool _stepResultsSet = false;
 
         public Guid Id => _record.Id;
         public Guid EmbeddedId { get; private set; }
@@ -444,7 +442,14 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
-            SetStepResult();
+            StepResult.Conclusion = _record.Result;
+            StepResult.Status = _record.State;
+            StepResult.Number = _record.Order;
+            StepResult.Name = _record.Name;
+            StepResult.StartedAt = _record.StartTime;
+            StepResult.CompletedAt = _record.FinishTime;
+
+            Global.StepsResult.Add(StepResult);
 
             if (Root != this)
             {
@@ -1030,37 +1035,6 @@ namespace GitHub.Runner.Worker
             else
             {
                 Trace.Info($"Step telemetry has already been published.");
-            }
-        }
-
-
-        public void SetStepResult()
-        {
-            if (!_stepResultsSet)
-            {
-                if (!IsEmbedded)
-                {
-                    StepResult.Conclusion = _record.Result;
-                    StepResult.Status = _record.State;
-                    StepResult.Number = _record.Order;
-                    StepResult.Name = _record.Name;
-                }
-
-                if (!IsEmbedded &&
-                    _record.FinishTime != null &&
-                    _record.StartTime != null)
-                {
-                    StepResult.StartedAt = _record.StartTime;
-                    StepResult.CompletedAt = _record.FinishTime;
-                }
-
-                Trace.Info($"Step results are set for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
-                Global.StepsResult.Add(StepResult);
-                _stepResultsSet = true;
-            }
-            else 
-            {
-                Trace.Info($"Step results have already been set.");
             }
         }
 

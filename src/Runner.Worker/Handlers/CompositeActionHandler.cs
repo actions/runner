@@ -462,7 +462,6 @@ namespace GitHub.Runner.Worker.Handlers
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
             step.ExecutionContext.Debug($"Finished: {step.DisplayName}");
             step.ExecutionContext.PublishStepTelemetry();
-            step.ExecutionContext.SetStepResult();
         }
 
         private void SetStepConclusion(IStep step, TaskResult result)

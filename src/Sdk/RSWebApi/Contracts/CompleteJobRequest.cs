@@ -10,22 +10,17 @@ namespace GitHub.Actions.RunService.WebApi
     {
         [DataMember(Name = "planId", EmitDefaultValue = false)]
         public Guid PlanID { get; set; }
-
         
         [DataMember(Name = "jobId", EmitDefaultValue = false)]
         public Guid JobID { get; set; }
-
         
         [DataMember(Name = "conclusion")]
         public TaskResult Conclusion { get; set; }
-
         
         [DataMember(Name = "outputs", EmitDefaultValue = false)]
-        public Dictionary<string, VariableValue> Outputs { get; set; }
-        
+        public Dictionary<string, VariableValue> Outputs { get; set; }   
         
         [DataMember(Name = "stepResults", EmitDefaultValue = false)]
         public IList<StepResult> StepResults { get; set; }
     }
-
 }
