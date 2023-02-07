@@ -802,7 +802,7 @@ namespace GitHub.Runner.Common
                 // Upload the step summary
                 Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
                 var cancellationTokenSource = new CancellationTokenSource();
-                await _jobServer.CreateStepSymmaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, cancellationTokenSource.Token);
+                await _jobServer.CreateStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, cancellationTokenSource.Token);
 
                 uploadSucceed = true;
             }
