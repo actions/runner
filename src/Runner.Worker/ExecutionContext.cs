@@ -442,7 +442,7 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
-            StepResult.Conclusion = _record.Result;
+            StepResult.Conclusion = _record.Result ?? TaskResult.Succeeded;
             StepResult.Status = _record.State;
             StepResult.Number = _record.Order;
             StepResult.Name = _record.Name;
