@@ -1038,29 +1038,25 @@ namespace GitHub.Runner.Worker
         {
             if (!_stepResultsSet)
             {
-                // Add to the global step results only if we have something to log.
-                if (!string.IsNullOrEmpty(StepTelemetry?.Type))
+                if (!IsEmbedded)
                 {
-                    if (!IsEmbedded)
-                    {
-                        StepResult.Conclusion = _record.Result;
-                        StepResult.Status = _record.State;
-                        StepResult.Number = _record.Order;
-                        StepResult.Name = _record.Name;
-                    }
-
-                    if (!IsEmbedded &&
-                        _record.FinishTime != null &&
-                        _record.StartTime != null)
-                    {
-                        StepResult.StartedAt = _record.StartTime;
-                        StepResult.CompletedAt = _record.FinishTime;
-                    }
-
-                    Trace.Info($"Step results are set for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
-                    Global.StepsResult.Add(StepResult);
-                    _stepResultsSet = true;
+                    StepResult.Conclusion = _record.Result;
+                    StepResult.Status = _record.State;
+                    StepResult.Number = _record.Order;
+                    StepResult.Name = _record.Name;
                 }
+
+                if (!IsEmbedded &&
+                    _record.FinishTime != null &&
+                    _record.StartTime != null)
+                {
+                    StepResult.StartedAt = _record.StartTime;
+                    StepResult.CompletedAt = _record.FinishTime;
+                }
+
+                Trace.Info($"Step results are set for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
+                Global.StepsResult.Add(StepResult);
+                _stepResultsSet = true;
             }
             else 
             {
