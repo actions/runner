@@ -226,26 +226,8 @@ namespace GitHub.Runner.Common
                 DeleteSource = deleteSource
             };
 
-            // Dual upload the same files to Results Service
-            if (String.Equals(type, CoreAttachmentType.Log, StringComparison.OrdinalIgnoreCase)) 
-            {
-                newFile.Type = CoreAttachmentType.Log;
-                Trace.Verbose("Log was sent from logging file", newFile.Path, timelineRecordId);
-                // jobRequest.Variables.TryGetValue("system.github.results_endpoint", out VariableValue resultsEndpointVariable);
-                // context.Global.Variables.TryGetValue("system.github.results_endpoint", out string resultsReceiverEndpoint);
-                // if (resultsReceiverEndpoint != null)
-                // {
-                //     Trace.Info($"Queueing results file ({path})");
-                //     var stepId = context.Id;
-                //     // Attachments must be added to the parent context (job), not the current context (step)
-                //     QueueResultsUpload(attachmentName, scrubbedFilePath, stepId);
-                // }
-            }
-
             Trace.Verbose("Enqueue file upload queue: file '{0}' attach to record {1}", newFile.Path, timelineRecordId);
             _fileUploadQueue.Enqueue(newFile);
-
-            
         }
 
         public void QueueResultsUpload(Guid recordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines)
@@ -495,10 +477,11 @@ namespace GitHub.Runner.Common
                     {
                         try
                         {
-                        if (String.Equals(file.Type, ChecksAttachmentType.StepSummary, StringComparison.OrdinalIgnoreCase))
+                            if (String.Equals(file.Type, ChecksAttachmentType.StepSummary, StringComparison.OrdinalIgnoreCase))
                             {
                                 await UploadSummaryFile(file);
-                            } else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
+                            }
+                            else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (file.RecordId != _jobTimelineRecordId)
                                 {
@@ -771,18 +754,15 @@ namespace GitHub.Runner.Common
                 if (String.Equals(file.Type, CoreAttachmentType.Log, StringComparison.OrdinalIgnoreCase))
                 {
                     // Create the log
-                    Trace.Info("Create log async!");
                     var taskLog = await _jobServer.CreateLogAsync(_scopeIdentifier, _hubName, _planId, new TaskLog(String.Format(@"logs\{0:D}", file.TimelineRecordId)), default(CancellationToken));
 
                     // Upload the contents
                     using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     {
-                        Trace.Info("Uploading a log!!");
                         var logUploaded = await _jobServer.AppendLogContentAsync(_scopeIdentifier, _hubName, _planId, taskLog.Id, fs, default(CancellationToken));
                     }
 
                     // Create a new record and only set the Log field
-                    Trace.Info("Updating timeline record!");
                     var attachmentUpdataRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
                     QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdataRecord);
                 }

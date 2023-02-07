@@ -202,7 +202,6 @@ namespace GitHub.Services.Results.Client
 
             if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
-                // request.Content.Headers.Add("x-ms-blob-type", "AppendBlock");
                 request.Content.Headers.Add("Content-Length", fileSize.ToString());
                 request.Content.Headers.Add("x-ms-blob-sealed", finalize.ToString());
             }
@@ -257,17 +256,19 @@ namespace GitHub.Services.Results.Client
             // Do we want to throw an exception here or should we just be uploading/truncating the data
             var fileSize = new FileInfo(file).Length;
 
-            // Upload the file
+            // Create the Append blob 
             if (firstBlock)
             {
                 await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
             }
 
+            // Upload content
             using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
             {
                 var response = await UploadAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
             }
 
+            // Update metadata
             if (finalize)
             {
                 // Send step log upload complete message
