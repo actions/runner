@@ -458,7 +458,7 @@ namespace GitHub.Runner.Common
                 while (_resultsFileUploadQueue.TryDequeue(out dequeueFile))
                 {
                     filesToUpload.Add(dequeueFile);
-                    // process at most 10 file upload.
+                    // process at most 10 file uploads.
                     if (!runOnce && filesToUpload.Count > 10)
                     {
                         break;
@@ -469,7 +469,7 @@ namespace GitHub.Runner.Common
                 {
                     if (runOnce)
                     {
-                        Trace.Info($"Uploading {filesToUpload.Count} files in one shot through results service.");
+                        Trace.Info($"Uploading {filesToUpload.Count} file(s) in one shot through results service.");
                     }
 
                     int errorCount = 0;
@@ -508,7 +508,7 @@ namespace GitHub.Runner.Common
                         }
                     }
 
-                    Trace.Info("Tried to upload {0} files to results, success rate: {1}/{0}.", filesToUpload.Count, filesToUpload.Count - errorCount);
+                    Trace.Info("Tried to upload {0} file(s) to results, success rate: {1}/{0}.", filesToUpload.Count, filesToUpload.Count - errorCount);
                 }
 
                 if (runOnce)
@@ -828,7 +828,7 @@ namespace GitHub.Runner.Common
             bool uploadSucceed = false;
             try
             {
-                Trace.Info($"Starting to step log file to results service {file.Name}, {file.Path}");
+                Trace.Info($"Starting upload of step log file to results service {file.Name}, {file.Path}");
                 var cancellationTokenSource = new CancellationTokenSource();
                 await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, cancellationTokenSource.Token);
 
@@ -844,7 +844,7 @@ namespace GitHub.Runner.Common
                     }
                     catch (Exception ex)
                     {
-                        Trace.Info("Catch exception during delete success results uploaded step log file.");
+                        Trace.Info("Exception encountered during deletion of a temporary file that was already successfully uploaded to results.");
                         Trace.Error(ex);
                     }
                 }
