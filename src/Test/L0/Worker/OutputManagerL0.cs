@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Actions.RunService.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
@@ -976,6 +977,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
             _executionContext.Setup(x => x.StepTelemetry)
                 .Returns(new DTWebApi.ActionsStepTelemetry());
+            _executionContext.Setup(x => x.StepResult)
+                .Returns(new StepResult());
             _executionContext.Setup(x => x.GetMatchers())
                 .Returns(matchers?.Matchers ?? new List<IssueMatcherConfig>());
             _executionContext.Setup(x => x.Add(It.IsAny<OnMatcherChanged>()))

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -49,6 +50,8 @@ namespace GitHub.Runner.Worker
         Dictionary<string, VariableValue> JobOutputs { get; }
         ActionsEnvironmentReference ActionsEnvironment { get; }
         ActionsStepTelemetry StepTelemetry { get; }
+
+        StepResult StepResult { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
@@ -108,6 +111,7 @@ namespace GitHub.Runner.Worker
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
         void PublishStepTelemetry();
+        void SetStepResult();
 
         void ApplyContinueOnError(TemplateToken continueOnError);
         void UpdateGlobalStepsContext();
@@ -161,6 +165,7 @@ namespace GitHub.Runner.Worker
 
         public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
         public ActionsStepTelemetry StepTelemetry { get; } = new ActionsStepTelemetry();
+        public StepResult StepResult { get; } = new StepResult();
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -368,6 +373,7 @@ namespace GitHub.Runner.Worker
 
             child.IsEmbedded = isEmbedded;
             child.StepTelemetry.StepId = recordId;
+            child.StepResult.ExternalID = recordId;
             child.StepTelemetry.Stage = stage.ToString();
             child.StepTelemetry.IsEmbedded = isEmbedded;
             child.StepTelemetry.StepContextName = child.GetFullyQualifiedContextName(); ;
@@ -436,6 +442,8 @@ namespace GitHub.Runner.Worker
             }
 
             PublishStepTelemetry();
+
+            SetStepResult();
 
             if (Root != this)
             {
@@ -709,6 +717,9 @@ namespace GitHub.Runner.Worker
 
             // ActionsStepTelemetry for entire job
             Global.StepsTelemetry = new List<ActionsStepTelemetry>();
+
+            // Steps results for entire job
+            Global.StepsResult = new List<StepResult>();
 
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
@@ -1018,6 +1029,33 @@ namespace GitHub.Runner.Worker
             else
             {
                 Trace.Info($"Step telemetry has already been published.");
+            }
+        }
+
+
+        public void SetStepResult()
+        {
+            // Add to the global steps telemetry only if we have something to log.
+            if (!string.IsNullOrEmpty(StepTelemetry?.Type))
+            {
+                if (!IsEmbedded)
+                {
+                    StepResult.Conclusion = _record.Result;
+                    StepResult.Status = _record.State;
+                    StepResult.Number = _record.Order;
+                    StepResult.Name = _record.Name;
+                }
+
+                if (!IsEmbedded &&
+                    _record.FinishTime != null &&
+                    _record.StartTime != null)
+                {
+                    StepResult.StartedAt = _record.StartTime;
+                    StepResult.CompletedAt = _record.FinishTime;
+                }
+
+                Trace.Info($"Step results are set for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
+                Global.StepsResult.Add(StepResult);
             }
         }
 

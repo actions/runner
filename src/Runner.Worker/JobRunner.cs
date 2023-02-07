@@ -260,8 +260,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    var stepTelemetry = jobContext.Global.StepsTelemetry;
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, stepTelemetry.ToStepResults(), default);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, default);
                     return result;
                 }
                 catch (Exception ex)

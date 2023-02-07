@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
@@ -14,10 +15,12 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private Mock<IExecutionContext> _ec;
         private ActionsStepTelemetry _stepTelemetry;
+        private StepResult _stepResult;
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             var hc = new TestHostContext(this, testName);
             _stepTelemetry = new ActionsStepTelemetry();
+            _stepResult = new StepResult();
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
             _ec.Setup(x => x.StepTelemetry).Returns(_stepTelemetry);

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using System.Threading.Tasks;
 
 namespace GitHub.DistributedTask.WebApi
 {
@@ -15,12 +14,6 @@ namespace GitHub.DistributedTask.WebApi
         {
             this.ErrorMessages = new List<string>();
         }
-
-        [DataMember(EmitDefaultValue = false)]
-        public string DisplayName { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public int? Order { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public string Action { get; set; }
@@ -60,9 +53,6 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public TaskResult? Result { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public TimelineRecordState? State { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public List<string> ErrorMessages { get; set; }
