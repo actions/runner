@@ -10,5 +10,4 @@ namespace GitHub.Actions.RunService.WebApi
         [DataMember(Name = "streamId", EmitDefaultValue = false)]
         public string StreamID { get; set; }
     }
-
 }
