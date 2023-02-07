@@ -12,20 +12,20 @@ namespace GitHub.Services.Common
     public class RawHttpMessageHandler: HttpMessageHandler
     {
         public RawHttpMessageHandler(
-            VssOAuthCredential credentials)
+            FederatedCredential credentials)
             : this(credentials, new RawClientHttpRequestSettings())
         {
         }
 
         public RawHttpMessageHandler(
-            VssOAuthCredential credentials,
+            FederatedCredential credentials,
             RawClientHttpRequestSettings settings)
             : this(credentials, settings, new HttpClientHandler())
         {
         }
 
         public RawHttpMessageHandler(
-            VssOAuthCredential credentials,
+            FederatedCredential credentials,
             RawClientHttpRequestSettings settings,
             HttpMessageHandler innerHandler)
         {
@@ -56,7 +56,7 @@ namespace GitHub.Services.Common
         /// <summary>
         /// Gets the credentials associated with this handler.
         /// </summary>
-        public VssOAuthCredential Credentials
+        public FederatedCredential Credentials
         {
             get;
             private set;
@@ -111,7 +111,7 @@ namespace GitHub.Services.Common
                 // Ensure that we attempt to use the most appropriate authentication mechanism by default.
                 if (m_tokenProvider == null)
                 {
-                    m_tokenProvider = this.Credentials.GetTokenProvider(request.RequestUri);
+                    m_tokenProvider = this.Credentials.CreateTokenProvider(request.RequestUri, null, null);
                 }
             }
 
@@ -254,7 +254,7 @@ namespace GitHub.Services.Common
         private CredentialWrapper m_credentialWrapper;
         private object m_thisLock;
         private const Int32 m_maxAuthRetries = 3;
-        private VssOAuthTokenProvider m_tokenProvider;
+        private IssuedTokenProvider m_tokenProvider;
 
         //.Net Core does not attempt NTLM schema on Linux, unless ICredentials is a CredentialCache instance
         //This workaround may not be needed after this corefx fix is consumed: https://github.com/dotnet/corefx/pull/7923

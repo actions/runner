@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:6.0 as build
 
 ARG RUNNER_VERSION
 ARG RUNNER_ARCH="x64"
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.1.3
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.2.0
 
 RUN apt update -y && apt install curl unzip -y
 
@@ -18,6 +18,8 @@ RUN curl -f -L -o runner-container-hooks.zip https://github.com/actions/runner-c
 FROM mcr.microsoft.com/dotnet/runtime-deps:6.0
 
 ENV RUNNER_ALLOW_RUNASROOT=1
+ENV RUNNER_MANUALLY_TRAP_SIG=1
+ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 
 WORKDIR /actions-runner
 COPY --from=build /actions-runner .

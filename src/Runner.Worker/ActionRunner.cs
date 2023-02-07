@@ -25,7 +25,6 @@ namespace GitHub.Runner.Worker
     public interface IActionRunner : IStep, IRunnerService
     {
         ActionRunStage Stage { get; set; }
-        bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context);
         Pipelines.ActionStep Action { get; set; }
     }
 
@@ -285,25 +284,67 @@ namespace GitHub.Runner.Worker
 
         }
 
-        public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context)
+        /// <summary>
+        /// Attempts to update the DisplayName.
+        /// As the "Try..." name implies, this method should never throw an exception.
+        /// Returns true if the DisplayName is already present or it was successfully updated.
+        /// </summary>
+        public bool TryUpdateDisplayName(out bool updated)
+        {
+            updated = false;
+
+            // REVIEW:  This try/catch can be removed if some future implementation of EvaluateDisplayName and UpdateTimelineRecordDisplayName
+            // can make reasonable guarantees that they won't throw an exception.
+            try
+            {
+                // This attempt is only worthwhile at the "Main" stage.
+                //    When the job starts, there's an initial attempt to evaluate the DisplayName.  (see JobExtension::InitializeJob)
+                //    During the "Pre" stage, we expect that no contexts will have changed since the initial evaluation.
+                //    "Main" stage is handled here.
+                //    During the "Post" stage, it no longer matters.
+                if (this.Stage == ActionRunStage.Main && EvaluateDisplayName(this.ExecutionContext.ExpressionValues, this.ExecutionContext, out updated))
+                {
+                    if (updated)
+                    {
+                        this.ExecutionContext.UpdateTimelineRecordDisplayName(this.DisplayName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Warning("Caught exception while attempting to evaulate/update the step's DisplayName.  Exception Details:  {0}", ex);
+            }
+
+            // For consistency with other implementations of TryUpdateDisplayName we use !string.IsNullOrEmpty below,
+            // but note that (at the time of this writing) ActionRunner::DisplayName::get always returns a non-empty string due to its fallback logic.
+            // In other words, the net effect is that this particular implementation of TryUpdateDisplayName will always return true.
+            return !string.IsNullOrEmpty(this.DisplayName);
+        }
+
+
+        /// <summary>
+        /// Attempts to evaluate the DisplayName of this IActionRunner.
+        /// Returns true if the DisplayName is already present or it was successfully evaluated.
+        /// </summary>
+        public bool EvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated)
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(Action, nameof(Action));
 
-            // If we have already expanded the display name, there is no need to expand it again
-            // TODO: Remove the ShouldEvaluateDisplayName check and field post m158 deploy, we should do it by default once the server is updated
+            updated = false;
+            // If we have already expanded the display name, don't bother attempting [re-]expansion.
             if (_didFullyEvaluateDisplayName || !string.IsNullOrEmpty(Action.DisplayName))
             {
-                return false;
+                return true;
             }
 
-            bool didFullyEvaluate;
-            _displayName = GenerateDisplayName(Action, contextData, context, out didFullyEvaluate);
+            _displayName = GenerateDisplayName(Action, contextData, context, out bool didFullyEvaluate);
 
-            // If we evaluated fully mask any secrets
+            // If we evaluated, fully mask any secrets
             if (didFullyEvaluate)
             {
                 _displayName = HostContext.SecretMasker.MaskSecrets(_displayName);
+                updated = true;
             }
             context.Debug($"Set step '{Action.Name}' display name to: '{_displayName}'");
             _didFullyEvaluateDisplayName = didFullyEvaluate;

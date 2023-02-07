@@ -824,6 +824,7 @@ namespace GitHub.Runner.Common.Tests
         [InlineData("remove", "version")]
         [InlineData("remove", "commit")]
         [InlineData("remove", "check")]
+        [InlineData("remove", "local")]
         [InlineData("run", "help")]
         [InlineData("run", "version")]
         [InlineData("run", "commit")]

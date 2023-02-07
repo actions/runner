@@ -502,5 +502,34 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.Once());
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async void TestRemoveLocalRunnerConfig()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+
+                var command = new CommandSettings(hc, new[] { "remove", "--local" });
+
+                _configStore.Setup(x => x.IsConfigured())
+                    .Returns(true);
+
+                _configStore.Setup(x => x.HasCredentials())
+                    .Returns(true);
+
+
+                var runner = new Runner.Listener.Runner();
+                runner.Initialize(hc);
+                await runner.ExecuteCommand(command);
+
+                // verify that we delete the local runner config with the correct remove parameter
+                _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Once());
+            }
+        }
     }
 }

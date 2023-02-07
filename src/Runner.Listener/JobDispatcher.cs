@@ -400,6 +400,7 @@ namespace GitHub.Runner.Listener
                     Task<int> workerProcessTask = null;
                     object _outputLock = new();
                     List<string> workerOutput = new();
+                    bool printToStdout = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout));
                     using (var processChannel = HostContext.CreateService<IProcessChannel>())
                     using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
@@ -421,7 +422,15 @@ namespace GitHub.Runner.Listener
                                         {
                                             lock (_outputLock)
                                             {
-                                                workerOutput.Add(stdout.Data);
+                                                if (!stdout.Data.StartsWith("[WORKER"))
+                                                {
+                                                    workerOutput.Add(stdout.Data);
+                                                }
+                                                
+                                                if (printToStdout)
+                                                {
+                                                    term.WriteLine(stdout.Data, skipTracing: true);
+                                                }
                                             }
                                         }
                                     };
@@ -658,7 +667,7 @@ namespace GitHub.Runner.Listener
             finally
             {
                 Busy = false;
-                
+
                 if (JobStatus != null)
                 {
                     JobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Online));

@@ -1,18 +1,23 @@
 ## Features
-- Displays the error logs in dedicated sub-sections of the Initialize containers section (#2182)
-- Add generateServiceConfig option for configure command (#2226)
-- Setting debug using GitHub Action variables (#2234)
-- run.sh installs SIGINT and SIGTERM traps to gracefully stop runner (#2233, #2240)
-
+- Log GitHub RequestId for better traceability (#2332)
+- Dual upload summary to Actions and Result service (#2334)
+- Allow providing extra User-Agent for better correlation (#2370)
+- Show more information in the runner log (#2377)
+- New option to remove local config files (#2367)
 
 ## Bugs
-- Use Global.Variables instead of JobContext and include action path/ref in the message. (#2214)
+- Treat jitconfig as secret (#2335)
+- Add Header/Footer to multi-line message in StdoutTraceListener (#2336)
+- Update Node dependencies (#2381)
 
 ## Misc
-- Allow '--disableupdate' in create-latest-svc.sh (#2201)
-- Fix markup for support link (#2114)
-- Add runner devcontainer (#2187)
-- Setup linter for Runner (#2211, #2213, #2216)
+- Make runner image print diag log to STDOUT (#2331)
+- Update Node.js to 16.16.0 (#2371)
+- Add a disclaimer for which runner version is available to a given tenant (#2362)
+
+_Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
+To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
+See https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/adding-self-hosted-runners_
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

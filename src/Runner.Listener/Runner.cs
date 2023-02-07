@@ -135,6 +135,12 @@ namespace GitHub.Runner.Listener
                 // remove config files, remove service, and exit
                 if (command.Remove)
                 {
+                    // only remove local config files and exit
+                    if(command.RemoveLocalConfig)
+                    {
+                        configManager.DeleteLocalRunnerConfig();
+                        return Constants.Runner.ReturnCode.Success;
+                    }
                     try
                     {
                         await configManager.UnconfigureAsync(command);
@@ -647,6 +653,7 @@ Config Options:
  --name string          Name of the runner to configure (default {Environment.MachineName ?? "myrunner"})
  --runnergroup string   Name of the runner group to add this runner to (defaults to the default runner group)
  --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
+ --local                Removes the runner config files from your local machine. Used as an option to the remove command
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
  --pat                  GitHub personal access token with repo scope. Used for checking network connectivity when executing `.{separator}run.{ext} --check`
