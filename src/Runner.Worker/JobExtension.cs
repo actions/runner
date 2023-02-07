@@ -306,13 +306,13 @@ namespace GitHub.Runner.Worker
                                 }
                             }
 
-                            actionRunner.TryEvaluateDisplayName(contextData, context);
+                            actionRunner.EvaluateDisplayName(contextData, context, out _);
                             jobSteps.Add(actionRunner);
 
                             if (prepareResult.PreStepTracker.TryGetValue(step.Id, out var preStep))
                             {
                                 Trace.Info($"Adding pre-{action.DisplayName}.");
-                                preStep.TryEvaluateDisplayName(contextData, context);
+                                preStep.EvaluateDisplayName(contextData, context, out _);
                                 preStep.DisplayName = $"Pre {preStep.DisplayName}";
                                 preJobSteps.Add(preStep);
                             }
@@ -328,10 +328,10 @@ namespace GitHub.Runner.Worker
                         if (message.ContextData.TryGetValue("inputs", out var pipelineContextData))
                         {
                             var inputs = pipelineContextData.AssertDictionary("inputs");
-                            if (inputs.Any()) 
+                            if (inputs.Any())
                             {
                                 context.Output($"##[group] Inputs");
-                                foreach (var input in inputs) 
+                                foreach (var input in inputs)
                                 {
                                     context.Output($"  {input.Key}: {input.Value}");
                                 }
