@@ -6,7 +6,6 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
-using GitHub.Services.Common;
 using Moq;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -94,19 +93,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                             });
 
                 _ec.Setup(x => x.CreateIssue(It.IsAny<IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
-                    .Returns((IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
-                    {
-                        var result = new Issue()
-                        {
-                            Type = type,
-                            Message = message,
-                            Category = metadata?.Category,
-                            IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false
-                        };
-                        result.Data.AddRangeIfRangeNotNull(metadata?.Data);
-                        return result;
-                    });
-
+                   .Returns(TestUtil.CreateTestIssue);
                 _ec.Setup(x => x.AddIssue(It.IsAny<IReadOnlyIssue>()))
                    .Callback((IReadOnlyIssue issue) =>
                    {

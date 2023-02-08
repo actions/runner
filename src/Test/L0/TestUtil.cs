@@ -2,6 +2,8 @@
 using Xunit;
 using GitHub.Runner.Sdk;
 using System.Runtime.CompilerServices;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Worker;
 
 namespace GitHub.Runner.Common.Tests
 {
@@ -40,6 +42,27 @@ namespace GitHub.Runner.Common.Tests
             string testDataDir = Path.Combine(GetProjectPath(), TestData);
             Assert.True(Directory.Exists(testDataDir));
             return testDataDir;
+        }
+
+        public static IReadOnlyIssue CreateTestIssue(IssueType type, string message, IssueMetadata metadata, bool writeToLog)
+        {
+            var result = new Issue()
+            {
+                Type = type,
+                Message = message,
+            };
+
+            if (metadata != null)
+            {
+                result.Category = metadata.Category;
+                result.IsInfrastructureIssue = metadata.IsInfrastructureIssue;
+                foreach (var kvp in metadata.Data)
+                {
+                    result[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return result;
         }
     }
 }

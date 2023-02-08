@@ -586,14 +586,13 @@ namespace GitHub.Runner.Worker
 
             var result = new Issue() {
                 Type = issueType,
-                Category = metadata?.Category,
-                IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false,
                 Message = refinedMessage,
             };
 
-
             if (metadata != null)
             {
+                result.Category = metadata.Category;
+                result.IsInfrastructureIssue = metadata.IsInfrastructureIssue;
                 foreach (var kvp in metadata.Data)
                 {
                     result[kvp.Key] = kvp.Value;

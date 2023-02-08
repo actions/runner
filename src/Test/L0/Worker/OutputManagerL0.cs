@@ -984,19 +984,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _onMatcherChanged = handler;
                 });
             _executionContext.Setup(x => x.CreateIssue(It.IsAny<DTWebApi.IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
-                .Returns((DTWebApi.IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
-                {
-                    var result = new DTWebApi.Issue()
-                    {
-                        Type = type,
-                        Message = message,
-                        Category = metadata?.Category,
-                        IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false
-                    };
-                    result.Data.AddRangeIfRangeNotNull(metadata?.Data);
-                    return result;
-                });
-
+                             .Returns(TestUtil.CreateTestIssue);
             _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.IReadOnlyIssue>()))
                 .Callback((DTWebApi.IReadOnlyIssue issue) =>
                 {

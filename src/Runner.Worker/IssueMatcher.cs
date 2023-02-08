@@ -21,7 +21,10 @@ namespace GitHub.Runner.Worker
             this.Category = category;
             this.IsInfrastructureIssue = infrastructureIssue;
             this.LogMessageOverride = logMessageOverride;
-            this.Data = data;
+
+            // Close-over the incoming IEnumerable to force immediate evaluation.
+            var empty = Enumerable.Empty<KeyValuePair<string, string>>();
+            this.Data = new Dictionary<string, string>(data ?? empty);
         }
 
         public readonly string Category;

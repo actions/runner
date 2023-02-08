@@ -2148,18 +2148,7 @@ runs:
             _ec.Object.Global.Plan = new TaskOrchestrationPlanReference();
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
             _ec.Setup(x => x.CreateIssue(It.IsAny<IssueType>(), It.IsAny<string>(), It.IsAny<IssueMetadata>(), It.IsAny<bool>()))
-                .Returns((IssueType type, string message, IssueMetadata metadata, bool writeToLog) =>
-                {
-                    var result = new Issue()
-                    {
-                        Type = type,
-                        Message = message,
-                        Category = metadata?.Category,
-                        IsInfrastructureIssue = metadata?.IsInfrastructureIssue ?? false
-                    };
-                    result.Data.AddRangeIfRangeNotNull(metadata?.Data);
-                    return result;
-                });
+               .Returns(TestUtil.CreateTestIssue);
             _ec.Setup(x => x.AddIssue(It.IsAny<IReadOnlyIssue>())).Callback((IReadOnlyIssue issue) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message}"); });
             _ec.Setup(x => x.GetGitHubContext("workspace")).Returns(Path.Combine(_workFolder, "actions", "actions"));
 

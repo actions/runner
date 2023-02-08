@@ -246,9 +246,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 embeddedStep.AddIssue(embeddedStep.CreateIssue(IssueType.Warning, "warning annotation that should have step and line number information", null, true));
                 embeddedStep.AddIssue(embeddedStep.CreateIssue(IssueType.Notice, "notice annotation that should have step and line number information", null, true));
 
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Error).Count() == 1)), Times.AtLeastOnce);
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Warning).Count() == 1)), Times.AtLeastOnce);
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Notice).Count() == 1)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i["stepNumber"] != null && i["logFileLineNumber"] != null && i.Type == IssueType.Error).Count() == 1)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i["stepNumber"] != null && i["logFileLineNumber"] != null && i.Type == IssueType.Warning).Count() == 1)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i["stepNumber"] != null && i["logFileLineNumber"] != null && i.Type == IssueType.Notice).Count() == 1)), Times.AtLeastOnce);
             }
         }
 
