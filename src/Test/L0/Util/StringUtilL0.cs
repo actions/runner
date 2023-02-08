@@ -1,5 +1,4 @@
-﻿using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
+﻿using GitHub.Runner.Sdk;
 using System.Globalization;
 using Xunit;
 
@@ -185,6 +184,20 @@ namespace GitHub.Runner.Common.Tests.Util
                 Assert.False(result8, $"'{undefineString2}' should convert to false.");
                 Assert.False(result9, $"'{undefineString3}' should convert to false.");
             }
+        }
+
+        [Theory]
+        [InlineData("", "")]
+        [InlineData("(())", "[[]]")]
+        [InlineData("()()", "[][]")]
+        [InlineData("  Liquorix kernel OS Description is poorly formatted (linux version ", "Liquorix kernel OS Description is poorly formatted [linux version")]
+        [InlineData("Liquorix kernel OS Description is poorly formatted (linux version", "Liquorix kernel OS Description is poorly formatted [linux version")]
+        [InlineData("()((.", "[][[.")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SanitizeUserAgentHeader(string input, string expected)
+        {
+            Assert.Equal(expected, StringUtil.SanitizeUserAgentHeader(input));
         }
     }
 }
