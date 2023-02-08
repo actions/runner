@@ -58,14 +58,6 @@ namespace Runner.Server {
                     var startPos = pos;
                     while(pos < pattern.Length && pattern[pos] != ']') {
                         switch(pattern[pos]) {
-                            case '\\':
-                            if(pos + 1 >= pattern.Length) {
-                                errors.Add(pos++, "Missing symbol after \\");
-                                break;
-                            }
-                            rpattern.Append(Regex.Escape(pattern[pos+1].ToString()));
-                            pos += 2;
-                            break;
                             case '-':
                             if(pos <= startPos || pos + 1 >= pattern.Length) {
                                 errors.Add(pos++, "Invalid range");
