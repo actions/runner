@@ -13,7 +13,11 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
-using GitHub.Services.Common;
+
+#if OS_WINDOWS
+using System.IO.Compression;
+#endif
+
 using Moq;
 using Moq.Protected;
 using Xunit;

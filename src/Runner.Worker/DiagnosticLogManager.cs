@@ -5,7 +5,6 @@ using System.IO.Compression;
 using GitHub.DistributedTask.WebApi;
 using System.Linq;
 using System.Globalization;
-using System.Threading.Tasks;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
@@ -32,7 +31,7 @@ namespace GitHub.Runner.Worker
     {
         private static string DateTimeFormat = "yyyyMMdd-HHmmss";
         public void UploadDiagnosticLogs(IExecutionContext executionContext,
-                                         IExecutionContext parentContext, 
+                                         IExecutionContext parentContext,
                                          Pipelines.AgentJobRequestMessage message,
                                          DateTime jobStartTimeUtc)
         {
