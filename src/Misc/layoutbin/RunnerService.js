@@ -25,6 +25,7 @@ if (exitServiceAfterNFailures <= 0) {
 }
 
 var consecutiveFailureCount = 0;
+var retryRestarts = 0;
 
 var gracefulShutdown = function () {
   console.log("Shutting down runner listener");
@@ -93,14 +94,31 @@ var runService = function () {
             "Runner listener exit with retryable error, re-launch runner in 5 seconds."
           );
           consecutiveFailureCount = 0;
+          retryRestarts++;
+          if (retryRestarts === 10) {
+            console.error(
+              "Stopping the runner after 10 consecutive re-tryable failures"
+            );
+            gracefulShutdown();
+            return;
+          }
         } else if (code === 3 || code === 4) {
           console.log(
             "Runner listener exit because of updating, re-launch runner in 5 seconds."
           );
           consecutiveFailureCount = 0;
+          retryRestarts++;
+          if (retryRestarts === 10) {
+            console.error(
+              "Stopping the runner after 10 consecutive re-tryable failures"
+            );
+            gracefulShutdown();
+            return;
+          }
         } else {
           var messagePrefix = "Runner listener exit with undefined return code";
           consecutiveFailureCount++;
+          retryRestarts = 0;
           if (
             !isNaN(exitServiceAfterNFailures) &&
             consecutiveFailureCount >= exitServiceAfterNFailures
