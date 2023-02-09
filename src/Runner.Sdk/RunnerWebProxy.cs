@@ -164,13 +164,6 @@ namespace GitHub.Runner.Sdk
                         {
                             continue;
                         }
-
-                        // Strip leading '.' fron noproxy host
-                        if (noProxyInfo.Host.StartsWith("."))
-                        {
-                            noProxyInfo.Host = noProxyInfo.Host[1..];
-                        }
-
                         _noProxyList.Add(noProxyInfo);
                     }
                 }
@@ -231,7 +224,14 @@ namespace GitHub.Runner.Sdk
                     matchPort = string.Equals(noProxy.Port, input.Port.ToString());
                 }
 
-                matchHost = string.Equals(input.Host, noProxy.Host, StringComparison.OrdinalIgnoreCase) || input.Host.EndsWith($".{noProxy.Host}", StringComparison.OrdinalIgnoreCase);
+                if (noProxy.Host.StartsWith('.'))
+                {
+                    matchHost = input.Host.EndsWith(noProxy.Host, StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                {
+                    matchHost = string.Equals(input.Host, noProxy.Host, StringComparison.OrdinalIgnoreCase) || input.Host.EndsWith($".{noProxy.Host}", StringComparison.OrdinalIgnoreCase);
+                }
 
                 if (matchHost && matchPort)
                 {
