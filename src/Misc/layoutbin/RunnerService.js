@@ -24,8 +24,8 @@ if (exitServiceAfterNFailures <= 0) {
   exitServiceAfterNFailures = NaN;
 }
 
-var consecutiveFailureCount = 0;
-var retryRestarts = 0;
+var unknownFailureRetryCount = 0;
+var retriableFailureRetryCount = 0;
 
 var gracefulShutdown = function () {
   console.log("Shutting down runner listener");
@@ -63,7 +63,8 @@ var runService = function () {
 
       listener.stdout.on("data", (data) => {
         if (data.toString("utf8").includes("Listening for Jobs")) {
-          consecutiveFailureCount = 0;
+          unknownFailureRetryCount = 0;
+          retriableFailureRetryCount = 0;
         }
         process.stdout.write(data.toString("utf8"));
       });
@@ -93,9 +94,9 @@ var runService = function () {
           console.log(
             "Runner listener exit with retryable error, re-launch runner in 5 seconds."
           );
-          consecutiveFailureCount = 0;
-          retryRestarts++;
-          if (retryRestarts === 10) {
+          unknownFailureRetryCount = 0;
+          retriableFailureRetryCount++;
+          if (retriableFailureRetryCount === 10) {
             console.error(
               "Stopping the runner after 10 consecutive re-tryable failures"
             );
@@ -106,9 +107,9 @@ var runService = function () {
           console.log(
             "Runner listener exit because of updating, re-launch runner in 5 seconds."
           );
-          consecutiveFailureCount = 0;
-          retryRestarts++;
-          if (retryRestarts === 10) {
+          unknownFailureRetryCount = 0;
+          retriableFailureRetryCount++;
+          if (retriableFailureRetryCount === 10) {
             console.error(
               "Stopping the runner after 10 consecutive re-tryable failures"
             );
@@ -117,14 +118,14 @@ var runService = function () {
           }
         } else {
           var messagePrefix = "Runner listener exit with undefined return code";
-          consecutiveFailureCount++;
-          retryRestarts = 0;
+          unknownFailureRetryCount++;
+          retriableFailureRetryCount = 0;
           if (
             !isNaN(exitServiceAfterNFailures) &&
-            consecutiveFailureCount >= exitServiceAfterNFailures
+            unknownFailureRetryCount >= exitServiceAfterNFailures
           ) {
             console.error(
-              `${messagePrefix}, exiting service after ${consecutiveFailureCount} consecutive failures`
+              `${messagePrefix}, exiting service after ${unknownFailureRetryCount} consecutive failures`
             );
             gracefulShutdown();
             return;
