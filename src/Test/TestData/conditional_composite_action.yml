@@ -25,21 +25,21 @@ runs:
       - run: exit ${{ inputs.exit-code }}
         shell: bash
 
-      - run: echo "::set-output name=default::true"
+      - run: echo "default=true" >> $GITHUB_OUTPUT
         id: default-conditional
         shell: bash
 
-      - run: echo "::set-output name=success::true"
+      - run: echo "success=true" >> $GITHUB_OUTPUT
         id: success-conditional
         shell: bash
         if: success()
 
-      - run: echo "::set-output name=failure::true"
+      - run: echo "failure=true" >> $GITHUB_OUTPUT
         id: failure-conditional
         shell: bash
         if: failure()
 
-      - run: echo "::set-output name=always::true"
+      - run: echo "always=true" >> $GITHUB_OUTPUT
         id: always-conditional
         shell: bash
         if: always()
