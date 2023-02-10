@@ -87,11 +87,25 @@ namespace Runner.Client
                                 }
                             }
                             archiveFile = Path.Combine(tempDirectory, archiveName);
+                            var contentLength = response.Content.Headers.ContentLength;
                             using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                             using (var result = await response.Content.ReadAsStreamAsync())
                             {
+                                bool finished = false;
+                                var progress = (new Func<Task>(async () => {
+                                    try {
+                                        while(!finished) {
+                                            await Task.Delay(1000, token);
+                                            Console.WriteLine(contentLength == null ? $"Downloaded {fs.Position / 1024 / 1024} MB" : $"Downloaded {fs.Position / 1024 / 1024}/{contentLength / 1024 / 1024} MB");
+                                        }
+                                    } catch {
+
+                                    }
+                                }))();
                                 await result.CopyToAsync(fs, 4096, token);
+                                finished = true;
                                 await fs.FlushAsync(token);
+                                await progress;
                             }
                         }
                     }
