@@ -96,12 +96,11 @@ var runService = function () {
           );
           unknownFailureRetryCount = 0;
           retriableFailureRetryCount++;
-          if (retriableFailureRetryCount === 10) {
+          if (retriableFailureRetryCount >= 10) {
             console.error(
               "Stopping the runner after 10 consecutive re-tryable failures"
             );
-            gracefulShutdown();
-            return;
+            stopping = true;
           }
         } else if (code === 3 || code === 4) {
           console.log(
@@ -109,12 +108,11 @@ var runService = function () {
           );
           unknownFailureRetryCount = 0;
           retriableFailureRetryCount++;
-          if (retriableFailureRetryCount === 10) {
+          if (retriableFailureRetryCount >= 10) {
             console.error(
               "Stopping the runner after 10 consecutive re-tryable failures"
             );
-            gracefulShutdown();
-            return;
+            stopping = true;
           }
         } else {
           var messagePrefix = "Runner listener exit with undefined return code";
@@ -127,8 +125,7 @@ var runService = function () {
             console.error(
               `${messagePrefix}, exiting service after ${unknownFailureRetryCount} consecutive failures`
             );
-            gracefulShutdown();
-            return;
+            stopping = true
           } else {
             console.log(`${messagePrefix}, re-launch runner in 5 seconds.`);
           }
