@@ -151,40 +151,28 @@ namespace Runner.Client
             }
         }
         public static async Task<string> GetAgent(string name, string version, CancellationToken token) {
+            var azagent = name == "azagent";
             var externalsPath = Path.Join(GharunUtil.GetLocalStorage());
             var os = GetHostOS();
             var arch = GetHostArch();
             string platform = os + "/" + arch;
             var exeExtension = os == "windows" ? ".exe" : "";
-            var prefix = name == "azagent" ? "Agent" : "Runner";
+            var prefix = azagent ? "Agent" : "Runner";
             string file = Path.Combine(externalsPath, name, version, "bin", $"{prefix}.Listener{exeExtension}");
             if(!File.Exists(file)) {
                 Console.WriteLine($"{file} executable not found locally");
-                Dictionary<string, Func<string, Task>> _tools = null;
-                if(name == "azagent") {
-                    string tarextraopts = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? " --exclude \"*/lib/*\" \"*/bin/runner*\" \"*/LICENSE\"" : "";
-                    // Note use the vsts package, because container operations have node6 hardcoded as trampoline
-                    Func<string, string, string> AURL = (arch, ext) => $"https://vstsagentpackage.azureedge.net/agent/{version}/vsts-agent-{arch}-{version}.{ext}";
-                    _tools = new Dictionary<string, Func<string, Task>> {
-                        { "windows/386", dest => DownloadTool(AURL("win-x86", "zip"), dest, token, unwrap: false)},
-                        { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
-                        { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
-                        { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
-                        { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
-                        { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
-                        { "osx/arm64", dest => DownloadTool(AURL("osx-arm64", "tar.gz"), dest, token, unwrap: false)},
-                    };
-                } else {
-                    Func<string, string, string> AURL = (arch, ext) => $"https://github.com/actions/runner/releases/download/v{version}/actions-runner-{arch}-{version}.{ext}";
-                    _tools = new Dictionary<string, Func<string, Task>> {
-                        { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
-                        { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
-                        { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
-                        { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
-                        { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
-                        { "osx/arm64", dest => DownloadTool(AURL("osx-arm64", "tar.gz"), dest, token, unwrap: false)},
-                    };
-                }
+                // Note use the vsts package, because container operations have node6 hardcoded as trampoline
+                Func<string, string, string> AURL = azagent ? (arch, ext) => $"https://vstsagentpackage.azureedge.net/agent/{version}/vsts-agent-{arch}-{version}.{ext}" : (arch, ext) => $"https://github.com/actions/runner/releases/download/v{version}/actions-runner-{arch}-{version}.{ext}";
+                var _tools = new Dictionary<string, Func<string, Task>> {
+                    { "windows/386", dest => DownloadTool(AURL("win-x86", "zip"), dest, token, unwrap: false)},
+                    { "windows/amd64", dest => DownloadTool(AURL("win-x64", "zip"), dest, token, unwrap: false)},
+                    { "windows/arm64", dest => DownloadTool(AURL("win-arm64", "zip"), dest, token, unwrap: false)},
+                    { "linux/amd64", dest => DownloadTool(AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
+                    { "linux/arm", dest => DownloadTool(AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
+                    { "linux/arm64", dest => DownloadTool(AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
+                    { "osx/amd64", dest => DownloadTool(AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
+                    { "osx/arm64", dest => DownloadTool(AURL("osx-arm64", "tar.gz"), dest, token, unwrap: false)},
+                };
                 if(_tools.TryGetValue(platform, out Func<string, Task> download)) {
                     await download(Path.Combine(externalsPath, name, version));
                     if(!File.Exists(file)) {
