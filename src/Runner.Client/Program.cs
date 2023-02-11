@@ -467,7 +467,13 @@ namespace Runner.Client
                         foreach(var e in systemEnv.Keys) {
                             runnerEnv[e as string] = systemEnv[e] as string;
                         }
-                        if(!azure) {
+                        if(azure) {
+                            // Backward compat with old runner.server < 3.11.3
+                            runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"] = "1";
+                            // the 3.x.x azure agents don't use PredefinedCulturesOnly https://learn.microsoft.com/en-US/dotnet/core/runtime-config/globalization#predefined-cultures, however actions/runner added it
+                            runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY"] = "false";
+                        } else {
+                            // the official runner drops the port from the host
                             runnerEnv["RUNNER_SERVER_CONFIG_ROOT"] = tmpdir;
                         }
                         var toolCacheEnv = azure ? "AGENT_TOOLSDIRECTORY" : "RUNNER_TOOL_CACHE";
