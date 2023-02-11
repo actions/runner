@@ -6292,6 +6292,17 @@ namespace Runner.Server.Controllers
 
         public static event RepoDownload OnRepoDownload;
 
+        [HttpGet("isagentonline")]
+        public async Task<IActionResult> IsAgentOnline([FromQuery] string name)
+        {
+            var sessionsfreeze = sessions.ToArray();
+            var online = sessionsfreeze.Any(s => name == s.Value.Agent.TaskAgent.Name);
+            if(!online) {
+                this.HttpContext.Response.StatusCode = 404;
+            }
+            return await Ok(new { online });
+        }
+
         [HttpGet("{poolId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "Agent")]
         public async Task<IActionResult> GetMessage(int poolId, Guid sessionId)

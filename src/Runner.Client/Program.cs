@@ -467,12 +467,7 @@ namespace Runner.Client
                         foreach(var e in systemEnv.Keys) {
                             runnerEnv[e as string] = systemEnv[e] as string;
                         }
-                        if(azure) {
-                            // Otherwise we have trouble to detect if the agent is ready for receiving jobs, although Runner.Server can tell us the state of the runner
-                            runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"] = "1";
-                            // the 3.x.x azure agents don't use PredefinedCulturesOnly https://learn.microsoft.com/en-US/dotnet/core/runtime-config/globalization#predefined-cultures, however actions/runner added it
-                            runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY"] = "false";
-                        } else {
+                        if(!azure) {
                             runnerEnv["RUNNER_SERVER_CONFIG_ROOT"] = tmpdir;
                         }
                         var toolCacheEnv = azure ? "AGENT_TOOLSDIRECTORY" : "RUNNER_TOOL_CACHE";
@@ -493,6 +488,7 @@ namespace Runner.Client
                         }
                         var code = await inv.ExecuteAsync(tmpdir, file, arguments, runnerEnv, true, null, true, CancellationTokenSource.CreateLinkedTokenSource(source.Token, new CancellationTokenSource(60 * 1000).Token).Token);
                         int execAttempt = 1;
+                        var success = false;
                         while(true) {
                             file = runner;
                             try {
@@ -509,6 +505,7 @@ namespace Runner.Client
                                     runnerlistener.OutputDataReceived += (s, e) => {
                                         if(e.Data.Contains("Listen")) {
                                             timer.Change(-1, -1);
+                                            success = true;
                                             workerchannel.Writer.WriteAsync(true);
                                         }
                                     };
@@ -526,29 +523,58 @@ namespace Runner.Client
                                             file = Path.Join(binpath, $"Runner.Client{ext}");
                                         #endif
                                     }
+                                    ((Func<Task>)(async () => {
+                                        try {
+                                            var client = new HttpClient();
+                                            var isagentonline = new UriBuilder(parameters.Server);
+                                            isagentonline.Path = $"_apis/v1/Message/isagentonline";
+                                            var query = new QueryBuilder();
+                                            query.Add("name", agentname);
+                                            isagentonline.Query = query.ToString().TrimStart('?');
+                                            for(int i = 0; i < 60; i++) {
+                                                await Task.Delay(1000, source.Token);
+                                                var resp = await client.GetAsync(isagentonline.ToString());
+                                                if(resp.IsSuccessStatusCode) {
+                                                    timer.Change(-1, -1);
+                                                    success = true;
+                                                    workerchannel.Writer.WriteAsync(true);
+                                                    break;
+                                                }
+                                            }
+                                        } catch {
+
+                                        }
+                                    }))();
                                     await runnerlistener.ExecuteAsync(tmpdir, file, arguments, runnerEnv, true, null, true, runToken.Token);
                                     break;
                                 }
                             } catch {
-                                if(execAttempt++ <= 3) {
-                                    await Task.Delay(500);
+                                if(success) {
+                                    if(source.IsCancellationRequested) {
+                                        return 1;
+                                    }
+                                    Console.Error.WriteLine("runner crashed after listening for jobs");
                                 } else {
-                                    Console.Error.WriteLine("Failed to start actions runner after 3 attempts");
-                                    int delattempt = 1;
-                                    while(true) {
-                                        try {
-                                            Directory.Delete(tmpdir, true);
-                                            break;
-                                        } catch {
-                                            if(delattempt++ >= 3) {
-                                                await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                    if(execAttempt++ <= 3) {
+                                        await Task.Delay(500);
+                                    } else {
+                                        Console.Error.WriteLine("Failed to start actions runner after 3 attempts");
+                                        int delattempt = 1;
+                                        while(true) {
+                                            try {
+                                                Directory.Delete(tmpdir, true);
                                                 break;
-                                            } else {
-                                                await Task.Delay(500);
+                                            } catch {
+                                                if(delattempt++ >= 3) {
+                                                    await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                    break;
+                                                } else {
+                                                    await Task.Delay(500);
+                                                }
                                             }
                                         }
+                                        return 1;
                                     }
-                                    return 1;
                                 }
                             }
                         }
