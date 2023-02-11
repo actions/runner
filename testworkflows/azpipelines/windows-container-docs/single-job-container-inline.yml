@@ -1,0 +1,5 @@
+# src:https://learn.microsoft.com/en-us/azure/devops/pipelines/process/container-phases?view=azure-devops#single-job
+container: mcr.microsoft.com/windows/servercore:ltsc2022
+
+steps:
+- script: set

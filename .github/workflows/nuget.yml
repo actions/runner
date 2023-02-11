@@ -186,6 +186,7 @@ jobs:
         gharun -C testworkflows/windows-container-test3-invalid-problem-matcher && exit 1 || [[ "$?" = "1" ]]
         gharun -C testworkflows/windows-add-path
         gharun -C testworkflows/windows-add-path -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        gharun --event azpipelines -C testworkflows/azpipelines/windows-container-docs -W testworkflows/azpipelines/windows-container-docs
     - name: Test Linux Container
       if: contains(matrix.os, 'ubuntu') && !job.container
       run: |
