@@ -403,7 +403,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                         },
                     },
                 });
-                Process("the error: \033[31mred, \033[1;31mbright red, \033[mreset");
+                // Shells may support "\033", but in C# that translates to a null followed by "33"
+                Process("the error: \x1B[31mred, \x1B[1;31mbright red, \x1B[mreset");
                 Assert.Equal(1, _issues.Count);
                 Assert.Equal("red, bright red, reset", _issues[0].Item1.Message);
                 Assert.Equal("the error: red, bright red, reset", _issues[0].Item2);
