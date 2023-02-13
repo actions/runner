@@ -1,19 +1,16 @@
 ## Features
-- Log GitHub RequestId for better traceability (#2332)
-- Dual upload summary to Actions and Result service (#2334)
-- Allow providing extra User-Agent for better correlation (#2370)
-- Show more information in the runner log (#2377)
-- New option to remove local config files (#2367)
+- Add support for ghe.com domain (#2420)
+- Add docker cli to the runner image. (#2425)
+- Uploading step logs to Results service (#2422)
 
 ## Bugs
-- Treat jitconfig as secret (#2335)
-- Add Header/Footer to multi-line message in StdoutTraceListener (#2336)
-- Update Node dependencies (#2381)
+- Fix URL construction bug for RunService (#2396)
+- Defer evaluation of a step's DisplayName until its condition is evaluated. (#2313)
+- Replace '(' and ')' with '[' and '] from OS.Description for fixing User-Agent header validation (#2288)
 
 ## Misc
-- Make runner image print diag log to STDOUT (#2331)
-- Update Node.js to 16.16.0 (#2371)
-- Add a disclaimer for which runner version is available to a given tenant (#2362)
+- Bump dotnet sdk to latest version. (#2392)
+- Start calling run service for job completion (#2412, #2423)
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
