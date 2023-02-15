@@ -21,6 +21,12 @@ namespace GitHub.Runner.Common
         // 8 MB
         public const int PageSize = 8 * 1024 * 1024;
 
+        // For Results
+        public static string BlocksFolder = "blocks";
+
+        // 2 MB
+        public const int BlockSize = 2 * 1024 * 1024;
+
         private Guid _timelineId;
         private Guid _timelineRecordId;
         private FileStream _pageData;
@@ -31,12 +37,6 @@ namespace GitHub.Runner.Common
         private string _dataFileName;
         private string _pagesFolder;
         private IJobServerQueue _jobServerQueue;
-
-        // For Results
-        public static string BlocksFolder = "blocks";
-
-        // 2 MB
-        public const int BlockSize = 2 * 1024 * 1024;
 
         private string _resultsDataFileName;
         private FileStream _resultsBlockData;
@@ -99,8 +99,8 @@ namespace GitHub.Runner.Common
                 }
             }
 
-            var bytes = System.Text.Encoding.UTF8.GetByteCount(line); 
-            _byteCount += bytes; 
+            var bytes = System.Text.Encoding.UTF8.GetByteCount(line);
+            _byteCount += bytes;
             _blockByteCount += bytes;
             if (_byteCount >= PageSize)
             {

@@ -28,9 +28,9 @@ namespace GitHub.Services.Results.Client
         {
             var request = new GetSignedStepSummaryURLRequest()
             {
-                WorkflowJobRunBackendId= jobId,
-                WorkflowRunBackendId= planId,
-                StepBackendId= stepId.ToString()
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+                StepBackendId = stepId.ToString()
             };
 
             var stepSummaryUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepSummarySignedBlobURL");
@@ -55,9 +55,9 @@ namespace GitHub.Services.Results.Client
         {
             var request = new GetSignedStepLogsURLRequest()
             {
-                WorkflowJobRunBackendId= jobId,
-                WorkflowRunBackendId= planId,
-                StepBackendId= stepId.ToString(),
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+                StepBackendId = stepId.ToString(),
             };
 
             var stepLogsUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepLogsSignedBlobURL");
@@ -83,8 +83,8 @@ namespace GitHub.Services.Results.Client
             var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
             var request = new StepSummaryMetadataCreate()
             {
-                WorkflowJobRunBackendId= jobId,
-                WorkflowRunBackendId= planId,
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
                 StepBackendId = stepId.ToString(),
                 Size = size,
                 UploadedAt = timestamp
@@ -117,8 +117,8 @@ namespace GitHub.Services.Results.Client
             var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
             var request = new StepLogsMetadataCreate()
             {
-                WorkflowJobRunBackendId= jobId,
-                WorkflowRunBackendId= planId,
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
                 StepBackendId = stepId.ToString(),
                 UploadedAt = timestamp,
                 LineCount = lineCount,
@@ -190,7 +190,7 @@ namespace GitHub.Services.Results.Client
                 return response;
             }
         }
-        
+
         private async Task<HttpResponseMessage> UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, long fileSize, CancellationToken cancellationToken)
         {
             var comp = finalize ? "&comp=appendblock&seal=true" : "&comp=appendblock";

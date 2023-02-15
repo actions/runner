@@ -20,7 +20,7 @@ namespace GitHub.Runner.Common
         void Start(Pipelines.AgentJobRequestMessage jobRequest);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
-        void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines = 0);
+        void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
     }
 
@@ -84,6 +84,8 @@ namespace GitHub.Runner.Common
         private bool _webConsoleLineAggressiveDequeue = true;
         private bool _firstConsoleOutputs = true;
 
+        private bool _resultsClientInitiated = false;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -109,8 +111,8 @@ namespace GitHub.Runner.Common
             {
                 Trace.Info("Initializing results client");
                 _jobServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
+                _resultsClientInitiated = true;
             }
-
 
             if (_queueInProcess)
             {
@@ -230,11 +232,17 @@ namespace GitHub.Runner.Common
             _fileUploadQueue.Enqueue(newFile);
         }
 
-        public void QueueResultsUpload(Guid recordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines)
+        public void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines)
         {
-            if (recordId == _jobTimelineRecordId) 
+            if (!_resultsClientInitiated)
             {
-                Trace.Verbose("Skipping job log {0} for record {1}", path, recordId);
+                Trace.Verbose("Skipping results upload");
+                return;
+            }
+
+            if (timelineRecordId == _jobTimelineRecordId && String.Equals(type, CoreAttachmentType.ResultsLog, StringComparison.Ordinal))
+            {
+                Trace.Verbose("Skipping job log {0} for record {1}", path, timelineRecordId);
                 return;
             }
 
@@ -246,14 +254,14 @@ namespace GitHub.Runner.Common
                 Type = type,
                 PlanId = _planId.ToString(),
                 JobId = _jobTimelineRecordId.ToString(),
-                RecordId = recordId,
+                RecordId = timelineRecordId,
                 DeleteSource = deleteSource,
                 Finalize = finalize,
                 FirstBlock = firstBlock,
                 TotalLines = totalLines,
             };
 
-            Trace.Verbose("Enqueue results file upload queue: file '{0}' attach to job {1} step {2}", newFile.Path, _jobTimelineRecordId, recordId);
+            Trace.Verbose("Enqueue results file upload queue: file '{0}' attach to job {1} step {2}", newFile.Path, _jobTimelineRecordId, timelineRecordId);
             _resultsFileUploadQueue.Enqueue(newFile);
         }
 
@@ -483,11 +491,8 @@ namespace GitHub.Runner.Common
                             }
                             else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
                             {
-                                if (file.RecordId != _jobTimelineRecordId)
-                                {
-                                    Trace.Info($"Got a step log file to send to results service.");
-                                    await UploadResultsStepLogFile(file);
-                                }
+                                Trace.Info($"Got a step log file to send to results service.");
+                                await UploadResultsStepLogFile(file);
                             }
                         }
                         catch (Exception ex)
@@ -801,8 +806,7 @@ namespace GitHub.Runner.Common
             {
                 // Upload the step summary
                 Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
-                var cancellationTokenSource = new CancellationTokenSource();
-                await _jobServer.CreateStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, cancellationTokenSource.Token);
+                await _jobServer.CreateStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, CancellationToken.None);
 
                 uploadSucceed = true;
             }
@@ -829,8 +833,7 @@ namespace GitHub.Runner.Common
             try
             {
                 Trace.Info($"Starting upload of step log file to results service {file.Name}, {file.Path}");
-                var cancellationTokenSource = new CancellationTokenSource();
-                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, cancellationTokenSource.Token);
+                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
 
                 uploadSucceed = true;
             }
