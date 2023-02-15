@@ -32,19 +32,6 @@ namespace GitHub.Runner.Common
         private string _pagesFolder;
         private IJobServerQueue _jobServerQueue;
 
-        // For Results
-        public static string BlocksFolder = "blocks";
-
-        // 2 MB
-        public const int BlockSize = 2 * 1024 * 1024;
-
-        private string _resultsDataFileName;
-        private FileStream _resultsBlockData;
-        private StreamWriter _resultsBlockWriter;
-        private string _resultsBlockFolder;
-        private int _blockByteCount;
-        private int _blockCount;
-
         public long TotalLines => _totalLines;
 
         public override void Initialize(IHostContext hostContext)
@@ -52,10 +39,8 @@ namespace GitHub.Runner.Common
             base.Initialize(hostContext);
             _totalLines = 0;
             _pagesFolder = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Diag), PagingFolder);
-            Directory.CreateDirectory(_pagesFolder);
-            _resultsBlockFolder = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Diag), BlocksFolder);
-            Directory.CreateDirectory(_resultsBlockFolder);
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+            Directory.CreateDirectory(_pagesFolder);
         }
 
         public void Setup(Guid timelineId, Guid timelineRecordId)
@@ -75,17 +60,11 @@ namespace GitHub.Runner.Common
             // lazy creation on write
             if (_pageWriter == null)
             {
-                NewPage();
-            }
-
-            if (_resultsBlockWriter == null)
-            {
-                NewBlock();
+                Create();
             }
 
             string line = $"{DateTime.UtcNow.ToString("O")} {message}";
             _pageWriter.WriteLine(line);
-            _resultsBlockWriter.WriteLine(line);
 
             _totalLines++;
             if (line.IndexOf('\n') != -1)
@@ -99,25 +78,21 @@ namespace GitHub.Runner.Common
                 }
             }
 
-            var bytes = System.Text.Encoding.UTF8.GetByteCount(line); 
-            _byteCount += bytes; 
-            _blockByteCount += bytes;
+            _byteCount += System.Text.Encoding.UTF8.GetByteCount(line);
             if (_byteCount >= PageSize)
             {
                 NewPage();
             }
-
-            if (_blockByteCount >= BlockSize)
-            {
-                NewBlock();
-            }
-
         }
 
         public void End()
         {
             EndPage();
-            EndBlock(true);
+        }
+
+        private void Create()
+        {
+            NewPage();
         }
 
         private void NewPage()
@@ -140,28 +115,6 @@ namespace GitHub.Runner.Common
                 _pageWriter = null;
                 _pageData = null;
                 _jobServerQueue.QueueFileUpload(_timelineId, _timelineRecordId, "DistributedTask.Core.Log", "CustomToolLog", _dataFileName, true);
-            }
-        }
-
-        private void NewBlock()
-        {
-            EndBlock(false);
-            _blockByteCount = 0;
-            _resultsDataFileName = Path.Combine(_resultsBlockFolder, $"{_timelineId}_{_timelineRecordId}.{++_blockCount}");
-            _resultsBlockData = new FileStream(_resultsDataFileName, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite);
-            _resultsBlockWriter = new StreamWriter(_resultsBlockData, System.Text.Encoding.UTF8);
-        }
-
-        private void EndBlock(bool finalize)
-        {
-            if (_resultsBlockWriter != null)
-            {
-                _resultsBlockWriter.Flush();
-                _resultsBlockData.Flush();
-                _resultsBlockWriter.Dispose();
-                _resultsBlockWriter = null;
-                _resultsBlockData = null;
-                _jobServerQueue.QueueResultsUpload(_timelineRecordId, "ResultsLog", _resultsDataFileName, "Results.Core.Log", deleteSource: true, finalize, firstBlock: _resultsDataFileName.EndsWith(".1"), totalLines: _totalLines);
             }
         }
     }

@@ -100,7 +100,6 @@ namespace GitHub.DistributedTask.WebApi
         public static readonly String Summary = "DistributedTask.Core.Summary";
         public static readonly String FileAttachment = "DistributedTask.Core.FileAttachment";
         public static readonly String DiagnosticLog = "DistributedTask.Core.DiagnosticLog";
-        public static readonly String ResultsLog = "Results.Core.Log";
     }
 
     [GenerateAllConstants]
