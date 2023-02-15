@@ -455,7 +455,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private readonly String[] s_expressionValueNames = new[]
         {
             PipelineTemplateConstants.GitHub,
-            PipelineTemplateConstants.Needs,
             PipelineTemplateConstants.Strategy,
             PipelineTemplateConstants.Matrix,
             PipelineTemplateConstants.Needs,
