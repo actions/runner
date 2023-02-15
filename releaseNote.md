@@ -1,7 +1,6 @@
 ## Features
 - Add support for ghe.com domain (#2420)
 - Add docker cli to the runner image. (#2425)
-- Uploading step logs to Results service (#2422)
 
 ## Bugs
 - Fix URL construction bug for RunService (#2396)
