@@ -23,7 +23,7 @@ namespace GitHub.Runner.Sdk
         private readonly string DebugEnvironmentalVariable = "ACTIONS_STEP_DEBUG";
         private VssConnection _connection;
         private RunnerWebProxy _webProxy;
-        private readonly object _stdoutLock = new object();
+        private readonly object _stdoutLock = new();
         private readonly ITraceWriter _trace; // for unit tests
 
         public RunnerActionPluginExecutionContext()
@@ -73,7 +73,7 @@ namespace GitHub.Runner.Sdk
         {
             var headerValues = new List<ProductInfoHeaderValue>();
             headerValues.Add(new ProductInfoHeaderValue($"GitHubActionsRunner-Plugin", BuildConstants.RunnerPackage.Version));
-            headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
+            headerValues.Add(new ProductInfoHeaderValue($"({StringUtil.SanitizeUserAgentHeader(RuntimeInformation.OSDescription)})"));
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
             {
@@ -220,7 +220,7 @@ namespace GitHub.Runner.Sdk
             return input;
         }
 
-        private Dictionary<string, string> _commandEscapeMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        private Dictionary<string, string> _commandEscapeMappings = new(StringComparer.OrdinalIgnoreCase)
         {
             {
                 ";", "%3B"

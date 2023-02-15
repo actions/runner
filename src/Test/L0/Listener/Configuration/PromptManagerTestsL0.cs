@@ -12,8 +12,8 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
     {
         private readonly string _argName = "SomeArgName";
         private readonly string _description = "Some description";
-        private readonly PromptManager _promptManager = new PromptManager();
-        private readonly Mock<ITerminal> _terminal = new Mock<ITerminal>();
+        private readonly PromptManager _promptManager = new();
+        private readonly Mock<ITerminal> _terminal = new();
         private readonly string _unattendedExceptionMessage = "Invalid configuration provided for SomeArgName. Terminating unattended configuration.";
 
         [Fact]
@@ -21,7 +21,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "PromptManager")]
         public void FallsBackToDefault()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 _terminal
@@ -46,7 +46,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "PromptManager")]
         public void FallsBackToDefaultWhenTrimmed()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 _terminal
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "PromptManager")]
         public void FallsBackToDefaultWhenUnattended()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 _terminal
@@ -98,7 +98,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "PromptManager")]
         public void Prompts()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 _terminal
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "PromptManager")]
         public void PromptsAgainWhenEmpty()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var readLineValues = new Queue<string>(new[] { string.Empty, "Some prompt value" });
@@ -150,7 +150,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "PromptManager")]
         public void PromptsAgainWhenFailsValidation()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var readLineValues = new Queue<string>(new[] { "Some invalid prompt value", "Some valid prompt value" });
@@ -177,7 +177,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Trait("Category", "PromptManager")]
         public void ThrowsWhenUnattended()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 _terminal

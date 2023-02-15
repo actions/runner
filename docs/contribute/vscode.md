@@ -35,7 +35,7 @@ All the configs below can be found in `.vscode/launch.json`.
 If you launch `Run` or `Run [build]`, it starts a process called `Runner.Listener`.
 This process will receive any job queued on this repository if the job runs on matching labels (e.g `runs-on: self-hosted`).
 Once a job is received, a `Runner.Listener` starts a new process of `Runner.Worker`.
-Since this is a diferent process, you can't use the same debugger session debug it.
+Since this is a different process, you can't use the same debugger session debug it.
 Instead, a parallel debugging session has to be started, using a different launch config.
 Luckily, VS Code supports multiple parallel debugging sessions.
 

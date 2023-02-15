@@ -44,7 +44,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // For the service name, replace any characters outside of the alpha-numeric set and ".", "_", "-" with "-"
-            Regex regex = new Regex(@"[^0-9a-zA-Z._\-]");
+            Regex regex = new(@"[^0-9a-zA-Z._\-]");
             string repoOrOrgName = regex.Replace(settings.RepoOrOrgName, "-");
 
             serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgName, settings.AgentName);

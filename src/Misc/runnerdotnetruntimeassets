@@ -66,12 +66,15 @@ libmscordbi.dylib
 libmscordbi.so
 Microsoft.CSharp.dll
 Microsoft.DiaSymReader.Native.amd64.dll
+Microsoft.DiaSymReader.Native.arm64.dll
 Microsoft.VisualBasic.Core.dll
 Microsoft.VisualBasic.dll
 Microsoft.Win32.Primitives.dll
 Microsoft.Win32.Registry.dll
 mscordaccore.dll
 mscordaccore_amd64_amd64_6.0.522.21309.dll
+mscordaccore_arm64_arm64_6.0.522.21309.dll
+mscordaccore_amd64_amd64_6.0.1322.58009.dll
 mscordbi.dll
 mscorlib.dll
 mscorrc.debug.dll

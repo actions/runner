@@ -12,10 +12,11 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Runner")]
         public void BuildConstantGenerateSucceed()
         {
-            List<string> validPackageNames = new List<string>()
+            List<string> validPackageNames = new()
             {
                 "win-x64",
                 "win-x86",
+                "win-arm64",
                 "linux-x64",
                 "linux-arm",
                 "linux-arm64",

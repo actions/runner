@@ -1,10 +1,3 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
-using GitHub.Services.Common;
-using GitHub.Services.Common.Internal;
-using GitHub.Services.OAuth;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +7,13 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
+using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -81,12 +81,33 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteLine("--------------------------------------------------------------------------------");
 
             Trace.Info(nameof(ConfigureAsync));
+
+            if (command.GenerateServiceConfig)
+            {
+#if OS_LINUX
+                if (!IsConfigured())
+                {
+                    throw new InvalidOperationException("--generateServiceConfig requires that the runner is already configured. For configuring a new runner as a service, run './config.sh'.");
+                }
+
+                RunnerSettings settings = _store.GetSettings();
+
+                Trace.Info($"generate service config for runner: {settings.AgentId}");
+                var controlManager = HostContext.GetService<ILinuxServiceControlManager>();
+                controlManager.GenerateScripts(settings);
+
+                return;
+#else
+                throw new NotSupportedException("--generateServiceConfig is only supported on Linux.");
+#endif
+            }
+
             if (IsConfigured())
             {
                 throw new InvalidOperationException("Cannot configure the runner because it is already configured. To reconfigure the runner, run 'config.cmd remove' or './config.sh remove' first.");
             }
 
-            RunnerSettings runnerSettings = new RunnerSettings();
+            RunnerSettings runnerSettings = new();
 
             // Loop getting url and creds until you can connect
             ICredentialProvider credProvider = null;
@@ -521,7 +542,7 @@ namespace GitHub.Runner.Listener.Configuration
 
         private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
         {
-            TaskAgent agent = new TaskAgent(agentName)
+            TaskAgent agent = new(agentName)
             {
                 Authorization = new TaskAgentAuthorization
                 {
@@ -615,7 +636,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             int retryCount = 0;
-            while(retryCount < 3)
+            while (retryCount < 3)
             {
                 using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                 using (var httpClient = new HttpClient(httpClientHandler))
@@ -625,28 +646,29 @@ namespace GitHub.Runner.Listener.Configuration
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-                    
+
                     var responseStatus = System.Net.HttpStatusCode.OK;
                     try
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
                         responseStatus = response.StatusCode;
+                        var githubRequestId = GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
-                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' ({githubRequestId})");
                             var jsonResponse = await response.Content.ReadAsStringAsync();
                             return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(jsonResponse);
                         }
                         else
                         {
-                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' (Request Id: {githubRequestId})");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
                             response.EnsureSuccessStatusCode();
                         }
                     }
-                    catch(Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
                         Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
@@ -693,22 +715,23 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
+                        var githubRequestId = GetGitHubRequestId(response.Headers);
 
-                        if(response.IsSuccessStatusCode)
+                        if (response.IsSuccessStatusCode)
                         {
-                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' ({githubRequestId})");
                             var jsonResponse = await response.Content.ReadAsStringAsync();
                             return StringUtil.ConvertFromJson<GitHubAuthResult>(jsonResponse);
                         }
                         else
                         {
-                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' (Request Id: {githubRequestId})");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
                             response.EnsureSuccessStatusCode();
                         }
                     }
-                    catch(Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
                         Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
@@ -720,6 +743,15 @@ namespace GitHub.Runner.Listener.Configuration
                 await Task.Delay(backOff);
             }
             return null;
+        }
+
+        private string GetGitHubRequestId(HttpResponseHeaders headers)
+        {
+            if (headers.TryGetValues("x-github-request-id", out var headerValues))
+            {
+                return headerValues.FirstOrDefault();
+            }
+            return string.Empty;
         }
     }
 }

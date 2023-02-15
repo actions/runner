@@ -36,7 +36,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext tc = new TestHostContext(this, testName);
+            TestHostContext tc = new(this, testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
@@ -68,7 +68,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -112,7 +112,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -159,7 +159,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -192,8 +192,8 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _runnerServer
                     .Setup(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<CancellationToken>()))
-                    .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, CancellationToken cancellationToken) =>
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, CancellationToken cancellationToken) =>
                     {
                         await Task.Yield();
                         return messages.Dequeue();
@@ -208,7 +208,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 //Assert
                 _runnerServer
                     .Verify(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<CancellationToken>()), Times.Exactly(arMessages.Length));
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(arMessages.Length));
             }
         }
 
@@ -241,7 +241,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -285,7 +285,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
-                MessageListener listener = new MessageListener();
+                MessageListener listener = new();
                 listener.Initialize(tc);
 
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
@@ -293,7 +293,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _runnerServer
                     .Setup(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<CancellationToken>()))
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<CancellationToken>()))
                     .Throws(new TaskAgentAccessTokenExpiredException("test"));
                 try
                 {
@@ -311,7 +311,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 //Assert
                 _runnerServer
                     .Verify(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<CancellationToken>()), Times.Once);
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
 
                 _runnerServer
                     .Verify(x => x.DeleteAgentSessionAsync(

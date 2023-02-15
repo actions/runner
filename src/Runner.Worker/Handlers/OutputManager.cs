@@ -16,16 +16,16 @@ namespace GitHub.Runner.Worker.Handlers
         private const string _colorCodePrefix = "\033[";
         private const int _maxAttempts = 3;
         private const string _timeoutKey = "GITHUB_ACTIONS_RUNNER_ISSUE_MATCHER_TIMEOUT";
-        private static readonly Regex _colorCodeRegex = new Regex(@"\x0033\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        private static readonly Regex _colorCodeRegex = new(@"\x0033\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly IActionCommandManager _commandManager;
         private readonly ContainerInfo _container;
         private readonly IExecutionContext _executionContext;
         private readonly int _failsafe = 50;
-        private readonly object _matchersLock = new object();
+        private readonly object _matchersLock = new();
         private readonly TimeSpan _timeout;
         private IssueMatcher[] _matchers = Array.Empty<IssueMatcher>();
         // Mapping that indicates whether a directory belongs to the workflow repository
-        private readonly Dictionary<string, string> _directoryMap = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _directoryMap = new();
 
         public OutputManager(IExecutionContext executionContext, IActionCommandManager commandManager, ContainerInfo container = null)
         {

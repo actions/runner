@@ -6,13 +6,14 @@ namespace GitHub.Runner.Worker
 {
     public sealed class GitHubContext : DictionaryContextData, IEnvironmentContextData
     {
-        private readonly HashSet<string> _contextEnvAllowlist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        private readonly HashSet<string> _contextEnvAllowlist = new(StringComparer.OrdinalIgnoreCase)
         {
             "action_path",
             "action_ref",
             "action_repository",
             "action",
             "actor",
+            "actor_id",
             "api_url",
             "base_ref",
             "env",
@@ -21,23 +22,29 @@ namespace GitHub.Runner.Worker
             "graphql_url",
             "head_ref",
             "job",
+            "output",
             "path",
             "ref_name",
             "ref_protected",
             "ref_type",
             "ref",
-            "repository_owner",
             "repository",
+            "repository_id",
+            "repository_owner",
+            "repository_owner_id",
             "retention_days",
             "run_attempt",
             "run_id",
             "run_number",
             "server_url",
             "sha",
+            "state",
             "step_summary",
             "triggering_actor",
             "workflow",
-            "workspace",
+            "workflow_ref",
+            "workflow_sha",
+            "workspace"
         };
 
         public IEnumerable<KeyValuePair<string, string>> GetRuntimeEnvironmentVariables()

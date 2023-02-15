@@ -12,7 +12,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
 {
     public class CheckoutTask : IRunnerActionPlugin
     {
-        private readonly Regex _validSha1 = new Regex(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
+        private readonly Regex _validSha1 = new(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
 
         public async Task RunAsync(RunnerActionPluginExecutionContext executionContext, CancellationToken token)
         {

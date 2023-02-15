@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: 🛑 Request a feature in the runner application
+    url: https://github.com/orgs/community/discussions/categories/actions-and-packages
+    about: If you have feature requests for GitHub Actions, please use the Actions and Packages section on the Github Product Feedback page.
   - name: ✅ Support for GitHub Actions
     url: https://github.community/c/code-to-cloud/52
     about: If you have questions about GitHub Actions or need support writing workflows, please ask in the GitHub Community Support forum.

@@ -31,7 +31,7 @@ namespace GitHub.Runner.Common
             new EscapeMapping(token: "%", replacement: "%25"),
         };
 
-        private readonly Dictionary<string, string> _properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _properties = new(StringComparer.OrdinalIgnoreCase);
         public const string Prefix = "##[";
         public const string _commandKey = "::";
 

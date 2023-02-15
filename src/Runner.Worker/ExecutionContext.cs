@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -80,6 +81,7 @@ namespace GitHub.Runner.Worker
         // logging
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
+        void QueueSummaryFile(string name, string filePath,  Guid stepRecordId);
 
         // timeline record update methods
         void Start(string currentOperation = null);
@@ -122,10 +124,10 @@ namespace GitHub.Runner.Worker
         private const int _maxIssueCountInTelemetry = 3; // Only send the first 3 issues to telemetry
         private const int _maxIssueMessageLengthInTelemetry = 256; // Only send the first 256 characters of issue message to telemetry
 
-        private readonly TimelineRecord _record = new TimelineRecord();
-        private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
-        private readonly object _loggerLock = new object();
-        private readonly object _matchersLock = new object();
+        private readonly TimelineRecord _record = new();
+        private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new();
+        private readonly object _loggerLock = new();
+        private readonly object _matchersLock = new();
 
         private event OnMatcherChanged _onMatcherChanged;
 
@@ -140,7 +142,7 @@ namespace GitHub.Runner.Worker
         private bool _expandedForPostJob = false;
         private int _childTimelineRecordOrder = 0;
         private CancellationTokenSource _cancellationTokenSource;
-        private TaskCompletionSource<int> _forceCompleted = new TaskCompletionSource<int>();
+        private TaskCompletionSource<int> _forceCompleted = new();
         private bool _throttlingReported = false;
 
         // only job level ExecutionContext will track throttling delay.
@@ -436,6 +438,17 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
+            var stepResult = new StepResult();
+            stepResult.ExternalID = _record.Id;
+            stepResult.Conclusion = _record.Result ?? TaskResult.Succeeded;
+            stepResult.Status = _record.State;
+            stepResult.Number = _record.Order;
+            stepResult.Name = _record.Name;
+            stepResult.StartedAt = _record.StartTime;
+            stepResult.CompletedAt = _record.FinishTime;
+
+            Global.StepsResult.Add(stepResult);
+
             if (Root != this)
             {
                 // only dispose TokenSource for step level ExecutionContext
@@ -686,8 +699,11 @@ namespace GitHub.Runner.Worker
             // Endpoints
             Global.Endpoints = message.Resources.Endpoints;
 
-            // Variables
-            Global.Variables = new Variables(HostContext, message.Variables);
+            // Ser debug using vars context if debug variables are not already present.
+            var variables = message.Variables;
+            SetDebugUsingVars(variables, message.ContextData);
+
+            Global.Variables = new Variables(HostContext, variables);
 
             if (Global.Variables.GetBoolean("DistributedTask.ForceInternalNodeVersionOnRunnerTo12") ?? false)
             {
@@ -705,6 +721,9 @@ namespace GitHub.Runner.Worker
 
             // ActionsStepTelemetry for entire job
             Global.StepsTelemetry = new List<ActionsStepTelemetry>();
+
+            // Steps results for entire job
+            Global.StepsResult = new List<StepResult>();
 
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
@@ -841,6 +860,19 @@ namespace GitHub.Runner.Worker
             }
 
             _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
+        }
+
+        public void QueueSummaryFile(string name, string filePath, Guid stepRecordId)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            ArgUtil.NotNullOrEmpty(filePath, nameof(filePath));
+
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException($"Can't upload (name:{name}) file: {filePath}. File does not exist.");
+            }
+
+            _jobServerQueue.QueueResultsUpload(stepRecordId, name, filePath, ChecksAttachmentType.StepSummary, deleteSource: false, finalize: false, firstBlock: false);
         }
 
         // Add OnMatcherChanged
@@ -1075,6 +1107,31 @@ namespace GitHub.Runner.Worker
 
             var newGuid = Guid.NewGuid();
             return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, ActionRunStage.Post, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
+        }
+
+        // Sets debug using vars context in case debug variables are not present.
+        private static void SetDebugUsingVars(IDictionary<string, VariableValue> variables, IDictionary<string, PipelineContextData> contextData)
+        {
+            if (contextData != null &&
+                contextData.TryGetValue(PipelineTemplateConstants.Vars, out var varsPipelineContextData) &&
+                varsPipelineContextData != null &&
+                varsPipelineContextData is DictionaryContextData varsContextData)
+            {
+                // Set debug variables only when StepDebug/RunnerDebug variables are not present.
+                if (!variables.ContainsKey(Constants.Variables.Actions.StepDebug) &&
+                    varsContextData.TryGetValue(Constants.Variables.Actions.StepDebug, out var stepDebugValue) &&
+                    stepDebugValue is StringContextData)
+                {
+                    variables[Constants.Variables.Actions.StepDebug] = stepDebugValue.ToString();
+                }
+
+                if (!variables.ContainsKey(Constants.Variables.Actions.RunnerDebug) &&
+                    varsContextData.TryGetValue(Constants.Variables.Actions.RunnerDebug, out var runDebugValue) &&
+                    runDebugValue is StringContextData)
+                {
+                    variables[Constants.Variables.Actions.RunnerDebug] = runDebugValue.ToString();
+                }
+            }
         }
 
         public void ApplyContinueOnError(TemplateToken continueOnErrorToken)

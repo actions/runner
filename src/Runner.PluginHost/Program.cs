@@ -12,7 +12,7 @@ namespace GitHub.Runner.PluginHost
 {
     public static class Program
     {
-        private static CancellationTokenSource tokenSource = new CancellationTokenSource();
+        private static CancellationTokenSource tokenSource = new();
         private static string executingAssemblyLocation = string.Empty;
 
         public static int Main(string[] args)

@@ -38,7 +38,7 @@ namespace GitHub.Runner.Listener
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
-        private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new();
         private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
 
@@ -198,7 +198,7 @@ namespace GitHub.Runner.Listener
             bool encounteringError = false;
             int continuousError = 0;
             string errorMessage = string.Empty;
-            Stopwatch heartbeat = new Stopwatch();
+            Stopwatch heartbeat = new();
             heartbeat.Restart();
             while (true)
             {
@@ -211,6 +211,7 @@ namespace GitHub.Runner.Listener
                                                                 _session.SessionId,
                                                                 _lastMessageId,
                                                                 runnerStatus,
+                                                                BuildConstants.RunnerPackage.Version,
                                                                 _getMessagesTokenSource.Token);
 
                     // Decrypt the message body if the session is using encryption

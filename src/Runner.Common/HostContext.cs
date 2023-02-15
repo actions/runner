@@ -51,12 +51,12 @@ namespace GitHub.Runner.Common
         private static int _defaultLogRetentionDays = 30;
         private static int[] _vssHttpMethodEventIds = new int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 24 };
         private static int[] _vssHttpCredentialEventIds = new int[] { 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 27, 29 };
-        private readonly ConcurrentDictionary<Type, object> _serviceInstances = new ConcurrentDictionary<Type, object>();
-        private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new ConcurrentDictionary<Type, Type>();
+        private readonly ConcurrentDictionary<Type, object> _serviceInstances = new();
+        private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new();
         private readonly ISecretMasker _secretMasker = new SecretMasker();
-        private readonly List<ProductInfoHeaderValue> _userAgents = new List<ProductInfoHeaderValue>() { new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version) };
-        private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
-        private object _perfLock = new object();
+        private readonly List<ProductInfoHeaderValue> _userAgents = new() { new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version) };
+        private CancellationTokenSource _runnerShutdownTokenSource = new();
+        private object _perfLock = new();
         private Tracing _trace;
         private Tracing _actionsHttpTrace;
         private Tracing _netcoreHttpTrace;
@@ -66,7 +66,7 @@ namespace GitHub.Runner.Common
         private IDisposable _diagListenerSubscription;
         private StartupType _startupType;
         private string _perfFile;
-        private RunnerWebProxy _webProxy = new RunnerWebProxy();
+        private RunnerWebProxy _webProxy = new();
 
         public event EventHandler Unloading;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
@@ -94,6 +94,13 @@ namespace GitHub.Runner.Common
             this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
 
+            // Create StdoutTraceListener if ENV is set
+            StdoutTraceListener stdoutTraceListener = null;
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout)))
+            {
+                stdoutTraceListener = new StdoutTraceListener(hostType);
+            }
+
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))
             {
@@ -113,11 +120,11 @@ namespace GitHub.Runner.Common
 
                 // this should give us _diag folder under runner root directory
                 string diagLogDirectory = Path.Combine(new DirectoryInfo(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).Parent.FullName, Constants.Path.DiagDirectory);
-                _traceManager = new TraceManager(new HostTraceListener(diagLogDirectory, hostType, logPageSize, logRetentionDays), this.SecretMasker);
+                _traceManager = new TraceManager(new HostTraceListener(diagLogDirectory, hostType, logPageSize, logRetentionDays), stdoutTraceListener, this.SecretMasker);
             }
             else
             {
-                _traceManager = new TraceManager(new HostTraceListener(logFile), this.SecretMasker);
+                _traceManager = new TraceManager(new HostTraceListener(logFile), stdoutTraceListener, this.SecretMasker);
             }
 
             _trace = GetTrace(nameof(HostContext));
@@ -219,6 +226,20 @@ namespace GitHub.Runner.Common
             }
 
             _userAgents.Add(new ProductInfoHeaderValue("CommitSHA", BuildConstants.Source.CommitHash));
+
+            var extraUserAgent = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_EXTRA_USER_AGENT");
+            if (!string.IsNullOrEmpty(extraUserAgent))
+            {
+                var extraUserAgentSplit = extraUserAgent.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (extraUserAgentSplit.Length != 2)
+                {
+                    _trace.Error($"GITHUB_ACTIONS_RUNNER_EXTRA_USER_AGENT is not in the format of 'name/version'.");
+                }
+
+                var extraUserAgentHeader = new ProductInfoHeaderValue(extraUserAgentSplit[0], extraUserAgentSplit[1]);
+                _trace.Info($"Adding extra user agent '{extraUserAgentHeader}' to all HTTP requests.");
+                _userAgents.Add(extraUserAgentHeader);
+            }
         }
 
         public string GetDirectory(WellKnownDirectory directory)

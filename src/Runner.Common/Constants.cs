@@ -77,7 +77,7 @@ namespace GitHub.Runner.Common
             public static readonly Architecture PlatformArchitecture = Architecture.X64;
 #elif ARM
             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
-#elif ARM64            
+#elif ARM64
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
 #endif
 
@@ -90,7 +90,6 @@ namespace GitHub.Runner.Common
                 public static class Args
                 {
                     public static readonly string Auth = "auth";
-                    public static readonly string JitConfig = "jitconfig";
                     public static readonly string Labels = "labels";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string Name = "name";
@@ -105,11 +104,13 @@ namespace GitHub.Runner.Common
                     public static readonly string Token = "token";
                     public static readonly string PAT = "pat";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
+                    public static readonly string JitConfig = "jitconfig";
                     public static string[] Secrets => new[]
                     {
                         PAT,
                         Token,
                         WindowsLogonPassword,
+                        JitConfig,
                     };
                 }
 
@@ -128,7 +129,9 @@ namespace GitHub.Runner.Common
                     public static readonly string Check = "check";
                     public static readonly string Commit = "commit";
                     public static readonly string Ephemeral = "ephemeral";
+                    public static readonly string GenerateServiceConfig = "generateServiceConfig";
                     public static readonly string Help = "help";
+                    public static readonly string Local = "local";
                     public static readonly string Replace = "replace";
                     public static readonly string DisableUpdate = "disableupdate";
                     public static readonly string Once = "once"; // Keep this around since customers still relies on it
@@ -152,17 +155,21 @@ namespace GitHub.Runner.Common
                 public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
                 public static readonly string Node12Warning = "DistributedTask.AddWarningToNode12Action";
                 public static readonly string UseContainerPathForTemplate = "DistributedTask.UseContainerPathForTemplate";
-                public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks"; 
+                public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
+            public static readonly Guid TelemetryRecordId = new Guid("11111111-1111-1111-1111-111111111111");
             public static readonly string WorkerCrash = "WORKER_CRASH";
             public static readonly string LowDiskSpace = "LOW_DISK_SPACE";
             public static readonly string UnsupportedCommand = "UNSUPPORTED_COMMAND";
+            public static readonly string ResultsUploadFailure = "RESULTS_UPLOAD_FAILURE";
+            public static readonly string UnsupportedCommandMessage = "The `{0}` command is deprecated and will be disabled soon. Please upgrade to using Environment Files. For more information see: https://github.blog/changelog/2022-10-11-github-actions-deprecating-save-state-and-set-output-commands/";
             public static readonly string UnsupportedCommandMessageDisabled = "The `{0}` command is disabled. Please upgrade to using Environment Files or opt into unsecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_COMMANDS` environment variable to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
             public static readonly string UnsupportedStopCommandTokenDisabled = "You cannot use a endToken that is an empty string, the string 'pause-logging', or another workflow command. For more information see: https://docs.github.com/actions/learn-github-actions/workflow-commands-for-github-actions#example-stopping-and-starting-workflow-commands or opt into insecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS` environment variable to `true`.";
             public static readonly string UnsupportedSummarySize = "$GITHUB_STEP_SUMMARY upload aborted, supports content up to a size of {0}k, got {1}k. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
-            public static readonly string Node12DetectedAfterEndOfLife = "Node.js 12 actions are deprecated. Please update the following actions to use Node.js 16: {0}";
+            public static readonly string SummaryUploadError = "$GITHUB_STEP_SUMMARY upload aborted, an error occurred when uploading the summary. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
+            public static readonly string Node12DetectedAfterEndOfLife = "Node.js 12 actions are deprecated. Please update the following actions to use Node.js 16: {0}. For more information see: https://github.blog/changelog/2022-09-22-github-actions-all-actions-will-begin-running-on-node16-instead-of-node12/.";
         }
 
         public static class RunnerEvent
@@ -241,8 +248,9 @@ namespace GitHub.Runner.Common
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
 
                 // Set this env var to "node12" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
-                public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION"; 
-                public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION"; 
+                public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION";
+                public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
+                public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";
             }
 
             public static class System
@@ -254,6 +262,13 @@ namespace GitHub.Runner.Common
                 public static readonly string Culture = "system.culture";
                 public static readonly string PhaseDisplayName = "system.phaseDisplayName";
             }
+        }
+
+        public static class OperatingSystem
+        {
+            public static readonly int Windows11BuildVersion = 22000;
+            // Both windows 10 and windows 11 share the same Major Version 10, need to use the build version to differentiate
+            public static readonly int Windows11MajorVersion = 10;
         }
     }
 }
