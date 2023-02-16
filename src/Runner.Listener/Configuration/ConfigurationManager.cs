@@ -534,7 +534,7 @@ namespace GitHub.Runner.Listener.Configuration
                 agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
             } else {
                 if (userLabels.Count == 0) {
-                    throw new NotSupportedException("Disabling default labels via --nodefault-labels without specifying --labels is not supported");
+                    throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
                 }
             }
 

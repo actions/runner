@@ -195,6 +195,107 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureErrorDefaultLabelsDisabledWithNoCustomLabels()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--url", _expectedServerUrl,
+                       "--name", _expectedAgentName,
+                       "--runnergroup", _secondRunnerGroupName,
+                       "--work", _expectedWorkFolder,
+                       "--auth", _expectedAuthType,
+                       "--token", _expectedToken,
+                       "--no-default-labels",
+                       "--ephemeral",
+                       "--disableupdate",
+                       "--unattended",
+                    });
+                trace.Info("Constructed.");
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+                _configMgrAgentSettings = null;
+
+                trace.Info("Ensuring configure fails if default labels are disabled and no custom labels are set");
+                var ex = await Assert.ThrowsAsync<NotSupportedException>(() => configManager.ConfigureAsync(command));
+
+                Assert.Contains("--no-default-labels without specifying --labels is not supported", ex.Message);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureDefaultLabelsDisabledWithCustomLabels()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                var userLabels = "userlabel1,userlabel2";
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--url", _expectedServerUrl,
+                       "--name", _expectedAgentName,
+                       "--runnergroup", _secondRunnerGroupName,
+                       "--work", _expectedWorkFolder,
+                       "--auth", _expectedAuthType,
+                       "--token", _expectedToken,
+                       "--labels", userLabels,
+                       "--no-default-labels",
+                       "--ephemeral",
+                       "--disableupdate",
+                       "--unattended",
+                    });
+                trace.Info("Constructed.");
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+                _configMgrAgentSettings = null;
+
+                trace.Info("Ensuring all the required parameters are available in the command line parameter");
+                await configManager.ConfigureAsync(command);
+
+                _store.Setup(x => x.IsConfigured()).Returns(true);
+
+                trace.Info("Configured, verifying all the parameter value");
+                var s = configManager.LoadSettings();
+                Assert.NotNull(s);
+                Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
+                Assert.True(s.AgentName.Equals(_expectedAgentName));
+                Assert.True(s.PoolId.Equals(_secondRunnerGroupId));
+                Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
+                Assert.True(s.Ephemeral.Equals(true));
+
+                // validate GetAgentPoolsAsync gets called twice with automation pool type
+                _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(2));
+
+                var expectedLabels = userLabels.Split(",").ToList();
+
+                _runnerServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Select(x => x.Name).ToHashSet().SetEquals(expectedLabels))), Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
         public async Task ConfigureErrorOnMissingRunnerGroup()
         {
             using (TestHostContext tc = CreateTestContext())
