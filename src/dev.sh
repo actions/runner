@@ -207,7 +207,7 @@ function format()
 {
     heading "Formatting..."
 
-    dotnet-format ${SCRIPT_DIR}/ActionsRunner.sln || failed "failed formatting"
+    dotnet format ${SCRIPT_DIR}/ActionsRunner.sln || failed "failed formatting"
 }
 
 function package ()
