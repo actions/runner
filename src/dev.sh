@@ -206,8 +206,8 @@ function runtest ()
 function format()
 {
     heading "Formatting..."
-
-    dotnet format ${SCRIPT_DIR}/ActionsRunner.sln || failed "failed formatting"
+    files="$(git diff --name-only HEAD -- '*.cs' | tr '\n' ',')"
+    dotnet format ${SCRIPT_DIR}/ActionsRunner.sln --exclude / --include files || failed "failed formatting"
 }
 
 function package ()
