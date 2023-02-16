@@ -161,6 +161,7 @@ https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/cod
 
 ### Format C# Code
 
+To format both staged and unstaged .cs files
 ```
 cd ./src
 ./dev.(cmd|sh) format
