@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker
         // logging
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
-        void QueueSummaryFile(string name, string filePath,  Guid stepRecordId);
+        void QueueSummaryFile(string name, string filePath, Guid stepRecordId);
 
         // timeline record update methods
         void Start(string currentOperation = null);
@@ -871,8 +871,7 @@ namespace GitHub.Runner.Worker
             {
                 throw new FileNotFoundException($"Can't upload (name:{name}) file: {filePath}. File does not exist.");
             }
-
-            _jobServerQueue.QueueSummaryUpload(stepRecordId, name, filePath, deleteSource: false);
+            _jobServerQueue.QueueResultsUpload(stepRecordId, name, filePath, ChecksAttachmentType.StepSummary, deleteSource: false, finalize: true, firstBlock: true, totalLines: 0);
         }
 
         // Add OnMatcherChanged
