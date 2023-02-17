@@ -24,13 +24,13 @@ namespace GitHub.Services.Results.Client
             m_formatter = new JsonMediaTypeFormatter();
         }
 
-        public async Task<GetSignedStepSummaryURLResponse> GetStepSummaryUploadUrlAsync(string planId, string jobId, string stepId, CancellationToken cancellationToken)
+        public async Task<GetSignedStepSummaryURLResponse> GetStepSummaryUploadUrlAsync(string planId, string jobId, Guid stepId, CancellationToken cancellationToken)
         {
             var request = new GetSignedStepSummaryURLRequest()
             {
-                WorkflowJobRunBackendId= jobId,
-                WorkflowRunBackendId= planId,
-                StepBackendId= stepId
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+                StepBackendId = stepId.ToString()
             };
 
             var stepSummaryUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepSummarySignedBlobURL");
@@ -51,14 +51,41 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        private async Task StepSummaryUploadCompleteAsync(string planId, string jobId, string stepId, long size, CancellationToken cancellationToken)
+        public async Task<GetSignedStepLogsURLResponse> GetStepLogUploadUrlAsync(string planId, string jobId, Guid stepId, CancellationToken cancellationToken)
+        {
+            var request = new GetSignedStepLogsURLRequest()
+            {
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+                StepBackendId = stepId.ToString(),
+            };
+
+            var stepLogsUploadRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/GetStepLogsSignedBlobURL");
+
+            using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, stepLogsUploadRequest))
+            {
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", m_token);
+                requestMessage.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                using (HttpContent content = new ObjectContent<GetSignedStepLogsURLRequest>(request, m_formatter))
+                {
+                    requestMessage.Content = content;
+                    using (var response = await SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken: cancellationToken))
+                    {
+                        return await ReadJsonContentAsync<GetSignedStepLogsURLResponse>(response, cancellationToken);
+                    }
+                }
+            }
+        }
+
+        private async Task StepSummaryUploadCompleteAsync(string planId, string jobId, Guid stepId, long size, CancellationToken cancellationToken)
         {
             var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
             var request = new StepSummaryMetadataCreate()
             {
-                WorkflowJobRunBackendId= jobId,
-                WorkflowRunBackendId= planId,
-                StepBackendId = stepId,
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+                StepBackendId = stepId.ToString(),
                 Size = size,
                 UploadedAt = timestamp
             };
@@ -79,6 +106,40 @@ namespace GitHub.Services.Results.Client
                         if (!jsonResponse.Ok)
                         {
                             throw new Exception($"Failed to mark step summary upload as complete, status code: {response.StatusCode}, ok: {jsonResponse.Ok}, size: {size}, timestamp: {timestamp}");
+                        }
+                    }
+                }
+            }
+        }
+
+        private async Task StepLogUploadCompleteAsync(string planId, string jobId, Guid stepId, long lineCount, CancellationToken cancellationToken)
+        {
+            var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
+            var request = new StepLogsMetadataCreate()
+            {
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+                StepBackendId = stepId.ToString(),
+                UploadedAt = timestamp,
+                LineCount = lineCount,
+            };
+
+            var stepLogsUploadCompleteRequest = new Uri(m_resultsServiceUrl, "twirp/results.services.receiver.Receiver/CreateStepLogsMetadata");
+
+            using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, stepLogsUploadCompleteRequest))
+            {
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", m_token);
+                requestMessage.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                using (HttpContent content = new ObjectContent<StepLogsMetadataCreate>(request, m_formatter))
+                {
+                    requestMessage.Content = content;
+                    using (var response = await SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken: cancellationToken))
+                    {
+                        var jsonResponse = await ReadJsonContentAsync<CreateStepSummaryMetadataResponse>(response, cancellationToken);
+                        if (!jsonResponse.Ok)
+                        {
+                            throw new Exception($"Failed to mark step log upload as complete, status code: {response.StatusCode}, ok: {jsonResponse.Ok}, timestamp: {timestamp}");
                         }
                     }
                 }
@@ -108,8 +169,55 @@ namespace GitHub.Services.Results.Client
             }
         }
 
+        private async Task<HttpResponseMessage> CreateAppendFileAsync(string url, string blobStorageType, CancellationToken cancellationToken)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            {
+                Content = new StringContent("")
+            };
+            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            {
+                request.Content.Headers.Add("x-ms-blob-type", "AppendBlob");
+                request.Content.Headers.Add("Content-Length", "0");
+            }
+
+            using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Failed to create append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                }
+                return response;
+            }
+        }
+
+        private async Task<HttpResponseMessage> UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, long fileSize, CancellationToken cancellationToken)
+        {
+            var comp = finalize ? "&comp=appendblock&seal=true" : "&comp=appendblock";
+            // Upload the file to the url
+            var request = new HttpRequestMessage(HttpMethod.Put, url + comp)
+            {
+                Content = new StreamContent(file)
+            };
+
+            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            {
+                request.Content.Headers.Add("Content-Length", fileSize.ToString());
+                request.Content.Headers.Add("x-ms-blob-sealed", finalize.ToString());
+            }
+
+            using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Failed to upload append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}, object: {response}, fileSize: {fileSize}");
+                }
+                return response;
+            }
+        }
+
         // Handle file upload for step summary
-        public async Task UploadStepSummaryAsync(string planId, string jobId, string stepId, string file, CancellationToken cancellationToken)
+        public async Task UploadStepSummaryAsync(string planId, string jobId, Guid stepId, string file, CancellationToken cancellationToken)
         {
             // Get the upload url
             var uploadUrlResponse = await GetStepSummaryUploadUrlAsync(planId, jobId, stepId, cancellationToken);
@@ -133,6 +241,39 @@ namespace GitHub.Services.Results.Client
 
             // Send step summary upload complete message
             await StepSummaryUploadCompleteAsync(planId, jobId, stepId, fileSize, cancellationToken);
+        }
+
+        // Handle file upload for step log 
+        public async Task UploadResultsStepLogAsync(string planId, string jobId, Guid stepId, string file, bool finalize, bool firstBlock, long lineCount, CancellationToken cancellationToken)
+        {
+            // Get the upload url
+            var uploadUrlResponse = await GetStepLogUploadUrlAsync(planId, jobId, stepId, cancellationToken);
+            if (uploadUrlResponse == null || uploadUrlResponse.LogsUrl == null)
+            {
+                throw new Exception("Failed to get step log upload url");
+            }
+
+            // Do we want to throw an exception here or should we just be uploading/truncating the data
+            var fileSize = new FileInfo(file).Length;
+
+            // Create the Append blob 
+            if (firstBlock)
+            {
+                await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+            }
+
+            // Upload content
+            using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+            {
+                var response = await UploadAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
+            }
+
+            // Update metadata
+            if (finalize)
+            {
+                // Send step log upload complete message
+                await StepLogUploadCompleteAsync(planId, jobId, stepId, lineCount, cancellationToken);
+            }
         }
 
         private MediaTypeFormatter m_formatter;
