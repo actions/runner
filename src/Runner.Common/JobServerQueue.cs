@@ -237,6 +237,18 @@ namespace GitHub.Runner.Common
             if (!_resultsClientInitiated)
             {
                 Trace.Verbose("Skipping results upload");
+                try
+                {
+                    if (deleteSource)
+                    {
+                        File.Delete(path);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info("Catch exception during delete skipped results upload file.");
+                    Trace.Error(ex);
+                }
                 return;
             }
 
