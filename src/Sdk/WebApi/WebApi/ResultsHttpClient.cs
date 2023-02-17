@@ -25,7 +25,7 @@ namespace GitHub.Services.Results.Client
         }
 
         // Get Sas URL calls
-        private async Task<T> GetResultsSasURLResponse<R, T>(Uri uri, CancellationToken cancellationToken, R request)
+        private async Task<T> GetResultsSignedURLResponse<R, T>(Uri uri, CancellationToken cancellationToken, R request)
         {
             using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, uri))
             {
@@ -54,7 +54,7 @@ namespace GitHub.Services.Results.Client
 
             var getStepSummarySignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetStepSummarySignedBlobURL);
 
-            return await GetResultsSasURLResponse<GetSignedStepSummaryURLRequest, GetSignedStepSummaryURLResponse>(getStepSummarySignedBlobURLEndpoint, cancellationToken, request);
+            return await GetResultsSignedURLResponse<GetSignedStepSummaryURLRequest, GetSignedStepSummaryURLResponse>(getStepSummarySignedBlobURLEndpoint, cancellationToken, request);
         }
 
         private async Task<GetSignedStepLogsURLResponse> GetStepLogUploadUrlAsync(string planId, string jobId, Guid stepId, CancellationToken cancellationToken)
@@ -68,7 +68,7 @@ namespace GitHub.Services.Results.Client
 
             var getStepLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetStepLogsSignedBlobURL);
 
-            return await GetResultsSasURLResponse<GetSignedStepLogsURLRequest, GetSignedStepLogsURLResponse>(getStepLogsSignedBlobURLEndpoint, cancellationToken, request);
+            return await GetResultsSignedURLResponse<GetSignedStepLogsURLRequest, GetSignedStepLogsURLResponse>(getStepLogsSignedBlobURLEndpoint, cancellationToken, request);
         }
 
         private async Task<GetSignedJobLogsURLResponse> GetJobLogUploadUrlAsync(string planId, string jobId, CancellationToken cancellationToken)
@@ -81,7 +81,7 @@ namespace GitHub.Services.Results.Client
 
             var getJobLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetJobLogsSignedBlobURL);
 
-            return await GetResultsSasURLResponse<GetSignedJobLogsURLRequest, GetSignedJobLogsURLResponse>(getJobLogsSignedBlobURLEndpoint, cancellationToken, request);
+            return await GetResultsSignedURLResponse<GetSignedJobLogsURLRequest, GetSignedJobLogsURLResponse>(getJobLogsSignedBlobURLEndpoint, cancellationToken, request);
         }
 
         // Create metadata calls
