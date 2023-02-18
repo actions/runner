@@ -27,5 +27,12 @@
     <string>Interactive</string>
     <key>SessionCreate</key>
     <true/>
+    <key>LimitLoadToSessionType</key>
+    <array>
+      <string>Aqua</string>
+      <string>LoginWindow</string>
+      <string>Background</string>
+      <string>StandardIO</string>
+    </array>
   </dict>
 </plist>
