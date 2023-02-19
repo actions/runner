@@ -87,7 +87,7 @@ function start()
 function stop()
 {
     echo "stopping ${SVC_NAME}"
-    launchctl unload -S Background  "${PLIST_PATH}" || (echo "there was a problem when unloading from the Background context trying to unload from the Aqua context instead"; launchctl unload "${PLIST_PATH}") || (echo "unload from Aqua context failed as well"; failed "failed to unload ${PLIST_PATH}")
+    (! launchctl unload -S Background  "${PLIST_PATH}" 2>&1 | grep -q 'Could not find specified service') || (echo "there was a problem when unloading from the Background context trying to unload from the Aqua context instead"; launchctl unload "${PLIST_PATH}") || (echo "unload from Aqua context failed as well"; failed "failed to unload ${PLIST_PATH}")
     status
 }
 
