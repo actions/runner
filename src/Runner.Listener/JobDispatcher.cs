@@ -244,7 +244,8 @@ namespace GitHub.Runner.Listener
                     return;
                 }
 
-                if (this._isRunServiceJob) {
+                if (this._isRunServiceJob)
+                {
                     Trace.Error($"We are not yet checking the state of jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
                     return;
@@ -439,7 +440,7 @@ namespace GitHub.Runner.Listener
                                                 {
                                                     workerOutput.Add(stdout.Data);
                                                 }
-                                                
+
                                                 if (printToStdout)
                                                 {
                                                     term.WriteLine(stdout.Data, skipTracing: true);
@@ -543,7 +544,7 @@ namespace GitHub.Runner.Listener
                                     detailInfo = string.Join(Environment.NewLine, workerOutput);
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
 
-                                    
+
                                     var jobServer = await InitializeJobServerAsync(systemConnection);
                                     await LogWorkerProcessUnhandledException(jobServer, message, detailInfo);
 
@@ -970,7 +971,8 @@ namespace GitHub.Runner.Listener
 
                 var server = await InitializeJobServerAsync(systemConnection);
 
-                if (server is IJobServer jobServer) {
+                if (server is IJobServer jobServer)
+                {
                     var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
 
                     var updatedRecords = new List<TimelineRecord>();
@@ -1051,7 +1053,8 @@ namespace GitHub.Runner.Listener
                         await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, updatedRecords, CancellationToken.None);
                     }
                 }
-                else {
+                else
+                {
                     Trace.Info("Job server does not support log upload yet.");
                 }
             }
@@ -1072,7 +1075,8 @@ namespace GitHub.Runner.Listener
                 return;
             }
 
-            if (this._isRunServiceJob) {
+            if (this._isRunServiceJob)
+            {
                 Trace.Verbose($"Skip FinishAgentRequest call from Listener because MessageType is {message.MessageType}");
                 return;
             }
@@ -1115,7 +1119,8 @@ namespace GitHub.Runner.Listener
         // log an error issue to job level timeline record
         private async Task LogWorkerProcessUnhandledException(IRunnerService server, Pipelines.AgentJobRequestMessage message, string errorMessage)
         {
-            if (server is IJobServer jobServer) {
+            if (server is IJobServer jobServer)
+            {
                 try
                 {
                     var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
@@ -1159,8 +1164,9 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Fail to report unhandled exception from Runner.Worker process");
                     Trace.Error(ex);
                 }
-            } 
-            else {
+            }
+            else
+            {
                 Trace.Info("Job server does not support handling unhandled exception yet, error message: {0}", errorMessage);
                 return;
             }
@@ -1169,7 +1175,7 @@ namespace GitHub.Runner.Listener
         // raise job completed event to fail the job.
         private async Task ForceFailJob(IRunnerService server, Pipelines.AgentJobRequestMessage message)
         {
-            if (server is IJobServer jobServer) 
+            if (server is IJobServer jobServer)
             {
                 try
                 {
@@ -1182,9 +1188,9 @@ namespace GitHub.Runner.Listener
                     Trace.Error(ex);
                 }
             }
-            else if (server is IRunServer runServer) 
+            else if (server is IRunServer runServer)
             {
-                try 
+                try
                 {
                     await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, CancellationToken.None);
                 }
@@ -1194,19 +1200,19 @@ namespace GitHub.Runner.Listener
                     Trace.Error(ex);
                 }
             }
-            else 
+            else
             {
                 throw new NotSupportedException($"Server type {server.GetType().FullName} is not supported.");
-            } 
+            }
         }
 
-        private async Task<IRunnerService> InitializeJobServerAsync(ServiceEndpoint systemConnection) 
+        private async Task<IRunnerService> InitializeJobServerAsync(ServiceEndpoint systemConnection)
         {
-            if (this._isRunServiceJob) 
+            if (this._isRunServiceJob)
             {
                 return await GetRunServerAsync(systemConnection);
             }
-            else 
+            else
             {
                 var jobServer = HostContext.GetService<IJobServer>();
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
@@ -1216,7 +1222,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private async Task<IRunServer> GetRunServerAsync(ServiceEndpoint systemConnection) 
+        private async Task<IRunServer> GetRunServerAsync(ServiceEndpoint systemConnection)
         {
             var runServer = HostContext.GetService<IRunServer>();
             VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
