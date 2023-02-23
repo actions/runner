@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -12,6 +11,7 @@ using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.WebApi;
 using Moq;
+using Sdk.RSWebApi.Contracts;
 using Xunit;
 
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -248,7 +248,8 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                                 if (count < 5)
                                 {
-                                    var response = new RenewJobResponse() { 
+                                    var response = new RenewJobResponse()
+                                    {
                                         LockedUntil = request.LockedUntil.Value
                                     };
                                     return Task.FromResult<RenewJobResponse>(response);
@@ -387,7 +388,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 var jobDispatcher = new JobDispatcher();
                 jobDispatcher.Initialize(hc);
-                
+
 
                 // Act
                 await jobDispatcher.RenewJobRequestAsync(It.IsAny<AgentJobRequestMessage>(), It.IsAny<ServiceEndpoint>(), 0, 0, Guid.Empty, Guid.NewGuid().ToString(), firstJobRequestRenewed, cancellationTokenSource.Token);
@@ -737,13 +738,15 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        private static void EnableRunServiceJobForJobDispatcher(JobDispatcher jobDispatcher) {
+        private static void EnableRunServiceJobForJobDispatcher(JobDispatcher jobDispatcher)
+        {
             // Set the value of the _isRunServiceJob field to true
             var isRunServiceJobField = typeof(JobDispatcher).GetField("_isRunServiceJob", BindingFlags.NonPublic | BindingFlags.Instance);
             isRunServiceJobField.SetValue(jobDispatcher, true);
         }
 
-        private static ServiceEndpoint GetServiceEndpoint() {
+        private static ServiceEndpoint GetServiceEndpoint()
+        {
             var serviceEndpoint = new ServiceEndpoint
             {
                 Authorization = new EndpointAuthorization
@@ -755,7 +758,8 @@ namespace GitHub.Runner.Common.Tests.Listener
             return serviceEndpoint;
         }
 
-        private static AgentJobRequestMessage GetAgentJobRequestMessage() {
+        private static AgentJobRequestMessage GetAgentJobRequestMessage()
+        {
             var message = new AgentJobRequestMessage(
                 new TaskOrchestrationPlanReference()
                 {

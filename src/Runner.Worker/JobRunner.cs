@@ -50,7 +50,7 @@ namespace GitHub.Runner.Worker
                 await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
                 server = runServer;
             }
-            else 
+            else
             {
                 // Setup the job server and job server queue.
                 var jobServer = HostContext.GetService<IJobServer>();
@@ -66,7 +66,7 @@ namespace GitHub.Runner.Worker
                 _jobServerQueue.Start(message);
                 server = jobServer;
             }
-            
+
 
             HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
 

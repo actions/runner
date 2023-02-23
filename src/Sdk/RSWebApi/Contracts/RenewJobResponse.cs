@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace GitHub.Actions.RunService.WebApi
+namespace Sdk.RSWebApi.Contracts
 {
     [DataContract]
     public class RenewJobResponse

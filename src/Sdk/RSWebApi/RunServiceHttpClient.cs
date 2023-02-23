@@ -8,6 +8,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
+using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi;
 
 namespace GitHub.Actions.RunService.WebApi

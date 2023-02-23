@@ -7,6 +7,7 @@ using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi.RawClient;
 
 namespace GitHub.Runner.Common
