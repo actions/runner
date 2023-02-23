@@ -103,5 +103,28 @@ namespace GitHub.Actions.RunService.WebApi
                 content: requestContent,
                 cancellationToken: cancellationToken);
         }
+
+        public Task<RenewJobResponse> RenewJobAsync(
+            Uri requestUri,
+            Guid planId,
+            Guid jobId,
+            CancellationToken cancellationToken = default)
+        {
+            HttpMethod httpMethod = new HttpMethod("POST");
+            var payload = new RenewJobRequest()
+            {
+                PlanID = planId,
+                JobID = jobId
+            };
+
+            requestUri = new Uri(requestUri, "renewjob");
+
+            var requestContent = new ObjectContent<RenewJobRequest>(payload, new VssJsonMediaTypeFormatter(true));
+            return SendAsync<RenewJobResponse>(
+                httpMethod,
+                requestUri,
+                content: requestContent,
+                cancellationToken: cancellationToken);
+        }
     }
 }
