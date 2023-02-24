@@ -685,7 +685,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task RenewJobRequestAsync(Pipelines.AgentJobRequestMessage message, ServiceEndpoint systemConnection, int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
+        internal async Task RenewJobRequestAsync(Pipelines.AgentJobRequestMessage message, ServiceEndpoint systemConnection, int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
         {
             if (this._isRunServiceJob)
             {
@@ -699,7 +699,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task RenewJobRequestAsync(IRunServer runServer, Guid planId, Guid jobId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
+        private async Task RenewJobRequestAsync(IRunServer runServer, Guid planId, Guid jobId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
         {
             TaskAgentJobRequest request = null;
             int firstRenewRetryLimit = 5;
@@ -805,7 +805,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task RenewJobRequestAsync(IRunnerServer runnerServer, int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
+        private async Task RenewJobRequestAsync(IRunnerServer runnerServer, int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
         {
             TaskAgentJobRequest request = null;
             int firstRenewRetryLimit = 5;
