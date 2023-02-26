@@ -937,7 +937,7 @@ namespace GitHub.Runner.Common.Tests.Util
             string fileName = Environment.GetEnvironmentVariable("ComSpec");
             string arguments = $@"/c ""mklink /J ""{link}"" {target}""""";
 #else
-            string fileName = "/bin/ln";
+            string fileName = WhichUtil.Which("ln", true);
             string arguments = $@"-s ""{target}"" ""{link}""";
 #endif
             ArgUtil.File(fileName, nameof(fileName));
