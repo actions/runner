@@ -24,7 +24,7 @@ namespace GitHub.Runner.Worker
 
             // Close-over the incoming IEnumerable to force immediate evaluation.
             var empty = Enumerable.Empty<KeyValuePair<string, string>>();
-            this.Data = new Dictionary<string, string>(data ?? empty);
+            this.Data = new Dictionary<string, string>(data ?? empty, StringComparer.OrdinalIgnoreCase);
         }
 
         public readonly string Category;

@@ -25,7 +25,6 @@ namespace GitHub.DistributedTask.WebApi
 
         private Issue(Issue original)
         {
-            // DataContractSerializer bypasses all constructor logic and inline initialization!
             this.EnsureInitialized();
             if (original != null)
             {
@@ -107,6 +106,11 @@ namespace GitHub.DistributedTask.WebApi
 
         private IDictionary<string, string> m_data;
 
+        /// <summary>
+        /// DataContractSerializer bypasses all constructor logic and inline initialization!
+        /// This method takes the place of a workhorse constructor for baseline initialization.
+        /// The expectation is for this logic to be accessible to constructors and also to the OnDeserialized helper.
+        /// </summary>
         private void EnsureInitialized()
         {
             m_data = m_data ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
