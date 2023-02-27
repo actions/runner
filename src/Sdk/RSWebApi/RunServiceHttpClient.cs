@@ -98,11 +98,11 @@ namespace GitHub.Actions.RunService.WebApi
             requestUri = new Uri(requestUri, "completejob");
 
             var requestContent = new ObjectContent<CompleteJobRequest>(payload, new VssJsonMediaTypeFormatter(true));
-        return SendAsync(
-                httpMethod,
-                requestUri,
-                content: requestContent,
-                cancellationToken: cancellationToken);
+            return SendAsync(
+                    httpMethod,
+                    requestUri,
+                    content: requestContent,
+                    cancellationToken: cancellationToken);
         }
 
         public Task<RenewJobResponse> RenewJobAsync(
