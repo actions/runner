@@ -67,7 +67,7 @@ function install()
     mv "${TEMP_PATH}" "${PLIST_PATH}" || failed "failed to copy plist"
 
     # Since we started with sudo, runsvc.sh will be owned by root. Change this to current login user.
-    echo Creating runsvc.sh    
+    echo Creating runsvc.sh
     cp ./bin/runsvc.sh ./runsvc.sh || failed "failed to copy runsvc.sh"
     chmod u+x ./runsvc.sh || failed "failed to set permission for runsvc.sh"
 
@@ -80,14 +80,14 @@ function install()
 function start()
 {
     echo "starting ${SVC_NAME}"
-    launchctl load -w "${PLIST_PATH}" || failed "failed to load ${PLIST_PATH}"
+    launchctl bootstrap user/${user_id} "${PLIST_PATH}" || failed "failed to load ${PLIST_PATH}"
     status
 }
 
 function stop()
 {
     echo "stopping ${SVC_NAME}"
-    launchctl unload "${PLIST_PATH}" || failed "failed to unload ${PLIST_PATH}"
+    launchctl bootout user/${user_id} "${PLIST_PATH}" || true "failed to unload ${PLIST_PATH}"
     status
 }
 
@@ -115,7 +115,7 @@ function status()
     fi
 
     echo
-    status_out=`launchctl list | grep "${SVC_NAME}"`
+    status_out=`launchctl print user/${user_id} | grep "${SVC_NAME}"`
     if [ ! -z "$status_out" ]; then
         echo Started:
         echo $status_out
