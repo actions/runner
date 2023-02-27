@@ -257,7 +257,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                                 else if (count == 5)
                                 {
                                     cancellationTokenSource.CancelAfter(10000);
-                                    throw new TaskAgentJobNotFoundException("");
+                                    throw new TaskOrchestrationJobNotFoundException("");
                                 }
                                 else
                                 {
