@@ -25,7 +25,8 @@ namespace GitHub.DistributedTask.WebApi
 
         private Issue(Issue original)
         {
-            m_data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            // DataContractSerializer bypasses all constructor logic and inline initialization!
+            this.EnsureInitialized();
             if (original != null)
             {
                 this.Type = original.Type;
@@ -86,6 +87,7 @@ namespace GitHub.DistributedTask.WebApi
         private void OnDeserialized(StreamingContext context)
         {
             SerializationHelper.Copy(ref m_serializedData, ref m_data, StringComparer.OrdinalIgnoreCase, true);
+            this.EnsureInitialized();
         }
 
         [OnSerializing]
@@ -104,5 +106,10 @@ namespace GitHub.DistributedTask.WebApi
         private IDictionary<string, string> m_serializedData;
 
         private IDictionary<string, string> m_data;
+
+        private void EnsureInitialized()
+        {
+            m_data = m_data ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
     }
 }
