@@ -101,11 +101,6 @@ namespace GitHub.DistributedTask.WebApi
             m_serializedData = null;
         }
 
-        [DataMember(Name = "Data", EmitDefaultValue = false, Order = 4)]
-        private IDictionary<string, string> m_serializedData;
-
-        private IDictionary<string, string> m_data;
-
         /// <summary>
         /// DataContractSerializer bypasses all constructor logic and inline initialization!
         /// This method takes the place of a workhorse constructor for baseline initialization.
@@ -113,7 +108,14 @@ namespace GitHub.DistributedTask.WebApi
         /// </summary>
         private void EnsureInitialized()
         {
+            //Note that ?? is a short-circuiting operator.
             m_data = m_data ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
+
+        [DataMember(Name = "Data", EmitDefaultValue = false, Order = 4)]
+        private IDictionary<string, string> m_serializedData;
+
+        private IDictionary<string, string> m_data;
+
     }
 }

@@ -646,7 +646,8 @@ namespace GitHub.Runner.Worker
 
             string keyToExclude = Constants.Runner.InternalTelemetryIssueDataKey;
             var filteredDictionaryEntries = command.Properties
-                                                   .Where(kvp => !string.Equals(kvp.Key, keyToExclude, StringComparison.OrdinalIgnoreCase));
+                                                   .Where(kvp => !string.Equals(kvp.Key, keyToExclude, StringComparison.OrdinalIgnoreCase))
+                                                   .ToList();
 
             var metadata = new IssueMetadata(issueCategory, false, null, filteredDictionaryEntries);
             var issue = context.CreateIssue(this.Type, command.Data, metadata, true);

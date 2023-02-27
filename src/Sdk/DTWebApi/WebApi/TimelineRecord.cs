@@ -10,69 +10,76 @@ namespace GitHub.DistributedTask.WebApi
     public sealed class TimelineRecord
     {
         public TimelineRecord()
+            : this(null)
         {
-            this.Attempt = 1;
         }
 
         private TimelineRecord(TimelineRecord recordToBeCloned)
         {
-            this.Attempt = recordToBeCloned.Attempt;
-            this.ChangeId = recordToBeCloned.ChangeId;
-            this.CurrentOperation = recordToBeCloned.CurrentOperation;
-            this.FinishTime = recordToBeCloned.FinishTime;
-            this.Id = recordToBeCloned.Id;
-            this.Identifier = recordToBeCloned.Identifier;
-            this.LastModified = recordToBeCloned.LastModified;
-            this.Location = recordToBeCloned.Location;
-            this.Name = recordToBeCloned.Name;
-            this.Order = recordToBeCloned.Order;
-            this.ParentId = recordToBeCloned.ParentId;
-            this.PercentComplete = recordToBeCloned.PercentComplete;
-            this.RecordType = recordToBeCloned.RecordType;
-            this.Result = recordToBeCloned.Result;
-            this.ResultCode = recordToBeCloned.ResultCode;
-            this.StartTime = recordToBeCloned.StartTime;
-            this.State = recordToBeCloned.State;
-            this.TimelineId = recordToBeCloned.TimelineId;
-            this.WorkerName = recordToBeCloned.WorkerName;
-            this.RefName = recordToBeCloned.RefName;
-            this.ErrorCount = recordToBeCloned.ErrorCount;
-            this.WarningCount = recordToBeCloned.WarningCount;
-            this.NoticeCount = recordToBeCloned.NoticeCount;
-            this.AgentPlatform = recordToBeCloned.AgentPlatform;
-
-            if (recordToBeCloned.Log != null)
+            this.EnsureInitialized();
+            if (recordToBeCloned != null)
             {
-                this.Log = new TaskLogReference
+                this.Attempt = recordToBeCloned.Attempt;
+                this.ChangeId = recordToBeCloned.ChangeId;
+                this.CurrentOperation = recordToBeCloned.CurrentOperation;
+                this.FinishTime = recordToBeCloned.FinishTime;
+                this.Id = recordToBeCloned.Id;
+                this.Identifier = recordToBeCloned.Identifier;
+                this.LastModified = recordToBeCloned.LastModified;
+                this.Location = recordToBeCloned.Location;
+                this.Name = recordToBeCloned.Name;
+                this.Order = recordToBeCloned.Order;
+                this.ParentId = recordToBeCloned.ParentId;
+                this.PercentComplete = recordToBeCloned.PercentComplete;
+                this.RecordType = recordToBeCloned.RecordType;
+                this.Result = recordToBeCloned.Result;
+                this.ResultCode = recordToBeCloned.ResultCode;
+                this.StartTime = recordToBeCloned.StartTime;
+                this.State = recordToBeCloned.State;
+                this.TimelineId = recordToBeCloned.TimelineId;
+                this.WorkerName = recordToBeCloned.WorkerName;
+                this.RefName = recordToBeCloned.RefName;
+                this.ErrorCount = recordToBeCloned.ErrorCount;
+                this.WarningCount = recordToBeCloned.WarningCount;
+                this.NoticeCount = recordToBeCloned.NoticeCount;
+                this.AgentPlatform = recordToBeCloned.AgentPlatform;
+
+                if (recordToBeCloned.Log != null)
                 {
-                    Id = recordToBeCloned.Log.Id,
-                    Location = recordToBeCloned.Log.Location,
-                };
-            }
+                    this.Log = new TaskLogReference
+                    {
+                        Id = recordToBeCloned.Log.Id,
+                        Location = recordToBeCloned.Log.Location,
+                    };
+                }
 
-            if (recordToBeCloned.Details != null)
-            {
-                this.Details = new TimelineReference
+                if (recordToBeCloned.Details != null)
                 {
-                    ChangeId = recordToBeCloned.Details.ChangeId,
-                    Id = recordToBeCloned.Details.Id,
-                    Location = recordToBeCloned.Details.Location,
-                };
-            }
+                    this.Details = new TimelineReference
+                    {
+                        ChangeId = recordToBeCloned.Details.ChangeId,
+                        Id = recordToBeCloned.Details.Id,
+                        Location = recordToBeCloned.Details.Location,
+                    };
+                }
 
-            if (recordToBeCloned.m_issues?.Count> 0)
-            {
-                this.Issues.AddRange(recordToBeCloned.Issues.Select(i => i.Clone()));
-            }
+                if (recordToBeCloned.m_issues?.Count > 0)
+                {
+                    m_issues.AddRange(recordToBeCloned.m_issues.Select(i => i.Clone()));
+                }
 
-            if (recordToBeCloned.m_previousAttempts?.Count > 0)
-            {
-                this.PreviousAttempts.AddRange(recordToBeCloned.PreviousAttempts);
-            }
+                if (recordToBeCloned.m_previousAttempts?.Count > 0)
+                {
+                    m_previousAttempts.AddRange(recordToBeCloned.m_previousAttempts);
+                }
 
-            if (recordToBeCloned.m_variables?.Count > 0)
-            {
-                this.m_variables = recordToBeCloned.Variables.ToDictionary(k => k.Key, v => v.Value.Clone());
+                if (recordToBeCloned.m_variables?.Count > 0)
+                {
+                    // Don't pave over the case-insensitive Dictionary we initialized above.
+                    foreach (var kvp in recordToBeCloned.m_variables) {
+                        m_variables[kvp.Key] = kvp.Value.Clone();
+                    }
+                }
             }
         }
 
@@ -234,10 +241,6 @@ namespace GitHub.DistributedTask.WebApi
         {
             get
             {
-                if (m_issues == null)
-                {
-                    m_issues = new List<Issue>();
-                }
                 return m_issues;
             }
         }
@@ -274,22 +277,14 @@ namespace GitHub.DistributedTask.WebApi
         {
             get
             {
-                if (m_previousAttempts == null)
-                {
-                    m_previousAttempts = new List<TimelineAttempt>();
-                }
                 return m_previousAttempts;
             }
         }
 
-        public IDictionary<String, VariableValue> Variables
+        public IDictionary<string, VariableValue> Variables
         {
             get
             {
-                if (m_variables == null)
-                {
-                    m_variables = new Dictionary<String, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                }
                 return m_variables;
             }
         }
@@ -299,11 +294,32 @@ namespace GitHub.DistributedTask.WebApi
             return new TimelineRecord(this);
         }
 
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            this.EnsureInitialized();
+        }
+
+        /// <summary>
+        /// DataContractSerializer bypasses all constructor logic and inline initialization!
+        /// This method takes the place of a workhorse constructor for baseline initialization.
+        /// The expectation is for this logic to be accessible to constructors and also to the OnDeserialized helper.
+        /// </summary>
+        private void EnsureInitialized()
+        {
+            //Note that ?? is a short-circuiting operator.
+            m_issues = m_issues ?? new List<Issue>();
+            m_variables = m_variables ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+            m_previousAttempts = m_previousAttempts ?? new List<TimelineAttempt>();
+            this.Attempt = Math.Max(this.Attempt, 1);
+        }
+
+
         [DataMember(Name = "Issues", EmitDefaultValue = false, Order = 60)]
         private List<Issue> m_issues;
 
         [DataMember(Name = "Variables", EmitDefaultValue = false, Order = 80)]
-        private Dictionary<String, VariableValue> m_variables;
+        private Dictionary<string, VariableValue> m_variables;
 
         [DataMember(Name = "PreviousAttempts", EmitDefaultValue = false, Order = 120)]
         private List<TimelineAttempt> m_previousAttempts;
