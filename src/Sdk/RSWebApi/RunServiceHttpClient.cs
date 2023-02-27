@@ -98,7 +98,7 @@ namespace GitHub.Actions.RunService.WebApi
             requestUri = new Uri(requestUri, "completejob");
 
             var requestContent = new ObjectContent<CompleteJobRequest>(payload, new VssJsonMediaTypeFormatter(true));
-            return SendAsync(
+        return SendAsync(
                 httpMethod,
                 requestUri,
                 content: requestContent,

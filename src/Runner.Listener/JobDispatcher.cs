@@ -729,7 +729,7 @@ namespace GitHub.Runner.Listener
                     // renew again after 60 sec delay
                     await HostContext.Delay(TimeSpan.FromSeconds(60), token);
                 }
-                catch (TaskAgentJobNotFoundException)
+                catch (TaskOrchestrationJobNotFoundException)
                 {
                     // no need for retry. the job is not valid anymore.
                     Trace.Info($"TaskAgentJobNotFoundException received when renew job {jobId}, job is no longer valid, stop renew job request.");
