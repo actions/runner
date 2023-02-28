@@ -247,7 +247,6 @@ namespace GitHub.Runner.Listener
                 }
                 catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
                 {
-                    Trace.Info("Runner version has been depricated");
                     throw;
                 }
                 catch (Exception ex)
