@@ -112,7 +112,7 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Session creation has been cancelled.");
                     throw;
                 }
-                catch (TaskAgentAccessTokenExpiredException)
+                catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
                 {
                     Trace.Info("Runner OAuth token has been revoked. Session creation failed.");
                     _accessTokenRevoked = true;
@@ -182,7 +182,7 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     _getMessagesTokenSource?.Cancel();
-                } 
+                }
                 catch (ObjectDisposedException)
                 {
                     Trace.Info("_getMessagesTokenSource is already disposed.");
@@ -245,7 +245,7 @@ namespace GitHub.Runner.Listener
                     _accessTokenRevoked = true;
                     throw;
                 }
-                catch (InvalidTaskAgentVersionException) 
+                catch (InvalidTaskAgentVersionException)
                 {
                     Trace.Info("Runner version has been depricated");
                     throw;
@@ -294,7 +294,7 @@ namespace GitHub.Runner.Listener
                         await HostContext.Delay(_getNextMessageRetryInterval, token);
                     }
                 }
-                finally 
+                finally
                 {
                     _getMessagesTokenSource.Dispose();
                 }
