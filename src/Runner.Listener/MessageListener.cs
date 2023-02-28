@@ -112,7 +112,7 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Session creation has been cancelled.");
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
+                catch (TaskAgentAccessTokenExpiredException)
                 {
                     Trace.Info("Runner OAuth token has been revoked. Session creation failed.");
                     _accessTokenRevoked = true;
