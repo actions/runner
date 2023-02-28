@@ -158,3 +158,11 @@ cat (Runner/Worker)_TIMESTAMP.log # view your log file
 
 We use the .NET Foundation and CoreCLR style guidelines [located here](
 https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)
+
+### Format C# Code
+
+To format both staged and unstaged .cs files
+```
+cd ./src
+./dev.(cmd|sh) format
+```

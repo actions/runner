@@ -59,7 +59,7 @@ namespace GitHub.Runner.Common.Tests
             _secretMasker = new SecretMasker();
             _secretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
             _secretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
-            _traceManager = new TraceManager(traceListener, _secretMasker);
+            _traceManager = new TraceManager(traceListener, null, _secretMasker);
             _trace = GetTrace(nameof(TestHostContext));
 
             // inject a terminal in silent mode so all console output
