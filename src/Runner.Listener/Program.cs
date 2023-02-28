@@ -138,7 +138,7 @@ namespace GitHub.Runner.Listener
                 }
 
             }
-            catch (InvalidTaskAgentVersionException e)
+            catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
             {
                 terminal.WriteError($"An error occured: {e.Message}");
                 trace.Error(e);
