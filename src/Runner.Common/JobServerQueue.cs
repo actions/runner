@@ -85,6 +85,7 @@ namespace GitHub.Runner.Common
         private bool _firstConsoleOutputs = true;
 
         private bool _resultsClientInitiated = false;
+        private delegate Task ResultsFileUploadHandler(ResultsUploadFileInfo file);
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -249,12 +250,6 @@ namespace GitHub.Runner.Common
                     Trace.Info("Catch exception during delete skipped results upload file.");
                     Trace.Error(ex);
                 }
-                return;
-            }
-
-            if (timelineRecordId == _jobTimelineRecordId && String.Equals(type, CoreAttachmentType.ResultsLog, StringComparison.Ordinal))
-            {
-                Trace.Verbose("Skipping job log {0} for record {1}", path, timelineRecordId);
                 return;
             }
 
@@ -503,8 +498,16 @@ namespace GitHub.Runner.Common
                             }
                             else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
                             {
-                                Trace.Info($"Got a step log file to send to results service.");
-                                await UploadResultsStepLogFile(file);
+                                if (file.RecordId != _jobTimelineRecordId)
+                                {
+                                    Trace.Info($"Got a step log file to send to results service.");
+                                    await UploadResultsStepLogFile(file);
+                                }
+                                else if (file.RecordId == _jobTimelineRecordId)
+                                {
+                                    Trace.Info($"Got a job log file to send to results service.");
+                                    await UploadResultsJobLogFile(file);
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -813,40 +816,43 @@ namespace GitHub.Runner.Common
 
         private async Task UploadSummaryFile(ResultsUploadFileInfo file)
         {
-            bool uploadSucceed = false;
-            try
+            Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler summaryHandler = async (file) =>
             {
-                // Upload the step summary
-                Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
                 await _jobServer.CreateStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, CancellationToken.None);
+            };
 
-                uploadSucceed = true;
-            }
-            finally
-            {
-                if (uploadSucceed && file.DeleteSource)
-                {
-                    try
-                    {
-                        File.Delete(file.Path);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Info("Catch exception during delete success results uploaded summary file.");
-                        Trace.Error(ex);
-                    }
-                }
-            }
+            await UploadResultsFile(file, summaryHandler);
         }
 
         private async Task UploadResultsStepLogFile(ResultsUploadFileInfo file)
         {
+            Trace.Info($"Starting upload of step log file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler stepLogHandler = async (file) =>
+            {
+                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
+            };
+
+            await UploadResultsFile(file, stepLogHandler);
+        }
+
+        private async Task UploadResultsJobLogFile(ResultsUploadFileInfo file)
+        {
+            Trace.Info($"Starting upload of job log file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler jobLogHandler = async (file) =>
+            {
+                await _jobServer.CreateResultsJobLogAsync(file.PlanId, file.JobId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
+            };
+
+            await UploadResultsFile(file, jobLogHandler);
+        }
+
+        private async Task UploadResultsFile(ResultsUploadFileInfo file, ResultsFileUploadHandler uploadHandler)
+        {
             bool uploadSucceed = false;
             try
             {
-                Trace.Info($"Starting upload of step log file to results service {file.Name}, {file.Path}");
-                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
-
+                await uploadHandler(file);
                 uploadSucceed = true;
             }
             finally

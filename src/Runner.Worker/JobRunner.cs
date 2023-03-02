@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
@@ -19,7 +20,7 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(JobRunner))]
     public interface IJobRunner : IRunnerService
     {
-        Task<TaskResult> RunAsync(Pipelines.AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken);
+        Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken);
     }
 
     public sealed class JobRunner : RunnerService, IJobRunner
@@ -28,7 +29,7 @@ namespace GitHub.Runner.Worker
         private RunnerSettings _runnerSettings;
         private ITempDirectoryManager _tempDirectoryManager;
 
-        public async Task<TaskResult> RunAsync(Pipelines.AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
+        public async Task<TaskResult> RunAsync(AgentJobRequestMessage message, CancellationToken jobRequestCancellationToken)
         {
             // Validate parameters.
             Trace.Entering();
@@ -42,14 +43,14 @@ namespace GitHub.Runner.Worker
             IRunnerService server = null;
 
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-            if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
+            if (MessageUtil.IsRunServiceJob(message.MessageType))
             {
                 var runServer = HostContext.GetService<IRunServer>();
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
                 server = runServer;
             }
-            else 
+            else
             {
                 // Setup the job server and job server queue.
                 var jobServer = HostContext.GetService<IJobServer>();
@@ -65,7 +66,7 @@ namespace GitHub.Runner.Worker
                 _jobServerQueue.Start(message);
                 server = jobServer;
             }
-            
+
 
             HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
 

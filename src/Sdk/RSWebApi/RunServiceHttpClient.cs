@@ -8,6 +8,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
+using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi;
 
 namespace GitHub.Actions.RunService.WebApi
@@ -98,6 +99,29 @@ namespace GitHub.Actions.RunService.WebApi
 
             var requestContent = new ObjectContent<CompleteJobRequest>(payload, new VssJsonMediaTypeFormatter(true));
             return SendAsync(
+                    httpMethod,
+                    requestUri,
+                    content: requestContent,
+                    cancellationToken: cancellationToken);
+        }
+
+        public Task<RenewJobResponse> RenewJobAsync(
+            Uri requestUri,
+            Guid planId,
+            Guid jobId,
+            CancellationToken cancellationToken = default)
+        {
+            HttpMethod httpMethod = new HttpMethod("POST");
+            var payload = new RenewJobRequest()
+            {
+                PlanID = planId,
+                JobID = jobId
+            };
+
+            requestUri = new Uri(requestUri, "renewjob");
+
+            var requestContent = new ObjectContent<RenewJobRequest>(payload, new VssJsonMediaTypeFormatter(true));
+            return SendAsync<RenewJobResponse>(
                 httpMethod,
                 requestUri,
                 content: requestContent,
