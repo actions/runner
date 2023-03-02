@@ -33,6 +33,7 @@
       <string>LoginWindow</string>
       <string>Background</string>
       <string>StandardIO</string>
+      <string>System</string>
     </array>
   </dict>
 </plist>
