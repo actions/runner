@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +7,7 @@ using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi.RawClient;
 
 namespace GitHub.Runner.Common
@@ -19,6 +20,8 @@ namespace GitHub.Runner.Common
         Task<AgentJobRequestMessage> GetJobMessageAsync(string id, CancellationToken token);
 
         Task CompleteJobAsync(Guid planId, Guid jobId, TaskResult result, Dictionary<String, VariableValue> outputs, IList<StepResult> stepResults, CancellationToken token);
+
+        Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken token);
     }
 
     public sealed class RunServer : RunnerService, IRunServer
@@ -63,6 +66,19 @@ namespace GitHub.Runner.Common
             CheckConnection();
             return RetryRequest(
                 async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, cancellationToken), cancellationToken);
+        }
+
+        public Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken cancellationToken)
+        {
+            CheckConnection();
+            var renewJobResponse = RetryRequest<RenewJobResponse>(
+                async () => await _runServiceHttpClient.RenewJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken);
+            if (renewJobResponse == null)
+            {
+                throw new TaskOrchestrationJobNotFoundException(jobId.ToString());
+            }
+
+            return renewJobResponse;
         }
     }
 }

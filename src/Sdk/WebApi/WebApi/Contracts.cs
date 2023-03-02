@@ -30,6 +30,42 @@ namespace GitHub.Services.Results.Contracts
 
     [DataContract]
     [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class StepSummaryMetadataCreate
+    {
+        [DataMember]
+        public string StepBackendId;
+        [DataMember]
+        public string WorkflowRunBackendId;
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public long Size;
+        [DataMember]
+        public string UploadedAt;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedJobLogsURLRequest
+    {
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string WorkflowRunBackendId;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedJobLogsURLResponse
+    {
+        [DataMember]
+        public string LogsUrl;
+        [DataMember]
+        public string BlobStorageType;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
     public class GetSignedStepLogsURLRequest
     {
         [DataMember]
@@ -47,41 +83,15 @@ namespace GitHub.Services.Results.Contracts
         [DataMember]
         public string LogsUrl;
         [DataMember]
-        public long SoftSizeLimit;
-        [DataMember]
         public string BlobStorageType;
+        [DataMember]
+        public long SoftSizeLimit;
     }
 
     [DataContract]
     [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-    public class StepSummaryMetadataCreate
+    public class JobLogsMetadataCreate
     {
-        [DataMember]
-        public string StepBackendId;
-        [DataMember]
-        public string WorkflowRunBackendId;
-        [DataMember]
-        public string WorkflowJobRunBackendId;
-        [DataMember]
-        public long Size;
-        [DataMember]
-        public string UploadedAt;
-    }
-
-    [DataContract]
-    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-    public class CreateStepSummaryMetadataResponse
-    {
-        [DataMember]
-        public bool Ok;
-    }
-
-    [DataContract]
-    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-    public class StepLogsMetadataCreate
-    {
-        [DataMember]
-        public string StepBackendId;
         [DataMember]
         public string WorkflowRunBackendId;
         [DataMember]
@@ -94,7 +104,23 @@ namespace GitHub.Services.Results.Contracts
 
     [DataContract]
     [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-    public class CreateStepLogsMetadataResponse
+    public class StepLogsMetadataCreate
+    {
+        [DataMember]
+        public string WorkflowRunBackendId;
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string StepBackendId;
+        [DataMember]
+        public string UploadedAt;
+        [DataMember]
+        public long LineCount;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class CreateMetadataResponse
     {
         [DataMember]
         public bool Ok;
