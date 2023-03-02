@@ -24,11 +24,26 @@ RUN export DOCKER_ARCH=x86_64 \
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:6.0
 
-ENV RUNNER_ALLOW_RUNASROOT=1
+ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 
-WORKDIR /actions-runner
-COPY --from=build /actions-runner .
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos "" --uid 1001 runner \
+    && groupadd docker --gid 123 \
+    && usermod -aG sudo runner \
+    && usermod -aG docker runner \
+    && echo "%sudo   ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers \
+    && echo "Defaults env_keep += \"DEBIAN_FRONTEND\"" >> /etc/sudoers
+
+WORKDIR /home/runner
+
+COPY --chown=runner:docker --from=build /actions-runner .
 
 RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
+
+USER runner
