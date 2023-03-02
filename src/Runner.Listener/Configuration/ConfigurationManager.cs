@@ -113,6 +113,7 @@ namespace GitHub.Runner.Listener.Configuration
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
             _term.WriteSection("Authentication");
+            string tempToken=string.Empty;
             while (true)
             {
                 // When testing against a dev deployment of Actions Service, set this environment variable
@@ -130,9 +131,13 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     runnerSettings.GitHubUrl = inputUrl;
+                    // registration-token
                     var registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
+                    // runner-registration
+                    tempToken = registerToken;
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
+                    runnerSettings.UseV2Flow = authResult.UseV2Flow;
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
                 }
@@ -186,7 +191,15 @@ namespace GitHub.Runner.Listener.Configuration
             // If we have more than one runner group available, allow the user to specify which one to be added into
             string poolName = null;
             TaskAgentPool agentPool = null;
-            List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
+            List<TaskAgentPool> agentPools;
+            if(runnerSettings.UseV2Flow)
+            {
+                agentPools = await GetAgentPoolsAsyncFromDotcom(runnerSettings.GitHubUrl, tempToken);
+            }
+            else
+            {
+                agentPools = await _runnerServer.GetAgentPoolsAsync();
+            }
             TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
 
             if (agentPools?.Where(x => !x.IsHosted).Count() > 0)
@@ -672,6 +685,65 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         retryCount++;
                         Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
+                        Trace.Error(ex);
+                    }
+                }
+                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+                Trace.Info($"Retrying in {backOff.Seconds} seconds");
+                await Task.Delay(backOff);
+            }
+            return null;
+        }
+
+        private async Task<List<TaskAgentPool>> GetAgentPoolsAsyncFromDotcom(string githubUrl, string githubToken){
+            var githubApiUrl = "";
+            var gitHubUrlBuilder = new UriBuilder(githubUrl);
+            if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+            {
+                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runner-groups";
+            }
+            else
+            {
+                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/actions/runner-groups";
+            }
+
+            int retryCount = 0;
+            while (retryCount < 3)
+            {
+                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                using (var httpClient = new HttpClient(httpClientHandler))
+                {
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
+                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                    httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
+
+                    var responseStatus = System.Net.HttpStatusCode.OK;
+                    try
+                    {
+                        var response = await httpClient.GetAsync(githubApiUrl);
+                        responseStatus = response.StatusCode;
+                        var githubRequestId = GetGitHubRequestId(response.Headers);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            Trace.Info($"Http response code: {response.StatusCode} from 'GET {githubApiUrl}' ({githubRequestId})");
+                            var jsonResponse = await response.Content.ReadAsStringAsync();
+                            var agentPools = StringUtil.ConvertFromJson<List<TaskAgentPool>>(jsonResponse);
+
+                            return agentPools;
+                        }
+                        else
+                        {
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'GET {githubApiUrl}' (Request Id: {githubRequestId})");
+                            var errorResponse = await response.Content.ReadAsStringAsync();
+                            _term.WriteError(errorResponse);
+                            response.EnsureSuccessStatusCode();
+                        }
+                    }
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    {
+                        retryCount++;
+                        Trace.Error($"Failed to get agent pools -- Atempt: {retryCount}");
                         Trace.Error(ex);
                     }
                 }
