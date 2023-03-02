@@ -383,7 +383,53 @@ namespace GitHub.Runner.Common.Tests
             {
                 Environment.SetEnvironmentVariable("http_proxy", "http://user1:pass1%40@127.0.0.1:8888");
                 Environment.SetEnvironmentVariable("https_proxy", "http://user2:pass2%40@127.0.0.1:9999");
-                Environment.SetEnvironmentVariable("no_proxy", "*");
+                Environment.SetEnvironmentVariable("no_proxy", "example.com, * , example2.com");
+                var proxy = new RunnerWebProxy();
+
+                Assert.True(proxy.IsBypassed(new Uri("http://actions.com")));
+                Assert.True(proxy.IsBypassed(new Uri("http://localhost")));
+                Assert.True(proxy.IsBypassed(new Uri("http://127.0.0.1:8080")));
+                Assert.True(proxy.IsBypassed(new Uri("https://actions.com")));
+                Assert.True(proxy.IsBypassed(new Uri("https://localhost")));
+                Assert.True(proxy.IsBypassed(new Uri("https://127.0.0.1:8080")));
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void IgnoreWildcardInNoProxySubdomain()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("http_proxy", "http://user1:pass1%40@127.0.0.1:8888");
+                Environment.SetEnvironmentVariable("https_proxy", "http://user2:pass2%40@127.0.0.1:9999");
+                Environment.SetEnvironmentVariable("no_proxy", "*.example.com");
+                var proxy = new RunnerWebProxy();
+
+                Assert.False(proxy.IsBypassed(new Uri("http://sub.example.com")));
+                Assert.False(proxy.IsBypassed(new Uri("http://example.com")));
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WildcardNoProxyWorksWhenOtherNoProxyAreAround()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("http_proxy", "http://user1:pass1%40@127.0.0.1:8888");
+                Environment.SetEnvironmentVariable("https_proxy", "http://user2:pass2%40@127.0.0.1:9999");
+                Environment.SetEnvironmentVariable("no_proxy", "example.com,*,example2.com");
                 var proxy = new RunnerWebProxy();
 
                 Assert.True(proxy.IsBypassed(new Uri("http://actions.com")));

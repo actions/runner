@@ -199,12 +199,6 @@ namespace GitHub.Runner.Sdk
                 return true;
             }
 
-            // bypass on wildcard no_proxy
-            if (string.Equals(_noProxyString, "*", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
             return uri.IsLoopback || IsUriInBypassList(uri);
         }
 
@@ -212,6 +206,11 @@ namespace GitHub.Runner.Sdk
         {
             foreach (var noProxy in _noProxyList)
             {
+                // bypass on wildcard no_proxy
+                if (string.Equals(noProxy.Host, "*", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
                 var matchHost = false;
                 var matchPort = false;
 
