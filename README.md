@@ -29,6 +29,8 @@ The new nuget package [can be found here](https://www.nuget.org/packages/io.gith
 ### Azure Pipelines
 This is experimental and covers a subset of Azure Pipelines.
 
+[Quickstart Guide](./docs/quick-start/azure-pipeline.md)
+
 run `Runner.Client --event azpipelines -W pipeline.yml` / `gharun --event azpipelines -W pipeline.yml` to run Azure Pipelines locally, _this tool defaults to GitHub Actions and looks by default in `.github/workflows/` for yaml files_.
 #### Templating
 ```yaml
