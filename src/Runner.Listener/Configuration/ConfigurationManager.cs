@@ -138,6 +138,7 @@ namespace GitHub.Runner.Listener.Configuration
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     runnerSettings.UseV2Flow = authResult.UseV2Flow;
+                    _term.WriteLine($"Using V2 flow: {runnerSettings.UseV2Flow}");
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
                 }
@@ -194,7 +195,9 @@ namespace GitHub.Runner.Listener.Configuration
             List<TaskAgentPool> agentPools;
             if(runnerSettings.UseV2Flow)
             {
-                agentPools = await GetAgentPoolsAsyncFromDotcom(runnerSettings.GitHubUrl, tempToken);
+                _term.WriteLine("Using V2 flow");
+                var githubPAT = command.GetGitHubPersonalAccessToken(true);
+                agentPools = await GetAgentPoolsAsyncFromDotcom(runnerSettings.GitHubUrl, githubPAT);
             }
             else
             {
@@ -698,13 +701,39 @@ namespace GitHub.Runner.Listener.Configuration
         private async Task<List<TaskAgentPool>> GetAgentPoolsAsyncFromDotcom(string githubUrl, string githubToken){
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
-            if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+            var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
+            if (path.Length == 1)
             {
-                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runner-groups";
+                // org runner
+                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+                {
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runner-groups";
+                }
+                else
+                {
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runner-groups";
+                }
+            }
+            else if (path.Length == 2)
+            {
+                // repo or enterprise runner.
+                if (!string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+
+                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+                {
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runner-groups";
+                }
+                else
+                {
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runner-groups";
+                }
             }
             else
             {
-                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/actions/runner-groups";
+                throw new ArgumentException($"'{githubUrl}' should point to an org or enterprise.");
             }
 
             int retryCount = 0;
@@ -713,7 +742,9 @@ namespace GitHub.Runner.Listener.Configuration
                 using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                 using (var httpClient = new HttpClient(httpClientHandler))
                 {
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
+                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
+                    HostContext.SecretMasker.AddValue(base64EncodingToken);
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
