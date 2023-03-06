@@ -69,11 +69,12 @@ namespace GitHub.Runner.Worker.Expressions
             //Feature flag to fetch a new version of hashFiles script
             string hashFilesScript = string.Empty;
             var isGlobHashFilesEnabled = executionContext.Global.Variables.GetBoolean("DistributedTask.UseGlobHashFiles") ?? false;
-            if(isGlobHashFilesEnabled){
+            if (isGlobHashFilesEnabled)
+            {
                 hashFilesScript = Path.Combine(binDir, "hashFilesV2");
             }
             hashFilesScript = Path.Combine(binDir, "hashFiles");
-            
+
             var hashResult = string.Empty;
             var p = new ProcessInvoker(new HashFilesTrace(context.Trace));
             p.ErrorDataReceived += ((_, data) =>
