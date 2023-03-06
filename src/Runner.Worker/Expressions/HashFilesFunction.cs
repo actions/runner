@@ -29,6 +29,9 @@ namespace GitHub.Runner.Worker.Expressions
             githubContext.TryGetValue(PipelineTemplateConstants.Workspace, out var workspace);
             var workspaceData = workspace as StringContextData;
             ArgUtil.NotNull(workspaceData, nameof(workspaceData));
+            var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            
 
             string githubWorkspace = workspaceData.Value;
             bool followSymlink = false;
