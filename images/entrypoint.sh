@@ -11,7 +11,7 @@ function updateCerts() {
     fi
 }
 
-if [[ ! -z $RUNNER_UPDATE_CA ]]; then
+if [[ ! -z $RUNNER_UPDATE_TRUST_STORE ]]; then
     updateCerts
 fi
 
