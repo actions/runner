@@ -56,8 +56,8 @@ runWithManualTrap() {
 # update ca certificates in case they are injected with a volume mount
 function updateCerts() {
     local sudo_prefix=""
-
     local user_id=`id -u`
+
     if ! [ $user_id -eq 0 ]; then
         if [[ ! -x "$(command -v sudo)" ]]; then
             echo "Warning: failed to update certificate store: sudo not found"
