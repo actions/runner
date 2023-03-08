@@ -53,7 +53,6 @@ runWithManualTrap() {
     done
 }
 
-# update ca certificates in case they are injected with a volume mount
 function updateCerts() {
     local sudo_prefix=""
     local user_id=`id -u`
