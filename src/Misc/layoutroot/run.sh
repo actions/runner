@@ -77,7 +77,7 @@ function updateCerts() {
     fi
 }
 
-if [[ ! -z $RUNNER_UPDATE_CA_CERTS ]]; then
+if [[ ! -z "$RUNNER_UPDATE_CA_CERTS" ]]; then
     updateCerts
 fi
 
