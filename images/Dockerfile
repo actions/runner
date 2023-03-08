@@ -47,7 +47,3 @@ COPY --chown=runner:docker --from=build /actions-runner .
 RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
 
 USER runner
-
-COPY entrypoint.sh .
-
-ENTRYPOINT [ "./entrypoint.sh" ]

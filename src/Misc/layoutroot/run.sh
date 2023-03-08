@@ -53,6 +53,34 @@ runWithManualTrap() {
     done
 }
 
+# update ca certificates in case they are injected with a volume mount
+function updateCerts() {
+    local sudo_prefix=""
+
+    local user_id=`id -u`
+    if ! [ $user_id -eq 0 ]; then
+        if [[ ! -x "$(command -v sudo)" ]]; then
+            echo "Warning: failed to update certificate store: sudo not found"
+            return 1
+        else
+            sudo_prefix="sudo"
+        fi
+    fi
+
+    if [[ -x "$(command -v update-ca-certificates)" ]]; then
+        eval $sudo_prefix "update-ca-certificates"
+    elif [[ -x "$(command -v update-ca-trust)" ]]; then
+        eval $sudo_prefix "update-ca-trust"
+    else
+        echo "Warning: failed to update certificate store: update-ca-certificates or update-ca-trust not found"
+        return 1
+    fi
+}
+
+if [[ ! -z $RUNNER_UPDATE_CA_CERTS ]]; then
+    updateCerts
+fi
+
 if [[ -z "$RUNNER_MANUALLY_TRAP_SIG" ]]; then
     run $*
 else
