@@ -58,7 +58,7 @@ function updateCerts() {
     local sudo_prefix=""
     local user_id=`id -u`
 
-    if ! [ $user_id -eq 0 ]; then
+    if [ $user_id -ne 0 ]; then
         if [[ ! -x "$(command -v sudo)" ]]; then
             echo "Warning: failed to update certificate store: sudo is required but not found"
             return 1
