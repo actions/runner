@@ -60,7 +60,7 @@ function updateCerts() {
 
     if ! [ $user_id -eq 0 ]; then
         if [[ ! -x "$(command -v sudo)" ]]; then
-            echo "Warning: failed to update certificate store: sudo not found"
+            echo "Warning: failed to update certificate store: sudo is required but not found"
             return 1
         else
             sudo_prefix="sudo"
