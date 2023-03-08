@@ -14,19 +14,24 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         public NullToken(
             Int32? fileId,
             Int32? line,
-            Int32? column)
+            Int32? column,
+            string rawValue = null)
             : base(TokenType.Null, fileId, line, column)
         {
+            m_raw_value = rawValue;
         }
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-           return omitSource ? new NullToken(null, null, null) : new NullToken(FileId, Line, Column);
+           return omitSource ? new NullToken(null, null, null, m_raw_value) : new NullToken(FileId, Line, Column, m_raw_value);
         }
 
         public override String ToString()
         {
-           return String.Empty;
+           return m_raw_value ?? String.Empty;
         }
+
+        [IgnoreDataMember]
+        private string m_raw_value;
     }
 }

@@ -3392,7 +3392,15 @@ namespace Runner.Server.Controllers
                     };
                     pipeline.Name = evalMacro(pipeline.Name, 0);
                 }
-                
+
+                if((pipeline.AppendCommitMessageToRunName ?? true) && hook?.head_commit?.Message != null) {
+                    if(!string.IsNullOrEmpty(pipeline.Name)) {
+                        pipeline.Name += " " + hook.head_commit.Message;
+                    } else {
+                        pipeline.Name = workflowname + " " + hook.head_commit.Message;
+                    }
+                }
+  
                 workflowname = pipeline.Name ?? workflowname;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
@@ -3730,7 +3738,6 @@ namespace Runner.Server.Controllers
                                     var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase) };
                                     var includematrix = new List<Dictionary<string, TemplateToken>> { };
                                     bool failFast = true;
-                                    double? max_parallel = job?.Strategy?.MaxParallel;
                                     
                                     // Enforce job matrix limit of github
                                     if(flatmatrix.Count > 256) {
@@ -3840,6 +3847,7 @@ namespace Runner.Server.Controllers
                                         }
                                         contextData["variables"] = vars;
                                     }
+                                    double? max_parallel = null;
                                     if(job?.Strategy?.MatrixExpression != null) {
                                         var result = evalVariable(job.Strategy.MatrixExpression);
                                         job.Strategy.Matrix = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(result);
@@ -3847,11 +3855,17 @@ namespace Runner.Server.Controllers
                                             job.Strategy = null;
                                         }
                                     }
-                                    if(job?.Strategy?.Parallel > 0) {
-                                        for(int i = 0; i < job.Strategy.Parallel; i++) {
+                                    if(job?.Strategy?.MaxParallel != null) {
+                                        var result = evalVariable(job?.Strategy?.MaxParallel);
+                                        max_parallel = Int32.Parse(result);
+                                    }
+                                    if(job?.Strategy?.Parallel != null) {
+                                        var result = evalVariable(job.Strategy.Parallel);
+                                        var parallelJobs = Int32.Parse(result);
+                                        for(int i = 0; i < parallelJobs; i++) {
                                             var mvars = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                                             mvars["System.JobPositionInPhase"] = new StringToken(null, null, null, i.ToString());
-                                            mvars["System.TotalJobsInPhase"] = new StringToken(null, null, null, job.Strategy.Parallel.ToString());
+                                            mvars["System.TotalJobsInPhase"] = new StringToken(null, null, null, parallelJobs.ToString());
                                             includematrix.Add(mvars);
                                         }
                                     } else if(job?.Strategy?.Matrix != null) {
@@ -4113,9 +4127,6 @@ namespace Runner.Server.Controllers
                                                 jobitem.Childs?.Add(next);
                                                 var _jobdisplayname = _prejobdisplayname;
                                                 next.DisplayName = _jobdisplayname;
-                                                next.ContinueOnError = job.ContinueOnError;
-                                                var timeoutMinutes = job.TimeoutInMinutes != 0 ? job.TimeoutInMinutes :  3600;
-                                                var cancelTimeoutMinutes = job.CancelTimeoutInMinutes != 0 ? job.CancelTimeoutInMinutes : 5;
                                                 next.NoStatusCheck = false;
                                                 next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
                                                 addMatrixVar("System.StageName", stage.Name);
@@ -4140,7 +4151,34 @@ namespace Runner.Server.Controllers
                                                 }
                                                 var jcontextData = contextData.Clone() as DictionaryContextData;
                                                 jcontextData["variables"] = vars;
-                                                return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, createEvalVariable(matrixJobTraceWriter, jcontextData), env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, stage.Name, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
+                                                var matrixjobEval = createEvalVariable(matrixJobTraceWriter, jcontextData);
+                                                if(job.ContinueOnError != null) {
+                                                    var rawContinueOnError = matrixjobEval(job.ContinueOnError);
+                                                    if(GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.TryParseAzurePipelinesBoolean(rawContinueOnError, out var continueOnError)) {
+                                                        next.ContinueOnError = continueOnError;
+                                                    } else {
+                                                        throw new Exception($"{stage.Name}.{job.Name}.continueOnError: value true | y | yes | on | false | n | no | off was expected, got {rawContinueOnError}");
+                                                    }
+                                                }
+                                                var timeoutMinutes = 3600;
+                                                if(job.TimeoutInMinutes != null) {
+                                                    var rawTimeoutInMinutes = matrixjobEval(job.TimeoutInMinutes);
+                                                    if(Int32.TryParse(rawTimeoutInMinutes, out int numValue)) {
+                                                        timeoutMinutes = numValue;
+                                                    } else {
+                                                        throw new Exception($"{stage.Name}.{job.Name}.timeoutInMinutes expected integer, got {rawTimeoutInMinutes}");
+                                                    }
+                                                }
+                                                var cancelTimeoutMinutes = 5;
+                                                if(job.CancelTimeoutInMinutes != null) {
+                                                    var rawCancelTimeoutInMinutes = matrixjobEval(job.CancelTimeoutInMinutes);
+                                                    if(Int32.TryParse(rawCancelTimeoutInMinutes, out int numValue)) {
+                                                        cancelTimeoutMinutes = numValue;
+                                                    } else {
+                                                        throw new Exception($"{stage.Name}.{job.Name}.cancelTimeoutInMinutes expected integer, got {rawCancelTimeoutInMinutes}");
+                                                    }
+                                                }
+                                                return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, matrixjobEval, env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, stage.Name, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                             } catch(Exception ex) {
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
                                                 return failJob();
@@ -5984,6 +6022,25 @@ namespace Runner.Server.Controllers
                                 }
                                 cr.Ports = ports;
                             }
+                            if(container.MountReadonly != null) {
+                                var readOnlyMounts = new List<string>();
+                                if(container.MountReadonly.Externals == true) {
+                                    readOnlyMounts.Add("externals");
+                                }
+                                if(container.MountReadonly.Work == true) {
+                                    readOnlyMounts.Add("work");
+                                }
+                                if(container.MountReadonly.Tasks == true) {
+                                    readOnlyMounts.Add("tasks");
+                                }
+                                if(container.MountReadonly.Tools == true) {
+                                    readOnlyMounts.Add("tools");
+                                }
+                                cr.Properties.Set("readOnlyMounts", readOnlyMounts);
+                            }
+                            if(container.MapDockerSocket != null) {
+                                cr.Properties.Set("mapDockerSocket", container.MapDockerSocket.Value);
+                            }
                             if(containerResources.Add(cr.Alias)) {
                                 resources.Containers.Add(cr);
                             }
@@ -6207,7 +6264,7 @@ namespace Runner.Server.Controllers
                             new List<MaskHint>(),
                             resources, null,
                             new WorkspaceOptions() {
-                                Clean = "true"
+                                Clean = rjob.WorkspaceClean
                             },
                             steps,
                             null,

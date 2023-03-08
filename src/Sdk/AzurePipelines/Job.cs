@@ -13,10 +13,10 @@ public class Job {
     public string[] DependsOn { get; set; }
     public string Condition { get; set; }
     public Strategy Strategy { get; set; }
-    public bool ContinueOnError { get; set; }
+    public string ContinueOnError { get; set; }
     public Container Container { get; set; }
-    public int TimeoutInMinutes { get; set; }
-    public int CancelTimeoutInMinutes { get; set; }
+    public string TimeoutInMinutes { get; set; }
+    public string CancelTimeoutInMinutes { get; set; }
     public Dictionary<string, VariableValue> Variables { get; set; }
     public Dictionary<string, Container> Services { get; set; }
     public List<TaskStep> Steps { get; set; }
@@ -26,20 +26,23 @@ public class Job {
     public string EnvironmentName { get; set; }
     public string EnvironmentResourceType { get; set; }
     public Pool Pool { get; set; }
+    public string[] UsesRepositories { get; set; }
+    public string[] UsesPools { get; set; }
+    public string WorkspaceClean { get; set; }
 
     public Job Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var jobToken = source.AssertMapping("job-root");
         foreach(var kv in jobToken) {
             switch(kv.Key.AssertString("key").Value) {
                 case "job":
-                    Name = kv.Value is NullToken ? null : kv.Value.AssertString("name").Value;
+                    Name = kv.Value.AssertLiteralString("name");
                 break;
                 case "deployment":
-                    Name = kv.Value is NullToken ? null : kv.Value.AssertString("name").Value;
+                    Name = kv.Value.AssertLiteralString("name");
                     DeploymentJob = true;
                 break;
                 case "displayName":
-                    DisplayName = kv.Value.AssertString("name").Value;
+                    DisplayName = kv.Value.AssertLiteralString("name");
                 break;
                 case "dependsOn":
                     DependsOn = (from dep in kv.Value.AssertScalarOrSequence("dependsOn") select dep.AssertString("dep").Value).ToArray();
@@ -89,56 +92,54 @@ public class Job {
                                 case "canary":
                                     Strategy.Canary = new Strategy.CanaryStrategy();
                                     parseRunOnce(sv.Value as MappingToken, Strategy.Canary);
-                                    Strategy.Canary.Increments = (from inc in (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "increments" select k.Value).First().AssertSequence("") select inc.AssertNumber("").Value).ToArray();
+                                    var rawIncrements = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "increments" select k.Value).FirstOrDefault()?.AssertSequence("canary increments");
+                                    if(rawIncrements != null) {
+                                        Strategy.Canary.Increments = (from inc in rawIncrements select inc.AssertLiteralString("canary increment")).ToArray();
+                                    }
                                 break;
                                 case "rolling":
                                     Strategy.Rolling = new Strategy.RollingStrategy();
                                     parseRunOnce(sv.Value as MappingToken, Strategy.Rolling);
-                                    var maxParallel = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "maxParallel" select k.Value).FirstOrDefault();
-                                    if(maxParallel is NumberToken num) {
-                                        Strategy.Rolling.MaxParallel = (int)num.Value;
-                                    } else if(maxParallel is StringToken percent) {
-                                        Strategy.Rolling.MaxParallelPercent = Int32.Parse(percent.Value.Substring(0, percent.Value.IndexOf("%")));
-                                    }
+                                    Strategy.Rolling.MaxParallel = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "maxParallel" select k.Value).FirstOrDefault()?.AssertLiteralString("maxParallel");
                                 break;
                             }
                         } else {
                             switch(sv.Key.AssertString("key").Value) {
                                 case "parallel":
-                                    Strategy.Parallel = (int)sv.Value.AssertNumber("parallel").Value;
+                                    Strategy.Parallel = sv.Value.AssertLiteralString("parallel");
                                 break;
                                 case "matrix":
                                     if(sv.Value is StringToken stringToken) {
                                         Strategy.MatrixExpression = stringToken.Value;
                                     } else {
-                                        Strategy.Matrix = sv.Value.AssertMapping("matrix").ToDictionary(mv => mv.Key.AssertString("mk").Value, mv => mv.Value.AssertMapping("matrix").ToDictionary(uv => uv.Key.AssertString("mk").Value, uv => uv.Value.AssertString("mk").Value));
+                                        Strategy.Matrix = sv.Value.AssertMapping("matrix").ToDictionary(mv => mv.Key.AssertString("mk").Value, mv => mv.Value.AssertMapping("matrix").ToDictionary(uv => uv.Key.AssertString("mk").Value, uv => uv.Value.AssertLiteralString("mk")));
                                     }
                                 break;
                                 case "maxParallel":
-                                    Strategy.MaxParallel = (int)sv.Value.AssertNumber("maxParallel").Value;
+                                    Strategy.MaxParallel = sv.Value.AssertLiteralString("maxParallel");
                                 break;
                             }
                         }
                     }
                 break;
                 case "continueOnError":
-                    ContinueOnError = kv.Value.AssertBoolean("continueOnError").Value;
+                    ContinueOnError = kv.Value.AssertLiteralString("continueOnError");
                 break;
                 case "container":
                     Container = new Container().Parse(kv.Value);
                 break;
                 case "timeoutInMinutes":
-                    TimeoutInMinutes = (int)kv.Value.AssertNumber("timeoutInMinutes").Value;
+                    TimeoutInMinutes = kv.Value.AssertLiteralString("timeoutInMinutes");
                 break;
                 case "cancelTimeoutInMinutes":
-                    CancelTimeoutInMinutes = (int)kv.Value.AssertNumber("cancelTimeoutInMinutes").Value;
+                    CancelTimeoutInMinutes = kv.Value.AssertLiteralString("cancelTimeoutInMinutes");
                 break;
                 case "variables":
                     Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
                     AzureDevops.ParseVariables(context, Variables, kv.Value);
                 break;
                 case "services":
-                    Services = kv.Value.AssertMapping("services").ToDictionary(mv => mv.Key.AssertString("services").Value, mv => new Container().Parse(mv.Value));
+                    Services = kv.Value.AssertMapping("services").ToDictionary(mv => mv.Key.AssertLiteralString("services"), mv => new Container().Parse(mv.Value));
                 break;
                 case "steps":
                     Steps = new List<TaskStep>();
@@ -147,7 +148,7 @@ public class Job {
                     }
                 break;
                 case "templateContext":
-                    TemplateContext = kv.Value;
+                    TemplateContext = AzureDevops.ConvertAllScalarsToString(kv.Value);
                 break;
                 case "pool":
                     Pool = new Pool().Parse(context, kv.Value);
@@ -165,6 +166,27 @@ public class Job {
                                     EnvironmentResourceType = envm.Value.ToString();
                                 break;
                             }
+                        }
+                    }
+                break;
+                case "uses":
+                    foreach(var envm in kv.Value.AssertMapping("uses")) {
+                        switch(envm.Key.ToString()) {
+                            case "repositories":
+                                UsesRepositories = envm.Value.AssertSequence("uses.repositories").Select(r => r.ToString()).ToArray();
+                            break;
+                            case "pools":
+                                UsesPools = envm.Value.AssertSequence("uses.repositories").Select(r => r.ToString()).ToArray();
+                            break;
+                        }
+                    }
+                break;
+                case "workspace":
+                    foreach(var envm in kv.Value.AssertMapping("workspace")) {
+                        switch(envm.Key.ToString()) {
+                            case "clean":
+                                WorkspaceClean = envm.Value.AssertLiteralString("workspace.clean");
+                            break;
                         }
                     }
                 break;
@@ -196,14 +218,14 @@ public class Job {
         if(Condition?.Length > 0) {
             job["condition"] = new StringContextData(Condition);
         }
-        if(ContinueOnError) {
-            job["continueOnError"] = new BooleanContextData(ContinueOnError);
+        if(ContinueOnError != null) {
+            job["continueOnError"] = new StringContextData(ContinueOnError);
         }
-        if(TimeoutInMinutes > 0) {
-            job["timeoutInMinutes"] = new NumberContextData(TimeoutInMinutes);
+        if(TimeoutInMinutes != null) {
+            job["timeoutInMinutes"] = new StringContextData(TimeoutInMinutes);
         }
-        if(CancelTimeoutInMinutes > 0) {
-            job["cancelTimeoutInMinutes"] = new NumberContextData(CancelTimeoutInMinutes);
+        if(CancelTimeoutInMinutes != null) {
+            job["cancelTimeoutInMinutes"] = new StringContextData(CancelTimeoutInMinutes);
         }
         if(Container != null) {
             job["container"] = Container.ToContextData();
@@ -255,6 +277,29 @@ public class Job {
         }
         if(Pool != null) {
             job["pool"] = Pool.ToContextData();
+        }
+        if(UsesRepositories != null || UsesPools != null) {
+            var usesRefs = new DictionaryContextData();
+            if(UsesRepositories != null) {
+                var usesRepositories = new ArrayContextData();
+                foreach(var repo in UsesRepositories) {
+                    usesRepositories.Add(new StringContextData(repo));
+                }
+                usesRefs["repositories"] = usesRepositories;
+            }
+            if(UsesPools != null) {
+                var usesPools = new ArrayContextData();
+                foreach(var pool in UsesPools) {
+                    usesPools.Add(new StringContextData(pool));
+                }
+                usesRefs["pools"] = usesPools;
+            }
+            job["uses"] = usesRefs;
+        }
+        if(WorkspaceClean?.Length > 0) {
+            var workspace = new DictionaryContextData();
+            job["workspace"] = workspace;
+            workspace["clean"] = new StringContextData(WorkspaceClean);
         }
         return job;
     }

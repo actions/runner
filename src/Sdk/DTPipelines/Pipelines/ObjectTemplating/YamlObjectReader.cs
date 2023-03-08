@@ -19,11 +19,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TextReader input,
             bool yamlAnchors = false,
             bool yamlFold = false,
-            bool yamlMerge = false)
+            bool yamlMerge = false,
+            bool preserveString = false,
+            bool forceAzurePipelines = false)
         {
             m_fileId = fileId;
             m_parser = yamlAnchors ? (IParser) new YamlAnchorParser(new Parser(input), yamlMerge) : new Parser(input);
             m_yamlFold = yamlFold;
+            m_preserve_string = preserveString;
+            m_force_azure_pipelines = forceAzurePipelines;
         }
 
         private string GetScalarStringValue(Scalar scalar) {
@@ -320,19 +324,31 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             Scalar scalar,
             out BooleanToken value)
         {
-            // YAML 1.2 "core" schema https://yaml.org/spec/1.2/spec.html#id2804923
-            switch (scalar.Value ?? String.Empty)
-            {
-                case "true":
-                case "True":
-                case "TRUE":
-                    value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, true);
-                    return true;
-                case "false":
-                case "False":
-                case "FALSE":
-                    value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, false);
-                    return true;
+            if(m_force_azure_pipelines) {
+                switch (scalar.Value ?? String.Empty)
+                {
+                    case "true":
+                        value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, true, scalar.Value);
+                        return true;
+                    case "false":
+                        value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, false, scalar.Value);
+                        return true;
+                }
+            } else {
+                // YAML 1.2 "core" schema https://yaml.org/spec/1.2/spec.html#id2804923
+                switch (scalar.Value ?? String.Empty)
+                {
+                    case "true":
+                    case "True":
+                    case "TRUE":
+                        value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, true, scalar.Value);
+                        return true;
+                    case "false":
+                    case "False":
+                    case "FALSE":
+                        value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, false, scalar.Value);
+                        return true;
+                }
             }
 
             value = default;
@@ -347,27 +363,29 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var str = scalar.Value;
             if (!String.IsNullOrEmpty(str))
             {
-                // Check for [-+]?(\.inf|\.Inf|\.INF)|\.nan|\.NaN|\.NAN
-                switch (str)
-                {
-                    case ".inf":
-                    case ".Inf":
-                    case ".INF":
-                    case "+.inf":
-                    case "+.Inf":
-                    case "+.INF":
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.PositiveInfinity);
-                        return true;
-                    case "-.inf":
-                    case "-.Inf":
-                    case "-.INF":
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.NegativeInfinity);
-                        return true;
-                    case ".nan":
-                    case ".NaN":
-                    case ".NAN":
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.NaN);
-                        return true;
+                if(!m_force_azure_pipelines) {
+                    // Check for [-+]?(\.inf|\.Inf|\.INF)|\.nan|\.NaN|\.NAN
+                    switch (str)
+                    {
+                        case ".inf":
+                        case ".Inf":
+                        case ".INF":
+                        case "+.inf":
+                        case "+.Inf":
+                        case "+.INF":
+                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.PositiveInfinity, m_preserve_string ? str : null);
+                            return true;
+                        case "-.inf":
+                        case "-.Inf":
+                        case "-.INF":
+                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.NegativeInfinity, m_preserve_string ? str : null);
+                            return true;
+                        case ".nan":
+                        case ".NaN":
+                        case ".NAN":
+                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.NaN, m_preserve_string ? str : null);
+                            return true;
+                    }
                 }
 
                 // Otherwise check [-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?
@@ -409,7 +427,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         // Try parse
                         if (Double.TryParse(str, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var doubleValue))
                         {
-                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue);
+                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
                             return true;
                         }
                         // Otherwise exceeds range
@@ -443,7 +461,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             // Try parse
                             if (Double.TryParse(str, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var doubleValue))
                             {
-                                value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, (Double)doubleValue);
+                                value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, (Double)doubleValue, m_preserve_string ? str : null);
                                 return true;
                             }
                             // Otherwise exceeds range
@@ -476,7 +494,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Try parse
                     if (Double.TryParse(str, NumberStyles.None, CultureInfo.InvariantCulture, out var doubleValue))
                     {
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue);
+                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
                         return true;
                     }
 
@@ -491,7 +509,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Try parse
                     if (Double.TryParse(str, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var doubleValue))
                     {
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue);
+                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
                         return true;
                     }
 
@@ -507,7 +525,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Try parse
                     if (Int32.TryParse(str.Substring(2), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var integerValue))
                     {
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, integerValue);
+                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, integerValue, m_preserve_string ? str : null);
                         return true;
                     }
 
@@ -515,7 +533,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ThrowInvalidValue(scalar, c_integerTag); // throws
                 }
                 // Check for 0o[0-9]+
-                else if (firstChar == '0' &&
+                else if (!m_force_azure_pipelines && firstChar == '0' &&
                     str.Length > 2 &&
                     str[1] == 'o' &&
                     str.Skip(2).All(x => x >= '0' && x <= '7'))
@@ -532,7 +550,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         ThrowInvalidValue(scalar, c_integerTag); // throws
                     }
 
-                    value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, integerValue);
+                    value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, integerValue, m_preserve_string ? str : null);
                     return true;
                 }
             }
@@ -545,16 +563,25 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             Scalar scalar,
             out NullToken value)
         {
-            // YAML 1.2 "core" schema https://yaml.org/spec/1.2/spec.html#id2804923
-            switch (scalar.Value ?? String.Empty)
-            {
-                case "":
-                case "null":
-                case "Null":
-                case "NULL":
-                case "~":
-                    value = new NullToken(m_fileId, scalar.Start.Line, scalar.Start.Column);
-                    return true;
+            if(m_force_azure_pipelines) {
+                switch (scalar.Value ?? String.Empty)
+                {
+                    case "null":
+                        value = new NullToken(m_fileId, scalar.Start.Line, scalar.Start.Column, m_preserve_string ? scalar.Value : null);
+                        return true;
+                }
+            } else {
+                // YAML 1.2 "core" schema https://yaml.org/spec/1.2/spec.html#id2804923
+                switch (scalar.Value ?? String.Empty)
+                {
+                    case "":
+                    case "null":
+                    case "Null":
+                    case "NULL":
+                    case "~":
+                        value = new NullToken(m_fileId, scalar.Start.Line, scalar.Start.Column, m_preserve_string ? scalar.Value : null);
+                        return true;
+                }
             }
 
             value = default;
@@ -576,6 +603,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private readonly Int32? m_fileId;
         private readonly IParser m_parser;
         private readonly bool m_yamlFold;
+        private readonly bool m_preserve_string;
+        private readonly bool m_force_azure_pipelines;
         private ParsingEvent m_current;
     }
 }

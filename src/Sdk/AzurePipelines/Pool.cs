@@ -17,7 +17,7 @@ public class Pool {
         foreach(var kv in poolToken) {
             switch(kv.Key.AssertString("key").Value) {
                 case "name":
-                    Name = kv.Value is NullToken ? null : kv.Value.AssertString("name").Value;
+                    Name = kv.Value.AssertLiteralString("name");
                 break;
                 case "vmImage":
                     VmImage = kv.Value.AssertString("name").Value;

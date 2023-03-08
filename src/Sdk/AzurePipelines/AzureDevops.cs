@@ -87,16 +87,16 @@ public class AzureDevops {
                             parameters = kv.Value;
                         break;
                         case "name":
-                            name = kv.Value.AssertString("variables").Value;
+                            name = kv.Value.AssertLiteralString("variables");
                         break;
                         case "value":
                             value = kv.Value.AssertLiteralString("variables");
                         break;
                         case "readonly":
-                            isReadonly = kv.Value.AssertBoolean("variables").Value;
+                            isReadonly = kv.Value.AssertAzurePipelinesBoolean("variables");
                         break;
                         case "group":
-                            group = kv.Value.AssertString("variables").Value;
+                            group = kv.Value.AssertLiteralString("variables");
                         break;
                     }
                 }
@@ -136,16 +136,16 @@ public class AzureDevops {
                         tstep.Condition = mstep[i].Value.AssertLiteralString("step value");
                     break;
                     case "continueOnError":
-                        tstep.ContinueOnError = mstep[i].Value.AssertBoolean("step value").Clone(true);
+                        tstep.ContinueOnError = new BooleanToken(null, null, null, mstep[i].Value.AssertAzurePipelinesBoolean("step value"));
                     break;
                     case "enabled":
-                        tstep.Enabled = mstep[i].Value.AssertBoolean("step value").Value;
+                        tstep.Enabled = mstep[i].Value.AssertAzurePipelinesBoolean("step value");
                     break;
                     case "retryCountOnTaskFailure":
-                        tstep.RetryCountOnTaskFailure = (int)mstep[i].Value.AssertNumber("step value").Value;
+                        tstep.RetryCountOnTaskFailure = Int32.Parse(mstep[i].Value.AssertLiteralString("step value"));
                     break;
                     case "timeoutInMinutes":
-                        tstep.TimeoutInMinutes = mstep[i].Value.AssertNumber("step value").Clone(true);
+                        tstep.TimeoutInMinutes = new NumberToken(null, null, null, Int32.Parse(mstep[i].Value.AssertLiteralString("step value")));
                     break;
                     case "target":
                         if(mstep[i].Value is StringToken targetStr) {
@@ -415,7 +415,8 @@ public class AzureDevops {
         TemplateToken token;
         using (var stringReader = new StringReader(fileContent))
         {
-            var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
+            // preserveString is needed for azure pipelines compatability of the templateContext property all boolean and number token are casted to string without loosing it's exact string value
+            var yamlObjectReader = new YamlObjectReader(fileId, stringReader, preserveString: true, forceAzurePipelines: true);
             token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
         }
 
@@ -516,5 +517,21 @@ public class AzureDevops {
         var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
         templateContext.Errors.Check();
         return evaluatedResult.AssertMapping("root");
+    }
+
+    public static TemplateToken ConvertAllScalarsToString(TemplateToken token) {
+        if(token is MappingToken map) {
+            for(int i = 0; i < map.Count; i++) {
+                map[i] = new KeyValuePair<ScalarToken, TemplateToken>(map[i].Key, ConvertAllScalarsToString(map[i].Value));
+            }
+            return token;
+        } else if(token is SequenceToken seq) {
+            for(int i = 0; i < seq.Count; i++) {
+                seq[i] = ConvertAllScalarsToString(seq[i]);
+            }
+            return token;
+        } else {
+            return new StringToken(token.FileId, token.Line, token.Column, token.ToString());
+        }
     }
 }

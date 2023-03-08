@@ -18,16 +18,17 @@ public class Stage {
     public TemplateToken TemplateContext { get; set; }
     public Dictionary<string, Azure.Devops.Stage> Dependencies { get; set; }
     public Pool Pool { get; set; }
+    public String LockBehavior { get; set; }
 
     public Stage Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var jobToken = source.AssertMapping("job-root");
         foreach(var kv in jobToken) {
             switch(kv.Key.AssertString("key").Value) {
                 case "stage":
-                    Name = kv.Value is NullToken ? null : kv.Value.AssertString("name").Value;
+                    Name = kv.Value.AssertLiteralString("name");
                 break;
                 case "displayName":
-                    DisplayName = kv.Value.AssertString("name").Value;
+                    DisplayName = kv.Value.AssertLiteralString("name");
                 break;
                 case "dependsOn":
                     DependsOn = (from dep in kv.Value.AssertScalarOrSequence("dependsOn") select dep.AssertString("dep").Value).ToArray();
@@ -44,10 +45,13 @@ public class Stage {
                     Job.ParseJobs(context, Jobs, kv.Value.AssertSequence(""));
                 break;
                 case "templateContext":
-                    TemplateContext = kv.Value;
+                    TemplateContext = AzureDevops.ConvertAllScalarsToString(kv.Value);
                 break;
                 case "pool":
                     Pool = new Pool().Parse(context, kv.Value);
+                break;
+                case "lockBehavior":
+                    LockBehavior = kv.Value.AssertLiteralString("lockBehavior have to be of type string");
                 break;
             }
         }
@@ -101,6 +105,9 @@ public class Stage {
         stage["jobs"] = jobs;
         if(Pool != null) {
             stage["pool"] = Pool.ToContextData();
+        }
+        if(LockBehavior != null) {
+            stage["lockBehavior"] = new StringContextData(LockBehavior);
         }
         return stage;
     }

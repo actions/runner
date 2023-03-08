@@ -122,6 +122,29 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' was expected.");
         }
 
+        public static bool TryParseAzurePipelinesBoolean(string literalString, out bool val) {
+            if(string.Equals(literalString, "true", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "y", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "yes", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "on", StringComparison.OrdinalIgnoreCase)) {
+                val = true;
+                return true;
+            }
+            if(string.Equals(literalString, "false", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "f", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "no", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "off", StringComparison.OrdinalIgnoreCase)) {
+                val = false;
+                return true;
+            }
+            val = false;
+            return false;
+        }
+
+        public static bool AssertAzurePipelinesBoolean(this TemplateToken value, string objectDescription) {
+            if(value is LiteralToken literalToken) {
+                var literalString = literalToken.ToString();
+                if(TryParseAzurePipelinesBoolean(literalString, out var ret)) {
+                    return ret;
+                }
+            }
+            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with value true | y | yes | on | false | n | no | off was expected.");
+        }
+
         internal static void AssertUnexpectedValue(
             this LiteralToken literal,
             string objectDescription)

@@ -7,10 +7,10 @@ using GitHub.DistributedTask.WebApi;
 namespace Runner.Server.Azure.Devops {
 
 public class Strategy {
-    public int? Parallel { get; set; }
+    public string Parallel { get; set; }
     public Dictionary<string, Dictionary<string, string>> Matrix { get; set; }
     public string MatrixExpression { get; set; }
-    public int? MaxParallel { get; set; }
+    public string MaxParallel { get; set; }
     public RunOnceStrategy RunOnce { get; internal set; }
     public CanaryStrategy Canary { get; internal set; }
     public RollingStrategy Rolling { get; internal set; }
@@ -86,14 +86,14 @@ public class Strategy {
     }
 
     public class CanaryStrategy : RunOnceStrategy {
-        public double[] Increments { get; set; }
+        public string[] Increments { get; set; }
         public override DictionaryContextData ToContextData() {
             var data = base.ToContextData();
             if(Increments != null) {
                 var incr = new ArrayContextData();
                 data["increments"] = incr;
                 foreach(var inc in Increments) {
-                    incr.Add(new NumberContextData(inc));
+                    incr.Add(new StringContextData(inc));
                 }
             }
             return data;
@@ -101,14 +101,11 @@ public class Strategy {
     }
 
     public class RollingStrategy : RunOnceStrategy {
-        public int? MaxParallel { get; set; }
-        public int? MaxParallelPercent { get; set; }
+        public string MaxParallel { get; set; }
         public override DictionaryContextData ToContextData() {
             var data = base.ToContextData();
             if(MaxParallel != null) {
-                data["maxParallel"] = new NumberContextData(MaxParallel.Value);
-            } else if(MaxParallelPercent != null) {
-                data["maxParallel"] = new StringContextData($"{MaxParallelPercent}%");
+                data["maxParallel"] = new StringContextData(MaxParallel);
             }
             return data;
         }
@@ -119,10 +116,10 @@ public class Strategy {
     public DictionaryContextData ToContextData() {
         var strategy = new DictionaryContextData();
         if(Parallel != null) {
-            strategy["parallel"] = new NumberContextData(Parallel.Value);
+            strategy["parallel"] = new StringContextData(Parallel);
         } else if(Matrix != null || MatrixExpression != null) {
             if(MaxParallel != null) {
-                strategy["maxParallel"] = new NumberContextData(MaxParallel.Value);
+                strategy["maxParallel"] = new StringContextData(MaxParallel);
             }
             if(Matrix != null) {
                 var matrix = new DictionaryContextData();

@@ -48,16 +48,16 @@ namespace GitHub.DistributedTask.Pipelines
                 step["condition"] = new StringContextData(Condition);
             }
             if(ContinueOnError is BooleanToken b && b.Value) {
-                step["continueOnError"] = new BooleanContextData(b.Value);
+                step["continueOnError"] = new StringContextData(b.Value.ToString());
             }
             if(!Enabled) {
-                step["enabled"] = new BooleanContextData(Enabled);
+                step["enabled"] = new StringContextData(Enabled.ToString());
             }
             if(RetryCountOnTaskFailure > 0) {
-                step["retryCountOnTaskFailure"] = new NumberContextData(RetryCountOnTaskFailure);
+                step["retryCountOnTaskFailure"] = new StringContextData(RetryCountOnTaskFailure.ToString());
             }
             if(TimeoutInMinutes is NumberToken n && n.Value > 0) {
-                step["timeoutInMinutes"] = new NumberContextData(n.Value);
+                step["timeoutInMinutes"] = new StringContextData(n.Value.ToString());
             }
             if(Target != null) {
                 if(Target.SettableVariables == null && Target.Commands == null) {

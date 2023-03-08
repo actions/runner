@@ -13,7 +13,13 @@ public class Pipeline {
     public List<Stage> Stages { get; set; }
     public Dictionary<string, VariableValue> Variables { get; set; }
     public Dictionary<string, Container> ContainerResources { get; set; }
+    public Dictionary<string, TemplateToken> OtherResources { get; set; }
+    public TemplateToken Trigger { get; set; }
+    public TemplateToken Pr { get; set; }
+    public TemplateToken Schedules { get; set; }
     public Pool Pool { get; set; }
+    public bool? AppendCommitMessageToRunName { get; set; }
+    public String LockBehavior { get; set; }
 
     public Pipeline Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var pipelineRootToken = source.AssertMapping("pipeline-root");
@@ -21,7 +27,7 @@ public class Pipeline {
         foreach(var kv in pipelineRootToken) {
             switch(kv.Key.AssertString("key").Value) {
                 case "name":
-                    Name = kv.Value.AssertString("name").Value;
+                    Name = kv.Value.AssertLiteralString("name");
                 break;
                 case "variables":
                     Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
@@ -70,11 +76,32 @@ public class Pipeline {
                                     ContainerResources[container[0].Value.AssertString("").Value] = new Container().Parse(container);
                                 }
                             break;
+                            default:
+                                if(OtherResources == null) {
+                                    OtherResources = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
+                                }
+                                OtherResources[resource.Key.ToString()] = resource.Value;
+                            break;
                         } 
                     }
                 break;
                 case "pool":
                     Pool = new Pool().Parse(context, kv.Value);
+                break;
+                case "appendCommitMessageToRunName":
+                    AppendCommitMessageToRunName = kv.Value.AssertAzurePipelinesBoolean("appendCommitMessageToRunName have to be of type bool");
+                break;
+                case "lockBehavior":
+                    LockBehavior = kv.Value.AssertLiteralString("lockBehavior have to be of type string");
+                break;
+                case "trigger":
+                    Trigger = kv.Value;
+                break;
+                case "pr":
+                    Pr = kv.Value;
+                break;
+                case "schedules":
+                    Schedules = kv.Value;
                 break;
             }
         }
@@ -106,13 +133,20 @@ public class Pipeline {
             }
             pipeline["variables"] = vars;
         }
-        if(ContainerResources != null) {
+        if(ContainerResources != null || OtherResources != null) {
             var resources = new DictionaryContextData();
             pipeline["resources"] = resources;
-            var containers = new ArrayContextData();
-            resources["containers"] = containers;
-            foreach(var cr in ContainerResources) {
-                containers.Add(cr.Value.ToContextData(cr.Key));
+            if(ContainerResources != null) {
+                var containers = new ArrayContextData();
+                resources["containers"] = containers;
+                foreach(var cr in ContainerResources) {
+                    containers.Add(cr.Value.ToContextData(cr.Key));
+                }
+            }
+            if(OtherResources != null) {
+                foreach(var ores in OtherResources) {
+                    resources[ores.Key] = ores.Value.ToContextData();
+                }
             }
         }
         if(Stages != null) {
@@ -125,6 +159,22 @@ public class Pipeline {
         if(Pool != null) {
             pipeline["pool"] = Pool.ToContextData();
         }
+        if(AppendCommitMessageToRunName != null) {
+            pipeline["appendCommitMessageToRunName"] = new StringContextData(AppendCommitMessageToRunName.Value.ToString());
+        }
+        if(LockBehavior != null) {
+            pipeline["lockBehavior"] = new StringContextData(LockBehavior);
+        }
+        if(Trigger != null) {
+            pipeline["trigger"] = Trigger.ToContextData();
+        }
+        if(Pr != null) {
+            pipeline["pr"] = Pr.ToContextData();
+        }
+        if(Schedules != null) {
+            pipeline["schedules"] = Schedules.ToContextData();
+        }
+        
         return pipeline;
     }
 }

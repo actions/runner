@@ -6,17 +6,17 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 namespace Runner.Server.Azure.Devops {
 
 public class MountReadonlyConfig {
-    public bool Work { get; set; }
-    public bool Externals { get; set; }
-    public bool Tools { get; set; }
-    public bool Tasks { get; set; }
+    public bool? Work { get; set; }
+    public bool? Externals { get; set; }
+    public bool? Tools { get; set; }
+    public bool? Tasks { get; set; }
 }
 
 public class Container {
     public string Image { get; set; }
     public string Endpoint { get; set; }
     public Dictionary<string, string> Env { get; set; }
-    public bool MapDockerSocket { get; set; }
+    public bool? MapDockerSocket { get; set; }
     public string Options { get; set; }
     public string[] Ports { get; set; }
     public string[] Volumes { get; set; }
@@ -44,7 +44,7 @@ public class Container {
                         }
                     break;
                     case "mapDockerSocket":
-                        MapDockerSocket = kv.Value.AssertBoolean("mapDockerSocket").Value;
+                        MapDockerSocket = kv.Value.AssertAzurePipelinesBoolean("mapDockerSocket");
                     break;
                     case "options":
                         Options = kv.Value.AssertLiteralString("options");
@@ -60,16 +60,16 @@ public class Container {
                         foreach(var ekv in kv.Value.AssertMapping("env mapping")) {
                             switch(ekv.Key.AssertString("env key").Value) {
                                 case "work":
-                                    MountReadonly.Work = ekv.Value.AssertBoolean("bool value").Value;
+                                    MountReadonly.Work = ekv.Value.AssertAzurePipelinesBoolean("bool value");
                                 break;
                                 case "externals":
-                                    MountReadonly.Externals = ekv.Value.AssertBoolean("bool value").Value;
+                                    MountReadonly.Externals = ekv.Value.AssertAzurePipelinesBoolean("bool value");
                                 break;
                                 case "tools":
-                                    MountReadonly.Tools = ekv.Value.AssertBoolean("bool value").Value;
+                                    MountReadonly.Tools = ekv.Value.AssertAzurePipelinesBoolean("bool value");
                                 break;
                                 case "tasks":
-                                    MountReadonly.Tasks = ekv.Value.AssertBoolean("bool value").Value;
+                                    MountReadonly.Tasks = ekv.Value.AssertAzurePipelinesBoolean("bool value");
                                 break;
                             }
                         }
@@ -89,8 +89,8 @@ public class Container {
             container["container"] = new StringContextData(name);
         }
         container["image"] = new StringContextData(Image);
-        if(MapDockerSocket) {
-            container["mapDockerSocket"] = new BooleanContextData(MapDockerSocket);
+        if(MapDockerSocket != null) {
+            container["mapDockerSocket"] = new StringContextData(MapDockerSocket.Value.ToString());
         }
         if(Options?.Length > 0) {
             container["options"] = new StringContextData(Options);
@@ -121,10 +121,18 @@ public class Container {
         }
         if(MountReadonly != null) {
             var mountReadonly = new DictionaryContextData();
-            mountReadonly["work"] = new BooleanContextData(MountReadonly.Work);
-            mountReadonly["externals"] = new BooleanContextData(MountReadonly.Externals);
-            mountReadonly["tools"] = new BooleanContextData(MountReadonly.Tools);
-            mountReadonly["tasks"] = new BooleanContextData(MountReadonly.Tasks);
+            if(MountReadonly.Work != null) {
+                mountReadonly["work"] = new StringContextData(MountReadonly.Work.Value.ToString());
+            }
+            if(MountReadonly.Externals != null) {
+                mountReadonly["externals"] = new StringContextData(MountReadonly.Externals.Value.ToString());
+            }
+            if(MountReadonly.Tools != null) {
+                mountReadonly["tools"] = new StringContextData(MountReadonly.Tools.Value.ToString());
+            }
+            if(MountReadonly.Tasks != null) {
+                mountReadonly["tasks"] = new StringContextData(MountReadonly.Tasks.Value.ToString());
+            }
             container["mountReadonly"] = mountReadonly;
         }
         return container;
