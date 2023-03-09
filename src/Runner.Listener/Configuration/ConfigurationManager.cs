@@ -113,7 +113,7 @@ namespace GitHub.Runner.Listener.Configuration
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
             _term.WriteSection("Authentication");
-            string tempToken=string.Empty;
+            string registerToken=string.Empty;
             while (true)
             {
                 // When testing against a dev deployment of Actions Service, set this environment variable
@@ -132,9 +132,8 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     runnerSettings.GitHubUrl = inputUrl;
                     // registration-token
-                    var registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
+                    registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
                     // runner-registration
-                    tempToken = registerToken;
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     runnerSettings.UseV2Flow = authResult.UseV2Flow;
@@ -196,8 +195,7 @@ namespace GitHub.Runner.Listener.Configuration
             if(runnerSettings.UseV2Flow)
             {
                 _term.WriteLine("Using V2 flow");
-                var githubPAT = command.GetGitHubPersonalAccessToken(true);
-                agentPools = await GetAgentPoolsAsyncFromDotcom(runnerSettings.GitHubUrl, githubPAT);
+                agentPools = await GetAgentPoolsAsyncFromDotcom(runnerSettings.GitHubUrl, registerToken);
             }
             else
             {
@@ -742,11 +740,8 @@ namespace GitHub.Runner.Listener.Configuration
                 using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                 using (var httpClient = new HttpClient(httpClientHandler))
                 {
-                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
-                    HostContext.SecretMasker.AddValue(base64EncodingToken);
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                    httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
                     var responseStatus = System.Net.HttpStatusCode.OK;
                     try
