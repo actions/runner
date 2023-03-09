@@ -310,21 +310,27 @@ public class AzureDevops {
         var stages = new List<Stage>();
         switch(type) {
             case "object":
-            return val.ToContextData();
+            return val == null ? null : val.ToContextData();
             case "boolean":
-            return val.Type == TokenType.Null ? new BooleanContextData(false) : val.ToContextData().AssertBoolean("boolean type");
+                if(val == null || string.Equals(val.AssertLiteralString("boolean"), "false", StringComparison.OrdinalIgnoreCase)) {
+                    return new BooleanContextData(false);
+                }
+                if(string.Equals(val.AssertLiteralString("boolean"), "true", StringComparison.OrdinalIgnoreCase)) {
+                    return new BooleanContextData(true);
+                }
+                throw new Exception($"{val.AssertLiteralString("boolean")} is not a valid boolean expected true or false (OrdinalIgnoreCase)");
             case "number":
-            return val.Type == TokenType.Null ? new NumberContextData(0) : val.ToContextData().AssertNumber("number type");
+            return val == null ? new NumberContextData(0) : new NumberContextData(Int32.Parse(val.AssertLiteralString("number")));
             case "string":
-            return val.Type == TokenType.Null ? new StringContextData("") : val.ToContextData().AssertString("string type");
+            return val == null ? new StringContextData("") : new StringContextData(val.AssertLiteralString("string"));
             case "step":
-            if(val.Type == TokenType.Null) {
+            if(val == null) {
                 return null;
             }
             ParseSteps(context, steps, val);
             return steps[0].ToContextData();
             case "stepList":
-            if(val.Type == TokenType.Null) {
+            if(val == null) {
                 return new ArrayContextData();
             }
             foreach(var step2 in val.AssertSequence("")) {
@@ -336,12 +342,12 @@ public class AzureDevops {
             }
             return stepList;
             case "job":
-            if(val.Type == TokenType.Null) {
+            if(val == null) {
                 return null;
             }
             return new Job().Parse(context, val).ToContextData();
             case "jobList":
-            if(val.Type == TokenType.Null) {
+            if(val == null) {
                 return new ArrayContextData();
             }
             Job.ParseJobs(context, jobs, val.AssertSequence(""));
@@ -351,14 +357,14 @@ public class AzureDevops {
             }
             return jobList;
             case "deployment":
-            if(val.Type == TokenType.Null) {
+            if(val == null) {
                 return null;
             }
             var djob = new Job().Parse(context, val);
             if(!djob.DeploymentJob) throw new Exception("Only Deployment Jobs are valid");
             return djob.ToContextData();
             case "deploymentList":
-            if(val.Type == TokenType.Null) {
+            if(val == null) {
                 return new ArrayContextData();
             }
             Job.ParseJobs(context, jobs, val.AssertSequence(""));
@@ -369,12 +375,12 @@ public class AzureDevops {
             }
             return djobList;
             case "stage":
-            if(val.Type == TokenType.Null) {
+            if(val == null) {
                 return null;
             }
             return new Stage().Parse(context, val).ToContextData();
             case "stageList":
-            if(val.Type == TokenType.Null) {
+            if(val == null) {
                 return new ArrayContextData();
             }
             Stage.ParseStages(context, stages, val.AssertSequence(""));
@@ -481,7 +487,7 @@ public class AzureDevops {
                 var varm = mparam.AssertMapping("varm");
                 string name = null;
                 string type = "object";
-                TemplateToken def = new NullToken(null, null, null);
+                TemplateToken def = null;
                 foreach(var kv in varm) {
                     switch((kv.Key as StringToken).Value) {
                         case "name":
