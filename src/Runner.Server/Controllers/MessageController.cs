@@ -3387,7 +3387,11 @@ namespace Runner.Server.Controllers
                                 case "rev":
                                 return "0";
                             }
-                            return pipeline.Variables.TryGetValue(keyFormat[0], out var val) ? (depth <= 10 ? evalMacro(val.Value, depth + 1) : val.Value) : v.Groups[0].Value;
+                            // check for cli/rootVariables variables first
+                            if(rootVariables.TryGetValue(keyFormat[0], out var strval)) {
+                                return depth <= 10 ? evalMacro(strval, depth + 1) : strval;
+                            }
+                            return pipeline.Variables != null && pipeline.Variables.TryGetValue(keyFormat[0], out var val) ? (depth <= 10 ? evalMacro(val.Value, depth + 1) : val.Value) : v.Groups[0].Value;
                         });
                     };
                     pipeline.Name = evalMacro(pipeline.Name, 0);

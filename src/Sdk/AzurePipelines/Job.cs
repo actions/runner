@@ -18,6 +18,7 @@ public class Job {
     public string TimeoutInMinutes { get; set; }
     public string CancelTimeoutInMinutes { get; set; }
     public Dictionary<string, VariableValue> Variables { get; set; }
+    private Dictionary<string, VariableValue> variablesMetaData;
     public Dictionary<string, Container> Services { get; set; }
     public List<TaskStep> Steps { get; set; }
     public TemplateToken TemplateContext { get; set; }
@@ -135,8 +136,10 @@ public class Job {
                     CancelTimeoutInMinutes = kv.Value.AssertLiteralString("cancelTimeoutInMinutes");
                 break;
                 case "variables":
-                    Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                    AzureDevops.ParseVariables(context, Variables, kv.Value);
+                    variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                    AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
+                    Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
+                    variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                 break;
                 case "services":
                     Services = kv.Value.AssertMapping("services").ToDictionary(mv => mv.Key.AssertLiteralString("services"), mv => new Container().Parse(mv.Value));
@@ -250,10 +253,20 @@ public class Job {
         if(Strategy != null) {
             job["strategy"] = Strategy.ToContextData();
         }
-        if(Variables != null) {
-            var vars = new DictionaryContextData();
-            foreach(var v in Variables) {
-                vars[v.Key] = new StringContextData(v.Value.Value);
+        if(variablesMetaData != null) {
+            var vars = new ArrayContextData();
+            foreach(var v in variablesMetaData) {
+                var varmap = new DictionaryContextData();
+                vars.Add(varmap);
+                if(v.Value.IsGroup) {
+                    varmap["group"] = new StringContextData(v.Value.Value);
+                } else {
+                    varmap["name"] = new StringContextData(v.Key);
+                    varmap["value"] = new StringContextData(v.Value.Value);
+                    if(v.Value.IsReadonly) {
+                        varmap["readonly"] = new StringContextData("true");
+                    }
+                }
             }
             job["variables"] = vars;
         }

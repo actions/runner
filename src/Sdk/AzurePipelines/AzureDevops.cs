@@ -105,10 +105,14 @@ public class AzureDevops {
                     continue;
                 }
                 if(group != null) {
+                    // Skip metainfo while preprocessing via onlyStaticVars
+                    if(!onlyStaticVars) {
+                        vars[Guid.NewGuid().ToString()] = new VariableValue(group) { IsGroup = true };
+                    }
                     var groupVars = context.VariablesProvider?.GetVariablesForEnvironment(group);
                     if(groupVars != null) {
                         foreach(var v in groupVars) {
-                            vars[v.Key] = new VariableValue(v.Value);
+                            vars[v.Key] = new VariableValue(v.Value) { IsGroupMember = true };
                         }
                     }
                 } else if(template != null) {

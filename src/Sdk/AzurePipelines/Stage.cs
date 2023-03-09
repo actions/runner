@@ -15,6 +15,7 @@ public class Stage {
     public string Condition { get; set; }
     public List<Job> Jobs { get; set; }
     public Dictionary<string, VariableValue> Variables { get; set; }
+    private Dictionary<string, VariableValue> variablesMetaData;
     public TemplateToken TemplateContext { get; set; }
     public Dictionary<string, Azure.Devops.Stage> Dependencies { get; set; }
     public Pool Pool { get; set; }
@@ -37,8 +38,10 @@ public class Stage {
                     Condition = kv.Value.AssertLiteralString("condition");
                 break;
                 case "variables":
-                    Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                    AzureDevops.ParseVariables(context, Variables, kv.Value);
+                    variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                    AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
+                    Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
+                    variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                 break;
                 case "jobs":
                     Jobs = new List<Job>();
@@ -91,10 +94,20 @@ public class Stage {
             }
             stage["dependsOn"] = dependsOn;
         }
-        if(Variables != null) {
-            var vars = new DictionaryContextData();
-            foreach(var v in Variables) {
-                vars[v.Key] = new StringContextData(v.Value.Value);
+        if(variablesMetaData != null) {
+            var vars = new ArrayContextData();
+            foreach(var v in variablesMetaData) {
+                var varmap = new DictionaryContextData();
+                vars.Add(varmap);
+                if(v.Value.IsGroup) {
+                    varmap["group"] = new StringContextData(v.Value.Value);
+                } else {
+                    varmap["name"] = new StringContextData(v.Key);
+                    varmap["value"] = new StringContextData(v.Value.Value);
+                    if(v.Value.IsReadonly) {
+                        varmap["readonly"] = new StringContextData("true");
+                    }
+                }
             }
             stage["variables"] = vars;
         }

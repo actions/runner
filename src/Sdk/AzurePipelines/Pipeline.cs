@@ -12,6 +12,7 @@ public class Pipeline {
     public string Name { get; set; }
     public List<Stage> Stages { get; set; }
     public Dictionary<string, VariableValue> Variables { get; set; }
+    private Dictionary<string, VariableValue> variablesMetaData;
     public Dictionary<string, Container> ContainerResources { get; set; }
     public Dictionary<string, TemplateToken> OtherResources { get; set; }
     public TemplateToken Trigger { get; set; }
@@ -30,8 +31,10 @@ public class Pipeline {
                     Name = kv.Value.AssertLiteralString("name");
                 break;
                 case "variables":
-                    Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                    AzureDevops.ParseVariables(context, Variables, kv.Value);
+                    variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                    AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
+                    Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
+                    variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                 break;
                 case "extends":
                     var ext = kv.Value.AssertMapping("extends");
@@ -126,10 +129,20 @@ public class Pipeline {
         if(!string.IsNullOrEmpty(Name)) {
             pipeline["name"] = new StringContextData(Name);
         }
-        if(Variables != null) {
-            var vars = new DictionaryContextData();
-            foreach(var v in Variables) {
-                vars[v.Key] = new StringContextData(v.Value.Value);
+        if(variablesMetaData != null) {
+            var vars = new ArrayContextData();
+            foreach(var v in variablesMetaData) {
+                var varmap = new DictionaryContextData();
+                vars.Add(varmap);
+                if(v.Value.IsGroup) {
+                    varmap["group"] = new StringContextData(v.Value.Value);
+                } else {
+                    varmap["name"] = new StringContextData(v.Key);
+                    varmap["value"] = new StringContextData(v.Value.Value);
+                    if(v.Value.IsReadonly) {
+                        varmap["readonly"] = new StringContextData("true");
+                    }
+                }
             }
             pipeline["variables"] = vars;
         }
