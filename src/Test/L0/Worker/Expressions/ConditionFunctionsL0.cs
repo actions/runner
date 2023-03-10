@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Expressions;
 using Moq;
@@ -105,6 +103,36 @@ namespace GitHub.Runner.Common.Tests.Worker.Expressions
             }
         }
 
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData(ActionResult.Failure, ActionResult.Failure, true)]
+        [InlineData(ActionResult.Failure, ActionResult.Success, false)]
+        [InlineData(ActionResult.Success, ActionResult.Failure, true)]
+        [InlineData(ActionResult.Success, ActionResult.Success, false)]
+        [InlineData(ActionResult.Success, null, false)]
+        public void FailureFunctionComposite(ActionResult jobStatus, ActionResult? actionStatus, bool expected)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange
+
+                var executionContext = InitializeExecutionContext(hc);
+                executionContext.Setup(x => x.GetGitHubContext("action_status")).Returns(actionStatus.ToString());
+                executionContext.Setup(x => x.IsEmbedded).Returns(true);
+                executionContext.Setup(x => x.Stage).Returns(ActionRunStage.Main);
+
+                _jobContext.Status = jobStatus;
+
+                // Act.
+                bool actual = Evaluate("failure()");
+
+                // Assert.
+                Assert.Equal(expected, actual);
+
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -134,12 +162,43 @@ namespace GitHub.Runner.Common.Tests.Worker.Expressions
             }
         }
 
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData(ActionResult.Failure, ActionResult.Failure, false)]
+        [InlineData(ActionResult.Failure, ActionResult.Success, true)]
+        [InlineData(ActionResult.Success, ActionResult.Failure, false)]
+        [InlineData(ActionResult.Success, ActionResult.Success, true)]
+        [InlineData(ActionResult.Success, null, true)]
+        public void SuccessFunctionComposite(ActionResult jobStatus, ActionResult? actionStatus, bool expected)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange
+
+                var executionContext = InitializeExecutionContext(hc);
+                executionContext.Setup(x => x.GetGitHubContext("action_status")).Returns(actionStatus.ToString());
+                executionContext.Setup(x => x.IsEmbedded).Returns(true);
+                executionContext.Setup(x => x.Stage).Returns(ActionRunStage.Main);
+
+                _jobContext.Status = jobStatus;
+
+                // Act.
+                bool actual = Evaluate("success()");
+
+                // Assert.
+                Assert.Equal(expected, actual);
+
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             return new TestHostContext(this, testName);
         }
 
-        private void InitializeExecutionContext(TestHostContext hc)
+        private Mock<IExecutionContext> InitializeExecutionContext(TestHostContext hc)
         {
             _jobContext = new JobContext();
 
@@ -149,6 +208,8 @@ namespace GitHub.Runner.Common.Tests.Worker.Expressions
 
             _templateContext = new TemplateContext();
             _templateContext.State[nameof(IExecutionContext)] = executionContext.Object;
+
+            return executionContext;
         }
 
         private bool Evaluate(string expression)

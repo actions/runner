@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
@@ -83,6 +84,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
                 _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                    .Returns((string tag, string line) =>
                             {
@@ -102,6 +104,88 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[stopToken]", null));
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+            }
+        }
+
+        [Theory]
+        [InlineData("stop-commands", "1")]
+        [InlineData("", "1")]
+        [InlineData("set-env", "1")]
+        [InlineData("stop-commands", "true")]
+        [InlineData("", "true")]
+        [InlineData("set-env", "true")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StopProcessCommand__AllowsInvalidStopTokens__IfEnvVarIsSet(string invalidToken, string allowUnsupportedStopCommandTokens)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+                _ec.Object.Global.JobTelemetry = new List<JobTelemetry>();
+                var expressionValues = new DictionaryContextData
+                {
+                    ["env"] =
+#if OS_WINDOWS
+                        new DictionaryContextData{ { Constants.Variables.Actions.AllowUnsupportedStopCommandTokens, new StringContextData(allowUnsupportedStopCommandTokens) }}
+#else
+                        new CaseSensitiveDictionaryContextData { { Constants.Variables.Actions.AllowUnsupportedStopCommandTokens, new StringContextData(allowUnsupportedStopCommandTokens) } }
+#endif
+                };
+                _ec.Setup(x => x.ExpressionValues).Returns(expressionValues);
+
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
+            }
+        }
+
+        [Theory]
+        [InlineData("stop-commands")]
+        [InlineData("")]
+        [InlineData("set-env")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StopProcessCommand__FailOnInvalidStopTokens(string invalidToken)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+                _ec.Object.Global.JobTelemetry = new List<JobTelemetry>();
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
+                Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StopProcessCommandAcceptsValidToken()
+        {
+            var validToken = "randomToken";
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{validToken}", null));
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::{validToken}::", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StopProcessCommandMasksValidTokenForEntireRun()
+        {
+            var validToken = "randomToken";
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{validToken}", null));
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets(validToken));
+
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::{validToken}::", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets(validToken));
             }
         }
 
@@ -144,8 +228,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 // Set up a few things
                 // 1. Job request message (with ACTIONS_STEP_DEBUG = true)
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
                 var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
@@ -185,6 +269,84 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.True(_commandManager.TryProcessCommand(ec, "::echo::on", null));
                 Assert.True(ec.EchoOnActionCommand);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void IssueCommandInvalidColumns()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
+                   .Returns((string tag, string line) =>
+                            {
+                                hc.GetTrace().Info($"{tag} {line}");
+                                return 1;
+                            });
+
+                var registeredCommands = new HashSet<string>(new string[1] { "warning" });
+                ActionCommand command;
+
+                // Columns when lines are different
+                ActionCommand.TryParseV2("::warning line=1,endLine=2,col=1,endColumn=2::this is a warning", registeredCommands, out command);
+                Assert.Equal("1", command.Properties["col"]);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.False(command.Properties.ContainsKey("col"));
+
+                // No lines with columns
+                ActionCommand.TryParseV2("::warning col=1,endColumn=2::this is a warning", registeredCommands, out command);
+                Assert.Equal("1", command.Properties["col"]);
+                Assert.Equal("2", command.Properties["endColumn"]);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.False(command.Properties.ContainsKey("col"));
+                Assert.False(command.Properties.ContainsKey("endColumn"));
+
+                // No line with endLine
+                ActionCommand.TryParseV2("::warning endLine=1::this is a warning", registeredCommands, out command);
+                Assert.Equal("1", command.Properties["endLine"]);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal(command.Properties["endLine"], command.Properties["line"]);
+
+                // No column with endColumn
+                ActionCommand.TryParseV2("::warning line=1,endColumn=2::this is a warning", registeredCommands, out command);
+                Assert.Equal("2", command.Properties["endColumn"]);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal(command.Properties["endColumn"], command.Properties["col"]);
+
+                // Empty Strings
+                ActionCommand.TryParseV2("::warning line=,endLine=3::this is a warning", registeredCommands, out command);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal(command.Properties["line"], command.Properties["endLine"]);
+
+                // Nonsensical line values
+                ActionCommand.TryParseV2("::warning line=4,endLine=3::this is a warning", registeredCommands, out command);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.False(command.Properties.ContainsKey("line"));
+                Assert.False(command.Properties.ContainsKey("endLine"));
+
+                /// Nonsensical column values
+                ActionCommand.TryParseV2("::warning line=1,endLine=1,col=3,endColumn=2::this is a warning", registeredCommands, out command);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.False(command.Properties.ContainsKey("col"));
+                Assert.False(command.Properties.ContainsKey("endColumn"));
+
+                // Valid
+                ActionCommand.TryParseV2("::warning line=1,endLine=1,col=1,endColumn=2::this is a warning", registeredCommands, out command);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal("1", command.Properties["line"]);
+                Assert.Equal("1", command.Properties["endLine"]);
+                Assert.Equal("1", command.Properties["col"]);
+                Assert.Equal("2", command.Properties["endColumn"]);
+
+                // Backwards compatibility
+                ActionCommand.TryParseV2("::warning line=1,col=1,file=test.txt::this is a warning", registeredCommands, out command);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal("1", command.Properties["line"]);
+                Assert.False(command.Properties.ContainsKey("endLine"));
+                Assert.Equal("1", command.Properties["col"]);
+                Assert.False(command.Properties.ContainsKey("endColumn"));
             }
         }
 
@@ -256,6 +418,31 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void AddMaskWithMultilineValue()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Act
+                _commandManager.TryProcessCommand(_ec.Object, $"::add-mask::abc%0Ddef%0Aghi%0D%0Ajkl", null);
+                _commandManager.TryProcessCommand(_ec.Object, $"::add-mask:: %0D  %0A   %0D%0A    %0D", null);
+
+                // Assert
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("abc"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("def"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("ghi"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("jkl"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("abc\rdef\nghi\r\njkl"));
+                Assert.Equal("", hc.SecretMasker.MaskSecrets(""));
+                Assert.Equal(" ", hc.SecretMasker.MaskSecrets(" "));
+                Assert.Equal("  ", hc.SecretMasker.MaskSecrets("  "));
+                Assert.Equal("   ", hc.SecretMasker.MaskSecrets("   "));
+                Assert.Equal("    ", hc.SecretMasker.MaskSecrets("    "));
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
             var hostContext = new TestHostContext(this, testName);
@@ -268,6 +455,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 new EchoCommandExtension(),
                 new InternalPluginSetRepoPathCommandExtension(),
                 new SetEnvCommandExtension(),
+                new WarningCommandExtension(),
+                new AddMaskCommandExtension(),
             };
             foreach (var command in commands)
             {
@@ -285,6 +474,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
+            _ec.Object.Global.Variables = new Variables(
+                hostContext,
+                new Dictionary<string, VariableValue>()
+            );
 
             // Command manager
             _commandManager = new ActionCommandManager();
@@ -292,5 +485,19 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             return hostContext;
         }
+
+        private DictionaryContextData GetExpressionValues()
+        {
+            return new DictionaryContextData
+            {
+                ["env"] =
+#if OS_WINDOWS
+                        new DictionaryContextData()
+#else
+                        new CaseSensitiveDictionaryContextData()
+#endif
+            };
+        }
+
     }
 }

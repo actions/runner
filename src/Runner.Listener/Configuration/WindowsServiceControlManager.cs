@@ -1,4 +1,5 @@
 #if OS_WINDOWS
+#pragma warning disable CA1416
 using System;
 using System.IO;
 using System.Linq;
@@ -169,4 +170,5 @@ namespace GitHub.Runner.Listener.Configuration
         }
     }
 }
+#pragma warning restore CA1416
 #endif

@@ -10,7 +10,13 @@ arg_2=${2}
 RUNNER_ROOT=`pwd`
 
 UNIT_PATH=/etc/systemd/system/${SVC_NAME}
-TEMPLATE_PATH=./bin/actions.runner.service.template
+TEMPLATE_PATH=$GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE
+IS_CUSTOM_TEMPLATE=0
+if [[ -z $TEMPLATE_PATH ]]; then
+    TEMPLATE_PATH=./bin/actions.runner.service.template
+else
+    IS_CUSTOM_TEMPLATE=1
+fi
 TEMP_PATH=./bin/actions.runner.service.temp
 CONFIG_PATH=.service
 
@@ -31,7 +37,11 @@ function failed()
 }
 
 if [ ! -f "${TEMPLATE_PATH}" ]; then
-    failed "Must run from runner root or install is corrupt"
+    if [[ $IS_CUSTOM_TEMPLATE = 0 ]]; then
+        failed "Must run from runner root or install is corrupt"
+    else
+        failed "Service file at '$GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE' using GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE env variable is not found"
+    fi
 fi
 
 #check if we run as root
@@ -106,25 +116,37 @@ function stop()
 
 function uninstall()
 {
-    stop
-    systemctl disable ${SVC_NAME} || failed "failed to disable  ${SVC_NAME}"
-    rm "${UNIT_PATH}" || failed "failed to delete ${UNIT_PATH}"
+    if service_exists; then
+        stop
+        systemctl disable ${SVC_NAME} || failed "failed to disable ${SVC_NAME}"
+        rm "${UNIT_PATH}" || failed "failed to delete ${UNIT_PATH}"
+    else
+        echo "Service ${SVC_NAME} is not installed"
+    fi    
     if [ -f "${CONFIG_PATH}" ]; then
       rm "${CONFIG_PATH}" || failed "failed to delete ${CONFIG_PATH}"
     fi
     systemctl daemon-reload || failed "failed to reload daemons"
 }
 
+function service_exists() {
+    if [ -f "${UNIT_PATH}" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 function status()
 {
-    if [ -f "${UNIT_PATH}" ]; then
+    if service_exists; then
         echo
         echo "${UNIT_PATH}"
     else
         echo
         echo "not installed"
         echo
-        return
+        exit 1
     fi
 
     systemctl --no-pager status ${SVC_NAME}

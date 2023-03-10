@@ -1,13 +1,13 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Linq;
 using System.IO;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Linq;
+using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -20,8 +20,9 @@ namespace GitHub.Runner.Worker.Handlers
         IStepHost StepHost { get; set; }
         Dictionary<string, string> Inputs { get; set; }
         string ActionDirectory { get; set; }
+        List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
         Task RunAsync(ActionRunStage stage);
-        void PrintActionDetails(ActionRunStage stage);
+        void PrepareExecution(ActionRunStage stage);
     }
 
     public abstract class Handler : RunnerService
@@ -35,15 +36,72 @@ namespace GitHub.Runner.Worker.Handlers
         protected IActionCommandManager ActionCommandManager { get; private set; }
 
         public Pipelines.ActionStepDefinitionReference Action { get; set; }
+        public bool IsActionStep => Action != null; 
         public Dictionary<string, string> Environment { get; set; }
         public Variables RuntimeVariables { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
         public IStepHost StepHost { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public string ActionDirectory { get; set; }
+        public List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
 
-        public virtual void PrintActionDetails(ActionRunStage stage)
+        public void PrepareExecution(ActionRunStage stage)
         {
+            // Print out action details
+            PrintActionDetails(stage);
+
+            // Get telemetry for the action
+            PopulateActionTelemetry(stage);
+        }
+
+        protected void PopulateActionTelemetry(ActionRunStage stage)
+        {
+            if (!IsActionStep)
+            {
+                ExecutionContext.StepTelemetry.Type = "runner";
+                ExecutionContext.StepTelemetry.Action = $"{stage} Job Hook";
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            {
+                ExecutionContext.StepTelemetry.Type = "docker";
+                var registryAction = Action as Pipelines.ContainerRegistryReference;
+                ExecutionContext.StepTelemetry.Action = registryAction.Image;
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Script)
+            {
+                ExecutionContext.StepTelemetry.Type = "run";
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Repository)
+            {
+                ExecutionContext.StepTelemetry.Type = "repository";
+                var repoAction = Action as Pipelines.RepositoryPathReference;
+                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                {
+                    ExecutionContext.StepTelemetry.Action = repoAction.Path;
+                }
+                else
+                {
+                    ExecutionContext.StepTelemetry.Ref = repoAction.Ref;
+                    if (string.IsNullOrEmpty(repoAction.Path))
+                    {
+                        ExecutionContext.StepTelemetry.Action = repoAction.Name;
+                    }
+                    else
+                    {
+                        ExecutionContext.StepTelemetry.Action = $"{repoAction.Name}/{repoAction.Path}";
+                    }
+                }
+            }
+            else
+            {
+                // this should never happen
+                Trace.Error($"Can't generate ref for {Action.Type.ToString()}");
+            }
+        }
+
+        protected virtual void PrintActionDetails(ActionRunStage stage)
+        {
+
             if (stage == ActionRunStage.Post)
             {
                 ExecutionContext.Output($"Post job cleanup.");

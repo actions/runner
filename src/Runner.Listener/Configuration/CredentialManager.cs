@@ -18,7 +18,7 @@ namespace GitHub.Runner.Listener.Configuration
 
     public class CredentialManager : RunnerService, ICredentialManager
     {
-        public static readonly Dictionary<string, Type> CredentialTypes = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
+        public static readonly Dictionary<string, Type> CredentialTypes = new(StringComparer.OrdinalIgnoreCase)
         {
             { Constants.Configuration.OAuth, typeof(OAuthCredential)},
             { Constants.Configuration.OAuthAccessToken, typeof(OAuthAccessTokenCredential)},

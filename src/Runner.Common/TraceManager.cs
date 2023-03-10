@@ -1,4 +1,3 @@
-﻿using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -15,23 +14,25 @@ namespace GitHub.Runner.Common
 
     public sealed class TraceManager : ITraceManager
     {
-        private readonly ConcurrentDictionary<string, Tracing> _sources = new ConcurrentDictionary<string, Tracing>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, Tracing> _sources = new(StringComparer.OrdinalIgnoreCase);
         private readonly HostTraceListener _hostTraceListener;
+        private readonly StdoutTraceListener _stdoutTraceListener;
         private TraceSetting _traceSetting;
         private ISecretMasker _secretMasker;
 
-        public TraceManager(HostTraceListener traceListener, ISecretMasker secretMasker)
-            : this(traceListener, new TraceSetting(), secretMasker)
+        public TraceManager(HostTraceListener traceListener, StdoutTraceListener stdoutTraceListener, ISecretMasker secretMasker)
+            : this(traceListener, stdoutTraceListener, new TraceSetting(), secretMasker)
         {
         }
 
-        public TraceManager(HostTraceListener traceListener, TraceSetting traceSetting, ISecretMasker secretMasker)
+        public TraceManager(HostTraceListener traceListener, StdoutTraceListener stdoutTraceListener, TraceSetting traceSetting, ISecretMasker secretMasker)
         {
             // Validate and store params.
             ArgUtil.NotNull(traceListener, nameof(traceListener));
             ArgUtil.NotNull(traceSetting, nameof(traceSetting));
             ArgUtil.NotNull(secretMasker, nameof(secretMasker));
             _hostTraceListener = traceListener;
+            _stdoutTraceListener = stdoutTraceListener;
             _traceSetting = traceSetting;
             _secretMasker = secretMasker;
 
@@ -82,7 +83,7 @@ namespace GitHub.Runner.Common
                     Level = sourceTraceLevel.ToSourceLevels()
                 };
             }
-            return new Tracing(name, _secretMasker, sourceSwitch, _hostTraceListener);
+            return new Tracing(name, _secretMasker, sourceSwitch, _hostTraceListener, _stdoutTraceListener);
         }
     }
 }

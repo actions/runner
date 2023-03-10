@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common
         string ReadSecret();
         void Write(string message, ConsoleColor? colorCode = null);
         void WriteLine();
-        void WriteLine(string line, ConsoleColor? colorCode = null);
+        void WriteLine(string line, ConsoleColor? colorCode = null, bool skipTracing = false);
         void WriteError(Exception ex);
         void WriteError(string line);
         void WriteSection(string message);
@@ -81,7 +81,7 @@ namespace GitHub.Runner.Common
             }
 
             // Trace whether a value was entered.
-            string val = new String(chars.ToArray());
+            string val = new(chars.ToArray());
             if (!string.IsNullOrEmpty(val))
             {
                 HostContext.SecretMasker.AddValue(val);
@@ -116,9 +116,12 @@ namespace GitHub.Runner.Common
 
         // Do not add a format string overload. Terminal messages are user facing and therefore
         // should be localized. Use the Loc method in the StringUtil class.
-        public void WriteLine(string line, ConsoleColor? colorCode = null)
+        public void WriteLine(string line, ConsoleColor? colorCode = null, bool skipTracing = false)
         {
-            Trace.Info($"WRITE LINE: {line}");
+            if (!skipTracing)
+            {
+                Trace.Info($"WRITE LINE: {line}");
+            }
             if (!Silent)
             {
                 if (colorCode != null)
@@ -164,9 +167,8 @@ namespace GitHub.Runner.Common
             if (!Silent)
             {
                 Console.WriteLine();
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"# {message}");
                 Console.ResetColor();
+                Console.WriteLine($"# {message}");
                 Console.WriteLine();
             }
         }
@@ -177,9 +179,8 @@ namespace GitHub.Runner.Common
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write("√ ");
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine(message);
                 Console.ResetColor();
+                Console.WriteLine(message);
             }
         }
 

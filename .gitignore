@@ -8,16 +8,20 @@
 **/*.xproj
 **/*.xproj.user
 **/.vs
-**/.vscode
 **/*.error
 **/*.json.pretty
 .idea/
+.vscode
+!.vscode/launch.json
+!.vscode/tasks.json
 
 # output
 node_modules
 _downloads
 _layout
+_layout_trims
 _package
+_package_trims
 _dotnetsdk
 TestResults
 TestLogs

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using GitHub.Services.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Text;
 
 namespace GitHub.Runner.Worker
 {
@@ -21,13 +22,14 @@ namespace GitHub.Runner.Worker
     public sealed class Worker : RunnerService, IWorker
     {
         private readonly TimeSpan _workerStartTimeout = TimeSpan.FromSeconds(30);
-        private ManualResetEvent _completedCommand = new ManualResetEvent(false);
-        
+        private ManualResetEvent _completedCommand = new(false);
+
         // Do not mask the values of these secrets
-        private static HashSet<String> SecretVariableMaskWhitelist = new HashSet<String>(StringComparer.OrdinalIgnoreCase){ 
+        private static HashSet<String> SecretVariableMaskWhitelist = new(StringComparer.OrdinalIgnoreCase)
+        {
             Constants.Variables.Actions.StepDebug,
             Constants.Variables.Actions.RunnerDebug
-            };
+        };
 
         public async Task<int> RunAsync(string pipeIn, string pipeOut)
         {
@@ -42,6 +44,7 @@ namespace GitHub.Runner.Worker
                 ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
                 VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
                 var jobRunner = HostContext.CreateService<IJobRunner>();
+                var terminal = HostContext.GetService<ITerminal>();
 
                 using (var channel = HostContext.CreateService<IProcessChannel>())
                 using (var jobRequestCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken))
@@ -63,7 +66,22 @@ namespace GitHub.Runner.Worker
                     Trace.Info("Message received.");
                     ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
                     ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
-                    var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(channelMessage.Body);
+                    Pipelines.AgentJobRequestMessage jobMessage = null;
+                    try
+                    {
+                        jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(channelMessage.Body);
+                    }
+                    catch (JsonReaderException ex)
+                    {
+                        if (channelMessage.Body.Length > ex.LinePosition + 10)
+                        {
+                            var errorChunk = channelMessage.Body.Substring(ex.LinePosition - 10, 20);
+                            terminal.WriteError($"Worker received invalid Json at position '{ex.LinePosition}': {errorChunk} ({Convert.ToBase64String(Encoding.UTF8.GetBytes(errorChunk))})");
+                        }
+
+                        throw;
+                    }
+
                     ArgUtil.NotNull(jobMessage, nameof(jobMessage));
                     HostContext.WritePerfCounter($"WorkerJobMessageReceived_{jobMessage.RequestId.ToString()}");
 
@@ -138,10 +156,10 @@ namespace GitHub.Runner.Worker
                     HostContext.SecretMasker.AddValue(value);
 
                     // Also add each individual line. Typically individual lines are processed from STDOUT of child processes.
-                    var split = value.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    var split = value.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                     foreach (var item in split)
                     {
-                        HostContext.SecretMasker.AddValue(item.Trim());
+                        HostContext.SecretMasker.AddValue(item);
                     }
                 }
             }

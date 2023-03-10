@@ -2,17 +2,20 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
-using GitHub.Services.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using System.Linq;
-using GitHub.Services.Common;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Jwt;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Listener
 {
@@ -25,38 +28,47 @@ namespace GitHub.Runner.Listener
         bool Cancel(JobCancelMessage message);
         Task WaitAsync(CancellationToken token);
         Task ShutdownAsync();
+        event EventHandler<JobStatusEventArgs> JobStatus;
     }
 
-    // This implementation of IDobDispatcher is not thread safe.
-    // It is base on the fact that the current design of runner is dequeue
-    // and process one message from message queue everytime.
-    // In addition, it only execute one job every time, 
-    // and server will not send another job while this one is still running.
+    // This implementation of IJobDispatcher is not thread safe.
+    // It is based on the fact that the current design of the runner is a dequeue
+    // and processes one message from the message queue at a time.
+    // In addition, it only executes one job every time, 
+    // and the server will not send another job while this one is still running.
     public sealed class JobDispatcher : RunnerService, IJobDispatcher
     {
-        private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
+        private static Regex _invalidJsonRegex = new(@"invalid\ Json\ at\ position\ '(\d+)':", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new();
         private int _poolId;
-        RunnerSettings _runnerSetting;
+
+        IConfigurationStore _configurationStore;
+
+        RunnerSettings _runnerSettings;
         private static readonly string _workerProcessName = $"Runner.Worker{IOUtil.ExeExtension}";
 
         // this is not thread-safe
-        private readonly Queue<Guid> _jobDispatchedQueue = new Queue<Guid>();
-        private readonly ConcurrentDictionary<Guid, WorkerDispatcher> _jobInfos = new ConcurrentDictionary<Guid, WorkerDispatcher>();
+        private readonly Queue<Guid> _jobDispatchedQueue = new();
+        private readonly ConcurrentDictionary<Guid, WorkerDispatcher> _jobInfos = new();
 
-        //allow up to 30sec for any data to be transmitted over the process channel
-        //timeout limit can be overwrite by environment GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT
+        // allow up to 30sec for any data to be transmitted over the process channel
+        // timeout limit can be overwritten by environment GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT
         private TimeSpan _channelTimeout;
 
-        private TaskCompletionSource<bool> _runOnceJobCompleted = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _runOnceJobCompleted = new();
+
+        public event EventHandler<JobStatusEventArgs> JobStatus;
+
+        private bool _isRunServiceJob;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
 
             // get pool id from config
-            var configurationStore = hostContext.GetService<IConfigurationStore>();
-            _runnerSetting = configurationStore.GetSettings();
-            _poolId = _runnerSetting.PoolId;
+            _configurationStore = hostContext.GetService<IConfigurationStore>();
+            _runnerSettings = _configurationStore.GetSettings();
+            _poolId = _runnerSettings.PoolId;
 
             int channelTimeoutSeconds;
             if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT") ?? string.Empty, out channelTimeoutSeconds))
@@ -64,7 +76,7 @@ namespace GitHub.Runner.Listener
                 channelTimeoutSeconds = 30;
             }
 
-            // _channelTimeout should in range [30,  300] seconds
+            // _channelTimeout should be in range [30,  300] seconds
             _channelTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(channelTimeoutSeconds, 30), 300));
             Trace.Info($"Set runner/worker IPC timeout to {_channelTimeout.TotalSeconds} seconds.");
         }
@@ -76,6 +88,8 @@ namespace GitHub.Runner.Listener
         public void Run(Pipelines.AgentJobRequestMessage jobRequestMessage, bool runOnce = false)
         {
             Trace.Info($"Job request {jobRequestMessage.RequestId} for plan {jobRequestMessage.Plan.PlanId} job {jobRequestMessage.JobId} received.");
+
+            _isRunServiceJob = MessageUtil.IsRunServiceJob(jobRequestMessage.MessageType);
 
             WorkerDispatcher currentDispatch = null;
             if (_jobDispatchedQueue.Count > 0)
@@ -102,7 +116,7 @@ namespace GitHub.Runner.Listener
                 }
             }
 
-            WorkerDispatcher newDispatch = new WorkerDispatcher(jobRequestMessage.JobId, jobRequestMessage.RequestId);
+            WorkerDispatcher newDispatch = new(jobRequestMessage.JobId, jobRequestMessage.RequestId);
             if (runOnce)
             {
                 Trace.Info("Start dispatcher for one time used runner.");
@@ -230,15 +244,33 @@ namespace GitHub.Runner.Listener
                     return;
                 }
 
-                // base on the current design, server will only send one job for a given runner everytime.
-                // if the runner received a new job request while a previous job request is still running, this typically indicate two situations
-                // 1. an runner bug cause server and runner mismatch on the state of the job request, ex. runner not renew jobrequest properly but think it still own the job reqest, however server already abandon the jobrequest.
-                // 2. a server bug or design change that allow server send more than one job request to an given runner that haven't finish previous job request.
+                if (this._isRunServiceJob)
+                {
+                    Trace.Error($"We are not yet checking the state of jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
+                    jobDispatch.WorkerCancellationTokenSource.Cancel();
+                    return;
+                }
+
+                // based on the current design, server will only send one job for a given runner at a time.
+                // if the runner received a new job request while a previous job request is still running, this typically indicates two situations
+                // 1. a runner bug caused a server and runner mismatch on the state of the job request, e.g. the runner didn't renew the jobrequest
+                //    properly but thinks it still owns the job reqest, however the server has already abandoned the jobrequest.
+                // 2. a server bug or design change that allowed the server to send more than one job request to an given runner that hasn't finished
+                //.   a previous job request.
                 var runnerServer = HostContext.GetService<IRunnerServer>();
                 TaskAgentJobRequest request = null;
                 try
                 {
                     request = await runnerServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
+                }
+                catch (TaskAgentJobNotFoundException ex)
+                {
+                    Trace.Error($"Catch job-not-found exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
+                    Trace.Error(ex);
+                    jobDispatch.WorkerCancellationTokenSource.Cancel();
+                    // make sure worker process exits before we return, otherwise we might leave an orphan worker process behind.
+                    await jobDispatch.WorkerDispatch;
+                    return;
                 }
                 catch (Exception ex)
                 {
@@ -247,7 +279,7 @@ namespace GitHub.Runner.Listener
                     Trace.Error(ex);
 
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
-                    // make sure worker process exit before we rethrow, otherwise we might leave orphan worker process behind.
+                    // make sure the worker process exits before we rethrow, otherwise we might leave orphan worker process behind.
                     await jobDispatch.WorkerDispatch;
 
                     // rethrow original exception
@@ -256,8 +288,8 @@ namespace GitHub.Runner.Listener
 
                 if (request.Result != null)
                 {
-                    // job request has been finished, the server already has result.
-                    // this means runner is busted since it still running that request.
+                    // job request has been finished, the server already has the result.
+                    // this means the runner is busted since it is still running that request.
                     // cancel the zombie worker, run next job request.
                     Trace.Error($"Received job request while previous job {jobDispatch.JobId} still running on worker. Cancel the previous job since the job request have been finished on server side with result: {request.Result.Value}.");
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
@@ -268,7 +300,7 @@ namespace GitHub.Runner.Listener
                     {
                         // at this point, the job execution might encounter some dead lock and even not able to be cancelled.
                         // no need to localize the exception string should never happen.
-                        throw new InvalidOperationException($"Job dispatch process for {jobDispatch.JobId} has encountered unexpected error, the dispatch task is not able to be canceled within 45 seconds.");
+                        throw new InvalidOperationException($"Job dispatch process for {jobDispatch.JobId} has encountered unexpected error, the dispatch task is not able to be cancelled within 45 seconds.");
                     }
                 }
                 else
@@ -318,6 +350,11 @@ namespace GitHub.Runner.Listener
             Busy = true;
             try
             {
+                if (JobStatus != null)
+                {
+                    JobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Busy));
+                }
+
                 if (previousJobDispatch != null)
                 {
                     Trace.Verbose($"Make sure the previous job request {previousJobDispatch.JobId} has successfully finished on worker.");
@@ -332,7 +369,7 @@ namespace GitHub.Runner.Listener
                 term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName}");
 
                 // first job request renew succeed.
-                TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
                 var notification = HostContext.GetService<IJobNotification>();
 
                 // lock renew cancellation token.
@@ -342,11 +379,13 @@ namespace GitHub.Runner.Listener
                     long requestId = message.RequestId;
                     Guid lockToken = Guid.Empty; // lockToken has never been used, keep this here of compat
 
+                    var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+
                     // start renew job request
                     Trace.Info($"Start renew job request {requestId} for job {message.JobId}.");
-                    Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, lockRenewalTokenSource.Token);
+                    Task renewJobRequest = RenewJobRequestAsync(message, systemConnection, _poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, lockRenewalTokenSource.Token);
 
-                    // wait till first renew succeed or job request is canceled
+                    // wait till first renew succeed or job request is cancelled
                     // not even start worker if the first renew fail
                     await Task.WhenAny(firstJobRequestRenewed.Task, renewJobRequest, Task.Delay(-1, jobRequestCancellationToken));
 
@@ -373,8 +412,9 @@ namespace GitHub.Runner.Listener
                     HostContext.WritePerfCounter($"JobRequestRenewed_{requestId.ToString()}");
 
                     Task<int> workerProcessTask = null;
-                    object _outputLock = new object();
-                    List<string> workerOutput = new List<string>();
+                    object _outputLock = new();
+                    List<string> workerOutput = new();
+                    bool printToStdout = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.PrintLogToStdout));
                     using (var processChannel = HostContext.CreateService<IProcessChannel>())
                     using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
@@ -396,7 +436,15 @@ namespace GitHub.Runner.Listener
                                         {
                                             lock (_outputLock)
                                             {
-                                                workerOutput.Add(stdout.Data);
+                                                if (!stdout.Data.StartsWith("[WORKER"))
+                                                {
+                                                    workerOutput.Add(stdout.Data);
+                                                }
+
+                                                if (printToStdout)
+                                                {
+                                                    term.WriteLine(stdout.Data, skipTracing: true);
+                                                }
                                             }
                                         }
                                     };
@@ -474,7 +522,6 @@ namespace GitHub.Runner.Listener
 
                         // we get first jobrequest renew succeed and start the worker process with the job message.
                         // send notification to machine provisioner.
-                        var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
                         var accessToken = systemConnection?.Authorization?.Parameters["AccessToken"];
                         notification.JobStarted(message.JobId, accessToken, systemConnection.Url);
 
@@ -496,7 +543,17 @@ namespace GitHub.Runner.Listener
                                 {
                                     detailInfo = string.Join(Environment.NewLine, workerOutput);
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
-                                    await LogWorkerProcessUnhandledException(message, detailInfo);
+
+
+                                    var jobServer = await InitializeJobServerAsync(systemConnection);
+                                    await LogWorkerProcessUnhandledException(jobServer, message, detailInfo);
+
+                                    // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
+                                    if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        Trace.Info($"Finish job with result 'Failed' due to IOException.");
+                                        await ForceFailJob(jobServer, message);
+                                    }
                                 }
 
                                 TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
@@ -620,12 +677,136 @@ namespace GitHub.Runner.Listener
             finally
             {
                 Busy = false;
+
+                if (JobStatus != null)
+                {
+                    JobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Online));
+                }
             }
         }
 
-        public async Task RenewJobRequestAsync(int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
+        internal async Task RenewJobRequestAsync(Pipelines.AgentJobRequestMessage message, ServiceEndpoint systemConnection, int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
         {
-            var runnerServer = HostContext.GetService<IRunnerServer>();
+            if (this._isRunServiceJob)
+            {
+                var runServer = await GetRunServerAsync(systemConnection);
+                await RenewJobRequestAsync(runServer, message.Plan.PlanId, message.JobId, firstJobRequestRenewed, token);
+            }
+            else
+            {
+                var runnerServer = HostContext.GetService<IRunnerServer>();
+                await RenewJobRequestAsync(runnerServer, poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, token);
+            }
+        }
+
+        private async Task RenewJobRequestAsync(IRunServer runServer, Guid planId, Guid jobId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
+        {
+            TaskAgentJobRequest request = null;
+            int firstRenewRetryLimit = 5;
+            int encounteringError = 0;
+
+            // renew lock during job running.
+            // stop renew only if cancellation token for lock renew task been signal or exception still happen after retry.
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    var renewResponse = await runServer.RenewJobAsync(planId, jobId, token);
+                    Trace.Info($"Successfully renew job {jobId}, job is valid till {renewResponse.LockedUntil}");
+
+                    if (!firstJobRequestRenewed.Task.IsCompleted)
+                    {
+                        // fire first renew succeed event.
+                        firstJobRequestRenewed.TrySetResult(0);
+                    }
+
+                    if (encounteringError > 0)
+                    {
+                        encounteringError = 0;
+                        HostContext.WritePerfCounter("JobRenewRecovered");
+                    }
+
+                    // renew again after 60 sec delay
+                    await HostContext.Delay(TimeSpan.FromSeconds(60), token);
+                }
+                catch (TaskOrchestrationJobNotFoundException)
+                {
+                    // no need for retry. the job is not valid anymore.
+                    Trace.Info($"TaskAgentJobNotFoundException received when renew job {jobId}, job is no longer valid, stop renew job request.");
+                    return;
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cance();
+                    // Stop renew only on cancellation token fired.
+                    Trace.Info($"job renew has been cancelled, stop renew job {jobId}.");
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error($"Catch exception during renew runner job {jobId}.");
+                    Trace.Error(ex);
+                    encounteringError++;
+
+                    // retry
+                    TimeSpan remainingTime = TimeSpan.Zero;
+                    if (!firstJobRequestRenewed.Task.IsCompleted)
+                    {
+                        // retry 5 times every 10 sec for the first renew
+                        if (firstRenewRetryLimit-- > 0)
+                        {
+                            remainingTime = TimeSpan.FromSeconds(10);
+                        }
+                    }
+                    else
+                    {
+                        // retry till reach lockeduntil + 5 mins extra buffer.
+                        remainingTime = request.LockedUntil.Value + TimeSpan.FromMinutes(5) - DateTime.UtcNow;
+                    }
+
+                    if (remainingTime > TimeSpan.Zero)
+                    {
+                        TimeSpan delayTime;
+                        if (!firstJobRequestRenewed.Task.IsCompleted)
+                        {
+                            Trace.Info($"Retrying lock renewal for job {jobId}. The first job renew request has failed.");
+                            delayTime = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                        }
+                        else
+                        {
+                            Trace.Info($"Retrying lock renewal for job {jobId}. Job is valid until {request.LockedUntil.Value}.");
+                            if (encounteringError > 5)
+                            {
+                                delayTime = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30));
+                            }
+                            else
+                            {
+                                delayTime = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
+                            }
+                        }
+
+                        try
+                        {
+                            // back-off before next retry.
+                            await HostContext.Delay(delayTime, token);
+                        }
+                        catch (OperationCanceledException) when (token.IsCancellationRequested)
+                        {
+                            Trace.Info($"job renew has been cancelled, stop renew job {jobId}.");
+                        }
+                    }
+                    else
+                    {
+                        Trace.Info($"Lock renewal has run out of retry, stop renew lock for job {jobId}.");
+                        HostContext.WritePerfCounter("JobRenewReachLimit");
+                        return;
+                    }
+                }
+            }
+        }
+
+        private async Task RenewJobRequestAsync(IRunnerServer runnerServer, int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
+        {
             TaskAgentJobRequest request = null;
             int firstRenewRetryLimit = 5;
             int encounteringError = 0;
@@ -637,13 +818,15 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, orchestrationId, token);
-
                     Trace.Info($"Successfully renew job request {requestId}, job is valid till {request.LockedUntil.Value}");
 
                     if (!firstJobRequestRenewed.Task.IsCompleted)
                     {
                         // fire first renew succeed event.
                         firstJobRequestRenewed.TrySetResult(0);
+
+                        // Update settings if the runner name has been changed server-side
+                        UpdateAgentNameIfNeeded(request.ReservedAgent?.Name);
                     }
 
                     if (encounteringError > 0)
@@ -672,7 +855,7 @@ namespace GitHub.Runner.Listener
                 {
                     // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cance();
                     // Stop renew only on cancellation token fired.
-                    Trace.Info($"job renew has been canceled, stop renew job request {requestId}.");
+                    Trace.Info($"job renew has been cancelled, stop renew job request {requestId}.");
                     return;
                 }
                 catch (Exception ex)
@@ -730,7 +913,7 @@ namespace GitHub.Runner.Listener
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
                         {
-                            Trace.Info($"job renew has been canceled, stop renew job request {requestId}.");
+                            Trace.Info($"job renew has been cancelled, stop renew job request {requestId}.");
                         }
                     }
                     else
@@ -741,6 +924,27 @@ namespace GitHub.Runner.Listener
                     }
                 }
             }
+        }
+
+        private void UpdateAgentNameIfNeeded(string agentName)
+        {
+            var isNewAgentName = !string.Equals(_runnerSettings.AgentName, agentName, StringComparison.Ordinal);
+            if (!isNewAgentName || string.IsNullOrEmpty(agentName))
+            {
+                return;
+            }
+
+            _runnerSettings.AgentName = agentName;
+            try
+            {
+                _configurationStore.SaveSettings(_runnerSettings);
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("Cannot update the settings file:");
+                Trace.Error(ex);
+            }
+
         }
 
         // Best effort upload any logs for this job.
@@ -765,90 +969,93 @@ namespace GitHub.Runner.Listener
                 var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection));
                 ArgUtil.NotNull(systemConnection, nameof(systemConnection));
 
-                var jobServer = HostContext.GetService<IJobServer>();
-                VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
-                VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
+                var server = await InitializeJobServerAsync(systemConnection);
 
-                await jobServer.ConnectAsync(jobConnection);
-
-                var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
-
-                var updatedRecords = new List<TimelineRecord>();
-                var logPages = new Dictionary<Guid, Dictionary<int, string>>();
-                var logRecords = new Dictionary<Guid, TimelineRecord>();
-                foreach (var log in logs)
+                if (server is IJobServer jobServer)
                 {
-                    var logName = Path.GetFileNameWithoutExtension(log);
-                    var logNameParts = logName.Split('_', StringSplitOptions.RemoveEmptyEntries);
-                    if (logNameParts.Length != 3)
-                    {
-                        Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
-                        continue;
-                    }
-                    var logPageSeperator = logName.IndexOf('_');
-                    var logRecordId = Guid.Empty;
-                    var pageNumber = 0;
+                    var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
 
-                    if (!Guid.TryParse(logNameParts[0], out Guid timelineId) || timelineId != timeline.Id)
+                    var updatedRecords = new List<TimelineRecord>();
+                    var logPages = new Dictionary<Guid, Dictionary<int, string>>();
+                    var logRecords = new Dictionary<Guid, TimelineRecord>();
+                    foreach (var log in logs)
                     {
-                        Trace.Warning($"log file '{log}' is not belongs to current job");
-                        continue;
-                    }
-
-                    if (!Guid.TryParse(logNameParts[1], out logRecordId))
-                    {
-                        Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
-                        continue;
-                    }
-
-                    if (!int.TryParse(logNameParts[2], out pageNumber))
-                    {
-                        Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
-                        continue;
-                    }
-
-                    var record = timeline.Records.FirstOrDefault(x => x.Id == logRecordId);
-                    if (record != null)
-                    {
-                        if (!logPages.ContainsKey(record.Id))
+                        var logName = Path.GetFileNameWithoutExtension(log);
+                        var logNameParts = logName.Split('_', StringSplitOptions.RemoveEmptyEntries);
+                        if (logNameParts.Length != 3)
                         {
-                            logPages[record.Id] = new Dictionary<int, string>();
-                            logRecords[record.Id] = record;
+                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            continue;
+                        }
+                        var logPageSeperator = logName.IndexOf('_');
+                        var logRecordId = Guid.Empty;
+                        var pageNumber = 0;
+
+                        if (!Guid.TryParse(logNameParts[0], out Guid timelineId) || timelineId != timeline.Id)
+                        {
+                            Trace.Warning($"log file '{log}' is not belongs to current job");
+                            continue;
                         }
 
-                        logPages[record.Id][pageNumber] = log;
-                    }
-                }
-
-                foreach (var pages in logPages)
-                {
-                    var record = logRecords[pages.Key];
-                    if (record.Log == null)
-                    {
-                        // Create the log
-                        record.Log = await jobServer.CreateLogAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, new TaskLog(String.Format(@"logs\{0:D}", record.Id)), default(CancellationToken));
-
-                        // Need to post timeline record updates to reflect the log creation
-                        updatedRecords.Add(record.Clone());
-                    }
-
-                    for (var i = 1; i <= pages.Value.Count; i++)
-                    {
-                        var logFile = pages.Value[i];
-                        // Upload the contents
-                        using (FileStream fs = File.Open(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        if (!Guid.TryParse(logNameParts[1], out logRecordId))
                         {
-                            var logUploaded = await jobServer.AppendLogContentAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, record.Log.Id, fs, default(CancellationToken));
+                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            continue;
                         }
 
-                        Trace.Info($"Uploaded unfinished log '{logFile}' for current job.");
-                        IOUtil.DeleteFile(logFile);
+                        if (!int.TryParse(logNameParts[2], out pageNumber))
+                        {
+                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            continue;
+                        }
+
+                        var record = timeline.Records.FirstOrDefault(x => x.Id == logRecordId);
+                        if (record != null)
+                        {
+                            if (!logPages.ContainsKey(record.Id))
+                            {
+                                logPages[record.Id] = new Dictionary<int, string>();
+                                logRecords[record.Id] = record;
+                            }
+
+                            logPages[record.Id][pageNumber] = log;
+                        }
+                    }
+
+                    foreach (var pages in logPages)
+                    {
+                        var record = logRecords[pages.Key];
+                        if (record.Log == null)
+                        {
+                            // Create the log
+                            record.Log = await jobServer.CreateLogAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, new TaskLog(String.Format(@"logs\{0:D}", record.Id)), default(CancellationToken));
+
+                            // Need to post timeline record updates to reflect the log creation
+                            updatedRecords.Add(record.Clone());
+                        }
+
+                        for (var i = 1; i <= pages.Value.Count; i++)
+                        {
+                            var logFile = pages.Value[i];
+                            // Upload the contents
+                            using (FileStream fs = File.Open(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                            {
+                                var logUploaded = await jobServer.AppendLogContentAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, record.Log.Id, fs, default(CancellationToken));
+                            }
+
+                            Trace.Info($"Uploaded unfinished log '{logFile}' for current job.");
+                            IOUtil.DeleteFile(logFile);
+                        }
+                    }
+
+                    if (updatedRecords.Count > 0)
+                    {
+                        await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, updatedRecords, CancellationToken.None);
                     }
                 }
-
-                if (updatedRecords.Count > 0)
+                else
                 {
-                    await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, updatedRecords, CancellationToken.None);
+                    Trace.Info("Job server does not support log upload yet.");
                 }
             }
             catch (Exception ex)
@@ -868,9 +1075,15 @@ namespace GitHub.Runner.Listener
                 return;
             }
 
+            if (this._isRunServiceJob)
+            {
+                Trace.Verbose($"Skip FinishAgentRequest call from Listener because MessageType is {message.MessageType}");
+                return;
+            }
+
             var runnerServer = HostContext.GetService<IRunnerServer>();
             int completeJobRequestRetryLimit = 5;
-            List<Exception> exceptions = new List<Exception>();
+            List<Exception> exceptions = new();
             while (completeJobRequestRetryLimit-- > 0)
             {
                 try
@@ -904,64 +1117,117 @@ namespace GitHub.Runner.Listener
         }
 
         // log an error issue to job level timeline record
-        private async Task LogWorkerProcessUnhandledException(Pipelines.AgentJobRequestMessage message, string errorMessage)
+        private async Task LogWorkerProcessUnhandledException(IRunnerService server, Pipelines.AgentJobRequestMessage message, string errorMessage)
         {
-            try
+            if (server is IJobServer jobServer)
             {
-                var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection));
-                ArgUtil.NotNull(systemConnection, nameof(systemConnection));
+                try
+                {
+                    var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
+                    ArgUtil.NotNull(timeline, nameof(timeline));
 
+                    TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
+                    ArgUtil.NotNull(jobRecord, nameof(jobRecord));
+
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(errorMessage) &&
+                            message.Variables.TryGetValue("DistributedTask.EnableRunnerIPCDebug", out var enableRunnerIPCDebug) &&
+                            StringUtil.ConvertToBoolean(enableRunnerIPCDebug.Value))
+                        {
+                            // the trace should be best effort and not affect any job result
+                            var match = _invalidJsonRegex.Match(errorMessage);
+                            if (match.Success &&
+                                match.Groups.Count == 2)
+                            {
+                                var jsonPosition = int.Parse(match.Groups[1].Value);
+                                var serializedJobMessage = JsonUtility.ToString(message);
+                                var originalJson = serializedJobMessage.Substring(jsonPosition - 10, 20);
+                                errorMessage = $"Runner sent Json at position '{jsonPosition}': {originalJson} ({Convert.ToBase64String(Encoding.UTF8.GetBytes(originalJson))})\n{errorMessage}";
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error(ex);
+                        errorMessage = $"Fail to check json IPC error: {ex.Message}\n{errorMessage}";
+                    }
+
+                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                    unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
+                    jobRecord.ErrorCount++;
+                    jobRecord.Issues.Add(unhandledExceptionIssue);
+                    await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error("Fail to report unhandled exception from Runner.Worker process");
+                    Trace.Error(ex);
+                }
+            }
+            else
+            {
+                Trace.Info("Job server does not support handling unhandled exception yet, error message: {0}", errorMessage);
+                return;
+            }
+        }
+
+        // raise job completed event to fail the job.
+        private async Task ForceFailJob(IRunnerService server, Pipelines.AgentJobRequestMessage message)
+        {
+            if (server is IJobServer jobServer)
+            {
+                try
+                {
+                    var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, TaskResult.Failed);
+                    await jobServer.RaisePlanEventAsync<JobCompletedEvent>(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error("Fail to raise JobCompletedEvent back to service.");
+                    Trace.Error(ex);
+                }
+            }
+            else if (server is IRunServer runServer)
+            {
+                try
+                {
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error("Fail to raise job completion back to service.");
+                    Trace.Error(ex);
+                }
+            }
+            else
+            {
+                throw new NotSupportedException($"Server type {server.GetType().FullName} is not supported.");
+            }
+        }
+
+        private async Task<IRunnerService> InitializeJobServerAsync(ServiceEndpoint systemConnection)
+        {
+            if (this._isRunServiceJob)
+            {
+                return await GetRunServerAsync(systemConnection);
+            }
+            else
+            {
                 var jobServer = HostContext.GetService<IJobServer>();
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
-
-                /* Below is the legacy 'OnPremises' code that is currently unused by the runner
-                   ToDo: re-implement code as appropriate once GHES support is added.
-                // Make sure SystemConnection Url match Config Url base for OnPremises server	
-                if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||	
-                    string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))	
-                {	
-                    try	
-                    {	
-                        Uri result = null;	
-                        Uri configUri = new Uri(_runnerSetting.ServerUrl);	
-                        if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), jobServerUrl.PathAndQuery, out result))	
-                        {	
-                            //replace the schema and host portion of messageUri with the host from the	
-                            //server URI (which was set at config time)	
-                            jobServerUrl = result;	
-                        }	
-                    }	
-                    catch (InvalidOperationException ex)	
-                    {	
-                        //cannot parse the Uri - not a fatal error	
-                        Trace.Error(ex);	
-                    }	
-                    catch (UriFormatException ex)	
-                    {	
-                        //cannot parse the Uri - not a fatal error	
-                        Trace.Error(ex);	
-                    }	
-                } */
-
                 await jobServer.ConnectAsync(jobConnection);
-
-                var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
-
-                ArgUtil.NotNull(timeline, nameof(timeline));
-                TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
-                ArgUtil.NotNull(jobRecord, nameof(jobRecord));
-                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
-                unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
-                jobRecord.ErrorCount++;
-                jobRecord.Issues.Add(unhandledExceptionIssue);
-                await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
+                return jobServer;
             }
-            catch (Exception ex)
-            {
-                Trace.Error("Fail to report unhandled exception from Runner.Worker process");
-                Trace.Error(ex);
-            }
+        }
+
+        private async Task<IRunServer> GetRunServerAsync(ServiceEndpoint systemConnection)
+        {
+            var runServer = HostContext.GetService<IRunServer>();
+            VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
+            await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
+            return runServer;
         }
 
         private class WorkerDispatcher : IDisposable
@@ -971,7 +1237,7 @@ namespace GitHub.Runner.Listener
             public Task WorkerDispatch { get; set; }
             public CancellationTokenSource WorkerCancellationTokenSource { get; private set; }
             public CancellationTokenSource WorkerCancelTimeoutKillTokenSource { get; private set; }
-            private readonly object _lock = new object();
+            private readonly object _lock = new();
 
             public WorkerDispatcher(Guid jobId, long requestId)
             {

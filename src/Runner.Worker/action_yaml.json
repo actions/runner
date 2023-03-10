@@ -46,7 +46,7 @@
         "runs": {
             "one-of": [
                 "container-runs",
-                "node12-runs",
+                "node-runs",
                 "plugin-runs",
                 "composite-runs"
             ]
@@ -80,7 +80,7 @@
                 "loose-value-type": "string"
             }
         },
-        "node12-runs": {
+        "node-runs": {
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
@@ -113,20 +113,44 @@
             }
         },
         "composite-step": {
+            "one-of": [
+                "run-step",
+                "uses-step"
+            ]
+        },
+        "run-step": {
             "mapping": {
                 "properties": {
                     "name": "string-steps-context",
                     "id": "non-empty-string",
+                    "if": "step-if",
                     "run": {
                         "type": "string-steps-context",
                         "required": true
                     },
                     "env": "step-env",
+                    "continue-on-error": "boolean-steps-context",
                     "working-directory": "string-steps-context",
                     "shell": {
-                        "type": "non-empty-string",
+                        "type": "string-steps-context",
                         "required": true
                     }
+                }
+            }
+        },
+        "uses-step": {
+            "mapping": {
+                "properties": {
+                    "name": "string-steps-context",
+                    "id": "non-empty-string",
+                    "if": "step-if",
+                    "uses": {
+                        "type": "non-empty-string",
+                        "required": true
+                    },
+                    "continue-on-error": "boolean-steps-context",
+                    "with": "step-with",
+                    "env": "step-env"
                 }
             }
         },
@@ -179,7 +203,56 @@
             ],
             "string": {}
         },
+        "boolean-steps-context": {
+            "context": [
+                "github",
+                "inputs",
+                "strategy",
+                "matrix",
+                "steps",
+                "job",
+                "runner",
+                "env",
+                "hashFiles(1,255)"
+            ],
+            "boolean": {}
+        },
         "step-env": {
+            "context": [
+                "github",
+                "inputs",
+                "strategy",
+                "matrix",
+                "steps",
+                "job",
+                "runner",
+                "env",
+                "hashFiles(1,255)"
+            ],
+            "mapping": {
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "string"
+            }
+        },
+        "step-if": {
+            "context": [
+              "github",
+              "inputs",
+              "strategy",
+              "matrix",
+              "steps",
+              "job",
+              "runner",
+              "env",
+              "always(0,0)",
+              "failure(0,0)",
+              "cancelled(0,0)",
+              "success(0,0)",
+              "hashFiles(1,255)"
+            ],
+            "string": {}
+        },
+        "step-with": {
             "context": [
                 "github",
                 "inputs",

@@ -13,7 +13,7 @@ Even the runner is configured to GitHub Enterprise Server, the runner can still 
 
 - DNS lookup for api.github.com using dotnet
 - Ping api.github.com using dotnet
-- Make HTTP GET to https://api.github.com using dotnet, check response headers contains `X-GitHub-Request-Id` 
+- Make HTTP GET to https://api.github.com using dotnet, check response headers contains `X-GitHub-Request-Id`
 
 ## How to fix the issue?
 
