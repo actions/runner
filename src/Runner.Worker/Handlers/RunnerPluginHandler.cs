@@ -1,7 +1,7 @@
-﻿using System.Threading.Tasks;
-using System;
-using GitHub.Runner.Sdk;
+﻿using System;
+using System.Threading.Tasks;
 using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
@@ -35,6 +35,8 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             ArgUtil.NotNullOrEmpty(plugin, nameof(plugin));
+            // Set extra telemetry base on the current context.
+            ExecutionContext.StepTelemetry.Type = plugin;
 
             // Update the env dictionary.
             AddPrependPathToEnvironment();

@@ -169,7 +169,7 @@ namespace GitHub.Services.Common
             }
 
             // Add ourselves to the message so the underlying token issuers may use it if necessary
-            request.Properties[VssHttpMessageHandler.PropertyName] = this;
+            request.Options.Set(new HttpRequestOptionsKey<VssHttpMessageHandler>(VssHttpMessageHandler.PropertyName), this);
 
             Boolean succeeded = false;
             Boolean lastResponseDemandedProxyAuth = false;
@@ -251,7 +251,14 @@ namespace GitHub.Services.Common
 
                         // Invalidate the token and ensure that we have the correct token provider for the challenge
                         // which we just received
-                        VssHttpEventSource.Log.AuthenticationFailed(traceActivity, response);
+                        if (retries < m_maxAuthRetries)
+                        {
+                            VssHttpEventSource.Log.AuthenticationFailed(traceActivity, response);
+                        }
+                        else
+                        {
+                            VssHttpEventSource.Log.AuthenticationFailedOnFirstRequest(traceActivity, response);
+                        }
 
                         if (provider != null)
                         {
@@ -409,7 +416,7 @@ namespace GitHub.Services.Common
             // Read the completion option provided by the caller. If we don't find the property then we
             // assume it is OK to buffer by default.
             HttpCompletionOption completionOption;
-            if (!request.Properties.TryGetValue(VssHttpRequestSettings.HttpCompletionOptionPropertyName, out completionOption))
+            if (!request.Options.TryGetValue(VssHttpRequestSettings.HttpCompletionOptionPropertyName, out completionOption))
             {
                 completionOption = HttpCompletionOption.ResponseContentRead;
             }

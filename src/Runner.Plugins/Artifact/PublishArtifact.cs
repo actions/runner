@@ -68,7 +68,7 @@ namespace GitHub.Runner.Plugins.Artifact
 
             context.Output($"Uploading artifact '{artifactName}' from '{fullPath}' for run #{buildId}");
 
-            FileContainerServer fileContainerHelper = new FileContainerServer(context.VssConnection, projectId: Guid.Empty, containerId, artifactName);
+            FileContainerServer fileContainerHelper = new(context.VssConnection, projectId: Guid.Empty, containerId, artifactName);
             var propertiesDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             long size = 0;
@@ -87,7 +87,7 @@ namespace GitHub.Runner.Plugins.Artifact
                 // Definition ID is a dummy value only used by HTTP client routing purposes
                 int definitionId = 1;
 
-                PipelinesServer pipelinesHelper = new PipelinesServer(context.VssConnection);
+                PipelinesServer pipelinesHelper = new(context.VssConnection);
 
                 var artifact = await pipelinesHelper.AssociateActionsStorageArtifactAsync(
                     definitionId,

@@ -66,7 +66,7 @@ then
             fi
         fi
 
-        $apt_get update && $apt_get install -y liblttng-ust0 libkrb5-3 zlib1g
+        $apt_get update && $apt_get install -y libkrb5-3 zlib1g
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"
@@ -94,7 +94,14 @@ then
             fi
         }
 
-        # libssl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
+        apt_get_with_fallbacks liblttng-ust1 liblttng-ust0
+        if [ $? -ne 0 ]
+        then
+            echo "'$apt_get' failed with exit code '$?'"
+            print_errormessage
+            exit 1
+        fi
+
         apt_get_with_fallbacks libssl1.1$ libssl1.0.2$ libssl1.0.0$
         if [ $? -ne 0 ]
         then
@@ -103,8 +110,7 @@ then
             exit 1
         fi
 
-        # libicu version prefer: libicu66 -> libicu63 -> libicu60 -> libicu57 -> libicu55 -> libicu52
-        apt_get_with_fallbacks libicu66 libicu63 libicu60 libicu57 libicu55 libicu52
+        apt_get_with_fallbacks libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"

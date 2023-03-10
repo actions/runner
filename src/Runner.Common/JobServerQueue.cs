@@ -1,25 +1,26 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobServerQueue))]
     public interface IJobServerQueue : IRunnerService, IThrottlingReporter
     {
+        TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
         void Start(Pipelines.AgentJobRequestMessage jobRequest);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
+        void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
     }
 
@@ -30,6 +31,7 @@ namespace GitHub.Runner.Common
         private static readonly TimeSpan _delayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForTimelineUpdateDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForFileUploadDequeue = TimeSpan.FromMilliseconds(1000);
+        private static readonly TimeSpan _delayForResultsUploadDequeue = TimeSpan.FromMilliseconds(1000);
 
         // Job message information
         private Guid _scopeIdentifier;
@@ -39,41 +41,51 @@ namespace GitHub.Runner.Common
         private Guid _jobTimelineRecordId;
 
         // queue for web console line
-        private readonly ConcurrentQueue<ConsoleLineInfo> _webConsoleLineQueue = new ConcurrentQueue<ConsoleLineInfo>();
+        private readonly ConcurrentQueue<ConsoleLineInfo> _webConsoleLineQueue = new();
 
         // queue for file upload (log file or attachment)
-        private readonly ConcurrentQueue<UploadFileInfo> _fileUploadQueue = new ConcurrentQueue<UploadFileInfo>();
+        private readonly ConcurrentQueue<UploadFileInfo> _fileUploadQueue = new();
+
+        private readonly ConcurrentQueue<ResultsUploadFileInfo> _resultsFileUploadQueue = new();
 
         // queue for timeline or timeline record update (one queue per timeline)
-        private readonly ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>> _timelineUpdateQueue = new ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>>();
+        private readonly ConcurrentDictionary<Guid, ConcurrentQueue<TimelineRecord>> _timelineUpdateQueue = new();
 
         // indicate how many timelines we have, we will process _timelineUpdateQueue base on the order of timeline in this list
-        private readonly List<Guid> _allTimelines = new List<Guid>();
+        private readonly List<Guid> _allTimelines = new();
 
         // bufferd timeline records that fail to update
-        private readonly Dictionary<Guid, List<TimelineRecord>> _bufferedRetryRecords = new Dictionary<Guid, List<TimelineRecord>>();
+        private readonly Dictionary<Guid, List<TimelineRecord>> _bufferedRetryRecords = new();
 
         // Task for each queue's dequeue process
         private Task _webConsoleLineDequeueTask;
         private Task _fileUploadDequeueTask;
+        private Task _resultsUploadDequeueTask;
         private Task _timelineUpdateDequeueTask;
 
         // common
         private IJobServer _jobServer;
         private Task[] _allDequeueTasks;
-        private readonly TaskCompletionSource<int> _jobCompletionSource = new TaskCompletionSource<int>();
+        private readonly TaskCompletionSource<int> _jobCompletionSource = new();
+        private readonly TaskCompletionSource<int> _jobRecordUpdated = new();
         private bool _queueInProcess = false;
+
+        public TaskCompletionSource<int> JobRecordUpdated => _jobRecordUpdated;
 
         public event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
 
         // Web console dequeue will start with process queue every 250ms for the first 60*4 times (~60 seconds).
         // Then the dequeue will happen every 500ms.
-        // In this way, customer still can get instance live console output on job start, 
+        // In this way, customer still can get instance live console output on job start,
         // at the same time we can cut the load to server after the build run for more than 60s
         private int _webConsoleLineAggressiveDequeueCount = 0;
         private const int _webConsoleLineAggressiveDequeueLimit = 4 * 60;
+        private const int _webConsoleLineQueueSizeLimit = 1024;
         private bool _webConsoleLineAggressiveDequeue = true;
         private bool _firstConsoleOutputs = true;
+
+        private bool _resultsClientInitiated = false;
+        private delegate Task ResultsFileUploadHandler(ResultsUploadFileInfo file);
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -84,6 +96,24 @@ namespace GitHub.Runner.Common
         public void Start(Pipelines.AgentJobRequestMessage jobRequest)
         {
             Trace.Entering();
+
+            var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+
+            _jobServer.InitializeWebsocketClient(serviceEndPoint);
+
+            // This code is usually wrapped by an instance of IExecutionContext which isn't available here.
+            jobRequest.Variables.TryGetValue("system.github.results_endpoint", out VariableValue resultsEndpointVariable);
+            var resultsReceiverEndpoint = resultsEndpointVariable?.Value;
+
+            if (serviceEndPoint?.Authorization != null &&
+                serviceEndPoint.Authorization.Parameters.TryGetValue("AccessToken", out var accessToken) &&
+                !string.IsNullOrEmpty(accessToken) &&
+                !string.IsNullOrEmpty(resultsReceiverEndpoint))
+            {
+                Trace.Info("Initializing results client");
+                _jobServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
+                _resultsClientInitiated = true;
+            }
 
             if (_queueInProcess)
             {
@@ -112,10 +142,13 @@ namespace GitHub.Runner.Common
             Trace.Info("Start process file upload queue.");
             _fileUploadDequeueTask = ProcessFilesUploadQueueAsync();
 
+            Trace.Info("Start results file upload queue.");
+            _resultsUploadDequeueTask = ProcessResultsUploadQueueAsync();
+
             Trace.Info("Start process timeline update queue.");
             _timelineUpdateDequeueTask = ProcessTimelinesUpdateQueueAsync();
 
-            _allDequeueTasks = new Task[] { _webConsoleLineDequeueTask, _fileUploadDequeueTask, _timelineUpdateDequeueTask };
+            _allDequeueTasks = new Task[] { _webConsoleLineDequeueTask, _fileUploadDequeueTask, _timelineUpdateDequeueTask, _resultsUploadDequeueTask };
             _queueInProcess = true;
         }
 
@@ -146,19 +179,38 @@ namespace GitHub.Runner.Common
             await ProcessFilesUploadQueueAsync(runOnce: true);
             Trace.Info("File upload queue drained.");
 
+            Trace.Verbose("Draining results upload queue.");
+            await ProcessResultsUploadQueueAsync(runOnce: true);
+            Trace.Info("Results upload queue drained.");
+
             // ProcessTimelinesUpdateQueueAsync() will throw exception during shutdown
             // if there is any timeline records that failed to update contains output variabls.
             Trace.Verbose("Draining timeline update queue.");
             await ProcessTimelinesUpdateQueueAsync(runOnce: true);
             Trace.Info("Timeline update queue drained.");
 
+            Trace.Info($"Disposing job server ...");
+            await _jobServer.DisposeAsync();
+
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }
 
         public void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber)
         {
-            Trace.Verbose("Enqueue web console line queue: {0}", line);
-            _webConsoleLineQueue.Enqueue(new ConsoleLineInfo(stepRecordId, line, lineNumber));
+            // We only process 500 lines of the queue everytime.
+            // If the queue is backing up due to slow Http request or flood of output from step,
+            // we will drop the output to avoid extra memory consumption from the runner since the live console feed is best effort.
+            if (!string.IsNullOrEmpty(line) && _webConsoleLineQueue.Count < _webConsoleLineQueueSizeLimit)
+            {
+                Trace.Verbose("Enqueue web console line queue: {0}", line);
+                if (line.Length > 1024)
+                {
+                    Trace.Verbose("Web console line is more than 1024 chars, truncate to first 1024 chars");
+                    line = $"{line.Substring(0, 1024)}...";
+                }
+
+                _webConsoleLineQueue.Enqueue(new ConsoleLineInfo(stepRecordId, line, lineNumber));
+            }
         }
 
         public void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource)
@@ -179,6 +231,45 @@ namespace GitHub.Runner.Common
 
             Trace.Verbose("Enqueue file upload queue: file '{0}' attach to record {1}", newFile.Path, timelineRecordId);
             _fileUploadQueue.Enqueue(newFile);
+        }
+
+        public void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines)
+        {
+            if (!_resultsClientInitiated)
+            {
+                Trace.Verbose("Skipping results upload");
+                try
+                {
+                    if (deleteSource)
+                    {
+                        File.Delete(path);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info("Catch exception during delete skipped results upload file.");
+                    Trace.Error(ex);
+                }
+                return;
+            }
+
+            // all parameter not null, file path exist.
+            var newFile = new ResultsUploadFileInfo()
+            {
+                Name = name,
+                Path = path,
+                Type = type,
+                PlanId = _planId.ToString(),
+                JobId = _jobTimelineRecordId.ToString(),
+                RecordId = timelineRecordId,
+                DeleteSource = deleteSource,
+                Finalize = finalize,
+                FirstBlock = firstBlock,
+                TotalLines = totalLines,
+            };
+
+            Trace.Verbose("Enqueue results file upload queue: file '{0}' attach to job {1} step {2}", newFile.Path, _jobTimelineRecordId, timelineRecordId);
+            _resultsFileUploadQueue.Enqueue(newFile);
         }
 
         public void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord)
@@ -214,8 +305,8 @@ namespace GitHub.Runner.Common
                 }
 
                 // Group consolelines by timeline record of each step
-                Dictionary<Guid, List<TimelineRecordLogLine>> stepsConsoleLines = new Dictionary<Guid, List<TimelineRecordLogLine>>();
-                List<Guid> stepRecordIds = new List<Guid>(); // We need to keep lines in order
+                Dictionary<Guid, List<TimelineRecordLogLine>> stepsConsoleLines = new();
+                List<Guid> stepRecordIds = new(); // We need to keep lines in order
                 int linesCounter = 0;
                 ConsoleLineInfo lineInfo;
                 while (_webConsoleLineQueue.TryDequeue(out lineInfo))
@@ -224,12 +315,6 @@ namespace GitHub.Runner.Common
                     {
                         stepsConsoleLines[lineInfo.StepRecordId] = new List<TimelineRecordLogLine>();
                         stepRecordIds.Add(lineInfo.StepRecordId);
-                    }
-
-                    if (!string.IsNullOrEmpty(lineInfo.Line) && lineInfo.Line.Length > 1024)
-                    {
-                        Trace.Verbose("Web console line is more than 1024 chars, truncate to first 1024 chars");
-                        lineInfo.Line = $"{lineInfo.Line.Substring(0, 1024)}...";
                     }
 
                     stepsConsoleLines[lineInfo.StepRecordId].Add(new TimelineRecordLogLine(lineInfo.Line, lineInfo.LineNumber));
@@ -247,7 +332,7 @@ namespace GitHub.Runner.Common
                 {
                     // Split consolelines into batch, each batch will container at most 100 lines.
                     int batchCounter = 0;
-                    List<List<TimelineRecordLogLine>> batchedLines = new List<List<TimelineRecordLogLine>>();
+                    List<List<TimelineRecordLogLine>> batchedLines = new();
                     foreach (var line in stepsConsoleLines[stepRecordId])
                     {
                         var currentBatch = batchedLines.ElementAtOrDefault(batchCounter);
@@ -282,16 +367,12 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
-                                // we will not requeue failed batch, since the web console lines are time sensitive.
-                                if (batch[0].LineNumber.HasValue)
+                                // Give at most 60s for each request.
+                                using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
                                 {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber.Value, default(CancellationToken));
+                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
                                 }
-                                else 
-                                {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), default(CancellationToken));
-                                }
-                                
+
                                 if (_firstConsoleOutputs)
                                 {
                                     HostContext.WritePerfCounter($"WorkerJobServerQueueAppendFirstConsoleOutput_{_planId.ToString()}");
@@ -325,7 +406,7 @@ namespace GitHub.Runner.Common
         {
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
-                List<UploadFileInfo> filesToUpload = new List<UploadFileInfo>();
+                List<UploadFileInfo> filesToUpload = new();
                 UploadFileInfo dequeueFile;
                 while (_fileUploadQueue.TryDequeue(out dequeueFile))
                 {
@@ -381,17 +462,97 @@ namespace GitHub.Runner.Common
             }
         }
 
+        private async Task ProcessResultsUploadQueueAsync(bool runOnce = false)
+        {
+            Trace.Info("Starting results-based upload queue...");
+
+            while (!_jobCompletionSource.Task.IsCompleted || runOnce)
+            {
+                List<ResultsUploadFileInfo> filesToUpload = new();
+                ResultsUploadFileInfo dequeueFile;
+                while (_resultsFileUploadQueue.TryDequeue(out dequeueFile))
+                {
+                    filesToUpload.Add(dequeueFile);
+                    // process at most 10 file uploads.
+                    if (!runOnce && filesToUpload.Count > 10)
+                    {
+                        break;
+                    }
+                }
+
+                if (filesToUpload.Count > 0)
+                {
+                    if (runOnce)
+                    {
+                        Trace.Info($"Uploading {filesToUpload.Count} file(s) in one shot through results service.");
+                    }
+
+                    int errorCount = 0;
+                    foreach (var file in filesToUpload)
+                    {
+                        try
+                        {
+                            if (String.Equals(file.Type, ChecksAttachmentType.StepSummary, StringComparison.OrdinalIgnoreCase))
+                            {
+                                await UploadSummaryFile(file);
+                            }
+                            else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (file.RecordId != _jobTimelineRecordId)
+                                {
+                                    Trace.Info($"Got a step log file to send to results service.");
+                                    await UploadResultsStepLogFile(file);
+                                }
+                                else if (file.RecordId == _jobTimelineRecordId)
+                                {
+                                    Trace.Info($"Got a job log file to send to results service.");
+                                    await UploadResultsJobLogFile(file);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception during file upload to results. {ex.Message}" };
+                            issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
+
+                            var telemetryRecord = new TimelineRecord()
+                            {
+                                Id = Constants.Runner.TelemetryRecordId,
+                            };
+                            telemetryRecord.Issues.Add(issue);
+                            QueueTimelineRecordUpdate(_jobTimelineId, telemetryRecord);
+
+                            Trace.Info("Catch exception during file upload to results, keep going since the process is best effort.");
+                            Trace.Error(ex);
+                            errorCount++;
+                        }
+                    }
+
+                    Trace.Info("Tried to upload {0} file(s) to results, success rate: {1}/{0}.", filesToUpload.Count, filesToUpload.Count - errorCount);
+                }
+
+                if (runOnce)
+                {
+                    break;
+                }
+                else
+                {
+                    await Task.Delay(_delayForResultsUploadDequeue);
+                }
+            }
+        }
+
         private async Task ProcessTimelinesUpdateQueueAsync(bool runOnce = false)
         {
             while (!_jobCompletionSource.Task.IsCompleted || runOnce)
             {
-                List<PendingTimelineRecord> pendingUpdates = new List<PendingTimelineRecord>();
+                List<PendingTimelineRecord> pendingUpdates = new();
                 foreach (var timeline in _allTimelines)
                 {
                     ConcurrentQueue<TimelineRecord> recordQueue;
                     if (_timelineUpdateQueue.TryGetValue(timeline, out recordQueue))
                     {
-                        List<TimelineRecord> records = new List<TimelineRecord>();
+                        List<TimelineRecord> records = new();
                         TimelineRecord record;
                         while (recordQueue.TryDequeue(out record))
                         {
@@ -413,7 +574,7 @@ namespace GitHub.Runner.Common
                 // we need track whether we have new sub-timeline been created on the last run.
                 // if so, we need continue update timeline record even we on the last run.
                 bool pendingSubtimelineUpdate = false;
-                List<Exception> mainTimelineRecordsUpdateErrors = new List<Exception>();
+                List<Exception> mainTimelineRecordsUpdateErrors = new();
                 if (pendingUpdates.Count > 0)
                 {
                     foreach (var update in pendingUpdates)
@@ -455,6 +616,14 @@ namespace GitHub.Runner.Common
                             {
                                 Trace.Verbose("Cleanup buffered timeline record for timeline: {0}.", update.TimelineId);
                             }
+
+                            if (!_jobRecordUpdated.Task.IsCompleted &&
+                                update.PendingRecords.Any(x => x.Id == _jobTimelineRecordId && x.State != null))
+                            {
+                                // We have changed the state of the job
+                                Trace.Info("Job timeline record has been updated for the first time.");
+                                _jobRecordUpdated.TrySetResult(0);
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -471,8 +640,8 @@ namespace GitHub.Runner.Common
 
                 if (runOnce)
                 {
-                    // continue process timeline records update, 
-                    // we might have more records need update, 
+                    // continue process timeline records update,
+                    // we might have more records need update,
                     // since we just create a new sub-timeline
                     if (pendingSubtimelineUpdate)
                     {
@@ -508,7 +677,7 @@ namespace GitHub.Runner.Common
                 return timelineRecords;
             }
 
-            Dictionary<Guid, TimelineRecord> dict = new Dictionary<Guid, TimelineRecord>();
+            Dictionary<Guid, TimelineRecord> dict = new();
             foreach (TimelineRecord rec in timelineRecords)
             {
                 if (rec == null)
@@ -542,6 +711,11 @@ namespace GitHub.Runner.Common
                     if (rec.WarningCount != null && rec.WarningCount > 0)
                     {
                         timelineRecord.WarningCount = rec.WarningCount;
+                    }
+
+                    if (rec.NoticeCount != null && rec.NoticeCount > 0)
+                    {
+                        timelineRecord.NoticeCount = rec.NoticeCount;
                     }
 
                     if (rec.Issues.Count > 0)
@@ -639,6 +813,64 @@ namespace GitHub.Runner.Common
                 }
             }
         }
+
+        private async Task UploadSummaryFile(ResultsUploadFileInfo file)
+        {
+            Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler summaryHandler = async (file) =>
+            {
+                await _jobServer.CreateStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, CancellationToken.None);
+            };
+
+            await UploadResultsFile(file, summaryHandler);
+        }
+
+        private async Task UploadResultsStepLogFile(ResultsUploadFileInfo file)
+        {
+            Trace.Info($"Starting upload of step log file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler stepLogHandler = async (file) =>
+            {
+                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
+            };
+
+            await UploadResultsFile(file, stepLogHandler);
+        }
+
+        private async Task UploadResultsJobLogFile(ResultsUploadFileInfo file)
+        {
+            Trace.Info($"Starting upload of job log file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler jobLogHandler = async (file) =>
+            {
+                await _jobServer.CreateResultsJobLogAsync(file.PlanId, file.JobId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
+            };
+
+            await UploadResultsFile(file, jobLogHandler);
+        }
+
+        private async Task UploadResultsFile(ResultsUploadFileInfo file, ResultsFileUploadHandler uploadHandler)
+        {
+            bool uploadSucceed = false;
+            try
+            {
+                await uploadHandler(file);
+                uploadSucceed = true;
+            }
+            finally
+            {
+                if (uploadSucceed && file.DeleteSource)
+                {
+                    try
+                    {
+                        File.Delete(file.Path);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info("Exception encountered during deletion of a temporary file that was already successfully uploaded to results.");
+                        Trace.Error(ex);
+                    }
+                }
+            }
+        }
     }
 
     internal class PendingTimelineRecord
@@ -656,6 +888,21 @@ namespace GitHub.Runner.Common
         public string Path { get; set; }
         public bool DeleteSource { get; set; }
     }
+
+    internal class ResultsUploadFileInfo
+    {
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string Path { get; set; }
+        public string PlanId { get; set; }
+        public string JobId { get; set; }
+        public Guid RecordId { get; set; }
+        public bool DeleteSource { get; set; }
+        public bool Finalize { get; set; }
+        public bool FirstBlock { get; set; }
+        public long TotalLines { get; set; }
+    }
+
 
 
     internal class ConsoleLineInfo

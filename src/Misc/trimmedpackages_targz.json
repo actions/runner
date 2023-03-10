@@ -1,0 +1,24 @@
+[
+    {
+        "HashValue": "<NO_RUNTIME_EXTERNALS_HASH>",
+        "DownloadUrl": "https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-<RUNNER_PLATFORM>-<RUNNER_VERSION>-noruntime-noexternals.tar.gz",
+        "TrimmedContents": {
+            "dotnetRuntime": "<RUNTIME_HASH>",
+            "externals": "<EXTERNALS_HASH>"
+        }
+    },
+    {
+        "HashValue": "<NO_RUNTIME_HASH>",
+        "DownloadUrl": "https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-<RUNNER_PLATFORM>-<RUNNER_VERSION>-noruntime.tar.gz",
+        "TrimmedContents": {
+            "dotnetRuntime": "<RUNTIME_HASH>"
+        }
+    },
+    {
+        "HashValue": "<NO_EXTERNALS_HASH>",
+        "DownloadUrl": "https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-<RUNNER_PLATFORM>-<RUNNER_VERSION>-noexternals.tar.gz",
+        "TrimmedContents": {
+            "externals": "<EXTERNALS_HASH>"
+        }
+    }
+]

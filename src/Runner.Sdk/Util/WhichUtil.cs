@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Sdk
 {
@@ -115,11 +114,15 @@ namespace GitHub.Runner.Sdk
                 }
             }
 
-            trace?.Info("Not found.");
+#if OS_WINDOWS
+            trace?.Info($"{command}: command not found. Make sure '{command}' is installed and its location included in the 'Path' environment variable.");
+#else
+            trace?.Info($"{command}: command not found. Make sure '{command}' is installed and its location included in the 'PATH' environment variable.");
+#endif
             if (require)
             {
                 throw new FileNotFoundException(
-                    message: $"File not found: '{command}'",
+                    message: $"{command}: command not found",
                     fileName: command);
             }
 

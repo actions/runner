@@ -6,9 +6,16 @@ namespace GitHub.Runner.Sdk
     {
         public static bool IsHostedServer(UriBuilder gitHubUrl)
         {
-            return string.Equals(gitHubUrl.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_FORCE_GHES")))
+            {
+                return false;
+            }
+
+            return 
+                string.Equals(gitHubUrl.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(gitHubUrl.Host, "www.github.com", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase);
+                string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase) ||
+                gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase);
         }
 
         public static Uri GetCredentialEmbeddedUrl(Uri baseUrl, string username, string password)
@@ -21,7 +28,7 @@ namespace GitHub.Runner.Sdk
                 return baseUrl;
             }
 
-            UriBuilder credUri = new UriBuilder(baseUrl);
+            UriBuilder credUri = new(baseUrl);
 
             // ensure we have a username, uribuild will throw if username is empty but password is not.
             if (string.IsNullOrEmpty(username))

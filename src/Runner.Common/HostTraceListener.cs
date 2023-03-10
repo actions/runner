@@ -1,4 +1,3 @@
-﻿using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
 using System.Diagnostics;
@@ -165,7 +164,7 @@ namespace GitHub.Runner.Common
         {
             if (_enableLogRetention)
             {
-                DirectoryInfo diags = new DirectoryInfo(_logFileDirectory);
+                DirectoryInfo diags = new(_logFileDirectory);
                 var logs = diags.GetFiles($"{_logFilePrefix}*.log");
                 foreach (var log in logs)
                 {

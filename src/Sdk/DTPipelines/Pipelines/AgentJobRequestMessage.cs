@@ -42,9 +42,10 @@ namespace GitHub.DistributedTask.Pipelines
             IList<String> fileTable,
             TemplateToken jobOutputs,
             IList<TemplateToken> defaults,
-            ActionsEnvironmentReference actionsEnvironment)
+            ActionsEnvironmentReference actionsEnvironment,
+            String messageType = JobRequestMessageTypes.PipelineAgentJobRequest)
         {
-            this.MessageType = JobRequestMessageTypes.PipelineAgentJobRequest;
+            this.MessageType = messageType;
             this.Plan = plan;
             this.JobId = jobId;
             this.JobDisplayName = jobDisplayName;

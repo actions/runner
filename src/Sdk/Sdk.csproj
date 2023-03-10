@@ -1,22 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <OutputType>Library</OutputType>
-        <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64</RuntimeIdentifiers>
+        <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
         <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
-        <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
         <NoWarn>NU1701;NU1603</NoWarn>
         <Version>$(Version)</Version>
         <DefineConstants>TRACE</DefineConstants>
         <LangVersion>7.3</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Win32.Registry" Version="4.4.0" />
-        <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
         <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.4" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.2.1" />
         <PackageReference Include="System.Security.Cryptography.Cng" Version="4.4.0" />

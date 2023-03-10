@@ -9,6 +9,7 @@ using GitHub.Services.OAuth;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Net;
+using Sdk.WebApi.WebApi.RawClient;
 
 namespace GitHub.Runner.Sdk
 {
@@ -18,7 +19,7 @@ namespace GitHub.Runner.Sdk
         {
             var headerValues = new List<ProductInfoHeaderValue>();
             headerValues.AddRange(additionalUserAgents);
-            headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
+            headerValues.Add(new ProductInfoHeaderValue($"({StringUtil.SanitizeUserAgentHeader(RuntimeInformation.OSDescription)})"));
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
             {
@@ -27,9 +28,18 @@ namespace GitHub.Runner.Sdk
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
             VssHttpMessageHandler.DefaultWebProxy = proxy;
+
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+            {
+                VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            }
         }
 
-        public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials, IEnumerable<DelegatingHandler> additionalDelegatingHandler = null, TimeSpan? timeout = null)
+        public static VssConnection CreateConnection(
+            Uri serverUri,
+            VssCredentials credentials,
+            IEnumerable<DelegatingHandler> additionalDelegatingHandler = null,
+            TimeSpan? timeout = null)
         {
             VssClientHttpRequestSettings settings = VssClientHttpRequestSettings.Default.Clone();
 
@@ -52,6 +62,10 @@ namespace GitHub.Runner.Sdk
                 settings.SendTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
             }
 
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
+            {
+                settings.AllowAutoRedirect = true;
+            }
 
             // Remove Invariant from the list of accepted languages.
             //
@@ -62,7 +76,47 @@ namespace GitHub.Runner.Sdk
             // settings are applied to an HttpRequestMessage.
             settings.AcceptLanguages.Remove(CultureInfo.InvariantCulture);
 
-            VssConnection connection = new VssConnection(serverUri, new VssHttpMessageHandler(credentials, settings), additionalDelegatingHandler);
+            VssConnection connection = new(serverUri, new VssHttpMessageHandler(credentials, settings), additionalDelegatingHandler);
+            return connection;
+        }
+
+        public static RawConnection CreateRawConnection(
+            Uri serverUri,
+            VssCredentials credentials,
+            IEnumerable<DelegatingHandler> additionalDelegatingHandler = null,
+            TimeSpan? timeout = null)
+        {
+            RawClientHttpRequestSettings settings = RawClientHttpRequestSettings.Default.Clone();
+
+            int maxRetryRequest;
+            if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_RETRY") ?? string.Empty, out maxRetryRequest))
+            {
+                maxRetryRequest = 3;
+            }
+
+            // make sure MaxRetryRequest in range [3, 10]
+            settings.MaxRetryRequest = Math.Min(Math.Max(maxRetryRequest, 3), 10);
+
+            if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_TIMEOUT") ?? string.Empty, out int httpRequestTimeoutSeconds))
+            {
+                settings.SendTimeout = timeout ?? TimeSpan.FromSeconds(100);
+            }
+            else
+            {
+                // prefer environment variable
+                settings.SendTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
+            }
+
+            // Remove Invariant from the list of accepted languages.
+            //
+            // The constructor of VssHttpRequestSettings (base class of VssClientHttpRequestSettings) adds the current
+            // UI culture to the list of accepted languages. The UI culture will be Invariant on OSX/Linux when the
+            // LANG environment variable is not set when the program starts. If Invariant is in the list of accepted
+            // languages, then "System.ArgumentException: The value cannot be null or empty." will be thrown when the
+            // settings are applied to an HttpRequestMessage.
+            settings.AcceptLanguages.Remove(CultureInfo.InvariantCulture);
+
+            RawConnection connection = new(serverUri, new RawHttpMessageHandler(credentials.Federated, settings), additionalDelegatingHandler);
             return connection;
         }
 

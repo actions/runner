@@ -1,18 +1,16 @@
-﻿using System;
-using System.IO;
-using System.Text;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
-using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker
 {
@@ -27,7 +25,6 @@ namespace GitHub.Runner.Worker
     public interface IActionRunner : IStep, IRunnerService
     {
         ActionRunStage Stage { get; set; }
-        bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context);
         Pipelines.ActionStep Action { get; set; }
     }
 
@@ -82,6 +79,28 @@ namespace GitHub.Runner.Worker
             ActionExecutionData handlerData = definition.Data?.Execution;
             ArgUtil.NotNull(handlerData, nameof(handlerData));
 
+            List<JobExtensionRunner> localActionContainerSetupSteps = null;
+            // Handle Composite Local Actions
+            // Need to download and expand the tree of referenced actions
+            if (handlerData.ExecutionType == ActionExecutionType.Composite &&
+                handlerData is CompositeActionExecutionData compositeHandlerData &&
+                Stage == ActionRunStage.Main &&
+                Action.Reference is Pipelines.RepositoryPathReference localAction &&
+                string.Equals(localAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                var actionManager = HostContext.GetService<IActionManager>();
+                var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
+
+                // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
+                definition = taskManager.LoadAction(ExecutionContext, Action);
+                ArgUtil.NotNull(definition, nameof(definition));
+                handlerData = definition.Data?.Execution;
+                ArgUtil.NotNull(handlerData, nameof(handlerData));
+
+                // Save container setup steps so we can reference them later
+                localActionContainerSetupSteps = prepareResult.ContainerSetupSteps;
+            }
+
             if (handlerData.HasPre &&
                 Action.Reference is Pipelines.RepositoryPathReference repoAction &&
                 string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
@@ -119,21 +138,7 @@ namespace GitHub.Runner.Worker
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
 
-            // Makes directory for event_path data
-            var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
-            var workflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
-            Directory.CreateDirectory(workflowDirectory);
-
-            var gitHubEvent = ExecutionContext.GetGitHubContext("event");
-
-            // adds the GitHub event path/file if the event exists
-            if (gitHubEvent != null)
-            {
-                var workflowFile = Path.Combine(workflowDirectory, "event.json");
-                Trace.Info($"Write event payload to {workflowFile}");
-                File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
-                ExecutionContext.SetGitHubContext("event_path", workflowFile);
-            }
+            ExecutionContext.WriteWebhookPayload();
 
             // Set GITHUB_ACTION_REPOSITORY if this Action is from a repository
             if (Action.Reference is Pipelines.RepositoryPathReference repoPathReferenceAction &&
@@ -151,8 +156,12 @@ namespace GitHub.Runner.Worker
             // Setup container stephost for running inside the container.
             if (ExecutionContext.Global.Container != null)
             {
-                // Make sure required container is already created.
-                ArgUtil.NotNullOrEmpty(ExecutionContext.Global.Container.ContainerId, nameof(ExecutionContext.Global.Container.ContainerId));
+                // Make sure the required container is already created
+                // Container hooks do not necessarily set 'ContainerId'
+                if (!FeatureManager.IsContainerHooksEnabled(ExecutionContext.Global.Variables))
+                {
+                    ArgUtil.NotNullOrEmpty(ExecutionContext.Global.Container.ContainerId, nameof(ExecutionContext.Global.Container.ContainerId));
+                }
                 var containerStepHost = HostContext.CreateService<IContainerStepHost>();
                 containerStepHost.Container = ExecutionContext.Global.Container;
                 stepHost = containerStepHost;
@@ -164,8 +173,16 @@ namespace GitHub.Runner.Worker
 
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
-            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+            Dictionary<string, string> inputs;
+            if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+            {
+                inputs = EvaluateStepInputs(stepHost);
+            }
+            else
+            {
+                var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+                inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+            }
 
             var userInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, string> input in inputs)
@@ -249,10 +266,11 @@ namespace GitHub.Runner.Worker
                             inputs,
                             environment,
                             ExecutionContext.Global.Variables,
-                            actionDirectory: definition.Directory);
+                            actionDirectory: definition.Directory,
+                            localActionContainerSetupSteps: localActionContainerSetupSteps);
 
-            // Print out action details
-            handler.PrintActionDetails(Stage);
+            // Print out action details and log telemetry
+            handler.PrepareExecution(Stage);
 
             // Run the task.
             try
@@ -266,29 +284,80 @@ namespace GitHub.Runner.Worker
 
         }
 
-        public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context)
+        /// <summary>
+        /// Attempts to update the DisplayName.
+        /// As the "Try..." name implies, this method should never throw an exception.
+        /// Returns true if the DisplayName is already present or it was successfully updated.
+        /// </summary>
+        public bool TryUpdateDisplayName(out bool updated)
+        {
+            updated = false;
+
+            // REVIEW:  This try/catch can be removed if some future implementation of EvaluateDisplayName and UpdateTimelineRecordDisplayName
+            // can make reasonable guarantees that they won't throw an exception.
+            try
+            {
+                // This attempt is only worthwhile at the "Main" stage.
+                //    When the job starts, there's an initial attempt to evaluate the DisplayName.  (see JobExtension::InitializeJob)
+                //    During the "Pre" stage, we expect that no contexts will have changed since the initial evaluation.
+                //    "Main" stage is handled here.
+                //    During the "Post" stage, it no longer matters.
+                if (this.Stage == ActionRunStage.Main && EvaluateDisplayName(this.ExecutionContext.ExpressionValues, this.ExecutionContext, out updated))
+                {
+                    if (updated)
+                    {
+                        this.ExecutionContext.UpdateTimelineRecordDisplayName(this.DisplayName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Warning("Caught exception while attempting to evaulate/update the step's DisplayName.  Exception Details:  {0}", ex);
+            }
+
+            // For consistency with other implementations of TryUpdateDisplayName we use !string.IsNullOrEmpty below,
+            // but note that (at the time of this writing) ActionRunner::DisplayName::get always returns a non-empty string due to its fallback logic.
+            // In other words, the net effect is that this particular implementation of TryUpdateDisplayName will always return true.
+            return !string.IsNullOrEmpty(this.DisplayName);
+        }
+
+
+        /// <summary>
+        /// Attempts to evaluate the DisplayName of this IActionRunner.
+        /// Returns true if the DisplayName is already present or it was successfully evaluated.
+        /// </summary>
+        public bool EvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated)
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(Action, nameof(Action));
 
-            // If we have already expanded the display name, there is no need to expand it again
-            // TODO: Remove the ShouldEvaluateDisplayName check and field post m158 deploy, we should do it by default once the server is updated
+            updated = false;
+            // If we have already expanded the display name, don't bother attempting [re-]expansion.
             if (_didFullyEvaluateDisplayName || !string.IsNullOrEmpty(Action.DisplayName))
             {
-                return false;
+                return true;
             }
 
-            bool didFullyEvaluate;
-            _displayName = GenerateDisplayName(Action, contextData, context, out didFullyEvaluate);
+            _displayName = GenerateDisplayName(Action, contextData, context, out bool didFullyEvaluate);
 
-            // If we evaluated fully mask any secrets
+            // If we evaluated, fully mask any secrets
             if (didFullyEvaluate)
             {
                 _displayName = HostContext.SecretMasker.MaskSecrets(_displayName);
+                updated = true;
             }
             context.Debug($"Set step '{Action.Name}' display name to: '{_displayName}'");
             _didFullyEvaluateDisplayName = didFullyEvaluate;
             return didFullyEvaluate;
+        }
+
+        private Dictionary<String, String> EvaluateStepInputs(IStepHost stepHost)
+        {
+            DictionaryContextData expressionValues = ExecutionContext.GetExpressionValues(stepHost);
+            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions);
+
+            return inputs;
         }
 
         private string GenerateDisplayName(ActionStep action, DictionaryContextData contextData, IExecutionContext context, out bool didFullyEvaluate)

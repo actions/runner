@@ -1,0 +1,9 @@
+name: "composite action"
+description: "test composite action without value for the 'using' token in 'runs'"
+
+runs:
+  steps:
+    - id: mystep
+      shell: bash
+      run: |
+        echo "hello world"

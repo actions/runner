@@ -2,36 +2,81 @@
 
 set -e
 
-#
-# Downloads latest releases (not pre-release) runner
-# Configures as a service
-#
-# Examples:
-# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
-# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myorg my.ghe.deployment.net
-#
-# Usage:
-#     export RUNNER_CFG_PAT=<yourPAT>
-#     ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
-#
-#      scope       required  repo (:owner/:repo) or org (:organization)
-#      ghe_domain  optional  the fully qualified domain name of your GitHub Enterprise Server deployment
-#      name        optional  defaults to hostname
-#      user        optional  user svc will run as. defaults to current
-#      labels      optional  list of labels (split by comma) applied on the runner
-#
 # Notes:
 # PATS over envvars are more secure
+# Downloads latest runner release (not pre-release)
+# Configures it as a service more secure
 # Should be used on VMs and not containers
 # Works on OSX and Linux
 # Assumes x64 arch
-#
+# See EXAMPLES below
 
-runner_scope=${1}
-ghe_hostname=${2}
-runner_name=${3:-$(hostname)}
-svc_user=${4:-$USER}
-labels=${5}
+flags_found=false
+
+while getopts 's:g:n:r:u:l:df' opt; do
+    flags_found=true
+
+    case $opt in
+    s)
+        runner_scope=$OPTARG
+        ;;
+    g)
+        ghe_hostname=$OPTARG
+        ;;
+    n)
+        runner_name=$OPTARG
+        ;;
+    r)
+        runner_group=$OPTARG
+        ;;
+    u)
+        svc_user=$OPTARG
+        ;;
+    l)
+        labels=$OPTARG
+        ;;
+    f)
+        replace='true'
+        ;;
+    d)
+        disableupdate='true'
+        ;;
+    *)
+        echo "
+Runner Service Installer
+Examples:
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh -s myorg -u user_name -l label1,label2
+Usage:
+    export RUNNER_CFG_PAT=<yourPAT>
+    ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
+    -s          required  scope: repo (:owner/:repo) or org (:organization)
+    -g          optional  ghe_hostname: the fully qualified domain name of your GitHub Enterprise Server deployment
+    -n          optional  name of the runner, defaults to hostname
+    -r          optional  name of the runner group to add the runner to, defaults to the Default group
+    -u          optional  user svc will run as, defaults to current
+    -l          optional  list of labels (split by comma) applied on the runner
+    -d          optional  allow runner to remain on the current version for one month after the release of a newer version
+    -f          optional  replace any existing runner with the same name"
+        exit 0
+        ;;
+    esac
+done
+
+shift "$((OPTIND - 1))"
+
+if ! "$flags_found"; then
+    runner_scope=${1}
+    ghe_hostname=${2}
+    runner_name=${3:-$(hostname)}
+    svc_user=${4:-$USER}
+    labels=${5}
+    runner_group=${6}
+fi
+
+# apply defaults
+runner_name=${runner_name:-$(hostname)}
+svc_user=${svc_user:-$USER}
 
 echo "Configuring runner @ ${runner_scope}"
 sudo echo
@@ -132,8 +177,8 @@ fi
 
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name --labels $labels"
-sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name --labels $labels
+echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup \"$runner_group\"} ${disableupdate:+--disableupdate}"
+sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}
 
 #---------------------------------------
 # Configuring as a service
@@ -142,7 +187,7 @@ echo
 echo "Configuring as a service ..."
 prefix=""
 if [ "${runner_plat}" == "linux" ]; then
-prefix="sudo "
+    prefix="sudo "
 fi
 
 ${prefix}./svc.sh install ${svc_user}

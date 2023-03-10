@@ -112,6 +112,36 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+        [Theory]
+        [InlineData("secret&secret&secret", "secret&secret&\x0033[96msecret\x0033[0m", "***\x0033[96m***\x0033[0m")]
+        [InlineData("secret&secret+secret", "secret&\x0033[96msecret+secret\x0033[0m", "***\x0033[96m***\x0033[0m")]
+        [InlineData("secret+secret&secret", "secret+secret&\x0033[96msecret\x0033[0m", "***\x0033[96m***\x0033[0m")]
+        [InlineData("secret&secret&+secretsecret", "secret&secret&+\x0033[96ms\x0033[0mecretsecret", "***\x0033[96ms\x0033[0m***")]
+        [InlineData("secret&+secret&secret", "secret&+\x0033[96ms\x0033[0mecret&secret", "***\x0033[96ms\x0033[0m***")]
+        [InlineData("secret&+secret&+secret", "secret&+\x0033[96ms\x0033[0mecret&+secret", "***\x0033[96ms\x0033[0m***")]
+        [InlineData("secret&+secret&secret&+secret", "secret&+\x0033[96ms\x0033[0mecret&secret&+secret", "***\x0033[96ms\x0033[0m***")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SecretSectionMasking(string secret, string rawOutput, string maskedOutput)
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+
+                // Act.
+                _hc.SecretMasker.AddValue(secret);
+
+                // Assert.
+                Assert.Equal(maskedOutput, _hc.SecretMasker.MaskSecrets(rawOutput));
+            }
+            finally
+            {
+                // Cleanup.
+                Teardown();
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]

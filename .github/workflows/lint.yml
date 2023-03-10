@@ -1,0 +1,24 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          # Ensure full list of changed files within `super-linter`
+          fetch-depth: 0
+      - name: Run linters
+        uses: github/super-linter@v4
+        env:
+          DEFAULT_BRANCH: ${{ github.base_ref }}
+          EDITORCONFIG_FILE_NAME: .editorconfig
+          LINTER_RULES_PATH: /src/
+          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_CSHARP: true

@@ -24,6 +24,8 @@ namespace GitHub.DistributedTask.WebApi
             this.OSDescription = referenceToBeCloned.OSDescription;
             this.ProvisioningState = referenceToBeCloned.ProvisioningState;
             this.AccessPoint = referenceToBeCloned.AccessPoint;
+            this.Ephemeral = referenceToBeCloned.Ephemeral;
+            this.DisableUpdate = referenceToBeCloned.DisableUpdate;
 
             if (referenceToBeCloned.m_links != null)
             {
@@ -76,6 +78,26 @@ namespace GitHub.DistributedTask.WebApi
         /// </summary>
         [DataMember(EmitDefaultValue = false)]
         public Boolean? Enabled
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Signifies that this Agent can only run one job and will be removed by the server after that one job finish.
+        /// </summary>
+        [DataMember]
+        public bool? Ephemeral
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Whether or not this agent should auto-update to latest version.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool? DisableUpdate
         {
             get;
             set;

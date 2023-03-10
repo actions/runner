@@ -25,17 +25,17 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
         {
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference() { PlanId = Guid.NewGuid() };
+            TaskOrchestrationPlanReference plan = new() { PlanId = Guid.NewGuid() };
             TimelineReference timeline = null;
-            Dictionary<string, VariableValue> variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, VariableValue> variables = new(StringComparer.OrdinalIgnoreCase);
             variables[Constants.Variables.System.Culture] = "en-US";
-            Pipelines.JobResources resources = new Pipelines.JobResources();
+            Pipelines.JobResources resources = new();
             var serviceEndpoint = new ServiceEndpoint();
             serviceEndpoint.Authorization = new EndpointAuthorization();
             serviceEndpoint.Authorization.Parameters.Add("nullValue", null);
             resources.Endpoints.Add(serviceEndpoint);
 
-            List<Pipelines.ActionStep> actions = new List<Pipelines.ActionStep>();
+            List<Pipelines.ActionStep> actions = new();
             actions.Add(new Pipelines.ActionStep()
             {
                 Id = Guid.NewGuid(),

@@ -8,7 +8,7 @@
 run-actions run scripts using a platform specific shell:
 `bash -eo pipefail` on non-windows, and `cmd.exe /c /d /s` on windows
 
-The `shell` option overwrites this to allow different flags or completely different shells/interpreters
+The `shell` option overrides this to allow different flags or completely different shells/interpreters
 
 A small example is:
 ```yml
