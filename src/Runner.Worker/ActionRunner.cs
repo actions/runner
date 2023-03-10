@@ -181,7 +181,7 @@ namespace GitHub.Runner.Worker
             else
             {
                 var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-                inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+                inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions, ExecutionContext.ToExpressionState());
             }
 
             var userInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -355,7 +355,7 @@ namespace GitHub.Runner.Worker
         {
             DictionaryContextData expressionValues = ExecutionContext.GetExpressionValues(stepHost);
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions);
+            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions, ExecutionContext.ToExpressionState());
 
             return inputs;
         }
