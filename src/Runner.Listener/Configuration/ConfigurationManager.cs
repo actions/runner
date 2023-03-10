@@ -754,9 +754,9 @@ namespace GitHub.Runner.Listener.Configuration
                         {
                             Trace.Info($"Http response code: {response.StatusCode} from 'GET {githubApiUrl}' ({githubRequestId})");
                             var jsonResponse = await response.Content.ReadAsStringAsync();
-                            var agentPools = StringUtil.ConvertFromJson<List<TaskAgentPool>>(jsonResponse);
+                            var agentPools = StringUtil.ConvertFromJson<RunnerGroupList>(jsonResponse);
 
-                            return agentPools;
+                            return agentPools?.ToAgentPoolList();
                         }
                         else
                         {
