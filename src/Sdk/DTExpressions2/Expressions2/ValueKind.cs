@@ -11,5 +11,7 @@ namespace GitHub.DistributedTask.Expressions2
         Number,
         Object,
         String,
+        DateTime,
+        Version,
     }
 }

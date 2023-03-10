@@ -3362,7 +3362,7 @@ namespace Runner.Server.Controllers
                     }
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                 };
-                var startTime = DateTime.Now;
+                var startTime = DateTimeOffset.Now;
                 if(!string.IsNullOrEmpty(pipeline.Name)) {
                     var macroexpr = new Regex("\\$\\(([^)]+)\\)");
                     Func<string, int, string> evalMacro = null;

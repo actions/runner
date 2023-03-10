@@ -9,7 +9,7 @@ namespace Runner.Server.Controllers
     internal class PipelineContext : IReadOnlyObject
     {
         private Dictionary<string, object> data;
-        public PipelineContext(DateTime starttime)
+        public PipelineContext(DateTimeOffset starttime)
         {
             data = new(StringComparer.OrdinalIgnoreCase);
             data["startTime"] = new DateTimeWrapper { DateTime = starttime };

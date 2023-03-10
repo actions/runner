@@ -424,7 +424,9 @@ namespace GitHub.DistributedTask.Expressions2
             String name,
             out IFunctionInfo functionInfo)
         {
-            return ((context.LexicalAnalyzer.Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.None || (context.LexicalAnalyzer.Flags & ExpressionFlags.ExtendedFunctions) != ExpressionFlags.None) && ExpressionConstants.WellKnownFunctions.TryGetValue(name, out functionInfo) || (context.LexicalAnalyzer.Flags & (ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedFunctions)) != ExpressionFlags.None && ExpressionConstants.AzureWellKnownFunctions.TryGetValue(name, out functionInfo) ||
+            return ((context.LexicalAnalyzer.Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.None
+            ? (ExpressionConstants.WellKnownFunctions.TryGetValue(name, out functionInfo) || (context.LexicalAnalyzer.Flags & ExpressionFlags.ExtendedFunctions) != ExpressionFlags.None && ExpressionConstants.AzureWellKnownFunctions.TryGetValue(name, out functionInfo))
+            : (ExpressionConstants.AzureWellKnownFunctions.TryGetValue(name, out functionInfo) || (context.LexicalAnalyzer.Flags & ExpressionFlags.ExtendedFunctions) != ExpressionFlags.None && ExpressionConstants.WellKnownFunctions.TryGetValue(name, out functionInfo))) ||
                 context.ExtensionFunctions.TryGetValue(name, out functionInfo);
         }
 

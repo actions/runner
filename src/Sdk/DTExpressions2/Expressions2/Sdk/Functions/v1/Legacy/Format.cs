@@ -1,20 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using ExpressionResources = GitHub.DistributedTask.Expressions.ExpressionResources;
 
-namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
+namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy
 {
     internal sealed class Format : Function
     {
-        protected sealed override Object EvaluateCore(
-            EvaluationContext context,
-            out ResultMemory resultMemory)
+        protected sealed override Object EvaluateCore(EvaluationContext context, out ResultMemory memory)
         {
-            resultMemory = null;
-            var format = Parameters[0].Evaluate(context).ConvertToString();
+            memory = null;
+            var format = Parameters[0].EvaluateString(context);
             var index = 0;
             var result = new FormatResultBuilder(this, context, CreateMemoryCounter(context));
             while (index < format.Length)
@@ -26,7 +23,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                 if (lbrace >= 0 && (rbrace < 0 || rbrace > lbrace))
                 {
                     // Escaped left brace
-                    if (SafeCharAt(format, lbrace + 1) == '{')
+                    if (ExpressionUtil.SafeCharAt(format, lbrace + 1) == '{')
                     {
                         result.Append(format.Substring(index, lbrace - index + 1));
                         index = lbrace + 2;
@@ -61,7 +58,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                 else if (rbrace >= 0)
                 {
                     // Escaped right brace
-                    if (SafeCharAt(format, rbrace + 1) == '}')
+                    if (ExpressionUtil.SafeCharAt(format, rbrace + 1) == '}')
                     {
                         result.Append(format.Substring(index, rbrace - index + 1));
                         index = rbrace + 2;
@@ -90,7 +87,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
         {
             // Count the number of digits
             var length = 0;
-            while (Char.IsDigit(SafeCharAt(str, startIndex + length)))
+            while (Char.IsDigit(ExpressionUtil.SafeCharAt(str, startIndex + length)))
             {
                 length++;
             }
@@ -115,7 +112,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
             out Int32 rbrace)
         {
             // No format specifiers
-            var c = SafeCharAt(str, startIndex);
+            var c = ExpressionUtil.SafeCharAt(str, startIndex);
             if (c == '}')
             {
                 result = String.Empty;
@@ -153,7 +150,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                     index++;
                 }
                 // Escaped right-brace
-                else if (SafeCharAt(str, index + 1) == '}')
+                else if (ExpressionUtil.SafeCharAt(str, index + 1) == '}')
                 {
                     specifiers.Append('}');
                     index += 2;
@@ -166,18 +163,6 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                     return true;
                 }
             }
-        }
-
-        private Char SafeCharAt(
-            String str,
-            Int32 index)
-        {
-            if (str.Length > index)
-            {
-                return str[index];
-            }
-
-            return '\0';
         }
 
         private sealed class FormatResultBuilder
@@ -243,8 +228,8 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                         // The evaluation result is required when format specifiers are used. Otherwise the string
                         // result is required. Go ahead and store both values. Since ConvertToString produces tracing,
                         // we need to run that now so the tracing appears in order in the log.
-                        var evaluationResult = m_node.Parameters[argIndex + 1].Evaluate(m_context);
-                        var stringResult = evaluationResult.ConvertToString();
+                        var evaluationResult = Extensions.ToLegacy(m_context, m_node.Parameters[argIndex + 1].Evaluate(m_context));
+                        var stringResult = evaluationResult.ConvertToString(m_context);
                         argValue = new ArgValue(evaluationResult, stringResult);
                         m_cache[argIndex] = argValue;
                     }
@@ -253,6 +238,11 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                     if (String.IsNullOrEmpty(formatSpecifiers))
                     {
                         result = argValue.StringResult;
+                    }
+                    // DateTime
+                    else if (argValue.EvaluationResult.Kind == ValueKind.DateTime)
+                    {
+                        result = FormatDateTime((DateTimeOffset)argValue.EvaluationResult.Value, formatSpecifiers);
                     }
                     // Invalid
                     else
@@ -268,6 +258,113 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
 
                     return result;
                 }));
+            }
+
+            private String FormatDateTime(
+                DateTimeOffset dateTime,
+                String specifiers)
+            {
+                var result = new StringBuilder();
+                var i = 0;
+                while (true)
+                {
+                    // Get the next specifier
+                    var specifier = GetNextSpecifier(specifiers, ref i);
+
+                    // Check end of string
+                    if (String.IsNullOrEmpty(specifier))
+                    {
+                        break;
+                    }
+
+                    // Append the value
+                    switch (specifier)
+                    {
+                        case "yyyy":
+                        case "yy":
+                        case "MM":
+                        case "dd":
+                        case "HH":
+                        case "mm":
+                        case "ss":
+                        case "ff":
+                        case "fff":
+                        case "ffff":
+                        case "fffff":
+                        case "ffffff":
+                        case "fffffff":
+                        case "zzz":
+                            result.Append(dateTime.ToString(specifier));
+                            break;
+
+                        // .Net requires a leading % for some specifiers
+                        case "M":
+                        case "d":
+                        case "H":
+                        case "m":
+                        case "s":
+                        case "f":
+                        case "K":
+                            result.Append(dateTime.ToString("%" + specifier));
+                            break;
+
+                        default:
+                            // Escaped character
+                            if (specifier[0] == '\\')
+                            {
+                                result.Append(specifier[1]);
+                            }
+                            else if (specifier[0] == ' ')
+                            {
+                                result.Append(specifier);
+                            }
+                            // Unexpected
+                            else
+                            {
+                                throw new FormatException(ExpressionResources.InvalidFormatSpecifiers(specifiers, ValueKind.DateTime));
+                            }
+                            break;
+                    }
+                }
+
+                return result.ToString();
+            }
+
+            private String GetNextSpecifier(
+                String specifiers,
+                ref Int32 index)
+            {
+                // End of string
+                if (index >= specifiers.Length)
+                {
+                    return String.Empty;
+                }
+
+                // Get the first char
+                var startIndex = index;
+                var c = specifiers[index++];
+
+                // Escaped
+                if (c == '\\')
+                {
+                    // End of string
+                    if (index >= specifiers.Length)
+                    {
+                        throw new FormatException(ExpressionResources.InvalidFormatSpecifiers(specifiers, ValueKind.DateTime));
+                    }
+
+                    index++;
+                }
+                // Find consecutive matches
+                else
+                {
+                    while (index < specifiers.Length && specifiers[index] == c)
+                    {
+                        index++;
+                    }
+                }
+
+                return specifiers.Substring(startIndex, index - startIndex);
             }
 
             private readonly ArgValue[] m_cache;

@@ -179,7 +179,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         }
                     }
                     else if (node is Function function &&
-                        !((flags & ExpressionFlags.ExtendedFunctions) == ExpressionFlags.DTExpressionsV1 ? ExpressionConstants.AzureWellKnownFunctions : ExpressionConstants.WellKnownFunctions).ContainsKey(function.Name) &&
+                        !ExpressionConstants.WellKnownFunctions.ContainsKey(function.Name) &&
+                        !((flags & ExpressionFlags.ExtendedFunctions) == ExpressionFlags.ExtendedFunctions && ExpressionConstants.AzureWellKnownFunctions.ContainsKey(function.Name)) &&
                         expressionFunctions?.Any(x => string.Equals(x.Name, function.Name, StringComparison.OrdinalIgnoreCase)) != true)
                     {
                         return false;
