@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
@@ -11,7 +10,7 @@ namespace GitHub.Runner.Worker
     {
         private readonly IExecutionContext _executionContext;
         private readonly Tracing _trace;
-        private readonly StringBuilder _traceBuilder = new StringBuilder();
+        private readonly StringBuilder _traceBuilder = new();
 
         public string Trace => _traceBuilder.ToString();
 

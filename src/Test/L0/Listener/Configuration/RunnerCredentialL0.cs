@@ -14,7 +14,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             trace.Info("GetVssCredentials()");
             
             var loginCred = new VssOAuthAccessTokenCredential("sometoken");
-            VssCredentials creds = new VssCredentials(loginCred);
+            VssCredentials creds = new(loginCred);
             trace.Verbose("cred created");
 
             return creds;

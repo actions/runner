@@ -4,7 +4,7 @@ These examples use VS Code, but the idea should be similar across all IDEs as lo
 ## Configure
 
 To successfully start the runner, you need to register it using a repository and a runner registration token.
-Run `Configure` first to build the source code and set up the runner in `_layout`. 
+Run `Configure` first to build the source code and set up the runner in `_layout`.
 Once it's done creating `_layout`, it asks for the url of your repository and your token in the terminal.
 
 Check [Quickstart](../contribute.md#quickstart-run-a-job-from-a-real-repository) if you don't know how to get this token.
@@ -34,8 +34,8 @@ All the configs below can be found in `.vscode/launch.json`.
 
 If you launch `Run` or `Run [build]`, it starts a process called `Runner.Listener`.
 This process will receive any job queued on this repository if the job runs on matching labels (e.g `runs-on: self-hosted`).
-Once a job is received, a `Runner.Listener` starts a new process of `Runner.Worker`. 
-Since this is a diferent process, you can't use the same debugger session debug it.
+Once a job is received, a `Runner.Listener` starts a new process of `Runner.Worker`.
+Since this is a different process, you can't use the same debugger session debug it.
 Instead, a parallel debugging session has to be started, using a different launch config.
 Luckily, VS Code supports multiple parallel debugging sessions.
 
@@ -45,7 +45,7 @@ Because the worker process is usually started by the listener instead of an IDE,
 For this reason, `Runner.Worker` can be configured to wait for a debugger to be attached before it begins any actual work.
 
 Set the environment variable `GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER` to `true` or `1` to enable this wait.
-All worker processes now will wait 20 seconds before they start working on their task. 
+All worker processes now will wait 20 seconds before they start working on their task.
 
 This gives enough time to attach a debugger by running `Debug Worker`.
 If for some reason you have multiple workers running, run the launch config `Attach` instead.

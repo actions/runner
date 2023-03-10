@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using Moq;
 using System;
@@ -8,7 +8,6 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker
@@ -25,6 +24,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IPagingLogger> _logger;
         private Mock<IContainerOperationProvider> _containerProvider;
         private Mock<IDiagnosticLogManager> _diagnosticLogManager;
+        private Mock<IJobHookProvider> _jobHookProvider;
 
         private CancellationTokenSource _tokenSource;
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -40,6 +40,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _directoryManager = new Mock<IPipelineDirectoryManager>();
             _directoryManager.Setup(x => x.PrepareDirectory(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.WorkspaceOptions>()))
                              .Returns(new TrackingConfig() { PipelineDirectory = "runner", WorkspaceDirectory = "runner/runner" });
+            _jobHookProvider = new Mock<IJobHookProvider>();
 
             IActionRunner step1 = new ActionRunner();
             IActionRunner step2 = new ActionRunner();
@@ -66,10 +67,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
 
             _tokenSource = new CancellationTokenSource();
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = new Timeline(Guid.NewGuid());
 
-            List<Pipelines.ActionStep> steps = new List<Pipelines.ActionStep>()
+            List<Pipelines.ActionStep> steps = new()
             {
                 new Pipelines.ActionStep()
                 {
@@ -100,8 +101,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             Guid jobId = Guid.NewGuid();
             _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), steps, null, null, null, null);
-            GitHubContext github = new GitHubContext();
+            GitHubContext github = new();
             github["repository"] = new Pipelines.ContextData.StringContextData("actions/runner");
+            github["secret_source"] = new Pipelines.ContextData.StringContextData("Actions");
             _message.ContextData.Add("github", github);
 
             hc.SetSingleton(_actionManager.Object);
@@ -110,7 +112,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton(_containerProvider.Object);
             hc.SetSingleton(_directoryManager.Object);
             hc.SetSingleton(_diagnosticLogManager.Object);
+            hc.SetSingleton(_jobHookProvider.Object);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // JobExecutionContext
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // job start hook
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // Initial Job
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step1
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step2
@@ -119,6 +123,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step5
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // prepare1
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // prepare2
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // job complete hook
 
             hc.EnqueueInstance<IActionRunner>(step1);
             hc.EnqueueInstance<IActionRunner>(step2);
@@ -202,6 +207,24 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.NotNull(result[4].ExecutionContext);
                 Assert.NotNull(result[5].ExecutionContext);
                 Assert.NotNull(result[6].ExecutionContext);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task JobExtensionBuildFailsWithoutContainerIfRequired()
+        {
+            Environment.SetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer, "true");
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>() { new JobExtensionRunner(null, "", "prepare1", null), new JobExtensionRunner(null, "", "prepare2", null) }, new Dictionary<Guid, IActionRunner>())));
+
+                await Assert.ThrowsAsync<ArgumentException>(() => jobExtension.InitializeJob(_jobEc, _message));
             }
         }
 
@@ -345,6 +368,63 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
 
                 Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
+            }
+        }
+
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task EnsurePreAndPostHookStepsIfEnvExists()
+        {
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED", "/foo/bar");
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED", "/bar/foo");
+            using (TestHostContext hc = CreateTestContext())
+            {                
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                List<IStep> result = await jobExtension.InitializeJob(_jobEc, _message);
+
+                var trace = hc.GetTrace();
+
+                var hookStart = result.First() as JobExtensionRunner;
+
+                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+
+                Assert.Equal(Constants.Hooks.JobStartedStepName, hookStart.DisplayName);
+                Assert.Equal(Constants.Hooks.JobCompletedStepName, (_jobEc.PostJobSteps.Last() as JobExtensionRunner).DisplayName);                
+            }
+
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED", null);
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED", null);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EnsureNoPreAndPostHookSteps()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _message.ActionsEnvironment = null;
+
+                _jobEc = new Runner.Worker.ExecutionContext {Result = TaskResult.Succeeded};
+                _jobEc.Initialize(hc);
+                _jobEc.InitializeJob(_message, _tokenSource.Token);
+
+                var x = _jobEc.JobSteps;
+
+                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+
+                Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
+                Assert.Equal(0, _jobEc.PostJobSteps.Count);
             }
         }
     }

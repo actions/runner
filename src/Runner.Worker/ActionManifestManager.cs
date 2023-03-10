@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -10,9 +10,6 @@ using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using YamlDotNet.Core;
-using YamlDotNet.Core.Events;
-using System.Globalization;
 using System.Linq;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -56,7 +53,7 @@ namespace GitHub.Runner.Worker
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
             var templateContext = CreateTemplateContext(executionContext);
-            ActionDefinitionData actionDefinition = new ActionDefinitionData();
+            ActionDefinitionData actionDefinition = new();
 
             // Clean up file name real quick
             // Instead of using Regex which can be computationally expensive, 
@@ -451,7 +448,8 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase)||
+                         string.Equals(usingToken.Value, "node16", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
                     {
@@ -461,6 +459,7 @@ namespace GitHub.Runner.Worker
                     {
                         return new NodeJSActionExecutionData()
                         {
+                            NodeVersion = usingToken.Value,
                             Script = mainToken.Value,
                             Pre = preToken?.Value,
                             InitCondition = preIfToken?.Value ?? "always()",
@@ -490,7 +489,7 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
-                    throw new ArgumentOutOfRangeException($"'using: {usingToken.Value}' is not supported, use 'docker' or 'node12' instead.");
+                    throw new ArgumentOutOfRangeException($"'using: {usingToken.Value}' is not supported, use 'docker', 'node12' or 'node16' instead.");
                 }
             }
             else if (pluginToken != null)
@@ -501,7 +500,7 @@ namespace GitHub.Runner.Worker
                 };
             }
 
-            throw new NotSupportedException(nameof(ConvertRuns));
+            throw new NotSupportedException("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12' or 'node16'.");
         }
 
         private void ConvertInputs(

@@ -25,10 +25,10 @@
   },
   "devDependencies": {
     "@types/node": "^12.7.12",
-    "@typescript-eslint/parser": "^2.8.0",
-    "@zeit/ncc": "^0.20.5",
-    "eslint": "^6.8.0",
-    "eslint-plugin-github": "^2.0.0",
+    "@typescript-eslint/parser": "^5.15.0",
+    "@vercel/ncc": "^0.36.0",
+    "eslint": "^8.11.0",
+    "eslint-plugin-github": "^4.3.5",
     "prettier": "^1.19.1",
     "typescript": "^3.6.4"
   }

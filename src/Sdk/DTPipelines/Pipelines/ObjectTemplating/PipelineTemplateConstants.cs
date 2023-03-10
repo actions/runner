@@ -74,6 +74,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String TimeoutMinutes = "timeout-minutes";
         public const String Username = "username";
         public const String Uses = "uses";
+        public const String Vars = "vars";
         public const String VmImage = "vmImage";
         public const String Volumes = "volumes";
         public const String With = "with";

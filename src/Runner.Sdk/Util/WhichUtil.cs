@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Sdk
 {

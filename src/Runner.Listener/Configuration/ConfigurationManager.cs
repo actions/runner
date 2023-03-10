@@ -1,9 +1,3 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
-using GitHub.Services.Common;
-using GitHub.Services.OAuth;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +7,13 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
+using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -22,6 +23,7 @@ namespace GitHub.Runner.Listener.Configuration
         bool IsConfigured();
         Task ConfigureAsync(CommandSettings command);
         Task UnconfigureAsync(CommandSettings command);
+        void DeleteLocalRunnerConfig();
         RunnerSettings LoadSettings();
     }
 
@@ -53,7 +55,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(nameof(LoadSettings));
             if (!IsConfigured())
             {
-                throw new InvalidOperationException("Not configured. Run config.(sh/cmd) to configure the runner.");
+                throw new NonRetryableException("Not configured. Run config.(sh/cmd) to configure the runner.");
             }
 
             RunnerSettings settings = _store.GetSettings();
@@ -79,12 +81,33 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteLine("--------------------------------------------------------------------------------");
 
             Trace.Info(nameof(ConfigureAsync));
+
+            if (command.GenerateServiceConfig)
+            {
+#if OS_LINUX
+                if (!IsConfigured())
+                {
+                    throw new InvalidOperationException("--generateServiceConfig requires that the runner is already configured. For configuring a new runner as a service, run './config.sh'.");
+                }
+
+                RunnerSettings settings = _store.GetSettings();
+
+                Trace.Info($"generate service config for runner: {settings.AgentId}");
+                var controlManager = HostContext.GetService<ILinuxServiceControlManager>();
+                controlManager.GenerateScripts(settings);
+
+                return;
+#else
+                throw new NotSupportedException("--generateServiceConfig is only supported on Linux.");
+#endif
+            }
+
             if (IsConfigured())
             {
                 throw new InvalidOperationException("Cannot configure the runner because it is already configured. To reconfigure the runner, run 'config.cmd remove' or './config.sh remove' first.");
             }
 
-            RunnerSettings runnerSettings = new RunnerSettings();
+            RunnerSettings runnerSettings = new();
 
             // Loop getting url and creds until you can connect
             ICredentialProvider credProvider = null;
@@ -127,7 +150,7 @@ namespace GitHub.Runner.Listener.Configuration
                         // Example githubServerUrl is https://my-ghes
                         var actionsServerUrl = new Uri(runnerSettings.ServerUrl);
                         var githubServerUrl = new Uri(runnerSettings.GitHubUrl);
-                        if (!string.Equals(actionsServerUrl.Authority, githubServerUrl.Authority, StringComparison.OrdinalIgnoreCase))
+                        if (!UriUtility.IsSubdomainOf(actionsServerUrl.Authority, githubServerUrl.Authority))
                         {
                             throw new InvalidOperationException($"GitHub Actions is not properly configured in GHES. GHES url: {runnerSettings.GitHubUrl}, Actions url: {runnerSettings.ServerUrl}.");
                         }
@@ -195,6 +218,7 @@ namespace GitHub.Runner.Listener.Configuration
             TaskAgent agent;
             while (true)
             {
+                runnerSettings.DisableUpdate = command.DisableUpdate;
                 runnerSettings.Ephemeral = command.Ephemeral;
                 runnerSettings.AgentName = command.GetRunnerName();
 
@@ -212,11 +236,22 @@ namespace GitHub.Runner.Listener.Configuration
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version.
-                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral);
+                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
 
                         try
                         {
                             agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            if (command.DisableUpdate &&
+                                command.DisableUpdate != agent.DisableUpdate)
+                            {
+                                throw new NotSupportedException("The GitHub server does not support configuring a self-hosted runner with 'DisableUpdate' flag.");
+                            }
+                            if (command.Ephemeral &&
+                                command.Ephemeral != agent.Ephemeral)
+                            {
+                                throw new NotSupportedException("The GitHub server does not support configuring a self-hosted runner with 'Ephemeral' flag.");
+                            }
+
                             _term.WriteSuccessMessage("Successfully replaced the runner");
                             break;
                         }
@@ -235,11 +270,22 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent.
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
 
                     try
                     {
                         agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
+                        if (command.DisableUpdate &&
+                            command.DisableUpdate != agent.DisableUpdate)
+                        {
+                            throw new NotSupportedException("The GitHub server does not support configuring a self-hosted runner with 'DisableUpdate' flag.");
+                        }
+                        if (command.Ephemeral &&
+                            command.Ephemeral != agent.Ephemeral)
+                        {
+                            throw new NotSupportedException("The GitHub server does not support configuring a self-hosted runner with 'Ephemeral' flag.");
+                        }
+
                         _term.WriteSuccessMessage("Runner successfully added");
                         break;
                     }
@@ -329,6 +375,38 @@ namespace GitHub.Runner.Listener.Configuration
 #endif
         }
 
+        // Delete .runner and .credentials files
+        public void DeleteLocalRunnerConfig()
+        {
+            bool isConfigured = _store.IsConfigured();
+            bool hasCredentials = _store.HasCredentials();
+            //delete credential config files
+            var currentAction = "Removing .credentials";
+            if (hasCredentials)
+            {
+                _store.DeleteCredential();
+                var keyManager = HostContext.GetService<IRSAKeyManager>();
+                keyManager.DeleteKey();
+                _term.WriteSuccessMessage("Removed .credentials");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
+
+            //delete settings config file
+            currentAction = "Removing .runner";
+            if (isConfigured)
+            {
+                _store.DeleteSettings();
+                _term.WriteSuccessMessage("Removed .runner");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
+        }
+
         public async Task UnconfigureAsync(CommandSettings command)
         {
             string currentAction = string.Empty;
@@ -382,7 +460,7 @@ namespace GitHub.Runner.Listener.Configuration
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
 
-                    var agents = await _runnerServer.GetAgentsAsync(settings.PoolId, settings.AgentName);
+                    var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
                     Trace.Verbose("Returns {0} agents", agents.Count);
                     TaskAgent agent = agents.FirstOrDefault();
                     if (agent == null)
@@ -391,7 +469,7 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                     else
                     {
-                        await _runnerServer.DeleteAgentAsync(settings.PoolId, settings.AgentId);
+                        await _runnerServer.DeleteAgentAsync(settings.AgentId);
 
                         _term.WriteLine();
                         _term.WriteSuccessMessage("Runner removed successfully");
@@ -402,31 +480,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine("Cannot connect to server, because config files are missing. Skipping removing runner from the server.");
                 }
 
-                //delete credential config files
-                currentAction = "Removing .credentials";
-                if (hasCredentials)
-                {
-                    _store.DeleteCredential();
-                    var keyManager = HostContext.GetService<IRSAKeyManager>();
-                    keyManager.DeleteKey();
-                    _term.WriteSuccessMessage("Removed .credentials");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
-                }
-
-                //delete settings config file
-                currentAction = "Removing .runner";
-                if (isConfigured)
-                {
-                    _store.DeleteSettings();
-                    _term.WriteSuccessMessage("Removed .runner");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
-                }
+                DeleteLocalRunnerConfig();
             }
             catch (Exception)
             {
@@ -457,7 +511,7 @@ namespace GitHub.Runner.Listener.Configuration
         }
 
 
-        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral)
+        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
         {
             ArgUtil.NotNull(agent, nameof(agent));
             agent.Authorization = new TaskAgentAuthorization
@@ -469,6 +523,7 @@ namespace GitHub.Runner.Listener.Configuration
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
             agent.Ephemeral = ephemeral;
+            agent.DisableUpdate = disableUpdate;
             agent.MaxParallelism = 1;
 
             agent.Labels.Clear();
@@ -485,9 +540,9 @@ namespace GitHub.Runner.Listener.Configuration
             return agent;
         }
 
-        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral)
+        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
         {
-            TaskAgent agent = new TaskAgent(agentName)
+            TaskAgent agent = new(agentName)
             {
                 Authorization = new TaskAgentAuthorization
                 {
@@ -497,6 +552,7 @@ namespace GitHub.Runner.Listener.Configuration
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
                 Ephemeral = ephemeral,
+                DisableUpdate = disableUpdate
             };
 
             agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
@@ -579,32 +635,51 @@ namespace GitHub.Runner.Listener.Configuration
                 throw new ArgumentException($"'{githubUrl}' should point to an org or repository.");
             }
 
-            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-            using (var httpClient = new HttpClient(httpClientHandler))
+            int retryCount = 0;
+            while (retryCount < 3)
             {
-                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
-                HostContext.SecretMasker.AddValue(base64EncodingToken);
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
-                httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-
-                var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
-
-                if (response.IsSuccessStatusCode)
+                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                using (var httpClient = new HttpClient(httpClientHandler))
                 {
-                    Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-                    return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(jsonResponse);
+                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
+                    HostContext.SecretMasker.AddValue(base64EncodingToken);
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
+                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                    httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
+
+                    var responseStatus = System.Net.HttpStatusCode.OK;
+                    try
+                    {
+                        var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
+                        responseStatus = response.StatusCode;
+                        var githubRequestId = GetGitHubRequestId(response.Headers);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' ({githubRequestId})");
+                            var jsonResponse = await response.Content.ReadAsStringAsync();
+                            return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(jsonResponse);
+                        }
+                        else
+                        {
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' (Request Id: {githubRequestId})");
+                            var errorResponse = await response.Content.ReadAsStringAsync();
+                            _term.WriteError(errorResponse);
+                            response.EnsureSuccessStatusCode();
+                        }
+                    }
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    {
+                        retryCount++;
+                        Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
+                        Trace.Error(ex);
+                    }
                 }
-                else
-                {
-                    _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
-                    var errorResponse = await response.Content.ReadAsStringAsync();
-                    _term.WriteError(errorResponse);
-                    response.EnsureSuccessStatusCode();
-                    return null;
-                }
+                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+                Trace.Info($"Retrying in {backOff.Seconds} seconds");
+                await Task.Delay(backOff);
             }
+            return null;
         }
 
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken, string runnerEvent)
@@ -620,35 +695,63 @@ namespace GitHub.Runner.Listener.Configuration
                 githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/actions/runner-registration";
             }
 
-            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-            using (var httpClient = new HttpClient(httpClientHandler))
+            int retryCount = 0;
+            while (retryCount < 3)
             {
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
-                httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-
-                var bodyObject = new Dictionary<string, string>()
+                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                using (var httpClient = new HttpClient(httpClientHandler))
                 {
-                    {"url", githubUrl},
-                    {"runner_event", runnerEvent}
-                };
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
+                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
 
-                var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
+                    var bodyObject = new Dictionary<string, string>()
+                    {
+                        {"url", githubUrl},
+                        {"runner_event", runnerEvent}
+                    };
 
-                if (response.IsSuccessStatusCode)
-                {
-                    Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-                    return StringUtil.ConvertFromJson<GitHubAuthResult>(jsonResponse);
+                    var responseStatus = System.Net.HttpStatusCode.OK;
+                    try
+                    {
+                        var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
+                        responseStatus = response.StatusCode;
+                        var githubRequestId = GetGitHubRequestId(response.Headers);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' ({githubRequestId})");
+                            var jsonResponse = await response.Content.ReadAsStringAsync();
+                            return StringUtil.ConvertFromJson<GitHubAuthResult>(jsonResponse);
+                        }
+                        else
+                        {
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' (Request Id: {githubRequestId})");
+                            var errorResponse = await response.Content.ReadAsStringAsync();
+                            _term.WriteError(errorResponse);
+                            response.EnsureSuccessStatusCode();
+                        }
+                    }
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    {
+                        retryCount++;
+                        Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
+                        Trace.Error(ex);
+                    }
                 }
-                else
-                {
-                    _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
-                    var errorResponse = await response.Content.ReadAsStringAsync();
-                    _term.WriteError(errorResponse);
-                    response.EnsureSuccessStatusCode();
-                    return null;
-                }
+                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+                Trace.Info($"Retrying in {backOff.Seconds} seconds");
+                await Task.Delay(backOff);
             }
+            return null;
+        }
+
+        private string GetGitHubRequestId(HttpResponseHeaders headers)
+        {
+            if (headers.TryGetValues("x-github-request-id", out var headerValues))
+            {
+                return headerValues.FirstOrDefault();
+            }
+            return string.Empty;
         }
     }
 }

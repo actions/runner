@@ -153,6 +153,19 @@ namespace GitHub.DistributedTask.WebApi
         {
             this.ActionsEnvironment = actionsEnvironment;
             this.ActionsStepsTelemetry = actionsStepsTelemetry;
+        }        
+        
+        public JobCompletedEvent(
+            Int64 requestId,
+            Guid jobId,
+            TaskResult result,
+            Dictionary<String, VariableValue> outputs,
+            ActionsEnvironmentReference actionsEnvironment,
+            List<ActionsStepTelemetry> actionsStepsTelemetry,
+            List<JobTelemetry> jobTelemetry)
+            : this(requestId, jobId, result, outputs, actionsEnvironment, actionsStepsTelemetry)
+        {
+            this.JobTelemetry = jobTelemetry;
         }
 
         [DataMember(EmitDefaultValue = false)]
@@ -185,6 +198,13 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public List<ActionsStepTelemetry> ActionsStepsTelemetry
+        {
+            get;
+            set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public List<JobTelemetry> JobTelemetry
         {
             get;
             set;

@@ -13,7 +13,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public void LoadsTypeFromString()
         {
-            using (TestHostContext tc = new TestHostContext(this))
+            using (TestHostContext tc = new(this))
             {
                 // Arrange.
                 var manager = new ExtensionManager();
@@ -34,7 +34,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public void LoadsTypes()
         {
-            using (TestHostContext tc = new TestHostContext(this))
+            using (TestHostContext tc = new(this))
             {
                 // Arrange.
                 var manager = new ExtensionManager();

@@ -24,18 +24,18 @@ namespace GitHub.Runner.Sdk
         private Stopwatch _stopWatch;
         private int _asyncStreamReaderCount = 0;
         private bool _waitingOnStreams = false;
-        private readonly AsyncManualResetEvent _outputProcessEvent = new AsyncManualResetEvent();
-        private readonly TaskCompletionSource<bool> _processExitedCompletionSource = new TaskCompletionSource<bool>();
-        private readonly CancellationTokenSource _processStandardInWriteCancellationTokenSource = new CancellationTokenSource();
-        private readonly ConcurrentQueue<string> _errorData = new ConcurrentQueue<string>();
-        private readonly ConcurrentQueue<string> _outputData = new ConcurrentQueue<string>();
+        private readonly AsyncManualResetEvent _outputProcessEvent = new();
+        private readonly TaskCompletionSource<bool> _processExitedCompletionSource = new();
+        private readonly CancellationTokenSource _processStandardInWriteCancellationTokenSource = new();
+        private readonly ConcurrentQueue<string> _errorData = new();
+        private readonly ConcurrentQueue<string> _outputData = new();
         private readonly TimeSpan _sigintTimeout = TimeSpan.FromMilliseconds(7500);
         private readonly TimeSpan _sigtermTimeout = TimeSpan.FromMilliseconds(2500);
         private ITraceWriter Trace { get; set; }
 
         private class AsyncManualResetEvent
         {
-            private volatile TaskCompletionSource<bool> m_tcs = new TaskCompletionSource<bool>();
+            private volatile TaskCompletionSource<bool> m_tcs = new();
 
             public Task WaitAsync() { return m_tcs.Task; }
 
@@ -264,7 +264,17 @@ namespace GitHub.Runner.Sdk
             {
                 foreach (KeyValuePair<string, string> kvp in environment)
                 {
+#if OS_WINDOWS
+                    string tempKey = String.IsNullOrWhiteSpace(kvp.Key) ? kvp.Key : kvp.Key.Split('\0')[0];
+                    string tempValue = String.IsNullOrWhiteSpace(kvp.Value) ? kvp.Value : kvp.Value.Split('\0')[0];
+                    if(!String.IsNullOrWhiteSpace(tempKey))
+                    {
+                         _proc.StartInfo.Environment[tempKey] = tempValue;
+                    }
+#else
                     _proc.StartInfo.Environment[kvp.Key] = kvp.Value;
+
+#endif
                 }
             }
 
@@ -387,8 +397,8 @@ namespace GitHub.Runner.Sdk
 
         private void ProcessOutput()
         {
-            List<string> errorData = new List<string>();
-            List<string> outputData = new List<string>();
+            List<string> errorData = new();
+            List<string> outputData = new();
 
             string errorLine;
             while (_errorData.TryDequeue(out errorLine))

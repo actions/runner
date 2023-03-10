@@ -1,11 +1,7 @@
-﻿using GitHub.Services.WebApi;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Reflection;
 using System.Text;
 
 namespace GitHub.Runner.Sdk
@@ -13,7 +9,7 @@ namespace GitHub.Runner.Sdk
     public static class StringUtil
     {
         private static readonly object[] s_defaultFormatArgs = new object[] { null };
-        private static Lazy<JsonSerializerSettings> s_serializerSettings = new Lazy<JsonSerializerSettings>(() =>
+        private static Lazy<JsonSerializerSettings> s_serializerSettings = new(() =>
         {
             var settings = new VssJsonMediaTypeFormatter().SerializerSettings;
             settings.DateParseHandling = DateParseHandling.None;
@@ -127,5 +123,12 @@ namespace GitHub.Runner.Sdk
         {
             return value?.Substring(0, Math.Min(value.Length, count));
         }
+
+        // Fixes format violations e.g. https://github.com/actions/runner/issues/2165
+        public static string SanitizeUserAgentHeader(string header)
+        {
+            return header.Replace("(", "[").Replace(")", "]").Trim();
+        }
+
     }
 }

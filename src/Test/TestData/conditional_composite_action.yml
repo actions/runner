@@ -1,0 +1,49 @@
+
+name: 'Conditional Composite'
+description: 'Test composite run step conditionals'
+inputs:
+  exit-code:
+    description: 'Action fails if set to non-zero'
+    default: '0'
+outputs:
+  default:
+    description: "Did step run with default?"
+    value: ${{ steps.default-conditional.outputs.default }}
+  success:
+    description: "Did step run with success?"
+    value: ${{ steps.success-conditional.outputs.success }}
+  failure:
+    description: "Did step run with failure?"
+    value: ${{ steps.failure-conditional.outputs.failure }}
+  always:
+    description: "Did step run with always?"
+    value: ${{ steps.always-conditional.outputs.always }}
+
+runs:
+    using: "composite"
+    steps:
+      - run: exit ${{ inputs.exit-code }}
+        shell: bash
+
+      - run: echo "default=true" >> $GITHUB_OUTPUT
+        id: default-conditional
+        shell: bash
+
+      - run: echo "success=true" >> $GITHUB_OUTPUT
+        id: success-conditional
+        shell: bash
+        if: success()
+
+      - run: echo "failure=true" >> $GITHUB_OUTPUT
+        id: failure-conditional
+        shell: bash
+        if: failure()
+
+      - run: echo "always=true" >> $GITHUB_OUTPUT
+        id: always-conditional
+        shell: bash
+        if: always()
+
+      - run: echo "failed"
+        shell: bash
+        if: ${{ inputs.exit-code == 1 && failure() }}

@@ -18,6 +18,8 @@ downloadrunnerversion=_DOWNLOAD_RUNNER_VERSION_
 logfile="_UPDATE_LOG_"
 restartinteractiverunner=_RESTART_INTERACTIVE_RUNNER_
 
+telemetryfile="$rootfolder/_diag/.telemetry"
+
 # log user who run the script
 date "+[%F %T-%4N] --------whoami--------" >> "$logfile" 2>&1
 whoami >> "$logfile" 2>&1
@@ -28,13 +30,13 @@ date "+[%F %T-%4N] Waiting for $runnerprocessname ($runnerpid) to complete" >> "
 while [ -e /proc/$runnerpid ]
 do
     date "+[%F %T-%4N] Process $runnerpid still running" >> "$logfile" 2>&1
-    sleep 2
+    "$rootfolder"/safe_sleep.sh 2
 done
 date "+[%F %T-%4N] Process $runnerpid finished running" >> "$logfile" 2>&1
 
 # start re-organize folders
 date "+[%F %T-%4N] Sleep 1 more second to make sure process exited" >> "$logfile" 2>&1
-sleep 1
+"$rootfolder"/safe_sleep.sh 1
 
 # the folder structure under runner root will be
 # ./bin -> bin.2.100.0 (junction folder)
@@ -118,44 +120,68 @@ then
     exit 1
 fi
 
-# fix upgrade issue with macOS
+# fix upgrade issue with macOS when running as a service
+attemptedtargetedfix=0
 currentplatform=$(uname | awk '{print tolower($0)}')
-if [[ "$currentplatform" == 'darwin' ]]; then
-    # need a short-term fix for https://github.com/actions/runner/issues/743
-    # we will recreate all the ./externals/node12/bin/node of the past 5 versions
-    # v2.280.3 v2.280.2 v2.280.1 v2.279.0 v2.278.0
-    if [[ ! -e "$rootfolder/externals.2.280.3/node12/bin/node" ]]
-    then
-        mkdir -p "$rootfolder/externals.2.280.3/node12/bin"
-        cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.280.3/node12/bin/node"
-    fi
+if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
+    # We needed a fix for https://github.com/actions/runner/issues/743
+    # We will recreate the ./externals/nodeXY/bin/node of the past runner version that launched the runnerlistener service
+    # Otherwise mac gatekeeper kills the processes we spawn on creation as we are running a process with no backing file
 
-    if [[ ! -e "$rootfolder/externals.2.280.2/node12/bin/node" ]]
+    # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
+    # assumption here is only one process is invoking rootfolder/runsvc.sh
+    procgroup=$(ps x -o pgid,command | grep "$rootfolder/runsvc.sh" | grep -v grep | awk '{print $1}')
+    if [[ $? -eq 0 && -n "$procgroup" ]]
     then
-        mkdir -p "$rootfolder/externals.2.280.2/node12/bin"
-        cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.280.2/node12/bin/node"
-    fi
-
-    if [[ ! -e "$rootfolder/externals.2.280.1/node12/bin/node" ]]
-    then
-        mkdir -p "$rootfolder/externals.2.280.1/node12/bin"
-        cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.280.1/node12/bin/node"
-    fi
-
-    if [[ ! -e "$rootfolder/externals.2.279.0/node12/bin/node" ]]
-    then
-        mkdir -p "$rootfolder/externals.2.279.0/node12/bin"
-        cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.279.0/node12/bin/node"
-    fi
-
-    if [[ ! -e "$rootfolder/externals.2.278.0/node12/bin/node" ]]
-    then
-        mkdir -p "$rootfolder/externals.2.278.0/node12/bin"
-        cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.278.0/node12/bin/node"
+        # inspect the open file handles to find the node process
+        # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
+        nodever="node16"
+        path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
+        if [[ $? -ne 0 || -z "$path" ]] # Fallback if RunnerService.js was started with node12
+        then
+            nodever="node12"
+            path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
+        fi
+        if [[ $? -eq 0 && -n "$path" ]]
+        then
+            # trim the last 5 characters of the path '/node'
+            trimmedpath=$(dirname "$path")
+            if [[ $? -eq 0 && -n "$trimmedpath" ]]
+            then
+                attemptedtargetedfix=1
+                # Create the path if it does not exist
+                if [[ ! -e "$path" ]]
+                then
+                    date "+[%F %T-%4N] Creating fallback node at path $path" >> "$logfile" 2>&1
+                    mkdir -p "$trimmedpath"
+                    cp "$rootfolder/externals/$nodever/bin/node" "$path"
+                else
+                    date "+[%F %T-%4N] Path for fallback node exists, skipping creating $path" >> "$logfile" 2>&1
+                fi
+            else
+                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
+                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
+            fi
+        else
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
+        fi
+    else
+        runproc=$(ps x -o pgid,command | grep "run.sh" | grep -v grep | awk '{print $1}')
+        if [[ $? -eq 0 && -n "$runproc" ]]
+        then
+            date "+[%F %T-%4N] Running as ephemeral using run.sh, no need to recreate node folder" >> "$logfile" 2>&1
+        else
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
+        fi
     fi
 fi
 
 date "+[%F %T-%4N] Update succeed" >> "$logfile"
+
+touch update.finished
+date "+[%F %T-%4N] update.finished file creation succeed" >> "$logfile"
 
 # rename the update log file with %logfile%.succeed/.failed/succeedneedrestart
 # runner service host can base on the log file name determin the result of the runner update

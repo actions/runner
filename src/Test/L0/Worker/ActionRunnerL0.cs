@@ -3,20 +3,14 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -34,7 +28,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private IActionManifestManager _actionManifestManager;
         private Mock<IFileCommandManager> _fileCommandManager;
 
-        private DictionaryContextData _context = new DictionaryContextData();
+        private DictionaryContextData _context = new();
 
         [Fact]
         [Trait("Level", "L0")]
@@ -60,7 +54,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _actionRunner.Action = action;
 
-            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            Dictionary<string, string> finialInputs = new();
             _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
                            .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory, List<JobExtensionRunner> localActionContainerSetupSteps) =>
                            {
@@ -106,7 +100,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _actionRunner.Action = action;
 
-            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            Dictionary<string, string> finialInputs = new();
             _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
                            .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory, List<JobExtensionRunner> localActionContainerSetupSteps) =>
                            {
@@ -118,7 +112,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             await _actionRunner.RunAsync();
 
             //Assert
-            _ec.Verify(x => x.SetGitHubContext("event_path", Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "_github_workflow", "event.json")), Times.Once);
+            _ec.Verify(x => x.WriteWebhookPayload(), Times.Once);
         }
 
         [Fact]
@@ -149,11 +143,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             _context.Add("matrix", matrixData);
 
             // Act
-            // Should not do anything if we don't have a displayNameToken to expand
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
+            // Should report success with no updated required if there's already a valid display name.
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
-            Assert.False(didUpdateDisplayName);
+            Assert.True(validDisplayName);
+            Assert.False(updated);
             Assert.Equal(actionDisplayName, _actionRunner.DisplayName);
         }
 
@@ -183,12 +178,50 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
-            Assert.True(didUpdateDisplayName);
+            Assert.True(validDisplayName);
+            Assert.True(updated);
             Assert.Equal(expectedString, _actionRunner.DisplayName);
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void IgnoreDisplayNameTokenWhenDisplayNameIsExplicitlySet()
+        {
+            var explicitDisplayName = "Explcitly Set Name";
+
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                DisplayName = explicitDisplayName,
+                DisplayNameToken = new BasicExpressionToken(null, null, null, "matrix.node"),
+            };
+
+            _actionRunner.Action = action;
+
+            var matrixData = new DictionaryContextData
+            {
+                ["node"] = new StringContextData("8")
+            };
+            _context.Add("matrix", matrixData);
+
+            // Act
+            // Should ignore the displayNameToken since there's already an explicit value for DisplayName
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+
+            // Assert
+            Assert.True(validDisplayName);
+            Assert.False(updated);
+            Assert.Equal(explicitDisplayName, _actionRunner.DisplayName);
+        }
+
 
         [Fact]
         [Trait("Level", "L0")]
@@ -218,10 +251,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
-            Assert.True(didUpdateDisplayName);
+            Assert.True(validDisplayName);
+            Assert.True(updated);
             Assert.Equal("Run 8", _actionRunner.DisplayName);
         }
 
@@ -246,10 +280,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
-            Assert.True(didUpdateDisplayName);
+            Assert.True(validDisplayName);
+            Assert.True(updated);
             Assert.Equal("Run TestImageName:latest", _actionRunner.DisplayName);
         }
 
@@ -272,10 +307,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should not do anything if we don't have context on the display name
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
 
             // Assert
-            Assert.False(didUpdateDisplayName);
+            Assert.False(validDisplayName);
+            Assert.False(updated);
             // Should use the pretty display name until we can eval
             Assert.Equal("${{ matrix.node }}", _actionRunner.DisplayName);
         }
@@ -307,7 +343,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _actionRunner.Action = action;
 
-            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            Dictionary<string, string> finialInputs = new();
             _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
                            .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory, List<JobExtensionRunner> localActionContainerSetupSteps) =>
                            {
@@ -358,7 +394,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _actionRunner.Action = action;
 
-            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            Dictionary<string, string> finialInputs = new();
             _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
                            .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory, List<JobExtensionRunner> localActionContainerSetupSteps) =>
                            {

@@ -1,49 +1,87 @@
 #!/bin/bash
 
-# Validate not sudo
-user_id=`id -u`
-if [ $user_id -eq 0 -a -z "$RUNNER_ALLOW_RUNASROOT" ]; then
-    echo "Must not run interactively with sudo"
-    exit 1
-fi
-
 # Change directory to the script root directory
 # https://stackoverflow.com/questions/59895/getting-the-source-directory-of-a-bash-script-from-within
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-  SOURCE="$(readlink "$SOURCE")"
-  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+    DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-# Do not "cd $DIR". For localRun, the current directory is expected to be the repo location on disk.
-
-# Run
-shopt -s nocasematch
-if [[ "$1" == "localRun" ]]; then
-    "$DIR"/bin/Runner.Listener $*
-else
-    "$DIR"/bin/Runner.Listener run $*
-
-# Return code 3 means the run once runner received an update message.
-# Sleep 5 seconds to wait for the update process finish
-    returnCode=$?
-    if [[ $returnCode == 3 ]]; then
-        if [ ! -x "$(command -v sleep)" ]; then
-            if [ ! -x "$(command -v ping)" ]; then
-                COUNT="0"
-                while [[ $COUNT != 5000 ]]; do
-                    echo "SLEEP" > /dev/null
-                    COUNT=$[$COUNT+1]
-                done
-            else
-                ping -c 5 127.0.0.1 > /dev/null
-            fi
+run() {
+    # run the helper process which keep the listener alive
+    while :;
+    do
+        cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
+        "$DIR"/run-helper.sh $*
+        returnCode=$?
+        if [[ $returnCode -eq 2 ]]; then
+            echo "Restarting runner..."
         else
-            sleep 5
+            echo "Exiting runner..."
+            exit 0
         fi
-    else
-        exit $returnCode
+    done
+}
+
+runWithManualTrap() {
+    # Set job control
+    set -m
+
+    trap 'kill -INT -$PID' INT TERM
+
+    # run the helper process which keep the listener alive
+    while :;
+    do
+        cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
+        "$DIR"/run-helper.sh $* &
+        PID=$!
+        wait -f $PID
+        returnCode=$?
+        if [[ $returnCode -eq 2 ]]; then
+            echo "Restarting runner..."
+        else
+            echo "Exiting runner..."
+            # Unregister signal handling before exit
+            trap - INT TERM
+            # wait for last parts to be logged
+            wait $PID
+            exit $returnCode
+        fi
+    done
+}
+
+function updateCerts() {
+    local sudo_prefix=""
+    local user_id=`id -u`
+
+    if [ $user_id -ne 0 ]; then
+        if [[ ! -x "$(command -v sudo)" ]]; then
+            echo "Warning: failed to update certificate store: sudo is required but not found"
+            return 1
+        else
+            sudo_prefix="sudo"
+        fi
     fi
+
+    if [[ -x "$(command -v update-ca-certificates)" ]]; then
+        eval $sudo_prefix "update-ca-certificates"
+    elif [[ -x "$(command -v update-ca-trust)" ]]; then
+        eval $sudo_prefix "update-ca-trust"
+    else
+        echo "Warning: failed to update certificate store: update-ca-certificates or update-ca-trust not found. This can happen if you're using a different runner base image."
+        return 1
+    fi
+}
+
+if [[ ! -z "$RUNNER_UPDATE_CA_CERTS" ]]; then
+    updateCerts
+fi
+
+if [[ -z "$RUNNER_MANUALLY_TRAP_SIG" ]]; then
+    run $*
+else
+    runWithManualTrap $*
 fi

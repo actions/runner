@@ -23,9 +23,9 @@ namespace GitHub.Runner.Sdk
         private string _httpsProxyPassword;
         private string _noProxyString;
 
-        private readonly List<ByPassInfo> _noProxyList = new List<ByPassInfo>();
-        private readonly HashSet<string> _noProxyUnique = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private readonly Regex _validIpRegex = new Regex("^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$", RegexOptions.Compiled);
+        private readonly List<ByPassInfo> _noProxyList = new();
+        private readonly HashSet<string> _noProxyUnique = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Regex _validIpRegex = new("^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$", RegexOptions.Compiled);
 
         public string HttpProxyAddress => _httpProxyAddress;
         public string HttpProxyUsername => _httpProxyUsername;
@@ -164,7 +164,6 @@ namespace GitHub.Runner.Sdk
                         {
                             continue;
                         }
-
                         _noProxyList.Add(noProxyInfo);
                     }
                 }
@@ -207,6 +206,11 @@ namespace GitHub.Runner.Sdk
         {
             foreach (var noProxy in _noProxyList)
             {
+                // bypass on wildcard no_proxy
+                if (string.Equals(noProxy.Host, "*", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
                 var matchHost = false;
                 var matchPort = false;
 

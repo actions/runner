@@ -1,13 +1,11 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
 using Moq;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -46,7 +44,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private int _defaultRunnerGroupId = 1;
         private int _secondRunnerGroupId = 2;
         private RSACryptoServiceProvider rsa = null;
-        private RunnerSettings _configMgrAgentSettings = new RunnerSettings();
+        private RunnerSettings _configMgrAgentSettings = new();
 
         public ConfigurationManagerL0()
         {
@@ -66,7 +64,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _serviceControlManager = new Mock<ILinuxServiceControlManager>();
 #endif
 
-            var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
+            var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1, Ephemeral = true, DisableUpdate = true };
             expectedAgent.Authorization = new TaskAgentAuthorization
             {
                 ClientId = Guid.NewGuid(),
@@ -115,7 +113,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            TestHostContext tc = new TestHostContext(this, testName);
+            TestHostContext tc = new(this, testName);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
             tc.SetSingleton<IPromptManager>(_promptManager.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
@@ -154,14 +152,17 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                     tc,
                     new[]
                     {
-                       "configure",                
+                       "configure",
                        "--url", _expectedServerUrl,
                        "--name", _expectedAgentName,
                        "--runnergroup", _secondRunnerGroupName,
                        "--work", _expectedWorkFolder,
                        "--auth", _expectedAuthType,
                        "--token", _expectedToken,
-                       "--labels", userLabels
+                       "--labels", userLabels,
+                       "--ephemeral",
+                       "--disableupdate",
+                       "--unattended",
                     });
                 trace.Info("Constructed.");
                 _store.Setup(x => x.IsConfigured()).Returns(false);
@@ -179,11 +180,12 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
                 Assert.True(s.PoolId.Equals(_secondRunnerGroupId));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
+                Assert.True(s.Ephemeral.Equals(true));
 
                 // validate GetAgentPoolsAsync gets called twice with automation pool type
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(2));
 
-                var expectedLabels = new List<string>() { "self-hosted", VarUtil.OS, VarUtil.OSArchitecture};
+                var expectedLabels = new List<string>() { "self-hosted", VarUtil.OS, VarUtil.OSArchitecture };
                 expectedLabels.AddRange(userLabels.Split(",").ToList());
 
                 _runnerServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Select(x => x.Name).ToHashSet().SetEquals(expectedLabels))), Times.Once);
@@ -232,5 +234,103 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(1));
             }
         }
+
+#if OS_LINUX
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureRunnerServiceFailsOnUnconfiguredRunners()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--generateServiceConfig",
+                    });
+                trace.Info("Constructed");
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+
+                trace.Info("Ensuring service generation mode fails when on un-configured runners");
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => configManager.ConfigureAsync(command));
+
+                Assert.Contains("requires that the runner is already configured", ex.Message);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureRunnerServiceCreatesService()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--generateServiceConfig",
+                    });
+                trace.Info("Constructed");
+
+                _store.Setup(x => x.IsConfigured()).Returns(true);
+
+                trace.Info("Ensuring service generation mode fails when on un-configured runners");
+                await configManager.ConfigureAsync(command);
+
+                _serviceControlManager.Verify(x => x.GenerateScripts(It.IsAny<RunnerSettings>()), Times.Once);
+            }
+        }
+#endif
+
+#if !OS_LINUX
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureRunnerServiceFailsOnUnsupportedPlatforms()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--generateServiceConfig",
+                    });
+                trace.Info("Constructed");
+                _store.Setup(x => x.IsConfigured()).Returns(true);
+
+                trace.Info("Ensuring service generation mode fails on unsupported runner platforms");
+                var ex = await Assert.ThrowsAsync<NotSupportedException>(() => configManager.ConfigureAsync(command));
+
+                Assert.Contains("only supported on Linux", ex.Message);
+            }
+        }
+#endif
     }
 }
