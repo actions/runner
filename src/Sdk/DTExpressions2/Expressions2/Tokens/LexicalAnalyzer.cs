@@ -129,14 +129,29 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
         private Token ReadNumberToken()
         {
             var startIndex = m_index;
+            Int32 periods = 0;
             do
             {
+                if (m_expression[m_index] == '.')
+                {
+                    periods++;
+                }
+
                 m_index++;
             }
             while (m_index < m_expression.Length && (!TestTokenBoundary(m_expression[m_index]) || m_expression[m_index] == '.'));
 
             var length = m_index - startIndex;
             var str = m_expression.Substring(startIndex, length);
+            // Azure Pipelines supports version literals
+            if(periods >= 2 && (Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.DTExpressionsV1) {
+                Version version;
+                if (Version.TryParse(str, out version))
+                {
+                    return new Token(TokenKind.String, str, startIndex, new Runner.Server.Azure.Devops.VersionWrapper { Version = version });
+                }
+            }
+
             var d = ExpressionUtility.ParseNumber(str);
 
             if (Double.IsNaN(d))

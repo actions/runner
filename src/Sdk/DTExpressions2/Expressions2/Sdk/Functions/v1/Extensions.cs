@@ -4,6 +4,9 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions.v1 {
             if(node.Kind == ValueKind.String && node.Raw is Runner.Server.Azure.Devops.DateTimeWrapper wrapper) {
                 return new Legacy.EvaluationResult(context, 0, wrapper.DateTime, ValueKind.DateTime, wrapper.DateTime, true);
             }
+            if(node.Kind == ValueKind.String && node.Raw is Runner.Server.Azure.Devops.VersionWrapper vwrapper) {
+                return new Legacy.EvaluationResult(context, 0, vwrapper.Version, ValueKind.Version, vwrapper.Version, true);
+            }
             return new Legacy.EvaluationResult(context, 0, node.Value, node.Kind, node.Raw, true);
         }
         public static bool EvaluateBoolean(this ExpressionNode node, EvaluationContext context) {

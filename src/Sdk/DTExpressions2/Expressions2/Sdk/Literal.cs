@@ -8,14 +8,17 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
     {
         public Literal(Object val)
         {
-            Value = ExpressionUtility.ConvertToCanonicalValue(val, out var kind, out _);
+            Value = ExpressionUtility.ConvertToCanonicalValue(val, out var kind, out var raw);
             Kind = kind;
             Name = kind.ToString();
+            Raw = raw;
         }
 
         public ValueKind Kind { get; }
 
         public Object Value { get; }
+
+        private Object Raw { get; }
 
         // Prevent the value from being stored on the evaluation context.
         // This avoids unneccessarily duplicating the value in memory.
@@ -36,7 +39,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             out ResultMemory resultMemory)
         {
             resultMemory = null;
-            return Value;
+            return Raw ?? Value;
         }
     }
 
