@@ -324,7 +324,7 @@ public class AzureDevops {
                 }
                 throw new Exception($"{val.AssertLiteralString("boolean")} is not a valid boolean expected true or false (OrdinalIgnoreCase)");
             case "number":
-            return val == null ? new NumberContextData(0) : new NumberContextData(Int32.Parse(val.AssertLiteralString("number")));
+            return val == null ? new NumberContextData(0) : new NumberContextData(Double.Parse(val.AssertLiteralString("number")));
             case "string":
             return val == null ? new StringContextData("") : new StringContextData(val.AssertLiteralString("string"));
             case "step":

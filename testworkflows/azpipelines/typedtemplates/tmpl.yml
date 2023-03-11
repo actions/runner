@@ -1,5 +1,42 @@
 parameters:
   - name: stages
     type: stageList
+    default: []
+  - name: b1
+    type: boolean
+    default: true
+  - name: b2
+    type: boolean
+    default: "true"
+  - name: b3
+    type: boolean
+    default: True
+  - name: b4
+    type: boolean
+    default: "True"
+  - name: b5
+    type: boolean
+    default: TRUE
+  - name: b6
+    type: boolean
+    default: TRUE
+  - name: n1
+    type: number
+    default: 0
+  - name: n2
+    type: number
+    default: "0"
+  - name: n3
+    type: number
+    default: 234335
+  - name: n4
+    type: number
+    default: "234335"
+  - name: n5
+    type: number
+    default: 234335.23
+  - name: n6
+    type: number
+    default: "234335.23"
 stages:
   - ${{ parameters.stages }}
