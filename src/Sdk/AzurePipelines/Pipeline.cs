@@ -111,6 +111,9 @@ public class Pipeline {
         if(parent != null) {
             Stages = parent.Stages;
             if(parent.ContainerResources != null) {
+                if(ContainerResources == null) {
+                    ContainerResources = new Dictionary<string, Container>(StringComparer.OrdinalIgnoreCase);
+                }
                 foreach(var cr in parent.ContainerResources) {
                     ContainerResources[cr.Key] = cr.Value;
                 }

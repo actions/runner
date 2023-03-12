@@ -1,0 +1,14 @@
+extends:
+  template: tmpl.yml
+  parameters:
+    containerType:
+      container: alias
+      image: ubuntu:latest
+      mapDockerSocket: true
+    stages:
+    - stage:
+      jobs:
+      - job:
+        condition: false
+        steps:
+        - script: exit 0

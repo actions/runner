@@ -1,0 +1,11 @@
+parameters:
+- name: map
+  type: object
+  default:
+    true: 0
+    false: 1
+steps:
+- script: exit ${{ parameters.map[ge(1.0.0,0.9.9.9)] }}
+- script: exit ${{ parameters.map[gt(1.0.0,0.9.9.9)] }}
+- script: exit ${{ parameters.map[le(0.9.9.9,1.0.0)] }}
+- script: exit ${{ parameters.map[lt(0.9.9.9,1.0.0)] }}

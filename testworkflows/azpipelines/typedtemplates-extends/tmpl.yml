@@ -44,5 +44,9 @@ parameters:
       container: alias
       image: ubuntu:latest
       mapDockerSocket: true
+
+resources:
+  containers:
+  - ${{ parameters.containerType }}
 stages:
   - ${{ parameters.stages }}

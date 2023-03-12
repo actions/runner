@@ -393,6 +393,25 @@ public class AzureDevops {
                 stageList.Add(stage.ToContextData());
             }
             return stageList;
+            case "container":
+            if(val == null) {
+                return null;
+            }
+            return new Container().Parse(val.AssertMapping("")).ToContextData(val.AssertMapping("")[0].Value.AssertString("").Value);
+            case "containerList":
+            if(val == null) {
+                return new ArrayContextData();
+            }
+            var containerResources = new Dictionary<string, Container>(StringComparer.OrdinalIgnoreCase);
+            foreach(var rawcontainer in val.AssertSequence("cres")) {
+                var container = rawcontainer.AssertMapping("");
+                containerResources[container[0].Value.AssertString("").Value] = new Container().Parse(container);
+            }
+            var containers = new ArrayContextData();
+            foreach(var cr in containerResources) {
+                containers.Add(cr.Value.ToContextData(cr.Key));
+            }
+            return containers;
             default:
             throw new Exception("This parameter type is not supported: " + type);
         }
