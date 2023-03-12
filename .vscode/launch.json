@@ -52,6 +52,54 @@
             "request": "attach",
             "processId": "${command:pickProcess}",
             "requireExactSource": false
+            
+            Default
+{
+    "windows": ["wininet"],
+    "osx": ["urllib"],
+    "linux": ["urllib", "curl", "wget"]
+}
+dirs_to_ignore
+A list of folders to ignore when creating a .sublime-package file.
+Default [".hg", ".git", ".svn", "_darcs", "CVS"]
+files_to_ignore
+A list of file glob patterns to ignore when creating a .sublime-package file by the Create Package command.
+Default [".hgignore", ".gitignore", ".bzrignore", "*.pyc", "*.sublime-project", "*.sublime-workspace", "*.tmTheme.cache"]
+files_to_include
+A list of file glob patterns to include when creating a .sublime-package file by the Create Package command. This overrides files_to_ignore.
+Default []
+package_destination
+The folder to copy a newly created package to. Default to the user’s Desktop if blank. Setting this destination to the Installed Packages directory will cause your source code changes to be overwritten when Sublime Text restarts!
+Default ""
+package_profiles
+A way to create different packaging profiles for different types of package releases, such as for different platforms or binary-only releases.
+
+The key of the object will be the profile name and a list of them will be presenting when running the "Create Package File" command. The profile "Default" will use the top-level version on the following settings:
+
+"dirs_to_ignore"
+"files_to_ignore"
+"files_to_include"
+"package_destination"
+If a profile does not include one of those three settings, it will fall back to the top-level settings.
+
+Default
+{
+    "Binaries Only": {
+        // Exclude all .py files, but consequently include all .pyc files
+        "files_to_ignore": [
+            "*.py", ".hgignore", ".gitignore", ".bzrignore",
+            "*.sublime-project", "*.sublime-workspace", "*.tmTheme.cache"
+        ],
+
+        // Include __init__.py so Sublime Text will load the package
+        "files_to_include": [
+            "__init__.py"
+        ]
+    }
+}
+enable_tests
+Enable the ability to run the tests – this is only for development.
+Default false
         },
     ],
 }
