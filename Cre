@@ -1,59 +1,4 @@
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Run [build]",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build runner layout",
-            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
-            "args": [
-                "run"
-            ],
-            "cwd": "${workspaceFolder}/src",
-            "console": "integratedTerminal",
-            "requireExactSource": false
-        },
-        {
-            "name": "Run",
-            "type": "coreclr",
-            "request": "launch",
-            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
-            "args": [
-                "run"
-            ],
-            "cwd": "${workspaceFolder}/src",
-            "console": "integratedTerminal",
-            "requireExactSource": false
-        },
-        {
-            "name": "Configure",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "create runner layout",
-            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
-            "args": [
-                "configure"
-            ],
-            "cwd": "${workspaceFolder}/src",
-            "console": "integratedTerminal",
-            "requireExactSource": false
-        },
-        {
-            "name": "Debug Worker",
-            "type": "coreclr",
-            "request": "attach",
-            "processName": "Runner.Worker",
-            "requireExactSource": false
-        },
-        {
-            "name": "Attach Debugger",
-            "type": "coreclr",
-            "request": "attach",
-            "processId": "${command:pickProcess}",
-            "requireExactSource": false
-            
-            Default
+Default
 {
     "windows": ["wininet"],
     "osx": ["urllib"],
@@ -100,7 +45,3 @@ Default
 enable_tests
 Enable the ability to run the tests – this is only for development.
 Default false
-        },
-    ],
-}
-
