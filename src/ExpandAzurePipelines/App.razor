@@ -1,12 +1,25 @@
 ﻿<div style="display: flex; flex-direction: row;">
-    <button type="button" class="btn btn-primary" @onclick="EvaluatePipeline">Evaluate Pipeline</button>
-    <select class="form-select" @onchange="ChangeTheme">
+    <button type="button" class="btn btn-primary" @onclick="EvaluatePipeline">Evaluate&nbsp;Pipeline</button>
+    <InputSelect TValue="string" class="form-select" ValueExpression="@(()=>currentTab)" Value="@currentTab" ValueChanged="SwitchTab">
+        @foreach (var file in files)
+        {
+            <option value="@(file.Key)">@file.Key</option>
+        }
+    </InputSelect>
+    <button type="button" class="btn btn-outline-secondary btn-sm" aria-label="New Tab" @onclick="NewTab">➕</button>
+    <select class="form-select flex-grow-0 flex-shrink-1" @onchange="ChangeTheme" >
         <option selected value="vs">Visual Studio</option>
         <option value="vs-dark">Visual Studio Dark</option>
         <option value="hc-black">High Contrast Black</option>
     </select>
-    <button type="button" class="btn btn-secondary" @onclick="SaveContent">Save</button>
     <button type="button" class="btn btn-secondary" @onclick="Layout">Layout</button>
+</div>
+<div>
+    <div class="input-group mb-3">
+        <input type="text" class="form-control" placeholder="FileName" @bind-value="fileNameInput">
+        <button class="btn btn-outline-secondary" type="button" @onclick="SaveContent">Save</button>
+        <button class="btn btn-outline-secondary" type="button" @onclick="DeleteFile">Delete</button>
+    </div>
 </div>
 
 <div style="display: flex; flex-direction: row;">
@@ -26,19 +39,37 @@
             Language = "yaml",
             GlyphMargin = true,
             TabSize = 2,
-            InsertSpaces = true
+            InsertSpaces = true,
+            Minimap = new EditorMinimapOptions { Enabled = false }
         };
     }
 
     private async Task EditorOnDidInit()
     {
-        await _editor.AddCommand((int)KeyMod.CtrlCmd | (int)KeyCode.KeyH, (args) =>
-        {
-            Console.WriteLine("Ctrl+H : Initial editor command is triggered.");
-        });
-
-        var content = await localStorage.GetItemAsStringAsync("pipeline.yml");
-        _editor.SetValue(content);
+        var i = 0;
+        foreach(var key in await localStorage.KeysAsync()) {
+            var fileName = key;
+            if(key != "pipeline.yml") {
+                var prefix = "file://";
+                if(!key.StartsWith(prefix)) {
+                    continue;
+                }
+                fileName = key.Substring(prefix.Length);
+            }
+            var content = await localStorage.GetItemAsStringAsync(key);
+            files[fileName] = content;
+            if(i == 0) {
+                fileNameInput = fileName;
+                currentFileName = fileName;
+                await _editor.SetValue(content);
+            }
+            i++;
+        }
+        if(i == 0) {
+            currentFileName = "pipeline.yml";
+            files[currentFileName] = "";
+            fileNameInput = currentFileName;
+        }
     }
 
     private void OnContextMenu(EditorMouseEvent eventArg)
@@ -75,15 +106,16 @@
     }
 
     private async Task EvaluatePipeline() {
+        await SyncFile();
         try {
             var content = await _editor.GetValue();
-            var context = new Runner.Server.Azure.Devops.Context { CWD = ".",
-                FileProvider = new DefaultInMemoryFileProviderFileProvider(new KeyValuePair<string, string>[] { new KeyValuePair<string, string>( "pipeline.yml", content) } ),
+            var context = new Runner.Server.Azure.Devops.Context {
+                FileProvider = new DefaultInMemoryFileProviderFileProvider(files.ToArray()),
                 TraceWriter = new GitHub.DistributedTask.ObjectTemplating.EmptyTraceWriter(),
                 Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives
             };
-            var template = AzureDevops.ReadTemplate(context, "pipeline.yml");
-            var pipeline = new Runner.Server.Azure.Devops.Pipeline().Parse(context, template);
+            var template = AzureDevops.ReadTemplate(context, currentFileName);
+            var pipeline = new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
             var newcontent = pipeline.ToContextData().ToJToken().ToString();
             var deserializer = new YamlDotNet.Serialization.DeserializerBuilder().Build();
             var serializer = new YamlDotNet.Serialization.SerializerBuilder().WithEventEmitter(emitter => {
@@ -97,7 +129,90 @@
     }
 
     private async Task SaveContent() {
-        var content = await _editor.GetValue();
-        await localStorage.SetItemAsStringAsync("pipeline.yml", content);
+        await SyncFile();
+        await localStorage.SetItemAsStringAsync("file://" + currentFileName, files[currentFileName]);
+        if(currentFileName == "pipeline.yml") {
+            await localStorage.RemoveItemAsync(currentFileName);
+        }
+    }
+
+    private async Task DeleteFile() {
+        await SyncFile();
+        await localStorage.RemoveItemAsync("file://" + currentFileName);
+        if(currentFileName == "pipeline.yml") {
+            await localStorage.RemoveItemAsync(currentFileName);
+        }
+        files.Remove(currentFileName);
+        if(files.Count > 0) {
+            var newFileName = files.Keys.First();
+            currentFileName = newFileName!;
+            fileNameInput = currentFileName;
+            await _editor.SetValue(files[newFileName]);
+        } else {
+            currentFileName = "pipeline.yml";
+            files[currentFileName] = "";
+            fileNameInput = currentFileName;
+            await _editor.SetValue("");
+        }
+    }
+
+    private Dictionary<string, string> files = new Dictionary<string, string>();
+    private string currentFileName = "";
+    private string fileNameInput = "";
+
+    private async Task SyncFile() {
+        if(!string.IsNullOrWhiteSpace(currentFileName)) {
+            if(!string.IsNullOrWhiteSpace(fileNameInput) && currentFileName != fileNameInput && !files.ContainsKey(fileNameInput)) {
+                files[fileNameInput] = await _editor.GetValue();
+                var oldKey = "file://" + currentFileName;
+                var val = await localStorage.GetItemAsStringAsync(oldKey);
+                await localStorage.SetItemAsStringAsync("file://" + fileNameInput, val);
+                files.Remove(currentFileName);
+                await localStorage.RemoveItemAsync(oldKey);
+                if(currentFileName == "pipeline.yml") {
+                    await localStorage.RemoveItemAsync(currentFileName);
+                }
+                currentFileName = fileNameInput;
+            } else {
+                files[currentFileName] = await _editor.GetValue();
+            }
+        }
+    }
+    
+    private string currentTab = null!;
+
+    private async Task SwitchTab(string value)
+    {
+        currentTab = value;
+        if(!string.IsNullOrWhiteSpace(value)) {
+            await SyncFile();
+            var newFileName = value;
+            currentFileName = newFileName!;
+            fileNameInput = currentFileName;
+            await _editor.SetValue(files[newFileName]);
+        }
+    }
+
+    private async Task NewTab()
+    {
+        await SyncFile();
+        await _editor.SetValue("");
+        var prefix = "Untitled";
+        var suffix = ".yml";
+        var def = $"{prefix}{suffix}";
+        if(!files.ContainsKey(def)) {
+            currentFileName = def;
+        } else {
+            for(int i = 2; i < 100; i++) {
+                var template = $"{prefix} ({i}){suffix}";
+                if(!files.ContainsKey(template)) {
+                    currentFileName = template;
+                    break;
+                }
+            }
+        }
+        fileNameInput = currentFileName;
+        files[currentFileName] = "";
+        currentTab = currentFileName;
     }
 }
