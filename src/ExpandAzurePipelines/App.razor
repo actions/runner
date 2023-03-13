@@ -166,7 +166,9 @@
                 files[fileNameInput] = await _editor.GetValue();
                 var oldKey = "file://" + currentFileName;
                 var val = await localStorage.GetItemAsStringAsync(oldKey);
-                await localStorage.SetItemAsStringAsync("file://" + fileNameInput, val);
+                if(val != null) {
+                    await localStorage.SetItemAsStringAsync("file://" + fileNameInput, val);
+                }
                 files.Remove(currentFileName);
                 await localStorage.RemoveItemAsync(oldKey);
                 if(currentFileName == "pipeline.yml") {
