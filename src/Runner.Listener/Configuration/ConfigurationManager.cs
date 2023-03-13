@@ -192,7 +192,7 @@ namespace GitHub.Runner.Listener.Configuration
             List<TaskAgentPool> agentPools;
             if (runnerSettings.UseV2Flow)
             {
-                agentPools = await GetAgentPoolsAsyncFromDotcom(runnerSettings.GitHubUrl, registerToken);
+                agentPools = await GetAgentPoolsAsyncV2(runnerSettings.GitHubUrl, registerToken);
             }
             else
             {
@@ -240,7 +240,7 @@ namespace GitHub.Runner.Listener.Configuration
                 List<TaskAgent> agents;
                 if (runnerSettings.UseV2Flow)
                 {
-                    agents = await GetAgentsAsyncFromDotcom(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
+                    agents = await GetAgentsAsyncV2(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
                 }
                 else
                 {
@@ -290,11 +290,12 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     // Create a new agent.
                     agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
+                    
                     try
                     {
                         if (runnerSettings.UseV2Flow)
                         {
-                            agent = await AddAgentAsyncFromDotcom(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
+                            agent = await AddAgentAsyncV2(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
                         }
                         else
                         {
@@ -708,7 +709,7 @@ namespace GitHub.Runner.Listener.Configuration
             return null;
         }
 
-        private async Task<TaskAgent> AddAgentAsyncFromDotcom(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken)
+        private async Task<TaskAgent> AddAgentAsyncV2(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
@@ -779,7 +780,7 @@ namespace GitHub.Runner.Listener.Configuration
             return null;
         }
 
-        private async Task<List<TaskAgent>> GetAgentsAsyncFromDotcom(int runnerGroupId, string githubUrl, string githubToken, string agentName = null)
+        private async Task<List<TaskAgent>> GetAgentsAsyncV2(int runnerGroupId, string githubUrl, string githubToken, string agentName = null)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
@@ -869,7 +870,7 @@ namespace GitHub.Runner.Listener.Configuration
             return null;
         }
 
-        private async Task<List<TaskAgentPool>> GetAgentPoolsAsyncFromDotcom(string githubUrl, string githubToken)
+        private async Task<List<TaskAgentPool>> GetAgentPoolsAsyncV2(string githubUrl, string githubToken)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
