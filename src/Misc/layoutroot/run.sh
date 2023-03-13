@@ -53,6 +53,33 @@ runWithManualTrap() {
     done
 }
 
+function updateCerts() {
+    local sudo_prefix=""
+    local user_id=`id -u`
+
+    if [ $user_id -ne 0 ]; then
+        if [[ ! -x "$(command -v sudo)" ]]; then
+            echo "Warning: failed to update certificate store: sudo is required but not found"
+            return 1
+        else
+            sudo_prefix="sudo"
+        fi
+    fi
+
+    if [[ -x "$(command -v update-ca-certificates)" ]]; then
+        eval $sudo_prefix "update-ca-certificates"
+    elif [[ -x "$(command -v update-ca-trust)" ]]; then
+        eval $sudo_prefix "update-ca-trust"
+    else
+        echo "Warning: failed to update certificate store: update-ca-certificates or update-ca-trust not found. This can happen if you're using a different runner base image."
+        return 1
+    fi
+}
+
+if [[ ! -z "$RUNNER_UPDATE_CA_CERTS" ]]; then
+    updateCerts
+fi
+
 if [[ -z "$RUNNER_MANUALLY_TRAP_SIG" ]]; then
     run $*
 else

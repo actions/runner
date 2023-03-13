@@ -1,15 +1,17 @@
 ## Features
-- Add support for ghe.com domain (#2420)
-- Add docker cli to the runner image. (#2425)
+- Support matrix context in output keys (#2477)
+- Add update certificates to `./run.sh` if `RUNNER_UPDATE_CA_CERTS` env is set (#2471)
+- Bypass all proxies for all hosts if `no_proxy='*'` is set (#2395)
+- Change runner image to make user/folder align with `ubuntu-latest` hosted runner. (#2469)
 
 ## Bugs
-- Fix URL construction bug for RunService (#2396)
-- Defer evaluation of a step's DisplayName until its condition is evaluated. (#2313)
-- Replace '(' and ')' with '[' and '] from OS.Description for fixing User-Agent header validation (#2288)
+- Exit on runner version deprecation error (#2299)
+- Runner service exit after consecutive re-try exits (#2426)
 
 ## Misc
-- Bump dotnet sdk to latest version. (#2392)
-- Start calling run service for job completion (#2412, #2423)
+- Replace deprecated command with environment file (#2429)
+- Make requests to `Run` service to renew job request (#2461)
+- Add job/step log upload to Result service (#2447, #2439)
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
