@@ -113,7 +113,7 @@ namespace GitHub.Runner.Listener.Configuration
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
             _term.WriteSection("Authentication");
-            string registerToken=string.Empty;
+            string registerToken = string.Empty;
             while (true)
             {
                 // When testing against a dev deployment of Actions Service, set this environment variable
@@ -131,9 +131,7 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     runnerSettings.GitHubUrl = inputUrl;
-                    // registration-token
                     registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
-                    // runner-registration
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     runnerSettings.UseV2Flow = authResult.UseV2Flow;
@@ -192,17 +190,16 @@ namespace GitHub.Runner.Listener.Configuration
             string poolName = null;
             TaskAgentPool agentPool = null;
             List<TaskAgentPool> agentPools;
-            if(runnerSettings.UseV2Flow)
+            if (runnerSettings.UseV2Flow)
             {
-                _term.WriteLine("Using V2 flow");
                 agentPools = await GetAgentPoolsAsyncFromDotcom(runnerSettings.GitHubUrl, registerToken);
             }
             else
             {
                 agentPools = await _runnerServer.GetAgentPoolsAsync();
             }
-            TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
 
+            TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
             if (agentPools?.Where(x => !x.IsHosted).Count() > 0)
             {
                 poolName = command.GetRunnerGroupName(defaultPool?.Name);
@@ -243,13 +240,13 @@ namespace GitHub.Runner.Listener.Configuration
                 List<TaskAgent> agents;
                 if (runnerSettings.UseV2Flow)
                 {
-                    agents = await GetAgentsAsyncFromDotcom(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken);
-                    agents = agents.Where(x => string.Equals(x.Name, runnerSettings.AgentName, StringComparison.OrdinalIgnoreCase)).ToList();
+                    agents = await GetAgentsAsyncFromDotcom(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
                 }
                 else
                 {
                     agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
                 }
+
                 Trace.Verbose("Returns {0} agents", agents.Count);
                 agent = agents.FirstOrDefault();
                 if (agent != null)
@@ -293,10 +290,9 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     // Create a new agent.
                     agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
-
                     try
                     {
-                        if(runnerSettings.UseV2Flow)
+                        if (runnerSettings.UseV2Flow)
                         {
                             agent = await AddAgentAsyncFromDotcom(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
                         }
@@ -712,7 +708,8 @@ namespace GitHub.Runner.Listener.Configuration
             return null;
         }
 
-        private async Task<TaskAgent> AddAgentAsyncFromDotcom(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken){
+        private async Task<TaskAgent> AddAgentAsyncFromDotcom(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken)
+        {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
@@ -724,7 +721,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/actions/runners/register";
             }
-            
+
             int retryCount = 0;
             while (retryCount < 3)
             {
@@ -756,7 +753,9 @@ namespace GitHub.Runner.Listener.Configuration
                         {
                             Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' ({githubRequestId})");
                             var jsonResponse = await response.Content.ReadAsStringAsync();
-                            return StringUtil.ConvertFromJson<TaskAgent>(jsonResponse);
+                            var responseAgent = StringUtil.ConvertFromJson<TaskAgent>(jsonResponse);
+                            agent.Id = responseAgent.Id;
+                            return agent;
                         }
                         else
                         {
@@ -780,7 +779,8 @@ namespace GitHub.Runner.Listener.Configuration
             return null;
         }
 
-        private async Task<List<TaskAgent>> GetAgentsAsyncFromDotcom(int runnerGroupId, string githubUrl, string githubToken){
+        private async Task<List<TaskAgent>> GetAgentsAsyncFromDotcom(int runnerGroupId, string githubUrl, string githubToken, string agentName = null)
+        {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
@@ -840,7 +840,12 @@ namespace GitHub.Runner.Listener.Configuration
                             var jsonResponse = await response.Content.ReadAsStringAsync();
                             var agents = StringUtil.ConvertFromJson<ListRunnersResponse>(jsonResponse);
 
-                            return agents.Runners;
+                            if (string.IsNullOrEmpty(agentName))
+                            {
+                                return agents.Runners;
+                            }
+
+                            return agents.Runners.Where(x => string.Equals(x.Name, agentName, StringComparison.OrdinalIgnoreCase)).ToList();
                         }
                         else
                         {
@@ -864,7 +869,8 @@ namespace GitHub.Runner.Listener.Configuration
             return null;
         }
 
-        private async Task<List<TaskAgentPool>> GetAgentPoolsAsyncFromDotcom(string githubUrl, string githubToken){
+        private async Task<List<TaskAgentPool>> GetAgentPoolsAsyncFromDotcom(string githubUrl, string githubToken)
+        {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
