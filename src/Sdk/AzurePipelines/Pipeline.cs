@@ -149,6 +149,18 @@ public class Pipeline {
             }
             pipeline["variables"] = vars;
         }
+        if(AppendCommitMessageToRunName != null) {
+            pipeline["appendCommitMessageToRunName"] = new StringContextData(AppendCommitMessageToRunName.Value.ToString());
+        }
+        if(Trigger != null) {
+            pipeline["trigger"] = Trigger.ToContextData();
+        }
+        if(Pr != null) {
+            pipeline["pr"] = Pr.ToContextData();
+        }
+        if(Schedules != null) {
+            pipeline["schedules"] = Schedules.ToContextData();
+        }
         if(ContainerResources != null || OtherResources != null) {
             var resources = new DictionaryContextData();
             pipeline["resources"] = resources;
@@ -175,22 +187,9 @@ public class Pipeline {
         if(Pool != null) {
             pipeline["pool"] = Pool.ToContextData();
         }
-        if(AppendCommitMessageToRunName != null) {
-            pipeline["appendCommitMessageToRunName"] = new StringContextData(AppendCommitMessageToRunName.Value.ToString());
-        }
         if(LockBehavior != null) {
             pipeline["lockBehavior"] = new StringContextData(LockBehavior);
         }
-        if(Trigger != null) {
-            pipeline["trigger"] = Trigger.ToContextData();
-        }
-        if(Pr != null) {
-            pipeline["pr"] = Pr.ToContextData();
-        }
-        if(Schedules != null) {
-            pipeline["schedules"] = Schedules.ToContextData();
-        }
-        
         return pipeline;
     }
 }

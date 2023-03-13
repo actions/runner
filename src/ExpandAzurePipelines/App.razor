@@ -1,0 +1,103 @@
+﻿<div style="display: flex; flex-direction: row;">
+    <button type="button" class="btn btn-primary" @onclick="EvaluatePipeline">Evaluate Pipeline</button>
+    <select class="form-select" @onchange="ChangeTheme">
+        <option selected value="vs">Visual Studio</option>
+        <option value="vs-dark">Visual Studio Dark</option>
+        <option value="hc-black">High Contrast Black</option>
+    </select>
+    <button type="button" class="btn btn-secondary" @onclick="SaveContent">Save</button>
+    <button type="button" class="btn btn-secondary" @onclick="Layout">Layout</button>
+</div>
+
+<div style="display: flex; flex-direction: row;">
+    <StandaloneCodeEditor @ref="_editor" ConstructionOptions="EditorConstructionOptions" OnDidInit="EditorOnDidInit" OnContextMenu="OnContextMenu" />
+    <StandaloneCodeEditor @ref="_editor2" ConstructionOptions="EditorConstructionOptions" OnContextMenu="OnContextMenu" />
+</div>
+
+@inject Blazored.LocalStorage.ILocalStorageService localStorage;
+
+@code {
+    private StandaloneCodeEditor _editor = null!;
+    private StandaloneCodeEditor _editor2 = null!;
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            Language = "yaml",
+            GlyphMargin = true,
+            TabSize = 2,
+            InsertSpaces = true
+        };
+    }
+
+    private async Task EditorOnDidInit()
+    {
+        await _editor.AddCommand((int)KeyMod.CtrlCmd | (int)KeyCode.KeyH, (args) =>
+        {
+            Console.WriteLine("Ctrl+H : Initial editor command is triggered.");
+        });
+
+        var content = await localStorage.GetItemAsStringAsync("pipeline.yml");
+        _editor.SetValue(content);
+    }
+
+    private void OnContextMenu(EditorMouseEvent eventArg)
+    {
+        Console.WriteLine("OnContextMenu : " + System.Text.Json.JsonSerializer.Serialize(eventArg));
+    }
+
+    private async Task ChangeTheme(ChangeEventArgs e)
+    {
+        Console.WriteLine($"setting theme to: {e.Value?.ToString()}");
+        await Global.SetTheme(e.Value?.ToString());
+    }
+
+    private async Task Layout()
+    {
+        await _editor.Layout();
+        await _editor2.Layout();
+    }
+
+    private class MyEventEmitter : YamlDotNet.Serialization.EventEmitters.ChainedEventEmitter {
+        public MyEventEmitter(YamlDotNet.Serialization.IEventEmitter emitter) : base(emitter) {
+
+        }
+
+        public override void Emit(YamlDotNet.Serialization.ScalarEventInfo eventInfo, YamlDotNet.Core.IEmitter emitter)
+        {
+            if(eventInfo.Source.Value is string svalue && svalue.Contains('\n')) {
+                eventInfo.Style = YamlDotNet.Core.ScalarStyle.Literal;
+                eventInfo.IsPlainImplicit = false;
+                eventInfo.IsQuotedImplicit = false;
+            }
+            base.Emit(eventInfo, emitter);
+        }
+    }
+
+    private async Task EvaluatePipeline() {
+        try {
+            var content = await _editor.GetValue();
+            var context = new Runner.Server.Azure.Devops.Context { CWD = ".",
+                FileProvider = new DefaultInMemoryFileProviderFileProvider(new KeyValuePair<string, string>[] { new KeyValuePair<string, string>( "pipeline.yml", content) } ),
+                TraceWriter = new GitHub.DistributedTask.ObjectTemplating.EmptyTraceWriter(),
+                Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives
+            };
+            var template = AzureDevops.ReadTemplate(context, "pipeline.yml");
+            var pipeline = new Runner.Server.Azure.Devops.Pipeline().Parse(context, template);
+            var newcontent = pipeline.ToContextData().ToJToken().ToString();
+            var deserializer = new YamlDotNet.Serialization.DeserializerBuilder().Build();
+            var serializer = new YamlDotNet.Serialization.SerializerBuilder().WithEventEmitter(emitter => {
+                return new MyEventEmitter(emitter);
+            }).Build();
+            newcontent = serializer.Serialize(deserializer.Deserialize<Object>(newcontent));
+            await _editor2.SetValue(newcontent);
+        } catch(Exception ex) {
+            await _editor2.SetValue(ex.Message);
+        }
+    }
+
+    private async Task SaveContent() {
+        var content = await _editor.GetValue();
+        await localStorage.SetItemAsStringAsync("pipeline.yml", content);
+    }
+}
