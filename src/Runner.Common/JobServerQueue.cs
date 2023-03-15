@@ -299,7 +299,7 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
-                                // Give at most 60s for each request. 
+                                // Give at most 60s for each request.
                                 using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
                                 {
                                     await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
@@ -596,7 +596,7 @@ namespace GitHub.Runner.Common
             foreach (var record in mergedRecords)
             {
                 Trace.Verbose($"    Record: t={record.RecordType}, n={record.Name}, s={record.State}, st={record.StartTime}, {record.PercentComplete}%, ft={record.FinishTime}, r={record.Result}: {record.CurrentOperation}");
-                if (record.Issues != null && record.Issues.Count > 0)
+                if (record.Issues != null)
                 {
                     foreach (var issue in record.Issues)
                     {
@@ -606,7 +606,7 @@ namespace GitHub.Runner.Common
                     }
                 }
 
-                if (record.Variables != null && record.Variables.Count > 0)
+                if (record.Variables != null)
                 {
                     foreach (var variable in record.Variables)
                     {

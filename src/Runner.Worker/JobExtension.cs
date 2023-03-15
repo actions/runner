@@ -325,10 +325,10 @@ namespace GitHub.Runner.Worker
                         if (message.ContextData.TryGetValue("inputs", out var pipelineContextData))
                         {
                             var inputs = pipelineContextData.AssertDictionary("inputs");
-                            if (inputs.Any()) 
+                            if (inputs.Any())
                             {
                                 context.Output($"##[group] Inputs");
-                                foreach (var input in inputs) 
+                                foreach (var input in inputs)
                                 {
                                     context.Output($"  {input.Key}: {input.Value}");
                                 }
@@ -336,7 +336,7 @@ namespace GitHub.Runner.Worker
                             }
                         }
 
-                        if (!string.IsNullOrWhiteSpace(message.JobDisplayName)) 
+                        if (!string.IsNullOrWhiteSpace(message.JobDisplayName))
                         {
                             context.Output($"Complete job name: {message.JobDisplayName}");
                         }
@@ -662,7 +662,7 @@ namespace GitHub.Runner.Worker
                 {
                     var issue = new Issue() { Type = IssueType.Warning, Message = $"You are running out of disk space. The runner will stop working when the machine runs out of disk space. Free space left: {freeSpaceInMB} MB" };
                     issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.LowDiskSpace;
-                    context.AddIssue(issue);
+                    context.AddIssue(issue, ExecutionContextLogOptions.Default);
                     return;
                 }
 

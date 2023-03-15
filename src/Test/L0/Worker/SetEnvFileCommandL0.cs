@@ -411,12 +411,16 @@ namespace GitHub.Runner.Common.Tests.Worker
                     EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
                     WriteDebug = true,
                 });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<string>()))
-                .Callback((DTWebApi.Issue issue, string logMessage) =>
+            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<ExecutionContextLogOptions>()))
+                .Callback((DTWebApi.Issue issue, ExecutionContextLogOptions logOptions) =>
                 {
-                    _issues.Add(new Tuple<DTWebApi.Issue, string>(issue, logMessage));
-                    var message = !string.IsNullOrEmpty(logMessage) ? logMessage : issue.Message;
-                    _trace.Info($"Issue '{issue.Type}': {message}");
+                    var resolvedMessage = issue.Message;
+                    if (logOptions.EnableLogging && !string.IsNullOrEmpty(logOptions.LogMessageOverride))
+                    {
+                        resolvedMessage = logOptions.LogMessageOverride;
+                    }
+                    _issues.Add(new(issue, resolvedMessage));
+                    _trace.Info($"Issue '{issue.Type}': {resolvedMessage}");
                 });
             _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((string tag, string message) =>

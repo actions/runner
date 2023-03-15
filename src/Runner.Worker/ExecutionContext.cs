@@ -22,10 +22,16 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
-    public class ExecutionContextType
+    public static class ExecutionContextType
     {
-        public static string Job = "Job";
-        public static string Task = "Task";
+        public const string Job = "Job";
+        public const string Task = "Task";
+    }
+
+    public record ExecutionContextLogOptions(bool EnableLogging, string LogMessageOverride)
+    {
+        public static readonly ExecutionContextLogOptions None = new(false, null);
+        public static readonly ExecutionContextLogOptions Default = new(true, null);
     }
 
     [ServiceLocator(Default = typeof(ExecutionContext))]
@@ -90,7 +96,7 @@ namespace GitHub.Runner.Worker
         void SetGitHubContext(string name, string value);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
-        void AddIssue(Issue issue, string message = null);
+        void AddIssue(Issue issue, ExecutionContextLogOptions logOptions);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
 
@@ -446,7 +452,7 @@ namespace GitHub.Runner.Worker
             {
                 foreach (var issue in _embeddedIssueCollector)
                 {
-                    AddIssue(issue);
+                    AddIssue(issue, ExecutionContextLogOptions.None);
                 }
             }
 
@@ -578,14 +584,10 @@ namespace GitHub.Runner.Worker
         }
 
         // This is not thread safe, the caller need to take lock before calling issue()
-        public void AddIssue(Issue issue, string logMessage = null)
+        public void AddIssue(Issue issue, ExecutionContextLogOptions logOptions)
         {
             ArgUtil.NotNull(issue, nameof(issue));
-
-            if (string.IsNullOrEmpty(logMessage))
-            {
-                logMessage = issue.Message;
-            }
+            ArgUtil.NotNull(logOptions, nameof(logOptions));
 
             issue.Message = HostContext.SecretMasker.MaskSecrets(issue.Message);
             if (issue.Message.Length > _maxIssueMessageLength)
@@ -600,14 +602,10 @@ namespace GitHub.Runner.Worker
                 issue.Data["stepNumber"] = _record.Order.ToString();
             }
 
+            string logCategory = null;
             if (issue.Type == IssueType.Error)
             {
-                if (!string.IsNullOrEmpty(logMessage))
-                {
-                    long logLineNumber = Write(WellKnownTags.Error, logMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
-                }
-
+                logCategory = WellKnownTags.Error;
                 if (_record.ErrorCount < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
@@ -617,12 +615,7 @@ namespace GitHub.Runner.Worker
             }
             else if (issue.Type == IssueType.Warning)
             {
-                if (!string.IsNullOrEmpty(logMessage))
-                {
-                    long logLineNumber = Write(WellKnownTags.Warning, logMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
-                }
-
+                logCategory = WellKnownTags.Warning;
                 if (_record.WarningCount < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
@@ -632,18 +625,29 @@ namespace GitHub.Runner.Worker
             }
             else if (issue.Type == IssueType.Notice)
             {
-                if (!string.IsNullOrEmpty(logMessage))
-                {
-                    long logLineNumber = Write(WellKnownTags.Notice, logMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
-                }
-
+                logCategory = WellKnownTags.Notice;
                 if (_record.NoticeCount < _maxIssueCount)
                 {
                     _record.Issues.Add(issue);
                 }
 
                 _record.NoticeCount++;
+            }
+
+            if (logOptions.EnableLogging && !string.IsNullOrEmpty(logCategory))
+            {
+                string logMessage = issue.Message;
+                if (!string.IsNullOrEmpty(logOptions.LogMessageOverride))
+                {
+                    logMessage = logOptions.LogMessageOverride;
+                }
+
+                if (!string.IsNullOrEmpty(logMessage))
+                {
+                    // Note that ::Write() has its own secret-masking logic.
+                    long logLineNumber = Write(logCategory, logMessage);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
             }
 
             // Embedded ExecutionContexts (a.k.a. Composite actions) should never upload a timeline record to the server.
@@ -1009,8 +1013,7 @@ namespace GitHub.Runner.Worker
                         StepTelemetry.FinishTime = _record.FinishTime;
                     }
 
-                    if (!IsEmbedded &&
-                        _record.Issues.Count > 0)
+                    if (!IsEmbedded)
                     {
                         foreach (var issue in _record.Issues)
                         {
@@ -1200,19 +1203,22 @@ namespace GitHub.Runner.Worker
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Error(this IExecutionContext context, string message)
         {
-            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message });
+            var issue = new Issue() { Type = IssueType.Error, Message = message };
+            context.AddIssue(issue, ExecutionContextLogOptions.Default);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void InfrastructureError(this IExecutionContext context, string message)
         {
-            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true });
+            var issue = new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true };
+            context.AddIssue(issue, ExecutionContextLogOptions.Default);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Warning(this IExecutionContext context, string message)
         {
-            context.AddIssue(new Issue() { Type = IssueType.Warning, Message = message });
+            var issue = new Issue() { Type = IssueType.Warning, Message = message };
+            context.AddIssue(issue, ExecutionContextLogOptions.Default);
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().

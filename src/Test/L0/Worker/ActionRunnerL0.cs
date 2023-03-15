@@ -330,7 +330,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("invalid1", finialInputs["invalid1"]);
             Assert.Equal("invalid2", finialInputs["invalid2"]);
 
-            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input(s) 'invalid1', 'invalid2'")), It.IsAny<string>()), Times.Once);
+            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input(s) 'invalid1', 'invalid2'")), It.IsAny<ExecutionContextLogOptions>()), Times.Once);
         }
 
         [Fact]
@@ -449,7 +449,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Object.Global.Variables = new Variables(_hc, new Dictionary<string, VariableValue>());
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
-            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
+            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>())).Callback((Issue issue, ExecutionContextLogOptions logOptions) => { _hc.GetTrace().Info($"[{issue.Type}]{logOptions.LogMessageOverride ?? issue.Message}"); });
 
             _hc.SetSingleton<IActionManager>(_actionManager.Object);
             _hc.SetSingleton<IHandlerFactory>(_handlerFactory.Object);
