@@ -34,6 +34,13 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
+        public List<TaskAgent> ToTaskAgents()
+        {
+            List<TaskAgent> taskAgents = new List<TaskAgent>();
+
+            return Runners.Select(runner => new TaskAgent() { Name = runner.Name }).ToList();
+        }
+
         public ListRunnersResponse Clone()
         {
             return new ListRunnersResponse(this);
