@@ -164,7 +164,6 @@ namespace GitHub.Runner.Sdk
                         {
                             continue;
                         }
-
                         _noProxyList.Add(noProxyInfo);
                     }
                 }
@@ -207,6 +206,11 @@ namespace GitHub.Runner.Sdk
         {
             foreach (var noProxy in _noProxyList)
             {
+                // bypass on wildcard no_proxy
+                if (string.Equals(noProxy.Host, "*", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
                 var matchHost = false;
                 var matchPort = false;
 

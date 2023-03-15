@@ -22,7 +22,7 @@ DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 PACKAGE_TRIMS_DIR="$SCRIPT_DIR/../_package_trims"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="6.0.300"
+DOTNETSDK_VERSION="6.0.405"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 RUNNER_VERSION=$(cat runnerversion)
 
@@ -203,6 +203,13 @@ function runtest ()
     dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests"
 }
 
+function format()
+{
+    heading "Formatting..."
+    files="$(git status -s "*.cs" | awk '{print $2}' | tr '\n' ' ')"
+    dotnet format ${SCRIPT_DIR}/ActionsRunner.sln --exclude / --include $files || failed "failed formatting"
+}
+
 function package ()
 {
     if [ ! -d "${LAYOUT_DIR}/bin" ]; then
@@ -360,7 +367,9 @@ case $DEV_CMD in
     "l") layout;;
     "package") package;;
     "p") package;;
-    *) echo "Invalid cmd.  Use build(b), test(t), layout(l) or package(p)";;
+    "format") format;;
+    "f") format;;
+    *) echo "Invalid cmd.  Use build(b), test(t), layout(l), package(p), or format(f)";;
 esac
 
 popd

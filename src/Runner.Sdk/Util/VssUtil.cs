@@ -19,7 +19,7 @@ namespace GitHub.Runner.Sdk
         {
             var headerValues = new List<ProductInfoHeaderValue>();
             headerValues.AddRange(additionalUserAgents);
-            headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
+            headerValues.Add(new ProductInfoHeaderValue($"({StringUtil.SanitizeUserAgentHeader(RuntimeInformation.OSDescription)})"));
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
             {
@@ -116,7 +116,7 @@ namespace GitHub.Runner.Sdk
             // settings are applied to an HttpRequestMessage.
             settings.AcceptLanguages.Remove(CultureInfo.InvariantCulture);
 
-            RawConnection connection = new(serverUri, new RawHttpMessageHandler(credentials.ToOAuthCredentials(), settings), additionalDelegatingHandler);
+            RawConnection connection = new(serverUri, new RawHttpMessageHandler(credentials.Federated, settings), additionalDelegatingHandler);
             return connection;
         }
 

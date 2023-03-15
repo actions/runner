@@ -306,13 +306,13 @@ namespace GitHub.Runner.Worker
                                 }
                             }
 
-                            actionRunner.TryEvaluateDisplayName(contextData, context);
+                            actionRunner.EvaluateDisplayName(contextData, context, out _);
                             jobSteps.Add(actionRunner);
 
                             if (prepareResult.PreStepTracker.TryGetValue(step.Id, out var preStep))
                             {
                                 Trace.Info($"Adding pre-{action.DisplayName}.");
-                                preStep.TryEvaluateDisplayName(contextData, context);
+                                preStep.EvaluateDisplayName(contextData, context, out _);
                                 preStep.DisplayName = $"Pre {preStep.DisplayName}";
                                 preJobSteps.Add(preStep);
                             }
@@ -321,7 +321,10 @@ namespace GitHub.Runner.Worker
 
                     if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
                     {
-                        context.Output($"Uses: {workflowFileFullPath.Value}");
+                        var usesLogText = $"Uses: {workflowFileFullPath.Value}";
+                        var reference = GetWorkflowReference(message.Variables);
+                        context.Output(usesLogText + reference);
+
                         if (message.ContextData.TryGetValue("inputs", out var pipelineContextData))
                         {
                             var inputs = pipelineContextData.AssertDictionary("inputs");
@@ -335,11 +338,11 @@ namespace GitHub.Runner.Worker
                                 context.Output("##[endgroup]");
                             }
                         }
+                    }
 
-                        if (!string.IsNullOrWhiteSpace(message.JobDisplayName))
-                        {
-                            context.Output($"Complete job name: {message.JobDisplayName}");
-                        }
+                    if (!string.IsNullOrWhiteSpace(message.JobDisplayName))
+                    {
+                        context.Output($"Complete job name: {message.JobDisplayName}");
                     }
 
                     var intraActionStates = new Dictionary<Guid, Dictionary<string, string>>();
@@ -450,6 +453,24 @@ namespace GitHub.Runner.Worker
                     context.Complete();
                 }
             }
+        }
+
+        private string GetWorkflowReference(IDictionary<string, VariableValue> variables)
+        {
+            var reference = "";
+            if (variables.TryGetValue("system.workflowFileSha", out VariableValue workflowFileSha))
+            {
+                if (variables.TryGetValue("system.workflowFileRef", out VariableValue workflowFileRef)
+                    && !string.IsNullOrEmpty(workflowFileRef.Value))
+                {
+                    reference += $"@{workflowFileRef.Value} ({workflowFileSha.Value})";
+                }
+                else
+                {
+                    reference += $"@{workflowFileSha.Value}";
+                }
+            }
+            return reference;
         }
 
         public void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)

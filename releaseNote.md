@@ -1,18 +1,21 @@
 ## Features
-- Displays the error logs in dedicated sub-sections of the Initialize containers section (#2182)
-- Add generateServiceConfig option for configure command (#2226)
-- Setting debug using GitHub Action variables (#2234)
-- run.sh installs SIGINT and SIGTERM traps to gracefully stop runner (#2233, #2240)
-
+- Support matrix context in output keys (#2477)
+- Add update certificates to `./run.sh` if `RUNNER_UPDATE_CA_CERTS` env is set (#2471)
+- Bypass all proxies for all hosts if `no_proxy='*'` is set (#2395)
+- Change runner image to make user/folder align with `ubuntu-latest` hosted runner. (#2469)
 
 ## Bugs
-- Use Global.Variables instead of JobContext and include action path/ref in the message. (#2214)
+- Exit on runner version deprecation error (#2299)
+- Runner service exit after consecutive re-try exits (#2426)
 
 ## Misc
-- Allow '--disableupdate' in create-latest-svc.sh (#2201)
-- Fix markup for support link (#2114)
-- Add runner devcontainer (#2187)
-- Setup linter for Runner (#2211, #2213, #2216)
+- Replace deprecated command with environment file (#2429)
+- Make requests to `Run` service to renew job request (#2461)
+- Add job/step log upload to Result service (#2447, #2439)
+
+_Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
+To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
+See https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/adding-self-hosted-runners_
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

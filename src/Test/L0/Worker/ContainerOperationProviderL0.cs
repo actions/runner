@@ -99,6 +99,46 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeWithCorrectManager()
+        {
+            containers.Add(new ContainerInfo() { ContainerImage = "ubuntu:16.04" });
+            _hc = new TestHostContext(this, "Test");
+            _ec = new Mock<IExecutionContext>();
+            serverQueue = new Mock<IJobServerQueue>();
+            pagingLogger = new Mock<IPagingLogger>();
+
+            containerOperationProvider = new ContainerOperationProvider();
+
+            _hc.SetSingleton<IJobServerQueue>(serverQueue.Object);
+            _hc.SetSingleton<IPagingLogger>(pagingLogger.Object);
+
+
+            _ec.Setup(x => x.Global).Returns(new GlobalContext());
+
+            Environment.SetEnvironmentVariable(Constants.Hooks.ContainerHooksPath, "/tmp/k8s/index.js");
+            _dockerManager = new Mock<IDockerCommandManager>();
+            _dockerManager.Setup(x => x.Initialize(_hc)).Throws(new Exception("Docker manager's Initialize should not be called"));
+
+            _containerHookManager = new Mock<IContainerHookManager>();
+            _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
+            _hc.SetSingleton<IContainerHookManager>(_containerHookManager.Object);
+
+            containerOperationProvider.Initialize(_hc);
+
+            Environment.SetEnvironmentVariable(Constants.Hooks.ContainerHooksPath, null);
+            _containerHookManager = new Mock<IContainerHookManager>();
+            _containerHookManager.Setup(x => x.Initialize(_hc)).Throws(new Exception("Container hook manager's Initialize should not be called"));
+
+            _dockerManager = new Mock<IDockerCommandManager>();
+            _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
+            _hc.SetSingleton<IContainerHookManager>(_containerHookManager.Object);
+
+            containerOperationProvider.Initialize(_hc);
+        }
+
         private void Setup([CallerMemberName] string testName = "")
         {
             containers.Add(new ContainerInfo() { ContainerImage = "ubuntu:16.04" });
@@ -111,7 +151,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             _containerHookManager = new Mock<IContainerHookManager>();
             containerOperationProvider = new ContainerOperationProvider();
 
-            _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
             _hc.SetSingleton<IJobServerQueue>(serverQueue.Object);
             _hc.SetSingleton<IPagingLogger>(pagingLogger.Object);
 

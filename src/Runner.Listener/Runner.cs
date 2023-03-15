@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Listener.Check;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Sdk;
@@ -135,6 +136,12 @@ namespace GitHub.Runner.Listener
                 // remove config files, remove service, and exit
                 if (command.Remove)
                 {
+                    // only remove local config files and exit
+                    if (command.RemoveLocalConfig)
+                    {
+                        configManager.DeleteLocalRunnerConfig();
+                        return Constants.Runner.ReturnCode.Success;
+                    }
                     try
                     {
                         await configManager.UnconfigureAsync(command);
@@ -496,7 +503,7 @@ namespace GitHub.Runner.Listener
                                 }
                             }
                             // Broker flow
-                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.RunnerJobRequest, StringComparison.OrdinalIgnoreCase))
+                            else if (MessageUtil.IsRunServiceJob(message.MessageType))
                             {
                                 if (autoUpdateInProgress || runOnceJobReceived)
                                 {
@@ -647,6 +654,7 @@ Config Options:
  --name string          Name of the runner to configure (default {Environment.MachineName ?? "myrunner"})
  --runnergroup string   Name of the runner group to add this runner to (defaults to the default runner group)
  --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
+ --local                Removes the runner config files from your local machine. Used as an option to the remove command
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
  --pat                  GitHub personal access token with repo scope. Used for checking network connectivity when executing `.{separator}run.{ext} --check`
