@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;

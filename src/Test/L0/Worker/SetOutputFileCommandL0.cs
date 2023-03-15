@@ -434,8 +434,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             _executionContext.Setup(x => x.SetOutput(It.IsAny<string>(), It.IsAny<string>(), out reference))
               .Callback((string name, string value, out string reference) =>
               {
-                reference = value;
-                _outputs[name] = value;
+                  reference = value;
+                  _outputs[name] = value;
               });
 
             // SetOutputFileCommand

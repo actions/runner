@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -756,9 +756,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 embeddedStep.StepTelemetry.Action = "actions/checkout";
                 embeddedStep.StepTelemetry.Ref = "v2";
 
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" }, ExecutionContextLogOptions.Default);
 
                 ec.Complete();
 
