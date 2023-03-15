@@ -31,12 +31,14 @@ namespace GitHub.Runner.Listener.Configuration
     {
         private IConfigurationStore _store;
         private IRunnerServer _runnerServer;
+        private IRunnerDotcomServer _dotcomServer;
         private ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _runnerServer = HostContext.GetService<IRunnerServer>();
+            _dotcomServer = HostContext.GetService<IRunnerDotcomServer>();
             Trace.Verbose("Creating _store");
             _store = hostContext.GetService<IConfigurationStore>();
             Trace.Verbose("store created");
@@ -192,7 +194,7 @@ namespace GitHub.Runner.Listener.Configuration
             List<TaskAgentPool> agentPools;
             if (runnerSettings.UseV2Flow)
             {
-                agentPools = await GetAgentPoolsAsyncV2(runnerSettings.GitHubUrl, registerToken);
+                agentPools = await _dotcomServer.GetAgentPoolsAsync(runnerSettings.GitHubUrl, registerToken);
             }
             else
             {
@@ -240,7 +242,7 @@ namespace GitHub.Runner.Listener.Configuration
                 List<TaskAgent> agents;
                 if (runnerSettings.UseV2Flow)
                 {
-                    agents = await GetAgentsAsyncV2(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
+                    agents = await _dotcomServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
                 }
                 else
                 {
@@ -295,7 +297,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         if (runnerSettings.UseV2Flow)
                         {
-                            agent = await AddAgentAsyncV2(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
+                            agent = await _dotcomServer.AddAgentAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
                         }
                         else
                         {
@@ -679,7 +681,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = GetGitHubRequestId(response.Headers);
+                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -699,252 +701,6 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         retryCount++;
                         Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
-                        Trace.Error(ex);
-                    }
-                }
-                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
-                Trace.Info($"Retrying in {backOff.Seconds} seconds");
-                await Task.Delay(backOff);
-            }
-            return null;
-        }
-
-        private async Task<TaskAgent> AddAgentAsyncV2(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken)
-        {
-            var githubApiUrl = "";
-            var gitHubUrlBuilder = new UriBuilder(githubUrl);
-            var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
-            if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
-            {
-                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runners/register";
-            }
-            else
-            {
-                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/actions/runners/register";
-            }
-
-            int retryCount = 0;
-            while (retryCount < 3)
-            {
-                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-                using (var httpClient = new HttpClient(httpClientHandler))
-                {
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
-                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-
-                    var bodyObject = new Dictionary<string, Object>()
-                    {
-                        {"url", githubUrl},
-                        {"group_id", runnerGroupId},
-                        {"name", agent.Name},
-                        {"version", agent.Version},
-                        {"updates_disabled", agent.DisableUpdate},
-                        {"ephemeral", agent.Ephemeral},
-                        {"labels", agent.Labels},
-                    };
-
-                    var responseStatus = System.Net.HttpStatusCode.OK;
-                    try
-                    {
-                        var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
-                        responseStatus = response.StatusCode;
-                        var githubRequestId = GetGitHubRequestId(response.Headers);
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' ({githubRequestId})");
-                            var jsonResponse = await response.Content.ReadAsStringAsync();
-                            var responseAgent = StringUtil.ConvertFromJson<TaskAgent>(jsonResponse);
-                            agent.Id = responseAgent.Id;
-                            return agent;
-                        }
-                        else
-                        {
-                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' (Request Id: {githubRequestId})");
-                            var errorResponse = await response.Content.ReadAsStringAsync();
-                            _term.WriteError(errorResponse);
-                            response.EnsureSuccessStatusCode();
-                        }
-                    }
-                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
-                    {
-                        retryCount++;
-                        Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
-                        Trace.Error(ex);
-                    }
-                }
-                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
-                Trace.Info($"Retrying in {backOff.Seconds} seconds");
-                await Task.Delay(backOff);
-            }
-            return null;
-        }
-
-        private async Task<List<TaskAgent>> GetAgentsAsyncV2(int runnerGroupId, string githubUrl, string githubToken, string agentName = null)
-        {
-            var githubApiUrl = "";
-            var gitHubUrlBuilder = new UriBuilder(githubUrl);
-            var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
-            if (path.Length == 1)
-            {
-                // org runner
-                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runner-groups/{runnerGroupId}/runners";
-                }
-                else
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runner-groups/{runnerGroupId}/runners";
-                }
-            }
-            else if (path.Length == 2)
-            {
-                // repo or enterprise runner.
-                if (!string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase))
-                {
-                    return null;
-                }
-
-                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runner-groups/{runnerGroupId}/runners";
-                }
-                else
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runner-groups/{runnerGroupId}/runners";
-                }
-            }
-            else
-            {
-                throw new ArgumentException($"'{githubUrl}' should point to an org or enterprise.");
-            }
-
-            int retryCount = 0;
-            while (retryCount < 3)
-            {
-                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-                using (var httpClient = new HttpClient(httpClientHandler))
-                {
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
-                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-
-                    var responseStatus = System.Net.HttpStatusCode.OK;
-                    try
-                    {
-                        var response = await httpClient.GetAsync(githubApiUrl);
-                        responseStatus = response.StatusCode;
-                        var githubRequestId = GetGitHubRequestId(response.Headers);
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            Trace.Info($"Http response code: {response.StatusCode} from 'GET {githubApiUrl}' ({githubRequestId})");
-                            var jsonResponse = await response.Content.ReadAsStringAsync();
-                            var agents = StringUtil.ConvertFromJson<ListRunnersResponse>(jsonResponse);
-
-                            if (string.IsNullOrEmpty(agentName))
-                            {
-                                return agents.Runners;
-                            }
-
-                            return agents.Runners.Where(x => string.Equals(x.Name, agentName, StringComparison.OrdinalIgnoreCase)).ToList();
-                        }
-                        else
-                        {
-                            _term.WriteError($"Http response code: {response.StatusCode} from 'GET {githubApiUrl}' (Request Id: {githubRequestId})");
-                            var errorResponse = await response.Content.ReadAsStringAsync();
-                            _term.WriteError(errorResponse);
-                            response.EnsureSuccessStatusCode();
-                        }
-                    }
-                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
-                    {
-                        retryCount++;
-                        Trace.Error($"Failed to get agent pools -- Atempt: {retryCount}");
-                        Trace.Error(ex);
-                    }
-                }
-                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
-                Trace.Info($"Retrying in {backOff.Seconds} seconds");
-                await Task.Delay(backOff);
-            }
-            return null;
-        }
-
-        private async Task<List<TaskAgentPool>> GetAgentPoolsAsyncV2(string githubUrl, string githubToken)
-        {
-            var githubApiUrl = "";
-            var gitHubUrlBuilder = new UriBuilder(githubUrl);
-            var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
-            if (path.Length == 1)
-            {
-                // org runner
-                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runner-groups";
-                }
-                else
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runner-groups";
-                }
-            }
-            else if (path.Length == 2)
-            {
-                // repo or enterprise runner.
-                if (!string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase))
-                {
-                    return null;
-                }
-
-                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runner-groups";
-                }
-                else
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runner-groups";
-                }
-            }
-            else
-            {
-                throw new ArgumentException($"'{githubUrl}' should point to an org or enterprise.");
-            }
-
-            int retryCount = 0;
-            while (retryCount < 3)
-            {
-                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-                using (var httpClient = new HttpClient(httpClientHandler))
-                {
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
-                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-
-                    var responseStatus = System.Net.HttpStatusCode.OK;
-                    try
-                    {
-                        var response = await httpClient.GetAsync(githubApiUrl);
-                        responseStatus = response.StatusCode;
-                        var githubRequestId = GetGitHubRequestId(response.Headers);
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            Trace.Info($"Http response code: {response.StatusCode} from 'GET {githubApiUrl}' ({githubRequestId})");
-                            var jsonResponse = await response.Content.ReadAsStringAsync();
-                            var agentPools = StringUtil.ConvertFromJson<RunnerGroupList>(jsonResponse);
-
-                            return agentPools?.ToAgentPoolList();
-                        }
-                        else
-                        {
-                            _term.WriteError($"Http response code: {response.StatusCode} from 'GET {githubApiUrl}' (Request Id: {githubRequestId})");
-                            var errorResponse = await response.Content.ReadAsStringAsync();
-                            _term.WriteError(errorResponse);
-                            response.EnsureSuccessStatusCode();
-                        }
-                    }
-                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
-                    {
-                        retryCount++;
-                        Trace.Error($"Failed to get agent pools -- Atempt: {retryCount}");
                         Trace.Error(ex);
                     }
                 }
@@ -988,7 +744,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = GetGitHubRequestId(response.Headers);
+                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -1016,15 +772,6 @@ namespace GitHub.Runner.Listener.Configuration
                 await Task.Delay(backOff);
             }
             return null;
-        }
-
-        private string GetGitHubRequestId(HttpResponseHeaders headers)
-        {
-            if (headers.TryGetValues("x-github-request-id", out var headerValues))
-            {
-                return headerValues.FirstOrDefault();
-            }
-            return string.Empty;
         }
     }
 }

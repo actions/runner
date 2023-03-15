@@ -4,6 +4,7 @@ using System.Runtime.Serialization;
 using System.ComponentModel;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace GitHub.DistributedTask.WebApi
 {
@@ -11,18 +12,18 @@ namespace GitHub.DistributedTask.WebApi
     /// An organization-level grouping of runners.
     /// </summary>
     [DataContract]
-    public class TaskRunnerGroup
+    public class RunnerGroup
     {
-        internal TaskRunnerGroup()
+        internal RunnerGroup()
         {
         }
 
-        public TaskRunnerGroup(String name)
+        public RunnerGroup(String name)
         {
             this.Name = name;
         }
 
-        private TaskRunnerGroup(TaskRunnerGroup poolToBeCloned)
+        private RunnerGroup(RunnerGroup poolToBeCloned)
         {
             this.Id = poolToBeCloned.Id;
             this.IsHosted = poolToBeCloned.IsHosted;
@@ -73,26 +74,23 @@ namespace GitHub.DistributedTask.WebApi
     {
         public RunnerGroupList()
         {
-            this.RunnerGroups = new List<TaskRunnerGroup>();
+            this.RunnerGroups = new List<RunnerGroup>();
         }
 
         public List<TaskAgentPool> ToAgentPoolList()
         {
-            List<TaskAgentPool> agentPools = new List<TaskAgentPool>();
-            foreach (TaskRunnerGroup runnerGroup in this.RunnerGroups)
+            var agentPools = this.RunnerGroups.Select(x => new TaskAgentPool(x.Name)
             {
-                TaskAgentPool agentPool = new TaskAgentPool(runnerGroup.Name);
-                agentPool.Id = runnerGroup.Id;
-                agentPool.IsHosted = runnerGroup.IsHosted;
-                agentPool.IsInternal = runnerGroup.IsDefault;
-                agentPools.Add(agentPool);
-            }
+                Id = x.Id,
+                IsHosted = x.IsHosted,
+                IsInternal = x.IsDefault
+            }).ToList();
 
             return agentPools;
         }
 
         [JsonProperty("runner_groups")]
-        public List<TaskRunnerGroup> RunnerGroups { get; set; }
+        public List<RunnerGroup> RunnerGroups { get; set; }
 
         [JsonProperty("total_count")]
         public int Count { get; set; }
