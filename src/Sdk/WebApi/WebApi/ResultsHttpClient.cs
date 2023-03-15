@@ -1,11 +1,16 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Services.Results.Contracts;
 using System.Net.Http.Formatting;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.Results.Contracts;
 using Sdk.WebApi.WebApi;
 
 namespace GitHub.Services.Results.Client
@@ -22,6 +27,7 @@ namespace GitHub.Services.Results.Client
             m_token = token;
             m_resultsServiceUrl = baseUrl;
             m_formatter = new JsonMediaTypeFormatter();
+            m_changeIdCounter = 1;
         }
 
         // Get Sas URL calls
@@ -86,7 +92,7 @@ namespace GitHub.Services.Results.Client
 
         // Create metadata calls
 
-        private async Task CreateMetadata<R>(Uri uri, CancellationToken cancellationToken, R request, string timestamp)
+        private async Task SendRequest<R>(Uri uri, CancellationToken cancellationToken, R request, string timestamp)
         {
             using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, uri))
             {
@@ -121,7 +127,7 @@ namespace GitHub.Services.Results.Client
             };
 
             var createStepSummaryMetadataEndpoint = new Uri(m_resultsServiceUrl, Constants.CreateStepSummaryMetadata);
-            await CreateMetadata<StepSummaryMetadataCreate>(createStepSummaryMetadataEndpoint, cancellationToken, request, timestamp);
+            await SendRequest<StepSummaryMetadataCreate>(createStepSummaryMetadataEndpoint, cancellationToken, request, timestamp);
         }
 
         private async Task StepLogUploadCompleteAsync(string planId, string jobId, Guid stepId, long lineCount, CancellationToken cancellationToken)
@@ -137,7 +143,7 @@ namespace GitHub.Services.Results.Client
             };
 
             var createStepLogsMetadataEndpoint = new Uri(m_resultsServiceUrl, Constants.CreateStepLogsMetadata);
-            await CreateMetadata<StepLogsMetadataCreate>(createStepLogsMetadataEndpoint, cancellationToken, request, timestamp);
+            await SendRequest<StepLogsMetadataCreate>(createStepLogsMetadataEndpoint, cancellationToken, request, timestamp);
         }
 
         private async Task JobLogUploadCompleteAsync(string planId, string jobId, long lineCount, CancellationToken cancellationToken)
@@ -152,7 +158,7 @@ namespace GitHub.Services.Results.Client
             };
 
             var createJobLogsMetadataEndpoint = new Uri(m_resultsServiceUrl, Constants.CreateJobLogsMetadata);
-            await CreateMetadata<JobLogsMetadataCreate>(createJobLogsMetadataEndpoint, cancellationToken, request, timestamp);
+            await SendRequest<JobLogsMetadataCreate>(createJobLogsMetadataEndpoint, cancellationToken, request, timestamp);
         }
 
         private async Task<HttpResponseMessage> UploadBlockFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken)
@@ -252,7 +258,7 @@ namespace GitHub.Services.Results.Client
             await StepSummaryUploadCompleteAsync(planId, jobId, stepId, fileSize, cancellationToken);
         }
 
-        // Handle file upload for step log 
+        // Handle file upload for step log
         public async Task UploadResultsStepLogAsync(string planId, string jobId, Guid stepId, string file, bool finalize, bool firstBlock, long lineCount, CancellationToken cancellationToken)
         {
             // Get the upload url
@@ -262,7 +268,7 @@ namespace GitHub.Services.Results.Client
                 throw new Exception("Failed to get step log upload url");
             }
 
-            // Create the Append blob 
+            // Create the Append blob
             if (firstBlock)
             {
                 await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
@@ -283,7 +289,7 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        // Handle file upload for job log 
+        // Handle file upload for job log
         public async Task UploadResultsJobLogAsync(string planId, string jobId, string file, bool finalize, bool firstBlock, long lineCount, CancellationToken cancellationToken)
         {
             // Get the upload url
@@ -293,7 +299,7 @@ namespace GitHub.Services.Results.Client
                 throw new Exception("Failed to get job log upload url");
             }
 
-            // Create the Append blob 
+            // Create the Append blob
             if (firstBlock)
             {
                 await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
@@ -314,9 +320,57 @@ namespace GitHub.Services.Results.Client
             }
         }
 
+        private Step ConvertTimelineRecordToStep(TimelineRecord r)
+        {
+            return new Step()
+            {
+                ExternalId = r.Id.ToString(),
+                Number = r.Order.GetValueOrDefault(),
+                Name = r.Name,
+                Status = ConvertStateToStatus(r.State.GetValueOrDefault()),
+                StartedAt = r.StartTime?.ToString(Constants.TimestampFormat),
+                CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat)
+            };
+        }
+
+        private Status ConvertStateToStatus(TimelineRecordState s)
+        {
+            switch (s)
+            {
+                case TimelineRecordState.Completed:
+                    return Status.StatusCompleted;
+                case TimelineRecordState.Pending:
+                    return Status.StatusPending;
+                case TimelineRecordState.InProgress:
+                    return Status.StatusInProgress;
+                default:
+                    return Status.StatusUnknown;
+            }
+        }
+
+        public async Task UpdateTimelineRecordsAsync(Guid planId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken)
+        {
+            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat);
+            var stepRecords = records.Where(r => String.Equals(r.RecordType, "Task", StringComparison.Ordinal));
+            var stepUpdateRequests = stepRecords.GroupBy(r => r.ParentId).Select(sg => new StepsUpdateRequest()
+            {
+                    WorkflowRunBackendId = planId.ToString(),
+                    WorkflowJobRunBackendId = sg.Key.ToString(),
+                    ChangeOrder = m_changeIdCounter++,
+                    Steps = sg.Select(ConvertTimelineRecordToStep)
+            });
+
+            var stepUpdateEndpoint = new Uri(m_resultsServiceUrl, Constants.WorkflowStepsUpdate);
+            foreach (var request in stepUpdateRequests)
+            {
+                await SendRequest<StepsUpdateRequest>(stepUpdateEndpoint, cancellationToken, request, timestamp);
+            }
+        }
+
         private MediaTypeFormatter m_formatter;
         private Uri m_resultsServiceUrl;
         private string m_token;
+        private int m_changeIdCounter;
     }
 
     // Constants specific to results
@@ -331,6 +385,8 @@ namespace GitHub.Services.Results.Client
         public static readonly string CreateStepLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateStepLogsMetadata";
         public static readonly string GetJobLogsSignedBlobURL = ResultsReceiverTwirpEndpoint + "GetJobLogsSignedBlobURL";
         public static readonly string CreateJobLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateJobLogsMetadata";
+        public static readonly string ResultsProtoApiV1Endpoint = "twirp/github.actions.results.api.v1.WorkflowStepUpdateService/";
+        public static readonly string WorkflowStepsUpdate = ResultsProtoApiV1Endpoint + "WorkflowStepsUpdate";
 
         public static readonly string AzureBlobSealedHeader = "x-ms-blob-sealed";
         public static readonly string AzureBlobTypeHeader = "x-ms-blob-type";

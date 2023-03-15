@@ -359,8 +359,24 @@ namespace GitHub.Runner.Common
 
         public Task<List<TimelineRecord>> UpdateTimelineRecordsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken)
         {
+            // Send step updates to Results
+            var timelineRecords = records.ToList();
+            if (_resultsClient != null)
+            {
+                try
+                {
+                    _resultsClient.UpdateTimelineRecordsAsync(planId, new List<TimelineRecord>(timelineRecords), cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    // Log error, but continue as this call is best-effort
+                    Trace.Info($"Failed to update steps status due to {ex.GetType().Name}");
+                    Trace.Error(ex);
+                }
+            }
+
             CheckConnection();
-            return _taskClient.UpdateTimelineRecordsAsync(scopeIdentifier, hubName, planId, timelineId, records, cancellationToken: cancellationToken);
+            return _taskClient.UpdateTimelineRecordsAsync(scopeIdentifier, hubName, planId, timelineId, timelineRecords, cancellationToken: cancellationToken);
         }
 
         public Task RaisePlanEventAsync<T>(Guid scopeIdentifier, string hubName, Guid planId, T eventData, CancellationToken cancellationToken) where T : JobEvent
