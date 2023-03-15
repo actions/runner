@@ -15,10 +15,10 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(RunnerDotcomServer))]
     public interface IRunnerDotcomServer : IRunnerService
     {
-        Task<List<TaskAgent>> GetAgentsAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName);
+        Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName);
 
-        Task<TaskAgent> AddAgentAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken);
-        Task<List<TaskAgentPool>> GetAgentPoolsAsync(string githubUrl, string githubToken);
+        Task<TaskAgent> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken);
+        Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken);
 
         string GetGitHubRequestId(HttpResponseHeaders headers);
     }
@@ -42,7 +42,7 @@ namespace GitHub.Runner.Common
         }
 
 
-        public async Task<List<TaskAgent>> GetAgentsAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName = null)
+        public async Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName = null)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
@@ -92,7 +92,7 @@ namespace GitHub.Runner.Common
             return agents.Runners.Where(x => string.Equals(x.Name, agentName, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        public async Task<List<TaskAgentPool>> GetAgentPoolsAsync(string githubUrl, string githubToken)
+        public async Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
@@ -137,7 +137,7 @@ namespace GitHub.Runner.Common
             return agentPools?.ToAgentPoolList();
         }
 
-        public async Task<TaskAgent> AddAgentAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken)
+        public async Task<TaskAgent> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken)
         {
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);

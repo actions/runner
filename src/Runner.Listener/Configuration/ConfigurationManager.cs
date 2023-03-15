@@ -194,7 +194,7 @@ namespace GitHub.Runner.Listener.Configuration
             List<TaskAgentPool> agentPools;
             if (runnerSettings.UseV2Flow)
             {
-                agentPools = await _dotcomServer.GetAgentPoolsAsync(runnerSettings.GitHubUrl, registerToken);
+                agentPools = await _dotcomServer.GetRunnerGroupsAsync(runnerSettings.GitHubUrl, registerToken);
             }
             else
             {
@@ -242,7 +242,7 @@ namespace GitHub.Runner.Listener.Configuration
                 List<TaskAgent> agents;
                 if (runnerSettings.UseV2Flow)
                 {
-                    agents = await _dotcomServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
+                    agents = await _dotcomServer.GetRunnersAsync(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
                 }
                 else
                 {
@@ -297,7 +297,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         if (runnerSettings.UseV2Flow)
                         {
-                            agent = await _dotcomServer.AddAgentAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
+                            agent = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
                         }
                         else
                         {
