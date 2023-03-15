@@ -181,9 +181,11 @@ namespace GitHub.Runner.Listener.Configuration
             // We want to use the native CSP of the platform for storage, so we use the RSACSP directly
             RSAParameters publicKey;
             var keyManager = HostContext.GetService<IRSAKeyManager>();
+            string publicKeyXML;
             using (var rsa = keyManager.CreateKey())
             {
                 publicKey = rsa.ExportParameters(false);
+                publicKeyXML = rsa.ToXmlString(includePrivateParameters: false);
             }
 
             _term.WriteSection("Runner Registration");
@@ -297,7 +299,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         if (runnerSettings.UseV2Flow)
                         {
-                            agent = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
+                            agent = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
                         }
                         else
                         {
