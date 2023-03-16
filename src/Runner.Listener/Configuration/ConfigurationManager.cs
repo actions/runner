@@ -292,7 +292,7 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     // Create a new agent.
                     agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
-                    
+
                     try
                     {
                         if (runnerSettings.UseV2Flow)
