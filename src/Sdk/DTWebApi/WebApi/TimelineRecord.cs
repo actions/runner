@@ -106,14 +106,14 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Name = "Type", Order = 3)]
-        public String RecordType
+        public string RecordType
         {
             get;
             set;
         }
 
         [DataMember(Order = 4)]
-        public String Name
+        public string Name
         {
             get;
             set;
@@ -134,7 +134,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Order = 7)]
-        public String CurrentOperation
+        public string CurrentOperation
         {
             get;
             set;
@@ -162,7 +162,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Order = 11)]
-        public String ResultCode
+        public string ResultCode
         {
             get;
             set;
@@ -183,7 +183,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Order = 14)]
-        public String WorkerName
+        public string WorkerName
         {
             get;
             set;
@@ -197,7 +197,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Order = 16, EmitDefaultValue = false)]
-        public String RefName
+        public string RefName
         {
             get;
             set;
@@ -276,7 +276,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Order = 131)]
-        public String Identifier
+        public string Identifier
         {
             get;
             set;
@@ -297,7 +297,7 @@ namespace GitHub.DistributedTask.WebApi
             }
         }
 
-        public IDictionary<String, VariableValue> Variables
+        public IDictionary<string, VariableValue> Variables
         {
             get
             {
@@ -354,7 +354,7 @@ namespace GitHub.DistributedTask.WebApi
         private List<Issue> m_issues;
 
         [DataMember(Name = nameof(Variables), EmitDefaultValue = false, Order = 80)]
-        private Dictionary<String, VariableValue> m_variables;
+        private Dictionary<string, VariableValue> m_variables;
 
         [DataMember(Name = nameof(PreviousAttempts), EmitDefaultValue = false, Order = 120)]
         private List<TimelineAttempt> m_previousAttempts;
