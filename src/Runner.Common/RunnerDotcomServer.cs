@@ -81,15 +81,15 @@ namespace GitHub.Runner.Common
                 throw new ArgumentException($"'{githubUrl}' should point to an org or enterprise.");
             }
 
-            var response = await RetryRequest(githubApiUrl, githubToken, RequestType.Get, 3, "Failed to get agents pools");
-            var agents = StringUtil.ConvertFromJson<ListRunnersResponse>(response);
+            var runnersList = await RetryRequest<ListRunnersResponse>(githubApiUrl, githubToken, RequestType.Get, 3, "Failed to get agents pools");
+            var agents = runnersList.ToTaskAgents();
 
             if (string.IsNullOrEmpty(agentName))
             {
-                return agents.Runners;
+                return agents;
             }
 
-            return agents.Runners.Where(x => string.Equals(x.Name, agentName, StringComparison.OrdinalIgnoreCase)).ToList();
+            return agents.Where(x => string.Equals(x.Name, agentName, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
         public async Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken)
@@ -131,8 +131,7 @@ namespace GitHub.Runner.Common
                 throw new ArgumentException($"'{githubUrl}' should point to an org or enterprise.");
             }
 
-            var response = await RetryRequest(githubApiUrl, githubToken, RequestType.Get, 3, "Failed to get agents pools");
-            var agentPools = StringUtil.ConvertFromJson<RunnerGroupList>(response);
+            var agentPools = await RetryRequest<RunnerGroupList>(githubApiUrl, githubToken, RequestType.Get, 3, "Failed to get agents pools");
 
             return agentPools?.ToAgentPoolList();
         }
@@ -163,13 +162,12 @@ namespace GitHub.Runner.Common
                     };
 
             var body = new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json");
-            var response = await RetryRequest(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
-            var responseAgent = StringUtil.ConvertFromJson<TaskAgent>(response);
+            var responseAgent = await RetryRequest<TaskAgent>(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
             agent.Id = responseAgent.Id;
             return agent;
         }
 
-        private async Task<string> RetryRequest(string githubApiUrl, string githubToken, RequestType requestType, int maxRetryAttemptsCount = 5, string errorMessage = null, StringContent body = null)
+        private async Task<T> RetryRequest<T>(string githubApiUrl, string githubToken, RequestType requestType, int maxRetryAttemptsCount = 5, string errorMessage = null, StringContent body = null)
         {
             int retry = 0;
             while (true)
@@ -203,7 +201,7 @@ namespace GitHub.Runner.Common
                             {
                                 Trace.Info($"Http response code: {response.StatusCode} from '{requestType.ToString()} {githubApiUrl}' ({githubRequestId})");
                                 var jsonResponse = await response.Content.ReadAsStringAsync();
-                                return jsonResponse;
+                                return StringUtil.ConvertFromJson<T>(jsonResponse);
                             }
                             else
                             {
