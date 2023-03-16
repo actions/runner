@@ -257,10 +257,6 @@ namespace GitHub.DistributedTask.WebApi
         {
             get
             {
-                if (m_issues == null)
-                {
-                    m_issues = new List<Issue>();
-                }
                 return m_issues;
             }
         }
@@ -297,10 +293,6 @@ namespace GitHub.DistributedTask.WebApi
         {
             get
             {
-                if (m_previousAttempts == null)
-                {
-                    m_previousAttempts = new List<TimelineAttempt>();
-                }
                 return m_previousAttempts;
             }
         }
@@ -309,10 +301,6 @@ namespace GitHub.DistributedTask.WebApi
         {
             get
             {
-                if (m_variables == null)
-                {
-                    m_variables = new Dictionary<String, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                }
                 return m_variables;
             }
         }
