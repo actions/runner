@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
     {
         Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName);
 
-        Task<TaskAgent> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
+        Task<TaskAgent> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey, string hostId);
         Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken);
 
         string GetGitHubRequestId(HttpResponseHeaders headers);
@@ -136,7 +136,7 @@ namespace GitHub.Runner.Common
             return agentPools?.ToAgentPoolList();
         }
 
-        public async Task<TaskAgent> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
+        public async Task<TaskAgent> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey, string hostId)
         {
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
@@ -160,11 +160,19 @@ namespace GitHub.Runner.Common
                         {"ephemeral", agent.Ephemeral},
                         {"labels", agent.Labels},
                         {"public_key", publicKey},
+                        {"host_id", hostId},
                     };
 
             var body = new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json");
-            var responseAgent = await RetryRequest<TaskAgent>(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
-            agent.Id = responseAgent.Id;
+
+            var response = await RetryRequest(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
+            var runner = StringUtil.ConvertFromJson<GitHub.DistributedTask.WebApi.Runner>(response);
+            agent.Id = runner.Id;
+            agent.Authorization = new TaskAgentAuthorization()
+            {
+                AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                ClientId = new Guid(runner.RunnerAuthorization.ClientId),
+            };
             return agent;
         }
 
