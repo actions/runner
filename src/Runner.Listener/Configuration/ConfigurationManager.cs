@@ -14,6 +14,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.Common.Internal;
 using GitHub.Services.OAuth;
+using GitHub.Services.WebApi.Jwt;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -116,6 +117,7 @@ namespace GitHub.Runner.Listener.Configuration
             VssCredentials creds = null;
             _term.WriteSection("Authentication");
             string registerToken = string.Empty;
+            string hostId = string.Empty;
             while (true)
             {
                 // When testing against a dev deployment of Actions Service, set this environment variable
@@ -140,6 +142,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine($"Using V2 flow: {runnerSettings.UseV2Flow}");
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
+                    hostId = GetHostId(authResult.Token);
                 }
 
                 try
@@ -299,7 +302,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         if (runnerSettings.UseV2Flow)
                         {
-                            agent = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                            agent = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML, hostId);
                         }
                         else
                         {
@@ -774,6 +777,13 @@ namespace GitHub.Runner.Listener.Configuration
                 await Task.Delay(backOff);
             }
             return null;
+        }
+
+        // Temporary hack for sending legacy host id using v2 flow
+        private string GetHostId(string accessToken)
+        {
+            var claims = JsonWebToken.Create(accessToken).ExtractClaims();
+            return claims.FirstOrDefault(x => x.Type == "aud").Value.Split(':').LastOrDefault();
         }
     }
 }
