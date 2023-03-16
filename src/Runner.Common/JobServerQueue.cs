@@ -703,17 +703,17 @@ namespace GitHub.Runner.Common
                     timelineRecord.State = rec.State ?? timelineRecord.State;
                     timelineRecord.WorkerName = rec.WorkerName ?? timelineRecord.WorkerName;
 
-                    if (rec.ErrorCount != null && rec.ErrorCount > 0)
+                    if (rec.ErrorCount > 0)
                     {
                         timelineRecord.ErrorCount = rec.ErrorCount;
                     }
 
-                    if (rec.WarningCount != null && rec.WarningCount > 0)
+                    if (rec.WarningCount > 0)
                     {
                         timelineRecord.WarningCount = rec.WarningCount;
                     }
 
-                    if (rec.NoticeCount != null && rec.NoticeCount > 0)
+                    if (rec.NoticeCount > 0)
                     {
                         timelineRecord.NoticeCount = rec.NoticeCount;
                     }

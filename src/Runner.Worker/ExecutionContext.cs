@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -29,7 +29,7 @@ namespace GitHub.Runner.Worker
         public const string Task = "Task";
     }
 
-    public record ExecutionContextLogOptions(bool EnableLogging, string LogMessageOverride)
+    public record ExecutionContextLogOptions(bool WriteToLog, string LogMessageOverride)
     {
         public static readonly ExecutionContextLogOptions None = new(false, null);
         public static readonly ExecutionContextLogOptions Default = new(true, null);
@@ -124,7 +124,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
     {
-        private const int _maxIssueCount = 10;
+        private const int _maxCountPerIssueType = 10;
         private const int _throttlingDelayReportThreshold = 10 * 1000; // Don't report throttling with less than 10 seconds delay
         private const int _maxIssueMessageLength = 4096; // Don't send issue with huge message since we can't forward them from actions to check annotation.
         private const int _maxIssueCountInTelemetry = 3; // Only send the first 3 issues to telemetry
@@ -615,51 +615,45 @@ namespace GitHub.Runner.Worker
                 issue.Data["stepNumber"] = _record.Order.ToString();
             }
 
-            string logCategory = null;
-            if (issue.Type == IssueType.Error)
+            string wellKnownTag = null;
+            Int32 previousCountForIssueType = 0;
+            switch (issue.Type)
             {
-                logCategory = WellKnownTags.Error;
-                if (_record.ErrorCount < _maxIssueCount)
+                case IssueType.Error:
+                    wellKnownTag = WellKnownTags.Error;
+                    previousCountForIssueType = _record.ErrorCount++;
+                    break;
+                case IssueType.Warning:
+                    wellKnownTag = WellKnownTags.Warning;
+                    previousCountForIssueType = _record.WarningCount++;
+                    break;
+                case IssueType.Notice:
+                    wellKnownTag = WellKnownTags.Notice;
+                    previousCountForIssueType = _record.NoticeCount++;
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(wellKnownTag))
+            {
+                if (previousCountForIssueType < _maxCountPerIssueType)
                 {
                     _record.Issues.Add(issue);
                 }
 
-                _record.ErrorCount++;
-            }
-            else if (issue.Type == IssueType.Warning)
-            {
-                logCategory = WellKnownTags.Warning;
-                if (_record.WarningCount < _maxIssueCount)
+                if (logOptions.WriteToLog)
                 {
-                    _record.Issues.Add(issue);
-                }
+                    string logMessage = issue.Message;
+                    if (!string.IsNullOrEmpty(logOptions.LogMessageOverride))
+                    {
+                        logMessage = logOptions.LogMessageOverride;
+                    }
 
-                _record.WarningCount++;
-            }
-            else if (issue.Type == IssueType.Notice)
-            {
-                logCategory = WellKnownTags.Notice;
-                if (_record.NoticeCount < _maxIssueCount)
-                {
-                    _record.Issues.Add(issue);
-                }
-
-                _record.NoticeCount++;
-            }
-
-            if (logOptions.EnableLogging && !string.IsNullOrEmpty(logCategory))
-            {
-                string logMessage = issue.Message;
-                if (!string.IsNullOrEmpty(logOptions.LogMessageOverride))
-                {
-                    logMessage = logOptions.LogMessageOverride;
-                }
-
-                if (!string.IsNullOrEmpty(logMessage))
-                {
-                    // Note that ::Write() has its own secret-masking logic.
-                    long logLineNumber = Write(logCategory, logMessage);
-                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                    if (!string.IsNullOrEmpty(logMessage))
+                    {
+                        // Note that ::Write() has its own secret-masking logic.
+                        long logLineNumber = Write(wellKnownTag, logMessage);
+                        issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                    }
                 }
             }
 
