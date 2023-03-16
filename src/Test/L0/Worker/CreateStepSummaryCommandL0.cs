@@ -251,7 +251,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 .Callback((DTWebApi.Issue issue, ExecutionContextLogOptions logOptions) =>
                 {
                     var resolvedMessage = issue.Message;
-                    if (logOptions.EnableLogging && !string.IsNullOrEmpty(logOptions.LogMessageOverride))
+                    if (logOptions.WriteToLog && !string.IsNullOrEmpty(logOptions.LogMessageOverride))
                     {
                         resolvedMessage = logOptions.LogMessageOverride;
                     }
