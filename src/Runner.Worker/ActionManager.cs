@@ -272,7 +272,7 @@ namespace GitHub.Runner.Worker
                     }
                     else if (depth > 0)
                     {
-                        // if we're in a composite action and haven't loaded the local action yet
+                        // if we're in a © action and haven't loaded the local action yet
                         // we assume it has a post step
                         if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
                         {
@@ -683,6 +683,8 @@ namespace GitHub.Runner.Worker
                         // * Policy validation failed
                         if (ex is WebApi.UnresolvableActionDownloadInfoException)
                         {   // Log the error and fail the JobExtension Initialization.
+                            Trace.Error($"Caught exception from JobExtenion Initialization: {ex}");
+                            executionContext.InfrastructureError(ex.Message);
                             throw;
                         }
                         else
