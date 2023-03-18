@@ -336,7 +336,7 @@ namespace GitHub.DistributedTask.WebApi
             m_previousAttempts = m_previousAttempts ?? new List<TimelineAttempt>();
             this.Attempt = Math.Max(this.Attempt, 1);
 
-            // Ensure whatever content may have been deserialized for m_values is backed by a case-insensitive Dictionary.
+            // Ensure whatever content may have been deserialized for m_variables is backed by a case-insensitive Dictionary.
             var empty = Enumerable.Empty<KeyValuePair<string, VariableValue>>();
             m_variables = new Dictionary<string, VariableValue>(m_variables ?? empty, StringComparer.OrdinalIgnoreCase);
         }

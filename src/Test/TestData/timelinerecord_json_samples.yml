@@ -58,15 +58,11 @@ lean: |
           { "Attempt": 3 }
       ]
   }
-variables-dictionary-case-insensitivity: |
+duplicate-variable-keys: |
   {
-      "Name": "variables-dictionary-case-insensitivity",
+      "Name": "duplicate-variable-keys",
       "Variables": [
-          { "Key": "xxx", "Value": { "Value": "xxx" } },
-          { "Key": "XXX", "Value": { "Value": "XXX" } },
-          { "Key": "yyy", "Value": { "Value": "yyy" } },
-          { "Key": "YYY", "Value": { "Value": "YYY" } },
-          { "Key": "zzz", "Value": { "Value": "zzz" } },
-          { "Key": "ZZZ", "Value": { "Value": "ZZZ" } }
+          { "Key": "aaa", "Value": { "Value": "a.1" } },
+          { "Key": "AAA", "Value": { "Value": "a.2" } }
       ]
   }

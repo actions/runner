@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -188,6 +189,54 @@ namespace GitHub.Runner.Common.Tests.DistributedTask
             Assert.Equal(3, tr.Variables.Count);
             Assert.Equal(3, tr.PreviousAttempts.Count);
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "DistributedTask")]
+        public void VerifyTimelineRecord_Deserialization_VariablesDictionaryIsCaseInsensitive()
+        {
+            var jsonSamples = LoadJsonSamples(JsonSamplesFilePath);
+
+            var tr = Deserialize(jsonSamples["lean"]);
+            Assert.NotNull(tr);
+            Assert.Equal("lean", tr!.Name);
+            Assert.Equal(3, tr.Variables.Count);
+
+            // Verify that the Variables Dictionary is case-insensitive.
+            tr.Variables["X"] = new VariableValue("overwritten", false);
+            Assert.Equal(3, tr.Variables.Count);
+
+            tr.Variables["new"] = new VariableValue("new.1", false);
+            Assert.Equal(4, tr.Variables.Count);
+
+            tr.Variables["NEW"] = new VariableValue("new.2", false);
+            Assert.Equal(4, tr.Variables.Count);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "DistributedTask")]
+        public void VerifyTimelineRecord_DeserializationEdgeCase_DuplicateVariableKeysThrowsException()
+        {
+            var jsonSamples = LoadJsonSamples(JsonSamplesFilePath);
+
+            // We could be more forgiving in this case if we discover that it's not uncommon in Production for serialized TimelineRecords to:
+            // 1)  get incorrectly instantiated with a case-sensitive Variables dictionary (in older versions, this was possible via TimelineRecord::Clone)
+            // 2)  end up with case variations of the same key
+            // 3)  make another serialization/deserialization round trip.
+            //
+            // If we wanted to grant clemency to such incorrectly-serialized TimelineRecords,
+            // the fix to TimelineRecord::EnsureInitialized would look something like the following:
+            //
+            // var seedVariables = m_variables ?? Enumerable.Empty<KeyValuePair<string, VariableValue>>();
+            // m_variables = new Dictionary<string, VariableValue>(seedVariables.Count(), StringComparer.OrdinalIgnoreCase);
+            // foreach (var kvp in seedVariables)
+            // {
+            //     m_variables[kvp.Key] = kvp.Value;
+            // }
+            Assert.Throws<ArgumentException>(() => Deserialize(jsonSamples["duplicate-variable-keys"]));
+        }
+
 
         private static Dictionary<string, string> LoadJsonSamples(string path)
         {
