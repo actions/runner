@@ -123,6 +123,11 @@ namespace GitHub.Runner.Common.Tests.DistributedTask
             Assert.NotNull(tr);
             Assert.Equal("invalid-attempt-value", tr!.Name);
             Assert.Equal(1, tr.Attempt);
+
+            tr = Deserialize(jsonSamples["zero-attempt-value"]);
+            Assert.NotNull(tr);
+            Assert.Equal("zero-attempt-value", tr!.Name);
+            Assert.Equal(1, tr.Attempt);
         }
 
         [Fact]

@@ -3,6 +3,11 @@ minimal: |
 invalid-attempt-value: |
   {
     "Name": "invalid-attempt-value",
+    "Attempt": -99
+  }
+zero-attempt-value: |
+  {
+    "Name": "zero-attempt-value",
     "Attempt": 0
   }
 legacy-nulls: |
@@ -14,10 +19,7 @@ legacy-nulls: |
   }
 missing-counts: |
   {
-    "Name": "missing-counts",
-    "ErrorCount": null,
-    "WarningCount": null,
-    "NoticeCount": null
+    "Name": "missing-counts"
   }
 non-zero-counts: |
   {
