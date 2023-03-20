@@ -20,8 +20,8 @@ namespace GitHub.Runner.Listener.Configuration
     {
         public static readonly Dictionary<string, Type> CredentialTypes = new(StringComparer.OrdinalIgnoreCase)
         {
-            { Constants.Configuration.OAuth, typeof(OAuthCredential)},
-            { Constants.Configuration.OAuthAccessToken, typeof(OAuthAccessTokenCredential)},
+            { Constants.Configuration.OAuth, typeof(OAuthCredential) },
+            { Constants.Configuration.OAuthAccessToken, typeof(OAuthAccessTokenCredential) },
         };
 
         public ICredentialProvider GetCredentialProvider(string credType)

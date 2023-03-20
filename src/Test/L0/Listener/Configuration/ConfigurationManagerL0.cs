@@ -19,6 +19,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
     public class ConfigurationManagerL0
     {
         private Mock<IRunnerServer> _runnerServer;
+        private Mock<IRunnerDotcomServer> _dotcomServer;
         private Mock<ILocationServer> _locationServer;
         private Mock<ICredentialManager> _credMgr;
         private Mock<IPromptManager> _promptManager;
@@ -55,6 +56,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _store = new Mock<IConfigurationStore>();
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
+            _dotcomServer = new Mock<IRunnerDotcomServer>();
 
 #if OS_WINDOWS
             _serviceControlManager = new Mock<IWindowsServiceControlManager>();
@@ -106,6 +108,10 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _runnerServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
             _runnerServer.Setup(x => x.ReplaceAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
 
+            _dotcomServer.Setup(x => x.GetRunnersAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
+            _dotcomServer.Setup(x => x.GetRunnerGroupsAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
+            _dotcomServer.Setup(x => x.AddRunnerAsync(It.IsAny<int>(), It.IsAny<TaskAgent>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgent));
+
             rsa = new RSACryptoServiceProvider(2048);
 
             _rsaKeyManager.Setup(x => x.CreateKey()).Returns(rsa);
@@ -119,6 +125,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
             tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+            tc.SetSingleton<IRunnerDotcomServer>(_dotcomServer.Object);
             tc.SetSingleton<ILocationServer>(_locationServer.Object);
 
 #if OS_WINDOWS
