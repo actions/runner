@@ -682,15 +682,14 @@ namespace GitHub.Runner.Worker
                         // * Repo or tag doesn't exist, or isn't public
                         // * Policy validation failed
                         if (ex is WebApi.UnresolvableActionDownloadInfoException)
-                        {   // Log the error and fail the JobExtension Initialization.
-                            Trace.Error($"Caught exception from JobExtenion Initialization: {ex}");
-                            executionContext.InfrastructureError(ex.Message);
-                            throw;
+                        {   // Log the error as user error
+                            Trace.Error($"Caught exception from ActionDownloadInfoCollection: {ex}");
+                            throw new WebApi.UnresolvableActionDownloadInfoException("Failed to resolve action download info.", ex);
                         }
                         else
                         {
                             // This exception will be traced as an infrastructure failure
-                            Trace.Error($"Caught exception from JobExtenion Initialization: {ex}");
+                            Trace.Error($"Caught exception from ActionDownloadInfoCollection Initialization: {ex}");
                             executionContext.InfrastructureError(ex.Message);
                             throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
                         }

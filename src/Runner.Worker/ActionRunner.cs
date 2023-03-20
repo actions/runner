@@ -10,6 +10,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
+using WebApi = GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -89,7 +90,18 @@ namespace GitHub.Runner.Worker
                 string.Equals(localAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
                 var actionManager = HostContext.GetService<IActionManager>();
-                var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
+                var prepareResult = default(PrepareResult);
+                  try
+                {
+                   prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
+                } 
+                catch (Exception ex){
+                    if(ex is WebApi.UnresolvableActionDownloadInfoException){
+                           Trace.Error($"Caught exception from ActionDownloadInfoCollection Initialization: {ex}");
+                            ExecutionContext.InfrastructureError(ex.Message);
+                            throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
+                    }
+                }
 
                 // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
                 definition = taskManager.LoadAction(ExecutionContext, Action);
