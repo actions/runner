@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -210,8 +211,14 @@ namespace GitHub.Runner.Listener
                         foreach (var config in jitConfig)
                         {
                             var configFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), config.Key);
-                            var configContent = Encoding.UTF8.GetString(Convert.FromBase64String(config.Value));
-                            File.WriteAllText(configFile, configContent, Encoding.UTF8);
+                            var configContent = Convert.FromBase64String(config.Value);
+#if OS_WINDOWS
+                            if (configFile == HostContext.GetConfigFile(WellKnownConfigFile.RSACredentials))
+                            {
+                                configContent = ProtectedData.Protect(configContent, null, DataProtectionScope.LocalMachine);
+                            }
+#endif
+                            File.WriteAllBytes(configFile, configContent);
                             File.SetAttributes(configFile, File.GetAttributes(configFile) | FileAttributes.Hidden);
                             Trace.Info($"Save {configContent.Length} chars to '{configFile}'.");
                         }
