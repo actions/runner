@@ -222,6 +222,9 @@
     },
 
     "job-outputs": {
+      "context": [
+        "matrix"
+      ],
       "mapping": {
         "loose-key-type": "non-empty-string",
         "loose-value-type": "string-runner-context"
