@@ -165,8 +165,7 @@ namespace GitHub.Runner.Common
 
             var body = new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json");
 
-            var response = await RetryRequest(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
-            var runner = StringUtil.ConvertFromJson<GitHub.DistributedTask.WebApi.Runner>(response);
+            var runner = await RetryRequest<DistributedTask.WebApi.Runner>(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
             agent.Id = runner.Id;
             agent.Authorization = new TaskAgentAuthorization()
             {
