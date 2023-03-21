@@ -1,4 +1,4 @@
-# ADR 2494: Runner Image Tags & Labels
+# ADR 2494: Runner Image Tags
 
 **Date**: 2023-03-17
 
