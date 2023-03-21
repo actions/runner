@@ -87,6 +87,7 @@ namespace GitHub.Runner.Common
         private bool _firstConsoleOutputs = true;
 
         private bool _resultsClientInitiated = false;
+        private bool _launchClientInitiated = false;
         private delegate Task ResultsFileUploadHandler(ResultsUploadFileInfo file);
 
         public override void Initialize(IHostContext hostContext)
@@ -109,17 +110,17 @@ namespace GitHub.Runner.Common
             }
 
             // This code is usually wrapped by an instance of IExecutionContext which isn't available here.
-            jobRequest.Variables.TryGetValue("system.github.results_endpoint", out VariableValue resultsEndpointVariable);
-            var resultsReceiverEndpoint = resultsEndpointVariable?.Value;
-
             if (serviceEndPoint?.Authorization != null &&
                 serviceEndPoint.Authorization.Parameters.TryGetValue("AccessToken", out var accessToken) &&
-                !string.IsNullOrEmpty(accessToken) &&
-                !string.IsNullOrEmpty(resultsReceiverEndpoint))
+                !string.IsNullOrEmpty(accessToken))
             {
-                string liveConsoleFeedUrl = null;
+                jobRequest.Variables.TryGetValue("system.github.results_endpoint", out VariableValue resultsEndpointVariable);
+                var resultsReceiverEndpoint = resultsEndpointVariable?.Value;
+                if (!string.IsNullOrEmpty(resultsReceiverEndpoint))
+                {
+                    string liveConsoleFeedUrl = null;
                 Trace.Info("Initializing results client");
-                if (resultServiceOnly
+                    if (resultServiceOnly
                     && serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl)
                     && !string.IsNullOrEmpty(feedStreamUrl))
                 {
@@ -127,7 +128,17 @@ namespace GitHub.Runner.Common
                 }
 
                 _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken);
-                _resultsClientInitiated = true;
+                    _resultsClientInitiated = true;
+                }
+
+                jobRequest.Variables.TryGetValue("system.github.launch_endpoint", out VariableValue launchEndpointVariable);
+                var launchReceiverEndpoint = resultsEndpointVariable?.Value;
+                if (!string.IsNullOrEmpty(launchReceiverEndpoint))
+                {
+                    Trace.Info("Initializing launch client");
+                    _jobServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
+                    _launchClientInitiated = true;
+                }
             }
 
             if (_queueInProcess)

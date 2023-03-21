@@ -15,6 +15,7 @@ using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Utilities.Internal;
 using GitHub.Services.Results.Client;
 using GitHub.Services.OAuth;
+using GitHub.Services.Launch.Client
 
 namespace GitHub.Runner.Common
 {
@@ -24,6 +25,7 @@ namespace GitHub.Runner.Common
         Task ConnectAsync(VssConnection jobConnection);
 
         void InitializeWebsocketClient(ServiceEndpoint serviceEndpoint);
+        void InitializeLaunchClient(Uri uri, string token);
 
         // logging and console
         Task<TaskLog> AppendLogContentAsync(Guid scopeIdentifier, string hubName, Guid planId, int logId, Stream uploadStream, CancellationToken cancellationToken);
@@ -42,6 +44,7 @@ namespace GitHub.Runner.Common
         private bool _hasConnection;
         private VssConnection _connection;
         private TaskHttpClient _taskClient;
+        private LaunchHttpClient _launchClient;
         private ClientWebSocket _websocketClient;
 
         private ServiceEndpoint _serviceEndpoint;
@@ -145,6 +148,12 @@ namespace GitHub.Runner.Common
             InitializeWebsocketClient(TimeSpan.Zero);
         }
 
+        public void InitializeLaunchClient(Uri uri, string token)
+        {
+            var httpMessageHandler = HostContext.CreateHttpClientHandler();
+            this._launchClient = new LaunchHttpClient(uri, httpMessageHandler, token, disposeHandler: true);
+        }
+        
         public ValueTask DisposeAsync()
         {
             CloseWebSocket(WebSocketCloseStatus.NormalClosure, CancellationToken.None);
