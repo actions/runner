@@ -50,6 +50,9 @@ namespace GitHub.Runner.Common
         [DataMember(EmitDefaultValue = false)]
         public string MonitorSocketAddress { get; set; }
 
+        [DataMember(EmitDefaultValue = false)]
+        public bool UseV2Flow { get; set; }
+
         [IgnoreDataMember]
         public bool IsHostedServer
         {
