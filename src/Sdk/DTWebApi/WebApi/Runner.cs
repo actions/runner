@@ -1,5 +1,5 @@
+using System;
 using Newtonsoft.Json;
-using System.Security.AccessControl;
 
 namespace GitHub.DistributedTask.WebApi
 {
