@@ -220,7 +220,7 @@ namespace GitHub.Runner.Listener
 #endif
                             File.WriteAllBytes(configFile, configContent);
                             File.SetAttributes(configFile, File.GetAttributes(configFile) | FileAttributes.Hidden);
-                            Trace.Info($"Save {configContent.Length} chars to '{configFile}'.");
+                            Trace.Info($"Saved {configContent.Length} bytes to '{configFile}'.");
                         }
                     }
                     catch (Exception ex)
