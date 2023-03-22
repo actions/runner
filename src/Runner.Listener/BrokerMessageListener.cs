@@ -18,28 +18,33 @@ namespace GitHub.Runner.Listener
 {
     public sealed class BrokerMessageListener : RunnerService, IMessageListener
     {
-        private long? _lastMessageId;
-        private RunnerSettings _settings;
-        private ITerminal _term;
-        private IRunnerServer _runnerServer;
-        private TaskAgentSession _session;
-        private TimeSpan _getNextMessageRetryInterval;
-        private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
-        private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
-        private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
-        private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new();
+        // private long? _lastMessageId;
+        // private RunnerSettings _settings;
+        // private ITerminal _term;
+        // private IRunnerServer _runnerServer;
+        // private TaskAgentSession _session;
+        // private TimeSpan _getNextMessageRetryInterval;
+        // private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
+        // private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
+        // private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
+        // private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new();
         private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
+        private IBrokerServer _brokerServer;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
 
-            _term = HostContext.GetService<ITerminal>();
+            // _term = HostContext.GetService<ITerminal>();
+            _brokerServer = HostContext.GetService<IBrokerServer>();
         }
 
         public async Task<Boolean> CreateSessionAsync(CancellationToken token)
         {
+            var credMgr = HostContext.GetService<ICredentialManager>();
+            VssCredentials creds = credMgr.LoadCredentials();
+            await _brokerServer.ConnectAsync(new Uri("http://broker.actions.localhost"), creds);
             return await Task.FromResult(true);
         }
 
@@ -50,140 +55,150 @@ namespace GitHub.Runner.Listener
 
         public void OnJobStatus(object sender, JobStatusEventArgs e)
         {
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
+
+            Trace.Info("Received job status event. JobState: {0}", e.Status);
+            runnerStatus = e.Status;
+            try
             {
-                Trace.Info("Received job status event. JobState: {0}", e.Status);
-                runnerStatus = e.Status;
-                try
-                {
-                    _getMessagesTokenSource?.Cancel();
-                }
-                catch (ObjectDisposedException)
-                {
-                    Trace.Info("_getMessagesTokenSource is already disposed.");
-                }
+                _getMessagesTokenSource?.Cancel();
             }
+            catch (ObjectDisposedException)
+            {
+                Trace.Info("_getMessagesTokenSource is already disposed.");
+            }
+
         }
 
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
         {
-            Trace.Entering();
-            ArgUtil.NotNull(_settings, nameof(_settings));
-            bool encounteringError = false;
-            int continuousError = 0;
-            string errorMessage = string.Empty;
-            Stopwatch heartbeat = new();
-            heartbeat.Restart();
             while (true)
             {
-                token.ThrowIfCancellationRequested();
-                TaskAgentMessage message = null;
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
-                try
+                var message = await _brokerServer.GetRunnerMessageAsync(_getMessagesTokenSource.Token);
+                if (message != null)
                 {
-                    message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
-                                                                _session.SessionId,
-                                                                _lastMessageId,
-                                                                runnerStatus,
-                                                                BuildConstants.RunnerPackage.Version,
-                                                                _getMessagesTokenSource.Token);
-
-
-                    if (message != null)
-                    {
-                        _lastMessageId = message.MessageId;
-                    }
-
-                    if (encounteringError) //print the message once only if there was an error
-                    {
-                        _term.WriteLine($"{DateTime.UtcNow:u}: Runner reconnected.");
-                        encounteringError = false;
-                        continuousError = 0;
-                    }
-                }
-                catch (OperationCanceledException) when (_getMessagesTokenSource.Token.IsCancellationRequested && !token.IsCancellationRequested)
-                {
-                    Trace.Info("Get messages has been cancelled using local token source. Continue to get messages with new status.");
-                    continue;
-                }
-                catch (OperationCanceledException) when (token.IsCancellationRequested)
-                {
-                    Trace.Info("Get next message has been cancelled.");
-                    throw;
-                }
-                catch (TaskAgentAccessTokenExpiredException)
-                {
-                    Trace.Info("Runner OAuth token has been revoked. Unable to pull message.");
-                    throw;
-                }
-                catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error("Catch exception during get next message.");
-                    Trace.Error(ex);
-
-                    // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
-                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && await CreateSessionAsync(token))
-                    {
-                        Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
-                    }
-                    else if (!IsGetNextMessageExceptionRetriable(ex))
-                    {
-                        throw;
-                    }
-                    else
-                    {
-                        continuousError++;
-                        //retry after a random backoff to avoid service throttling
-                        //in case of there is a service error happened and all agents get kicked off of the long poll and all agent try to reconnect back at the same time.
-                        if (continuousError <= 5)
-                        {
-                            // random backoff [15, 30]
-                            _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), _getNextMessageRetryInterval);
-                        }
-                        else
-                        {
-                            // more aggressive backoff [30, 60]
-                            _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60), _getNextMessageRetryInterval);
-                        }
-
-                        if (!encounteringError)
-                        {
-                            //print error only on the first consecutive error
-                            _term.WriteError($"{DateTime.UtcNow:u}: Runner connect error: {ex.Message}. Retrying until reconnected.");
-                            encounteringError = true;
-                        }
-
-                        Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
-                        await HostContext.Delay(_getNextMessageRetryInterval, token);
-                    }
-                }
-                finally
-                {
-                    _getMessagesTokenSource.Dispose();
+                    return message;
                 }
 
-                if (message == null)
-                {
-                    if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
-                    {
-                        Trace.Info($"No message retrieved within last 30 minutes.");
-                        heartbeat.Restart();
-                    }
-                    else
-                    {
-                        Trace.Verbose($"No message retrieved");
-                    }
-
-                    continue;
-                }
-
-                Trace.Info($"Message '{message.MessageId}' received");
-                return message;
             }
+
+            // return message;
+            // Trace.Entering();
+            // ArgUtil.NotNull(_settings, nameof(_settings));
+            // bool encounteringError = false;
+            // int continuousError = 0;
+            // string errorMessage = string.Empty;
+            // Stopwatch heartbeat = new();
+            // heartbeat.Restart();
+            // while (true)
+            // {
+            //     token.ThrowIfCancellationRequested();
+            //     TaskAgentMessage message = null;
+            //     _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
+            //     try
+            //     {
+            //         message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
+            //                                                     _session.SessionId,
+            //                                                     _lastMessageId,
+            //                                                     runnerStatus,
+            //                                                     BuildConstants.RunnerPackage.Version,
+            //                                                     _getMessagesTokenSource.Token);
+
+
+            //         if (message != null)
+            //         {
+            //             _lastMessageId = message.MessageId;
+            //         }
+
+            //         if (encounteringError) //print the message once only if there was an error
+            //         {
+            //             _term.WriteLine($"{DateTime.UtcNow:u}: Runner reconnected.");
+            //             encounteringError = false;
+            //             continuousError = 0;
+            //         }
+            //     }
+            //     catch (OperationCanceledException) when (_getMessagesTokenSource.Token.IsCancellationRequested && !token.IsCancellationRequested)
+            //     {
+            //         Trace.Info("Get messages has been cancelled using local token source. Continue to get messages with new status.");
+            //         continue;
+            //     }
+            //     catch (OperationCanceledException) when (token.IsCancellationRequested)
+            //     {
+            //         Trace.Info("Get next message has been cancelled.");
+            //         throw;
+            //     }
+            //     catch (TaskAgentAccessTokenExpiredException)
+            //     {
+            //         Trace.Info("Runner OAuth token has been revoked. Unable to pull message.");
+            //         throw;
+            //     }
+            //     catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
+            //     {
+            //         throw;
+            //     }
+            //     catch (Exception ex)
+            //     {
+            //         Trace.Error("Catch exception during get next message.");
+            //         Trace.Error(ex);
+
+            //         // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
+            //         if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && await CreateSessionAsync(token))
+            //         {
+            //             Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
+            //         }
+            //         else if (!IsGetNextMessageExceptionRetriable(ex))
+            //         {
+            //             throw;
+            //         }
+            //         else
+            //         {
+            //             continuousError++;
+            //             //retry after a random backoff to avoid service throttling
+            //             //in case of there is a service error happened and all agents get kicked off of the long poll and all agent try to reconnect back at the same time.
+            //             if (continuousError <= 5)
+            //             {
+            //                 // random backoff [15, 30]
+            //                 _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), _getNextMessageRetryInterval);
+            //             }
+            //             else
+            //             {
+            //                 // more aggressive backoff [30, 60]
+            //                 _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60), _getNextMessageRetryInterval);
+            //             }
+
+            //             if (!encounteringError)
+            //             {
+            //                 //print error only on the first consecutive error
+            //                 _term.WriteError($"{DateTime.UtcNow:u}: Runner connect error: {ex.Message}. Retrying until reconnected.");
+            //                 encounteringError = true;
+            //             }
+
+            //             Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
+            //             await HostContext.Delay(_getNextMessageRetryInterval, token);
+            //         }
+            //     }
+            //     finally
+            //     {
+            //         _getMessagesTokenSource.Dispose();
+            //     }
+
+            //     if (message == null)
+            //     {
+            //         if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
+            //         {
+            //             Trace.Info($"No message retrieved within last 30 minutes.");
+            //             heartbeat.Restart();
+            //         }
+            //         else
+            //         {
+            //             Trace.Verbose($"No message retrieved");
+            //         }
+
+            //         continue;
+            //     }
+
+            //     Trace.Info($"Message '{message.MessageId}' received");
+            //     return message;
         }
 
         public async Task DeleteMessageAsync(TaskAgentMessage message)
@@ -209,9 +224,9 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private <TaskAgentMessage> GetMessageAsync(string status, string version)
-        {
+        // private <TaskAgentMessage> GetMessageAsync(string status, string version)
+        // {
 
-        }
+        // }
     }
 }

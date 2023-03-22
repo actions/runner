@@ -1,61 +1,69 @@
 using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Services.Results.Contracts;
-using System.Net.Http.Formatting;
-using Sdk.WebApi.WebApi;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
+using GitHub.Services.Common;
+using GitHub.Services.OAuth;
+using GitHub.Services.WebApi;
+using Sdk.RSWebApi.Contracts;
+using Sdk.WebApi.WebApi;
 
-namespace GitHub.Services.Results.Client
+namespace GitHub.Actions.RunService.WebApi
 {
     public class BrokerHttpClient : RawHttpClientBase
     {
         public BrokerHttpClient(
             Uri baseUrl,
+            VssOAuthCredential credentials)
+            : base(baseUrl, credentials)
+        {
+        }
+
+        public BrokerHttpClient(
+            Uri baseUrl,
+            VssOAuthCredential credentials,
+            RawClientHttpRequestSettings settings)
+            : base(baseUrl, credentials, settings)
+        {
+        }
+
+        public BrokerHttpClient(
+            Uri baseUrl,
+            VssOAuthCredential credentials,
+            params DelegatingHandler[] handlers)
+            : base(baseUrl, credentials, handlers)
+        {
+        }
+
+        public BrokerHttpClient(
+            Uri baseUrl,
+            VssOAuthCredential credentials,
+            RawClientHttpRequestSettings settings,
+            params DelegatingHandler[] handlers)
+            : base(baseUrl, credentials, settings, handlers)
+        {
+        }
+
+        public BrokerHttpClient(
+            Uri baseUrl,
             HttpMessageHandler pipeline,
-            string token,
-            bool disposeHandler)
+            Boolean disposeHandler)
             : base(baseUrl, pipeline, disposeHandler)
         {
-            m_token = token;
-            m_brokerUrl = baseUrl;
-            m_formatter = new JsonMediaTypeFormatter();
         }
 
-        public async Task<TaskAgentMessage> GetMessagesAsync(CancellationToken cancellationToken)
+        public Task<TaskAgentMessage> GetRunnerMessageAsync(
+            CancellationToken cancellationToken = default)
         {
-            var uri = new Uri(m_brokerUrl, Constants.Messages);
-            return await GetSignedURLResponse<TaskAgentMessage>(uri, cancellationToken);
+            var requestUri = new Uri(Client.BaseAddress, "message");
+
+            return SendAsync<TaskAgentMessage>(
+                new HttpMethod("GET"),
+                requestUri: requestUri,
+                cancellationToken: cancellationToken);
         }
-
-        // Get Sas URL calls
-        private async Task<T> GetSignedURLResponse<T>(Uri uri, CancellationToken cancellationToken)
-        {
-            using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, uri))
-            {
-                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", m_token);
-                requestMessage.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("application/json"));
-
-                using (var response = await SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken: cancellationToken))
-                {
-                    return await ReadJsonContentAsync<T>(response, cancellationToken);
-                }
-            }
-        }
-
-        private MediaTypeFormatter m_formatter;
-        private Uri m_brokerUrl;
-        private string m_token;
     }
-
-    // Constants specific to results
-    public static class Constants
-    {
-
-        public static readonly string Messages = "messages";
-    }
-
 }
