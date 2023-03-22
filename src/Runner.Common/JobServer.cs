@@ -15,7 +15,7 @@ using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Utilities.Internal;
 using GitHub.Services.Results.Client;
 using GitHub.Services.OAuth;
-using GitHub.Services.Launch.Client
+using GitHub.Services.Launch.Client;
 
 namespace GitHub.Runner.Common
 {

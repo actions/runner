@@ -87,7 +87,6 @@ namespace GitHub.Runner.Common
         private bool _firstConsoleOutputs = true;
 
         private bool _resultsClientInitiated = false;
-        private bool _launchClientInitiated = false;
         private delegate Task ResultsFileUploadHandler(ResultsUploadFileInfo file);
 
         public override void Initialize(IHostContext hostContext)
@@ -137,7 +136,6 @@ namespace GitHub.Runner.Common
                 {
                     Trace.Info("Initializing launch client");
                     _jobServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
-                    _launchClientInitiated = true;
                 }
             }
 
