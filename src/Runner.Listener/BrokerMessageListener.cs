@@ -12,6 +12,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Listener
@@ -31,6 +32,7 @@ namespace GitHub.Runner.Listener
         private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private IBrokerServer _brokerServer;
+        private string lastRunnerRequestId;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -74,12 +76,27 @@ namespace GitHub.Runner.Listener
             while (true)
             {
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
-                var message = await _brokerServer.GetRunnerMessageAsync(_getMessagesTokenSource.Token);
-                if (message != null)
+                var message = await _brokerServer.GetRunnerMessageAsync(_getMessagesTokenSource.Token, runnerStatus, BuildConstants.RunnerPackage.Version);
+
+                if (message == null)
+                {
+                    continue;
+                }
+
+                if (MessageUtil.IsRunServiceJob(message.MessageType))
+                {
+                    var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
+
+                    if (messageRef.RunnerRequestId != lastRunnerRequestId)
+                    {
+                        lastRunnerRequestId = messageRef.RunnerRequestId;
+                        return message;
+                    }
+                }
+                else
                 {
                     return message;
                 }
-
             }
 
             // return message;

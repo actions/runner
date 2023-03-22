@@ -56,13 +56,28 @@ namespace GitHub.Actions.RunService.WebApi
         }
 
         public Task<TaskAgentMessage> GetRunnerMessageAsync(
-            CancellationToken cancellationToken = default)
+            string runnerVersion,
+            TaskAgentStatus? status,
+            CancellationToken cancellationToken = default
+        )
         {
             var requestUri = new Uri(Client.BaseAddress, "message");
+
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+
+            if (status != null)
+            {
+                queryParams.Add("status", status.Value.ToString());
+            }
+            if (runnerVersion != null)
+            {
+                queryParams.Add("runnerVersion", runnerVersion);
+            }
 
             return SendAsync<TaskAgentMessage>(
                 new HttpMethod("GET"),
                 requestUri: requestUri,
+                queryParameters: queryParams,
                 cancellationToken: cancellationToken);
         }
     }
