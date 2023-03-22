@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -202,6 +202,61 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Notice).Single().Message.Length <= 4096)), Times.AtLeastOnce);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void AddIssue_OverrideLogMessage()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                var issueMessage = "Message embedded in issue.";
+                var overrideMessage = "Message override.";
+                var options = new ExecutionContextLogOptions(true, overrideMessage);
+
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = issueMessage }, options);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = issueMessage }, options);
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = issueMessage }, options);
+
+                // Finally, add a variation that DOESN'T override the message.
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = issueMessage }, ExecutionContextLogOptions.Default);
+
+                ec.Complete();
+
+                // Assert.
+                jobServerQueue.Verify(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long?>()), Times.Exactly(4));
+                jobServerQueue.Verify(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.Is<string>(text => text.EndsWith(overrideMessage)), It.IsAny<long?>()), Times.Exactly(3));
+                jobServerQueue.Verify(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.Is<string>(text => text.EndsWith(issueMessage)), It.IsAny<long?>()), Times.Exactly(1));
+            }
+        }
+
 
         [Fact]
         [Trait("Level", "L0")]
