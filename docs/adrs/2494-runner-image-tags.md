@@ -48,6 +48,8 @@ By removing the `latest` tag, we have to proceed with either of these options:
 
 Keeping the `latest` tag is also a reasonable option especially if we don't expect to make any breaking changes to the runner image. We could enhance this by adding a [NOTES.txt](https://helm.sh/docs/chart_template_guide/notes_files/) to the helm chart which will be displayed to the user after a successful helm install/upgrade. This will help users understand the implications of using the `latest` tag and how to pin a specific version of the runner image.
 
+The runner image release workflow will need to be updated so that the image is pushed to GHCR and tagged only when the runner rollout has reached all scale units.
+
 ## Consequences
 
 Proceeding with **option 1** means:
@@ -60,3 +62,4 @@ Proceeding with **option 2** means:
 
 1. We will have to continue to maintain the `latest` tag
 1. We will assume that end users will be able to handle the implications of using the `latest` tag
+1. Runner image release workflow needs to be updated 
