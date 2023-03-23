@@ -2,7 +2,7 @@
 
 **Date**: 2023-03-17
 
-**Status**: Proposed<!-- |Accepted|Rejected|Superceded|Deprecated -->
+**Status**: Accepted<!-- |Accepted|Rejected|Superceded|Deprecated -->
 
 ## Context
 
