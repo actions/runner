@@ -48,7 +48,6 @@ namespace GitHub.Runner.Listener
 
         public void OnJobStatus(object sender, JobStatusEventArgs e)
         {
-
             Trace.Info("Received job status event. JobState: {0}", e.Status);
             runnerStatus = e.Status;
             try
@@ -59,7 +58,6 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Info("_getMessagesTokenSource is already disposed.");
             }
-
         }
 
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
