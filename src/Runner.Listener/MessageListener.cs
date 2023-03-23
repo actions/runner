@@ -16,7 +16,7 @@ using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Listener
 {
-    [ServiceLocator(Default = typeof(BrokerMessageListener))]
+    [ServiceLocator(Default = typeof(MessageListener))]
     public interface IMessageListener : IRunnerService
     {
         Task<Boolean> CreateSessionAsync(CancellationToken token);
