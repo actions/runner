@@ -16,7 +16,7 @@ Add to that, the community actions-runner-controller maintainers have issued a [
 
 ## Decision
 
-TBD
+Proceed with Option 2, keeping the `latest` tag and adding the `NOTES.txt` file to our helm charts with the notice.
 
 ### Option 1: Remove the `latest` tag
 
