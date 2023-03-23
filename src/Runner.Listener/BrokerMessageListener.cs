@@ -25,7 +25,6 @@ namespace GitHub.Runner.Listener
         private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private IBrokerServer _brokerServer;
-        private string lastRunnerRequestId;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -80,20 +79,7 @@ namespace GitHub.Runner.Listener
                         continue;
                     }
 
-                    if (MessageUtil.IsRunServiceJob(message.MessageType))
-                    {
-                        var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
-
-                        if (messageRef.RunnerRequestId != lastRunnerRequestId)
-                        {
-                            lastRunnerRequestId = messageRef.RunnerRequestId;
-                            return message;
-                        }
-                    }
-                    else
-                    {
-                        return message;
-                    }
+                    return message;
                 }
                 catch (OperationCanceledException) when (_getMessagesTokenSource.Token.IsCancellationRequested && !token.IsCancellationRequested)
                 {

@@ -12,10 +12,7 @@
             ],
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
-            "requireExactSource": false,
-            "env": {
-                "USE_BROKER_FLOW": "1"
-            }
+            "requireExactSource": false
         },
         {
             "name": "Run",
@@ -27,10 +24,7 @@
             ],
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
-            "requireExactSource": false,
-            "env": {
-                "USE_BROKER_FLOW": "1"
-            }
+            "requireExactSource": false
         },
         {
             "name": "Configure",
@@ -61,3 +55,4 @@
         },
     ],
 }
+
