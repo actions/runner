@@ -204,13 +204,12 @@ namespace GitHub.Runner.Listener
 
         private async Task RefreshBrokerConnection()
         {
-
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
 
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
-            await _brokerServer.ConnectAsync(new Uri("http://broker.actions.localhost"), creds);
+            await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), creds);
         }
     }
 }
