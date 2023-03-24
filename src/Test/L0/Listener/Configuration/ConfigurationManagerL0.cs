@@ -110,7 +110,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 
             _dotcomServer.Setup(x => x.GetRunnersAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
             _dotcomServer.Setup(x => x.GetRunnerGroupsAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
-            _dotcomServer.Setup(x => x.AddRunnerAsync(It.IsAny<int>(), It.IsAny<TaskAgent>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgent));
+            _dotcomServer.Setup(x => x.AddRunnerAsync(It.IsAny<int>(), It.IsAny<TaskAgent>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgent));
 
             rsa = new RSACryptoServiceProvider(2048);
 
