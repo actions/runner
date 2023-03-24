@@ -65,6 +65,7 @@ namespace GitHub.Runner.Listener
             int continuousError = 0;
             Stopwatch heartbeat = new();
             heartbeat.Restart();
+            var maxRetryCount = 10;
 
             while (true)
             {
@@ -118,6 +119,10 @@ namespace GitHub.Runner.Listener
                         {
                             // random backoff [15, 30]
                             _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), _getNextMessageRetryInterval);
+                        }
+                        else if (continuousError >= maxRetryCount)
+                        {
+                            throw;
                         }
                         else
                         {
