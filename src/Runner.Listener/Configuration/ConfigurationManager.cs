@@ -14,7 +14,6 @@ using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.Common.Internal;
 using GitHub.Services.OAuth;
-using GitHub.Services.WebApi.Jwt;
 
 namespace GitHub.Runner.Listener.Configuration
 {

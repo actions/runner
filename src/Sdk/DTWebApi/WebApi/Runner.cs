@@ -60,7 +60,7 @@ namespace GitHub.DistributedTask.WebApi
             internal set;
         }
 
-        public TaskAgent ApplyToTaskAgent(TaskAgent agent)
+        public void ApplyToTaskAgent(TaskAgent agent)
         {
             agent.Id = this.Id;
             agent.Authorization = new TaskAgentAuthorization()
@@ -68,7 +68,6 @@ namespace GitHub.DistributedTask.WebApi
                 AuthorizationUrl = this.RunnerAuthorization.AuthorizationUrl,
                 ClientId = new Guid(this.RunnerAuthorization.ClientId)
             };
-            return agent;
         }
     }
 }
