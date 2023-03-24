@@ -73,6 +73,13 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 AuthorizationUrl = new Uri("http://localhost:8080/pipelines"),
             };
 
+            var expectedRunner = new GitHub.DistributedTask.WebApi.Runner() { Name = expectedAgent.Name, Id = 1 };
+            expectedRunner.RunnerAuthorization = new GitHub.DistributedTask.WebApi.Runner.Authorization
+            {
+                ClientId = expectedAgent.Authorization.ClientId.ToString(),
+                AuthorizationUrl = new Uri("http://localhost:8080/pipelines"),
+            };
+
             var connectionData = new ConnectionData()
             {
                 InstanceId = Guid.NewGuid(),
@@ -110,7 +117,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 
             _dotcomServer.Setup(x => x.GetRunnersAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
             _dotcomServer.Setup(x => x.GetRunnerGroupsAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedPools));
-            _dotcomServer.Setup(x => x.AddRunnerAsync(It.IsAny<int>(), It.IsAny<TaskAgent>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgent));
+            _dotcomServer.Setup(x => x.AddRunnerAsync(It.IsAny<int>(), It.IsAny<TaskAgent>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(expectedRunner));
 
             rsa = new RSACryptoServiceProvider(2048);
 
