@@ -196,6 +196,11 @@ namespace GitHub.Runner.Listener
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
 
+            if (_settings.ServerUrlV2 == null)
+            {
+                throw new InvalidOperationException("ServerUrlV2 is not set");
+            }
+
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
             await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), creds);
