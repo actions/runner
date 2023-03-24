@@ -339,13 +339,25 @@ namespace GitHub.Runner.Listener
             }
         }
 
+        private IMessageListener GetMesageListener(RunnerSettings settings)
+        {
+            if (settings.UseV2Flow)
+            {
+                var brokerListener = new BrokerMessageListener();
+                brokerListener.Initialize(HostContext);
+                return brokerListener;
+            }
+
+            return HostContext.GetService<IMessageListener>();
+        }
+
         //create worker manager, create message listener and start listening to the queue
         private async Task<int> RunAsync(RunnerSettings settings, bool runOnce = false)
         {
             try
             {
                 Trace.Info(nameof(RunAsync));
-                _listener = HostContext.GetService<IMessageListener>();
+                _listener = GetMesageListener(settings);
                 if (!await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken))
                 {
                     return Constants.Runner.ReturnCode.TerminatedError;
