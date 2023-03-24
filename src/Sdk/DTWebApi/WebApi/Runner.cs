@@ -8,6 +8,9 @@ namespace GitHub.DistributedTask.WebApi
 
         public class Authorization
         {
+            /// <summary>
+            /// The url to refresh tokens
+            /// </summary> 
             [JsonProperty("authorization_url")]
             public Uri AuthorizationUrl
             {
@@ -15,6 +18,19 @@ namespace GitHub.DistributedTask.WebApi
                 internal set;
             }
 
+            /// <summary>
+            /// The url to connect to to poll for messages
+            /// </summary> 
+            [JsonProperty("server_url")]
+            public string ServerUrl
+            {
+                get;
+                internal set;
+            }
+
+            /// <summary>
+            /// The client id to use when connecting to the authorization_url
+            /// </summary>
             [JsonProperty("client_id")]
             public string ClientId
             {
@@ -42,6 +58,17 @@ namespace GitHub.DistributedTask.WebApi
         {
             get;
             internal set;
+        }
+
+        public TaskAgent ApplyToTaskAgent(TaskAgent agent)
+        {
+            agent.Id = this.Id;
+            agent.Authorization = new TaskAgentAuthorization()
+            {
+                AuthorizationUrl = this.RunnerAuthorization.AuthorizationUrl,
+                ClientId = new Guid(this.RunnerAuthorization.ClientId)
+            };
+            return agent;
         }
     }
 }
