@@ -299,9 +299,9 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         if (runnerSettings.UseV2Flow)
                         {
-                            var runner = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
-                            runner.ApplyToTaskAgent(agent);
-                            runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+                            var (newAgent, serverUrl) = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                            runnerSettings.ServerUrlV2 = serverUrl;
+                            agent = newAgent;
                         }
                         else
                         {
