@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
     {
         Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName);
 
-        Task<(DistributedTask.WebApi.TaskAgent, string)> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
+        Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
         Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken);
 
         string GetGitHubRequestId(HttpResponseHeaders headers);
@@ -137,7 +137,7 @@ namespace GitHub.Runner.Common
         }
 
         // return runner and the new server URL
-        public async Task<(DistributedTask.WebApi.TaskAgent, string)> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
+        public async Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
         {
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
@@ -165,9 +165,7 @@ namespace GitHub.Runner.Common
 
             var body = new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json");
 
-            var runner = await RetryRequest<DistributedTask.WebApi.Runner>(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
-
-            return (RunnerDotcomServer.Merge(agent, runner), runner.RunnerAuthorization.ServerUrl);
+            return await RetryRequest<DistributedTask.WebApi.Runner>(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
         }
 
         private async Task<T> RetryRequest<T>(string githubApiUrl, string githubToken, RequestType requestType, int maxRetryAttemptsCount = 5, string errorMessage = null, StringContent body = null)
