@@ -234,19 +234,5 @@ namespace GitHub.Runner.Common
             }
             return string.Empty;
         }
-
-
-        // Copy the id and authorization from the runner to the agent.
-        public static TaskAgent Merge(TaskAgent agent, DistributedTask.WebApi.Runner runner)
-        {
-            agent.Id = runner.Id;
-            agent.Authorization = new TaskAgentAuthorization()
-            {
-                AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
-                ClientId = new Guid(runner.RunnerAuthorization.ClientId)
-            };
-
-            return agent;
-        }
     }
 }
