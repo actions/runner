@@ -530,6 +530,9 @@ namespace GitHub.Runner.Common
                             Trace.Info("Catch exception during file upload to results, keep going since the process is best effort.");
                             Trace.Error(ex);
                             errorCount++;
+
+                            // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results
+                            _resultsClientInitiated = false;
                         }
                     }
 
@@ -617,7 +620,21 @@ namespace GitHub.Runner.Common
                         try
                         {
                             await _jobServer.UpdateTimelineRecordsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
-                            await _resultsServer.UpdateResultsWorkflowStepsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
+                            try
+                            {
+                                if (_resultsClientInitiated)
+                                {
+                                    await _resultsServer.UpdateResultsWorkflowStepsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Trace.Info("Catch exception during update steps, skip update Results.");
+                                Trace.Error(e);
+
+                                _resultsClientInitiated = false;
+                            }
+
                             if (_bufferedRetryRecords.Remove(update.TimelineId))
                             {
                                 Trace.Verbose("Cleanup buffered timeline record for timeline: {0}.", update.TimelineId);
@@ -855,6 +872,11 @@ namespace GitHub.Runner.Common
 
         private async Task UploadResultsFile(ResultsUploadFileInfo file, ResultsFileUploadHandler uploadHandler)
         {
+            if (!_resultsClientInitiated)
+            {
+                return;
+            }
+
             bool uploadSucceed = false;
             try
             {

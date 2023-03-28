@@ -354,10 +354,10 @@ namespace GitHub.Services.Results.Client
             var stepRecords = records.Where(r => String.Equals(r.RecordType, "Task", StringComparison.Ordinal));
             var stepUpdateRequests = stepRecords.GroupBy(r => r.ParentId).Select(sg => new StepsUpdateRequest()
             {
-                    WorkflowRunBackendId = planId.ToString(),
-                    WorkflowJobRunBackendId = sg.Key.ToString(),
-                    ChangeOrder = m_changeIdCounter++,
-                    Steps = sg.Select(ConvertTimelineRecordToStep)
+                WorkflowRunBackendId = planId.ToString(),
+                WorkflowJobRunBackendId = sg.Key.ToString(),
+                ChangeOrder = m_changeIdCounter++,
+                Steps = sg.Select(ConvertTimelineRecordToStep)
             });
 
             var stepUpdateEndpoint = new Uri(m_resultsServiceUrl, Constants.WorkflowStepsUpdate);
