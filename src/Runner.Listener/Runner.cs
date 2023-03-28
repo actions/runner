@@ -343,6 +343,7 @@ namespace GitHub.Runner.Listener
         {
             if (settings.UseV2Flow)
             {
+                Trace.Info($"Using BrokerMessageListener");
                 var brokerListener = new BrokerMessageListener();
                 brokerListener.Initialize(HostContext);
                 return brokerListener;
