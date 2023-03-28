@@ -181,9 +181,11 @@ namespace GitHub.Runner.Listener.Configuration
             // We want to use the native CSP of the platform for storage, so we use the RSACSP directly
             RSAParameters publicKey;
             var keyManager = HostContext.GetService<IRSAKeyManager>();
+            string publicKeyXML;
             using (var rsa = keyManager.CreateKey())
             {
                 publicKey = rsa.ExportParameters(false);
+                publicKeyXML = rsa.ToXmlString(includePrivateParameters: false);
             }
 
             _term.WriteSection("Runner Registration");
@@ -297,7 +299,15 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         if (runnerSettings.UseV2Flow)
                         {
-                            agent = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken);
+                            var runner = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                            runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                            agent.Id = runner.Id;
+                            agent.Authorization = new TaskAgentAuthorization()
+                            {
+                                AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                                ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                            };
                         }
                         else
                         {
@@ -354,24 +364,28 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // Testing agent connection, detect any potential connection issue, like local clock skew that cause OAuth token expired.
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            VssCredentials credential = credMgr.LoadCredentials();
-            try
+
+            if (!runnerSettings.UseV2Flow)
             {
-                await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
-                // ConnectAsync() hits _apis/connectionData which is an anonymous endpoint
-                // Need to hit an authenticate endpoint to trigger OAuth token exchange.
-                await _runnerServer.GetAgentPoolsAsync();
-                _term.WriteSuccessMessage("Runner connection is good");
-            }
-            catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
-            {
-                // there are two exception messages server send that indicate clock skew.
-                // 1. The bearer token expired on {jwt.ValidTo}. Current server time is {DateTime.UtcNow}.
-                // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.
-                Trace.Error("Catch exception during test agent connection.");
-                Trace.Error(ex);
-                throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
+                var credMgr = HostContext.GetService<ICredentialManager>();
+                VssCredentials credential = credMgr.LoadCredentials();
+                try
+                {
+                    await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
+                    // ConnectAsync() hits _apis/connectionData which is an anonymous endpoint
+                    // Need to hit an authenticate endpoint to trigger OAuth token exchange.
+                    await _runnerServer.GetAgentPoolsAsync();
+                    _term.WriteSuccessMessage("Runner connection is good");
+                }
+                catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
+                {
+                    // there are two exception messages server send that indicate clock skew.
+                    // 1. The bearer token expired on {jwt.ValidTo}. Current server time is {DateTime.UtcNow}.
+                    // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.
+                    Trace.Error("Catch exception during test agent connection.");
+                    Trace.Error(ex);
+                    throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
+                }
             }
 
             _term.WriteSection("Runner settings");
