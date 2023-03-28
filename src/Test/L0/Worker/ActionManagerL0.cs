@@ -923,7 +923,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Act
                 Func<Task> result = async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions);
-                Assert.NotNull(result);
+
                 //Assert
                 var exception = await Assert.ThrowsAsync<Exception>(result);
                 Assert.Equal($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}", exception.Message);
