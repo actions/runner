@@ -65,6 +65,7 @@ namespace GitHub.Runner.Common
 
         // common
         private IJobServer _jobServer;
+        private IResultsServer _resultsServer;
         private Task[] _allDequeueTasks;
         private readonly TaskCompletionSource<int> _jobCompletionSource = new();
         private readonly TaskCompletionSource<int> _jobRecordUpdated = new();
@@ -91,6 +92,7 @@ namespace GitHub.Runner.Common
         {
             base.Initialize(hostContext);
             _jobServer = hostContext.GetService<IJobServer>();
+            _resultsServer = hostContext.GetService<IResultsServer>();
         }
 
         public void Start(Pipelines.AgentJobRequestMessage jobRequest)
@@ -111,8 +113,11 @@ namespace GitHub.Runner.Common
                 !string.IsNullOrEmpty(resultsReceiverEndpoint))
             {
                 Trace.Info("Initializing results client");
-                _jobServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
-                _resultsClientInitiated = true;
+                if (_resultsServer != null)
+                {
+                    _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
+                    _resultsClientInitiated = true;
+                }
             }
 
             if (_queueInProcess)
@@ -612,6 +617,7 @@ namespace GitHub.Runner.Common
                         try
                         {
                             await _jobServer.UpdateTimelineRecordsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
+                            await _resultsServer.UpdateResultsWorkflowStepsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
                             if (_bufferedRetryRecords.Remove(update.TimelineId))
                             {
                                 Trace.Verbose("Cleanup buffered timeline record for timeline: {0}.", update.TimelineId);
@@ -819,7 +825,7 @@ namespace GitHub.Runner.Common
             Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
             ResultsFileUploadHandler summaryHandler = async (file) =>
             {
-                await _jobServer.CreateStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, CancellationToken.None);
+                await _resultsServer.CreateResultsStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, CancellationToken.None);
             };
 
             await UploadResultsFile(file, summaryHandler);
@@ -830,7 +836,7 @@ namespace GitHub.Runner.Common
             Trace.Info($"Starting upload of step log file to results service {file.Name}, {file.Path}");
             ResultsFileUploadHandler stepLogHandler = async (file) =>
             {
-                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
+                await _resultsServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
             };
 
             await UploadResultsFile(file, stepLogHandler);
@@ -841,7 +847,7 @@ namespace GitHub.Runner.Common
             Trace.Info($"Starting upload of job log file to results service {file.Name}, {file.Path}");
             ResultsFileUploadHandler jobLogHandler = async (file) =>
             {
-                await _jobServer.CreateResultsJobLogAsync(file.PlanId, file.JobId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
+                await _resultsServer.CreateResultsJobLogAsync(file.PlanId, file.JobId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
             };
 
             await UploadResultsFile(file, jobLogHandler);

@@ -348,7 +348,7 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        public async Task UpdateTimelineRecordsAsync(Guid planId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken)
+        public async Task UpdateWorkflowStepsAsync(Guid planId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken)
         {
             var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat);
             var stepRecords = records.Where(r => String.Equals(r.RecordType, "Task", StringComparison.Ordinal));
