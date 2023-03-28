@@ -136,7 +136,6 @@ namespace GitHub.Runner.Common
             return agentPools?.ToAgentPoolList();
         }
 
-        // return runner and the new server URL
         public async Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
         {
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
