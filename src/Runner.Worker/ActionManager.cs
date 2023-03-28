@@ -100,7 +100,7 @@ namespace GitHub.Runner.Worker
             }
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             executionContext.Output("Prepare all required actions");
-            PrepareActionsState result = default(PrepareActionsState);
+            PrepareActionsState result = new PrepareActionsState();
             try
             {
                 result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
@@ -119,7 +119,7 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    if (result?.ImagesToBuild.Count > 0)
+                    if (result.ImagesToBuild.Count > 0)
                     {
                         foreach (var imageToBuild in result.ImagesToBuild)
                         {
@@ -140,17 +140,16 @@ namespace GitHub.Runner.Worker
                     }
 #endif
                 }
-                return new PrepareResult(containerSetupSteps, result?.PreStepTracker);
+                return new PrepareResult(containerSetupSteps, result.PreStepTracker);
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                if (ex is WebApi.FailedToResolveActionDownloadInfoException)
-                {
-                    throw;
-                }
+
+                throw;
+
+                // return null;
             }
-            return null;
         }
 
         private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid))
@@ -205,8 +204,8 @@ namespace GitHub.Runner.Worker
                 }
                 catch
                 {
+                    // bubble up for handling in main caller
                     throw;
-                    // throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
                 }
 
                 // Download each action
@@ -688,7 +687,6 @@ namespace GitHub.Runner.Worker
                 try
                 {
                     actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
-                    // throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info");
                     break;
                 }
                 catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is cancelled.
