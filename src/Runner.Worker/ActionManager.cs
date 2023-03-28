@@ -100,43 +100,57 @@ namespace GitHub.Runner.Worker
             }
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             executionContext.Output("Prepare all required actions");
-            var result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
-            if (!FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
+            PrepareActionsState result = default(PrepareActionsState);
+            try
             {
-                if (state.ImagesToPull.Count > 0)
-                {
-                    foreach (var imageToPull in result.ImagesToPull)
-                    {
-                        Trace.Info($"{imageToPull.Value.Count} steps need to pull image '{imageToPull.Key}'");
-                        containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
-                                                                    condition: $"{PipelineTemplateConstants.Success}()",
-                                                                    displayName: $"Pull {imageToPull.Key}",
-                                                                    data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
-                    }
-                }
+                result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
 
-                if (result.ImagesToBuild.Count > 0)
+                if (!FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
                 {
-                    foreach (var imageToBuild in result.ImagesToBuild)
+                    if (state.ImagesToPull.Count > 0)
                     {
-                        var setupInfo = result.ImagesToBuildInfo[imageToBuild.Key];
-                        Trace.Info($"{imageToBuild.Value.Count} steps need to build image from '{setupInfo.Dockerfile}'");
-                        containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
-                                                                    condition: $"{PipelineTemplateConstants.Success}()",
-                                                                    displayName: $"Build {setupInfo.ActionRepository}",
-                                                                    data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
+                        foreach (var imageToPull in result.ImagesToPull)
+                        {
+                            Trace.Info($"{imageToPull.Value.Count} steps need to pull image '{imageToPull.Key}'");
+                            containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
+                                                                        condition: $"{PipelineTemplateConstants.Success}()",
+                                                                        displayName: $"Pull {imageToPull.Key}",
+                                                                        data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
+                        }
                     }
-                }
+
+                    if (result?.ImagesToBuild.Count > 0)
+                    {
+                        foreach (var imageToBuild in result.ImagesToBuild)
+                        {
+                            var setupInfo = result.ImagesToBuildInfo[imageToBuild.Key];
+                            Trace.Info($"{imageToBuild.Value.Count} steps need to build image from '{setupInfo.Dockerfile}'");
+                            containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
+                                                                        condition: $"{PipelineTemplateConstants.Success}()",
+                                                                        displayName: $"Build {setupInfo.ActionRepository}",
+                                                                        data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
+                        }
+                    }
 
 #if !OS_LINUX
-                if (containerSetupSteps.Count > 0)
-                {
-                    executionContext.Output("Container action is only supported on Linux, skip pull and build docker images.");
-                    containerSetupSteps.Clear();
-                }
+                    if (containerSetupSteps.Count > 0)
+                    {
+                        executionContext.Output("Container action is only supported on Linux, skip pull and build docker images.");
+                        containerSetupSteps.Clear();
+                    }
 #endif
+                }
+                return new PrepareResult(containerSetupSteps, result?.PreStepTracker);
+
             }
-            return new PrepareResult(containerSetupSteps, result.PreStepTracker);
+            catch (Exception ex)
+            {
+                if (ex is WebApi.FailedToResolveActionDownloadInfoException)
+                {
+                    throw;
+                }
+            }
+            return null;
         }
 
         private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid))
@@ -174,7 +188,26 @@ namespace GitHub.Runner.Worker
             if (repositoryActions.Count > 0)
             {
                 // Get the download info
-                var downloadInfos = await GetDownloadInfoAsync(executionContext, repositoryActions);
+                var downloadInfos = new Dictionary<string, WebApi.ActionDownloadInfo>
+                {
+                    ["patterns"] = new WebApi.ActionDownloadInfo()
+                };
+
+                try
+                {
+                    downloadInfos.Clear();
+                    if (downloadInfos.Count == 0)
+                    {
+                        downloadInfos = (Dictionary<string, WebApi.ActionDownloadInfo>)await GetDownloadInfoAsync(executionContext, repositoryActions);
+
+                    }
+
+                }
+                catch
+                {
+                    throw;
+                    // throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
+                }
 
                 // Download each action
                 foreach (var action in repositoryActions)
@@ -272,7 +305,7 @@ namespace GitHub.Runner.Worker
                     }
                     else if (depth > 0)
                     {
-                        // if we're in a © action and haven't loaded the local action yet
+                        // if we're in a composite action and haven't loaded the local action yet
                         // we assume it has a post step
                         if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
                         {
@@ -655,6 +688,7 @@ namespace GitHub.Runner.Worker
                 try
                 {
                     actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
+                    // throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info");
                     break;
                 }
                 catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is cancelled.
@@ -682,15 +716,13 @@ namespace GitHub.Runner.Worker
                         // * Repo or tag doesn't exist, or isn't public
                         // * Policy validation failed
                         if (ex is WebApi.UnresolvableActionDownloadInfoException)
-                        {   // Log the error as user error
-                            Trace.Error($"Caught exception from ActionDownloadInfoCollection: {ex}");
-                            throw new WebApi.UnresolvableActionDownloadInfoException("Failed to resolve action download info.", ex);
+                        {
+                            throw new WebApi.UnresolvableActionDownloadInfoException("Unable to resolve action download info", ex);
+                            // throw;
                         }
                         else
                         {
                             // This exception will be traced as an infrastructure failure
-                            Trace.Error($"Caught exception from ActionDownloadInfoCollection Initialization: {ex}");
-                            executionContext.InfrastructureError(ex.Message);
                             throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
                         }
                     }

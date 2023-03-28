@@ -253,8 +253,16 @@ namespace GitHub.Runner.Worker
                     // Download actions not already in the cache
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
-                    var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
+                    var prepareResult = default(PrepareResult);
+                    try
+                    {
+                        prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
 
+                    }
+                    catch
+                    {
+                        throw;
+                    }
                     // add hook to preJobSteps
                     var startedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(startedHookPath))

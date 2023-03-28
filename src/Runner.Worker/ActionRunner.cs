@@ -12,6 +12,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
 using WebApi = GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Threading;
 
 namespace GitHub.Runner.Worker
 {
@@ -90,16 +91,16 @@ namespace GitHub.Runner.Worker
                 string.Equals(localAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
                 var actionManager = HostContext.GetService<IActionManager>();
-                var prepareResult = default(PrepareResult);
-                  try
+                PrepareResult prepareResult = default(PrepareResult);
+                try
                 {
-                   prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
-                } 
-                catch (Exception ex){
-                    if(ex is WebApi.UnresolvableActionDownloadInfoException){
-                           Trace.Error($"Caught exception from ActionDownloadInfoCollection Initialization: {ex}");
-                            ExecutionContext.InfrastructureError(ex.Message);
-                            throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
+                    prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
+                }
+                catch (Exception ex)
+                {
+                    if (ex is WebApi.FailedToResolveActionDownloadInfoException)
+                    {
+                        throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info", ex);
                     }
                 }
 
