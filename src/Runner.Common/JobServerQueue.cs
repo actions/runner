@@ -931,8 +931,6 @@ namespace GitHub.Runner.Common
         public long TotalLines { get; set; }
     }
 
-
-
     internal class ConsoleLineInfo
     {
         public ConsoleLineInfo(Guid recordId, string line, long? lineNumber)
