@@ -113,11 +113,8 @@ namespace GitHub.Runner.Common
                 !string.IsNullOrEmpty(resultsReceiverEndpoint))
             {
                 Trace.Info("Initializing results client");
-                if (_resultsServer != null)
-                {
-                    _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
-                    _resultsClientInitiated = true;
-                }
+                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
+                _resultsClientInitiated = true;
             }
 
             if (_queueInProcess)
