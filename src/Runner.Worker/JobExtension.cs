@@ -253,16 +253,8 @@ namespace GitHub.Runner.Worker
                     // Download actions not already in the cache
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
-                    var prepareResult = default(PrepareResult);
-                    try
-                    {
-                        prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
+                    var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
 
-                    }
-                    catch
-                    {
-                        throw;
-                    }
                     // add hook to preJobSteps
                     var startedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(startedHookPath))
@@ -437,14 +429,6 @@ namespace GitHub.Runner.Worker
                     Trace.Error($"Caught cancellation exception from JobExtension Initialization: {ex}");
                     context.Error(ex);
                     context.Result = TaskResult.Canceled;
-                    throw;
-                }
-                catch (FailedToResolveActionDownloadInfoException ex)
-                {
-                    // Log the error and fail the JobExtension Initialization.
-                    Trace.Error($"Caught exception from JobExtenion Initialization: {ex}");
-                    context.InfrastructureError(ex.Message);
-                    context.Result = TaskResult.Failed;
                     throw;
                 }
                 catch (Exception ex)
