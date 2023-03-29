@@ -46,6 +46,21 @@ namespace GitHub.Runner.Sdk
             return StringUtil.ConvertFromJson<T>(json);
         }
 
+        public static T LoadObject<T>(string path, bool required)
+        {
+            string json = File.ReadAllText(path, Encoding.UTF8);
+            if (string.IsNullOrEmpty(json))
+            {
+                throw new InvalidOperationException($"File {path} is empty");
+            }
+            T result = StringUtil.ConvertFromJson<T>(json);
+            if (result == null)
+            {
+                throw new InvalidDataException("Converting json to object resulted in a null value");
+            }
+            return result;
+        }
+
         public static string GetSha256Hash(string path)
         {
             string hashString = path.ToLowerInvariant();

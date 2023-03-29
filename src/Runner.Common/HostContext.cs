@@ -220,12 +220,9 @@ namespace GitHub.Runner.Common
             var runnerFile = GetConfigFile(WellKnownConfigFile.Runner);
             if (File.Exists(runnerFile))
             {
-                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile);
-                if (runnerSettings != null)
-                {
-                    _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
-                    _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
-                }
+                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile, true);
+                _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
+                _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
             }
 
             _userAgents.Add(new ProductInfoHeaderValue("CommitSHA", BuildConstants.Source.CommitHash));

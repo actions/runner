@@ -931,6 +931,36 @@ namespace GitHub.Runner.Common.Tests.Util
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void LoadObject_ThrowsOnRequiredLoadObject()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory with a file.
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
+
+                string file = Path.Combine(directory, "empty file");
+                Directory.CreateDirectory(directory);
+
+                File.WriteAllText(path: file, contents: "");
+                Assert.Throws<InvalidOperationException>(() => IOUtil.LoadObject<RunnerSettings>(file, true));
+
+                file = Path.Combine(directory, "invalid type file");
+                File.WriteAllText(path: file, contents: " ");
+                Assert.Throws<InvalidDataException>(() => IOUtil.LoadObject<RunnerSettings>(file, true));
+
+                // Cleanup.
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
+        }
+
         private static async Task CreateDirectoryReparsePoint(IHostContext context, string link, string target)
         {
 #if OS_WINDOWS
