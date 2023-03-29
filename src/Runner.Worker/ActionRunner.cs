@@ -96,12 +96,10 @@ namespace GitHub.Runner.Worker
                 {
                     prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
                 }
-                catch (Exception ex)
+                catch (WebApi.FailedToResolveActionDownloadInfoException ex)
                 {
-                    if (ex is WebApi.FailedToResolveActionDownloadInfoException)
-                    {
-                        throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info", ex);
-                    }
+                    throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info", ex);
+
                 }
 
                 // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
