@@ -514,22 +514,14 @@ namespace GitHub.Runner.Common
                         }
                         catch (Exception ex)
                         {
-                            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception during file upload to results. {ex.Message}" };
-                            issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
-
-                            var telemetryRecord = new TimelineRecord()
-                            {
-                                Id = Constants.Runner.TelemetryRecordId,
-                            };
-                            telemetryRecord.Issues.Add(issue);
-                            QueueTimelineRecordUpdate(_jobTimelineId, telemetryRecord);
-
                             Trace.Info("Catch exception during file upload to results, keep going since the process is best effort.");
                             Trace.Error(ex);
                             errorCount++;
 
                             // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results
                             _resultsClientInitiated = false;
+
+                            SendResultsTelemetry(ex);
                         }
                     }
 
@@ -545,6 +537,19 @@ namespace GitHub.Runner.Common
                     await Task.Delay(_delayForResultsUploadDequeue);
                 }
             }
+        }
+
+        private void SendResultsTelemetry(Exception ex)
+        {
+            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception with results. {ex.Message}" };
+            issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
+
+            var telemetryRecord = new TimelineRecord()
+            {
+                Id = Constants.Runner.TelemetryRecordId,
+            };
+            telemetryRecord.Issues.Add(issue);
+            QueueTimelineRecordUpdate(_jobTimelineId, telemetryRecord);
         }
 
         private async Task ProcessTimelinesUpdateQueueAsync(bool runOnce = false)
@@ -628,8 +633,9 @@ namespace GitHub.Runner.Common
                             {
                                 Trace.Info("Catch exception during update steps, skip update Results.");
                                 Trace.Error(e);
-
                                 _resultsClientInitiated = false;
+
+                                SendResultsTelemetry(e);
                             }
 
                             if (_bufferedRetryRecords.Remove(update.TimelineId))
