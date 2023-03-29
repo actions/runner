@@ -40,23 +40,17 @@ namespace GitHub.Runner.Sdk
             File.WriteAllText(path, StringUtil.ConvertToJson(obj), Encoding.UTF8);
         }
 
-        public static T LoadObject<T>(string path)
-        {
-            string json = File.ReadAllText(path, Encoding.UTF8);
-            return StringUtil.ConvertFromJson<T>(json);
-        }
-
-        public static T LoadObject<T>(string path, bool required)
+        public static T LoadObject<T>(string path, bool required = false)
         {
             string json = File.ReadAllText(path, Encoding.UTF8);
             if (string.IsNullOrEmpty(json))
             {
-                throw new InvalidOperationException($"File {path} is empty");
+                throw new ArgumentNullException($"File {path} is empty");
             }
             T result = StringUtil.ConvertFromJson<T>(json);
             if (result == null)
             {
-                throw new InvalidDataException("Converting json to object resulted in a null value");
+                throw new ArgumentException("Converting json to object resulted in a null value");
             }
             return result;
         }
