@@ -43,12 +43,12 @@ namespace GitHub.Runner.Sdk
         public static T LoadObject<T>(string path, bool required = false)
         {
             string json = File.ReadAllText(path, Encoding.UTF8);
-            if (string.IsNullOrEmpty(json))
+            if (required && string.IsNullOrEmpty(json))
             {
                 throw new ArgumentNullException($"File {path} is empty");
             }
             T result = StringUtil.ConvertFromJson<T>(json);
-            if (result == null)
+            if (required && result == null)
             {
                 throw new ArgumentException("Converting json to object resulted in a null value");
             }
