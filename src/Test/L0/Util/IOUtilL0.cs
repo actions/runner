@@ -946,11 +946,11 @@ namespace GitHub.Runner.Common.Tests.Util
                 Directory.CreateDirectory(directory);
 
                 File.WriteAllText(path: file, contents: "");
-                Assert.Throws<InvalidOperationException>(() => IOUtil.LoadObject<RunnerSettings>(file, true));
+                Assert.Throws<ArgumentNullException>(() => IOUtil.LoadObject<RunnerSettings>(file, true));
 
                 file = Path.Combine(directory, "invalid type file");
                 File.WriteAllText(path: file, contents: " ");
-                Assert.Throws<InvalidDataException>(() => IOUtil.LoadObject<RunnerSettings>(file, true));
+                Assert.Throws<ArgumentException>(() => IOUtil.LoadObject<RunnerSettings>(file, true));
 
                 // Cleanup.
                 if (Directory.Exists(directory))
