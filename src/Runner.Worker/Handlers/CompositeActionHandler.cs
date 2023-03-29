@@ -161,6 +161,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                     embeddedSteps.Add(step);
                 }
+
                 // Run embedded steps
                 await RunStepsAsync(embeddedSteps, stage);
 
