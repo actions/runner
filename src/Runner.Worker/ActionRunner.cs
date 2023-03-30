@@ -98,7 +98,6 @@ namespace GitHub.Runner.Worker
                 catch (WebApi.FailedToResolveActionDownloadInfoException ex)
                 {
                     throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info", ex);
-
                 }
 
                 // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
