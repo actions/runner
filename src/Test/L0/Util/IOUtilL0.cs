@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Sdk;
+using GitHub.Runner.Sdk;
 using System;
 using System.IO;
 using System.Threading;
