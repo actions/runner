@@ -188,6 +188,9 @@ namespace GitHub.Runner.Worker
             if (repositoryActions.Count > 0)
             {
 
+                // Get the download info
+                var downloadInfos = await GetDownloadInfoAsync(executionContext, repositoryActions);
+
                 // Download each action
                 foreach (var action in repositoryActions)
                 {
@@ -196,9 +199,6 @@ namespace GitHub.Runner.Worker
                     {
                         continue;
                     }
-                    // Get the download info
-                    var downloadInfos = await GetDownloadInfoAsync(executionContext, repositoryActions);
-
                     if (!downloadInfos.TryGetValue(lookupKey, out var downloadInfo))
                     {
                         throw new Exception($"Missing download info for {lookupKey}");
@@ -697,7 +697,7 @@ namespace GitHub.Runner.Worker
                         // * Policy validation failed
                         if (ex is WebApi.UnresolvableActionDownloadInfoException)
                         {
-                            throw new WebApi.UnresolvableActionDownloadInfoException("Unable to resolve action download info", ex);
+                            throw;
                         }
                         else
                         {

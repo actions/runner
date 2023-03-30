@@ -12,7 +12,6 @@ using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
 using WebApi = GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-
 namespace GitHub.Runner.Worker
 {
     public enum ActionRunStage
