@@ -105,7 +105,6 @@ namespace GitHub.Runner.Worker
             try
             {
                 result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
-
             }
             catch (FailedToResolveActionDownloadInfoException ex)
             {
