@@ -152,8 +152,6 @@ namespace GitHub.Runner.Worker
 #endif
             }
             return new PrepareResult(containerSetupSteps, result.PreStepTracker);
-
-
         }
 
         private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid))
