@@ -700,7 +700,6 @@ namespace GitHub.Runner.Worker
                         if (ex is WebApi.UnresolvableActionDownloadInfoException)
                         {
                             throw new WebApi.UnresolvableActionDownloadInfoException("Unable to resolve action download info", ex);
-                            // throw;
                         }
                         else
                         {
