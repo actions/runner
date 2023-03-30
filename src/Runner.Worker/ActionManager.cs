@@ -188,8 +188,6 @@ namespace GitHub.Runner.Worker
             if (repositoryActions.Count > 0)
             {
 
-
-
                 // Download each action
                 foreach (var action in repositoryActions)
                 {
