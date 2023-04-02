@@ -118,6 +118,21 @@ public class Pipeline {
                     ContainerResources[cr.Key] = cr.Value;
                 }
             }
+            if(parent?.OtherResources != null) {
+                if(OtherResources == null) {
+                    OtherResources = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
+                }
+                foreach(var ores in parent.OtherResources) {
+                    if(OtherResources.TryGetValue(ores.Key, out var pres)) {
+                        var apres = pres.AssertSequence($"resources.{ores.Key} array");
+                        foreach(var oresi in ores.Value.AssertSequence($"resources.{ores.Key} array")) {
+                            apres.Add(oresi);
+                        }
+                    } else {
+                        OtherResources[ores.Key] = ores.Value;
+                    }
+                }
+            }
             if(parent.Variables != null) {
                 foreach(var cr in parent.Variables) {
                     Variables[cr.Key] = cr.Value;
