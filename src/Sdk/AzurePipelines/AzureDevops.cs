@@ -308,10 +308,21 @@ public class AzureDevops {
         }
     }
 
-    private static PipelineContextData ConvertValue(Runner.Server.Azure.Devops.Context context, TemplateToken val, string type) {
+    private static PipelineContextData ConvertValue(Runner.Server.Azure.Devops.Context context, TemplateToken val, string type, TemplateToken values) {
         var steps = new List<TaskStep>();
         var jobs = new List<Job>();
         var stages = new List<Stage>();
+        Func<string, string> assertValues = s => {
+            if(values != null) {
+                foreach(var aval in values.AssertSequence("parameters.*.values")) {
+                    if(s == aval.AssertLiteralString("parameters.*.values.*")) {
+                        return s;
+                    }
+                }
+                throw new Exception($"{s} is not an allowed value for this template value");
+            }
+            return s;
+        };
         switch(type) {
             case "object":
             return val == null ? null : val.ToContextData();
@@ -324,9 +335,9 @@ public class AzureDevops {
                 }
                 throw new Exception($"{val.AssertLiteralString("boolean")} is not a valid boolean expected true or false (OrdinalIgnoreCase)");
             case "number":
-            return val == null ? new NumberContextData(0) : new NumberContextData(Double.Parse(val.AssertLiteralString("number")));
+            return val == null ? new NumberContextData(0) : new NumberContextData(Double.Parse(assertValues(val.AssertLiteralString("number"))));
             case "string":
-            return val == null ? new StringContextData("") : new StringContextData(val.AssertLiteralString("string"));
+            return val == null ? new StringContextData("") : new StringContextData(assertValues(val.AssertLiteralString("string")));
             case "step":
             if(val == null) {
                 return null;
@@ -511,6 +522,7 @@ public class AzureDevops {
                 string name = null;
                 string type = "object";
                 TemplateToken def = null;
+                TemplateToken values = null;
                 foreach(var kv in varm) {
                     switch((kv.Key as StringToken).Value) {
                         case "name":
@@ -522,11 +534,14 @@ public class AzureDevops {
                         case "default":
                             def = kv.Value;
                         break;
+                        case "values":
+                            values = kv.Value;
+                        break;
                     }
                 }
-                var defCtxData = ConvertValue(context, def, type);
+                var defCtxData = ConvertValue(context, def, type, values);
                 if(cparameters?.TryGetValue(name, out var value) == true) {
-                    parametersData[name] = ConvertValue(context, value, type);
+                    parametersData[name] = ConvertValue(context, value, type, values);
                     providedParameter++;
                 } else {
                     parametersData[name] = defCtxData;
