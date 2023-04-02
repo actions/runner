@@ -271,11 +271,14 @@ public class Job {
             job["variables"] = vars;
         }
         if(!DeploymentJob) {
-            var steps = new ArrayContextData();
-            foreach(var step in Steps) {
-                steps.Add(step.ToContextData());
+            // Azure Pipelines seem to ignore missing steps as long as it is only template parameter
+            if(Steps != null) {
+                var steps = new ArrayContextData();
+                foreach(var step in Steps) {
+                    steps.Add(step.ToContextData());
+                }
+                job["steps"] = steps;
             }
-            job["steps"] = steps;
         } else {
             if(EnvironmentName != null) {
                 if(EnvironmentResourceType != null) {

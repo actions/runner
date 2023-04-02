@@ -111,11 +111,14 @@ public class Stage {
             }
             stage["variables"] = vars;
         }
-        var jobs = new ArrayContextData();
-        foreach(var job in Jobs) {
-            jobs.Add(job.ToContextData());
+        // Azure Pipelines seem to ignore missing jobs as long as it is only template parameter
+        if(Jobs != null) {
+            var jobs = new ArrayContextData();
+            foreach(var job in Jobs) {
+                jobs.Add(job.ToContextData());
+            }
+            stage["jobs"] = jobs;
         }
-        stage["jobs"] = jobs;
         if(Pool != null) {
             stage["pool"] = Pool.ToContextData();
         }
