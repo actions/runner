@@ -165,6 +165,8 @@ namespace Runner.Client
             }
         }
         public static async Task<string> GetAgent(string name, string version, CancellationToken token) {
+            // Allow versions like v3.0.0 and not only 3.0.0
+            version = version.Substring(version.IndexOf("v") + 1);
             var azagent = name == "azagent";
             var externalsPath = Path.Join(GharunUtil.GetLocalStorage());
             var os = GetHostOS();
