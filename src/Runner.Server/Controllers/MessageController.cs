@@ -6051,15 +6051,17 @@ namespace Runner.Server.Controllers
                             return cr.Alias;
                         };
                         Func<Azure.Devops.Container, String> getContainerAlias = c => {
-                            var image = evalVariable(c.Image);
-                            if(c.StringSource) {
-                                if(pipeline.ContainerResources != null && pipeline.ContainerResources.TryGetValue(image, out var cresource)) {
-                                    return addContainer(image, cresource.Image, cresource);
-                                } else if(image.Contains("{") || image.Contains("}")) {
-                                    cresource = JsonConvert.DeserializeObject<Azure.Devops.Container>(image);
+                            if(c.Alias != null) {
+                                var alias = evalVariable(c.Alias);
+                                if(pipeline.ContainerResources != null && pipeline.ContainerResources.TryGetValue(alias, out var cresource)) {
+                                    return addContainer(alias, cresource.Image, cresource);
+                                } else if(alias.Contains("{") || alias.Contains("}")) {
+                                    cresource = JsonConvert.DeserializeObject<Azure.Devops.Container>(alias);
                                     return addContainer(Guid.NewGuid().ToString(), cresource.Image, cresource);
                                 }
+                                return addContainer(Guid.NewGuid().ToString(), alias, c);
                             }
+                            var image = evalVariable(c.Image);
                             return addContainer(Guid.NewGuid().ToString(), image, c);
                         };
                         if(jobcontainerRef != null) {

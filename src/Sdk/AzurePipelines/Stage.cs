@@ -65,7 +65,10 @@ public class Stage {
         foreach(var job in stagesToken) {
             if(job is MappingToken mstep && mstep.Count > 0) {
                 if((mstep[0].Key as StringToken)?.Value == "template") {
-                    var path = (mstep[0].Value as StringToken)?.Value;
+                    var path = (mstep[0].Value as LiteralToken)?.ToString();
+                    if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
+                        throw new Exception($"Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters");
+                    }
                     var file = AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
                     ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
                 } else {

@@ -60,30 +60,25 @@ namespace GitHub.DistributedTask.Pipelines
                 step["timeoutInMinutes"] = new StringContextData(n.Value.ToString());
             }
             if(Target != null) {
-                if(Target.SettableVariables == null && Target.Commands == null) {
-                    step["target"] = new StringContextData(Target.Target);
-                } else {
-                    var target = new DictionaryContextData();
-                    if(Target.Target != null) {
-                        target["container"] = new StringContextData(Target.Target);
-                    }
-                    if(Target.SettableVariables != null) {
-                        if(Target.SettableVariables.Allowed.Count > 0) {
-                            var allowed = new ArrayContextData();
-                            foreach(var a in Target.SettableVariables.Allowed) {
-                                allowed.Add(new StringContextData(a));
-                            }
-                            target["settableVariables"] = allowed;
-                        } else {
-                            target["settableVariables"] = new StringContextData("none");
-                        }
-                    }
-                    if(Target.Commands != null) {
-                        target["commands"] = new StringContextData(Target.Commands);
-                    }
-                    
-                    step["target"] = target;
+                var target = new DictionaryContextData();
+                if(Target.Target != null) {
+                    target["container"] = new StringContextData(Target.Target);
                 }
+                if(Target.SettableVariables != null) {
+                    if(Target.SettableVariables.Allowed.Count > 0) {
+                        var allowed = new ArrayContextData();
+                        foreach(var a in Target.SettableVariables.Allowed) {
+                            allowed.Add(new StringContextData(a));
+                        }
+                        target["settableVariables"] = allowed;
+                    } else {
+                        target["settableVariables"] = new StringContextData("none");
+                    }
+                }
+                if(Target.Commands != null) {
+                    target["commands"] = new StringContextData(Target.Commands);
+                }
+                step["target"] = target;
             }
             if(Inputs?.Count > 0) {
                 var inputs = new DictionaryContextData();

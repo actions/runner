@@ -110,8 +110,8 @@ public class Job {
                                     Strategy.Parallel = sv.Value.AssertLiteralString("parallel");
                                 break;
                                 case "matrix":
-                                    if(sv.Value is StringToken stringToken) {
-                                        Strategy.MatrixExpression = stringToken.Value;
+                                    if(sv.Value is LiteralToken matrixExpression) {
+                                        Strategy.MatrixExpression = matrixExpression.ToString();
                                     } else {
                                         Strategy.Matrix = sv.Value.AssertMapping("matrix").ToDictionary(mv => mv.Key.AssertString("mk").Value, mv => mv.Value.AssertMapping("matrix").ToDictionary(uv => uv.Key.AssertString("mk").Value, uv => uv.Value.AssertLiteralString("mk")));
                                     }
@@ -157,7 +157,7 @@ public class Job {
                     Pool = new Pool().Parse(context, kv.Value);
                 break;
                 case "environment":
-                    if(kv.Value is StringToken envstkn) {
+                    if(kv.Value is LiteralToken envstkn) {
                         EnvironmentName = envstkn.ToString();
                     } else {
                         foreach(var envm in kv.Value.AssertMapping("environment")) {
@@ -202,7 +202,10 @@ public class Job {
         foreach(var job in jobsToken) {
             if(job is MappingToken mstep && mstep.Count > 0) {
                 if((mstep[0].Key as StringToken)?.Value == "template") {
-                    var path = (mstep[0].Value as StringToken)?.Value;
+                    var path = (mstep[0].Value as LiteralToken)?.ToString();
+                    if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
+                        throw new Exception($"Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters");
+                    }
                     var file = AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "job-template-root");
                     ParseJobs(context.ChildContext(file, path), jobs, (from e in file where e.Key.AssertString("").Value == "jobs" select e.Value).First().AssertSequence(""));
                 } else {

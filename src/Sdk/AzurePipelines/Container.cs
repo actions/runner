@@ -13,6 +13,7 @@ public class MountReadonlyConfig {
 }
 
 public class Container {
+    public string Alias { get; set; }
     public string Image { get; set; }
     public string Endpoint { get; set; }
     public Dictionary<string, string> Env { get; set; }
@@ -21,16 +22,18 @@ public class Container {
     public string[] Ports { get; set; }
     public string[] Volumes { get; set; }
     public MountReadonlyConfig MountReadonly { get; set; }
-    public bool StringSource { get; set; }
 
     public Container Parse(TemplateToken source) {
-        if(source is StringToken imageName) {
-            Image = imageName.Value;
-            StringSource = true;
+        // alias can also be a number in template parameters
+        if(source is LiteralToken aliasName) {
+            Alias = aliasName.ToString();
         } else {
             var jobToken = source.AssertMapping("job-root");
             foreach(var kv in jobToken) {
                 switch(kv.Key.AssertString("key").Value) {
+                    case "alias":
+                        Alias = kv.Value.AssertLiteralString("alias");
+                    break;
                     case "image":
                         Image = kv.Value.AssertLiteralString("image");
                     break;
@@ -81,10 +84,11 @@ public class Container {
     }
 
     public PipelineContextData ToContextData(string name = null) {
-        if(StringSource) {
-            return new StringContextData(Image);
-        }
         var container = new DictionaryContextData();
+        if(Alias != null) {
+            container["alias"] = new StringContextData(Alias);
+            return container;
+        }
         if(name != null) {
             container["container"] = new StringContextData(name);
         }

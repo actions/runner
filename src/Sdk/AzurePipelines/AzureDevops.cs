@@ -152,17 +152,17 @@ public class AzureDevops {
                         tstep.TimeoutInMinutes = new NumberToken(null, null, null, Int32.Parse(mstep[i].Value.AssertLiteralString("step value")));
                     break;
                     case "target":
-                        if(mstep[i].Value is StringToken targetStr) {
-                            tstep.Target = new StepTarget() { Target = targetStr.Value };
+                        if(mstep[i].Value is LiteralToken targetStr) {
+                            tstep.Target = new StepTarget() { Target = targetStr.ToString() };
                         } else {
                             tstep.Target = new StepTarget();
                             foreach(var targetKv in mstep[i].Value.AssertMapping("target mapping")) {
                                 switch((targetKv.Key as StringToken).Value) {
                                     case "container":
-                                        tstep.Target.Target = (targetKv.Value as StringToken)?.Value;
+                                        tstep.Target.Target = targetKv.Value.AssertLiteralString("container target");
                                     break;
                                     case "commands":
-                                        tstep.Target.Commands = (targetKv.Value as StringToken)?.Value;
+                                        tstep.Target.Commands = targetKv.Value.AssertLiteralString("commands");
                                     break;
                                     case "settableVariables":
                                         tstep.Target.SettableVariables = new TaskVariableRestrictions();
@@ -295,6 +295,9 @@ public class AzureDevops {
                     steps.Add(tstep);
                 break;
                 case "template":
+                    if(unparsedTokens.Count == 1 && (unparsedTokens[0].Key as StringToken)?.Value != "parameters") {
+                        throw new Exception($"Unexpected yaml key {(unparsedTokens[0].Key as StringToken)?.Value} expected parameters");
+                    }
                     var file = ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
                     foreach(var step2 in (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence("")) {
                         ParseSteps(context.ChildContext(file, primaryValue), steps, step2);
@@ -526,10 +529,10 @@ public class AzureDevops {
                 foreach(var kv in varm) {
                     switch((kv.Key as StringToken).Value) {
                         case "name":
-                            name = (kv.Value as StringToken).Value;
+                            name = kv.Value.AssertLiteralString("name");
                         break;
                         case "type":
-                            type = (kv.Value as StringToken).Value;
+                            type = kv.Value.AssertLiteralString("type");
                         break;
                         case "default":
                             def = kv.Value;
