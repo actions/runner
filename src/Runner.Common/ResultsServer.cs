@@ -9,7 +9,7 @@ using GitHub.Services.Results.Client;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(ResultServer))]
-    public interface IResultsServer : IRunnerService, IAsyncDisposable
+    public interface IResultsServer : IRunnerService
     {
         void InitializeResultsClient(Uri uri, string token);
 
@@ -93,11 +93,6 @@ namespace GitHub.Runner.Common
             }
 
             throw new InvalidOperationException("Results client is not initialized.");
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
         }
     }
 }
