@@ -157,7 +157,7 @@ namespace GitHub.Runner.Worker
         private bool _stepTelemetryPublished = false;
 
         public ExecutionContext()
-            : this(null, false)
+            : this(parent: null, embedded: false)
         {
         }
 
