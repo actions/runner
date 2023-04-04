@@ -39,17 +39,17 @@ namespace GitHub.Services.Launch.Client
                     requestMessage.Content = content;
                     using (var response = await SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken: cancellationToken))
                     {
-                        return await ReadJsonContentAsync<R>(response, cancellationToken);
+                        return await ReadJsonContentAsync<T>(response, cancellationToken);
                     }
                 }
             }
         }
-        public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(string planId, string jobId, WebApi.ActionReferenceList actionReferenceList, CancellationToken cancellationToken)
+        public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(string planId, string jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken)
         {
 
             var GetResolveActionsDownloadInfoURLEndpoint = new Uri(m_launchServiceUrl, $"/actions/build/{planId}/jobs/{jobId}/runnerresolve/actions`");
 
-            return await GetLaunchSignedURLResponse<ActionDownloadInfoCollection, WebApi.ActionReferenceList>(GetResolveActionsDownloadInfoURLEndpoint, actionReferenceList, cancellationToken);
+            return await GetLaunchSignedURLResponse<ActionReferenceList, ActionDownloadInfoCollection>(GetResolveActionsDownloadInfoURLEndpoint, actionReferenceList, cancellationToken);
         }
 
         private MediaTypeFormatter m_formatter;
