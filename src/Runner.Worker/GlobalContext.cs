@@ -25,6 +25,7 @@ namespace GitHub.Runner.Worker
         public StepsContext StepsContext { get; set; }
         public Variables Variables { get; set; }
         public bool WriteDebug { get; set; }
+        public Guid JobId {get; set; }
         public JObject ContainerHookState { get; set; }
     }
 }
