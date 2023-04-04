@@ -658,7 +658,7 @@ namespace GitHub.Runner.Worker
                 {
                     if (MessageUtil.IsRunServiceJob(executionContext.Global.Variables.Get("job_request_type")))
                     {
-                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Global.JobId.ToString(), new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
+                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Global.JobId, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
                     }
                     else 
                     {
