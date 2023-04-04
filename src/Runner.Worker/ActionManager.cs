@@ -648,13 +648,21 @@ namespace GitHub.Runner.Worker
             }
 
             // Resolve download info
+            var launchServer = HostContext.GetService<ILaunchServer>();
             var jobServer = HostContext.GetService<IJobServer>();
             var actionDownloadInfos = default(WebApi.ActionDownloadInfoCollection);
             for (var attempt = 1; attempt <= 3; attempt++)
             {
                 try
                 {
+                    if (MessageUtil.IsRunServiceJob(executionContext.Global.Variables.Get("job_type")))
+                    {
+                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Global.)
+                    }
+                    else 
+                    {
                     actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
+                    }
                     break;
                 }
                 catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is cancelled.

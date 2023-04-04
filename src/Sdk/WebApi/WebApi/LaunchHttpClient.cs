@@ -23,13 +23,12 @@ namespace GitHub.Services.Launch.Client
         {
             m_token = token;
             m_launchServiceUrl = baseUrl;
-            m_formatter = new JsonMediaTypeFormatter();
         }
 
         // Resolve Actions
         private async Task<T> GetLaunchSignedURLResponse<T>(Uri uri, CancellationToken cancellationToken)
         {
-            using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, uri))
+            using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, uri))
             {
                 requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", m_token);
                 requestMessage.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("application/json"));
@@ -40,7 +39,7 @@ namespace GitHub.Services.Launch.Client
                 }
             }
         }
-        public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(string planId, string jobId, Guid stepId, CancellationToken cancellationToken)
+        public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(string planId, string jobId, CancellationToken cancellationToken)
         {
 
             var GetResolveActionsDownloadInfoURLEndpoint = new Uri(m_launchServiceUrl, $"/actions/build/{planId}/jobs/{jobId}/runnerresolve/actions`");
@@ -48,7 +47,6 @@ namespace GitHub.Services.Launch.Client
             return await GetLaunchSignedURLResponse<ActionDownloadInfoCollection>(GetResolveActionsDownloadInfoURLEndpoint, cancellationToken);
         }
 
-        private MediaTypeFormatter m_formatter;
         private Uri m_launchServiceUrl;
         private string m_token;
     }

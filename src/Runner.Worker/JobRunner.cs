@@ -133,6 +133,8 @@ namespace GitHub.Runner.Worker
                 Directory.CreateDirectory(toolsDirectory);
                 jobContext.SetRunnerContext("tool_cache", toolsDirectory);
 
+                jobContext.Global.Variables.Set("job_type", message.MessageType);
+                
                 // Setup TEMP directories
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);

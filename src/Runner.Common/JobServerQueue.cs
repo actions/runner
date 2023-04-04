@@ -66,6 +66,7 @@ namespace GitHub.Runner.Common
         // common
         private IJobServer _jobServer;
         private IResultsServer _resultsServer;
+        private ILaunchServer _launchServer;
         private Task[] _allDequeueTasks;
         private readonly TaskCompletionSource<int> _jobCompletionSource = new();
         private readonly TaskCompletionSource<int> _jobRecordUpdated = new();
@@ -94,6 +95,7 @@ namespace GitHub.Runner.Common
             base.Initialize(hostContext);
             _jobServer = hostContext.GetService<IJobServer>();
             _resultsServer = hostContext.GetService<IResultsServer>();
+            _launchServer = hostContext.GetService<ILaunchServer>();
         }
 
         public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultServiceOnly = false)
@@ -135,7 +137,7 @@ namespace GitHub.Runner.Common
                 if (!string.IsNullOrEmpty(launchReceiverEndpoint))
                 {
                     Trace.Info("Initializing launch client");
-                    _jobServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
+                    _launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
                 }
             }
 
