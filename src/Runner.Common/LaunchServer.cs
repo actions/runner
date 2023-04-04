@@ -25,9 +25,8 @@ namespace GitHub.Runner.Common
             var httpMessageHandler = HostContext.CreateHttpClientHandler();
             this._launchClient = new LaunchHttpClient(uri, httpMessageHandler, token, disposeHandler: true);
         }
-    }
-
-    public Task ResolveActionsDownloadInfoAsync(string planId, string jobId,
+        
+        public Task ResolveActionsDownloadInfoAsync(string planId, string jobId,
             CancellationToken cancellationToken)
         {
             if (_launchClient != null)
@@ -38,4 +37,5 @@ namespace GitHub.Runner.Common
 
             throw new InvalidOperationException("Results client is not initialized.");
         }
+    }
 }
