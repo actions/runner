@@ -14,7 +14,7 @@ namespace GitHub.Runner.Common
     {
         void InitializeLaunchClient(Uri uri, string token);
 
-        Task ResolveActionsDownloadInfoAsync(string planId, string jobId, WebApi.ActionReferenceList actionReferenceList, CancellationToken cancellationToken);
+        Task ResolveActionsDownloadInfoAsync(string planId, string jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken);
     }
 
     public sealed class LaunchServer : RunnerService, ILaunchServer
@@ -27,7 +27,7 @@ namespace GitHub.Runner.Common
             this._launchClient = new LaunchHttpClient(uri, httpMessageHandler, token, disposeHandler: true);
         }
         
-        public Task ResolveActionsDownloadInfoAsync(string planId, string jobId, WebApi.ActionReferenceList actionReferenceList,
+        public Task ResolveActionsDownloadInfoAsync(string planId, string jobId, ActionReferenceList actionReferenceList,
             CancellationToken cancellationToken)
         {
             if (_launchClient != null)
