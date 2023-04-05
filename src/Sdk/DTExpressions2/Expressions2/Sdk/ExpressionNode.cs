@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using GitHub.DistributedTask.Logging;
 
 namespace GitHub.DistributedTask.Expressions2.Sdk
@@ -55,7 +55,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             try
             {
                 // Evaluate
-                secretMasker = secretMasker?.Clone() ?? new SecretMasker();
+                secretMasker = secretMasker?.Clone() ?? new SecretMasker(Enumerable.Empty<ValueEncoder>());
                 trace = new EvaluationTraceWriter(trace, secretMasker);
                 var context = new EvaluationContext(trace, secretMasker, state, options, this);
                 trace.Info($"Evaluating: {ConvertToExpression()}");

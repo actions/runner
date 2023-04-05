@@ -56,9 +56,12 @@ namespace GitHub.Runner.Common.Tests
             }
 
             var traceListener = new HostTraceListener(TraceFileName);
-            _secretMasker = new SecretMasker();
-            _secretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
-            _secretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
+            var encoders = new List<ValueEncoder>()
+            {
+                ValueEncoders.JsonStringEscape,
+                ValueEncoders.UriDataEscape
+            };
+            _secretMasker = new SecretMasker(encoders);
             _traceManager = new TraceManager(traceListener, null, _secretMasker);
             _trace = GetTrace(nameof(TestHostContext));
 

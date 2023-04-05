@@ -8,7 +8,6 @@ namespace GitHub.DistributedTask.Logging
     {
         void AddRegex(String pattern);
         void AddValue(String value);
-        void AddValueEncoder(ValueEncoder encoder);
         ISecretMasker Clone();
         String MaskSecrets(String input);
     }

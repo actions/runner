@@ -53,7 +53,7 @@ namespace GitHub.Runner.Common
         private static int[] _vssHttpCredentialEventIds = new int[] { 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 27, 29 };
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new();
-        private readonly ISecretMasker _secretMasker = new SecretMasker();
+        private readonly ISecretMasker _secretMasker;
         private readonly List<ProductInfoHeaderValue> _userAgents = new() { new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version) };
         private CancellationTokenSource _runnerShutdownTokenSource = new();
         private object _perfLock = new();
@@ -82,17 +82,20 @@ namespace GitHub.Runner.Common
             _loadContext = AssemblyLoadContext.GetLoadContext(typeof(HostContext).GetTypeInfo().Assembly);
             _loadContext.Unloading += LoadContext_Unloading;
 
-            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.CommandLineArgumentEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.XmlDataEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
+            var masks = new List<ValueEncoder>()
+            {
+                ValueEncoders.EnumerateBase64Variations,
+                ValueEncoders.CommandLineArgumentEscape,
+                ValueEncoders.ExpressionStringEscape,
+                ValueEncoders.JsonStringEscape,
+                ValueEncoders.UriDataEscape,
+                ValueEncoders.XmlDataEscape,
+                ValueEncoders.TrimDoubleQuotes,
+                ValueEncoders.PowerShellPreAmpersandEscape,
+                ValueEncoders.PowerShellPostAmpersandEscape
+            };
+            _secretMasker = new SecretMasker(masks);
+
 
             // Create StdoutTraceListener if ENV is set
             StdoutTraceListener stdoutTraceListener = null;

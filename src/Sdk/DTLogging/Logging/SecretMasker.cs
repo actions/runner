@@ -10,11 +10,11 @@ namespace GitHub.DistributedTask.Logging
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class SecretMasker : ISecretMasker, IDisposable
     {
-        public SecretMasker()
+        public SecretMasker(IEnumerable<ValueEncoder> encoders)
         {
             m_originalValueSecrets = new HashSet<ValueSecret>();
             m_regexSecrets = new HashSet<RegexSecret>();
-            m_valueEncoders = new HashSet<ValueEncoder>();
+            m_valueEncoders = new HashSet<ValueEncoder>(encoders);
             m_valueSecrets = new HashSet<ValueSecret>();
         }
 
@@ -104,15 +104,11 @@ namespace GitHub.DistributedTask.Logging
                 }
             }
 
-            // Compute the encoded values.
-            foreach (ValueEncoder valueEncoder in valueEncoders)
-            {
-                String encodedValue = valueEncoder(value);
-                if (!String.IsNullOrEmpty(encodedValue))
-                {
-                    valueSecrets.Add(new ValueSecret(encodedValue));
-                }
-            }
+            var secretVariations = valueEncoders.SelectMany(encoder => encoder(value))
+                                                .Where(variation => !string.IsNullOrEmpty(variation))
+                                                .Distinct()
+                                                .Select(variation => new ValueSecret(variation));
+            valueSecrets.AddRange(secretVariations);
 
             // Write section.
             try
@@ -124,69 +120,6 @@ namespace GitHub.DistributedTask.Logging
                 foreach (ValueSecret valueSecret in valueSecrets)
                 {
                     m_valueSecrets.Add(valueSecret);
-                }
-            }
-            finally
-            {
-                if (m_lock.IsWriteLockHeld)
-                {
-                    m_lock.ExitWriteLock();
-                }
-            }
-        }
-
-        /// <summary>
-        /// This implementation assumes no more than one thread is adding regexes, values, or encoders at any given time.
-        /// </summary>
-        public void AddValueEncoder(ValueEncoder encoder)
-        {
-            ValueSecret[] originalSecrets;
-
-            // Read section.
-            try
-            {
-                m_lock.EnterReadLock();
-
-                // Test whether already added.
-                if (m_valueEncoders.Contains(encoder))
-                {
-                    return;
-                }
-
-                // Read the original value secrets.
-                originalSecrets = m_originalValueSecrets.ToArray();
-            }
-            finally
-            {
-                if (m_lock.IsReadLockHeld)
-                {
-                    m_lock.ExitReadLock();
-                }
-            }
-
-            // Compute the encoded values.
-            var encodedSecrets = new List<ValueSecret>();
-            foreach (ValueSecret originalSecret in originalSecrets)
-            {
-                String encodedValue = encoder(originalSecret.m_value);
-                if (!String.IsNullOrEmpty(encodedValue))
-                {
-                    encodedSecrets.Add(new ValueSecret(encodedValue));
-                }
-            }
-
-            // Write section.
-            try
-            {
-                m_lock.EnterWriteLock();
-
-                // Add the encoder.
-                m_valueEncoders.Add(encoder);
-
-                // Add the values.
-                foreach (ValueSecret encodedSecret in encodedSecrets)
-                {
-                    m_valueSecrets.Add(encodedSecret);
                 }
             }
             finally
