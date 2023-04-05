@@ -1,5 +1,4 @@
-﻿using GitHub.Runner.Common.Util;
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -13,6 +12,7 @@ namespace GitHub.Runner.Common.Tests
     {
         private HostContext _hc;
         private CancellationTokenSource _tokenSource;
+        private const string EXPECTED_SECRET_MASK = "***";
 
         [Fact]
         [Trait("Level", "L0")]
@@ -104,6 +104,116 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal("123***123", _hc.SecretMasker.MaskSecrets("123Password123!!123"));
                 Assert.Equal("123short123", _hc.SecretMasker.MaskSecrets("123short123"));
                 Assert.Equal("123***123", _hc.SecretMasker.MaskSecrets("123\"short\"123"));
+            }
+            finally
+            {
+                // Cleanup.
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void Base64SecretMaskers()
+        {
+
+            // The following are good candidate strings for Base64 encoding because they include
+            // both standard and RFC 4648 Base64 digits in all offset variations.
+            //   TeLL? noboDy~ SEcreT?
+            //   tElL~ NEVER~ neveR?
+            //   TIGht? Tight~ guard~
+            //   pRIVAte~ guARd? TIghT~
+            //   KeeP~ TIgHT? tIgHT~
+            //   LoCk? TiGhT~ TIght~
+            //   DIvULGe~ nObODY~ noBOdy?
+            //   foreVER~ Tight~ GUaRd?
+
+            try
+            {
+                // Arrange.
+                Setup();
+
+                // Act.
+                _hc.SecretMasker.AddValue("TeLL? noboDy~ SEcreT?");
+
+                // The above string has the following Base64 variations based on the chop leading byte(s) method of Base64 aliasing:
+                var base64Variations = new[]
+                {
+                    "VGVMTD8gbm9ib0R5fiBTRWNyZVQ/",
+                    "ZUxMPyBub2JvRHl+IFNFY3JlVD8",
+                    "TEw/IG5vYm9EeX4gU0VjcmVUPw",
+
+                    // RFC 4648 (URL-safe Base64)
+                    "VGVMTD8gbm9ib0R5fiBTRWNyZVQ_",
+                    "ZUxMPyBub2JvRHl-IFNFY3JlVD8",
+                    "TEw_IG5vYm9EeX4gU0VjcmVUPw"
+                };
+
+                var bookends = new[]
+                {
+                    (string.Empty, string.Empty),
+                    (string.Empty, "="),
+                    (string.Empty, "=="),
+                    (string.Empty, "==="),
+                    ("a", "z"),
+                    ("A", "Z"),
+                    ("abc", "abc"),
+                    ("ABC", "ABC"),
+                    ("0", "0"),
+                    ("00", "00"),
+                    ("000", "000"),
+                    ("123", "789"),
+                    ("`", "`"),
+                    ("'", "'"),
+                    ("\"", "\""),
+                    ("[", "]"),
+                    ("(", ")"),
+                    ("$(", ")"),
+                    ("{", "}"),
+                    ("${", "}"),
+                    ("!", "!"),
+                    ("!!", "!!"),
+                    ("%", "%"),
+                    ("%%", "%%"),
+                    ("_", "_"),
+                    ("__", "__"),
+                    (":", ":"),
+                    ("::", "::"),
+                    (";", ";"),
+                    (";;", ";;"),
+                    (":", string.Empty),
+                    (";", string.Empty),
+                    (string.Empty, ":"),
+                    (string.Empty, ";"),
+                    ("VGVMTD8gbm9ib", "ZUxMPy"),
+                    ("VGVMTD8gbm9ib", "TEw/IG5vYm9EeX4"),
+                    ("ZUxMPy", "TEw/IG5vYm9EeX4"),
+                    ("VGVMTD8gbm9ib", string.Empty),
+                    ("TEw/IG5vYm9EeX4", string.Empty),
+                    ("ZUxMPy", string.Empty),
+                    (string.Empty, "VGVMTD8gbm9ib"),
+                    (string.Empty, "TEw/IG5vYm9EeX4"),
+                    (string.Empty, "ZUxMPy"),
+                };
+
+                foreach (var variation in base64Variations)
+                {
+                    foreach (var pair in bookends)
+                    {
+                        var (prefix, suffix) = pair;
+                        var expected = string.Format("{0}{1}{2}", prefix, EXPECTED_SECRET_MASK, suffix);
+                        var payload = string.Format("{0}{1}{2}", prefix, variation, suffix);
+                        Assert.Equal(expected, _hc.SecretMasker.MaskSecrets(payload));
+                    }
+
+                    // Verify no masking is performed on a partial match.
+                    for (int i = 1; i < variation.Length - 1; i++)
+                    {
+                        var fragment = variation[..i];
+                        Assert.Equal(fragment, _hc.SecretMasker.MaskSecrets(fragment));
+                    }
+                }
             }
             finally
             {
