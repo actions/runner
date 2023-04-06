@@ -14,7 +14,7 @@ namespace GitHub.DistributedTask.Logging
         {
             m_originalValueSecrets = new HashSet<ValueSecret>();
             m_regexSecrets = new HashSet<RegexSecret>();
-            m_valueEncoders = new HashSet<ValueEncoder>(encoders);
+            m_valueEncoders = new HashSet<ValueEncoder>(encoders ?? Enumerable.Empty<ValueEncoder>());
             m_valueSecrets = new HashSet<ValueSecret>();
         }
 
