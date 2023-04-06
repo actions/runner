@@ -187,7 +187,6 @@ namespace GitHub.Runner.Worker
 
             if (repositoryActions.Count > 0)
             {
-
                 // Get the download info
                 var downloadInfos = await GetDownloadInfoAsync(executionContext, repositoryActions);
 
