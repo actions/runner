@@ -133,7 +133,7 @@ namespace GitHub.Runner.Common
                 }
 
                 jobRequest.Variables.TryGetValue("system.github.launch_endpoint", out VariableValue launchEndpointVariable);
-                var launchReceiverEndpoint = resultsEndpointVariable?.Value;
+                var launchReceiverEndpoint = launchEndpointVariable?.Value;
                 if (!string.IsNullOrEmpty(launchReceiverEndpoint))
                 {
                     Trace.Info("Initializing launch client");

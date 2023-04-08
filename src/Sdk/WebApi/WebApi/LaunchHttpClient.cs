@@ -47,7 +47,7 @@ namespace GitHub.Services.Launch.Client
         public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken)
         {
 
-            var GetResolveActionsDownloadInfoURLEndpoint = new Uri(m_launchServiceUrl, $"/actions/build/{planId.ToString()}/jobs/{jobId.ToString()}/runnerresolve/actions`");
+            var GetResolveActionsDownloadInfoURLEndpoint = new Uri(m_launchServiceUrl, $"/actions/build/{planId.ToString()}/jobs/{jobId.ToString()}/runnerresolve/actions");
 
             return await GetLaunchSignedURLResponse<ActionReferenceList, ActionDownloadInfoCollection>(GetResolveActionsDownloadInfoURLEndpoint, actionReferenceList, cancellationToken);
         }

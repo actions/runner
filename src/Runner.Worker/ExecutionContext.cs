@@ -744,9 +744,6 @@ namespace GitHub.Runner.Worker
             // What type of job request is running (i.e. Run Service vs. pipelines)
             Global.Variables.Set("job_request_type", message.MessageType);
 
-            // Job Id
-            Global.JobId = message.JobId;
-
             // Expression values
             if (message.ContextData?.Count > 0)
             {
