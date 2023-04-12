@@ -144,6 +144,7 @@ namespace GitHub.Runner.Common
             this._serviceEndpoint = serviceEndpoint;
             InitializeWebsocketClient(TimeSpan.Zero);
         }
+
         public ValueTask DisposeAsync()
         {
             CloseWebSocket(WebSocketCloseStatus.NormalClosure, CancellationToken.None);
