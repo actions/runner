@@ -62,10 +62,10 @@ namespace GitHub.Runner.Worker
 
                 Trace.Info($"Creating job server with URL: {jobServerUrl}");
                 // jobServerQueue is the throttling reporter.
-                _jobServerQueue = HostContext.GetService<IJobServerQueue>();
                 VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
                 await jobServer.ConnectAsync(jobConnection);
 
+                _jobServerQueue = HostContext.GetService<IJobServerQueue>();
                 _jobServerQueue.Start(message);
                 server = jobServer;
             }
