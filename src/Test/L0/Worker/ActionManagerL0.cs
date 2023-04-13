@@ -29,6 +29,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IDockerCommandManager> _dockerManager;
         private Mock<IExecutionContext> _ec;
         private Mock<IJobServer> _jobServer;
+        private Mock<ILaunchServer> _launchServer;
         private Mock<IRunnerPluginManager> _pluginManager;
         private TestHostContext _hc;
         private ActionManager _actionManager;
@@ -2174,6 +2175,25 @@ runs:
                     }
                     return Task.FromResult(result);
                 });
+            
+            _launchServer = new Mock<ILaunchServer>();
+            _launchServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
+                .Returns((Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+                {
+                    var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                    foreach (var action in actions.Actions)
+                    {
+                        var key = $"{action.NameWithOwner}@{action.Ref}";
+                        result.Actions[key] = new ActionDownloadInfo
+                        {
+                            NameWithOwner = action.NameWithOwner,
+                            Ref = action.Ref,
+                            TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                            ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                        };
+                    }
+                    return Task.FromResult(result);
+                });
 
             _pluginManager = new Mock<IRunnerPluginManager>();
             _pluginManager.Setup(x => x.GetPluginAction(It.IsAny<string>())).Returns(new RunnerPluginActionInfo() { PluginTypeName = "plugin.class, plugin", PostPluginTypeName = "plugin.cleanup, plugin" });
@@ -2183,6 +2203,7 @@ runs:
 
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
             _hc.SetSingleton<IJobServer>(_jobServer.Object);
+            _hc.SetSingleton<ILaunchServer>(_launchServer.Object);
             _hc.SetSingleton<IRunnerPluginManager>(_pluginManager.Object);
             _hc.SetSingleton<IActionManifestManager>(actionManifest);
             _hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
