@@ -48,6 +48,7 @@ namespace GitHub.Services.Launch.Client
                 }
             }
         }
+
         public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken)
         {
 
@@ -64,51 +65,51 @@ namespace GitHub.Services.Launch.Client
             };
         }
 
-    private static ActionReferenceRequest ToGitHubData(ActionReference actionReference)
-    {
-        return new ActionReferenceRequest
+        private static ActionReferenceRequest ToGitHubData(ActionReference actionReference)
         {
-            Action = actionReference.NameWithOwner,
-            Version = actionReference.Ref,
-            Path = actionReference.Path
-        };
-    }
-
-    private static ActionDownloadInfoCollection ToServerData(ActionDownloadInfoResponseCollection actionDownloadInfoResponseCollection)
-    {
-        return new ActionDownloadInfoCollection
-        {
-            Actions = actionDownloadInfoResponseCollection.Actions?.ToDictionary(kvp => kvp.Key, kvp => ToServerData(kvp.Value))
-        };
-    }
-
-    private static ActionDownloadInfo ToServerData(ActionDownloadInfoResponse actionDownloadInfoResponse)
-    {
-        return new ActionDownloadInfo
-        {
-            Authentication = ToServerData(actionDownloadInfoResponse.Authentication),
-            NameWithOwner = actionDownloadInfoResponse.Name,
-            ResolvedNameWithOwner = actionDownloadInfoResponse.ResolvedName,
-            ResolvedSha = actionDownloadInfoResponse.ResolvedSha,
-            TarballUrl = actionDownloadInfoResponse.TarUrl,
-            Ref = actionDownloadInfoResponse.Version,
-            ZipballUrl = actionDownloadInfoResponse.ZipUrl,
-        };
-    }
-
-    private static ActionDownloadAuthentication? ToServerData(ActionDownloadAuthenticationResponse? actionDownloadAuthenticationResponse)
-    {
-        if (actionDownloadAuthenticationResponse == null)
-        {
-            return null;
+            return new ActionReferenceRequest
+            {
+                Action = actionReference.NameWithOwner,
+                Version = actionReference.Ref,
+                Path = actionReference.Path
+            };
         }
 
-        return new ActionDownloadAuthentication
+        private static ActionDownloadInfoCollection ToServerData(ActionDownloadInfoResponseCollection actionDownloadInfoResponseCollection)
         {
-            ExpiresAt = actionDownloadAuthenticationResponse.ExpiresAt,
-            Token = actionDownloadAuthenticationResponse.Token
-        };
-    }
+            return new ActionDownloadInfoCollection
+            {
+                Actions = actionDownloadInfoResponseCollection.Actions?.ToDictionary(kvp => kvp.Key, kvp => ToServerData(kvp.Value))
+            };
+        }
+
+        private static ActionDownloadInfo ToServerData(ActionDownloadInfoResponse actionDownloadInfoResponse)
+        {
+            return new ActionDownloadInfo
+            {
+                Authentication = ToServerData(actionDownloadInfoResponse.Authentication),
+                NameWithOwner = actionDownloadInfoResponse.Name,
+                ResolvedNameWithOwner = actionDownloadInfoResponse.ResolvedName,
+                ResolvedSha = actionDownloadInfoResponse.ResolvedSha,
+                TarballUrl = actionDownloadInfoResponse.TarUrl,
+                Ref = actionDownloadInfoResponse.Version,
+                ZipballUrl = actionDownloadInfoResponse.ZipUrl,
+            };
+        }
+
+        private static ActionDownloadAuthentication? ToServerData(ActionDownloadAuthenticationResponse? actionDownloadAuthenticationResponse)
+        {
+            if (actionDownloadAuthenticationResponse == null)
+            {
+                return null;
+            }
+
+            return new ActionDownloadAuthentication
+            {
+                ExpiresAt = actionDownloadAuthenticationResponse.ExpiresAt,
+                Token = actionDownloadAuthenticationResponse.Token
+            };
+        }
 
         private MediaTypeFormatter m_formatter;
         private Uri m_launchServiceUrl;

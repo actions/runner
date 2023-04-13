@@ -26,7 +26,7 @@ namespace GitHub.Runner.Common
             var httpMessageHandler = HostContext.CreateHttpClientHandler();
             this._launchClient = new LaunchHttpClient(uri, httpMessageHandler, token, disposeHandler: true);
         }
-        
+
         public Task<ActionDownloadInfoCollection> ResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList,
             CancellationToken cancellationToken)
         {

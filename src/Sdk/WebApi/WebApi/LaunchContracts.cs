@@ -16,7 +16,7 @@ namespace GitHub.Services.Launch.Contracts
         [DataMember(EmitDefaultValue = false, Name = "path")]
         public string Path { get; set; }
     }
-    
+
     [DataContract]
     public class ActionReferenceRequestList
     {
@@ -67,6 +67,4 @@ namespace GitHub.Services.Launch.Contracts
         [DataMember(EmitDefaultValue = false, Name = "actions")]
         public IDictionary<string, ActionDownloadInfoResponse> Actions { get; set; }
     }
-
-
 }

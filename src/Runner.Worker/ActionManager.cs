@@ -660,7 +660,7 @@ namespace GitHub.Runner.Worker
                     {
                         actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, Guid.Parse(executionContext.Global.Variables.Get("system.jobId")), new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
                     }
-                    else 
+                    else
                     {
                         actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
                     }
