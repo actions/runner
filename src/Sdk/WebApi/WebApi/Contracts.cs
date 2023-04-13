@@ -157,6 +157,8 @@ namespace GitHub.Services.Results.Contracts
         public string StartedAt;
         [DataMember]
         public string CompletedAt;
+        [DataMember]
+        public Conclusion Conclusion;
     }
 
     public enum Status
@@ -165,6 +167,15 @@ namespace GitHub.Services.Results.Contracts
         StatusInProgress = 3,
         StatusPending = 5,
         StatusCompleted = 6
+    }
+
+    public enum Conclusion
+    {
+        ConclusionUnknown = 0,
+        ConclusionSuccess = 2,
+        ConclusionFailure = 3,
+        ConclusionCancelled = 4,
+        ConclusionSkipped = 7,
     }
 
     public static class BlobStorageTypes

@@ -329,7 +329,8 @@ namespace GitHub.Services.Results.Client
                 Name = r.Name,
                 Status = ConvertStateToStatus(r.State.GetValueOrDefault()),
                 StartedAt = r.StartTime?.ToString(Constants.TimestampFormat),
-                CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat)
+                CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat),
+                Conclusion = ConvertResultToConclusion(r.Result.GetValueOrDefault())
             };
         }
 
@@ -345,6 +346,24 @@ namespace GitHub.Services.Results.Client
                     return Status.StatusInProgress;
                 default:
                     return Status.StatusUnknown;
+            }
+        }
+
+        private Conclusion ConvertResultToConclusion(TaskResult r)
+        {
+            switch (r)
+            {
+                case TaskResult.Succeeded:
+                case TaskResult.SucceededWithIssues:
+                    return Conclusion.ConclusionSuccess;
+                case TaskResult.Canceled:
+                    return Conclusion.ConclusionCancelled;
+                case TaskResult.Skipped:
+                    return Conclusion.ConclusionSkipped;
+                case TaskResult.Failed:
+                    return Conclusion.ConclusionFailure;
+                default:
+                    return Conclusion.ConclusionUnknown;
             }
         }
 
