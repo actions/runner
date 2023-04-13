@@ -330,7 +330,7 @@ namespace GitHub.Services.Results.Client
                 Status = ConvertStateToStatus(r.State.GetValueOrDefault()),
                 StartedAt = r.StartTime?.ToString(Constants.TimestampFormat),
                 CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat),
-                Conclusion = ConvertResultToConclusion(r.Result.GetValueOrDefault())
+                Conclusion = ConvertResultToConclusion(r.Result)
             };
         }
 
@@ -349,8 +349,13 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        private Conclusion ConvertResultToConclusion(TaskResult r)
+        private Conclusion ConvertResultToConclusion(TaskResult? r)
         {
+            if (!r.HasValue)
+            {
+                return Conclusion.ConclusionUnknown;
+            }
+
             switch (r)
             {
                 case TaskResult.Succeeded:
