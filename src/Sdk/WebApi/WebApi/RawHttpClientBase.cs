@@ -21,7 +21,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Sdk.WebApi.WebApi
 {
-    public class RawHttpClientBase: IDisposable
+    public class RawHttpClientBase : IDisposable
     {
         protected RawHttpClientBase(
             Uri baseUrl,
