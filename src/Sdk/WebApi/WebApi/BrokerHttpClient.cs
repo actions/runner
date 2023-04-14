@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -55,7 +56,7 @@ namespace GitHub.Actions.RunService.WebApi
         {
         }
 
-        public Task<TaskAgentMessage> GetRunnerMessageAsync(
+        public async Task<TaskAgentMessage> GetRunnerMessageAsync(
             string runnerVersion,
             TaskAgentStatus? status,
             CancellationToken cancellationToken = default
@@ -74,11 +75,18 @@ namespace GitHub.Actions.RunService.WebApi
                 queryParams.Add("runnerVersion", runnerVersion);
             }
 
-            return SendAsync<TaskAgentMessage>(
+            var result = await SendAsync<TaskAgentMessage>(
                 new HttpMethod("GET"),
                 requestUri: requestUri,
                 queryParameters: queryParams,
                 cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                return result.Value;
+            }
+
+            throw new Exception($"Failed to get job message: {result.Error}");
         }
     }
 }
