@@ -1,13 +1,13 @@
 blank_issues_enabled: false
 contact_links:
   - name: 🛑 Request a feature in the runner application
-    url: https://github.com/orgs/community/discussions/categories/actions-and-packages
-    about: If you have feature requests for GitHub Actions, please use the Actions and Packages section on the Github Product Feedback page.
+    url: https://github.com/orgs/community/discussions/categories/actions
+    about: If you have feature requests for GitHub Actions, please use the Actions section on the GitHub Product Feedback page.
   - name: ✅ Support for GitHub Actions
     url: https://github.community/c/code-to-cloud/52
     about: If you have questions about GitHub Actions or need support writing workflows, please ask in the GitHub Community Support forum.
   - name: ✅ Feedback and suggestions for GitHub Actions
-    url: https://github.com/github/feedback/discussions/categories/actions-and-packages-feedback
+    url: https://github.com/orgs/community/discussions/categories/actions
     about: If you have feedback or suggestions about GitHub Actions, please open a discussion (or add to an existing one) in the GitHub Actions Feedback.  GitHub Actions Product Managers and Engineers monitor the feedback forum.
   - name: ‼️ GitHub Security Bug Bounty
     url: https://bounty.github.com/
