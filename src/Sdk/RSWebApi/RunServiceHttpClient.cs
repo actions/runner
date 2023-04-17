@@ -64,7 +64,7 @@ namespace GitHub.Actions.RunService.WebApi
             HttpMethod httpMethod = new HttpMethod("POST");
             var payload = new AcquireJobRequest
             {
-                StreamID = messageId
+                JobMessageID = messageId
             };
 
             requestUri = new Uri(requestUri, "acquirejob");
