@@ -25,7 +25,7 @@ public sealed class AcquireJobRequestL0
         stream.Position = 0;
         using var reader = new StreamReader(stream, Encoding.UTF8);
         string json = reader.ReadToEnd();
-        string expected = DoubleQuotify(string.Format("{{'jobMessageId':'{0}','streamId':'{0}'}}", request.JobMessageID));
+        string expected = DoubleQuotify(string.Format("{{'jobMessageId':'{0}'}}", request.JobMessageID));
         Assert.Equal(expected, json);
 
     }
@@ -40,8 +40,7 @@ public sealed class AcquireJobRequestL0
         {
             ["{'streamId': 'legacy', 'jobMessageId': 'new'}"] = "new",
             ["{'jobMessageId': 'new', 'streamId': 'legacy'}"] = "new",
-            ["{'jobMessageId': 'new'}"] = "new",
-            ["{'streamId': 'legacy'}"] = "legacy"
+            ["{'jobMessageId': 'new'}"] = "new"
         };
 
         foreach (var (source, expected) in variations)
