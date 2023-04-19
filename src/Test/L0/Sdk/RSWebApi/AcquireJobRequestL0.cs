@@ -38,9 +38,9 @@ public sealed class AcquireJobRequestL0
         var serializer = new DataContractJsonSerializer(typeof(AcquireJobRequest));
         var variations = new Dictionary<string, string>()
         {
-            ["{'streamId': 'legacy', 'jobMessageId': 'new'}"] = "new",
-            ["{'jobMessageId': 'new', 'streamId': 'legacy'}"] = "new",
-            ["{'jobMessageId': 'new'}"] = "new"
+            ["{'streamId': 'legacy', 'jobMessageId': 'new-1'}"] = "new-1",
+            ["{'jobMessageId': 'new-2', 'streamId': 'legacy'}"] = "new-2",
+            ["{'jobMessageId': 'new-3'}"] = "new-3",
         };
 
         foreach (var (source, expected) in variations)
