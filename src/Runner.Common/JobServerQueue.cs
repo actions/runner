@@ -66,7 +66,6 @@ namespace GitHub.Runner.Common
         // common
         private IJobServer _jobServer;
         private IResultsServer _resultsServer;
-        private IWebsocketFeedServer _websocketFeedServer;
         private Task[] _allDequeueTasks;
         private readonly TaskCompletionSource<int> _jobCompletionSource = new();
         private readonly TaskCompletionSource<int> _jobRecordUpdated = new();
@@ -95,7 +94,6 @@ namespace GitHub.Runner.Common
             base.Initialize(hostContext);
             _jobServer = hostContext.GetService<IJobServer>();
             _resultsServer = hostContext.GetService<IResultsServer>();
-            _websocketFeedServer = hostContext.GetService<IWebsocketFeedServer>();
         }
 
         public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultServiceOnly = false)
@@ -107,7 +105,7 @@ namespace GitHub.Runner.Common
 
             if (resultServiceOnly)
             {
-                _websocketFeedServer.InitializeWebsocketClient(serviceEndPoint);
+                _resultsServer.InitializeWebsocketClient(serviceEndPoint);
             }
             else
             {
@@ -206,8 +204,8 @@ namespace GitHub.Runner.Common
             Trace.Info($"Disposing job server ...");
             await _jobServer.DisposeAsync();
 
-            Trace.Info($"Disposing websocket feed server ...");
-            await _websocketFeedServer.DisposeAsync();
+            Trace.Info($"Disposing Results server ...");
+            await _resultsServer.DisposeAsync();
 
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }
@@ -389,7 +387,7 @@ namespace GitHub.Runner.Common
                                 {
                                     if (_resultsServiceOnly)
                                     {
-                                        await _websocketFeedServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
+                                        await _resultsServer.AppendLiveConsoleFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
                                     }
                                     else
                                     {
