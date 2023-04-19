@@ -119,7 +119,7 @@ namespace GitHub.Runner.Common
             throw new InvalidOperationException("Results client is not initialized.");
         }
 
-           public void InitializeWebsocketClient(ServiceEndpoint serviceEndpoint)
+        public void InitializeWebsocketClient(ServiceEndpoint serviceEndpoint)
         {
             this._serviceEndpoint = serviceEndpoint;
             InitializeWebsocketClient(TimeSpan.Zero);
