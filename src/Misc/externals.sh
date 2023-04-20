@@ -57,6 +57,7 @@ function acquireExternalTool() {
             mkdir -p "$(dirname "$download_target")" || checkRC 'mkdir'
 
             CURL_VERSION=$(curl --version | awk 'NR==1{print $2}')
+            echo "Curl version: $CURL_VERSION"
 
             # curl -f Fail silently (no output at all) on HTTP errors (H)
             #      -k Allow connections to SSL sites without certs (H)
