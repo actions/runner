@@ -204,7 +204,7 @@ namespace GitHub.Runner.Common
             Trace.Info($"Disposing job server ...");
             await _jobServer.DisposeAsync();
 
-            Trace.Info($"Disposing Results server ...");
+            Trace.Info($"Disposing results server ...");
             await _resultsServer.DisposeAsync();
 
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
