@@ -619,7 +619,7 @@ namespace GitHub.Runner.Common
 
                         foreach (var detailTimeline in update.PendingRecords.Where(r => r.Details != null))
                         {
-                            if (!_allTimelines.Contains(detailTimeline.Details.Id) && !_resultsServiceOnly)
+                            if (!_resultsServiceOnly && !_allTimelines.Contains(detailTimeline.Details.Id))
                             {
                                 try
                                 {
