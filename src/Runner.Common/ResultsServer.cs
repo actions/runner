@@ -17,9 +17,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(ResultServer))]
     public interface IResultsServer : IRunnerService, IAsyncDisposable
     {
-        void InitializeResultsClient(Uri uri, string token);
-
-        void InitializeWebsocketClient(ServiceEndpoint serviceEndpoint);
+        void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token);
 
         Task AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken);
 
@@ -43,22 +41,28 @@ namespace GitHub.Runner.Common
 
         private ClientWebSocket _websocketClient;
 
-        private int totalBatchedLinesAttemptedByWebsocket = 0;
-        private int failedAttemptsToPostBatchedLinesByWebsocket = 0;
+        private int _totalBatchedLinesAttemptedByWebsocket = 0;
+        private int _failedAttemptsToPostBatchedLinesByWebsocket = 0;
 
-        private static readonly TimeSpan _minDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(100);
-        private static readonly TimeSpan _maxDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(500);
-        private static readonly int _minWebsocketFailurePercentageAllowed = 50;
-        private static readonly int _minWebsocketBatchedLinesCountToConsider = 5;
+        private static readonly TimeSpan MinDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(100);
+        private static readonly TimeSpan MaxDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(500);
+        private static readonly int MinWebsocketFailurePercentageAllowed = 50;
+        private static readonly int MinWebsocketBatchedLinesCountToConsider = 5;
 
         private Task _websocketConnectTask;
+        private String _liveConsoleFeedUrl;
+        private string _token;
 
-        private ServiceEndpoint _serviceEndpoint;
-
-        public void InitializeResultsClient(Uri uri, string token)
+        public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token)
         {
             var httpMessageHandler = HostContext.CreateHttpClientHandler();
             this._resultsClient = new ResultsHttpClient(uri, httpMessageHandler, token, disposeHandler: true);
+            _token = token;
+            if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
+            {
+                _liveConsoleFeedUrl = liveConsoleFeedUrl;
+                InitializeWebsocketClient(liveConsoleFeedUrl, token, TimeSpan.Zero);
+            }
         }
 
         public Task CreateResultsStepSummaryAsync(string planId, string jobId, Guid stepId, string file,
@@ -119,12 +123,6 @@ namespace GitHub.Runner.Common
             throw new InvalidOperationException("Results client is not initialized.");
         }
 
-        public void InitializeWebsocketClient(ServiceEndpoint serviceEndpoint)
-        {
-            this._serviceEndpoint = serviceEndpoint;
-            InitializeWebsocketClient(TimeSpan.Zero);
-        }
-
         public ValueTask DisposeAsync()
         {
             CloseWebSocket(WebSocketCloseStatus.NormalClosure, CancellationToken.None);
@@ -134,17 +132,15 @@ namespace GitHub.Runner.Common
             return ValueTask.CompletedTask;
         }
 
-        private void InitializeWebsocketClient(TimeSpan delay)
+        private void InitializeWebsocketClient(string liveConsoleFeedUrl, string accessToken, TimeSpan delay)
         {
-            if (_serviceEndpoint.Authorization != null &&
-                _serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out var accessToken) &&
-                !string.IsNullOrEmpty(accessToken))
+            if (!string.IsNullOrEmpty(accessToken))
             {
-                if (_serviceEndpoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl) && !string.IsNullOrEmpty(feedStreamUrl))
+                if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
                 {
                     // let's ensure we use the right scheme
-                    feedStreamUrl = feedStreamUrl.Replace("https://", "wss://").Replace("http://", "ws://");
-                    Trace.Info($"Creating websocket client ..." + feedStreamUrl);
+                    liveConsoleFeedUrl = liveConsoleFeedUrl.Replace("https://", "wss://").Replace("http://", "ws://");
+                    Trace.Info($"Creating websocket client ..." + liveConsoleFeedUrl);
                     this._websocketClient = new ClientWebSocket();
                     this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
                     var userAgentValues = new List<ProductInfoHeaderValue>();
@@ -152,7 +148,7 @@ namespace GitHub.Runner.Common
                     userAgentValues.AddRange(HostContext.UserAgents);
                     this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
 
-                    this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
+                    this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay);
                 }
                 else
                 {
@@ -198,7 +194,7 @@ namespace GitHub.Runner.Common
                 var jsonData = StringUtil.ConvertToJson(linesWrapper);
                 try
                 {
-                    totalBatchedLinesAttemptedByWebsocket++;
+                    _totalBatchedLinesAttemptedByWebsocket++;
                     var jsonDataBytes = Encoding.UTF8.GetBytes(jsonData);
                     // break the message into chunks of 1024 bytes
                     for (var i = 0; i < jsonDataBytes.Length; i += 1 * 1024)
@@ -211,13 +207,13 @@ namespace GitHub.Runner.Common
                 }
                 catch (Exception ex)
                 {
-                    failedAttemptsToPostBatchedLinesByWebsocket++;
-                    Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
+                    _failedAttemptsToPostBatchedLinesByWebsocket++;
+                    Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {_totalBatchedLinesAttemptedByWebsocket}, failed calls: {_failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
                     Trace.Error(ex);
-                    if (totalBatchedLinesAttemptedByWebsocket > _minWebsocketBatchedLinesCountToConsider)
+                    if (_totalBatchedLinesAttemptedByWebsocket > MinWebsocketBatchedLinesCountToConsider)
                     {
                         // let's consider failure percentage
-                        if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesAttemptedByWebsocket > _minWebsocketFailurePercentageAllowed)
+                        if (_failedAttemptsToPostBatchedLinesByWebsocket * 100 / _totalBatchedLinesAttemptedByWebsocket > MinWebsocketFailurePercentageAllowed)
                         {
                             Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
                             CloseWebSocket(WebSocketCloseStatus.InternalServerError, cancellationToken);
@@ -229,9 +225,9 @@ namespace GitHub.Runner.Common
 
                     if (_websocketClient != null)
                     {
-                        var delay = BackoffTimerHelper.GetRandomBackoff(_minDelayForWebsocketReconnect, _maxDelayForWebsocketReconnect);
-                        Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}).");
-                        InitializeWebsocketClient(delay);
+                        var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebsocketReconnect, MaxDelayForWebsocketReconnect);
+                        Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms (total calls: {_totalBatchedLinesAttemptedByWebsocket}, failed calls: {_failedAttemptsToPostBatchedLinesByWebsocket}).");
+                        InitializeWebsocketClient(_liveConsoleFeedUrl, _token, delay);
                     }
                 }
             }

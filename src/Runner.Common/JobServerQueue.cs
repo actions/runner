@@ -103,15 +103,10 @@ namespace GitHub.Runner.Common
 
             var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
-            if (resultServiceOnly)
-            {
-                _resultsServer.InitializeWebsocketClient(serviceEndPoint);
-            }
-            else
+            if (!resultServiceOnly)
             {
                 _jobServer.InitializeWebsocketClient(serviceEndPoint);
             }
-
 
             // This code is usually wrapped by an instance of IExecutionContext which isn't available here.
             jobRequest.Variables.TryGetValue("system.github.results_endpoint", out VariableValue resultsEndpointVariable);
@@ -122,8 +117,16 @@ namespace GitHub.Runner.Common
                 !string.IsNullOrEmpty(accessToken) &&
                 !string.IsNullOrEmpty(resultsReceiverEndpoint))
             {
+                string liveConsoleFeedUrl = null;
                 Trace.Info("Initializing results client");
-                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
+                if (resultServiceOnly
+                    && serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl)
+                    && !string.IsNullOrEmpty(feedStreamUrl))
+                {
+                    liveConsoleFeedUrl = feedStreamUrl;
+                }
+
+                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken);
                 _resultsClientInitiated = true;
             }
 
