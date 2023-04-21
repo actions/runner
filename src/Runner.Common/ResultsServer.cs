@@ -219,7 +219,7 @@ namespace GitHub.Runner.Common
                             if (_websocketClient != null)
                             {
                                 var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebsocketReconnect, MaxDelayForWebsocketReconnect);
-                                Trace.Info( $"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
+                                Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
                                 Trace.Error(ex);
                                 retries++;
                                 InitializeWebsocketClient(_liveConsoleFeedUrl, _token, delay);
