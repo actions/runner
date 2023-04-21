@@ -19,7 +19,7 @@ namespace GitHub.Runner.Common
     {
         void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token);
 
-        Task AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken);
+        Task<bool> AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken);
 
         // logging and console
         Task CreateResultsStepSummaryAsync(string planId, string jobId, Guid stepId, string file,
@@ -41,13 +41,8 @@ namespace GitHub.Runner.Common
 
         private ClientWebSocket _websocketClient;
 
-        private int _totalBatchedLinesAttemptedByWebsocket = 0;
-        private int _failedAttemptsToPostBatchedLinesByWebsocket = 0;
-
         private static readonly TimeSpan MinDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(100);
         private static readonly TimeSpan MaxDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(500);
-        private static readonly int MinWebsocketFailurePercentageAllowed = 50;
-        private static readonly int MinWebsocketBatchedLinesCountToConsider = 5;
 
         private Task _websocketConnectTask;
         private String _liveConsoleFeedUrl;
@@ -148,7 +143,8 @@ namespace GitHub.Runner.Common
                     userAgentValues.AddRange(HostContext.UserAgents);
                     this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
 
-                    this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay);
+                    // during initialization, retry upto 3 times to setup connection
+                    this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay, retryConnection: true);
                 }
                 else
                 {
@@ -161,76 +157,85 @@ namespace GitHub.Runner.Common
             }
         }
 
-        private async Task ConnectWebSocketClient(string feedStreamUrl, TimeSpan delay)
+        private async Task ConnectWebSocketClient(string feedStreamUrl, TimeSpan delay, bool retryConnection = false)
         {
-            try
+            bool connected = false;
+            int retries = 0;
+
+            do
             {
-                Trace.Info($"Attempting to start websocket client with delay {delay}.");
-                await Task.Delay(delay);
-                using var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
-                Trace.Info($"Successfully started websocket client.");
-            }
-            catch (Exception ex)
-            {
-                Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now instead of websocket.");
-                Trace.Error(ex);
-                this._websocketClient = null;
-            }
+                try
+                {
+                    Trace.Info($"Attempting to start websocket client with delay {delay}.");
+                    await Task.Delay(delay);
+                    using var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
+                    Trace.Info($"Successfully started websocket client.");
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info("Exception caught during websocket client connect, retry connection.");
+                    Trace.Error(ex);
+                    retries++;
+                    this._websocketClient = null;
+                }
+            } while (retryConnection && !connected && retries < 3);
         }
 
-        public async Task AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken)
+        public async Task<bool> AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken)
         {
             if (_websocketConnectTask != null)
             {
                 await _websocketConnectTask;
             }
 
+            bool delivered = false;
+            int retries = 0;
+
             // "_websocketClient != null" implies either: We have a successful connection OR we have to attempt sending again and then reconnect
-            // ...in other words, if websocket client is null, we will skip sending to websocket and just use rest api calls to send data
+            // ...in other words, if websocket client is null, we will skip sending to websocket
             if (_websocketClient != null)
             {
-                var linesWrapper = startLine.HasValue ? new TimelineRecordFeedLinesWrapper(stepId, lines, startLine.Value) : new TimelineRecordFeedLinesWrapper(stepId, lines);
+                var linesWrapper = startLine.HasValue
+                    ? new TimelineRecordFeedLinesWrapper(stepId, lines, startLine.Value)
+                    : new TimelineRecordFeedLinesWrapper(stepId, lines);
                 var jsonData = StringUtil.ConvertToJson(linesWrapper);
-                try
+                var jsonDataBytes = Encoding.UTF8.GetBytes(jsonData);
+                // break the message into chunks of 1024 bytes
+                for (var i = 0; i < jsonDataBytes.Length; i += 1 * 1024)
                 {
-                    _totalBatchedLinesAttemptedByWebsocket++;
-                    var jsonDataBytes = Encoding.UTF8.GetBytes(jsonData);
-                    // break the message into chunks of 1024 bytes
-                    for (var i = 0; i < jsonDataBytes.Length; i += 1 * 1024)
-                    {
-                        var lastChunk = i + (1 * 1024) >= jsonDataBytes.Length;
-                        var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1 * 1024, jsonDataBytes.Length - i));
-                        await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage: lastChunk, cancellationToken);
-                    }
+                    var lastChunk = i + (1 * 1024) >= jsonDataBytes.Length;
+                    var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1 * 1024, jsonDataBytes.Length - i));
 
-                }
-                catch (Exception ex)
-                {
-                    _failedAttemptsToPostBatchedLinesByWebsocket++;
-                    Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {_totalBatchedLinesAttemptedByWebsocket}, failed calls: {_failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
-                    Trace.Error(ex);
-                    if (_totalBatchedLinesAttemptedByWebsocket > MinWebsocketBatchedLinesCountToConsider)
+                    while (!delivered && retries < 3)
                     {
-                        // let's consider failure percentage
-                        if (_failedAttemptsToPostBatchedLinesByWebsocket * 100 / _totalBatchedLinesAttemptedByWebsocket > MinWebsocketFailurePercentageAllowed)
+                        try
                         {
-                            Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
-                            CloseWebSocket(WebSocketCloseStatus.InternalServerError, cancellationToken);
-
-                            // By setting it to null, we will ensure that we never try websocket path again for this job
-                            _websocketClient = null;
+                            await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage: lastChunk, cancellationToken);
+                            delivered = true;
                         }
-                    }
-
-                    if (_websocketClient != null)
-                    {
-                        var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebsocketReconnect, MaxDelayForWebsocketReconnect);
-                        Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms (total calls: {_totalBatchedLinesAttemptedByWebsocket}, failed calls: {_failedAttemptsToPostBatchedLinesByWebsocket}).");
-                        InitializeWebsocketClient(_liveConsoleFeedUrl, _token, delay);
+                        catch (Exception ex)
+                        {
+                            if (_websocketClient != null)
+                            {
+                                var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebsocketReconnect, MaxDelayForWebsocketReconnect);
+                                Trace.Info( $"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
+                                Trace.Error(ex);
+                                retries++;
+                                InitializeWebsocketClient(_liveConsoleFeedUrl, _token, delay);
+                            }
+                        }
                     }
                 }
             }
+
+            if (!delivered)
+            {
+                // Giving up for good if we still can't deliver a message after 3 tries
+                _websocketClient = null;
+            }
+
+            return delivered;
         }
 
         private void CloseWebSocket(WebSocketCloseStatus closeStatus, CancellationToken cancellationToken)
