@@ -119,7 +119,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             {
                 foreach (var pair in m_items)
                 {
-                    result.Add(pair.Key?.Clone() as ScalarToken, pair.Value?.Clone());
+                    result.Add(pair.Key?.Clone(omitSource) as ScalarToken, pair.Value?.Clone(omitSource));
                 }
             }
             return result;

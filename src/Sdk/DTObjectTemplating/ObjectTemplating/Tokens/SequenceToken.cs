@@ -64,7 +64,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             {
                 foreach (var item in m_items)
                 {
-                    result.Add(item?.Clone());
+                    result.Add(item?.Clone(omitSource));
                 }
             }
             return result;

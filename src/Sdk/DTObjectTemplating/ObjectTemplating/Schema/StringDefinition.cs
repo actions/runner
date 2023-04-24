@@ -39,6 +39,11 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                     RequireNonEmpty = requireNonEmptyBooleanToken.Value;
                                     break;
 
+                                case TemplateConstants.IsExpression:
+                                    var isExpressionBooleanToken = mappingPair.Value.AssertBoolean($"{TemplateConstants.Definition} {TemplateConstants.String} {TemplateConstants.IsExpression}");
+                                    IsExpression = isExpressionBooleanToken.Value;
+                                    break;
+
                                 default:
                                     mappingKey.AssertUnexpectedValue($"{TemplateConstants.Definition} {TemplateConstants.String} key");
                                     break;
@@ -60,6 +65,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         internal Boolean IgnoreCase { get; set; }
 
         internal Boolean RequireNonEmpty { get; set; }
+        
+        internal Boolean IsExpression { get; set; }
 
         internal override Boolean IsMatch(LiteralToken literal)
         {

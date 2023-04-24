@@ -25,6 +25,9 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                         case TemplateConstants.Required:
                             Required = mappingPair.Value.AssertBoolean($"{TemplateConstants.MappingPropertyValue} {TemplateConstants.Required}").Value;
                             break;
+                        case TemplateConstants.Description:
+                            Description = mappingPair.Value.AssertString($"{TemplateConstants.MappingPropertyValue} {TemplateConstants.Description}").Value;
+                            break;
                         default:
                             mappingKey.AssertUnexpectedValue($"{TemplateConstants.MappingPropertyValue} key");
                             break;
@@ -36,5 +39,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         internal String Type { get; set; }
 
         internal Boolean Required { get; set; }
+
+        internal String Description { get; set; }
     }
 }

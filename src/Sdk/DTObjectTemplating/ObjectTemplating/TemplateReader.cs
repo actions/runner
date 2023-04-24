@@ -75,7 +75,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             // Scalar
             if (m_objectReader.AllowLiteral(out LiteralToken literal))
             {
-                var scalar = ParseScalar(literal, definition.AllowedContext, definition.Definition.ActionsIfExpression);
+                var scalar = ParseScalar(literal, definition);
                 Validate(ref scalar, definition);
                 m_memory.AddBytes(scalar);
                 return scalar;
@@ -182,7 +182,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
             while (m_objectReader.AllowLiteral(out LiteralToken rawLiteral))
             {
-                var nextKeyScalar = ParseScalar(rawLiteral, definition.AllowedContext);
+                var nextKeyScalar = ParseScalar(rawLiteral, definition);
                 // Expression
                 if (nextKeyScalar is ExpressionToken)
                 {
@@ -308,7 +308,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
             while (m_objectReader.AllowLiteral(out LiteralToken rawLiteral))
             {
-                var nextKeyScalar = ParseScalar(rawLiteral, mappingDefinition.AllowedContext);
+                var nextKeyScalar = ParseScalar(rawLiteral, mappingDefinition);
 
                 // Expression
                 if (nextKeyScalar is ExpressionToken)
@@ -492,9 +492,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         private ScalarToken ParseScalar(
             LiteralToken token,
-            String[] allowedContext,
-            bool actionsIfExpression = false)
+            DefinitionInfo definitionInfo)
         {
+            var allowedContext = definitionInfo.AllowedContext;
+            var isExpression = definitionInfo.Definition is StringDefinition sdef && sdef.IsExpression;
+            var actionsIfExpression = definitionInfo.Definition.ActionsIfExpression || isExpression;
             // Not a string
             if (token.Type != TokenType.String)
             {
@@ -507,6 +509,16 @@ namespace GitHub.DistributedTask.ObjectTemplating
             if (String.IsNullOrEmpty(raw) ||
                 (startExpression = raw.IndexOf(TemplateConstants.OpenExpression)) < 0) // Doesn't contain ${{
             {
+                if(!String.IsNullOrEmpty(raw) && isExpression) {
+                    // Check if value should still be evaluated as an expression
+                    var expression = ParseExpression(token.Line, token.Column, raw, allowedContext, out Exception ex);
+                    // Check for error
+                    if (ex != null) {
+                        m_context.Error(token, ex);
+                    } else {
+                        return expression;
+                    }
+                }
                 return token;
             }
 

@@ -4,6 +4,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
 {
     internal static class TemplateConstants
     {
+        internal const String AllowedValues = "allowed-values";
+        internal const String AllowedValuesDefinition = "allowed-values-definition";
         internal const String Any = "any";
         internal const String Boolean = "boolean";
         internal const String BooleanDefinition = "boolean-definition";
@@ -19,6 +21,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
         internal const String IgnoreCase = "ignore-case";
         internal const String Inherits = "inherits";
         internal const String InsertDirective = "insert";
+        internal const String IsExpression = "is-expression";
         internal const String ItemType = "item-type";
         internal const String LooseKeyType = "loose-key-type";
         internal const String LooseValueType = "loose-value-type";

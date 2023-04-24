@@ -106,6 +106,29 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                             definition = new OneOfDefinition(definitionsValue);
                                             break;
 
+                                        case TemplateConstants.AllowedValues:
+                                            var seq = definitionPair.Value.AssertSequence($"{TemplateConstants.AllowedValues}");
+                                            var oneOfDefinitionsValue = definitionsValue.Clone() as MappingToken;
+                                            // Based on https://github.com/actions/languageservices/blob/5cb400762941f9eb5e4198a27bba66ba1f0aefb0/workflow-parser/src/templates/schema/template-schema.ts#L145
+                                            // Change the allowed-values definition into a one-of definition and its corresponding string definitions
+                                            for(int i = 0; i < definitionsValue.Count; i++) {
+                                                if (definitionsValue[i].Value == seq) {
+                                                    var oneOfSeq = new SequenceToken(null, null, null);
+                                                    // Create a new string definition for each StringToken in the sequence
+                                                    foreach(var activity in seq) {
+                                                        var stringToken = activity.AssertString(definitionsKey.Value);
+                                                        var allowedValuesKey = definitionsKey.Value + "-" + stringToken.Value;
+                                                        var allowedValuesDef = new StringDefinition();
+                                                        allowedValuesDef.Constant = stringToken.ToDisplayString();
+                                                        Definitions.Add(allowedValuesKey, allowedValuesDef);
+                                                        oneOfSeq.Add(new StringToken(null, null, null, allowedValuesKey));
+                                                    }
+                                                    oneOfDefinitionsValue[i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, TemplateConstants.OneOf), oneOfSeq);
+                                                }
+                                            }
+                                            definition = new OneOfDefinition(oneOfDefinitionsValue);
+                                            break;
+
                                         case TemplateConstants.Context:
                                         case TemplateConstants.Description:
                                         case "actionsIfExpression":
@@ -181,7 +204,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 foreach (var reference in oneOf.OneOf)
                 {
                     var nestedDefinition = GetDefinition(reference);
-                    if (nestedDefinition is T match2)
+                    foreach (var match2 in Get<T>(nestedDefinition))
                     {
                         yield return match2;
                     }
@@ -332,6 +355,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     oneOfDefinition.OneOf.Add(TemplateConstants.SequenceDefinition);
                     oneOfDefinition.OneOf.Add(TemplateConstants.MappingDefinition);
                     oneOfDefinition.OneOf.Add(TemplateConstants.OneOfDefinition);
+                    oneOfDefinition.OneOf.Add(TemplateConstants.AllowedValuesDefinition);
                     schema.Definitions.Add(TemplateConstants.Definition, oneOfDefinition);
 
                     // null-definition
@@ -380,6 +404,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.Constant, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(new StringToken(null, null, null,TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.RequireNonEmpty, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add(TemplateConstants.IsExpression, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.StringDefinitionProperties, mappingDefinition);
 
                     // sequence-definition
@@ -424,6 +449,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition = new MappingDefinition();
                     mappingDefinition.Properties.Add(TemplateConstants.Type, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.Required, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
                     schema.Definitions.Add(TemplateConstants.MappingPropertyValue, mappingDefinition);
 
 
@@ -433,6 +459,13 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.OneOf, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     schema.Definitions.Add(TemplateConstants.OneOfDefinition, mappingDefinition);
+
+                    // allowed-values-definition
+                    mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.AllowedValues, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    schema.Definitions.Add(TemplateConstants.AllowedValuesDefinition, mappingDefinition);
 
                     // non-empty-string
                     stringDefinition = new StringDefinition();

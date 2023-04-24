@@ -1274,7 +1274,7 @@ namespace Runner.Server.Controllers
                     using (var stringReader = new StringReader(fileContent))
                     {
                         var yamlObjectReader = new YamlObjectReader(fileId, stringReader, workflowContext.HasFeature("system.runner.server.yaml.anchors"), workflowContext.HasFeature("system.runner.server.yaml.fold"), workflowContext.HasFeature("system.runner.server.yaml.merge"));
-                        token = TemplateReader.Read(templateContext, "workflow-root", yamlObjectReader, fileId, out _);
+                        token = TemplateReader.Read(templateContext, workflowContext.HasFeature("system.runner.server.strictValidation") ? "workflow-root-strict" : "workflow-root", yamlObjectReader, fileId, out _);
                     }
 
                     templateContext.Errors.Check();
@@ -1530,6 +1530,8 @@ namespace Runner.Server.Controllers
                         allowed.Add("paths-ignore");
                     }
                     if(e == "workflow_dispatch") {
+                        var rawTypes = workflowContext.HasFeature("system.runner.server.workflow_dispatch-rawtypes");
+                        var correctNumberType = workflowContext.HasFeature("system.runner.server.workflow_dispatch-correct-number-type");
                         allowed.Add("inputs");
                         // Validate inputs and apply defaults
                         var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
@@ -1552,16 +1554,20 @@ namespace Runner.Server.Controllers
                                     bool required = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_dispatch.{inputName}.required").Value).FirstOrDefault();
                                     string type = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "type" select r.Value.AssertString($"on.workflow_dispatch.{inputName}.type").Value).FirstOrDefault();
                                     SequenceToken options = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "options" select r.Value.AssertSequence($"on.workflow_dispatch.{inputName}.options")).FirstOrDefault();
-                                    var def = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "default" select r.Value).FirstOrDefault()?.AssertString($"on.workflow_dispatch.{inputName}.default")?.ToContextData()?.ToJToken();
+                                    JToken def = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "default" select r.Value).FirstOrDefault()?.ToContextData()?.ToJToken();
                                     if(def == null) {
                                         switch(type) {
                                         case "boolean":
-                                            def = "false";
+                                            def = false;
+                                        break;
+                                        case "number":
+                                            def = 0;
                                         break;
                                         case "choice":
                                             def = options?.FirstOrDefault()?.AssertString($"on.workflow_dispatch.{inputName}.options[0]")?.Value ?? "";
                                         break;
-                                        default:
+                                        case "string":
+                                        case "environment":
                                             def = "";
                                         break;
                                         }
@@ -1572,29 +1578,40 @@ namespace Runner.Server.Controllers
                                         if(required) {
                                             throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
                                         }
-                                        dispatchInputs[inputName] = def;
+                                        dispatchInputs[inputName] = !rawTypes && def?.Type == JTokenType.Boolean ? ((bool)def ? "true" : "false") : (!rawTypes && (def?.Type == JTokenType.String || def?.Type == JTokenType.Float || def?.Type == JTokenType.Integer) ? def?.ToString() : def);
                                         actualInputName = inputName;
                                     }
-                                    switch(type) {
-                                    case "boolean":
-                                        // https://github.com/actions/runner/issues/1483#issuecomment-1091025877
-                                        bool result;
-                                        var val = dispatchInputs[actualInputName].ToString();
-                                        switch(val) {
-                                        case "true":
-                                            result = true;
+                                    inputsCtx[actualInputName] = dispatchInputs[actualInputName]?.ToPipelineContextData();
+                                    // Allow boolean and number types with a string webhook payload for GitHub Actions compat
+                                    if(dispatchInputs[actualInputName]?.Type == JTokenType.String) {
+                                        switch(type) {
+                                        case "boolean":
+                                            // https://github.com/actions/runner/issues/1483#issuecomment-1091025877
+                                            bool result;
+                                            var val = dispatchInputs[actualInputName].ToString();
+                                            switch(val) {
+                                            case "true":
+                                                result = true;
+                                            break;
+                                            case "false":
+                                                result = false;
+                                            break;
+                                            default:
+                                                throw new Exception($"on.workflow_dispatch.inputs.{inputName}, expected true or false, unexpected value: {val}");
+                                            }
+                                            inputsCtx[actualInputName] = new BooleanContextData(result);
                                         break;
-                                        case "false":
-                                            result = false;
+                                        case "number":
+                                            // Based on manual testing numbers are still strings in inputs ctx 2023/04/24, even if the number type is included in the strict schema file
+                                            if(correctNumberType) {
+                                                if(Double.TryParse(dispatchInputs[actualInputName].ToString(), out var numbervalue)) {
+                                                    inputsCtx[actualInputName] = new NumberContextData(numbervalue);
+                                                } else {
+                                                    throw new Exception($"on.workflow_dispatch.inputs.{inputName}, expected a number, unexpected value: {dispatchInputs[actualInputName].ToString()}");
+                                                }
+                                            }
                                         break;
-                                        default:
-                                            throw new Exception($"on.workflow_dispatch.inputs.{inputName}, expected true or false, unexpected value: {val}");
                                         }
-                                        inputsCtx[actualInputName] = new BooleanContextData(result);
-                                    break;
-                                    default:
-                                        inputsCtx[actualInputName] = dispatchInputs[actualInputName].ToPipelineContextData();
-                                    break;
                                     }
                                 }
                             }
@@ -1632,7 +1649,7 @@ namespace Runner.Server.Controllers
                                         var contextData = createContext(null);
                                         contextData["inputs"] = callingJob?.DispatchInputs;
                                         var templateContext = CreateTemplateContext(workflowTraceWriter, workflowContext, contextData);
-                                        rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-input-context", rawdef, 0, null, true);
+                                        rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, templateContext.Schema.Definitions.ContainsKey("workflow_call-input-context") ? "workflow_call-input-context" : "workflow-call-input-default", rawdef, 0, null, true);
                                         templateContext.Errors.Check();
                                     }
                                     var def = rawdef?.ToContextData();
@@ -1836,7 +1853,7 @@ namespace Runner.Server.Controllers
                     }
                     var contextData = createContext(null);
                     var templateContext = CreateTemplateContext(traceWriter, workflowContext, contextData);
-                    var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-run-name", runName, 0, null, true);
+                    var workflowEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, templateContext.Schema.Definitions.ContainsKey("workflow-run-name") ? "workflow-run-name" : "run-name", runName, 0, null, true);
                     templateContext.Errors.Check();
                     var ret = workflowEnv?.AssertString("run-name")?.Value;
                     return string.IsNullOrWhiteSpace(ret) ? null : ret;
@@ -2751,7 +2768,7 @@ namespace Runner.Server.Controllers
                                         foreach(var entry in workflowOutputs) {
                                             var key = entry.Key.AssertString("on.workflow_call.outputs mapping key").Value;
                                             templateContext.TraceWriter.Info("{0}", $"Evaluate on.workflow_call.outputs.{key}.value");
-                                            var value = entry.Value != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping($"on.workflow_call.outputs.{key}") where kv.Key.AssertString($"on.workflow_call.outputs.{key} mapping key").Value == "value" select kv.Value).First(), 0, null, true)?.AssertString($"on.workflow_call.outputs.{key}.value").Value : null;
+                                            var value = entry.Value != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, templateContext.Schema.Definitions.ContainsKey("workflow_call-output-context") ? "workflow_call-output-context" : "workflow-output-context", (from kv in entry.Value.AssertMapping($"on.workflow_call.outputs.{key}") where kv.Key.AssertString($"on.workflow_call.outputs.{key} mapping key").Value == "value" select kv.Value).First(), 0, null, true)?.AssertString($"on.workflow_call.outputs.{key}.value").Value : null;
                                             templateContext.Errors.Check();
                                             outputs[key] = new VariableValue(value, false);
                                         }
@@ -5203,7 +5220,7 @@ namespace Runner.Server.Controllers
                 if(deploymentEnvironment != null) {
                     matrixJobTraceWriter.Info("{0}", $"Evaluate environment");
                     templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                    deploymentEnvironment = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "environment", deploymentEnvironment, 0, null, true);
+                    deploymentEnvironment = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, templateContext.Schema.Definitions.ContainsKey("environment") ? "environment" : "job-environment", deploymentEnvironment, 0, null, true);
                     templateContext.Errors.Check();
                     if(deploymentEnvironment != null) {
                         if(deploymentEnvironment is StringToken ename) {
@@ -5313,7 +5330,7 @@ namespace Runner.Server.Controllers
                                 var ghook = hook.ToObject<GiteaHook>();
 
                                 var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
-                                var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
+                                var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, templateContext.Schema.Definitions.ContainsKey("job-with") ? "job-with" : "workflow-job-with", rawWith, 0, null, true) : null;
                                 templateContext.Errors.Check();
                                 // Inherit secrets: https://github.com/github/docs/blob/5ffcd4d90f2529fbe383b51edb3a39db4a1528de/content/actions/using-workflows/reusing-workflows.md#using-inputs-and-secrets-in-a-reusable-workflow
                                 bool inheritSecrets = rawSecrets?.Type == TokenType.String && rawSecrets.AssertString($"jobs.{name}.secrets").Value == "inherit";
@@ -7025,7 +7042,7 @@ namespace Runner.Server.Controllers
                 var templateContext = CreateTemplateContext(secureTraceWriter, workflowContext, contextData);
                 templateContext.ExpressionValues["env"] = jobEnvCtx;
                 templateContext.ExpressionValues["secrets"] = result;
-                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", secretsMapping, 0, null, true)?.AssertMapping($"jobs.{name}.secrets") : null;
+                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, templateContext.Schema.Definitions.ContainsKey("job-secrets") ? "job-secrets" : "workflow-job-secrets-mapping", secretsMapping, 0, null, true)?.AssertMapping($"jobs.{name}.secrets") : null;
                 templateContext.Errors.Check();
                 IDictionary<string, string> ret = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 if(evalSec != null) {
