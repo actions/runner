@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
+using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,6 +41,7 @@ namespace GitHub.Runner.Common
         private ResultsHttpClient _resultsClient;
 
         private ClientWebSocket _websocketClient;
+        private DateTime? _lastConnectionFailure;
 
         private static readonly TimeSpan MinDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(100);
         private static readonly TimeSpan MaxDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(500);
@@ -131,30 +133,26 @@ namespace GitHub.Runner.Common
         {
             if (!string.IsNullOrEmpty(accessToken))
             {
-                if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
-                {
-                    // let's ensure we use the right scheme
-                    liveConsoleFeedUrl = liveConsoleFeedUrl.Replace("https://", "wss://").Replace("http://", "ws://");
-                    Trace.Info($"Creating websocket client ..." + liveConsoleFeedUrl);
-                    this._websocketClient = new ClientWebSocket();
-                    this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-                    var userAgentValues = new List<ProductInfoHeaderValue>();
-                    userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
-                    userAgentValues.AddRange(HostContext.UserAgents);
-                    this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+                Trace.Info($"No access token from server");
+                return;
+            }
 
-                    // during initialization, retry upto 3 times to setup connection
-                    this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay, retryConnection: true);
-                }
-                else
-                {
-                    Trace.Info($"No FeedStreamUrl found, so we will use Rest API calls for sending feed data");
-                }
-            }
-            else
+            if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
             {
-                Trace.Info($"No access token from the service endpoint");
+                Trace.Info($"No live console feed url from server");
+                return;
             }
+
+            Trace.Info($"Creating websocket client ..." + liveConsoleFeedUrl);
+            this._websocketClient = new ClientWebSocket();
+            this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+            var userAgentValues = new List<ProductInfoHeaderValue>();
+            userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
+            userAgentValues.AddRange(HostContext.UserAgents);
+            this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+
+            // during initialization, retry upto 3 times to setup connection
+            this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay, retryConnection: true);
         }
 
         private async Task ConnectWebSocketClient(string feedStreamUrl, TimeSpan delay, bool retryConnection = false)
@@ -171,6 +169,7 @@ namespace GitHub.Runner.Common
                     using var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                     await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
                     Trace.Info($"Successfully started websocket client.");
+                    connected = true;
                 }
                 catch (Exception ex)
                 {
@@ -178,6 +177,7 @@ namespace GitHub.Runner.Common
                     Trace.Error(ex);
                     retries++;
                     this._websocketClient = null;
+                    _lastConnectionFailure = DateTime.Now;
                 }
             } while (retryConnection && !connected && retries < 3);
         }
@@ -211,19 +211,19 @@ namespace GitHub.Runner.Common
                     {
                         try
                         {
-                            await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage: lastChunk, cancellationToken);
-                            delivered = true;
+                            if (_websocketClient != null)
+                            {
+                                await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage: lastChunk, cancellationToken);
+                                delivered = true;
+                            }
                         }
                         catch (Exception ex)
                         {
-                            if (_websocketClient != null)
-                            {
-                                var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebsocketReconnect, MaxDelayForWebsocketReconnect);
-                                Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
-                                Trace.Error(ex);
-                                retries++;
-                                InitializeWebsocketClient(_liveConsoleFeedUrl, _token, delay);
-                            }
+                            var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebsocketReconnect, MaxDelayForWebsocketReconnect);
+                            Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
+                            Trace.Error(ex);
+                            retries++;
+                            InitializeWebsocketClient(_liveConsoleFeedUrl, _token, delay);
                         }
                     }
                 }
@@ -231,8 +231,15 @@ namespace GitHub.Runner.Common
 
             if (!delivered)
             {
-                // Giving up for good if we still can't deliver a message after 3 tries
+                // Giving up for now, so next invocation of this method won't attempt to reconnect
                 _websocketClient = null;
+
+                // however if 10 minutes have already passed, let's try reestablish connection again
+                if (_lastConnectionFailure.HasValue && DateTime.Now > _lastConnectionFailure.Value.AddMinutes(10))
+                {
+                    // Some minutes passed since we retried last time, try connection again
+                    InitializeWebsocketClient(_liveConsoleFeedUrl, _token, TimeSpan.Zero);
+                }
             }
 
             return delivered;
