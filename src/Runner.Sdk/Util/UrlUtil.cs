@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace GitHub.Runner.Sdk
 {
@@ -11,10 +11,11 @@ namespace GitHub.Runner.Sdk
                 return false;
             }
 
-            return 
+            return
                 string.Equals(gitHubUrl.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(gitHubUrl.Host, "www.github.com", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase) ||
+                gitHubUrl.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase) ||
                 gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase);
         }
 
