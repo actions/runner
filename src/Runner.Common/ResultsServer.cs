@@ -206,6 +206,7 @@ namespace GitHub.Runner.Common
                 {
                     var lastChunk = i + (1 * 1024) >= jsonDataBytes.Length;
                     var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1 * 1024, jsonDataBytes.Length - i));
+                    delivered = false;
 
                     while (!delivered && retries < 3)
                     {
