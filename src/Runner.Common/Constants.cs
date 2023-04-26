@@ -261,6 +261,7 @@ namespace GitHub.Runner.Common
                 public static readonly string AccessToken = "system.accessToken";
                 public static readonly string Culture = "system.culture";
                 public static readonly string PhaseDisplayName = "system.phaseDisplayName";
+                public static readonly string OrchestrationId = "system.orchestrationId";
             }
         }
 
