@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
         TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(Pipelines.AgentJobRequestMessage jobRequest);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultServiceOnly = false);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines);
@@ -70,6 +70,7 @@ namespace GitHub.Runner.Common
         private readonly TaskCompletionSource<int> _jobCompletionSource = new();
         private readonly TaskCompletionSource<int> _jobRecordUpdated = new();
         private bool _queueInProcess = false;
+        private bool _resultsServiceOnly = false;
 
         public TaskCompletionSource<int> JobRecordUpdated => _jobRecordUpdated;
 
@@ -95,13 +96,17 @@ namespace GitHub.Runner.Common
             _resultsServer = hostContext.GetService<IResultsServer>();
         }
 
-        public void Start(Pipelines.AgentJobRequestMessage jobRequest)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultServiceOnly = false)
         {
             Trace.Entering();
+            _resultsServiceOnly = resultServiceOnly;
 
             var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
-            _jobServer.InitializeWebsocketClient(serviceEndPoint);
+            if (!resultServiceOnly)
+            {
+                _jobServer.InitializeWebsocketClient(serviceEndPoint);
+            }
 
             // This code is usually wrapped by an instance of IExecutionContext which isn't available here.
             jobRequest.Variables.TryGetValue("system.github.results_endpoint", out VariableValue resultsEndpointVariable);
@@ -112,8 +117,16 @@ namespace GitHub.Runner.Common
                 !string.IsNullOrEmpty(accessToken) &&
                 !string.IsNullOrEmpty(resultsReceiverEndpoint))
             {
+                string liveConsoleFeedUrl = null;
                 Trace.Info("Initializing results client");
-                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
+                if (resultServiceOnly
+                    && serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl)
+                    && !string.IsNullOrEmpty(feedStreamUrl))
+                {
+                    liveConsoleFeedUrl = feedStreamUrl;
+                }
+
+                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken);
                 _resultsClientInitiated = true;
             }
 
@@ -193,6 +206,9 @@ namespace GitHub.Runner.Common
 
             Trace.Info($"Disposing job server ...");
             await _jobServer.DisposeAsync();
+
+            Trace.Info($"Disposing results server ...");
+            await _resultsServer.DisposeAsync();
 
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }
@@ -372,7 +388,14 @@ namespace GitHub.Runner.Common
                                 // Give at most 60s for each request.
                                 using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
                                 {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
+                                    if (_resultsServiceOnly)
+                                    {
+                                        await _resultsServer.AppendLiveConsoleFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
+                                    }
+                                    else
+                                    {
+                                        await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
+                                    }
                                 }
 
                                 if (_firstConsoleOutputs)
@@ -599,7 +622,7 @@ namespace GitHub.Runner.Common
 
                         foreach (var detailTimeline in update.PendingRecords.Where(r => r.Details != null))
                         {
-                            if (!_allTimelines.Contains(detailTimeline.Details.Id))
+                            if (!_resultsServiceOnly && !_allTimelines.Contains(detailTimeline.Details.Id))
                             {
                                 try
                                 {
@@ -621,7 +644,11 @@ namespace GitHub.Runner.Common
 
                         try
                         {
-                            await _jobServer.UpdateTimelineRecordsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
+                            if (!_resultsServiceOnly)
+                            {
+                                await _jobServer.UpdateTimelineRecordsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
+                            }
+
                             try
                             {
                                 if (_resultsClientInitiated)
@@ -797,27 +824,30 @@ namespace GitHub.Runner.Common
             bool uploadSucceed = false;
             try
             {
-                if (String.Equals(file.Type, CoreAttachmentType.Log, StringComparison.OrdinalIgnoreCase))
+                if (!_resultsServiceOnly)
                 {
-                    // Create the log
-                    var taskLog = await _jobServer.CreateLogAsync(_scopeIdentifier, _hubName, _planId, new TaskLog(String.Format(@"logs\{0:D}", file.TimelineRecordId)), default(CancellationToken));
-
-                    // Upload the contents
-                    using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    if (String.Equals(file.Type, CoreAttachmentType.Log, StringComparison.OrdinalIgnoreCase))
                     {
-                        var logUploaded = await _jobServer.AppendLogContentAsync(_scopeIdentifier, _hubName, _planId, taskLog.Id, fs, default(CancellationToken));
+                        // Create the log
+                        var taskLog = await _jobServer.CreateLogAsync(_scopeIdentifier, _hubName, _planId, new TaskLog(String.Format(@"logs\{0:D}", file.TimelineRecordId)), default(CancellationToken));
+
+                        // Upload the contents
+                        using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        {
+                            var logUploaded = await _jobServer.AppendLogContentAsync(_scopeIdentifier, _hubName, _planId, taskLog.Id, fs, default(CancellationToken));
+                        }
+
+                        // Create a new record and only set the Log field
+                        var attachmentUpdataRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
+                        QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdataRecord);
                     }
-
-                    // Create a new record and only set the Log field
-                    var attachmentUpdataRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
-                    QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdataRecord);
-                }
-                else
-                {
-                    // Create attachment
-                    using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    else
                     {
-                        var result = await _jobServer.CreateAttachmentAsync(_scopeIdentifier, _hubName, _planId, file.TimelineId, file.TimelineRecordId, file.Type, file.Name, fs, default(CancellationToken));
+                        // Create attachment
+                        using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        {
+                            var result = await _jobServer.CreateAttachmentAsync(_scopeIdentifier, _hubName, _planId, file.TimelineId, file.TimelineRecordId, file.Type, file.Name, fs, default(CancellationToken));
+                        }
                     }
                 }
 
