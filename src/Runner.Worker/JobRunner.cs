@@ -49,6 +49,9 @@ namespace GitHub.Runner.Worker
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
                 server = runServer;
+
+                _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+                _jobServerQueue.Start(message, resultServiceOnly: true);
             }
             else
             {
