@@ -120,7 +120,7 @@ namespace GitHub.Runner.Common
                 if (!string.IsNullOrEmpty(resultsReceiverEndpoint))
                 {
                     string liveConsoleFeedUrl = null;
-                Trace.Info("Initializing results client");
+                    Trace.Info("Initializing results client");
                     if (resultServiceOnly
                     && serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl)
                     && !string.IsNullOrEmpty(feedStreamUrl))
@@ -129,7 +129,7 @@ namespace GitHub.Runner.Common
                 }
 
                 _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken);
-                    _resultsClientInitiated = true;
+                _resultsClientInitiated = true;
                 }
 
                 jobRequest.Variables.TryGetValue("system.github.launch_endpoint", out VariableValue launchEndpointVariable);
