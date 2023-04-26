@@ -58,7 +58,7 @@ namespace GitHub.Runner.Common
             if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
             {
                 _liveConsoleFeedUrl = liveConsoleFeedUrl;
-                InitializeWebsocketClient(liveConsoleFeedUrl, token, TimeSpan.Zero);
+                InitializeWebsocketClient(liveConsoleFeedUrl, token, TimeSpan.Zero, retryConnection: true);
             }
         }
 
@@ -129,7 +129,7 @@ namespace GitHub.Runner.Common
             return ValueTask.CompletedTask;
         }
 
-        private void InitializeWebsocketClient(string liveConsoleFeedUrl, string accessToken, TimeSpan delay)
+        private void InitializeWebsocketClient(string liveConsoleFeedUrl, string accessToken, TimeSpan delay, bool retryConnection = false)
         {
             if (!string.IsNullOrEmpty(accessToken))
             {
@@ -152,7 +152,7 @@ namespace GitHub.Runner.Common
             this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
 
             // during initialization, retry upto 3 times to setup connection
-            this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay, retryConnection: true);
+            this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay, retryConnection);
         }
 
         private async Task ConnectWebSocketClient(string feedStreamUrl, TimeSpan delay, bool retryConnection = false)
@@ -206,8 +206,8 @@ namespace GitHub.Runner.Common
                 {
                     var lastChunk = i + (1 * 1024) >= jsonDataBytes.Length;
                     var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1 * 1024, jsonDataBytes.Length - i));
-                    delivered = false;
 
+                    delivered = false;
                     while (!delivered && retries < 3)
                     {
                         try
