@@ -585,7 +585,7 @@ namespace GitHub.Runner.Listener
                                         {
                                             jobRequestMessage =
                                                 await runServer.GetJobMessageAsync(messageRef.RunnerRequestId,
-                                                    messageQueueLoopTokenSource.Token); 
+                                                    messageQueueLoopTokenSource.Token);
                                         }
                                         catch (TaskOrchestrationJobAlreadyAcquiredException)
                                         {

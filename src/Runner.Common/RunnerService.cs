@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
@@ -80,7 +80,7 @@ namespace GitHub.Runner.Common
             }
             await RetryRequest<Unit>(wrappedFunc, cancellationToken, maxRetryAttemptsCount);
         }
-        
+
         protected async Task<T> RetryRequest<T>(Func<Task<T>> func,
             CancellationToken cancellationToken,
             int maxRetryAttemptsCount = 5,
