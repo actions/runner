@@ -83,7 +83,8 @@ namespace GitHub.Runner.Common
         
         protected async Task<T> RetryRequest<T>(Func<Task<T>> func,
             CancellationToken cancellationToken,
-            int maxRetryAttemptsCount = 5
+            int maxRetryAttemptsCount = 5,
+            Func<Exception, bool> shouldRetry = null
         )
         {
             var retryCount = 0;
@@ -96,7 +97,7 @@ namespace GitHub.Runner.Common
                     return await func();
                 }
                 // TODO: Add handling of non-retriable exceptions: https://github.com/github/actions-broker/issues/122
-                catch (Exception ex) when (retryCount < maxRetryAttemptsCount)
+                catch (Exception ex) when (retryCount < maxRetryAttemptsCount && (shouldRetry == null || shouldRetry(ex)))
                 {
                     Trace.Error("Catch exception during request");
                     Trace.Error(ex);

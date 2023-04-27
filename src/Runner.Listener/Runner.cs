@@ -370,7 +370,8 @@ namespace GitHub.Runner.Listener
                 _term.WriteLine($"{DateTime.UtcNow:u}: Listening for Jobs");
 
                 IJobDispatcher jobDispatcher = null;
-                CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
+                CancellationTokenSource messageQueueLoopTokenSource =
+                    CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
 
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
@@ -394,17 +395,20 @@ namespace GitHub.Runner.Listener
                         bool skipMessageDeletion = false;
                         try
                         {
-                            Task<TaskAgentMessage> getNextMessage = _listener.GetNextMessageAsync(messageQueueLoopTokenSource.Token);
+                            Task<TaskAgentMessage> getNextMessage =
+                                _listener.GetNextMessageAsync(messageQueueLoopTokenSource.Token);
                             if (autoUpdateInProgress)
                             {
-                                Trace.Verbose("Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
+                                Trace.Verbose(
+                                    "Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
                                 Task completeTask = await Task.WhenAny(getNextMessage, selfUpdateTask);
                                 if (completeTask == selfUpdateTask)
                                 {
                                     autoUpdateInProgress = false;
                                     if (await selfUpdateTask)
                                     {
-                                        Trace.Info("Auto update task finished at backend, an runner update is ready to apply exit the current runner instance.");
+                                        Trace.Info(
+                                            "Auto update task finished at backend, an runner update is ready to apply exit the current runner instance.");
                                         Trace.Info("Stop message queue looping.");
                                         messageQueueLoopTokenSource.Cancel();
                                         try
@@ -427,19 +431,23 @@ namespace GitHub.Runner.Listener
                                     }
                                     else
                                     {
-                                        Trace.Info("Auto update task finished at backend, there is no available runner update needs to apply, continue message queue looping.");
+                                        Trace.Info(
+                                            "Auto update task finished at backend, there is no available runner update needs to apply, continue message queue looping.");
                                     }
                                 }
                             }
 
                             if (runOnceJobReceived)
                             {
-                                Trace.Verbose("One time used runner has start running its job, waiting for getNextMessage or the job to finish.");
-                                Task completeTask = await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
+                                Trace.Verbose(
+                                    "One time used runner has start running its job, waiting for getNextMessage or the job to finish.");
+                                Task completeTask = await Task.WhenAny(getNextMessage,
+                                    jobDispatcher.RunOnceJobCompleted.Task);
                                 if (completeTask == jobDispatcher.RunOnceJobCompleted.Task)
                                 {
                                     runOnceJobCompleted = true;
-                                    Trace.Info("Job has finished at backend, the runner will exit since it is running under onetime use mode.");
+                                    Trace.Info(
+                                        "Job has finished at backend, the runner will exit since it is running under onetime use mode.");
                                     Trace.Info("Stop message queue looping.");
                                     messageQueueLoopTokenSource.Cancel();
                                     try
@@ -457,53 +465,73 @@ namespace GitHub.Runner.Listener
 
                             message = await getNextMessage; //get next message
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
-                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType,
+                                    StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(message.MessageType, RunnerRefreshMessage.MessageType,
+                                    StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
                                     AgentRefreshMessage runnerUpdateMessage = null;
-                                    if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                                    if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType,
+                                            StringComparison.OrdinalIgnoreCase))
                                     {
                                         runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     }
                                     else
                                     {
-                                        var brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
-                                        runnerUpdateMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds));
+                                        var brokerRunnerUpdateMessage =
+                                            JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
+                                        runnerUpdateMessage = new AgentRefreshMessage(
+                                            brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion,
+                                            TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds));
                                     }
 #if DEBUG
                                     // Can mock the update for testing
-                                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
+                                    if (StringUtil.ConvertToBoolean(
+                                            Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
                                     {
 
                                         // The mock_update_messages.json file should be an object with keys being the current version and values being the targeted mock version object
                                         // Example: { "2.283.2": {"targetVersion":"2.284.1"}, "2.284.1": {"targetVersion":"2.285.0"}}
-                                        var mockUpdatesPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "mock_update_messages.json");
+                                        var mockUpdatesPath =
+                                            Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root),
+                                                "mock_update_messages.json");
                                         if (File.Exists(mockUpdatesPath))
                                         {
-                                            var mockUpdateMessages = JsonUtility.FromString<Dictionary<string, AgentRefreshMessage>>(File.ReadAllText(mockUpdatesPath));
+                                            var mockUpdateMessages =
+                                                JsonUtility.FromString<Dictionary<string, AgentRefreshMessage>>(
+                                                    File.ReadAllText(mockUpdatesPath));
                                             if (mockUpdateMessages.ContainsKey(BuildConstants.RunnerPackage.Version))
                                             {
-                                                var mockTargetVersion = mockUpdateMessages[BuildConstants.RunnerPackage.Version].TargetVersion;
-                                                _term.WriteLine($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
-                                                Trace.Info($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
-                                                runnerUpdateMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, mockTargetVersion, runnerUpdateMessage.Timeout);
+                                                var mockTargetVersion =
+                                                    mockUpdateMessages[BuildConstants.RunnerPackage.Version]
+                                                        .TargetVersion;
+                                                _term.WriteLine(
+                                                    $"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                Trace.Info(
+                                                    $"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                runnerUpdateMessage =
+                                                    new AgentRefreshMessage(runnerUpdateMessage.AgentId,
+                                                        mockTargetVersion, runnerUpdateMessage.Timeout);
                                             }
                                         }
                                     }
 #endif
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false,
+                                        HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
                                 {
-                                    Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
+                                    Trace.Info(
+                                        "Refresh message received, skip autoupdate since a previous autoupdate is already running.");
                                 }
                             }
-                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
+                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest,
+                                         StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress || runOnceJobReceived)
                                 {
@@ -512,8 +540,10 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
-                                    Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
-                                    var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
+                                    Trace.Info(
+                                        $"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
+                                    var jobMessage =
+                                        StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
                                     {
@@ -543,13 +573,25 @@ namespace GitHub.Runner.Listener
                                     {
                                         var actionsRunServer = HostContext.CreateService<IActionsRunServer>();
                                         await actionsRunServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-                                        jobRequestMessage = await actionsRunServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        jobRequestMessage =
+                                            await actionsRunServer.GetJobMessageAsync(messageRef.RunnerRequestId,
+                                                messageQueueLoopTokenSource.Token);
                                     }
                                     else
                                     {
                                         var runServer = HostContext.CreateService<IRunServer>();
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
-                                        jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        try
+                                        {
+                                            jobRequestMessage =
+                                                await runServer.GetJobMessageAsync(messageRef.RunnerRequestId,
+                                                    messageQueueLoopTokenSource.Token); 
+                                        }
+                                        catch (TaskOrchestrationJobAlreadyAcquiredException)
+                                        {
+                                            Trace.Info("Job is already acquired, skip this message.");
+                                            continue;
+                                        }
                                     }
 
                                     jobDispatcher.Run(jobRequestMessage, runOnce);
@@ -560,7 +602,8 @@ namespace GitHub.Runner.Listener
                                     }
                                 }
                             }
-                            else if (string.Equals(message.MessageType, JobCancelMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            else if (string.Equals(message.MessageType, JobCancelMessage.MessageType,
+                                         StringComparison.OrdinalIgnoreCase))
                             {
                                 var cancelJobMessage = JsonUtility.FromString<JobCancelMessage>(message.Body);
                                 bool jobCancelled = jobDispatcher.Cancel(cancelJobMessage);
@@ -568,20 +611,26 @@ namespace GitHub.Runner.Listener
 
                                 if (skipMessageDeletion)
                                 {
-                                    Trace.Info($"Skip message deletion for cancellation message '{message.MessageId}'.");
+                                    Trace.Info(
+                                        $"Skip message deletion for cancellation message '{message.MessageId}'.");
                                 }
                             }
-                            else if (string.Equals(message.MessageType, Pipelines.HostedRunnerShutdownMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            else if (string.Equals(message.MessageType,
+                                         Pipelines.HostedRunnerShutdownMessage.MessageType,
+                                         StringComparison.OrdinalIgnoreCase))
                             {
-                                var HostedRunnerShutdownMessage = JsonUtility.FromString<Pipelines.HostedRunnerShutdownMessage>(message.Body);
+                                var HostedRunnerShutdownMessage =
+                                    JsonUtility.FromString<Pipelines.HostedRunnerShutdownMessage>(message.Body);
                                 skipMessageDeletion = true;
                                 skipSessionDeletion = true;
-                                Trace.Info($"Service requests the hosted runner to shutdown. Reason: '{HostedRunnerShutdownMessage.Reason}'.");
+                                Trace.Info(
+                                    $"Service requests the hosted runner to shutdown. Reason: '{HostedRunnerShutdownMessage.Reason}'.");
                                 return Constants.Runner.ReturnCode.Success;
                             }
                             else
                             {
-                                Trace.Error($"Received message {message.MessageId} with unsupported message type {message.MessageType}.");
+                                Trace.Error(
+                                    $"Received message {message.MessageId} with unsupported message type {message.MessageType}.");
                             }
                         }
                         finally
@@ -594,7 +643,8 @@ namespace GitHub.Runner.Listener
                                 }
                                 catch (Exception ex)
                                 {
-                                    Trace.Error($"Catch exception during delete message from message queue. message id: {message.MessageId}");
+                                    Trace.Error(
+                                        $"Catch exception during delete message from message queue. message id: {message.MessageId}");
                                     Trace.Error(ex);
                                 }
                                 finally
