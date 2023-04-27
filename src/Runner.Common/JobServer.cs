@@ -199,13 +199,15 @@ namespace GitHub.Runner.Common
             {
                 Trace.Info($"Attempting to start websocket client with delay {delay}.");
                 await Task.Delay(delay);
-                await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), default(CancellationToken));
+                using var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
                 Trace.Info($"Successfully started websocket client.");
             }
             catch (Exception ex)
             {
                 Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now instead of websocket.");
                 Trace.Error(ex);
+                this._websocketClient = null;
             }
         }
 

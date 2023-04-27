@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Actions.RunService.WebApi
 {
@@ -8,6 +6,6 @@ namespace GitHub.Actions.RunService.WebApi
     public class AcquireJobRequest
     {
         [DataMember(Name = "jobMessageId", EmitDefaultValue = false)]
-        public string JobMessageID { get; set; }
+        public string JobMessageId { get; set; }
     }
 }

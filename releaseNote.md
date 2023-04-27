@@ -1,17 +1,18 @@
 ## Features
-- Support matrix context in output keys (#2477)
-- Add update certificates to `./run.sh` if `RUNNER_UPDATE_CA_CERTS` env is set (#2471)
-- Bypass all proxies for all hosts if `no_proxy='*'` is set (#2395)
-- Change runner image to make user/folder align with `ubuntu-latest` hosted runner. (#2469)
+- Runner changes for communication with Results service (#2510, #2531, #2535, #2516) 
+- Add `*.ghe.localhost` domains to hosted server check (#2536) 
+- Add `OrchestrationId` to user-agent for better telemetry correlation. (#2568) 
 
 ## Bugs
-- Exit on runner version deprecation error (#2299)
-- Runner service exit after consecutive re-try exits (#2426)
+- Fix JIT configurations on Windows (#2497) 
+- Guard against NullReference while creating HostContext (#2343) 
+- Handles broken symlink in `Which` (#2150, #2196) 
+- Adding curl retry for external tool downloads (#2552, #2557) 
+- Limit the time we wait for waiting websocket to connect. (#2554) 
 
 ## Misc
-- Replace deprecated command with environment file (#2429)
-- Make requests to `Run` service to renew job request (#2461)
-- Add job/step log upload to Result service (#2447, #2439)
+- Bump container hooks version to 0.3.1 in runner image (#2496) 
+- Runner changes to communicate with vNext services (#2487, #2500, #2505, #2541, #2547) 
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 

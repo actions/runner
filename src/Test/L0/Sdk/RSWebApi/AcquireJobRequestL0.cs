@@ -16,7 +16,7 @@ public sealed class AcquireJobRequestL0
     {
         var request = new AcquireJobRequest
         {
-            JobMessageID = "1526919030369-33"
+            JobMessageId = "1526919030369-33"
         };
         var serializer = new DataContractJsonSerializer(typeof(AcquireJobRequest));
         using var stream = new MemoryStream();
@@ -25,7 +25,7 @@ public sealed class AcquireJobRequestL0
         stream.Position = 0;
         using var reader = new StreamReader(stream, Encoding.UTF8);
         string json = reader.ReadToEnd();
-        string expected = DoubleQuotify(string.Format("{{'jobMessageId':'{0}'}}", request.JobMessageID));
+        string expected = DoubleQuotify(string.Format("{{'jobMessageId':'{0}'}}", request.JobMessageId));
         Assert.Equal(expected, json);
 
     }
@@ -40,7 +40,7 @@ public sealed class AcquireJobRequestL0
         {
             ["{'streamId': 'legacy', 'jobMessageId': 'new-1'}"] = "new-1",
             ["{'jobMessageId': 'new-2', 'streamId': 'legacy'}"] = "new-2",
-            ["{'jobMessageId': 'new-3'}"] = "new-3",
+            ["{'jobMessageId': 'new-3'}"] = "new-3"
         };
 
         foreach (var (source, expected) in variations)
@@ -50,7 +50,7 @@ public sealed class AcquireJobRequestL0
             stream.Position = 0;
             var recoveredRecord = serializer.ReadObject(stream) as AcquireJobRequest;
             Assert.NotNull(recoveredRecord);
-            Assert.Equal(expected, recoveredRecord.JobMessageID);
+            Assert.Equal(expected, recoveredRecord.JobMessageId);
         }
     }
 
