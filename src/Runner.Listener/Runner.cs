@@ -558,7 +558,6 @@ namespace GitHub.Runner.Listener
                                         catch (TaskOrchestrationJobAlreadyAcquiredException)
                                         {
                                             Trace.Info("Job is already acquired, skip this message.");
-                                            skipMessageDeletion = true;
                                             continue;
                                         }
                                     }
