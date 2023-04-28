@@ -131,13 +131,13 @@ namespace GitHub.Runner.Common
 
         private void InitializeWebsocketClient(string liveConsoleFeedUrl, string accessToken, TimeSpan delay, bool retryConnection = false)
         {
-            if (!string.IsNullOrEmpty(accessToken))
+            if (string.IsNullOrEmpty(accessToken))
             {
                 Trace.Info($"No access token from server");
                 return;
             }
 
-            if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
+            if (string.IsNullOrEmpty(liveConsoleFeedUrl))
             {
                 Trace.Info($"No live console feed url from server");
                 return;
