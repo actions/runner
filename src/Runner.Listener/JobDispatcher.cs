@@ -15,6 +15,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Jwt;
+using Sdk.RSWebApi.Contracts;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Listener
@@ -372,14 +373,14 @@ namespace GitHub.Runner.Listener
                 TaskCompletionSource<int> firstJobRequestRenewed = new();
                 var notification = HostContext.GetService<IJobNotification>();
 
+                var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+
                 // lock renew cancellation token.
                 using (var lockRenewalTokenSource = new CancellationTokenSource())
                 using (var workerProcessCancelTokenSource = new CancellationTokenSource())
                 {
                     long requestId = message.RequestId;
                     Guid lockToken = Guid.Empty; // lockToken has never been used, keep this here of compat
-
-                    var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
                     // start renew job request
                     Trace.Info($"Start renew job request {requestId} for job {message.JobId}.");
@@ -405,7 +406,7 @@ namespace GitHub.Runner.Listener
                         await renewJobRequest;
 
                         // complete job request with result Cancelled
-                        await CompleteJobRequestAsync(_poolId, message, lockToken, TaskResult.Canceled);
+                        await CompleteJobRequestAsync(_poolId, message, systemConnection, lockToken, TaskResult.Canceled);
                         return;
                     }
 
@@ -544,7 +545,6 @@ namespace GitHub.Runner.Listener
                                     detailInfo = string.Join(Environment.NewLine, workerOutput);
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
 
-
                                     var jobServer = await InitializeJobServerAsync(systemConnection);
                                     await LogWorkerProcessUnhandledException(jobServer, message, detailInfo);
 
@@ -552,7 +552,7 @@ namespace GitHub.Runner.Listener
                                     if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
                                     {
                                         Trace.Info($"Finish job with result 'Failed' due to IOException.");
-                                        await ForceFailJob(jobServer, message);
+                                        await ForceFailJob(jobServer, message, detailInfo);
                                     }
                                 }
 
@@ -567,7 +567,7 @@ namespace GitHub.Runner.Listener
                                 await renewJobRequest;
 
                                 // complete job request
-                                await CompleteJobRequestAsync(_poolId, message, lockToken, result, detailInfo);
+                                await CompleteJobRequestAsync(_poolId, message, systemConnection, lockToken, result, detailInfo);
 
                                 // print out unhandled exception happened in worker after we complete job request.
                                 // when we run out of disk space, report back to server has higher priority.
@@ -664,7 +664,7 @@ namespace GitHub.Runner.Listener
                             await renewJobRequest;
 
                             // complete job request
-                            await CompleteJobRequestAsync(_poolId, message, lockToken, resultOnAbandonOrCancel);
+                            await CompleteJobRequestAsync(_poolId, message, systemConnection, lockToken, resultOnAbandonOrCancel);
                         }
                         finally
                         {
@@ -1065,7 +1065,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private async Task CompleteJobRequestAsync(int poolId, Pipelines.AgentJobRequestMessage message, Guid lockToken, TaskResult result, string detailInfo = null)
+        private async Task CompleteJobRequestAsync(int poolId, Pipelines.AgentJobRequestMessage message, ServiceEndpoint systemConnection, Guid lockToken, TaskResult result, string detailInfo = null)
         {
             Trace.Entering();
 
@@ -1077,7 +1077,24 @@ namespace GitHub.Runner.Listener
 
             if (this._isRunServiceJob)
             {
-                Trace.Verbose($"Skip FinishAgentRequest call from Listener because MessageType is {message.MessageType}");
+                var runServer = await GetRunServerAsync(systemConnection);
+                var errorMessage = GetErrorMessageFromWorkerFailDetailInfo(message, detailInfo);
+                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                var unhandledAnnotation = unhandledExceptionIssue.ToAnnotation();
+                var jobAnnotations = new List<Annotation>();
+                if (unhandledAnnotation.HasValue)
+                {
+                    jobAnnotations.Add(unhandledAnnotation.Value);
+                }
+                try
+                {
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error("Fail to raise job completion back to service.");
+                    Trace.Error(ex);
+                }
                 return;
             }
 
@@ -1117,7 +1134,7 @@ namespace GitHub.Runner.Listener
         }
 
         // log an error issue to job level timeline record
-        private async Task LogWorkerProcessUnhandledException(IRunnerService server, Pipelines.AgentJobRequestMessage message, string errorMessage)
+        private async Task LogWorkerProcessUnhandledException(IRunnerService server, Pipelines.AgentJobRequestMessage message, string detailInfo)
         {
             if (server is IJobServer jobServer)
             {
@@ -1129,34 +1146,12 @@ namespace GitHub.Runner.Listener
                     TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                     ArgUtil.NotNull(jobRecord, nameof(jobRecord));
 
-                    try
-                    {
-                        if (!string.IsNullOrEmpty(errorMessage) &&
-                            message.Variables.TryGetValue("DistributedTask.EnableRunnerIPCDebug", out var enableRunnerIPCDebug) &&
-                            StringUtil.ConvertToBoolean(enableRunnerIPCDebug.Value))
-                        {
-                            // the trace should be best effort and not affect any job result
-                            var match = _invalidJsonRegex.Match(errorMessage);
-                            if (match.Success &&
-                                match.Groups.Count == 2)
-                            {
-                                var jsonPosition = int.Parse(match.Groups[1].Value);
-                                var serializedJobMessage = JsonUtility.ToString(message);
-                                var originalJson = serializedJobMessage.Substring(jsonPosition - 10, 20);
-                                errorMessage = $"Runner sent Json at position '{jsonPosition}': {originalJson} ({Convert.ToBase64String(Encoding.UTF8.GetBytes(originalJson))})\n{errorMessage}";
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Error(ex);
-                        errorMessage = $"Fail to check json IPC error: {ex.Message}\n{errorMessage}";
-                    }
-
+                    var errorMessage = GetErrorMessageFromWorkerFailDetailInfo(message, detailInfo);
                     var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
                     unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
                     jobRecord.ErrorCount++;
                     jobRecord.Issues.Add(unhandledExceptionIssue);
+
                     await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
                 }
                 catch (Exception ex)
@@ -1167,13 +1162,42 @@ namespace GitHub.Runner.Listener
             }
             else
             {
-                Trace.Info("Job server does not support handling unhandled exception yet, error message: {0}", errorMessage);
+                Trace.Info("Job server does not support handling unhandled exception yet, error message: {0}", detailInfo);
                 return;
             }
         }
 
+        private string GetErrorMessageFromWorkerFailDetailInfo(Pipelines.AgentJobRequestMessage message, string detailInfo)
+        {
+            var errorMessage = detailInfo;
+            try
+            {
+                if (!string.IsNullOrEmpty(errorMessage) &&
+                    message.Variables.TryGetValue("DistributedTask.EnableRunnerIPCDebug", out var enableRunnerIPCDebug) &&
+                    StringUtil.ConvertToBoolean(enableRunnerIPCDebug.Value))
+                {
+                    // the trace should be best effort and not affect any job result
+                    var match = _invalidJsonRegex.Match(errorMessage);
+                    if (match.Success &&
+                        match.Groups.Count == 2)
+                    {
+                        var jsonPosition = int.Parse(match.Groups[1].Value);
+                        var serializedJobMessage = JsonUtility.ToString(message);
+                        var originalJson = serializedJobMessage.Substring(jsonPosition - 10, 20);
+                        errorMessage = $"Runner sent Json at position '{jsonPosition}': {originalJson} ({Convert.ToBase64String(Encoding.UTF8.GetBytes(originalJson))})\n{errorMessage}";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Error(ex);
+                errorMessage = $"Fail to check json IPC error: {ex.Message}\n{errorMessage}";
+            }
+            return errorMessage;
+        }
+
         // raise job completed event to fail the job.
-        private async Task ForceFailJob(IRunnerService server, Pipelines.AgentJobRequestMessage message)
+        private async Task ForceFailJob(IRunnerService server, Pipelines.AgentJobRequestMessage message, string detailInfo)
         {
             if (server is IJobServer jobServer)
             {
@@ -1192,7 +1216,16 @@ namespace GitHub.Runner.Listener
             {
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, CancellationToken.None);
+                    var errorMessage = GetErrorMessageFromWorkerFailDetailInfo(message, detailInfo);
+                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                    var unhandledAnnotation = unhandledExceptionIssue.ToAnnotation();
+                    var jobAnnotations = new List<Annotation>();
+                    if (unhandledAnnotation.HasValue)
+                    {
+                        jobAnnotations.Add(unhandledAnnotation.Value);
+                    }
+
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {

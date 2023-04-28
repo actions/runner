@@ -18,6 +18,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Handlers;
 using Newtonsoft.Json;
+using Sdk.RSWebApi.Contracts;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -438,14 +439,26 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
-            var stepResult = new StepResult();
-            stepResult.ExternalID = _record.Id;
-            stepResult.Conclusion = _record.Result ?? TaskResult.Succeeded;
-            stepResult.Status = _record.State;
-            stepResult.Number = _record.Order;
-            stepResult.Name = _record.Name;
-            stepResult.StartedAt = _record.StartTime;
-            stepResult.CompletedAt = _record.FinishTime;
+            var stepResult = new StepResult
+            {
+                ExternalID = _record.Id,
+                Conclusion = _record.Result ?? TaskResult.Succeeded,
+                Status = _record.State,
+                Number = _record.Order,
+                Name = _record.Name,
+                StartedAt = _record.StartTime,
+                CompletedAt = _record.FinishTime,
+                Annotations = new List<Annotation>()
+            };
+
+            _record.Issues?.ForEach(issue =>
+            {
+                var annotation = issue.ToAnnotation();
+                if (annotation != null)
+                {
+                    stepResult.Annotations.Add(annotation.Value);
+                }
+            });
 
             Global.StepsResult.Add(stepResult);
 
@@ -724,6 +737,9 @@ namespace GitHub.Runner.Worker
 
             // Steps results for entire job
             Global.StepsResult = new List<StepResult>();
+
+            // Job level annotations
+            Global.JobAnnotations = new List<Annotation>();
 
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
