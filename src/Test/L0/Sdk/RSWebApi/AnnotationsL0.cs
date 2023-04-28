@@ -27,7 +27,7 @@ public sealed class AnnotationsL0
         var annotation = issue.ToAnnotation();
 
         Assert.NotNull(annotation);
-        Assert.Equal(AnnotationLevel.ANNOTATION_LEVEL_FAILURE, annotation.Value.Level);
+        Assert.Equal(AnnotationLevel.FAILURE, annotation.Value.Level);
         Assert.Equal("An error occurred", annotation.Value.Message);
         Assert.Equal("test.txt", annotation.Value.Path);
         Assert.Equal(5, annotation.Value.StartLine);
@@ -64,7 +64,7 @@ public sealed class AnnotationsL0
         var annotation = issue.ToAnnotation();
 
         Assert.NotNull(annotation);
-        Assert.Equal(AnnotationLevel.ANNOTATION_LEVEL_WARNING, annotation.Value.Level);
+        Assert.Equal(AnnotationLevel.WARNING, annotation.Value.Level);
         Assert.Equal("A warning occurred", annotation.Value.Message);
     }
 }

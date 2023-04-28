@@ -49,13 +49,13 @@ namespace Sdk.RSWebApi.Contracts
             switch (issueType)
             {
                 case IssueType.Error:
-                    return AnnotationLevel.ANNOTATION_LEVEL_FAILURE;
+                    return AnnotationLevel.FAILURE;
                 case IssueType.Warning:
-                    return AnnotationLevel.ANNOTATION_LEVEL_WARNING;
+                    return AnnotationLevel.WARNING;
                 case IssueType.Notice:
-                    return AnnotationLevel.ANNOTATION_LEVEL_NOTICE;
+                    return AnnotationLevel.NOTICE;
                 default:
-                    return AnnotationLevel.ANNOTATION_LEVEL_UNKNOWN;
+                    return AnnotationLevel.UNKNOWN;
             }
         }
 
