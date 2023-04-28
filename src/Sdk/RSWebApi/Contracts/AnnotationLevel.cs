@@ -7,13 +7,13 @@ namespace Sdk.RSWebApi.Contracts
     {
         [EnumMember]
         UNKNOWN = 0,
-        
+
         [EnumMember]
         NOTICE = 1,
-        
+
         [EnumMember]
         WARNING = 2,
-        
+
         [EnumMember]
         FAILURE = 3
     }
