@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -220,7 +220,7 @@ namespace GitHub.Runner.Common
             var runnerFile = GetConfigFile(WellKnownConfigFile.Runner);
             if (File.Exists(runnerFile))
             {
-                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile);
+                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile, true);
                 _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
                 _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
             }

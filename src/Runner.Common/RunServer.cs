@@ -51,14 +51,9 @@ namespace GitHub.Runner.Common
         public Task<AgentJobRequestMessage> GetJobMessageAsync(string id, CancellationToken cancellationToken)
         {
             CheckConnection();
-            var jobMessage = RetryRequest<AgentJobRequestMessage>(
-                async () => await _runServiceHttpClient.GetJobMessageAsync(requestUri, id, cancellationToken), cancellationToken);
-            if (jobMessage == null)
-            {
-                throw new TaskOrchestrationJobNotFoundException(id);
-            }
-
-            return jobMessage;
+            return RetryRequest<AgentJobRequestMessage>(
+                async () => await _runServiceHttpClient.GetJobMessageAsync(requestUri, id, cancellationToken), cancellationToken,
+                shouldRetry: ex => ex is not TaskOrchestrationJobAlreadyAcquiredException);
         }
 
         public Task CompleteJobAsync(Guid planId, Guid jobId, TaskResult result, Dictionary<String, VariableValue> outputs, IList<StepResult> stepResults, CancellationToken cancellationToken)
@@ -71,14 +66,8 @@ namespace GitHub.Runner.Common
         public Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken cancellationToken)
         {
             CheckConnection();
-            var renewJobResponse = RetryRequest<RenewJobResponse>(
+            return RetryRequest<RenewJobResponse>(
                 async () => await _runServiceHttpClient.RenewJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken);
-            if (renewJobResponse == null)
-            {
-                throw new TaskOrchestrationJobNotFoundException(jobId.ToString());
-            }
-
-            return renewJobResponse;
         }
     }
 }

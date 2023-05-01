@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -124,6 +125,57 @@ namespace GitHub.Services.Results.Contracts
     {
         [DataMember]
         public bool Ok;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class StepsUpdateRequest
+    {
+        [DataMember]
+        public IEnumerable<Step> Steps;
+        [DataMember]
+        public long ChangeOrder;
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string WorkflowRunBackendId;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class Step
+    {
+        [DataMember]
+        public string ExternalId;
+        [DataMember]
+        public int Number;
+        [DataMember]
+        public string Name;
+        [DataMember]
+        public Status Status;
+        [DataMember]
+        public string StartedAt;
+        [DataMember]
+        public string CompletedAt;
+        [DataMember]
+        public Conclusion Conclusion;
+    }
+
+    public enum Status
+    {
+        StatusUnknown = 0,
+        StatusInProgress = 3,
+        StatusPending = 5,
+        StatusCompleted = 6
+    }
+
+    public enum Conclusion
+    {
+        ConclusionUnknown = 0,
+        ConclusionSuccess = 2,
+        ConclusionFailure = 3,
+        ConclusionCancelled = 4,
+        ConclusionSkipped = 7,
     }
 
     public static class BlobStorageTypes

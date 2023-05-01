@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,6 +43,13 @@ namespace GitHub.Runner.Worker
             DateTime jobStartTimeUtc = DateTime.UtcNow;
             IRunnerService server = null;
 
+            // add orchestration id to useragent for better correlation.
+            if (message.Variables.TryGetValue(Constants.Variables.System.OrchestrationId, out VariableValue orchestrationId) &&
+                !string.IsNullOrEmpty(orchestrationId.Value))
+            {
+                HostContext.UserAgents.Add(new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
+            }
+
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (MessageUtil.IsRunServiceJob(message.MessageType))
             {
@@ -49,6 +57,9 @@ namespace GitHub.Runner.Worker
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
                 server = runServer;
+
+                _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+                _jobServerQueue.Start(message, resultServiceOnly: true);
             }
             else
             {
