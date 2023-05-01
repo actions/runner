@@ -272,7 +272,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, default);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, default);
                     return result;
                 }
                 catch (Exception ex)

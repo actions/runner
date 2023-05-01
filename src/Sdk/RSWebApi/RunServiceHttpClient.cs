@@ -100,6 +100,7 @@ namespace GitHub.Actions.RunService.WebApi
             TaskResult result,
             Dictionary<String, VariableValue> outputs,
             IList<StepResult> stepResults,
+            IList<Annotation> jobAnnotations,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
@@ -109,7 +110,8 @@ namespace GitHub.Actions.RunService.WebApi
                 JobID = jobId,
                 Conclusion = result,
                 Outputs = outputs,
-                StepResults = stepResults
+                StepResults = stepResults,
+                Annotations = jobAnnotations
             };
 
             requestUri = new Uri(requestUri, "completejob");
