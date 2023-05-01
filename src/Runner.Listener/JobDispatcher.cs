@@ -1078,8 +1078,7 @@ namespace GitHub.Runner.Listener
             if (this._isRunServiceJob)
             {
                 var runServer = await GetRunServerAsync(systemConnection);
-                var errorMessage = GetErrorMessageFromWorkerFailDetailInfo(message, detailInfo);
-                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
                 var unhandledAnnotation = unhandledExceptionIssue.ToAnnotation();
                 var jobAnnotations = new List<Annotation>();
                 if (unhandledAnnotation.HasValue)
@@ -1088,7 +1087,7 @@ namespace GitHub.Runner.Listener
                 }
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, CancellationToken.None);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -1146,8 +1145,7 @@ namespace GitHub.Runner.Listener
                     TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                     ArgUtil.NotNull(jobRecord, nameof(jobRecord));
 
-                    var errorMessage = GetErrorMessageFromWorkerFailDetailInfo(message, detailInfo);
-                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
                     unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
                     jobRecord.ErrorCount++;
                     jobRecord.Issues.Add(unhandledExceptionIssue);
@@ -1165,35 +1163,6 @@ namespace GitHub.Runner.Listener
                 Trace.Info("Job server does not support handling unhandled exception yet, error message: {0}", detailInfo);
                 return;
             }
-        }
-
-        private string GetErrorMessageFromWorkerFailDetailInfo(Pipelines.AgentJobRequestMessage message, string detailInfo)
-        {
-            var errorMessage = detailInfo;
-            try
-            {
-                if (!string.IsNullOrEmpty(errorMessage) &&
-                    message.Variables.TryGetValue("DistributedTask.EnableRunnerIPCDebug", out var enableRunnerIPCDebug) &&
-                    StringUtil.ConvertToBoolean(enableRunnerIPCDebug.Value))
-                {
-                    // the trace should be best effort and not affect any job result
-                    var match = _invalidJsonRegex.Match(errorMessage);
-                    if (match.Success &&
-                        match.Groups.Count == 2)
-                    {
-                        var jsonPosition = int.Parse(match.Groups[1].Value);
-                        var serializedJobMessage = JsonUtility.ToString(message);
-                        var originalJson = serializedJobMessage.Substring(jsonPosition - 10, 20);
-                        errorMessage = $"Runner sent Json at position '{jsonPosition}': {originalJson} ({Convert.ToBase64String(Encoding.UTF8.GetBytes(originalJson))})\n{errorMessage}";
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-                errorMessage = $"Fail to check json IPC error: {ex.Message}\n{errorMessage}";
-            }
-            return errorMessage;
         }
 
         // raise job completed event to fail the job.
@@ -1216,8 +1185,7 @@ namespace GitHub.Runner.Listener
             {
                 try
                 {
-                    var errorMessage = GetErrorMessageFromWorkerFailDetailInfo(message, detailInfo);
-                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
                     var unhandledAnnotation = unhandledExceptionIssue.ToAnnotation();
                     var jobAnnotations = new List<Annotation>();
                     if (unhandledAnnotation.HasValue)

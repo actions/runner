@@ -21,7 +21,6 @@ namespace Sdk.RSWebApi.Contracts
             var endLineNumber = GetAnnotationNumber(issue, RunIssueKeys.EndLine) ?? lineNumber;
             var columnNumber = GetAnnotationNumber(issue, RunIssueKeys.Col) ?? 0;
             var endColumnNumber = GetAnnotationNumber(issue, RunIssueKeys.EndColumn) ?? columnNumber;
-
             var logLineNumber = GetAnnotationNumber(issue, RunIssueKeys.LogLineNumber) ?? 0;
 
             if (path == null && lineNumber == 0 && logLineNumber != 0)
@@ -41,8 +40,6 @@ namespace Sdk.RSWebApi.Contracts
                 EndColumn = endColumnNumber,
             };
         }
-
-
 
         private static AnnotationLevel GetAnnotationLevel(IssueType issueType)
         {
