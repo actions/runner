@@ -742,7 +742,7 @@ namespace GitHub.Runner.Worker
             Global.FileTable = new List<String>(message.FileTable ?? new string[0]);
 
             // What type of job request is running (i.e. Run Service vs. pipelines)
-            Global.Variables.Set("job_request_type", message.MessageType);
+            Global.Variables.Set(Constants.Variables.System.JobRequestType, message.MessageType);
 
             // Expression values
             if (message.ContextData?.Count > 0)
