@@ -41,6 +41,19 @@ namespace GitHub.DistributedTask.Logging
         }
 
         /// <summary>
+        /// Provide callers with a recommendation on what to consider a secret.
+        /// This is helpful in cases where JSON (for example) is broken into multiple lines
+        /// and we don't want to start treating standalone JSON control characters as secrets.
+        /// </summary>
+        public int DerivedSecretRecommendedMinimumLength
+        {
+            get
+            {
+                return 3;
+            }
+        }
+
+        /// <summary>
         /// This implementation assumes no more than one thread is adding regexes, values, or encoders at any given time.
         /// </summary>
         public void AddRegex(String pattern)
