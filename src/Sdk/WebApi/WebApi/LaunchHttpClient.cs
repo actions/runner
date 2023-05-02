@@ -17,7 +17,6 @@ namespace GitHub.Services.Launch.Client
 {
     public class LaunchHttpClient : RawHttpClientBase
     {
-
         public LaunchHttpClient(
             Uri baseUrl,
             HttpMessageHandler pipeline,
