@@ -57,7 +57,7 @@ namespace GitHub.Runner.Worker
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
                 server = runServer;
-                
+
                 message.Variables.TryGetValue("system.github.launch_endpoint", out VariableValue launchEndpointVariable);
                 var launchReceiverEndpoint = launchEndpointVariable?.Value;
 
