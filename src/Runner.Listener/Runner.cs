@@ -549,7 +549,17 @@ namespace GitHub.Runner.Listener
                                     {
                                         var runServer = HostContext.CreateService<IRunServer>();
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
-                                        jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        try
+                                        {
+                                            jobRequestMessage =
+                                            await runServer.GetJobMessageAsync(messageRef.RunnerRequestId,
+                                            messageQueueLoopTokenSource.Token);
+                                        }
+                                        catch (TaskOrchestrationJobAlreadyAcquiredException)
+                                        {
+                                            Trace.Info("Job is already acquired, skip this message.");
+                                            continue;
+                                        }
                                     }
 
                                     jobDispatcher.Run(jobRequestMessage, runOnce);

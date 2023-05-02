@@ -19,7 +19,14 @@ namespace GitHub.Runner.Common
 
         Task<AgentJobRequestMessage> GetJobMessageAsync(string id, CancellationToken token);
 
-        Task CompleteJobAsync(Guid planId, Guid jobId, TaskResult result, Dictionary<String, VariableValue> outputs, IList<StepResult> stepResults, CancellationToken token);
+        Task CompleteJobAsync(
+            Guid planId,
+            Guid jobId,
+            TaskResult result,
+            Dictionary<String, VariableValue> outputs,
+            IList<StepResult> stepResults,
+            IList<Annotation> jobAnnotations,
+            CancellationToken token);
 
         Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken token);
     }
@@ -52,14 +59,22 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             return RetryRequest<AgentJobRequestMessage>(
-                async () => await _runServiceHttpClient.GetJobMessageAsync(requestUri, id, cancellationToken), cancellationToken);
+                async () => await _runServiceHttpClient.GetJobMessageAsync(requestUri, id, cancellationToken), cancellationToken,
+                shouldRetry: ex => ex is not TaskOrchestrationJobAlreadyAcquiredException);
         }
 
-        public Task CompleteJobAsync(Guid planId, Guid jobId, TaskResult result, Dictionary<String, VariableValue> outputs, IList<StepResult> stepResults, CancellationToken cancellationToken)
+        public Task CompleteJobAsync(
+            Guid planId,
+            Guid jobId,
+            TaskResult result,
+            Dictionary<String, VariableValue> outputs,
+            IList<StepResult> stepResults,
+            IList<Annotation> jobAnnotations,
+            CancellationToken cancellationToken)
         {
             CheckConnection();
             return RetryRequest(
-                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, cancellationToken), cancellationToken);
+                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, cancellationToken), cancellationToken);
         }
 
         public Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken cancellationToken)

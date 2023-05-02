@@ -86,6 +86,8 @@ namespace GitHub.Actions.RunService.WebApi
             {
                 case HttpStatusCode.NotFound:
                     throw new TaskOrchestrationJobNotFoundException($"Job message not found: {messageId}");
+                case HttpStatusCode.Conflict:
+                    throw new TaskOrchestrationJobAlreadyAcquiredException($"Job message already acquired: {messageId}");
                 default:
                     throw new Exception($"Failed to get job message: {result.Error}");
             }
@@ -98,6 +100,7 @@ namespace GitHub.Actions.RunService.WebApi
             TaskResult result,
             Dictionary<String, VariableValue> outputs,
             IList<StepResult> stepResults,
+            IList<Annotation> jobAnnotations,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
@@ -107,7 +110,8 @@ namespace GitHub.Actions.RunService.WebApi
                 JobID = jobId,
                 Conclusion = result,
                 Outputs = outputs,
-                StepResults = stepResults
+                StepResults = stepResults,
+                Annotations = jobAnnotations
             };
 
             requestUri = new Uri(requestUri, "completejob");

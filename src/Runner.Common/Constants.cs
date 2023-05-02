@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace GitHub.Runner.Common
 {
@@ -262,6 +262,7 @@ namespace GitHub.Runner.Common
                 public static readonly string Culture = "system.culture";
                 public static readonly string PhaseDisplayName = "system.phaseDisplayName";
                 public static readonly string JobRequestType = "system.jobRequestType";
+                public static readonly string OrchestrationId = "system.orchestrationId";
             }
         }
 
