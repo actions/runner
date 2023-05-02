@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker.Container;
 using System;
