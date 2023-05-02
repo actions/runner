@@ -29,6 +29,14 @@ namespace GitHub.Services.Launch.Client
             m_formatter = new JsonMediaTypeFormatter();
         }
 
+        public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken)
+        {
+
+            var GetResolveActionsDownloadInfoURLEndpoint = new Uri(m_launchServiceUrl, $"/actions/build/{planId.ToString()}/jobs/{jobId.ToString()}/runnerresolve/actions");
+
+            return ToServerData(await GetLaunchSignedURLResponse<ActionReferenceRequestList, ActionDownloadInfoResponseCollection>(GetResolveActionsDownloadInfoURLEndpoint, ToGitHubData(actionReferenceList), cancellationToken));
+        }
+
         // Resolve Actions
         private async Task<T> GetLaunchSignedURLResponse<R, T>(Uri uri, R request, CancellationToken cancellationToken)
         {
@@ -46,14 +54,6 @@ namespace GitHub.Services.Launch.Client
                     }
                 }
             }
-        }
-
-        public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken)
-        {
-
-            var GetResolveActionsDownloadInfoURLEndpoint = new Uri(m_launchServiceUrl, $"/actions/build/{planId.ToString()}/jobs/{jobId.ToString()}/runnerresolve/actions");
-
-            return ToServerData(await GetLaunchSignedURLResponse<ActionReferenceRequestList, ActionDownloadInfoResponseCollection>(GetResolveActionsDownloadInfoURLEndpoint, ToGitHubData(actionReferenceList), cancellationToken));
         }
 
         private static ActionReferenceRequestList ToGitHubData(ActionReferenceList actionReferenceList)
