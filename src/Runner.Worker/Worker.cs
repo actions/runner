@@ -3,10 +3,10 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Services.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Text;
@@ -156,8 +156,9 @@ namespace GitHub.Runner.Worker
                     HostContext.SecretMasker.AddValue(value);
 
                     // Also add each individual line. Typically individual lines are processed from STDOUT of child processes.
-                    var split = value.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                    foreach (var item in split)
+                    var auxiliarySecrets = value.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                                .Where(candidate => candidate.Length >= HostContext.SecretMasker.DerivedSecretRecommendedMinimumLength);
+                    foreach (var item in auxiliarySecrets)
                     {
                         HostContext.SecretMasker.AddValue(item);
                     }
