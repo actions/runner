@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -87,7 +87,7 @@ namespace GitHub.Runner.Common.Tests
                 var newFiles = new List<string>();
                 if (Directory.Exists(layoutBin))
                 {
-                    var binDirs = Directory.GetDirectories(TestUtil.GetSrcPath(), "net6.0", SearchOption.AllDirectories);
+                    var binDirs = Directory.GetDirectories(TestUtil.GetSrcPath(), "net7.0", SearchOption.AllDirectories);
                     foreach (var binDir in binDirs)
                     {
                         if (binDir.Contains("Test") || binDir.Contains("obj"))
