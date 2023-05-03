@@ -66,12 +66,9 @@ namespace GitHub.Runner.Worker
                     !string.IsNullOrEmpty(accessToken) &&
                     !string.IsNullOrEmpty(launchReceiverEndpoint))
                 {
+                    Trace.Info("Initializing launch client");
                     var launchServer = HostContext.GetService<ILaunchServer>();
-                    if (!string.IsNullOrEmpty(launchReceiverEndpoint))
-                    {
-                        Trace.Info("Initializing launch client");
-                        launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
-                    }
+                    launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
                 }
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
                 _jobServerQueue.Start(message, resultServiceOnly: true);
