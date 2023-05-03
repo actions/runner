@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Services.Common;
@@ -648,13 +649,21 @@ namespace GitHub.Runner.Worker
             }
 
             // Resolve download info
+            var launchServer = HostContext.GetService<ILaunchServer>();
             var jobServer = HostContext.GetService<IJobServer>();
             var actionDownloadInfos = default(WebApi.ActionDownloadInfoCollection);
             for (var attempt = 1; attempt <= 3; attempt++)
             {
                 try
                 {
-                    actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
+                    if (MessageUtil.IsRunServiceJob(executionContext.Global.Variables.Get(Constants.Variables.System.JobRequestType)))
+                    {
+                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
+                    }
+                    else
+                    {
+                        actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
+                    }
                     break;
                 }
                 catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is cancelled.
