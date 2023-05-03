@@ -65,7 +65,6 @@ namespace GitHub.Actions.RunService.WebApi
             var payload = new AcquireJobRequest
             {
                 JobMessageId = messageId,
-                StreamId = messageId,
             };
 
             requestUri = new Uri(requestUri, "acquirejob");
