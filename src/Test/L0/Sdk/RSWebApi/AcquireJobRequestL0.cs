@@ -14,11 +14,9 @@ public sealed class AcquireJobRequestL0
     [Trait("Category", "Common")]
     public void VerifySerialization()
     {
-        var jobMessageId = "1526919030369-33";
         var request = new AcquireJobRequest
         {
-            JobMessageId = jobMessageId,
-            StreamId = jobMessageId
+            JobMessageId = "1526919030369-33"
         };
         var serializer = new DataContractJsonSerializer(typeof(AcquireJobRequest));
         using var stream = new MemoryStream();
@@ -27,7 +25,7 @@ public sealed class AcquireJobRequestL0
         stream.Position = 0;
         using var reader = new StreamReader(stream, Encoding.UTF8);
         string json = reader.ReadToEnd();
-        string expected = DoubleQuotify(string.Format("{{'jobMessageId':'{0}','streamId':'{0}'}}", request.JobMessageId));
+        string expected = DoubleQuotify(string.Format("{{'jobMessageId':'{0}'}}", request.JobMessageId));
         Assert.Equal(expected, json);
 
     }
