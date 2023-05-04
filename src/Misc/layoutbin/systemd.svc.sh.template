@@ -7,7 +7,7 @@ SVC_DESCRIPTION="{{SvcDescription}}"
 SVC_CMD=$1
 arg_2=${2}
 
-RUNNER_ROOT=$(pwd)
+RUNNER_ROOT=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 
 UNIT_PATH=/etc/systemd/system/${SVC_NAME}
 TEMPLATE_PATH=$GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE

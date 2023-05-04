@@ -13,7 +13,7 @@ if [ $user_id -eq 0 ]; then
 fi
 
 SVC_CMD=$1
-RUNNER_ROOT=`pwd`
+RUNNER_ROOT=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 
 LAUNCH_PATH="${HOME}/Library/LaunchAgents"
 PLIST_PATH="${LAUNCH_PATH}/${SVC_NAME}.plist"
