@@ -2,12 +2,11 @@
 
 SVC_NAME="{{SvcNameVar}}"
 SVC_NAME=${SVC_NAME// /_}
-SVC_DESCRIPTION="{{SvcDescription}}"
 
-user_id=`id -u`
+user_id=$(id -u)
 
 # launchctl should not run as sudo for launch runners
-if [ $user_id -eq 0 ]; then
+if [ "$user_id" -eq 0 ]; then
     echo "Must not run with sudo"
     exit 1
 fi
@@ -47,7 +46,7 @@ function install()
     echo "Creating launch runner in ${PLIST_PATH}"
 
     if [ ! -d  "${LAUNCH_PATH}" ]; then
-        mkdir ${LAUNCH_PATH}
+        mkdir "${LAUNCH_PATH}"
     fi
 
     if [ -f "${PLIST_PATH}" ]; then
@@ -62,12 +61,12 @@ function install()
     echo "Creating ${log_path}"
     mkdir -p "${log_path}" || failed "failed to create ${log_path}"
 
-    echo Creating ${PLIST_PATH}
+    echo Creating "${PLIST_PATH}"
     sed "s/{{User}}/${USER:-$SUDO_USER}/g; s/{{SvcName}}/$SVC_NAME/g; s@{{RunnerRoot}}@${RUNNER_ROOT}@g; s@{{UserHome}}@$HOME@g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     mv "${TEMP_PATH}" "${PLIST_PATH}" || failed "failed to copy plist"
 
     # Since we started with sudo, runsvc.sh will be owned by root. Change this to current login user.
-    echo Creating runsvc.sh    
+    echo Creating runsvc.sh
     cp ./bin/runsvc.sh ./runsvc.sh || failed "failed to copy runsvc.sh"
     chmod u+x ./runsvc.sh || failed "failed to set permission for runsvc.sh"
 
@@ -115,10 +114,10 @@ function status()
     fi
 
     echo
-    status_out=`launchctl list | grep "${SVC_NAME}"`
-    if [ ! -z "$status_out" ]; then
+    status_out=$(launchctl list | grep "${SVC_NAME}")
+    if [ -n "$status_out" ]; then
         echo Started:
-        echo $status_out
+        echo "$status_out"
         echo
     else
         echo Stopped
