@@ -1707,28 +1707,28 @@ namespace Runner.Server.Controllers
                                 }
                             }
                         }
-                        // Validate secrets
-                        var workflowSecrets = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.secrets") : null;
-                        ISet<string> validSecrets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                        if(workflowSecrets != null) {
-                            foreach(var secret in workflowSecrets) {
-                                var secretName = secret.Key.AssertString("on.workflow_call.secrets mapping key").Value;
-                                if(secretName.Contains(".") || StringComparer.OrdinalIgnoreCase.Compare("github_token", secretName) == 0) {
-                                    throw new Exception($"This workflow defines the reserved secret {secretName}, using it can cause undefined behavior");
-                                }
-                                var secretMapping = secret.Value?.AssertMapping($"on.workflow_call.secrets.{secretName}");
-                                if(secretMapping != null) {
-                                    var workflowCallSecretsMappingKey = $"on.workflow_call.secrets.{secretName} mapping key";
-                                    validSecrets.Add(secretName);
-                                    bool required = (from r in secretMapping where r.Key.AssertString(workflowCallSecretsMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_call.secrets.{secretName}.required").Value).FirstOrDefault();
-                                    
-                                    if((callingJob?.ProvidedSecrets == null || !callingJob.ProvidedSecrets.Contains(secretName)) && required) {
-                                        throw new Exception($"This workflow requires the secret: {secretName}, but no such secret were provided");
+                        // Validate secrets, bypass validation for secrets: inherit
+                        if(callingJob?.ProvidedSecrets != null) {
+                            var workflowSecrets = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.secrets") : null;
+                            ISet<string> validSecrets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                            if(workflowSecrets != null) {
+                                foreach(var secret in workflowSecrets) {
+                                    var secretName = secret.Key.AssertString("on.workflow_call.secrets mapping key").Value;
+                                    if(secretName.Contains(".") || StringComparer.OrdinalIgnoreCase.Compare("github_token", secretName) == 0) {
+                                        throw new Exception($"This workflow defines the reserved secret {secretName}, using it can cause undefined behavior");
+                                    }
+                                    var secretMapping = secret.Value?.AssertMapping($"on.workflow_call.secrets.{secretName}");
+                                    if(secretMapping != null) {
+                                        var workflowCallSecretsMappingKey = $"on.workflow_call.secrets.{secretName} mapping key";
+                                        validSecrets.Add(secretName);
+                                        bool required = (from r in secretMapping where r.Key.AssertString(workflowCallSecretsMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_call.secrets.{secretName}.required").Value).FirstOrDefault();
+                                        
+                                        if(!callingJob.ProvidedSecrets.Contains(secretName) && required) {
+                                            throw new Exception($"This workflow requires the secret: {secretName}, but no such secret were provided");
+                                        }
                                     }
                                 }
                             }
-                        }
-                        if(callingJob?.ProvidedSecrets != null) {
                             foreach(var name in callingJob.ProvidedSecrets) {
                                 if(!validSecrets.Contains(name)) {
                                     throw new Exception($"This workflow doesn't define secret {name}");

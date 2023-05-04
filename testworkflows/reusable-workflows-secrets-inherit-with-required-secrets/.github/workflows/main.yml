@@ -1,0 +1,6 @@
+on:
+  push:
+jobs:
+  c:
+    uses: ./.github/workflows/required-environment-secrets.yml
+    secrets: inherit
