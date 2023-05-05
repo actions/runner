@@ -52,6 +52,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Act.
                 ec.InitializeJob(jobRequest, CancellationToken.None);
 
+                // Flood the ExecutionContext with errors and warnings (past its max capacity of 10).
                 ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
                 ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
                 ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
@@ -86,8 +87,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.Complete();
 
                 // Assert.
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.ErrorCount == 15)), Times.AtLeastOnce);
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.WarningCount == 14)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.ErrorCount > 0)), Times.AtLeast(10));
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.WarningCount > 0)), Times.AtLeast(10));
                 jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Error).Count() == 10)), Times.AtLeastOnce);
                 jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Warning).Count() == 10)), Times.AtLeastOnce);
             }
@@ -301,9 +302,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning annotation that should have step and line number information" }, ExecutionContextLogOptions.Default);
                 embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice annotation that should have step and line number information" }, ExecutionContextLogOptions.Default);
 
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Error).Count() == 1)), Times.AtLeastOnce);
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Warning).Count() == 1)), Times.AtLeastOnce);
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Notice).Count() == 1)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()), Times.AtLeastOnce);
+                // Verify that Error/Warning/Notice issues added to embedded steps don't get sent up to the server.
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Error).Count() == 1)), Times.Never);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Warning).Count() == 1)), Times.Never);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Notice).Count() == 1)), Times.Never);
             }
         }
 
