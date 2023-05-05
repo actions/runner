@@ -617,26 +617,31 @@ namespace GitHub.Runner.Worker
 
             string wellKnownTag = null;
             Int32 previousCountForIssueType = 0;
+            Action incrementIssueTypeCount = NoOp;
             switch (issue.Type)
             {
                 case IssueType.Error:
                     wellKnownTag = WellKnownTags.Error;
-                    previousCountForIssueType = _record.ErrorCount++;
+                    previousCountForIssueType = _record.ErrorCount;
+                    incrementIssueTypeCount = () => { _record.ErrorCount++; };
                     break;
                 case IssueType.Warning:
                     wellKnownTag = WellKnownTags.Warning;
-                    previousCountForIssueType = _record.WarningCount++;
+                    previousCountForIssueType = _record.WarningCount;
+                    incrementIssueTypeCount = () => { _record.WarningCount++; };
                     break;
                 case IssueType.Notice:
                     wellKnownTag = WellKnownTags.Notice;
-                    previousCountForIssueType = _record.NoticeCount++;
+                    previousCountForIssueType = _record.NoticeCount;
+                    incrementIssueTypeCount = () => { _record.NoticeCount++; };
                     break;
             }
 
             if (!string.IsNullOrEmpty(wellKnownTag))
             {
-                if (previousCountForIssueType < _maxCountPerIssueType)
+                if (!this.IsEmbedded && previousCountForIssueType < _maxCountPerIssueType)
                 {
+                    incrementIssueTypeCount();
                     _record.Issues.Add(issue);
                 }
 
@@ -1201,6 +1206,11 @@ namespace GitHub.Runner.Worker
 
             UpdateGlobalStepsContext();
         }
+
+        private static void NoOp()
+        {
+        }
+
     }
 
     // The Error/Warning/etc methods are created as extension methods to simplify unit testing.
