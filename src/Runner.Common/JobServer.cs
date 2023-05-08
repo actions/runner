@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,10 +11,10 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using GitHub.Services.OAuth;
+using GitHub.Services.Results.Client;
 using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Utilities.Internal;
-using GitHub.Services.Results.Client;
-using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Common
 {
@@ -254,7 +254,7 @@ namespace GitHub.Runner.Common
                 {
                     failedAttemptsToPostBatchedLinesByWebsocket++;
                     Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
-                    Trace.Error(ex);
+                    Trace.Verbose(ex.ToString());
                     if (totalBatchedLinesAttemptedByWebsocket > _minWebsocketBatchedLinesCountToConsider)
                     {
                         // let's consider failure percentage
