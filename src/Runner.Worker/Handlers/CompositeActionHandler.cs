@@ -413,6 +413,12 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Update context
                 step.ExecutionContext.UpdateGlobalStepsContext();
+
+                // Update annotations
+                foreach (var issue in step.ExecutionContext.EmbeddedIssues)
+                {
+                    ExecutionContext.AddIssueToTimelineRecord(issue);
+                }
             }
         }
 
