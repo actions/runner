@@ -756,17 +756,17 @@ namespace GitHub.Runner.Common
                     timelineRecord.State = rec.State ?? timelineRecord.State;
                     timelineRecord.WorkerName = rec.WorkerName ?? timelineRecord.WorkerName;
 
-                    if (rec.ErrorCount != null && rec.ErrorCount > 0)
+                    if (rec.ErrorCount > 0)
                     {
                         timelineRecord.ErrorCount = rec.ErrorCount;
                     }
 
-                    if (rec.WarningCount != null && rec.WarningCount > 0)
+                    if (rec.WarningCount > 0)
                     {
                         timelineRecord.WarningCount = rec.WarningCount;
                     }
 
-                    if (rec.NoticeCount != null && rec.NoticeCount > 0)
+                    if (rec.NoticeCount > 0)
                     {
                         timelineRecord.NoticeCount = rec.NoticeCount;
                     }
@@ -797,7 +797,7 @@ namespace GitHub.Runner.Common
             foreach (var record in mergedRecords)
             {
                 Trace.Verbose($"    Record: t={record.RecordType}, n={record.Name}, s={record.State}, st={record.StartTime}, {record.PercentComplete}%, ft={record.FinishTime}, r={record.Result}: {record.CurrentOperation}");
-                if (record.Issues != null && record.Issues.Count > 0)
+                if (record.Issues != null)
                 {
                     foreach (var issue in record.Issues)
                     {
@@ -807,7 +807,7 @@ namespace GitHub.Runner.Common
                     }
                 }
 
-                if (record.Variables != null && record.Variables.Count > 0)
+                if (record.Variables != null)
                 {
                     foreach (var variable in record.Variables)
                     {
