@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker.Container;
 using System;
@@ -276,7 +276,7 @@ namespace GitHub.Runner.Worker
                         Message = $"Can't update {blocked} environment variable using ::set-env:: command."
                     };
                     issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{envName}";
-                    context.AddIssue(issue);
+                    context.AddIssue(issue, ExecutionContextLogOptions.Default);
 
                     return;
                 }
@@ -315,7 +315,7 @@ namespace GitHub.Runner.Worker
                     Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
                 };
                 issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
-                context.AddIssue(issue);
+                context.AddIssue(issue, ExecutionContextLogOptions.Default);
             }
 
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
@@ -350,7 +350,7 @@ namespace GitHub.Runner.Worker
                     Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
                 };
                 issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
-                context.AddIssue(issue);
+                context.AddIssue(issue, ExecutionContextLogOptions.Default);
             }
 
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
@@ -666,7 +666,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            context.AddIssue(issue);
+            context.AddIssue(issue, ExecutionContextLogOptions.Default);
         }
 
         public static void ValidateLinesAndColumns(ActionCommand command, IExecutionContext context)
