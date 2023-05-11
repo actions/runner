@@ -18,7 +18,6 @@ using GitHub.Services.Common;
 using WebApi = GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants;
-using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Worker
 {
@@ -102,20 +101,7 @@ namespace GitHub.Runner.Worker
             }
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             executionContext.Output("Prepare all required actions");
-            PrepareActionsState result = new PrepareActionsState();
-            try
-            {
-                result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
-            }
-            catch (FailedToResolveActionDownloadInfoException ex)
-            {
-                // Log the error and fail the PrepareActionsAsync Initialization.
-                Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
-                executionContext.InfrastructureError(ex.Message);
-                executionContext.Result = TaskResult.Failed;
-                throw;
-            }
-
+            var result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
             if (!FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 if (state.ImagesToPull.Count > 0)

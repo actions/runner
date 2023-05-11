@@ -91,15 +91,7 @@ namespace GitHub.Runner.Worker
                 string.Equals(localAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
                 var actionManager = HostContext.GetService<IActionManager>();
-                PrepareResult prepareResult = default(PrepareResult);
-                try
-                {
-                    prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
-                }
-                catch (WebApi.FailedToResolveActionDownloadInfoException ex)
-                {
-                    throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info", ex);
-                }
+                PrepareResult prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
 
                 // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
                 definition = taskManager.LoadAction(ExecutionContext, Action);
