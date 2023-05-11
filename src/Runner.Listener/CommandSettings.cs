@@ -29,8 +29,8 @@ namespace GitHub.Runner.Listener
         private readonly Dictionary<string, string[]> validOptions = new()
         {
             // Valid configure flags and args
-            [Constants.Runner.CommandLine.Commands.Configure] = 
-                new string[] 
+            [Constants.Runner.CommandLine.Commands.Configure] =
+                new string[]
                 {
                     Constants.Runner.CommandLine.Flags.DisableUpdate,
                     Constants.Runner.CommandLine.Flags.Ephemeral,
@@ -38,6 +38,7 @@ namespace GitHub.Runner.Listener
                     Constants.Runner.CommandLine.Flags.Replace,
                     Constants.Runner.CommandLine.Flags.RunAsService,
                     Constants.Runner.CommandLine.Flags.Unattended,
+                    Constants.Runner.CommandLine.Flags.NoDefaultLabels,
                     Constants.Runner.CommandLine.Args.Auth,
                     Constants.Runner.CommandLine.Args.Labels,
                     Constants.Runner.CommandLine.Args.MonitorSocketAddress,
@@ -85,6 +86,7 @@ namespace GitHub.Runner.Listener
         public bool Ephemeral => TestFlag(Constants.Runner.CommandLine.Flags.Ephemeral);
         public bool GenerateServiceConfig => TestFlag(Constants.Runner.CommandLine.Flags.GenerateServiceConfig);
         public bool Help => TestFlag(Constants.Runner.CommandLine.Flags.Help);
+        public bool NoDefaultLabels => TestFlag(Constants.Runner.CommandLine.Flags.NoDefaultLabels);
         public bool Unattended => TestFlag(Constants.Runner.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
         public bool RemoveLocalConfig => TestFlag(Constants.Runner.CommandLine.Flags.Local);
@@ -182,7 +184,7 @@ namespace GitHub.Runner.Listener
             {
                 command = Constants.Runner.CommandLine.Commands.Warmup;
             }
-            
+
             return command;
         }
 
