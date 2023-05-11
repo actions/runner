@@ -528,14 +528,15 @@ namespace GitHub.Runner.Listener.Configuration
 
             agent.Labels.Clear();
 
-            if (noDefaultLabels == false) { 
+            if (!noDefaultLabels)
+            {
                 agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
                 agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
                 agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
-            } else {
-                if (userLabels.Count == 0) {
-                    throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
-                }
+            }
+            else if (userLabels.Count == 0)
+            {
+                throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
             }
 
             foreach (var userLabel in userLabels)
@@ -561,14 +562,15 @@ namespace GitHub.Runner.Listener.Configuration
                 DisableUpdate = disableUpdate
             };
 
-            if (noDefaultLabels == false) { 
+            if (!noDefaultLabels)
+            {
                 agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
                 agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
                 agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
-            } else {
-                if (userLabels.Count == 0) {
-                    throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
-                }
+            }
+            else if (userLabels.Count == 0)
+            {
+                throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
             }
 
             foreach (var userLabel in userLabels)

@@ -136,7 +136,7 @@ namespace GitHub.Runner.Listener
                 if (command.Remove)
                 {
                     // only remove local config files and exit
-                    if(command.RemoveLocalConfig)
+                    if (command.RemoveLocalConfig)
                     {
                         configManager.DeleteLocalRunnerConfig();
                         return Constants.Runner.ReturnCode.Success;
