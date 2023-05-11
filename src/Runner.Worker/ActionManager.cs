@@ -199,6 +199,7 @@ namespace GitHub.Runner.Worker
                     {
                         continue;
                     }
+
                     if (!downloadInfos.TryGetValue(lookupKey, out var downloadInfo))
                     {
                         throw new Exception($"Missing download info for {lookupKey}");
