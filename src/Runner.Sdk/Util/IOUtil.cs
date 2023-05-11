@@ -40,10 +40,19 @@ namespace GitHub.Runner.Sdk
             File.WriteAllText(path, StringUtil.ConvertToJson(obj), Encoding.UTF8);
         }
 
-        public static T LoadObject<T>(string path)
+        public static T LoadObject<T>(string path, bool required = false)
         {
             string json = File.ReadAllText(path, Encoding.UTF8);
-            return StringUtil.ConvertFromJson<T>(json);
+            if (required && string.IsNullOrEmpty(json))
+            {
+                throw new ArgumentNullException($"File {path} is empty");
+            }
+            T result = StringUtil.ConvertFromJson<T>(json);
+            if (required && result == null)
+            {
+                throw new ArgumentException("Converting json to object resulted in a null value");
+            }
+            return result;
         }
 
         public static string GetSha256Hash(string path)

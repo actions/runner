@@ -31,12 +31,14 @@ namespace GitHub.Runner.Listener.Configuration
     {
         private IConfigurationStore _store;
         private IRunnerServer _runnerServer;
+        private IRunnerDotcomServer _dotcomServer;
         private ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _runnerServer = HostContext.GetService<IRunnerServer>();
+            _dotcomServer = HostContext.GetService<IRunnerDotcomServer>();
             Trace.Verbose("Creating _store");
             _store = hostContext.GetService<IConfigurationStore>();
             Trace.Verbose("store created");
@@ -113,6 +115,7 @@ namespace GitHub.Runner.Listener.Configuration
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
             _term.WriteSection("Authentication");
+            string registerToken = string.Empty;
             while (true)
             {
                 // When testing against a dev deployment of Actions Service, set this environment variable
@@ -130,9 +133,11 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     runnerSettings.GitHubUrl = inputUrl;
-                    var registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
+                    registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
+                    runnerSettings.UseV2Flow = authResult.UseV2Flow;
+                    _term.WriteLine($"Using V2 flow: {runnerSettings.UseV2Flow}");
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
                 }
@@ -176,9 +181,11 @@ namespace GitHub.Runner.Listener.Configuration
             // We want to use the native CSP of the platform for storage, so we use the RSACSP directly
             RSAParameters publicKey;
             var keyManager = HostContext.GetService<IRSAKeyManager>();
+            string publicKeyXML;
             using (var rsa = keyManager.CreateKey())
             {
                 publicKey = rsa.ExportParameters(false);
+                publicKeyXML = rsa.ToXmlString(includePrivateParameters: false);
             }
 
             _term.WriteSection("Runner Registration");
@@ -186,9 +193,17 @@ namespace GitHub.Runner.Listener.Configuration
             // If we have more than one runner group available, allow the user to specify which one to be added into
             string poolName = null;
             TaskAgentPool agentPool = null;
-            List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
-            TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
+            List<TaskAgentPool> agentPools;
+            if (runnerSettings.UseV2Flow)
+            {
+                agentPools = await _dotcomServer.GetRunnerGroupsAsync(runnerSettings.GitHubUrl, registerToken);
+            }
+            else
+            {
+                agentPools = await _runnerServer.GetAgentPoolsAsync();
+            }
 
+            TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
             if (agentPools?.Where(x => !x.IsHosted).Count() > 0)
             {
                 poolName = command.GetRunnerGroupName(defaultPool?.Name);
@@ -226,8 +241,16 @@ namespace GitHub.Runner.Listener.Configuration
 
                 var userLabels = command.GetLabels();
                 _term.WriteLine();
+                List<TaskAgent> agents;
+                if (runnerSettings.UseV2Flow)
+                {
+                    agents = await _dotcomServer.GetRunnersAsync(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
+                }
+                else
+                {
+                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
+                }
 
-                var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
                 Trace.Verbose("Returns {0} agents", agents.Count);
                 agent = agents.FirstOrDefault();
                 if (agent != null)
@@ -274,7 +297,23 @@ namespace GitHub.Runner.Listener.Configuration
 
                     try
                     {
-                        agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
+                        if (runnerSettings.UseV2Flow)
+                        {
+                            var runner = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                            runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                            agent.Id = runner.Id;
+                            agent.Authorization = new TaskAgentAuthorization()
+                            {
+                                AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                                ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                            };
+                        }
+                        else
+                        {
+                            agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
+                        }
+
                         if (command.DisableUpdate &&
                             command.DisableUpdate != agent.DisableUpdate)
                         {
@@ -325,24 +364,28 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // Testing agent connection, detect any potential connection issue, like local clock skew that cause OAuth token expired.
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            VssCredentials credential = credMgr.LoadCredentials();
-            try
+
+            if (!runnerSettings.UseV2Flow)
             {
-                await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
-                // ConnectAsync() hits _apis/connectionData which is an anonymous endpoint
-                // Need to hit an authenticate endpoint to trigger OAuth token exchange.
-                await _runnerServer.GetAgentPoolsAsync();
-                _term.WriteSuccessMessage("Runner connection is good");
-            }
-            catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
-            {
-                // there are two exception messages server send that indicate clock skew.
-                // 1. The bearer token expired on {jwt.ValidTo}. Current server time is {DateTime.UtcNow}.
-                // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.
-                Trace.Error("Catch exception during test agent connection.");
-                Trace.Error(ex);
-                throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
+                var credMgr = HostContext.GetService<ICredentialManager>();
+                VssCredentials credential = credMgr.LoadCredentials();
+                try
+                {
+                    await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
+                    // ConnectAsync() hits _apis/connectionData which is an anonymous endpoint
+                    // Need to hit an authenticate endpoint to trigger OAuth token exchange.
+                    await _runnerServer.GetAgentPoolsAsync();
+                    _term.WriteSuccessMessage("Runner connection is good");
+                }
+                catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
+                {
+                    // there are two exception messages server send that indicate clock skew.
+                    // 1. The bearer token expired on {jwt.ValidTo}. Current server time is {DateTime.UtcNow}.
+                    // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.
+                    Trace.Error("Catch exception during test agent connection.");
+                    Trace.Error(ex);
+                    throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
+                }
             }
 
             _term.WriteSection("Runner settings");
@@ -652,7 +695,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = GetGitHubRequestId(response.Headers);
+                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -715,7 +758,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = GetGitHubRequestId(response.Headers);
+                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -743,15 +786,6 @@ namespace GitHub.Runner.Listener.Configuration
                 await Task.Delay(backOff);
             }
             return null;
-        }
-
-        private string GetGitHubRequestId(HttpResponseHeaders headers)
-        {
-            if (headers.TryGetValues("x-github-request-id", out var headerValues))
-            {
-                return headerValues.FirstOrDefault();
-            }
-            return string.Empty;
         }
     }
 }

@@ -184,8 +184,32 @@ namespace GitHub.Services.Common
             return settings;
         }
 
+        /// <summary>
+        /// Gets or sets the maximum size allowed for response content buffering.
+        /// </summary>
+        [DefaultValue(c_defaultContentBufferSize)]
+        public Int32 MaxContentBufferSize
+        {
+            get
+            {
+                return m_maxContentBufferSize;
+            }
+            set
+            {
+                ArgumentUtility.CheckForOutOfRange(value, nameof(value), 0, c_maxAllowedContentBufferSize);
+                m_maxContentBufferSize = value;
+            }
+        }
+
         private static Lazy<RawClientHttpRequestSettings> s_defaultSettings
             = new Lazy<RawClientHttpRequestSettings>(ConstructDefaultSettings);
+
+        private Int32 m_maxContentBufferSize;
+        // We will buffer a maximum of 1024MB in the message handler
+        private const Int32 c_maxAllowedContentBufferSize = 1024 * 1024 * 1024;
+
+        // We will buffer, by default, up to 512MB in the message handler
+        private const Int32 c_defaultContentBufferSize = 1024 * 1024 * 512;
 
         private const Int32 c_defaultMaxRetry = 3;
         private static readonly TimeSpan s_defaultTimeout = TimeSpan.FromSeconds(100); //default WebAPI timeout

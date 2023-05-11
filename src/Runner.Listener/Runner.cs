@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -210,10 +211,16 @@ namespace GitHub.Runner.Listener
                         foreach (var config in jitConfig)
                         {
                             var configFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), config.Key);
-                            var configContent = Encoding.UTF8.GetString(Convert.FromBase64String(config.Value));
-                            File.WriteAllText(configFile, configContent, Encoding.UTF8);
+                            var configContent = Convert.FromBase64String(config.Value);
+#if OS_WINDOWS
+                            if (configFile == HostContext.GetConfigFile(WellKnownConfigFile.RSACredentials))
+                            {
+                                configContent = ProtectedData.Protect(configContent, null, DataProtectionScope.LocalMachine);
+                            }
+#endif
+                            File.WriteAllBytes(configFile, configContent);
                             File.SetAttributes(configFile, File.GetAttributes(configFile) | FileAttributes.Hidden);
-                            Trace.Info($"Save {configContent.Length} chars to '{configFile}'.");
+                            Trace.Info($"Saved {configContent.Length} bytes to '{configFile}'.");
                         }
                     }
                     catch (Exception ex)
@@ -332,13 +339,26 @@ namespace GitHub.Runner.Listener
             }
         }
 
+        private IMessageListener GetMesageListener(RunnerSettings settings)
+        {
+            if (settings.UseV2Flow)
+            {
+                Trace.Info($"Using BrokerMessageListener");
+                var brokerListener = new BrokerMessageListener();
+                brokerListener.Initialize(HostContext);
+                return brokerListener;
+            }
+
+            return HostContext.GetService<IMessageListener>();
+        }
+
         //create worker manager, create message listener and start listening to the queue
         private async Task<int> RunAsync(RunnerSettings settings, bool runOnce = false)
         {
             try
             {
                 Trace.Info(nameof(RunAsync));
-                _listener = HostContext.GetService<IMessageListener>();
+                _listener = GetMesageListener(settings);
                 if (!await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken))
                 {
                     return Constants.Runner.ReturnCode.TerminatedError;
@@ -529,7 +549,17 @@ namespace GitHub.Runner.Listener
                                     {
                                         var runServer = HostContext.CreateService<IRunServer>();
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
-                                        jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        try
+                                        {
+                                            jobRequestMessage =
+                                            await runServer.GetJobMessageAsync(messageRef.RunnerRequestId,
+                                            messageQueueLoopTokenSource.Token);
+                                        }
+                                        catch (TaskOrchestrationJobAlreadyAcquiredException)
+                                        {
+                                            Trace.Info("Job is already acquired, skip this message.");
+                                            continue;
+                                        }
                                     }
 
                                     jobDispatcher.Run(jobRequestMessage, runOnce);

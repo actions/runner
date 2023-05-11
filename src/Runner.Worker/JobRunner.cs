@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,6 +43,13 @@ namespace GitHub.Runner.Worker
             DateTime jobStartTimeUtc = DateTime.UtcNow;
             IRunnerService server = null;
 
+            // add orchestration id to useragent for better correlation.
+            if (message.Variables.TryGetValue(Constants.Variables.System.OrchestrationId, out VariableValue orchestrationId) &&
+                !string.IsNullOrEmpty(orchestrationId.Value))
+            {
+                HostContext.UserAgents.Add(new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
+            }
+
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (MessageUtil.IsRunServiceJob(message.MessageType))
             {
@@ -49,6 +57,21 @@ namespace GitHub.Runner.Worker
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
                 server = runServer;
+
+                message.Variables.TryGetValue("system.github.launch_endpoint", out VariableValue launchEndpointVariable);
+                var launchReceiverEndpoint = launchEndpointVariable?.Value;
+
+                if (systemConnection?.Authorization != null &&
+                    systemConnection.Authorization.Parameters.TryGetValue("AccessToken", out var accessToken) &&
+                    !string.IsNullOrEmpty(accessToken) &&
+                    !string.IsNullOrEmpty(launchReceiverEndpoint))
+                {
+                    Trace.Info("Initializing launch client");
+                    var launchServer = HostContext.GetService<ILaunchServer>();
+                    launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
+                }
+                _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+                _jobServerQueue.Start(message, resultServiceOnly: true);
             }
             else
             {
@@ -97,7 +120,8 @@ namespace GitHub.Runner.Worker
                         default:
                             throw new ArgumentException(HostContext.RunnerShutdownReason.ToString(), nameof(HostContext.RunnerShutdownReason));
                     }
-                    jobContext.AddIssue(new Issue() { Type = IssueType.Error, Message = errorMessage });
+                    var issue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                    jobContext.AddIssue(issue, ExecutionContextLogOptions.Default);
                 });
 
                 // Validate directory permissions.
@@ -261,7 +285,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, default);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, default);
                     return result;
                 }
                 catch (Exception ex)
