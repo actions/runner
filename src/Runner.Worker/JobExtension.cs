@@ -431,14 +431,6 @@ namespace GitHub.Runner.Worker
                     context.Result = TaskResult.Canceled;
                     throw;
                 }
-                catch (FailedToResolveActionDownloadInfoException ex)
-                {
-                    // Log the error and fail the JobExtension Initialization.
-                    Trace.Error($"Caught exception from JobExtenion Initialization: {ex}");
-                    context.InfrastructureError(ex.Message);
-                    context.Result = TaskResult.Failed;
-                    throw;
-                }
                 catch (Exception ex)
                 {
                     // Log the error and fail the JobExtension Initialization.
