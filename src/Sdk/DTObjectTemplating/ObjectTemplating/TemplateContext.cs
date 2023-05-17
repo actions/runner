@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -163,7 +163,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 message = $"{prefix} {message}";
             }
 
-            Errors.Add(message);
             TraceWriter.Error(message);
         }
 
