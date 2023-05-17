@@ -799,7 +799,7 @@ namespace GitHub.Runner.Common
                 Trace.Verbose($"    Record: t={record.RecordType}, n={record.Name}, s={record.State}, st={record.StartTime}, {record.PercentComplete}%, ft={record.FinishTime}, r={record.Result}: {record.CurrentOperation}");
                 if (record.Issues != null)
                 {
-                    removeDuplicatedIssues(record);
+                    RemoveDuplicatedIssues(record);
                     foreach (var issue in record.Issues)
                     {
                         String source;
@@ -820,7 +820,7 @@ namespace GitHub.Runner.Common
             return mergedRecords;
         }
 
-        private void removeDuplicatedIssues(TimelineRecord timelineRecord)
+        private void RemoveDuplicatedIssues(TimelineRecord timelineRecord)
         {
             Dictionary<string, Issue> issuesMap = new Dictionary<string, Issue>();
             foreach (var i in timelineRecord.Issues)
