@@ -168,10 +168,19 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task DeleteMessageAsync(string messageID, CancellationToken token)
+        public async Task DeleteMessageAsync(TaskAgentMessage message)
         {
             Trace.Entering();
-            await _brokerServer.DeleteRunnerMessageAsync(messageID, token);
+
+            if (MessageUtil.IsRunServiceJob(message.MessageType))
+            {
+                var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
+
+                using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                {
+                    await _brokerServer.DeleteRunnerMessageAsync(messageRef.RunnerRequestId, cs.Token);
+                }
+            }
         }
 
         private bool IsGetNextMessageExceptionRetriable(Exception ex)

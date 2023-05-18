@@ -393,8 +393,6 @@ namespace GitHub.Runner.Listener
                         TaskAgentMessage message = null;
                         bool skipMessageDeletion = false;
                         bool useBrokerDeletion = false;
-                        string brokerDeletionParamsMessageID = null;
-                        CancellationToken brokerDeletionParamsToken = null;
                         try
                         {
                             Task<TaskAgentMessage> getNextMessage = _listener.GetNextMessageAsync(messageQueueLoopTokenSource.Token);
@@ -557,9 +555,6 @@ namespace GitHub.Runner.Listener
                                             jobRequestMessage =
                                             await runServer.GetJobMessageAsync(messageRef.RunnerRequestId,
                                             messageQueueLoopTokenSource.Token);
-                                            useBrokerDeletion = true;
-                                            brokerDeletionParamsMessageID = messageRef.RunnerRequestId;
-                                            brokerDeletionParamsToken = messageQueueLoopTokenSource.Token;
                                         }
                                         catch (TaskOrchestrationJobAlreadyAcquiredException)
                                         {
@@ -608,7 +603,8 @@ namespace GitHub.Runner.Listener
                                 {
                                     if (useBrokerDeletion)
                                     {
-                                        await _listener.DeleteMessageAsync(brokerDeletionParamsMessageID, brokerDeletionParamsToken);
+                                        // await _listener.DeleteMessageAsync(brokerDeletionParamsMessageID, brokerDeletionParamsToken);
+                                        await _listener.DeleteMessageAsync(message);
                                     }
                                     else
                                     {

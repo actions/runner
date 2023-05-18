@@ -89,7 +89,7 @@ namespace GitHub.Actions.RunService.WebApi
             throw new Exception($"Failed to get job message: {result.Error}");
         }
 
-        public async Task<TaskAgentMessage> DeleteRunnerMessageAsync(
+        public async Task<bool> DeleteRunnerMessageAsync(
             string messageID,
             CancellationToken cancellationToken = default
         )
@@ -109,12 +109,7 @@ namespace GitHub.Actions.RunService.WebApi
                 queryParameters: queryParams,
                 cancellationToken: cancellationToken);
 
-            if (result.IsSuccess)
-            {
-                return result.Value;
-            }
-
-            throw new Exception($"Failed to delete job message: {result.Error}");
+            return (result.IsSuccess);
         }
     }
 }
