@@ -168,9 +168,10 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task DeleteMessageAsync(TaskAgentMessage message)
+        public async Task DeleteMessageAsync(string messageID, CancellationToken token)
         {
-            await Task.CompletedTask;
+            Trace.Entering();
+            await _brokerServer.DeleteRunnerMessageAsync(messageID, token);
         }
 
         private bool IsGetNextMessageExceptionRetriable(Exception ex)

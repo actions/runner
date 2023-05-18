@@ -88,5 +88,33 @@ namespace GitHub.Actions.RunService.WebApi
 
             throw new Exception($"Failed to get job message: {result.Error}");
         }
+
+        public async Task<TaskAgentMessage> DeleteRunnerMessageAsync(
+            string messageID,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var requestUri = new Uri(Client.BaseAddress, "message");
+
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+
+            if (messageID != null)
+            {
+                queryParams.Add("messageID", messageID);
+            }
+
+            var result = await SendAsync<TaskAgentMessage>(
+                new HttpMethod("DELETE"),
+                requestUri: requestUri,
+                queryParameters: queryParams,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                return result.Value;
+            }
+
+            throw new Exception($"Failed to delete job message: {result.Error}");
+        }
     }
 }
