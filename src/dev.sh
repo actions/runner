@@ -203,6 +203,12 @@ function runtest ()
     dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests"
 }
 
+function coverage ()
+{
+    heading "Coverage ..."
+    cd Test && dotnet test --collect:"XPlat Code Coverage"
+}
+
 function format()
 {
     heading "Formatting..."
@@ -369,6 +375,7 @@ case $DEV_CMD in
     "p") package;;
     "format") format;;
     "f") format;;
+    "c") coverage;;
     *) echo "Invalid cmd.  Use build(b), test(t), layout(l), package(p), or format(f)";;
 esac
 
