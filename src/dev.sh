@@ -210,7 +210,7 @@ function runtest ()
 function coverage ()
 {
     heading "Coverage ..."
-    cd Test && dotnet test --collect:"XPlat Code Coverage"
+    cd Test && dotnet test --collect:"XPlat Code Coverage;Format=json"
 }
 
 function format()
