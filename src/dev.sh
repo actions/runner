@@ -194,6 +194,10 @@ function layout ()
 
 function runtest ()
 {
+    if [[ ! -d "$LAYOUT_DIR" ]]; then
+        echo "$LAYOUT_DIR doesn't exist. Generating it now ..."
+        layout
+    fi
     heading "Testing ..."
 
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
