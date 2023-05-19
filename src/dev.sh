@@ -211,6 +211,7 @@ function coverage ()
 {
     heading "Coverage ..."
     cd Test && dotnet test --collect:"XPlat Code Coverage;Format=json"
+    # reportgenerator -reports:"/workspaces/runner/src/Test/TestResults/ecf2bd75-83e9-489a-9339-d61293abf98b/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html
 }
 
 function format()
