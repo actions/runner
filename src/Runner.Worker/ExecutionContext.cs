@@ -477,28 +477,32 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
-            var stepResult = new StepResult
+            if (_record.RecordType == "Task")
             {
-                ExternalID = _record.Id,
-                Conclusion = _record.Result ?? TaskResult.Succeeded,
-                Status = _record.State,
-                Number = _record.Order,
-                Name = _record.Name,
-                StartedAt = _record.StartTime,
-                CompletedAt = _record.FinishTime,
-                Annotations = new List<Annotation>()
-            };
-
-            _record.Issues?.ForEach(issue =>
-            {
-                var annotation = issue.ToAnnotation();
-                if (annotation != null)
+                var stepResult = new StepResult
                 {
-                    stepResult.Annotations.Add(annotation.Value);
-                }
-            });
+                    ExternalID = _record.Id,
+                    Conclusion = _record.Result ?? TaskResult.Succeeded,
+                    Status = _record.State,
+                    Number = _record.Order,
+                    Name = _record.Name,
+                    StartedAt = _record.StartTime,
+                    CompletedAt = _record.FinishTime,
+                    Annotations = new List<Annotation>()
+                };
 
-            Global.StepsResult.Add(stepResult);
+                _record.Issues?.ForEach(issue =>
+                {
+                    var annotation = issue.ToAnnotation();
+                    if (annotation != null)
+                    {
+                        stepResult.Annotations.Add(annotation.Value);
+                    }
+                });
+
+                Global.StepsResult.Add(stepResult);
+            }
+
 
             if (Root != this)
             {
