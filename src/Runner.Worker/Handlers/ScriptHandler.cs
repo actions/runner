@@ -71,14 +71,14 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
-                if (ExecutionContext.Global.CompositeDefaults.TryGetValue("run", out var runCompositeDefaults))
+                if (ExecutionContext.Global.CompositeDefaults != null && ExecutionContext.Global.CompositeDefaults.TryGetValue("run", out var runCompositeDefaults))
                 {
                     if (runCompositeDefaults.TryGetValue("shell", out shell))
                     {
                         ExecutionContext.Debug("Overwrite 'shell' base on composite defaults.");
                     }
                 }
-                else if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                else if (ExecutionContext.Global.JobDefaults != null && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("shell", out shell))
                     {
