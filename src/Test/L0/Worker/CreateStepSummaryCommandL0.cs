@@ -124,7 +124,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "",
                     "## This is more markdown content",
                 };
-                WriteContent(stepSummaryFile, content);
+                TestUtil.WriteContent(stepSummaryFile, content);
 
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
                 _jobExecutionContext.Complete();
@@ -153,7 +153,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "",
                     "# GITHUB_TOKEN ghs_verysecuretoken",
                 };
-                WriteContent(stepSummaryFile, content);
+                TestUtil.WriteContent(stepSummaryFile, content);
 
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
@@ -165,21 +165,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _jobServerQueue.Verify(x => x.QueueFileUpload(It.IsAny<Guid>(), It.IsAny<Guid>(), ChecksAttachmentType.StepSummary, _executionContext.Object.Id.ToString(), scrubbedFile, It.IsAny<bool>()), Times.Once());
                 Assert.Equal(0, _issues.Count);
             }
-        }
-
-        private void WriteContent(
-            string path,
-            List<string> content,
-            string newline = null)
-        {
-            if (string.IsNullOrEmpty(newline))
-            {
-                newline = Environment.NewLine;
-            }
-
-            var encoding = new UTF8Encoding(true); // Emit BOM
-            var contentStr = string.Join(newline, content);
-            File.WriteAllText(path, contentStr, encoding);
         }
 
         private TestHostContext Setup([CallerMemberName] string name = "")

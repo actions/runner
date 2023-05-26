@@ -64,7 +64,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 var stateFile = Path.Combine(_rootDirectory, "empty-file");
                 var content = new List<string>();
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(0, _intraActionState.Count);
@@ -83,7 +83,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     "MY_STATE=MY VALUE",
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _intraActionState.Count);
@@ -107,7 +107,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_STATE_2=my second value",
                     string.Empty,
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(2, _intraActionState.Count);
@@ -128,7 +128,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     "MY_STATE=",
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _intraActionState.Count);
@@ -150,7 +150,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_STATE_2=",
                     "MY_STATE_3=my third value",
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(3, _intraActionState.Count);
@@ -174,7 +174,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_STATE_2=def=ghi",
                     "MY_STATE_3=jkl=",
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(3, _intraActionState.Count);
@@ -200,7 +200,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "line three",
                     "EOF",
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _intraActionState.Count);
@@ -221,7 +221,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_STATE<<EOF",
                     "EOF",
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _intraActionState.Count);
@@ -251,7 +251,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                     string.Empty,
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(2, _intraActionState.Count);
@@ -291,7 +291,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     " EOF",
                     "EOF",
                 };
-                WriteContent(stateFile, content);
+                TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(5, _intraActionState.Count);
@@ -311,15 +311,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hostContext = Setup())
             {
                 var stateFile = Path.Combine(_rootDirectory, "heredoc");
-                var content = new List<string>
-                {
-                    "MY_STATE<<EOF",
-                    "line one",
-                    "line two",
-                    "line three",
-                    "EOF",
-                };
-                WriteContent(stateFile, content, " ");
+                string content = "MY_OUTPUT<<EOF line one line two line three EOF";
+                TestUtil.WriteContent(stateFile, content);
                 var ex = Assert.Throws<Exception>(() => _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null));
                 Assert.Contains("Matching delimiter not found", ex.Message);
             }
@@ -333,15 +326,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hostContext = Setup())
             {
                 var stateFile = Path.Combine(_rootDirectory, "heredoc");
-                var content = new List<string>
-                {
-                    "MY_STATE<<EOF",
-                    @"line one
-                    line two
-                    line three",
-                    "EOF",
-                };
-                WriteContent(stateFile, content, " ");
+                string multilineFragment = @"line one
+                                             line two
+                                             line three";
+
+                // Note that the final EOF does not appear on it's own line.
+                string content = $"MY_OUTPUT<<EOF {multilineFragment} EOF";
+                TestUtil.WriteContent(stateFile, content);
                 var ex = Assert.Throws<Exception>(() => _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null));
                 Assert.Contains("EOF marker missing new line", ex.Message);
             }
@@ -364,7 +355,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "world",
                     "EOF",
                 };
-                WriteContent(stateFile, content, newline: newline);
+                TestUtil.WriteContent(stateFile, content, LineEndingType.Linux);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _intraActionState.Count);
@@ -373,20 +364,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         }
 #endif
 
-        private void WriteContent(
-            string path,
-            List<string> content,
-            string newline = null)
-        {
-            if (string.IsNullOrEmpty(newline))
-            {
-                newline = Environment.NewLine;
-            }
-
-            var encoding = new UTF8Encoding(true); // Emit BOM
-            var contentStr = string.Join(newline, content);
-            File.WriteAllText(path, contentStr, encoding);
-        }
 
         private TestHostContext Setup([CallerMemberName] string name = "")
         {

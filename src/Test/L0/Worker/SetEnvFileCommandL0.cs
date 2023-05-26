@@ -1,17 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Container;
-using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Xunit;
 using DTWebApi = GitHub.DistributedTask.WebApi;
@@ -20,6 +14,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class SetEnvFileCommandL0
     {
+
+        private static readonly string BREAK = Environment.NewLine;
+
         private Mock<IExecutionContext> _executionContext;
         private List<Tuple<DTWebApi.Issue, string>> _issues;
         private string _rootDirectory;
@@ -63,7 +60,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 var envFile = Path.Combine(_rootDirectory, "empty-file");
                 var content = new List<string>();
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
@@ -82,7 +79,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     "MY_ENV=MY VALUE",
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
@@ -106,7 +103,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_ENV_2=my second value",
                     string.Empty,
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(2, _executionContext.Object.Global.EnvironmentVariables.Count);
@@ -127,7 +124,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     "MY_ENV=",
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
@@ -149,7 +146,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_ENV_2=",
                     "MY_ENV_3=my third value",
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(3, _executionContext.Object.Global.EnvironmentVariables.Count);
@@ -173,7 +170,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_ENV_2=def=ghi",
                     "MY_ENV_3=jkl=",
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(3, _executionContext.Object.Global.EnvironmentVariables.Count);
@@ -199,11 +196,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "line three",
                     "EOF",
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal($"line one{Environment.NewLine}line two{Environment.NewLine}line three", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
+                Assert.Equal($"line one{BREAK}line two{BREAK}line three", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
             }
         }
 
@@ -220,7 +217,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_ENV<<EOF",
                     "EOF",
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
@@ -250,56 +247,132 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                     string.Empty,
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(2, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal($"hello{Environment.NewLine}world", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
-                Assert.Equal($"HELLO{Environment.NewLine}AGAIN", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
+                Assert.Equal($"hello{BREAK}world", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
+                Assert.Equal($"HELLO{BREAK}AGAIN", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
             }
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetEnvFileCommand_Heredoc_SpecialCharacters()
+        public void SetEnvFileCommand_Heredoc_EdgeCases()
         {
             using (var hostContext = Setup())
             {
                 var envFile = Path.Combine(_rootDirectory, "heredoc");
                 var content = new List<string>
                 {
-                    "MY_ENV<<=EOF",
-                    "hello",
-                    "one",
-                    "=EOF",
-                    "MY_ENV_2<<<EOF",
-                    "hello",
-                    "two",
-                    "<EOF",
-                    "MY_ENV_3<<EOF",
+                    "MY_ENV_1<<EOF",
                     "hello",
                     string.Empty,
                     "three",
                     string.Empty,
                     "EOF",
-                    "MY_ENV_4<<EOF",
-                    "hello=four",
+                    "MY_ENV_2<<EOF",
+                    "hello=two",
                     "EOF",
-                    "MY_ENV_5<<EOF",
+                    "MY_ENV_3<<EOF",
                     " EOF",
                     "EOF",
+                    "MY_ENV_4<<EOF",
+                    "EOF EOF",
+                    "EOF",
                 };
-                WriteContent(envFile, content);
+                TestUtil.WriteContent(envFile, content);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(5, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal($"hello{Environment.NewLine}one", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
-                Assert.Equal($"hello{Environment.NewLine}two", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
-                Assert.Equal($"hello{Environment.NewLine}{Environment.NewLine}three{Environment.NewLine}", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_3"]);
-                Assert.Equal($"hello=four", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_4"]);
-                Assert.Equal($" EOF", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_5"]);
+                Assert.Equal(4, _executionContext.Object.Global.EnvironmentVariables.Count);
+                Assert.Equal($"hello{BREAK}{BREAK}three{BREAK}", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_1"]);
+                Assert.Equal($"hello=two", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
+                Assert.Equal($" EOF", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_3"]);
+                Assert.Equal($"EOF EOF", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_4"]);
             }
+        }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        // All of the following are not only valid, but quite plausible end markers.
+        // Most are derived straight from the example at https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+        [InlineData("=EOF")][InlineData("==EOF")][InlineData("EO=F")][InlineData("EO==F")][InlineData("EOF=")][InlineData("EOF==")]
+        [InlineData("<EOF")][InlineData("<<EOF")][InlineData("EO<F")][InlineData("EO<<F")][InlineData("EOF<")][InlineData("EOF<<")]
+        [InlineData("+EOF")][InlineData("++EOF")][InlineData("EO+F")][InlineData("EO++F")][InlineData("EOF+")][InlineData("EOF++")]
+        [InlineData("/EOF")][InlineData("//EOF")][InlineData("EO/F")][InlineData("EO//F")][InlineData("EOF/")][InlineData("EOF//")]
+        [InlineData("<<//++==")]
+        [InlineData("contrivedBase64==")]
+        [InlineData("khkIhPxsVA==")]
+        [InlineData("D+Y8zE/EOw==")]
+        [InlineData("wuOWG4S6FQ==")]
+        [InlineData("7wigCJ//iw==")]
+        [InlineData("uifTuYTs8K4=")]
+        [InlineData("M7N2ITg/04c=")]
+        [InlineData("Xhh+qp+Y6iM=")]
+        [InlineData("5tdblQajc/b+EGBZXo0w")]
+        [InlineData("jk/UMjIx/N0eVcQYOUfw")]
+        [InlineData("/n5lsw73Cwl35Hfuscdz")]
+        [InlineData("ZvnAEW+9O0tXp3Fmb3Oh")]
+        public void SetEnvFileCommand_Heredoc_EndMarkerVariations(string validEndMarker)
+        {
+            using (var hostContext = Setup())
+            {
+                var envFile = Path.Combine(_rootDirectory, "heredoc");
+                string eof = validEndMarker;
+                var content = new List<string>
+                {
+                    $"MY_ENV_1<<{eof}",
+                    $"hello",
+                    $"one",
+                    $"{eof}",
+                    $"MY_ENV_2<<{eof}",
+                    $"hello=two",
+                    $"{eof}",
+                    $"MY_ENV_3<<{eof}",
+                    $" {eof}",
+                    $"{eof}",
+                    $"MY_ENV_4<<{eof}",
+                    $"{eof} {eof}",
+                    $"{eof}",
+                };
+                TestUtil.WriteContent(envFile, content);
+                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                Assert.Equal(0, _issues.Count);
+                Assert.Equal(4, _executionContext.Object.Global.EnvironmentVariables.Count);
+                Assert.Equal($"hello{BREAK}one", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_1"]);
+                Assert.Equal($"hello=two", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
+                Assert.Equal($" {eof}", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_3"]);
+                Assert.Equal($"{eof} {eof}", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_4"]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_Heredoc_EqualBeforeMultilineIndicator()
+        {
+            using var hostContext = Setup();
+            var envFile = Path.Combine(_rootDirectory, "heredoc");
+
+            // Define a hypothetical injectable payload that just happens to contain the '=' character.
+            string contrivedGitHubIssueTitle = "Issue 999:  Better handling for the `=` character";
+
+            // The docs recommend using randomly-generated EOF markers.
+            // Here's a randomly-generated base64 EOF marker that just happens to contain an '=' character.  ('=' is a padding character in base64.)
+            // see https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+            string randomizedEOF = "khkIhPxsVA==";
+            var content = new List<string>
+            {
+                // In a real world scenario, "%INJECT%" might instead be something like "${{ github.event.issue.title }}"
+                $"PREFIX_%INJECT%<<{randomizedEOF}".Replace("%INJECT%", contrivedGitHubIssueTitle),
+                "RandomDataThatJustHappensToContainAnEquals=Character",
+                randomizedEOF,
+            };
+            TestUtil.WriteContent(envFile, content);
+            var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
+            Assert.StartsWith("Invalid format", ex.Message);
         }
 
         [Fact]
@@ -310,15 +383,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hostContext = Setup())
             {
                 var envFile = Path.Combine(_rootDirectory, "heredoc");
-                var content = new List<string>
-                {
-                    "MY_ENV<<EOF",
-                    "line one",
-                    "line two",
-                    "line three",
-                    "EOF",
-                };
-                WriteContent(envFile, content, " ");
+                string content = "MY_OUTPUT<<EOF line one line two line three EOF";
+                TestUtil.WriteContent(envFile, content);
                 var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
                 Assert.Contains("Matching delimiter not found", ex.Message);
             }
@@ -332,15 +398,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hostContext = Setup())
             {
                 var envFile = Path.Combine(_rootDirectory, "heredoc");
-                var content = new List<string>
-                {
-                    "MY_ENV<<EOF",
-                    @"line one
-                    line two
-                    line three",
-                    "EOF",
-                };
-                WriteContent(envFile, content, " ");
+                string multilineFragment = @"line one
+                                             line two
+                                             line three";
+
+                // Note that the final EOF does not appear on it's own line.
+                string content = $"MY_OUTPUT<<EOF {multilineFragment} EOF";
+                TestUtil.WriteContent(envFile, content);
                 var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
                 Assert.Contains("EOF marker missing new line", ex.Message);
             }
@@ -363,7 +427,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "world",
                     "EOF",
                 };
-                WriteContent(envFile, content, newline: newline);
+                TestUtil.WriteContent(stateFile, content, LineEndingType.Linux);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
@@ -371,21 +435,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 #endif
-
-        private void WriteContent(
-            string path,
-            List<string> content,
-            string newline = null)
-        {
-            if (string.IsNullOrEmpty(newline))
-            {
-                newline = Environment.NewLine;
-            }
-
-            var encoding = new UTF8Encoding(true); // Emit BOM
-            var contentStr = string.Join(newline, content);
-            File.WriteAllText(path, contentStr, encoding);
-        }
 
         private TestHostContext Setup([CallerMemberName] string name = "")
         {
