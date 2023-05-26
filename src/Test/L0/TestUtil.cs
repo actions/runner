@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -12,7 +12,7 @@ namespace GitHub.Runner.Common.Tests
     public enum LineEndingType
     {
         Native,
-        Linux   = 0x__0A,
+        Linux = 0x__0A,
         Windows = 0x0D0A
     }
 
@@ -62,7 +62,7 @@ namespace GitHub.Runner.Common.Tests
         {
             string newline = lineEnding switch
             {
-                LineEndingType.Linux   => "\n",
+                LineEndingType.Linux => "\n",
                 LineEndingType.Windows => "\r\n",
                 _ => Environment.NewLine,
             };

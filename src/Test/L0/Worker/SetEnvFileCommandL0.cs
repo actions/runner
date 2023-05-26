@@ -298,10 +298,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         // All of the following are not only valid, but quite plausible end markers.
         // Most are derived straight from the example at https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+#pragma warning disable format
         [InlineData("=EOF")][InlineData("==EOF")][InlineData("EO=F")][InlineData("EO==F")][InlineData("EOF=")][InlineData("EOF==")]
         [InlineData("<EOF")][InlineData("<<EOF")][InlineData("EO<F")][InlineData("EO<<F")][InlineData("EOF<")][InlineData("EOF<<")]
         [InlineData("+EOF")][InlineData("++EOF")][InlineData("EO+F")][InlineData("EO++F")][InlineData("EOF+")][InlineData("EOF++")]
         [InlineData("/EOF")][InlineData("//EOF")][InlineData("EO/F")][InlineData("EO//F")][InlineData("EOF/")][InlineData("EOF//")]
+#pragma warning restore format
         [InlineData("<<//++==")]
         [InlineData("contrivedBase64==")]
         [InlineData("khkIhPxsVA==")]

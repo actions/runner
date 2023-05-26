@@ -281,7 +281,7 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class EnvFileKeyValuePairs: IEnumerable<KeyValuePair<string, string>>
+    public sealed class EnvFileKeyValuePairs : IEnumerable<KeyValuePair<string, string>>
     {
         private IExecutionContext _context;
         private string _filePath;
