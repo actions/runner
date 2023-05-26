@@ -429,7 +429,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "world",
                     "EOF",
                 };
-                TestUtil.WriteContent(stateFile, content, LineEndingType.Linux);
+                TestUtil.WriteContent(envFile, content, LineEndingType.Linux);
                 _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
