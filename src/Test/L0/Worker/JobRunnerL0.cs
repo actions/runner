@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.Runner.Sdk;
+using System.IO;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -89,16 +92,16 @@ namespace GitHub.Runner.Common.Tests.Worker
             return hc;
         }
 
-        private Pipelines.AgentJobRequestMessage GetMessage(String messageType = JobRequestMessageTypes.PipelineAgentJobRequest,  [CallerMemberName] String testName = "") 
+        private Pipelines.AgentJobRequestMessage GetMessage(String messageType = JobRequestMessageTypes.PipelineAgentJobRequest, [CallerMemberName] String testName = "")
         {
             TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = new Timeline(Guid.NewGuid());
             Guid jobId = Guid.NewGuid();
             var message = new Pipelines.AgentJobRequestMessage(
-                plan, 
-                timeline, 
-                jobId, 
-                testName, 
+                plan,
+                timeline,
+                jobId,
+                testName,
                 testName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null,
                 messageType: messageType);
             message.Variables[Constants.Variables.System.Culture] = "en-US";
@@ -172,26 +175,39 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var trace = hc.GetTrace();
                 List<TimelineRecord> record = new();
 
-                var message = GetMessage(JobRequestMessageTypes.RunnerJobRequest);
+                var message = GetMyMessage();
 
                 _jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>())).Callback((Guid guid, TimelineRecord tr) =>
                 {
                     record.Add(tr);
                 });
 
+                _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), 
+                It.IsAny<Pipelines.AgentJobRequestMessage>())).
+                CallBase();
+
                 await _jobRunner.RunAsync(message, _tokenSource.Token);
                 HashSet<TimelineRecord> hashSet = new HashSet<TimelineRecord>(record, new TimelineRecordComparer());
                 _jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()), Times.Exactly(3));
                 Assert.Equal(3, record.Count);
                 Assert.Equal(1, hashSet.Count);
-                Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
+                Assert.Equal(TaskResult.Failed, _jobEc.Result);
             }
+        }
+
+        private Pipelines.AgentJobRequestMessage GetMyMessage()
+        {
+            var action_path = Path.Combine(TestUtil.GetTestDataPath(), "bleble.txt");
+            string readText = File.ReadAllText(action_path);
+
+            var res = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(readText);
+            return res;
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task WorksWithRunnerJobRequestMessageType() 
+        public async Task WorksWithRunnerJobRequestMessageType()
         {
             using (TestHostContext hc = CreateTestContext())
             {
