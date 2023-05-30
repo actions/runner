@@ -161,6 +161,33 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task TrololoTestDuplicatedMessages()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var trace = hc.GetTrace();
+                List<TimelineRecord> record = new();
+
+                var message = GetMessage(JobRequestMessageTypes.RunnerJobRequest);
+
+                _jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>())).Callback((Guid guid, TimelineRecord tr) =>
+                {
+                    record.Add(tr);
+                });
+
+                await _jobRunner.RunAsync(message, _tokenSource.Token);
+                HashSet<TimelineRecord> hashSet = new HashSet<TimelineRecord>(record, new TimelineRecordComparer());
+                _jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()), Times.Exactly(3));
+                Assert.Equal(3, record.Count);
+                Assert.Equal(1, hashSet.Count);
+                Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
