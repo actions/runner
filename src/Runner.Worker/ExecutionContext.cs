@@ -1401,7 +1401,7 @@ namespace GitHub.Runner.Worker
 
         public void Error(string format, params Object[] args)
         {
-            _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
+            _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
         }
 
         public void Info(string format, params Object[] args)
