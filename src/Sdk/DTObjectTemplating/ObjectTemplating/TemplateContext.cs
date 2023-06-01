@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -120,15 +120,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
         }
 
-        internal void Error(TemplateValidationError error)
-        {
-            Errors.Add(error);
-            TraceWriter.Error(error.Message);
-        }
-
         internal void Error(
-            TemplateToken value,
-            Exception ex)
+           TemplateToken value,
+           Exception ex)
         {
             Error(value?.FileId, value?.Line, value?.Column, ex);
         }
