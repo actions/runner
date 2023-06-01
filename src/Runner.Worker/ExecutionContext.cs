@@ -21,6 +21,7 @@ using Newtonsoft.Json;
 using Sdk.RSWebApi.Contracts;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using constants = GitHub.Runner.Common.Constants;
 
 namespace GitHub.Runner.Worker
 {
@@ -1401,8 +1402,14 @@ namespace GitHub.Runner.Worker
 
         public void Error(string format, params Object[] args)
         {
-            _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
+            _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessage, out var logErrorsAsDebug);
+            if (StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false))
+            {
+                _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
+            }
+            else _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
         }
+
 
         public void Info(string format, params Object[] args)
         {

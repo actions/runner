@@ -152,13 +152,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
             String message)
         {
             var prefix = GetErrorPrefix(fileId, line, column);
-            if (!String.IsNullOrEmpty(prefix))
-            {
-                message = $"{prefix} {message}";
-            }
+            var fullMessage = !String.IsNullOrEmpty(prefix) ? $"{prefix} {message}" : message;
 
-            Errors.Add(message);
-            TraceWriter.Error(message);
+            Errors.Add(fullMessage);
+            TraceWriter.Error(fullMessage);
         }
 
         internal INamedValueInfo[] GetExpressionNamedValues()
