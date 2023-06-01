@@ -1402,14 +1402,13 @@ namespace GitHub.Runner.Worker
 
         public void Error(string format, params Object[] args)
         {
-            _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessage, out var logErrorsAsDebug);
-            if (StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false))
+
+            if (logTemplateErrorsAsDebugMessage())
             {
                 _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
             }
             else _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
         }
-
 
         public void Info(string format, params Object[] args)
         {
@@ -1421,6 +1420,13 @@ namespace GitHub.Runner.Worker
             // todo: switch to verbose?
             _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, $"{format}", args));
         }
+
+        private bool logTemplateErrorsAsDebugMessage()
+        {
+            _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessage, out var logErrorsAsDebug);
+            return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false);
+        }
+
     }
 
     public static class WellKnownTags
@@ -1432,4 +1438,5 @@ namespace GitHub.Runner.Worker
         public static readonly string Notice = "##[notice]";
         public static readonly string Debug = "##[debug]";
     }
+
 }
