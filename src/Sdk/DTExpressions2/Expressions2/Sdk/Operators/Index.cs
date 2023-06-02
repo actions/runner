@@ -213,7 +213,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Operators
             resultMemory = null;
             return null;
         }
-        
+
         private class FilteredArray : IReadOnlyArray
         {
             public FilteredArray()

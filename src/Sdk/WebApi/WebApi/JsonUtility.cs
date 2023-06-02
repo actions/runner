@@ -65,7 +65,7 @@ namespace GitHub.Services.WebApi
         }
 
         public static String ToString(
-            Object toSerialize, 
+            Object toSerialize,
             Boolean indent)
         {
             if (toSerialize == null)
@@ -144,9 +144,9 @@ namespace GitHub.Services.WebApi
         {
             // no map funcs, just clones
             mapFuncs = mapFuncs ?? new Dictionary<JTokenType, Func<JToken, JToken>>();
-            
+
             Func<JToken, JToken> mapperFunc;
-            
+
             // process token
             switch (token.Type)
             {
@@ -189,7 +189,7 @@ namespace GitHub.Services.WebApi
                     }
 
                     return copy;
-                
+
                 case JTokenType.String:
                     if (mapFuncs.TryGetValue(JTokenType.String, out mapperFunc))
                     {
@@ -197,7 +197,7 @@ namespace GitHub.Services.WebApi
                     }
 
                     return token;
-                
+
                 case JTokenType.Boolean:
                 case JTokenType.Null:
                 case JTokenType.Guid:

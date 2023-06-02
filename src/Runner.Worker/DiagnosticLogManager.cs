@@ -32,7 +32,7 @@ namespace GitHub.Runner.Worker
     {
         private static string DateTimeFormat = "yyyyMMdd-HHmmss";
         public void UploadDiagnosticLogs(IExecutionContext executionContext,
-                                         IExecutionContext parentContext, 
+                                         IExecutionContext parentContext,
                                          Pipelines.AgentJobRequestMessage message,
                                          DateTime jobStartTimeUtc)
         {

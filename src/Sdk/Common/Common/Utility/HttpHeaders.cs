@@ -21,7 +21,7 @@ namespace GitHub.Services.Common.Internal
 
         public const String VssRateLimitDelay = "X-RateLimit-Delay";
         public const String VssRateLimitReset = "X-RateLimit-Reset";
-        
+
         public const String VssHostOfflineError = "X-VSS-HostOfflineError";
 
         public const string VssRequestPriority = "X-VSS-RequestPriority";

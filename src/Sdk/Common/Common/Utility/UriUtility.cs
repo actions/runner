@@ -696,7 +696,7 @@ namespace GitHub.Services.Common.Internal
             return uri;
         }
 
-#region functionality forked from System.Web.HttpUtility
+        #region functionality forked from System.Web.HttpUtility
         //*************************************************************************************************
         // This region UriUtility contains functionality forked from System.Web.HttpUtility.
         // Only our server assemblies can take a dependency on System.Web because it is not part of the
@@ -710,7 +710,7 @@ namespace GitHub.Services.Common.Internal
         // Don't entity encode high chars (160 to 256), to fix bugs VSWhidbey 85857/111927
         // REVIEW: comment out this line to fix VSWhidbey 85857/111927, after we verify that it's safe to do so
 
-#region ParseFragmentString
+        #region ParseFragmentString
 
         public static NameValueCollection ParseFragmentString(string fragment)
         {
@@ -735,9 +735,9 @@ namespace GitHub.Services.Common.Internal
             return new HttpValueCollection(fragment, false, urlEncoded, encoding);
         }
 
-#endregion
+        #endregion
 
-#region ParseQueryString
+        #region ParseQueryString
 
         // *** Source: ndp/fx/src/xsp/system/web/httpserverutility.cs
 
@@ -764,9 +764,9 @@ namespace GitHub.Services.Common.Internal
             return new HttpValueCollection(query, false, urlEncoded, encoding);
         }
 
-#endregion
+        #endregion
 
-#region UrlEncode implementation
+        #region UrlEncode implementation
 
         // *** Source: ndp/fx/src/xsp/system/web/util/httpencoder.cs
 
@@ -887,9 +887,9 @@ namespace GitHub.Services.Common.Internal
             return expandedBytes;
         }
 
-#endregion
+        #endregion
 
-#region UrlEncode public methods
+        #region UrlEncode public methods
 
         // *** Source: ndp/fx/src/xsp/system/web/httpserverutility.cs
 
@@ -972,9 +972,9 @@ namespace GitHub.Services.Common.Internal
             return UrlEncodeSpaces(UrlEncodeNonAscii(str, Encoding.UTF8));
         }
 
-#endregion
+        #endregion
 
-#region UrlEncodeUnicode
+        #region UrlEncodeUnicode
 
         // *** Source: ndp/fx/src/xsp/system/web/util/httpencoder.cs
 
@@ -1022,9 +1022,9 @@ namespace GitHub.Services.Common.Internal
             return sb.ToString();
         }
 
-#endregion
+        #endregion
 
-#region HttpValueCollection nested class
+        #region HttpValueCollection nested class
 
         // *** Source: ndp/fx/src/xsp/system/web/httpvaluecollection.cs
 
@@ -1260,9 +1260,9 @@ namespace GitHub.Services.Common.Internal
             }
         }
 
-#endregion
+        #endregion
 
-#region HtmlEncode
+        #region HtmlEncode
 
         // *** Source: ndp/fx/src/net/system/net/webutility.cs
 
@@ -1362,7 +1362,7 @@ namespace GitHub.Services.Common.Internal
 
         #endregion
 
-#region HtmlEncode/Decode helper methods
+        #region HtmlEncode/Decode helper methods
 
         // *** Source: ndp/fx/src/net/system/net/webutility.cs
 
@@ -1400,9 +1400,9 @@ namespace GitHub.Services.Common.Internal
             return -1;
         }
 
-#endregion
+        #endregion
 
-#region UrlDecode implementation
+        #region UrlDecode implementation
 
         // *** Source: ndp/fx/src/xsp/system/web/util/httpencoder.cs
 
@@ -1579,9 +1579,9 @@ namespace GitHub.Services.Common.Internal
             return helper.GetString();
         }
 
-#endregion
+        #endregion
 
-#region UrlDecode public methods
+        #region UrlDecode public methods
 
         // *** Source: ndp/fx/src/xsp/system/web/httpserverutility.cs
 
@@ -1649,9 +1649,9 @@ namespace GitHub.Services.Common.Internal
             return UrlDecodeInternal(bytes, offset, count);
         }
 
-#endregion
+        #endregion
 
-#region Helper methods
+        #region Helper methods
 
         // *** Source: ndp/fx/src/xsp/system/web/util/httpencoderutility.cs
 
@@ -1729,9 +1729,9 @@ namespace GitHub.Services.Common.Internal
             return (b >= 0x7F || b < 0x20);
         }
 
-#endregion
+        #endregion
 
-#region UrlDecoder nested class
+        #region UrlDecoder nested class
 
         // *** Source: ndp/fx/src/xsp/system/web/util/httpencoder.cs
 
@@ -1797,9 +1797,9 @@ namespace GitHub.Services.Common.Internal
             }
         }
 
-#endregion
+        #endregion
 
-#region HtmlDecode
+        #region HtmlDecode
 
         // *** Source: ndp/fx/src/net/system/net/webutility.cs
 
@@ -1904,9 +1904,9 @@ namespace GitHub.Services.Common.Internal
             }
         }
 
-#endregion
+        #endregion
 
-#region HtmlEntities nested class
+        #region HtmlEntities nested class
 
         // *** Source: ndp/fx/src/net/system/net/webutility.cs
 
@@ -2195,10 +2195,10 @@ namespace GitHub.Services.Common.Internal
             }
         }
 
-#endregion
+        #endregion
 
         // *** Source: ndp/fx/src/net/system/net/webutility.cs
         private static char[] _htmlEntityEndingChars = new char[] { ';', '&' };
-#endregion
+        #endregion
     }
 }
