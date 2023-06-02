@@ -1403,7 +1403,7 @@ namespace GitHub.Runner.Worker
         public void Error(string format, params Object[] args)
         {
 
-            if (logTemplateErrorsAsDebugMessage())
+            if (logTemplateErrorsAsDebugMessages())
             {
                 _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
             }
@@ -1421,7 +1421,7 @@ namespace GitHub.Runner.Worker
             _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, $"{format}", args));
         }
 
-        private bool logTemplateErrorsAsDebugMessage()
+        private bool logTemplateErrorsAsDebugMessages()
         {
             _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug);
             return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false);
