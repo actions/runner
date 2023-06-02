@@ -70,7 +70,7 @@ namespace GitHub.Runner.Worker.Container
                 return false;
             }
             var imageWithoutPath = image.Split('/').Last();
-            return imageWithoutPath.StartsWith("Dockerfile.") || imageWithoutPath.StartsWith("dockerfile.") || imageWithoutPath.EndsWith("Dockerfile") || imageWithoutPath.EndsWith("dockerfile");
+            return imageWithoutPath.StartsWith("Dockerfile.", StringComparison.OrdinalIgnoreCase) || imageWithoutPath.EndsWith("Dockerfile", StringComparison.OrdinalIgnoreCase);
         }
 
         public static string CreateEscapedOption(string flag, string key)
