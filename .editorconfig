@@ -1,7 +1,7 @@
 # https://editorconfig.org/
 
 [*]
-charset = utf-8 # Set default charset to utf-8
+charset = utf-8-bom
 insert_final_newline = true # ensure all files end with a single newline
 trim_trailing_whitespace = true # attempt to remove trailing whitespace on save
 
