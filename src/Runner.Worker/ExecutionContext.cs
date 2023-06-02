@@ -1423,7 +1423,7 @@ namespace GitHub.Runner.Worker
 
         private bool logTemplateErrorsAsDebugMessage()
         {
-            _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessage, out var logErrorsAsDebug);
+            _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug);
             return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false);
         }
 
