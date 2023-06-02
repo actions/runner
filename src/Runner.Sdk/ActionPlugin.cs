@@ -220,20 +220,12 @@ namespace GitHub.Runner.Sdk
             return input;
         }
 
-        private Dictionary<string, string> _commandEscapeMappings = new(StringComparer.OrdinalIgnoreCase)
+        private Dictionary<string, string> _commandEscapeMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            {
-                ";", "%3B"
-            },
-            {
-                "\r", "%0D"
-            },
-            {
-                "\n", "%0A"
-            },
-            {
-                "]", "%5D"
-            },
+            { ";", "%3B" },
+            { "\r", "%0D" },
+            { "\n", "%0A" },
+            { "]", "%5D" },
         };
     }
 }
