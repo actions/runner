@@ -317,15 +317,28 @@ namespace GitHub.Runner.Worker
 
             if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
-                Trace.Info("Load action that reference container from registry.");
-                CachedActionContainers.TryGetValue(action.Id, out var container);
-                ArgUtil.NotNull(container, nameof(container));
-                definition.Data.Execution = new ContainerActionExecutionData()
+                if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
                 {
-                    Image = container.ContainerImage
-                };
+                    Trace.Info("Load action that will run container through container hooks.");
+                    var containerAction = action.Reference as Pipelines.ContainerRegistryReference;
+                    definition.Data.Execution = new ContainerActionExecutionData()
+                    {
+                        Image = containerAction.Image,
+                    };
+                    Trace.Info($"Using action container image: {containerAction.Image}.");
+                }
+                else
+                {
+                    Trace.Info("Load action that reference container from registry.");
+                    CachedActionContainers.TryGetValue(action.Id, out var container);
+                    ArgUtil.NotNull(container, nameof(container));
+                    definition.Data.Execution = new ContainerActionExecutionData()
+                    {
+                        Image = container.ContainerImage
+                    };
 
-                Trace.Info($"Using action container image: {container.ContainerImage}.");
+                    Trace.Info($"Using action container image: {container.ContainerImage}.");
+                }
             }
             else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
             {
