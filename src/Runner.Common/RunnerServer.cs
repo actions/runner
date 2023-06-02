@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Threading;

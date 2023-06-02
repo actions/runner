@@ -1,4 +1,4 @@
-using GitHub.Runner.Sdk;
+﻿using GitHub.Runner.Sdk;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

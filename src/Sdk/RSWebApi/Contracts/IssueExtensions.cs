@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 
 namespace Sdk.RSWebApi.Contracts
 {

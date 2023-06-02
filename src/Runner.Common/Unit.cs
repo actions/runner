@@ -1,4 +1,4 @@
-// Represents absence of value.
+﻿// Represents absence of value.
 namespace GitHub.Runner.Common
 {
     public readonly struct Unit

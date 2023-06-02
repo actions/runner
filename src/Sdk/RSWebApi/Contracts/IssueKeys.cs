@@ -1,4 +1,4 @@
-namespace Sdk.RSWebApi.Contracts
+﻿namespace Sdk.RSWebApi.Contracts
 {
     public static class RunIssueKeys
     {
