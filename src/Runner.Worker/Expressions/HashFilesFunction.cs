@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.Pipelines.ContextData;

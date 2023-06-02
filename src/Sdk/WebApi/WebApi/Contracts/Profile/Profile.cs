@@ -173,7 +173,7 @@ namespace GitHub.Services.Profile
             Profile newProfile = MemberwiseClone() as Profile;
 
             // Since core attributes are cloned on read, we can get away with a shallow copy
-            newProfile.CoreAttributes = CoreAttributes != null ? CoreAttributes.ToDictionary(x => x.Key, x => (CoreProfileAttribute) x.Value.Clone()) : null;
+            newProfile.CoreAttributes = CoreAttributes != null ? CoreAttributes.ToDictionary(x => x.Key, x => (CoreProfileAttribute)x.Value.Clone()) : null;
             newProfile.ApplicationContainer = ApplicationContainer != null ? (AttributesContainer)ApplicationContainer.Clone() : null;
 
             return newProfile;

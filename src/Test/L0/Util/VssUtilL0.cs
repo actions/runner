@@ -1,4 +1,4 @@
-using GitHub.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
 using Xunit;
 using GitHub.Runner.Sdk;

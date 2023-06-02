@@ -12,7 +12,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         {
             Tracing trace = context.GetTrace("OuthAccessToken");
             trace.Info("GetVssCredentials()");
-            
+
             var loginCred = new VssOAuthAccessTokenCredential("sometoken");
             VssCredentials creds = new(loginCred);
             trace.Verbose("cred created");

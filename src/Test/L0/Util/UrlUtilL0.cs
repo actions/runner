@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using GitHub.Runner.Sdk;
 using Xunit;
 

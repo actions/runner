@@ -20,7 +20,7 @@ namespace GitHub.Services.FileContainer
         /// Project Id.
         /// </summary>
         [DataMember(IsRequired = false)]
-        public Guid ScopeIdentifier { get;[EditorBrowsable(EditorBrowsableState.Never)] set; }
+        public Guid ScopeIdentifier { get; [EditorBrowsable(EditorBrowsableState.Never)] set; }
 
         /// <summary>
         /// Uri of the artifact associated with the container.
@@ -103,10 +103,10 @@ namespace GitHub.Services.FileContainer
                 return false;
             }
 
-            return this.ArtifactUri == other.ArtifactUri  &&
+            return this.ArtifactUri == other.ArtifactUri &&
                     this.Description == other.Description &&
-                    this.Id == other.Id                   &&
-                    this.Name == other.Name               &&
+                    this.Id == other.Id &&
+                    this.Name == other.Name &&
                     this.ScopeIdentifier == other.ScopeIdentifier;
         }
 

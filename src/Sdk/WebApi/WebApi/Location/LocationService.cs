@@ -103,7 +103,7 @@ namespace GitHub.Services.WebApi.Location
                 {
                     providerLookup = actualProvider;
                 }
-            }            
+            }
 
             if (!providerLookup.TryGetValue(locationAreaIdentifier, out locationData))
             {

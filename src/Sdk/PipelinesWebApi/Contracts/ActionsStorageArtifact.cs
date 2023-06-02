@@ -15,7 +15,7 @@ namespace GitHub.Actions.Pipelines.WebApi
         /// File Container ID
         /// </summary>
         [DataMember]
-        public long ContainerId 
+        public long ContainerId
         {
             get;
             set;

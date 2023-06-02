@@ -60,7 +60,7 @@ namespace GitHub.Services.WebApi
             }
             return false;
         }
-        
+
         public HttpStatusCode HttpStatusCode { get; private set; }
 
         public Guid ActivityId { get; private set; }
