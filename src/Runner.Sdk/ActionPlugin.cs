@@ -223,16 +223,16 @@ namespace GitHub.Runner.Sdk
         private Dictionary<string, string> _commandEscapeMappings = new(StringComparer.OrdinalIgnoreCase)
         {
             {
-                ";","%3B"
+                ";", "%3B"
             },
             {
-                "\r","%0D"
+                "\r", "%0D"
             },
             {
-                "\n","%0A"
+                "\n", "%0A"
             },
             {
-                "]","%5D"
+                "]", "%5D"
             },
         };
     }
