@@ -156,12 +156,12 @@ namespace GitHub.Runner.Common.Tests.Listener
         }
 
         public static TheoryData<string[], bool, Times> RunAsServiceTestData = new()
-                                                                    {
-                                                                        // staring with run command, configured as run as service, should start the runner
-                                                                        { new [] { "run" }, true, Times.Once() },
-                                                                        // starting with no argument, configured not to run as service, should start runner interactively
-                                                                        { new [] { "run" }, false, Times.Once() }
-                                                                    };
+        {
+            // staring with run command, configured as run as service, should start the runner
+            { new [] { "run" }, true, Times.Once() },
+            // starting with no argument, configured not to run as service, should start runner interactively
+            { new [] { "run" }, false, Times.Once() }
+        };
         [Theory]
         [MemberData(nameof(RunAsServiceTestData))]
         [Trait("Level", "L0")]
