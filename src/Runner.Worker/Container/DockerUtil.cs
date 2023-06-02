@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -72,7 +72,7 @@ namespace GitHub.Runner.Worker.Container
             var imageWithoutPath = image.Split('/').Last();
             return imageWithoutPath.StartsWith("Dockerfile.") || imageWithoutPath.StartsWith("dockerfile.") || imageWithoutPath.EndsWith("Dockerfile") || imageWithoutPath.EndsWith("dockerfile");
         }
-        
+
         public static string CreateEscapedOption(string flag, string key)
         {
             if (String.IsNullOrEmpty(key))
