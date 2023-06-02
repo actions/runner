@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Globalization;
 using GitHub.DistributedTask.Expressions2.Sdk;

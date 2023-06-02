@@ -1,4 +1,4 @@
-﻿#if OS_OSX
+#if OS_OSX
 using System;
 using System.IO;
 using System.Collections.Generic;

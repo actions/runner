@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Listener.Configuration;
+using GitHub.Runner.Listener.Configuration;
 using Xunit;
 
 namespace GitHub.Runner.Common.Tests.Listener.Configuration

@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Listener;
+using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;

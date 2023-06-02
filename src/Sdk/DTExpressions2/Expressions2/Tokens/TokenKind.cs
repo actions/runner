@@ -1,4 +1,4 @@
-﻿namespace GitHub.DistributedTask.Expressions2.Tokens
+namespace GitHub.DistributedTask.Expressions2.Tokens
 {
     internal enum TokenKind
     {

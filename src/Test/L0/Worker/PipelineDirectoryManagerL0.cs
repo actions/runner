@@ -1,4 +1,4 @@
-﻿using Pipelines = GitHub.DistributedTask.Pipelines;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Worker;
 using Moq;
 using System.IO;

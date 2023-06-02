@@ -1,4 +1,4 @@
-﻿namespace GitHub.Runner.Common.Util
+namespace GitHub.Runner.Common.Util
 {
     using System;
 

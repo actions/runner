@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common.Internal;
+using GitHub.Services.Common.Internal;
 using System;
 using System.Text;
 

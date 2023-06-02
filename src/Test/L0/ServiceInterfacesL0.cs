@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Listener;
+using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Check;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Worker;

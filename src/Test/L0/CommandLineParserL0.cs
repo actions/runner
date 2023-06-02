@@ -1,4 +1,4 @@
-﻿using Moq;
+using Moq;
 using System.Runtime.CompilerServices;
 using Xunit;
 

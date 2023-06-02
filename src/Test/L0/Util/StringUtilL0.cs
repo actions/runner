@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Sdk;
+using GitHub.Runner.Sdk;
 using System.Globalization;
 using Xunit;
 

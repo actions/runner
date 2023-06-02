@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;

@@ -1,4 +1,4 @@
-﻿namespace RunnerService
+namespace RunnerService
 {
     partial class RunnerService
     {

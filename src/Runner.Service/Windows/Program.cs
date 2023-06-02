@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ServiceProcess;
 using System.Diagnostics;
 using System.ComponentModel;

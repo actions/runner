@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Text;

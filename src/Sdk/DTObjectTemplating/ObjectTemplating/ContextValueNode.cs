@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.DistributedTask.Expressions2.Sdk;
 
 namespace GitHub.DistributedTask.ObjectTemplating

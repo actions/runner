@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 

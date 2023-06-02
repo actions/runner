@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.ComponentModel;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi.Patch.Json;

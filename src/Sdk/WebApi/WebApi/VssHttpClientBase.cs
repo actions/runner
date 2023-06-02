@@ -1,4 +1,4 @@
-﻿//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 // <copyright file="VssHttpClientBase.cs" company="Microsoft Corporation">
 // Copyright (C) 2009-2014 All Rights Reserved
 // </copyright>

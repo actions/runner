@@ -1,4 +1,4 @@
-﻿namespace GitHub.DistributedTask.Expressions2
+namespace GitHub.DistributedTask.Expressions2
 {
     internal enum ParseExceptionKind
     {

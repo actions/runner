@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;

@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Worker;
+using GitHub.Runner.Worker;
 using Moq;
 using System;
 using System.IO;

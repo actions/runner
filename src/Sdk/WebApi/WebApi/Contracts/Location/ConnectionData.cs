@@ -1,4 +1,4 @@
-﻿using GitHub.Services.Common;
+using GitHub.Services.Common;
 using GitHub.Services.Common.Internal;
 using GitHub.Services.WebApi;
 using System;

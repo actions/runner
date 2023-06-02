@@ -1,4 +1,4 @@
-﻿// This #define is used by the HtmlEncode and HtmlDecode logic below. The original comment
+// This #define is used by the HtmlEncode and HtmlDecode logic below. The original comment
 // from ndp/fx/src/net/system/net/webutility.cs follows.
 #define ENTITY_ENCODE_HIGH_ASCII_CHARS
 

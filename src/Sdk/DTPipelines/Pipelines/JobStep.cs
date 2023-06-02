@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;

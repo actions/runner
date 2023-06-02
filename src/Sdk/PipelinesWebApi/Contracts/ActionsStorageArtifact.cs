@@ -1,4 +1,4 @@
-﻿using System.Runtime.Serialization;
+using System.Runtime.Serialization;
 using GitHub.Services.WebApi;
 
 namespace GitHub.Actions.Pipelines.WebApi
