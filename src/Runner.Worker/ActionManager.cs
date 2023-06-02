@@ -319,6 +319,7 @@ namespace GitHub.Runner.Worker
             {
                 if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
                 {
+                    Trace.Info("Load action that will run container through container hooks.");
                     var containerAction = action.Reference as Pipelines.ContainerRegistryReference;
                     definition.Data.Execution = new ContainerActionExecutionData()
                     {
