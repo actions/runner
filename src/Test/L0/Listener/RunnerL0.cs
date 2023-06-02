@@ -155,7 +155,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new()
+        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new TheoryData<string[], bool, Times>()
         {
             // staring with run command, configured as run as service, should start the runner
             { new [] { "run" }, true, Times.Once() },
