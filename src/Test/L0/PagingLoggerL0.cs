@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using System;
 using System.IO;
 using Xunit;
@@ -117,7 +117,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     pagingLogger.End();
 
                     //Assert
-                    _jobServerQueue.Verify(x => x.QueueFileUpload(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true), Times.Exactly(0));                    
+                    _jobServerQueue.Verify(x => x.QueueFileUpload(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true), Times.Exactly(0));
                 }
             }
             finally

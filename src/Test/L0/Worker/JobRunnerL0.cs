@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using Moq;
 using System;
@@ -89,16 +89,16 @@ namespace GitHub.Runner.Common.Tests.Worker
             return hc;
         }
 
-        private Pipelines.AgentJobRequestMessage GetMessage(String messageType = JobRequestMessageTypes.PipelineAgentJobRequest,  [CallerMemberName] String testName = "") 
+        private Pipelines.AgentJobRequestMessage GetMessage(String messageType = JobRequestMessageTypes.PipelineAgentJobRequest, [CallerMemberName] String testName = "")
         {
             TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = new Timeline(Guid.NewGuid());
             Guid jobId = Guid.NewGuid();
             var message = new Pipelines.AgentJobRequestMessage(
-                plan, 
-                timeline, 
-                jobId, 
-                testName, 
+                plan,
+                timeline,
+                jobId,
+                testName,
                 testName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null,
                 messageType: messageType);
             message.Variables[Constants.Variables.System.Culture] = "en-US";
@@ -164,7 +164,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task WorksWithRunnerJobRequestMessageType() 
+        public async Task WorksWithRunnerJobRequestMessageType()
         {
             using (TestHostContext hc = CreateTestContext())
             {

@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
