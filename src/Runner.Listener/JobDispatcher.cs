@@ -1087,7 +1087,7 @@ namespace GitHub.Runner.Listener
                 }
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, CancellationToken.None);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, environmentUrl: "", CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -1193,7 +1193,7 @@ namespace GitHub.Runner.Listener
                         jobAnnotations.Add(unhandledAnnotation.Value);
                     }
 
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, CancellationToken.None);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, environmentUrl: "", CancellationToken.None);
                 }
                 catch (Exception ex)
                 {

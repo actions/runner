@@ -100,6 +100,7 @@ namespace GitHub.Actions.RunService.WebApi
             Dictionary<String, VariableValue> outputs,
             IList<StepResult> stepResults,
             IList<Annotation> jobAnnotations,
+            string environmentUrl,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
@@ -110,7 +111,8 @@ namespace GitHub.Actions.RunService.WebApi
                 Conclusion = result,
                 Outputs = outputs,
                 StepResults = stepResults,
-                Annotations = jobAnnotations
+                Annotations = jobAnnotations,
+                EnvironmentUrl = environmentUrl,
             };
 
             requestUri = new Uri(requestUri, "completejob");
