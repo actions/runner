@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
-using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
+using System.Linq;
 using System.Reflection;
-using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-using GitHub.DistributedTask.ObjectTemplating.Schema;
+using System.Threading;
 using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using System.Linq;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -130,7 +130,7 @@ namespace GitHub.Runner.Worker
                     actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionRunValueToken, fileRelativePath, actionOutputs);
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!(ex is TemplateValidationException))
             {
                 Trace.Error(ex);
                 templateContext.Errors.Add(ex);
@@ -416,7 +416,14 @@ namespace GitHub.Runner.Worker
                         break;
                     case "steps":
                         var stepsToken = run.Value.AssertSequence("steps");
-                        steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
+                        try
+                        {
+                            steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
+                        }
+                        catch (Exception ex) when (!(ex is TemplateValidationException))
+                        {
+                            templateContext.Errors.Add(ex);
+                        }
                         templateContext.Errors.Check();
                         break;
                     default:
