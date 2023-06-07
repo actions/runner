@@ -28,6 +28,6 @@ namespace GitHub.Actions.RunService.WebApi
         public IList<Annotation> Annotations { get; set; }
 
         [DataMember(Name = "environmentUrl", EmitDefaultValue = false)]
-        public string EnvironmentUrl {get; set;}
+        public string EnvironmentUrl { get; set; }
     }
 }

@@ -286,7 +286,7 @@ namespace GitHub.Runner.Worker
 
             // Get environment url
             var environmentUrl = "";
-            if (jobContext.ActionsEnvironment.Url is StringToken urlStringToken) 
+            if (jobContext.ActionsEnvironment.Url is StringToken urlStringToken)
             {
                 environmentUrl = urlStringToken.Value;
             }
