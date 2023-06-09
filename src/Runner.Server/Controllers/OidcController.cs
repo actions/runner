@@ -21,9 +21,9 @@ namespace Runner.Server.Controllers
             var conf = new {
                 issuer = ServerUrl,
                 jwks_uri = new Uri(new Uri(ServerUrl), ".well-known/jwks"),
-                subject_types_supported = new [] {"public","pairwise"},
+                subject_types_supported = new [] {"public", "pairwise"},
                 response_types_supported = new [] {"id_token"},
-                claims_supported = new [] {"sub","aud","exp","iat","iss","jti","nbf","ref","repository","repository_owner","run_id","run_number","run_attempt","actor","workflow","head_ref","base_ref","event_name","ref_type","environment","job_workflow_ref"},
+                claims_supported = new [] {"sub", "aud", "exp", "iat", "iss", "jti", "nbf", "ref", "ref_type", "repository", "repository_id", "repository_owner", "repository_owner_id", "repository_visibility", "run_id", "run_number", "run_attempt", "actor", "actor_id", "workflow", "head_ref", "base_ref", "event_name", "environment", "job_workflow_ref", "job_workflow_sha", "workflow_ref", "workflow_sha"}, 
                 id_token_signing_alg_values_supported = new []{"RS256"},
                 scopes_supported = new [] {"openid"}
             };
