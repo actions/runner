@@ -20,10 +20,10 @@ public class Pool {
                     Name = kv.Value.AssertLiteralString("name");
                 break;
                 case "vmImage":
-                    VmImage = kv.Value.AssertString("name").Value;
+                    VmImage = kv.Value.AssertLiteralString("name");
                 break;
                 case "demands":
-                    Demands = (from dep in kv.Value.AssertScalarOrSequence("demands") select dep.AssertString("dep").Value).ToArray();
+                    Demands = (from dep in kv.Value.AssertScalarOrSequence("demands") select dep.AssertLiteralString("dep")).ToArray();
                 break;
             }
         }

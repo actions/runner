@@ -125,189 +125,192 @@ public class AzureDevops {
         }
     }
     public static void ParseSteps(Runner.Server.Azure.Devops.Context context, IList<TaskStep> steps, TemplateToken step) {
-        if(step is MappingToken mstep && mstep.Count >= 1) {
-            var tstep = new TaskStep();
-            MappingToken unparsedTokens = new MappingToken(null, null, null);
-            var primaryKey = mstep[0].Key.ToString();
-            var isTemplate = primaryKey == "template";
-            for(int i = 1; i < mstep.Count; i++) {
-                if(isTemplate) {
-                    unparsedTokens.Add(mstep[i]);
-                    continue;
-                }
-                switch(mstep[i].Key.AssertString("step key").Value) {
-                    case "condition":
-                        tstep.Condition = mstep[i].Value.AssertLiteralString("step value");
-                    break;
-                    case "continueOnError":
-                        tstep.ContinueOnError = new BooleanToken(null, null, null, mstep[i].Value.AssertAzurePipelinesBoolean("step value"));
-                    break;
-                    case "enabled":
-                        tstep.Enabled = mstep[i].Value.AssertAzurePipelinesBoolean("step value");
-                    break;
-                    case "retryCountOnTaskFailure":
-                        tstep.RetryCountOnTaskFailure = Int32.Parse(mstep[i].Value.AssertLiteralString("step value"));
-                    break;
-                    case "timeoutInMinutes":
-                        tstep.TimeoutInMinutes = new NumberToken(null, null, null, Int32.Parse(mstep[i].Value.AssertLiteralString("step value")));
-                    break;
-                    case "target":
-                        if(mstep[i].Value is LiteralToken targetStr) {
-                            tstep.Target = new StepTarget() { Target = targetStr.ToString() };
-                        } else {
-                            tstep.Target = new StepTarget();
-                            foreach(var targetKv in mstep[i].Value.AssertMapping("target mapping")) {
-                                switch((targetKv.Key as StringToken).Value) {
-                                    case "container":
-                                        tstep.Target.Target = targetKv.Value.AssertLiteralString("container target");
-                                    break;
-                                    case "commands":
-                                        tstep.Target.Commands = targetKv.Value.AssertLiteralString("commands");
-                                    break;
-                                    case "settableVariables":
-                                        tstep.Target.SettableVariables = new TaskVariableRestrictions();
-                                        if((targetKv.Value as StringToken)?.Value != "none") {
-                                            foreach(var svar in targetKv.Value.AssertSequence("SettableVariables sequence")) {
-                                                tstep.Target.SettableVariables.Allowed.Add(svar.AssertString("").Value);
-                                            }
+        var values = "task, powershell, pwsh, bash, script, checkout, download, downloadBuild, getPackage, publish, reviewApp, template";
+        var mstep = step.AssertMapping($"steps.* a step must contain one of the following keyworlds as the first key {values}");
+        mstep.AssertNotEmpty($"steps.* a step must contain one of the following keyworlds as the first key {values}");
+        var tstep = new TaskStep();
+        MappingToken unparsedTokens = new MappingToken(null, null, null);
+        var primaryKey = mstep[0].Key.ToString();
+        var isTemplate = primaryKey == "template";
+        for(int i = 1; i < mstep.Count; i++) {
+            if(isTemplate) {
+                unparsedTokens.Add(mstep[i]);
+                continue;
+            }
+            var key = mstep[i].Key.AssertString("step key").Value;
+            var assertmessage = $"steps.*.{key}";
+            switch(key) {
+                case "condition":
+                    tstep.Condition = mstep[i].Value.AssertLiteralString(assertmessage);
+                break;
+                case "continueOnError":
+                    tstep.ContinueOnError = new BooleanToken(null, null, null, mstep[i].Value.AssertAzurePipelinesBoolean(assertmessage));
+                break;
+                case "enabled":
+                    tstep.Enabled = mstep[i].Value.AssertAzurePipelinesBoolean(assertmessage);
+                break;
+                case "retryCountOnTaskFailure":
+                    tstep.RetryCountOnTaskFailure = mstep[i].Value.AssertAzurePipelinesInt32(assertmessage);
+                break;
+                case "timeoutInMinutes":
+                    tstep.TimeoutInMinutes = new NumberToken(null, null, null, mstep[i].Value.AssertAzurePipelinesInt32(assertmessage));
+                break;
+                case "target":
+                    if(mstep[i].Value is LiteralToken targetStr) {
+                        tstep.Target = new StepTarget() { Target = targetStr.ToString() };
+                    } else {
+                        tstep.Target = new StepTarget();
+                        foreach(var targetKv in mstep[i].Value.AssertMapping(assertmessage)) {
+                            var targetKey = (targetKv.Key as StringToken).Value;
+                            switch(targetKey) {
+                                case "container":
+                                    tstep.Target.Target = targetKv.Value.AssertLiteralString($"{assertmessage}.{targetKey}");
+                                break;
+                                case "commands":
+                                    tstep.Target.Commands = targetKv.Value.AssertLiteralString($"{assertmessage}.{targetKey}");
+                                break;
+                                case "settableVariables":
+                                    tstep.Target.SettableVariables = new TaskVariableRestrictions();
+                                    if((targetKv.Value as StringToken)?.Value != "none") {
+                                        foreach(var svar in targetKv.Value.AssertSequence("SettableVariables sequence")) {
+                                            tstep.Target.SettableVariables.Allowed.Add(svar.AssertLiteralString("SettableVariable"));
                                         }
-                                    break;
-                                }
+                                    }
+                                break;
                             }
                         }
-                    break;
-                    case "env":
-                        foreach(var kv in mstep[i].Value.AssertMapping("env mapping")) {
-                            tstep.Environment[kv.Key.AssertString("env key").Value] = kv.Value.AssertString("env value").Value;
-                        }
-                    break;
-                    case "name":
-                        tstep.Name = mstep[i].Value.AssertString("step value").Value;
-                    break;
-                    case "displayName":
-                        tstep.DisplayName = mstep[i].Value.AssertString("step value").Value;
-                    break;
-                    default:
-                        unparsedTokens.Add(mstep[i]);
-                    break;
-                }
-            }
-            var primaryValue = mstep[0].Value.AssertString("step value").Value;
-            Func<string, TaskStepDefinitionReference> nameToReference = task => {
-                if(string.Equals(task, "Checkout@1", StringComparison.OrdinalIgnoreCase) || string.Equals(task, "6d15af64-176c-496d-b583-fd2ae21d4df4@1", StringComparison.OrdinalIgnoreCase) || string.Equals(task, "Checkout@1.0.0", StringComparison.OrdinalIgnoreCase) || string.Equals(task, "6d15af64-176c-496d-b583-fd2ae21d4df4@1.0.0", StringComparison.OrdinalIgnoreCase)) {
-                    return new TaskStepDefinitionReference {
-                        Id = Guid.Parse("6d15af64-176c-496d-b583-fd2ae21d4df4"),
-                        Name = "Checkout",
-                        Version = "1.0.0",
-                        RawNameAndVersion = task
-                    };
-                }
-                if(context.TaskByNameAndVersion != null) {
-                    var metaData = context.TaskByNameAndVersion.Resolve(task);
-                    if(metaData == null) {
-                        throw new Exception($"Failed to resolve task {task}");
                     }
-                    return new TaskStepDefinitionReference() { Id = metaData.Id, Name = metaData.Name, Version = $"{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}", RawNameAndVersion = task };
-                }
-                return new TaskStepDefinitionReference() { RawNameAndVersion = task };
-            };
-            Action addUnparsedTokensAsInputs = () => {
-                for(int i = 0; i < unparsedTokens.Count; i++) {
-                    tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertLiteralString("step key");
-                }
-            };
-            tstep.Id = Guid.NewGuid();
-            switch(primaryKey) {
-                case "task":
-                    var task = primaryValue;
-                    tstep.Reference = nameToReference(task);
-                    for(int i = 0; i < unparsedTokens.Count; i++) {
-                        switch(unparsedTokens[i].Key.AssertString("step key").Value) {
-                            case "inputs":
-                                foreach(var kv in unparsedTokens[i].Value.AssertMapping("inputs mapping")) {
-                                    tstep.Inputs[kv.Key.AssertString("inputs key").Value] = kv.Value.AssertLiteralString("inputs value");
-                                }
-                                break;
-                        }
+                break;
+                case "env":
+                    foreach(var kv in mstep[i].Value.AssertMapping(assertmessage)) {
+                        var envKey = kv.Key.AssertString("env key").Value;
+                        tstep.Environment[envKey] = kv.Value.AssertLiteralString($"{assertmessage}.{envKey}");
                     }
-                    steps.Add(tstep);
                 break;
-                case "powershell":
-                case "pwsh":
-                    tstep.Reference = nameToReference("PowerShell@2");
-                    addUnparsedTokensAsInputs();
- 
-                    tstep.Inputs["targetType"] = "inline";
-                    if(primaryKey == "pwsh") {
-                        tstep.Inputs["pwsh"] = "true";
-                    }
-                    tstep.Inputs["script"] = primaryValue;
-                    steps.Add(tstep);
+                case "name":
+                    tstep.Name = mstep[i].Value.AssertLiteralString(assertmessage);
                 break;
-                case "bash":
-                    tstep.Reference = nameToReference("Bash@3");
-                    addUnparsedTokensAsInputs();
-                    tstep.Inputs["targetType"] = "inline";
-                    tstep.Inputs["script"] = primaryValue;
-                    steps.Add(tstep);
-                break;
-                case "script":
-                    tstep.Reference = nameToReference("CmdLine@2");
-                    addUnparsedTokensAsInputs();
-                    tstep.Inputs["script"] = primaryValue;
-                    steps.Add(tstep);
-                break;
-                case "checkout":
-                    tstep.Reference = nameToReference("Checkout@1");
-                    addUnparsedTokensAsInputs();
-                    tstep.Inputs["repository"] = primaryValue;
-                    steps.Add(tstep);
-                break;
-                case "download":
-                    tstep.Reference = nameToReference("DownloadPipelineArtifact@2");
-                    addUnparsedTokensAsInputs();
-                    tstep.Inputs["buildType"] = primaryValue;
-                    steps.Add(tstep);
-                break;
-                case "downloadBuild":
-                    tstep.Reference = nameToReference("DownloadBuildArtifacts@0");
-                    addUnparsedTokensAsInputs();
-                    tstep.Inputs["buildType"] = primaryValue;
-                    steps.Add(tstep);
-                break;
-                case "getPackage":
-                    tstep.Reference = nameToReference("DownloadPackage@1");
-                    addUnparsedTokensAsInputs();
-                    // Unknown if this is correct...
-                    tstep.Inputs["definition"] = primaryValue;
-                    steps.Add(tstep);
-                break;
-                case "publish":
-                    tstep.Reference = nameToReference("PublishPipelineArtifact@1");
-                    addUnparsedTokensAsInputs();
-                    tstep.Inputs["path"] = primaryValue;
-                    steps.Add(tstep);
-                break;
-                case "reviewApp":
-                    tstep.Reference = nameToReference("ReviewApp@0");
-                    addUnparsedTokensAsInputs();
-                    tstep.Inputs["resourceName"] = primaryValue;
-                    steps.Add(tstep);
-                break;
-                case "template":
-                    if(unparsedTokens.Count == 1 && (unparsedTokens[0].Key as StringToken)?.Value != "parameters") {
-                        throw new Exception($"Unexpected yaml key {(unparsedTokens[0].Key as StringToken)?.Value} expected parameters");
-                    }
-                    var file = ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
-                    foreach(var step2 in (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence("")) {
-                        ParseSteps(context.ChildContext(file, primaryValue), steps, step2);
-                    }
+                case "displayName":
+                    tstep.DisplayName = mstep[i].Value.AssertLiteralString(assertmessage);
                 break;
                 default:
-                throw new Exception("Syntax Error");
+                    unparsedTokens.Add(mstep[i]);
+                break;
             }
-        } else {
-            throw new Exception("Syntax Error");
+        }
+        var primaryValue = mstep[0].Value.AssertLiteralString("step value");
+        Func<string, TaskStepDefinitionReference> nameToReference = task => {
+            if(string.Equals(task, "Checkout@1", StringComparison.OrdinalIgnoreCase) || string.Equals(task, "6d15af64-176c-496d-b583-fd2ae21d4df4@1", StringComparison.OrdinalIgnoreCase) || string.Equals(task, "Checkout@1.0.0", StringComparison.OrdinalIgnoreCase) || string.Equals(task, "6d15af64-176c-496d-b583-fd2ae21d4df4@1.0.0", StringComparison.OrdinalIgnoreCase)) {
+                return new TaskStepDefinitionReference {
+                    Id = Guid.Parse("6d15af64-176c-496d-b583-fd2ae21d4df4"),
+                    Name = "Checkout",
+                    Version = "1.0.0",
+                    RawNameAndVersion = task
+                };
+            }
+            if(context.TaskByNameAndVersion != null) {
+                var metaData = context.TaskByNameAndVersion.Resolve(task);
+                if(metaData == null) {
+                    throw new Exception($"Failed to resolve task {task}");
+                }
+                return new TaskStepDefinitionReference() { Id = metaData.Id, Name = metaData.Name, Version = $"{metaData.Version.Major}.{metaData.Version.Minor}.{metaData.Version.Patch}", RawNameAndVersion = task };
+            }
+            return new TaskStepDefinitionReference() { RawNameAndVersion = task };
+        };
+        Action addUnparsedTokensAsInputs = () => {
+            for(int i = 0; i < unparsedTokens.Count; i++) {
+                tstep.Inputs[unparsedTokens[i].Key.AssertString("step key").Value] = unparsedTokens[i].Value.AssertLiteralString("step key");
+            }
+        };
+        tstep.Id = Guid.NewGuid();
+        switch(primaryKey) {
+            case "task":
+                var task = primaryValue;
+                tstep.Reference = nameToReference(task);
+                for(int i = 0; i < unparsedTokens.Count; i++) {
+                    switch(unparsedTokens[i].Key.AssertString("step key").Value) {
+                        case "inputs":
+                            foreach(var kv in unparsedTokens[i].Value.AssertMapping("inputs mapping")) {
+                                tstep.Inputs[kv.Key.AssertString("inputs key").Value] = kv.Value.AssertLiteralString("inputs value");
+                            }
+                            break;
+                    }
+                }
+                steps.Add(tstep);
+            break;
+            case "powershell":
+            case "pwsh":
+                tstep.Reference = nameToReference("PowerShell@2");
+                addUnparsedTokensAsInputs();
+
+                tstep.Inputs["targetType"] = "inline";
+                if(primaryKey == "pwsh") {
+                    tstep.Inputs["pwsh"] = "true";
+                }
+                tstep.Inputs["script"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "bash":
+                tstep.Reference = nameToReference("Bash@3");
+                addUnparsedTokensAsInputs();
+                tstep.Inputs["targetType"] = "inline";
+                tstep.Inputs["script"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "script":
+                tstep.Reference = nameToReference("CmdLine@2");
+                addUnparsedTokensAsInputs();
+                tstep.Inputs["script"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "checkout":
+                tstep.Reference = nameToReference("Checkout@1");
+                addUnparsedTokensAsInputs();
+                tstep.Inputs["repository"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "download":
+                tstep.Reference = nameToReference("DownloadPipelineArtifact@2");
+                addUnparsedTokensAsInputs();
+                tstep.Inputs["buildType"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "downloadBuild":
+                tstep.Reference = nameToReference("DownloadBuildArtifacts@0");
+                addUnparsedTokensAsInputs();
+                tstep.Inputs["buildType"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "getPackage":
+                tstep.Reference = nameToReference("DownloadPackage@1");
+                addUnparsedTokensAsInputs();
+                // Unknown if this is correct...
+                tstep.Inputs["definition"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "publish":
+                tstep.Reference = nameToReference("PublishPipelineArtifact@1");
+                addUnparsedTokensAsInputs();
+                tstep.Inputs["path"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "reviewApp":
+                tstep.Reference = nameToReference("ReviewApp@0");
+                addUnparsedTokensAsInputs();
+                tstep.Inputs["resourceName"] = primaryValue;
+                steps.Add(tstep);
+            break;
+            case "template":
+                if(unparsedTokens.Count == 1 && (unparsedTokens[0].Key as StringToken)?.Value != "parameters") {
+                    throw new Exception($"Unexpected yaml key {(unparsedTokens[0].Key as StringToken)?.Value} expected parameters");
+                }
+                var file = ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
+                foreach(var step2 in (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence("")) {
+                    ParseSteps(context.ChildContext(file, primaryValue), steps, step2);
+                }
+            break;
+            default:
+            throw new Exception($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(step)}Unexpected step.key got {primaryKey} expected {values}");
         }
     }
 
@@ -317,12 +320,15 @@ public class AzureDevops {
         var stages = new List<Stage>();
         Func<string, string> assertValues = s => {
             if(values != null) {
+                var validValues = new List<string>();
                 foreach(var aval in values.AssertSequence("parameters.*.values")) {
-                    if(s == aval.AssertLiteralString("parameters.*.values.*")) {
+                    var validValue = aval.AssertLiteralString("parameters.*.values.*");
+                    if(s == validValue) {
                         return s;
                     }
+                    validValues.Add($"\"{validValue}\"");
                 }
-                throw new Exception($"{s} is not an allowed value for this template value");
+                throw new Exception($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(val)}\"{s}\" is not an allowed value expected {GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(values)}{String.Join(", ", validValues)} for this template value");
             }
             return s;
         };
@@ -338,7 +344,8 @@ public class AzureDevops {
                 }
                 throw new Exception($"{val.AssertLiteralString("boolean")} is not a valid boolean expected true or false (OrdinalIgnoreCase)");
             case "number":
-            return val == null ? new NumberContextData(0) : new NumberContextData(Double.Parse(assertValues(val.AssertLiteralString("number"))));
+            assertValues(val.AssertLiteralString("number"));
+            return val == null ? new NumberContextData(0) : new NumberContextData(val.AssertAzurePipelinesDouble("number"));
             case "string":
             return val == null ? new StringContextData("") : new StringContextData(assertValues(val.AssertLiteralString("string")));
             case "step":
@@ -411,7 +418,7 @@ public class AzureDevops {
             if(val == null) {
                 return null;
             }
-            return new Container().Parse(val.AssertMapping("")).ToContextData(val.AssertMapping("")[0].Value.AssertString("").Value);
+            return new Container().Parse(val.AssertMapping("")).ToContextData(val.AssertMapping("")[0].Value.AssertLiteralString(""));
             case "containerList":
             if(val == null) {
                 return new ArrayContextData();
@@ -419,7 +426,7 @@ public class AzureDevops {
             var containerResources = new Dictionary<string, Container>(StringComparer.OrdinalIgnoreCase);
             foreach(var rawcontainer in val.AssertSequence("cres")) {
                 var container = rawcontainer.AssertMapping("");
-                containerResources[container[0].Value.AssertString("").Value] = new Container().Parse(container);
+                containerResources[container[0].Value.AssertLiteralString("")] = new Container().Parse(container);
             }
             var containers = new ArrayContextData();
             foreach(var cr in containerResources) {
@@ -436,8 +443,8 @@ public class AzureDevops {
         for(int i = 0; i < path.Count; i++) {
             if(path[i] == "." || string.IsNullOrEmpty(path[i])) {
                 path.RemoveAt(i);
-                i -= 1;
-            } else if(path[i] == "..") {
+                i--;
+            } else if(path[i] == ".." && i > 0 /* enshures i = i - 2 + 1 >= 0 */) {
                 path.RemoveAt(i); // Remove ..
                 path.RemoveAt(i - 1); // Remove the previous path component
                 i -= 2;
@@ -453,7 +460,15 @@ public class AzureDevops {
         var filename = afilenameAndRef[0];
         var fileId = templateContext.GetFileId(filename);
         // Read the file
-        var fileContent = context.FileProvider.ReadFile(afilenameAndRef.Length == 1 ? context.RepositoryAndRef : string.Equals(afilenameAndRef[1], "self", StringComparison.OrdinalIgnoreCase) ? null : context.Repositories[afilenameAndRef[1]], afilenameAndRef.Length == 1 ? RelativeTo(context.CWD ?? ".", filename) : filename);
+        var finalRepository = afilenameAndRef.Length == 1 ? context.RepositoryAndRef : string.Equals(afilenameAndRef[1], "self", StringComparison.OrdinalIgnoreCase) ? null : context.Repositories.TryGetValue(afilenameAndRef[1], out var ralias) ? ralias : throw new Exception($"Couldn't find repository with alias {afilenameAndRef[1]} in repository resources");
+        var finalFileName = afilenameAndRef.Length == 1 ? RelativeTo(context.CWD ?? ".", filename) : filename;
+        if(finalFileName == null) {
+            throw new Exception($"Couldn't find template location {filenameAndRef}");
+        }
+        var fileContent = context.FileProvider.ReadFile(finalRepository, finalFileName);
+        if(fileContent == null) {
+            throw new Exception($"Couldn't read template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"})");
+        }
 
         TemplateToken token;
         using (var stringReader = new StringReader(fileContent))

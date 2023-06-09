@@ -8,6 +8,20 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
     public static class TemplateTokenExtensions
     {
+        internal static string GetAssertPrefix(TemplateToken value) {
+            var builder = new List<string>();
+            if(value?.FileId != null) {
+                builder.Add($"FileId: {value.FileId}");
+            }
+            if(value?.Line != null) {
+                builder.Add($"Line: {value.Line}");
+            }
+            if(value?.Column != null) {
+                builder.Add($"Column: {value.Column}");
+            }
+            return String.Join(" ", builder) + " ";
+        }
+
         internal static BooleanToken AssertBoolean(
             this TemplateToken value,
             string objectDescription)
@@ -17,7 +31,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 return booleanToken;
             }
 
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(BooleanToken)}' was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(BooleanToken)}' was expected.");
         }
 
         internal static NullToken AssertNull(
@@ -29,7 +43,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 return nullToken;
             }
 
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(NullToken)}' was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(NullToken)}' was expected.");
         }
 
         internal static NumberToken AssertNumber(
@@ -41,7 +55,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 return numberToken;
             }
 
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(NumberToken)}' was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(NumberToken)}' was expected.");
         }
 
         internal static StringToken AssertString(
@@ -53,7 +67,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 return stringToken;
             }
 
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(StringToken)}' was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(StringToken)}' was expected.");
         }
 
         internal static MappingToken AssertMapping(
@@ -65,7 +79,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 return mapping;
             }
 
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(MappingToken)}' was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(MappingToken)}' was expected.");
         }
 
         internal static void AssertNotEmpty(
@@ -74,7 +88,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         {
             if (mapping.Count == 0)
             {
-                throw new ArgumentException($"Unexpected empty mapping when reading '{objectDescription}'");
+                throw new ArgumentException($"{GetAssertPrefix(mapping)}Unexpected empty mapping when reading '{objectDescription}'");
             }
         }
 
@@ -87,7 +101,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 return scalar;
             }
 
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(ScalarToken)}' was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(ScalarToken)}' was expected.");
         }
 
         internal static SequenceToken AssertSequence(
@@ -99,7 +113,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 return sequence;
             }
 
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(SequenceToken)}' was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(SequenceToken)}' was expected.");
         }
 
         public static SequenceToken AssertScalarOrSequence(this TemplateToken token, string objectDescription) {
@@ -119,7 +133,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             if(value is LiteralToken literalToken) {
                 return literalToken.ToString();
             }
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' was expected.");
         }
 
         public static bool TryParseAzurePipelinesBoolean(string literalString, out bool val) {
@@ -142,14 +156,36 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                     return ret;
                 }
             }
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with value true | y | yes | on | false | n | no | off was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with value true | y | yes | on | false | n | no | off was expected.");
+        }
+
+        public static int AssertAzurePipelinesInt32(this TemplateToken value, string objectDescription) {
+            if(value is LiteralToken literalToken) {
+                var literalString = literalToken.ToString();
+                if(Int32.TryParse(literalString, out var ret)) {
+                    return ret;
+                }
+                throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with an integer was expected, but got {literalString}.");
+            }
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with an integer was expected.");
+        }
+
+        public static double AssertAzurePipelinesDouble(this TemplateToken value, string objectDescription) {
+            if(value is LiteralToken literalToken) {
+                var literalString = literalToken.ToString();
+                if(Double.TryParse(literalString, out var ret)) {
+                    return ret;
+                }
+                throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with an integer was expected, but got {literalString}.");
+            }
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with double was expected.");
         }
 
         internal static void AssertUnexpectedValue(
             this LiteralToken literal,
             string objectDescription)
         {
-            throw new ArgumentException($"Error while reading '{objectDescription}'. Unexpected value '{literal.ToString()}'");
+            throw new ArgumentException($"{GetAssertPrefix(literal)}Error while reading '{objectDescription}'. Unexpected value '{literal.ToString()}'");
         }
 
         /// <summary>

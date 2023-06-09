@@ -43,7 +43,7 @@ public class Pipeline {
                     foreach(var ev in ext) {
                         switch(ev.Key.AssertString("").Value) {
                             case "template":
-                                template = ev.Value.AssertString("").Value;
+                                template = ev.Value.AssertLiteralString("");
                             break;
                             case "parameters":
                                 parameters = ev.Value.AssertMapping("param").ToDictionary(pv => pv.Key.AssertString("").Value, pv => pv.Value);
@@ -76,7 +76,7 @@ public class Pipeline {
                                 ContainerResources = new Dictionary<string, Container>(StringComparer.OrdinalIgnoreCase);
                                 foreach(var rawcontainer in resource.Value.AssertSequence("cres")) {
                                     var container = rawcontainer.AssertMapping("");
-                                    ContainerResources[container[0].Value.AssertString("").Value] = new Container().Parse(container);
+                                    ContainerResources[container[0].Value.AssertLiteralString("")] = new Container().Parse(container);
                                 }
                             break;
                             default:

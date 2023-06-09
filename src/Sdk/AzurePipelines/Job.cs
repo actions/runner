@@ -46,7 +46,7 @@ public class Job {
                     DisplayName = kv.Value.AssertLiteralString("name");
                 break;
                 case "dependsOn":
-                    DependsOn = (from dep in kv.Value.AssertScalarOrSequence("dependsOn") select dep.AssertString("dep").Value).ToArray();
+                    DependsOn = (from dep in kv.Value.AssertScalarOrSequence("dependsOn") select dep.AssertLiteralString("dep")).ToArray();
                 break;
                 case "condition":
                     Condition = kv.Value.AssertLiteralString("condition");

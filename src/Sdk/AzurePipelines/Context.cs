@@ -40,13 +40,13 @@ namespace Runner.Server.Azure.Devops {
                                         foreach(var rkv in rawresource.AssertMapping("")) {
                                             switch(rkv.Key.AssertString("").Value) {
                                                 case "repository":
-                                                    alias = rkv.Value.AssertString("").Value;
+                                                    alias = rkv.Value.AssertLiteralString("resources.*.repository");
                                                 break;
                                                 case "name":
-                                                    name = rkv.Value.AssertString("").Value;
+                                                    name = rkv.Value.AssertLiteralString("resources.*.name");
                                                 break;
                                                 case "ref":
-                                                    @ref = rkv.Value.AssertString("").Value;
+                                                    @ref = rkv.Value.AssertLiteralString("resources.*.ref");
                                                 break;
                                             }
                                         }
