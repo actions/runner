@@ -1404,11 +1404,11 @@ namespace GitHub.Runner.Worker
             /* TraceWriter should be used for logging and not creating erros. */
             if (logTemplateErrorsAsDebugMessages())
             {
-                _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
+                _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
             }
             else
             {
-                _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
+                _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
             }
         }
 
@@ -1425,9 +1425,9 @@ namespace GitHub.Runner.Worker
 
         private bool logTemplateErrorsAsDebugMessages()
         {
-            if (_executionContext.Global == null || _executionContext.Global.EnvironmentVariables == null) return true;
+            if (_executionContext.Global == null || _executionContext.Global.EnvironmentVariables == null) return false;
             _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug);
-            return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: true);
+            return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false);
         }
     }
 
