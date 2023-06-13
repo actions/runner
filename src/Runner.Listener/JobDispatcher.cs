@@ -1077,23 +1077,7 @@ namespace GitHub.Runner.Listener
 
             if (this._isRunServiceJob)
             {
-                var runServer = await GetRunServerAsync(systemConnection);
-                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
-                var unhandledAnnotation = unhandledExceptionIssue.ToAnnotation();
-                var jobAnnotations = new List<Annotation>();
-                if (unhandledAnnotation.HasValue)
-                {
-                    jobAnnotations.Add(unhandledAnnotation.Value);
-                }
-                try
-                {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, environmentUrl: "", CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error("Fail to raise job completion back to service.");
-                    Trace.Error(ex);
-                }
+                Trace.Verbose($"Skip CompleteJobRequestAsync call from Listener because it's RunService job");
                 return;
             }
 

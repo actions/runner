@@ -1,18 +1,25 @@
 ## Features
-- Runner changes for communication with Results service (#2510, #2531, #2535, #2516) 
-- Add `*.ghe.localhost` domains to hosted server check (#2536) 
-- Add `OrchestrationId` to user-agent for better telemetry correlation. (#2568) 
+- Resolve Actions Directly From Launch for Run Service Jobs (#2529)
+- Send annotations to run-service (#2574)
+- Add `--no-default-labels` config option to self-hosted runners (#2443)
+- Update container-hooks to 0.3.2 in runner docker image (#2618)
+- Set runner environment in context and env (#2518)
+- Switch runner image from Debian to Ubuntu 22.04 (#2651)
 
 ## Bugs
-- Fix JIT configurations on Windows (#2497) 
-- Guard against NullReference while creating HostContext (#2343) 
-- Handles broken symlink in `Which` (#2150, #2196) 
-- Adding curl retry for external tool downloads (#2552, #2557) 
-- Limit the time we wait for waiting websocket to connect. (#2554) 
+- Handle conflict errors from run service (#2570)
+- Fix null guard bug (#2576)
+- Trace WebSocket exception into verbose level to reduce noise in diag log (#2591)
+- Ensure multiple composite annotations are correctly written (#2311)
+- Adding Consistency to 'Failed To Resolve Action Download Info' Infrastructure Error Flagging (#2488)
+- Filter out empty arguments in container hooks (#2633)
+- Fix uses: docker://image:tag steps when container hook is used (#2626)
 
 ## Misc
-- Bump container hooks version to 0.3.1 in runner image (#2496) 
-- Runner changes to communicate with vNext services (#2487, #2500, #2505, #2541, #2547) 
+- Contribute.md: Fix link to style guidelines (#2560)
+- Remove Temporary Serialization Shim (#2549)
+- Move Using V2 Flow log to Trace (#2635)
+- Add utf8 with bom (#2641)
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
