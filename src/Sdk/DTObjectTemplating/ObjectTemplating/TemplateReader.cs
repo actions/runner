@@ -279,7 +279,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 nonDuplicates.Sort();
 
                 String listToDeDuplicate = String.Join(", ", nonDuplicates);
-                m_context.Error(mapping, TemplateStrings.UnableToDetermineOneOf(listToDeDuplicate));
+                m_context.Error(mapping, "Template reader error: " + TemplateStrings.UnableToDetermineOneOf(listToDeDuplicate));
             }
             else if (mappingDefinitions.Count == 1 && !hasExpressionKey)
             {
@@ -289,7 +289,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         if (!keys.Contains(property.Key))
                         {
-                            m_context.Error(mapping, $"Required property is missing: {property.Key}");
+                            m_context.Error(mapping, "Template Reader error " + $"Required property is missing: {property.Key}");
                         }
                     }
                 }

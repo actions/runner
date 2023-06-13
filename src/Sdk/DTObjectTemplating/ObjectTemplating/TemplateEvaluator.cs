@@ -287,7 +287,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         if (!keys.Contains(property.Key))
                         {
-                            m_context.Error(mapping, $"Required property is missing: {property.Key}");
+                            m_context.Error(mapping,  "Template evaluator error " + $"Required property is missing: {property.Key}");
                         }
                     }
                 }

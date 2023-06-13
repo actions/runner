@@ -141,7 +141,7 @@ namespace GitHub.Runner.Worker
                 foreach (var error in templateContext.Errors)
                 {
                     Trace.Error($"Action.yml load error: {error.Message}");
-                    executionContext.Error(error.Message);
+                    executionContext.Error("And let's duplicate errors: " + error.Message);
                 }
 
                 throw new ArgumentException($"Fail to load {fileRelativePath}");
