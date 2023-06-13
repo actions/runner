@@ -9,7 +9,7 @@
 ## Bugs
 - Handle conflict errors from run service (#2570)
 - Fix null guard bug (#2576)
-- Trace WebSocket exception into verbose level to reduce noise in diag log. (#2591)
+- Trace WebSocket exception into verbose level to reduce noise in diag log (#2591)
 - Ensure multiple composite annotations are correctly written (#2311)
 - Adding Consistency to 'Failed To Resolve Action Download Info' Infrastructure Error Flagging (#2488)
 - Filter out empty arguments in container hooks (#2633)
