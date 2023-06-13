@@ -1404,11 +1404,11 @@ namespace GitHub.Runner.Worker
             /* TraceWriter should be used for logging and not creating erros. */
             if (logTemplateErrorsAsDebugMessages())
             {
-                _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
+                _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
             }
             else
             {
-                _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
+                _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
             }
         }
 
