@@ -1401,7 +1401,15 @@ namespace GitHub.Runner.Worker
 
         public void Error(string format, params Object[] args)
         {
-            _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
+            /* TraceWriter should be used for logging and not creating erros. */
+            if (logTemplateErrorsAsDebugMessages())
+            {
+                _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
+            }
+            else
+            {
+                _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
+            }
         }
 
         public void Info(string format, params Object[] args)
@@ -1414,7 +1422,15 @@ namespace GitHub.Runner.Worker
             // todo: switch to verbose?
             _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, $"{format}", args));
         }
+
+        private bool logTemplateErrorsAsDebugMessages()
+        {
+            if (_executionContext.Global == null || _executionContext.Global.EnvironmentVariables == null) return true;
+            _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug);
+            return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: true);
+        }
     }
+
 
     public static class WellKnownTags
     {
