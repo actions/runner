@@ -1425,9 +1425,11 @@ namespace GitHub.Runner.Worker
 
         private bool logTemplateErrorsAsDebugMessages()
         {
-            if (_executionContext.Global == null || _executionContext.Global.EnvironmentVariables == null) return false;
-            _executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug);
-            return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false);
+            if (_executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug))
+            {
+                return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false);
+            }
+            return false;
         }
     }
 
