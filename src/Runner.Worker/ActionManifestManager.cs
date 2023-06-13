@@ -52,7 +52,7 @@ namespace GitHub.Runner.Worker
 
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
-            var templateContext = CreateTemplateContext(executionContext);
+            var templateContext = CreateTemplateContext(executionContext, null, LogTemplateErrorsToTraceWriter(executionContext));
             ActionDefinitionData actionDefinition = new();
 
             // Clean up file name real quick
@@ -303,7 +303,8 @@ namespace GitHub.Runner.Worker
 
         private TemplateContext CreateTemplateContext(
             IExecutionContext executionContext,
-            IDictionary<string, PipelineContextData> extraExpressionValues = null)
+            IDictionary<string, PipelineContextData> extraExpressionValues = null,
+            bool addErrorsToTraceWriter = true)
         {
             var result = new TemplateContext
             {
@@ -315,6 +316,7 @@ namespace GitHub.Runner.Worker
                     maxBytes: 10 * 1024 * 1024),
                 Schema = _actionManifestSchema,
                 TraceWriter = executionContext.ToTemplateTraceWriter(),
+                LogErrorsToTraceWriter = addErrorsToTraceWriter
             };
 
             // Expression values from execution context
@@ -448,7 +450,7 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase)||
+                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(usingToken.Value, "node16", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
@@ -538,6 +540,13 @@ namespace GitHub.Runner.Worker
                     actionDefinition.Inputs.Add(inputName, new StringToken(null, null, null, string.Empty));
                 }
             }
+        }
+
+        private bool LogTemplateErrorsToTraceWriter(IExecutionContext executionContext)
+        {
+            if (executionContext == null || executionContext.Global == null || executionContext.Global.EnvironmentVariables == null) return true;
+            executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsToTraceWriter, out var logErrorsAsDebug);
+            return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: true);
         }
     }
 }

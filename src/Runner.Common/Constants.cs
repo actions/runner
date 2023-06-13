@@ -155,7 +155,7 @@ namespace GitHub.Runner.Common
             {
                 public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
                 public static readonly string Node12Warning = "DistributedTask.AddWarningToNode12Action";
-                public static readonly string LogTemplateErrorsAsDebugMessages = "DistributedTask.LogTemplateErrorsAsDebugMessages";
+                public static readonly string LogTemplateErrorsToTraceWriter = "DistributedTask.LogTemplateErrorsToTraceWriter";
                 public static readonly string UseContainerPathForTemplate = "DistributedTask.UseContainerPathForTemplate";
                 public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks";
             }

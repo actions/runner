@@ -34,6 +34,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 m_errors = value;
             }
         }
+        /// <summary>
+        /// Because TraceWriter has access to the ExecutionContext and is logging template errors, duplicated issues are reported.
+        /// By setting LogErrorsToTraceWriter = false TemplateContext will add errors only to TemplateValidationErrors 
+        /// </summary>
+        internal bool LogErrorsToTraceWriter = true;
 
         /// <summary>
         /// Available functions within expression contexts
@@ -135,7 +140,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
         {
             var prefix = GetErrorPrefix(fileId, line, column);
             Errors.Add(prefix, ex);
-            TraceWriter.Error(prefix, ex);
+
+            if (LogErrorsToTraceWriter)
+            {
+                TraceWriter.Error(prefix, ex);
+            }
         }
 
         internal void Error(
@@ -155,7 +164,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
             var fullMessage = !String.IsNullOrEmpty(prefix) ? $"{prefix} {message}" : message;
 
             Errors.Add(fullMessage);
-            TraceWriter.Error(fullMessage);
+            if (LogErrorsToTraceWriter)
+            {
+                TraceWriter.Error(fullMessage);
+            }
         }
 
         internal INamedValueInfo[] GetExpressionNamedValues()
