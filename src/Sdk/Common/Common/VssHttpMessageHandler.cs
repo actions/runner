@@ -16,7 +16,7 @@ namespace GitHub.Services.Common
     public class VssHttpMessageHandler : HttpMessageHandler
     {
         /// <summary>
-        /// Initializes a new <c>VssHttpMessageHandler</c> instance with default credentials and request 
+        /// Initializes a new <c>VssHttpMessageHandler</c> instance with default credentials and request
         /// settings.
         /// </summary>
         public VssHttpMessageHandler()
@@ -25,7 +25,7 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Initializes a new <c>VssHttpMessageHandler</c> instance with the specified credentials and request 
+        /// Initializes a new <c>VssHttpMessageHandler</c> instance with the specified credentials and request
         /// settings.
         /// </summary>
         /// <param name="credentials">The credentials which should be used</param>
@@ -38,7 +38,7 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Initializes a new <c>VssHttpMessageHandler</c> instance with the specified credentials and request 
+        /// Initializes a new <c>VssHttpMessageHandler</c> instance with the specified credentials and request
         /// settings.
         /// </summary>
         /// <param name="credentials">The credentials which should be used</param>
@@ -211,14 +211,33 @@ namespace GitHub.Services.Common
 
                     traceInfo?.TraceBufferedRequestTime();
 
-                    // ConfigureAwait(false) enables the continuation to be run outside any captured 
+                    // ConfigureAwait(false) enables the continuation to be run outside any captured
                     // SyncronizationContext (such as ASP.NET's) which keeps things from deadlocking...
-                    response = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
+
+                    var tmpResponse = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
+                    if (Settings.AllowAutoRedirectForBroker && tmpResponse.StatusCode == HttpStatusCode.Redirect)
+                    {
+                        //Dispose of the previous response
+                        tmpResponse?.Dispose();
+
+                        var location = tmpResponse.Headers.Location;
+                        request = new HttpRequestMessage(HttpMethod.Get, location);
+
+                        // Reapply the token to new redirected request
+                        ApplyToken(request, token, applyICredentialsToWebProxy: lastResponseDemandedProxyAuth);
+
+                        // Resend the request
+                        response = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        response = tmpResponse;
+                    }
 
                     traceInfo?.TraceRequestSendTime();
 
                     // Now buffer the response content if configured to do so. In general we will be buffering
-                    // the response content in this location, except in the few cases where the caller has 
+                    // the response content in this location, except in the few cases where the caller has
                     // specified HttpCompletionOption.ResponseHeadersRead.
                     // Trace content type in case of error
                     await BufferResponseContentAsync(request, response, () => $"[ContentType: {response.Content.GetType().Name}]", tokenSource.Token).ConfigureAwait(false);
@@ -235,7 +254,7 @@ namespace GitHub.Services.Common
                             provider.ValidateToken(token, responseWrapper);
                         }
 
-                        // Make sure that once we can authenticate with the service that we turn off the 
+                        // Make sure that once we can authenticate with the service that we turn off the
                         // Expect100Continue behavior to increase performance.
                         this.ExpectContinue = false;
                         succeeded = true;
@@ -281,8 +300,8 @@ namespace GitHub.Services.Common
                         }
 
                         // If the user has already tried once but still unauthorized, stop retrying. The main scenario for this condition
-                        // is a user typed in a valid credentials for a hosted account but the associated identity does not have 
-                        // access. We do not want to continually prompt 3 times without telling them the failure reason. In the 
+                        // is a user typed in a valid credentials for a hosted account but the associated identity does not have
+                        // access. We do not want to continually prompt 3 times without telling them the failure reason. In the
                         // next release we should rethink about presenting user the failure and options between retries.
                         IEnumerable<String> headerValues;
                         Boolean hasAuthenticateError =
@@ -489,7 +508,7 @@ namespace GitHub.Services.Common
                 httpClientHandler.AllowAutoRedirect = settings.AllowAutoRedirect;
                 httpClientHandler.ClientCertificateOptions = ClientCertificateOption.Manual;
                 //Setting httpClientHandler.UseDefaultCredentials to false in .Net Core, clears httpClientHandler.Credentials if
-                //credentials is already set to defaultcredentials. Therefore httpClientHandler.Credentials must be 
+                //credentials is already set to defaultcredentials. Therefore httpClientHandler.Credentials must be
                 //set after httpClientHandler.UseDefaultCredentials.
                 httpClientHandler.UseDefaultCredentials = false;
                 httpClientHandler.Credentials = defaultCredentials;
