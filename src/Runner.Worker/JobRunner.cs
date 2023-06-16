@@ -285,7 +285,7 @@ namespace GitHub.Runner.Worker
             MaskTelemetrySecrets(jobContext.Global.JobTelemetry);
 
             // Get environment url
-            var environmentUrl = "";
+            string environmentUrl = null;
             if (jobContext.ActionsEnvironment?.Url is StringToken urlStringToken)
             {
                 environmentUrl = urlStringToken.Value;
