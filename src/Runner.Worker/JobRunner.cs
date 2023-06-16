@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
@@ -283,6 +284,13 @@ namespace GitHub.Runner.Worker
             // Make sure we don't submit secrets as telemetry
             MaskTelemetrySecrets(jobContext.Global.JobTelemetry);
 
+            // Get environment url
+            string environmentUrl = null;
+            if (jobContext.ActionsEnvironment?.Url is StringToken urlStringToken)
+            {
+                environmentUrl = urlStringToken.Value;
+            }
+
             Trace.Info($"Raising job completed against run service");
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
@@ -290,7 +298,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, default);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, default);
                     return result;
                 }
                 catch (Exception ex)
