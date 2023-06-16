@@ -109,6 +109,16 @@ namespace GitHub.Services.Common
             get;
             set;
         }
+        
+        /// <summary>
+        /// Gets or sets a value indicating whether or not HttpClientHandler should follow redirect on outgoing broker requests
+        /// This is special since this also sends token in the request, where as default AllowAutoRedirect does not
+        /// </summary>
+        public Boolean AllowAutoRedirectForBroker
+        {
+            get;
+            set;
+        }
 
         /// <summary>
         /// Gets or sets a value indicating whether or not compression should be used on outgoing requests. 

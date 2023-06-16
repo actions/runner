@@ -61,6 +61,11 @@ namespace GitHub.Runner.Sdk
                 // prefer environment variable
                 settings.SendTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
             }
+            
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
+            {
+                settings.AllowAutoRedirectForBroker = true;
+            }
 
             // Remove Invariant from the list of accepted languages.
             //
