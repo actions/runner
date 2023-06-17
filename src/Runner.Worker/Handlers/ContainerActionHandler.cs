@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Data.Image = Data.Image.Substring("docker://".Length);
             }
-            else if (Data.Image.EndsWith("Dockerfile") || Data.Image.EndsWith("dockerfile"))
+            else if (DockerUtil.IsDockerfile(Data.Image))
             {
                 // ensure docker file exist
                 dockerFile = Path.Combine(ActionDirectory, Data.Image);

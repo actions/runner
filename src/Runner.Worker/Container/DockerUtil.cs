@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Worker.Container
@@ -63,6 +64,16 @@ namespace GitHub.Runner.Worker.Container
                 return nameSplit[0];
             }
             return "";
+        }
+
+        public static bool IsDockerfile(string image)
+        {
+            if (image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            var imageWithoutPath = image.Split('/').Last();
+            return imageWithoutPath.StartsWith("Dockerfile.", StringComparison.OrdinalIgnoreCase) || imageWithoutPath.EndsWith("Dockerfile", StringComparison.OrdinalIgnoreCase);
         }
 
         public static string CreateEscapedOption(string flag, string key)
