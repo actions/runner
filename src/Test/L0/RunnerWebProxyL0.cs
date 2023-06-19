@@ -186,8 +186,8 @@ namespace GitHub.Runner.Common.Tests
         {
             try
             {
-                Environment.SetEnvironmentVariable("http_proxy", "127.0.0.1:7777");
-                Environment.SetEnvironmentVariable("https_proxy", "127.0.0.1");
+                Environment.SetEnvironmentVariable("http_proxy", "#fragment");
+                Environment.SetEnvironmentVariable("https_proxy", "#fragment");
                 var proxy = new RunnerWebProxy();
 
                 Assert.Null(proxy.HttpProxyAddress);
@@ -197,6 +197,50 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Null(proxy.HttpsProxyAddress);
                 Assert.Null(proxy.HttpsProxyUsername);
                 Assert.Null(proxy.HttpsProxyPassword);
+
+                Assert.Equal(0, proxy.NoProxyList.Count);
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WebProxyPrependsHTTPforHTTP_PROXY()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("http_proxy", "127.0.0.1:7777");
+                var proxy = new RunnerWebProxy();
+
+                Assert.Equal("http://127.0.0.1:7777", proxy.HttpProxyAddress);
+                Assert.Null(proxy.HttpProxyUsername);
+                Assert.Null(proxy.HttpProxyPassword);
+
+                Assert.Equal(0, proxy.NoProxyList.Count);
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WebProxyPrependsHTTPforHTTPS_PROXY()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("https_proxy", "127.0.0.1:7777");
+                var proxy = new RunnerWebProxy();
+
+                Assert.Equal("http://127.0.0.1:7777", proxy.HttpsProxyAddress);
+                Assert.Null(proxy.HttpProxyUsername);
+                Assert.Null(proxy.HttpProxyPassword);
 
                 Assert.Equal(0, proxy.NoProxyList.Count);
             }

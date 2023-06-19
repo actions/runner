@@ -69,6 +69,10 @@ namespace GitHub.Runner.Sdk
                 return;
             }
 
+            if (!string.IsNullOrEmpty(httpProxyAddress) && !Uri.TryCreate(httpProxyAddress, UriKind.Absolute, out var _))
+            {
+                httpProxyAddress = PrependHttpIfNoProtocol(httpProxyAddress);
+            }
             if (!string.IsNullOrEmpty(httpProxyAddress) && Uri.TryCreate(httpProxyAddress, UriKind.Absolute, out var proxyHttpUri))
             {
                 _httpProxyAddress = proxyHttpUri.OriginalString;
@@ -99,6 +103,10 @@ namespace GitHub.Runner.Sdk
                 }
             }
 
+            if (!string.IsNullOrEmpty(httpsProxyAddress) && !Uri.TryCreate(httpsProxyAddress, UriKind.Absolute, out var _))
+            {
+                httpsProxyAddress = PrependHttpIfNoProtocol(httpsProxyAddress);
+            }
             if (!string.IsNullOrEmpty(httpsProxyAddress) && Uri.TryCreate(httpsProxyAddress, UriKind.Absolute, out var proxyHttpsUri))
             {
                 _httpsProxyAddress = proxyHttpsUri.OriginalString;
@@ -239,6 +247,16 @@ namespace GitHub.Runner.Sdk
             }
 
             return false;
+        }
+
+        private string PrependHttpIfNoProtocol(string proxyAddress)
+        {
+            // much like in golang, see https://go.dev/src/vendor/golang.org/x/net/http/httpproxy/proxy.go?s=4905:4916
+            if (proxyAddress.IndexOf("://", StringComparison.Ordinal) == -1)
+            {
+                proxyAddress = "http://" + proxyAddress;
+            }
+            return proxyAddress;
         }
     }
 }
