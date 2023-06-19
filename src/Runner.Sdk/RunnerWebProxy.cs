@@ -251,7 +251,7 @@ namespace GitHub.Runner.Sdk
 
         private string PrependHttpIfNoProtocol(string proxyAddress)
         {
-            // much like in golang, see https://go.dev/src/vendor/golang.org/x/net/http/httpproxy/proxy.go?s=4905:4916
+            // much like in golang, see https://github.com/golang/net/blob/f5464ddb689c015d1abf4df78a806a54af977e6c/http/httpproxy/proxy.go#LL156C31-L156C31
             if (proxyAddress.IndexOf("://", StringComparison.Ordinal) == -1)
             {
                 proxyAddress = "http://" + proxyAddress;
