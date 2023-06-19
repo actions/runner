@@ -209,12 +209,21 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void WebProxyPrependsHTTPforHTTP_PROXY()
+        public void WebProxyPrependsHTTPforHTTP_PROXY_IfNoProtocol()
         {
             try
             {
                 Environment.SetEnvironmentVariable("http_proxy", "127.0.0.1:7777");
                 var proxy = new RunnerWebProxy();
+
+                Assert.Equal("http://127.0.0.1:7777", proxy.HttpProxyAddress);
+                Assert.Null(proxy.HttpProxyUsername);
+                Assert.Null(proxy.HttpProxyPassword);
+
+                Assert.Equal(0, proxy.NoProxyList.Count);
+
+                Environment.SetEnvironmentVariable("http_proxy", "http://127.0.0.1:7777");
+                proxy = new RunnerWebProxy();
 
                 Assert.Equal("http://127.0.0.1:7777", proxy.HttpProxyAddress);
                 Assert.Null(proxy.HttpProxyUsername);
@@ -231,7 +240,7 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void WebProxyPrependsHTTPforHTTPS_PROXY()
+        public void WebProxyPrependsHTTPforHTTPS_PROXY_IfNoProtocol()
         {
             try
             {
@@ -239,6 +248,15 @@ namespace GitHub.Runner.Common.Tests
                 var proxy = new RunnerWebProxy();
 
                 Assert.Equal("http://127.0.0.1:7777", proxy.HttpsProxyAddress);
+                Assert.Null(proxy.HttpProxyUsername);
+                Assert.Null(proxy.HttpProxyPassword);
+
+                Assert.Equal(0, proxy.NoProxyList.Count);
+
+                Environment.SetEnvironmentVariable("https_proxy", "https://127.0.0.1:7777");
+                proxy = new RunnerWebProxy();
+
+                Assert.Equal("https://127.0.0.1:7777", proxy.HttpsProxyAddress); // existing protocol 'https' is not removed
                 Assert.Null(proxy.HttpProxyUsername);
                 Assert.Null(proxy.HttpProxyPassword);
 
