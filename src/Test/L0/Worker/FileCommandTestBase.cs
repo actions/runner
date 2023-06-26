@@ -410,11 +410,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         protected static readonly string BREAK = Environment.NewLine;
 
-        protected IFileCommandExtension _fileCmdExtension {get; private set; }
-        protected Mock<IExecutionContext> _executionContext {get; private set; }
-        protected List<Tuple<DTWebApi.Issue, string>> _issues {get; private set; }
+        protected IFileCommandExtension _fileCmdExtension { get; private set; }
+        protected Mock<IExecutionContext> _executionContext { get; private set; }
+        protected List<Tuple<DTWebApi.Issue, string>> _issues { get; private set; }
         protected IDictionary<string, string> _store { get; private set; }
-        protected string _rootDirectory {get; private set; }
-        protected ITraceWriter _trace {get; private set; }
+        protected string _rootDirectory { get; private set; }
+        protected ITraceWriter _trace { get; private set; }
     }
 }
