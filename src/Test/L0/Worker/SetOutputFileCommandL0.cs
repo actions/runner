@@ -1,24 +1,18 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Container;
-using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Xunit;
 using DTWebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
-    public sealed class SetOutputFileCommandL0
+    public sealed class SetOutputFileCommandL0 : FileCommandTestBase
     {
         private Mock<IExecutionContext> _executionContext;
         private List<Tuple<DTWebApi.Issue, string>> _issues;
@@ -263,44 +257,122 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetOutputFileCommand_Heredoc_SpecialCharacters()
+        public void SaveOutputFileCommand_Heredoc_EdgeCases()
         {
             using (var hostContext = Setup())
             {
                 var stateFile = Path.Combine(_rootDirectory, "heredoc");
                 var content = new List<string>
                 {
-                    "MY_OUTPUT<<=EOF",
-                    "hello",
-                    "one",
-                    "=EOF",
-                    "MY_OUTPUT_2<<<EOF",
-                    "hello",
-                    "two",
-                    "<EOF",
-                    "MY_OUTPUT_3<<EOF",
+                    "MY_OUTPUT_1<<EOF",
                     "hello",
                     string.Empty,
                     "three",
                     string.Empty,
                     "EOF",
-                    "MY_OUTPUT_4<<EOF",
-                    "hello=four",
+                    "MY_OUTPUT_2<<EOF",
+                    "hello=two",
                     "EOF",
-                    "MY_OUTPUT_5<<EOF",
+                    "MY_OUTPUT_3<<EOF",
                     " EOF",
+                    "EOF",
+                    "MY_OUTPUT_4<<EOF",
+                    "EOF EOF",
                     "EOF",
                 };
                 TestUtil.WriteContent(stateFile, content);
                 _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(5, _outputs.Count);
-                Assert.Equal($"hello{Environment.NewLine}one", _outputs["MY_OUTPUT"]);
-                Assert.Equal($"hello{Environment.NewLine}two", _outputs["MY_OUTPUT_2"]);
-                Assert.Equal($"hello{Environment.NewLine}{Environment.NewLine}three{Environment.NewLine}", _outputs["MY_OUTPUT_3"]);
-                Assert.Equal($"hello=four", _outputs["MY_OUTPUT_4"]);
-                Assert.Equal($" EOF", _outputs["MY_OUTPUT_5"]);
+                Assert.Equal(4, _outputs.Count);
+                Assert.Equal($"hello{BREAK}{BREAK}three{BREAK}", _outputs["MY_OUTPUT_1"]);
+                Assert.Equal($"hello=two", _outputs["MY_OUTPUT_2"]);
+                Assert.Equal($" EOF", _outputs["MY_OUTPUT_3"]);
+                Assert.Equal($"EOF EOF", _outputs["MY_OUTPUT_4"]);
             }
+        }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        // All of the following are not only valid, but quite plausible end markers.
+        // Most are derived straight from the example at https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+#pragma warning disable format
+        [InlineData("=EOF")][InlineData("==EOF")][InlineData("EO=F")][InlineData("EO==F")][InlineData("EOF=")][InlineData("EOF==")]
+        [InlineData("<EOF")][InlineData("<<EOF")][InlineData("EO<F")][InlineData("EO<<F")][InlineData("EOF<")][InlineData("EOF<<")]
+        [InlineData("+EOF")][InlineData("++EOF")][InlineData("EO+F")][InlineData("EO++F")][InlineData("EOF+")][InlineData("EOF++")]
+        [InlineData("/EOF")][InlineData("//EOF")][InlineData("EO/F")][InlineData("EO//F")][InlineData("EOF/")][InlineData("EOF//")]
+#pragma warning restore format
+        [InlineData("<<//++==")]
+        [InlineData("contrivedBase64==")]
+        [InlineData("khkIhPxsVA==")]
+        [InlineData("D+Y8zE/EOw==")]
+        [InlineData("wuOWG4S6FQ==")]
+        [InlineData("7wigCJ//iw==")]
+        [InlineData("uifTuYTs8K4=")]
+        [InlineData("M7N2ITg/04c=")]
+        [InlineData("Xhh+qp+Y6iM=")]
+        [InlineData("5tdblQajc/b+EGBZXo0w")]
+        [InlineData("jk/UMjIx/N0eVcQYOUfw")]
+        [InlineData("/n5lsw73Cwl35Hfuscdz")]
+        [InlineData("ZvnAEW+9O0tXp3Fmb3Oh")]
+        public void SaveOutputFileCommand_Heredoc_EndMarkerVariations(string validEndMarker)
+        {
+            using (var hostContext = Setup())
+            {
+                var stateFile = Path.Combine(_rootDirectory, "heredoc");
+                string eof = validEndMarker;
+                var content = new List<string>
+                {
+                    $"MY_OUTPUT_1<<{eof}",
+                    $"hello",
+                    $"one",
+                    $"{eof}",
+                    $"MY_OUTPUT_2<<{eof}",
+                    $"hello=two",
+                    $"{eof}",
+                    $"MY_OUTPUT_3<<{eof}",
+                    $" {eof}",
+                    $"{eof}",
+                    $"MY_OUTPUT_4<<{eof}",
+                    $"{eof} {eof}",
+                    $"{eof}",
+                };
+                TestUtil.WriteContent(stateFile, content);
+                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                Assert.Equal(0, _issues.Count);
+                Assert.Equal(4, _outputs.Count);
+                Assert.Equal($"hello{BREAK}one", _outputs["MY_OUTPUT_1"]);
+                Assert.Equal($"hello=two", _outputs["MY_OUTPUT_2"]);
+                Assert.Equal($" {eof}", _outputs["MY_OUTPUT_3"]);
+                Assert.Equal($"{eof} {eof}", _outputs["MY_OUTPUT_4"]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SaveOutputFileCommand_Heredoc_EqualBeforeMultilineIndicator()
+        {
+            using var hostContext = Setup();
+            var stateFile = Path.Combine(_rootDirectory, "heredoc");
+
+            // Define a hypothetical injectable payload that just happens to contain the '=' character.
+            string contrivedGitHubIssueTitle = "Issue 999:  Better handling for the `=` character";
+
+            // The docs recommend using randomly-generated EOF markers.
+            // Here's a randomly-generated base64 EOF marker that just happens to contain an '=' character.  ('=' is a padding character in base64.)
+            // see https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+            string randomizedEOF = "khkIhPxsVA==";
+            var content = new List<string>
+            {
+                // In a real world scenario, "%INJECT%" might instead be something like "${{ github.event.issue.title }}"
+                $"PREFIX_%INJECT%<<{randomizedEOF}".Replace("%INJECT%", contrivedGitHubIssueTitle),
+                "RandomDataThatJustHappensToContainAnEquals=Character",
+                randomizedEOF,
+            };
+            TestUtil.WriteContent(stateFile, content);
+            var ex = Assert.Throws<Exception>(() => _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null));
+            Assert.StartsWith("Invalid format", ex.Message);
         }
 
         [Fact]

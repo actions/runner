@@ -12,11 +12,8 @@ using DTWebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
-    public sealed class SetEnvFileCommandL0
+    public sealed class SetEnvFileCommandL0 : FileCommandTestBase
     {
-
-        private static readonly string BREAK = Environment.NewLine;
-
         private Mock<IExecutionContext> _executionContext;
         private List<Tuple<DTWebApi.Issue, string>> _issues;
         private string _rootDirectory;

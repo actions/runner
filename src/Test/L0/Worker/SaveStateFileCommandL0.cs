@@ -1,24 +1,18 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Container;
-using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Xunit;
 using DTWebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
-    public sealed class SaveStateFileCommandL0
+    public sealed class SaveStateFileCommandL0 : FileCommandTestBase
     {
         private Mock<IExecutionContext> _executionContext;
         private List<Tuple<DTWebApi.Issue, string>> _issues;
@@ -204,7 +198,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(1, _intraActionState.Count);
-                Assert.Equal($"line one{Environment.NewLine}line two{Environment.NewLine}line three", _intraActionState["MY_STATE"]);
+                Assert.Equal($"line one{BREAK}line two{BREAK}line three", _intraActionState["MY_STATE"]);
             }
         }
 
@@ -255,52 +249,130 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
                 Assert.Equal(2, _intraActionState.Count);
-                Assert.Equal($"hello{Environment.NewLine}world", _intraActionState["MY_STATE"]);
-                Assert.Equal($"HELLO{Environment.NewLine}AGAIN", _intraActionState["MY_STATE_2"]);
+                Assert.Equal($"hello{BREAK}world", _intraActionState["MY_STATE"]);
+                Assert.Equal($"HELLO{BREAK}AGAIN", _intraActionState["MY_STATE_2"]);
             }
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SaveStateFileCommand_Heredoc_SpecialCharacters()
+        public void SaveStateFileCommand_Heredoc_EdgeCases()
         {
             using (var hostContext = Setup())
             {
                 var stateFile = Path.Combine(_rootDirectory, "heredoc");
                 var content = new List<string>
                 {
-                    "MY_STATE<<=EOF",
-                    "hello",
-                    "one",
-                    "=EOF",
-                    "MY_STATE_2<<<EOF",
-                    "hello",
-                    "two",
-                    "<EOF",
-                    "MY_STATE_3<<EOF",
+                    "MY_STATE_1<<EOF",
                     "hello",
                     string.Empty,
                     "three",
                     string.Empty,
                     "EOF",
-                    "MY_STATE_4<<EOF",
-                    "hello=four",
+                    "MY_STATE_2<<EOF",
+                    "hello=two",
                     "EOF",
-                    "MY_STATE_5<<EOF",
+                    "MY_STATE_3<<EOF",
                     " EOF",
+                    "EOF",
+                    "MY_STATE_4<<EOF",
+                    "EOF EOF",
                     "EOF",
                 };
                 TestUtil.WriteContent(stateFile, content);
                 _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(5, _intraActionState.Count);
-                Assert.Equal($"hello{Environment.NewLine}one", _intraActionState["MY_STATE"]);
-                Assert.Equal($"hello{Environment.NewLine}two", _intraActionState["MY_STATE_2"]);
-                Assert.Equal($"hello{Environment.NewLine}{Environment.NewLine}three{Environment.NewLine}", _intraActionState["MY_STATE_3"]);
-                Assert.Equal($"hello=four", _intraActionState["MY_STATE_4"]);
-                Assert.Equal($" EOF", _intraActionState["MY_STATE_5"]);
+                Assert.Equal(4, _intraActionState.Count);
+                Assert.Equal($"hello{BREAK}{BREAK}three{BREAK}", _intraActionState["MY_STATE_1"]);
+                Assert.Equal($"hello=two", _intraActionState["MY_STATE_2"]);
+                Assert.Equal($" EOF", _intraActionState["MY_STATE_3"]);
+                Assert.Equal($"EOF EOF", _intraActionState["MY_STATE_4"]);
             }
+        }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        // All of the following are not only valid, but quite plausible end markers.
+        // Most are derived straight from the example at https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+#pragma warning disable format
+        [InlineData("=EOF")][InlineData("==EOF")][InlineData("EO=F")][InlineData("EO==F")][InlineData("EOF=")][InlineData("EOF==")]
+        [InlineData("<EOF")][InlineData("<<EOF")][InlineData("EO<F")][InlineData("EO<<F")][InlineData("EOF<")][InlineData("EOF<<")]
+        [InlineData("+EOF")][InlineData("++EOF")][InlineData("EO+F")][InlineData("EO++F")][InlineData("EOF+")][InlineData("EOF++")]
+        [InlineData("/EOF")][InlineData("//EOF")][InlineData("EO/F")][InlineData("EO//F")][InlineData("EOF/")][InlineData("EOF//")]
+#pragma warning restore format
+        [InlineData("<<//++==")]
+        [InlineData("contrivedBase64==")]
+        [InlineData("khkIhPxsVA==")]
+        [InlineData("D+Y8zE/EOw==")]
+        [InlineData("wuOWG4S6FQ==")]
+        [InlineData("7wigCJ//iw==")]
+        [InlineData("uifTuYTs8K4=")]
+        [InlineData("M7N2ITg/04c=")]
+        [InlineData("Xhh+qp+Y6iM=")]
+        [InlineData("5tdblQajc/b+EGBZXo0w")]
+        [InlineData("jk/UMjIx/N0eVcQYOUfw")]
+        [InlineData("/n5lsw73Cwl35Hfuscdz")]
+        [InlineData("ZvnAEW+9O0tXp3Fmb3Oh")]
+        public void SaveStateFileCommand_Heredoc_EndMarkerVariations(string validEndMarker)
+        {
+            using (var hostContext = Setup())
+            {
+                var stateFile = Path.Combine(_rootDirectory, "heredoc");
+                string eof = validEndMarker;
+                var content = new List<string>
+                {
+                    $"MY_STATE_1<<{eof}",
+                    $"hello",
+                    $"one",
+                    $"{eof}",
+                    $"MY_STATE_2<<{eof}",
+                    $"hello=two",
+                    $"{eof}",
+                    $"MY_STATE_3<<{eof}",
+                    $" {eof}",
+                    $"{eof}",
+                    $"MY_STATE_4<<{eof}",
+                    $"{eof} {eof}",
+                    $"{eof}",
+                };
+                TestUtil.WriteContent(stateFile, content);
+                _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                Assert.Equal(0, _issues.Count);
+                Assert.Equal(4, _intraActionState.Count);
+                Assert.Equal($"hello{BREAK}one", _intraActionState["MY_STATE_1"]);
+                Assert.Equal($"hello=two", _intraActionState["MY_STATE_2"]);
+                Assert.Equal($" {eof}", _intraActionState["MY_STATE_3"]);
+                Assert.Equal($"{eof} {eof}", _intraActionState["MY_STATE_4"]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SaveStateFileCommand_Heredoc_EqualBeforeMultilineIndicator()
+        {
+            using var hostContext = Setup();
+            var stateFile = Path.Combine(_rootDirectory, "heredoc");
+
+            // Define a hypothetical injectable payload that just happens to contain the '=' character.
+            string contrivedGitHubIssueTitle = "Issue 999:  Better handling for the `=` character";
+
+            // The docs recommend using randomly-generated EOF markers.
+            // Here's a randomly-generated base64 EOF marker that just happens to contain an '=' character.  ('=' is a padding character in base64.)
+            // see https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
+            string randomizedEOF = "khkIhPxsVA==";
+            var content = new List<string>
+            {
+                // In a real world scenario, "%INJECT%" might instead be something like "${{ github.event.issue.title }}"
+                $"PREFIX_%INJECT%<<{randomizedEOF}".Replace("%INJECT%", contrivedGitHubIssueTitle),
+                "RandomDataThatJustHappensToContainAnEquals=Character",
+                randomizedEOF,
+            };
+            TestUtil.WriteContent(stateFile, content);
+            var ex = Assert.Throws<Exception>(() => _saveStateFileCommand.ProcessCommand(_executionContext.Object, stateFile, null));
+            Assert.StartsWith("Invalid format", ex.Message);
         }
 
         [Fact]
