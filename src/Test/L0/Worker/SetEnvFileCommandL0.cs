@@ -2,36 +2,25 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
-using Moq;
 using Xunit;
-using DTWebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
-    public sealed class SetEnvFileCommandL0 : FileCommandTestBase
+    public sealed class SetEnvFileCommandL0 : FileCommandTestBase<SetEnvFileCommand>
     {
-        private Mock<IExecutionContext> _executionContext;
-        private List<Tuple<DTWebApi.Issue, string>> _issues;
-        private string _rootDirectory;
-        private SetEnvFileCommand _setEnvFileCommand;
-        private ITraceWriter _trace;
+
+        protected override IDictionary<string, string> PostSetup()
+        {
+            return _executionContext.Object.Global.EnvironmentVariables;
+        }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         public void SetEnvFileCommand_DirectoryNotFound()
         {
-            using (var hostContext = Setup())
-            {
-                var envFile = Path.Combine(_rootDirectory, "directory-not-found", "env");
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
-                Assert.Equal(0, _issues.Count);
-                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
-            }
+            base.TestDirectoryNotFound();
         }
 
         [Fact]
@@ -42,9 +31,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hostContext = Setup())
             {
                 var envFile = Path.Combine(_rootDirectory, "file-not-found");
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
+                Assert.Equal(0, _store.Count);
             }
         }
 
@@ -58,9 +47,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var envFile = Path.Combine(_rootDirectory, "empty-file");
                 var content = new List<string>();
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
+                Assert.Equal(0, _store.Count);
             }
         }
 
@@ -77,10 +66,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_ENV=MY VALUE",
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal("MY VALUE", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal("MY VALUE", _store["MY_ENV"]);
             }
         }
 
@@ -101,11 +90,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     string.Empty,
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(2, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal("my value", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
-                Assert.Equal("my second value", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
+                Assert.Equal(2, _store.Count);
+                Assert.Equal("my value", _store["MY_ENV"]);
+                Assert.Equal("my second value", _store["MY_ENV_2"]);
             }
         }
 
@@ -122,10 +111,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_ENV=",
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal(string.Empty, _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal(string.Empty, _store["MY_ENV"]);
             }
         }
 
@@ -144,12 +133,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_ENV_3=my third value",
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(3, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal("my value", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
-                Assert.Equal(string.Empty, _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
-                Assert.Equal("my third value", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_3"]);
+                Assert.Equal(3, _store.Count);
+                Assert.Equal("my value", _store["MY_ENV"]);
+                Assert.Equal(string.Empty, _store["MY_ENV_2"]);
+                Assert.Equal("my third value", _store["MY_ENV_3"]);
             }
         }
 
@@ -168,12 +157,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_ENV_3=jkl=",
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(3, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal("=abc", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
-                Assert.Equal("def=ghi", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
-                Assert.Equal("jkl=", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_3"]);
+                Assert.Equal(3, _store.Count);
+                Assert.Equal("=abc", _store["MY_ENV"]);
+                Assert.Equal("def=ghi", _store["MY_ENV_2"]);
+                Assert.Equal("jkl=", _store["MY_ENV_3"]);
             }
         }
 
@@ -194,10 +183,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal($"line one{BREAK}line two{BREAK}line three", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal($"line one{BREAK}line two{BREAK}line three", _store["MY_ENV"]);
             }
         }
 
@@ -215,10 +204,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal(string.Empty, _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal(string.Empty, _store["MY_ENV"]);
             }
         }
 
@@ -245,11 +234,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     string.Empty,
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(2, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal($"hello{BREAK}world", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
-                Assert.Equal($"HELLO{BREAK}AGAIN", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
+                Assert.Equal(2, _store.Count);
+                Assert.Equal($"hello{BREAK}world", _store["MY_ENV"]);
+                Assert.Equal($"HELLO{BREAK}AGAIN", _store["MY_ENV_2"]);
             }
         }
 
@@ -280,13 +269,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(4, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal($"hello{BREAK}{BREAK}three{BREAK}", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_1"]);
-                Assert.Equal($"hello=two", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
-                Assert.Equal($" EOF", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_3"]);
-                Assert.Equal($"EOF EOF", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_4"]);
+                Assert.Equal(4, _store.Count);
+                Assert.Equal($"hello{BREAK}{BREAK}three{BREAK}", _store["MY_ENV_1"]);
+                Assert.Equal($"hello=two", _store["MY_ENV_2"]);
+                Assert.Equal($" EOF", _store["MY_ENV_3"]);
+                Assert.Equal($"EOF EOF", _store["MY_ENV_4"]);
             }
         }
 
@@ -337,13 +326,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                     $"{eof}",
                 };
                 TestUtil.WriteContent(envFile, content);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(4, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal($"hello{BREAK}one", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_1"]);
-                Assert.Equal($"hello=two", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
-                Assert.Equal($" {eof}", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_3"]);
-                Assert.Equal($"{eof} {eof}", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_4"]);
+                Assert.Equal(4, _store.Count);
+                Assert.Equal($"hello{BREAK}one", _store["MY_ENV_1"]);
+                Assert.Equal($"hello=two", _store["MY_ENV_2"]);
+                Assert.Equal($" {eof}", _store["MY_ENV_3"]);
+                Assert.Equal($"{eof} {eof}", _store["MY_ENV_4"]);
             }
         }
 
@@ -370,7 +359,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 randomizedEOF,
             };
             TestUtil.WriteContent(envFile, content);
-            var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
+            var ex = Assert.Throws<Exception>(() => _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null));
             Assert.StartsWith("Invalid format", ex.Message);
         }
 
@@ -384,7 +373,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var envFile = Path.Combine(_rootDirectory, "heredoc");
                 string content = "MY_OUTPUT<<EOF line one line two line three EOF";
                 TestUtil.WriteContent(envFile, content);
-                var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
+                var ex = Assert.Throws<Exception>(() => _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null));
                 Assert.Contains("Matching delimiter not found", ex.Message);
             }
         }
@@ -404,7 +393,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Note that the final EOF does not appear on it's own line.
                 string content = $"MY_OUTPUT<<EOF {multilineFragment} EOF";
                 TestUtil.WriteContent(envFile, content);
-                var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
+                var ex = Assert.Throws<Exception>(() => _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null));
                 Assert.Contains("EOF marker missing new line", ex.Message);
             }
         }
@@ -427,60 +416,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 TestUtil.WriteContent(envFile, content, LineEndingType.Linux);
-                _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, envFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _executionContext.Object.Global.EnvironmentVariables.Count);
-                Assert.Equal($"hello{newline}world", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal($"hello{newline}world", _store["MY_ENV"]);
             }
         }
 #endif
 
-        private TestHostContext Setup([CallerMemberName] string name = "")
-        {
-            _issues = new List<Tuple<DTWebApi.Issue, string>>();
-
-            var hostContext = new TestHostContext(this, name);
-
-            // Trace
-            _trace = hostContext.GetTrace();
-
-            // Directory for test data
-            var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
-            ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
-            Directory.CreateDirectory(workDirectory);
-            _rootDirectory = Path.Combine(workDirectory, nameof(SetEnvFileCommandL0));
-            Directory.CreateDirectory(_rootDirectory);
-
-            // Execution context
-            _executionContext = new Mock<IExecutionContext>();
-            _executionContext.Setup(x => x.Global)
-                .Returns(new GlobalContext
-                {
-                    EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
-                    WriteDebug = true,
-                });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<ExecutionContextLogOptions>()))
-                .Callback((DTWebApi.Issue issue, ExecutionContextLogOptions logOptions) =>
-                {
-                    var resolvedMessage = issue.Message;
-                    if (logOptions.WriteToLog && !string.IsNullOrEmpty(logOptions.LogMessageOverride))
-                    {
-                        resolvedMessage = logOptions.LogMessageOverride;
-                    }
-                    _issues.Add(new(issue, resolvedMessage));
-                    _trace.Info($"Issue '{issue.Type}': {resolvedMessage}");
-                });
-            _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
-                .Callback((string tag, string message) =>
-                {
-                    _trace.Info($"{tag}{message}");
-                });
-
-            // SetEnvFileCommand
-            _setEnvFileCommand = new SetEnvFileCommand();
-            _setEnvFileCommand.Initialize(hostContext);
-
-            return hostContext;
-        }
     }
 }

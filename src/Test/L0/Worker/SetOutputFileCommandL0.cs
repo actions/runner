@@ -2,37 +2,36 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using Moq;
 using Xunit;
-using DTWebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
-    public sealed class SetOutputFileCommandL0 : FileCommandTestBase
+    public sealed class SetOutputFileCommandL0 : FileCommandTestBase<SetOutputFileCommand>
     {
-        private Mock<IExecutionContext> _executionContext;
-        private List<Tuple<DTWebApi.Issue, string>> _issues;
-        private Dictionary<string, string> _outputs;
-        private string _rootDirectory;
-        private SetOutputFileCommand _setOutputFileCommand;
-        private ITraceWriter _trace;
+
+        protected override IDictionary<string, string> PostSetup()
+        {
+            var outputs = new Dictionary<string, string>();
+            var reference = string.Empty;
+            _executionContext.Setup(x => x.SetOutput(It.IsAny<string>(), It.IsAny<string>(), out reference))
+              .Callback((string name, string value, out string reference) =>
+              {
+                  reference = value;
+                  outputs[name] = value;
+              });
+
+            return outputs;
+
+        }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         public void SetOutputFileCommand_DirectoryNotFound()
         {
-            using (var hostContext = Setup())
-            {
-                var stateFile = Path.Combine(_rootDirectory, "directory-not-found", "env");
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
-                Assert.Equal(0, _issues.Count);
-                Assert.Equal(0, _outputs.Count);
-            }
+            base.TestDirectoryNotFound();
         }
 
         [Fact]
@@ -43,9 +42,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hostContext = Setup())
             {
                 var stateFile = Path.Combine(_rootDirectory, "file-not-found");
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(0, _outputs.Count);
+                Assert.Equal(0, _store.Count);
             }
         }
 
@@ -59,9 +58,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var stateFile = Path.Combine(_rootDirectory, "empty-file");
                 var content = new List<string>();
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(0, _outputs.Count);
+                Assert.Equal(0, _store.Count);
             }
         }
 
@@ -78,10 +77,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_OUTPUT=MY VALUE",
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _outputs.Count);
-                Assert.Equal("MY VALUE", _outputs["MY_OUTPUT"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal("MY VALUE", _store["MY_OUTPUT"]);
             }
         }
 
@@ -102,11 +101,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     string.Empty,
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(2, _outputs.Count);
-                Assert.Equal("my value", _outputs["MY_OUTPUT"]);
-                Assert.Equal("my second value", _outputs["MY_OUTPUT_2"]);
+                Assert.Equal(2, _store.Count);
+                Assert.Equal("my value", _store["MY_OUTPUT"]);
+                Assert.Equal("my second value", _store["MY_OUTPUT_2"]);
             }
         }
 
@@ -123,10 +122,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_OUTPUT=",
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _outputs.Count);
-                Assert.Equal(string.Empty, _outputs["MY_OUTPUT"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal(string.Empty, _store["MY_OUTPUT"]);
             }
         }
 
@@ -145,12 +144,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_OUTPUT_3=my third value",
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(3, _outputs.Count);
-                Assert.Equal("my value", _outputs["MY_OUTPUT"]);
-                Assert.Equal(string.Empty, _outputs["MY_OUTPUT_2"]);
-                Assert.Equal("my third value", _outputs["MY_OUTPUT_3"]);
+                Assert.Equal(3, _store.Count);
+                Assert.Equal("my value", _store["MY_OUTPUT"]);
+                Assert.Equal(string.Empty, _store["MY_OUTPUT_2"]);
+                Assert.Equal("my third value", _store["MY_OUTPUT_3"]);
             }
         }
 
@@ -169,12 +168,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_OUTPUT_3=jkl=",
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(3, _outputs.Count);
-                Assert.Equal("=abc", _outputs["MY_OUTPUT"]);
-                Assert.Equal("def=ghi", _outputs["MY_OUTPUT_2"]);
-                Assert.Equal("jkl=", _outputs["MY_OUTPUT_3"]);
+                Assert.Equal(3, _store.Count);
+                Assert.Equal("=abc", _store["MY_OUTPUT"]);
+                Assert.Equal("def=ghi", _store["MY_OUTPUT_2"]);
+                Assert.Equal("jkl=", _store["MY_OUTPUT_3"]);
             }
         }
 
@@ -195,10 +194,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _outputs.Count);
-                Assert.Equal($"line one{Environment.NewLine}line two{Environment.NewLine}line three", _outputs["MY_OUTPUT"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal($"line one{Environment.NewLine}line two{Environment.NewLine}line three", _store["MY_OUTPUT"]);
             }
         }
 
@@ -216,10 +215,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _outputs.Count);
-                Assert.Equal(string.Empty, _outputs["MY_OUTPUT"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal(string.Empty, _store["MY_OUTPUT"]);
             }
         }
 
@@ -246,11 +245,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     string.Empty,
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(2, _outputs.Count);
-                Assert.Equal($"hello{Environment.NewLine}world", _outputs["MY_OUTPUT"]);
-                Assert.Equal($"HELLO{Environment.NewLine}AGAIN", _outputs["MY_OUTPUT_2"]);
+                Assert.Equal(2, _store.Count);
+                Assert.Equal($"hello{Environment.NewLine}world", _store["MY_OUTPUT"]);
+                Assert.Equal($"HELLO{Environment.NewLine}AGAIN", _store["MY_OUTPUT_2"]);
             }
         }
 
@@ -281,13 +280,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(4, _outputs.Count);
-                Assert.Equal($"hello{BREAK}{BREAK}three{BREAK}", _outputs["MY_OUTPUT_1"]);
-                Assert.Equal($"hello=two", _outputs["MY_OUTPUT_2"]);
-                Assert.Equal($" EOF", _outputs["MY_OUTPUT_3"]);
-                Assert.Equal($"EOF EOF", _outputs["MY_OUTPUT_4"]);
+                Assert.Equal(4, _store.Count);
+                Assert.Equal($"hello{BREAK}{BREAK}three{BREAK}", _store["MY_OUTPUT_1"]);
+                Assert.Equal($"hello=two", _store["MY_OUTPUT_2"]);
+                Assert.Equal($" EOF", _store["MY_OUTPUT_3"]);
+                Assert.Equal($"EOF EOF", _store["MY_OUTPUT_4"]);
             }
         }
 
@@ -338,13 +337,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                     $"{eof}",
                 };
                 TestUtil.WriteContent(stateFile, content);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(4, _outputs.Count);
-                Assert.Equal($"hello{BREAK}one", _outputs["MY_OUTPUT_1"]);
-                Assert.Equal($"hello=two", _outputs["MY_OUTPUT_2"]);
-                Assert.Equal($" {eof}", _outputs["MY_OUTPUT_3"]);
-                Assert.Equal($"{eof} {eof}", _outputs["MY_OUTPUT_4"]);
+                Assert.Equal(4, _store.Count);
+                Assert.Equal($"hello{BREAK}one", _store["MY_OUTPUT_1"]);
+                Assert.Equal($"hello=two", _store["MY_OUTPUT_2"]);
+                Assert.Equal($" {eof}", _store["MY_OUTPUT_3"]);
+                Assert.Equal($"{eof} {eof}", _store["MY_OUTPUT_4"]);
             }
         }
 
@@ -371,7 +370,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 randomizedEOF,
             };
             TestUtil.WriteContent(stateFile, content);
-            var ex = Assert.Throws<Exception>(() => _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null));
+            var ex = Assert.Throws<Exception>(() => _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null));
             Assert.StartsWith("Invalid format", ex.Message);
         }
 
@@ -385,7 +384,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var stateFile = Path.Combine(_rootDirectory, "heredoc");
                 string content = "MY_OUTPUT<<EOF line one line two line three EOF";
                 TestUtil.WriteContent(stateFile, content);
-                var ex = Assert.Throws<Exception>(() => _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null));
+                var ex = Assert.Throws<Exception>(() => _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null));
                 Assert.Contains("Matching delimiter not found", ex.Message);
             }
         }
@@ -405,7 +404,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Note that the final EOF does not appear on it's own line.
                 string content = $"MY_OUTPUT<<EOF {multilineFragment} EOF";
                 TestUtil.WriteContent(stateFile, content);
-                var ex = Assert.Throws<Exception>(() => _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null));
+                var ex = Assert.Throws<Exception>(() => _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null));
                 Assert.Contains("EOF marker missing new line", ex.Message);
             }
         }
@@ -428,69 +427,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "EOF",
                 };
                 TestUtil.WriteContent(stateFile, content, LineEndingType.Linux);
-                _setOutputFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(1, _outputs.Count);
-                Assert.Equal($"hello{newline}world", _outputs["MY_OUTPUT"]);
+                Assert.Equal(1, _store.Count);
+                Assert.Equal($"hello{newline}world", _store["MY_OUTPUT"]);
             }
         }
 #endif
 
-        private TestHostContext Setup([CallerMemberName] string name = "")
-        {
-            _issues = new List<Tuple<DTWebApi.Issue, string>>();
-            _outputs = new Dictionary<string, string>();
-
-            var hostContext = new TestHostContext(this, name);
-
-            // Trace
-            _trace = hostContext.GetTrace();
-
-            // Directory for test data
-            var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
-            ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
-            Directory.CreateDirectory(workDirectory);
-            _rootDirectory = Path.Combine(workDirectory, nameof(SetOutputFileCommandL0));
-            Directory.CreateDirectory(_rootDirectory);
-
-            // Execution context
-            _executionContext = new Mock<IExecutionContext>();
-            _executionContext.Setup(x => x.Global)
-                .Returns(new GlobalContext
-                {
-                    EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
-                    WriteDebug = true,
-                });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<ExecutionContextLogOptions>()))
-                .Callback((DTWebApi.Issue issue, ExecutionContextLogOptions logOptions) =>
-                {
-                    var resolvedMessage = issue.Message;
-                    if (logOptions.WriteToLog && !string.IsNullOrEmpty(logOptions.LogMessageOverride))
-                    {
-                        resolvedMessage = logOptions.LogMessageOverride;
-                    }
-                    _issues.Add(new(issue, resolvedMessage));
-                    _trace.Info($"Issue '{issue.Type}': {resolvedMessage}");
-                });
-            _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
-                .Callback((string tag, string message) =>
-                {
-                    _trace.Info($"{tag}{message}");
-                });
-
-            var reference = string.Empty;
-            _executionContext.Setup(x => x.SetOutput(It.IsAny<string>(), It.IsAny<string>(), out reference))
-              .Callback((string name, string value, out string reference) =>
-              {
-                  reference = value;
-                  _outputs[name] = value;
-              });
-
-            // SetOutputFileCommand
-            _setOutputFileCommand = new SetOutputFileCommand();
-            _setOutputFileCommand.Initialize(hostContext);
-
-            return hostContext;
-        }
     }
 }
