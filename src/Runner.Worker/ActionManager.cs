@@ -1136,7 +1136,7 @@ namespace GitHub.Runner.Worker
                 {
                     reference = $"{reference}@{repositoryReference.Ref}";
                 }
-                throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' for action '{reference.ToString()}'.");
+                throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' for action '{reference}'.");
             }
         }
 
