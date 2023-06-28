@@ -175,7 +175,10 @@ namespace GitHub.Runner.Worker
                     context.Debug("Update context data");
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                     context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
-                    context.SetRunnerContext("host-workspace", _workDirectory);
+                    if (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+                    {
+                        context.SetRunnerContext("host-work-directory", _workDirectory);
+                    }
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
 
                     // Temporary hack for GHES alpha

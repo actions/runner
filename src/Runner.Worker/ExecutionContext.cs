@@ -1355,7 +1355,7 @@ namespace GitHub.Runner.Worker
         {
             foreach (var key in dict.Keys.ToList())
             {
-                if (key == PipelineTemplateConstants.HostWorkspace)
+                if (key == PipelineTemplateConstants.HostWorkDirectory)
                 {
                     continue;
                 }

@@ -38,15 +38,16 @@ namespace GitHub.Runner.Worker.Expressions
             ArgUtil.NotNull(runnerContextData, nameof(runnerContextData));
             var runnerContext = runnerContextData as DictionaryContextData;
             ArgUtil.NotNull(runnerContext, nameof(runnerContext));
-            runnerContext.TryGetValue(PipelineTemplateConstants.HostWorkspace, out var hostWorkspace);
+            runnerContext.TryGetValue(PipelineTemplateConstants.HostWorkDirectory, out var hostWorkDirectory);
 
-            if (hostWorkspace != null)
+            if (hostWorkDirectory != null)
             {
-                var hostWorkspaceData = hostWorkspace as StringContextData;
+                // Depends on the 'DistributedTask.UseContainerPathForTemplate' feature flag
+                var hostWorkDirectoryData = hostWorkDirectory as StringContextData;
                 ArgUtil.NotNull(workspaceData, nameof(workspaceData));
 
                 var containerInfo = new ContainerInfo();
-                containerInfo.AddPathTranslateMapping(hostWorkspaceData.Value, "/__w");
+                containerInfo.AddPathTranslateMapping(hostWorkDirectoryData.Value, "/__w");
                 githubWorkspace = containerInfo.TranslateToHostPath(githubWorkspace);
             }
 
