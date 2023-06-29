@@ -1,10 +1,21 @@
-﻿using System.IO;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Text;
 using Xunit;
 using GitHub.Runner.Sdk;
-using System.Runtime.CompilerServices;
+using System.Linq;
 
 namespace GitHub.Runner.Common.Tests
 {
+    public enum LineEndingType
+    {
+        Native,
+        Linux = 0x__0A,
+        Windows = 0x0D0A
+    }
+
     public static class TestUtil
     {
         private const string Src = "src";
@@ -41,5 +52,24 @@ namespace GitHub.Runner.Common.Tests
             Assert.True(Directory.Exists(testDataDir));
             return testDataDir;
         }
+
+        public static void WriteContent(string path, string content, LineEndingType lineEnding = LineEndingType.Native)
+        {
+            WriteContent(path, Enumerable.Repeat(content, 1), lineEnding);
+        }
+
+        public static void WriteContent(string path, IEnumerable<string> content, LineEndingType lineEnding = LineEndingType.Native)
+        {
+            string newline = lineEnding switch
+            {
+                LineEndingType.Linux => "\n",
+                LineEndingType.Windows => "\r\n",
+                _ => Environment.NewLine,
+            };
+            var encoding = new UTF8Encoding(true); // Emit BOM
+            var contentStr = string.Join(newline, content);
+            File.WriteAllText(path, contentStr, encoding);
+        }
+
     }
 }
