@@ -8,8 +8,6 @@ using System.Reflection;
 using System.Threading;
 using System.Collections.Generic;
 using GitHub.Runner.Common.Util;
-using GitHub.Runner.Worker.Container;
-using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Expressions
 {
