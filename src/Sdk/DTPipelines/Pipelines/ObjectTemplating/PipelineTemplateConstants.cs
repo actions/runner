@@ -82,5 +82,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String WorkflowRoot = "workflow-root";
         public const String WorkingDirectory = "working-directory";
         public const String Workspace = "workspace";
+        public const String HostWorkspace = "host-workspace";
     }
 }
