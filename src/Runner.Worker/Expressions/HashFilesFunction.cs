@@ -28,28 +28,17 @@ namespace GitHub.Runner.Worker.Expressions
             ArgUtil.NotNull(githubContextData, nameof(githubContextData));
             var githubContext = githubContextData as DictionaryContextData;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
-            githubContext.TryGetValue(PipelineTemplateConstants.Workspace, out var workspace);
+
+            if (!githubContext.TryGetValue(PipelineTemplateConstants.HostWorkspace, out var workspace))
+            {
+                githubContext.TryGetValue(PipelineTemplateConstants.Workspace, out workspace);
+            }
+            ArgUtil.NotNull(workspace, nameof(workspace));
+
             var workspaceData = workspace as StringContextData;
             ArgUtil.NotNull(workspaceData, nameof(workspaceData));
 
             string githubWorkspace = workspaceData.Value;
-
-            templateContext.ExpressionValues.TryGetValue(PipelineTemplateConstants.Runner, out var runnerContextData);
-            ArgUtil.NotNull(runnerContextData, nameof(runnerContextData));
-            var runnerContext = runnerContextData as DictionaryContextData;
-            ArgUtil.NotNull(runnerContext, nameof(runnerContext));
-            runnerContext.TryGetValue(PipelineTemplateConstants.HostWorkDirectory, out var hostWorkDirectory);
-
-            if (hostWorkDirectory != null)
-            {
-                // Depends on the 'DistributedTask.UseContainerPathForTemplate' feature flag
-                var hostWorkDirectoryData = hostWorkDirectory as StringContextData;
-                ArgUtil.NotNull(workspaceData, nameof(workspaceData));
-
-                var containerInfo = new ContainerInfo();
-                containerInfo.AddPathTranslateMapping(hostWorkDirectoryData.Value, "/__w");
-                githubWorkspace = containerInfo.TranslateToHostPath(githubWorkspace);
-            }
 
             bool followSymlink = false;
             List<string> patterns = new();

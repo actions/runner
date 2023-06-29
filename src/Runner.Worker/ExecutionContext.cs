@@ -1355,7 +1355,7 @@ namespace GitHub.Runner.Worker
         {
             foreach (var key in dict.Keys.ToList())
             {
-                if (key == PipelineTemplateConstants.HostWorkDirectory)
+                if (key == PipelineTemplateConstants.HostWorkspace)
                 {
                     // The HostWorkspace context var is excluded so that there is a var that always points to the host path. 
                     // This var can be used to translate back from container paths, e.g. in HashFilesFunction, which always runs on the host machine
