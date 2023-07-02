@@ -1,0 +1,19 @@
+on:
+  workflow_call:
+  push:
+
+jobs:
+  assert_ACTIONS_STEP_DEBUG:
+    runs-on: self-hosted
+    if: vars.ACTIONS_STEP_DEBUG != 'true'
+    steps:
+    - run: exit 1
+  test:
+    runs-on: self-hosted
+    steps:
+    - run: exit ${{ vars.ACTIONS_STEP_DEBUG == 'true' && '0' || '1'}}
+  test_environment:
+    runs-on: self-hosted
+    environment: test
+    steps:
+    - run: exit ${{ vars.ACTIONS_STEP_DEBUG == 'true' && '0' || '1'}}

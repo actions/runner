@@ -1,0 +1,5 @@
+on:
+  push:
+jobs:
+  test1:
+    uses: ./.github/workflows/x.yml
