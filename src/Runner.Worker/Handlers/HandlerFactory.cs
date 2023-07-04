@@ -70,13 +70,16 @@ namespace GitHub.Runner.Worker.Handlers
                     {   
                         var repoAction = action as Pipelines.RepositoryPathReference;
                         var repoActionFullName = "";
-                        if (string.IsNullOrEmpty(repoAction.Name))
+                        if (repoAction != null)
                         {
-                            repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
-                        }
-                        else
-                        {
-                            repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}";
+                            if (string.IsNullOrEmpty(repoAction.Name))
+                            {
+                                repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
+                            }
+                            else
+                            {
+                                repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}";
+                            }
                         }
                         executionContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, repoActionFullName));
                         nodeData.NodeVersion = "node16";
