@@ -67,11 +67,17 @@ namespace GitHub.Runner.Worker.Handlers
                     var isLocalOptOut = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion));
                     bool isOptOut = isWorkflowOptOutSet ? StringUtil.ConvertToBoolean(workflowOptOut) : isLocalOptOut;
                     if (!isOptOut)
-                    {   
+                    {
                         var repoAction = action as Pipelines.RepositoryPathReference;
-                        var repoActionFullName = "";
                         if (repoAction != null)
                         {
+                            var warningActions = new HashSet<string>();
+                            if (executionContext.Global.Variables.TryGetValue("Node16ForceActionsWarnings", out var node16ForceWarnings))
+                            {
+                                warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings);
+                            }
+
+                            var repoActionFullName = "";
                             if (string.IsNullOrEmpty(repoAction.Name))
                             {
                                 repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
@@ -80,8 +86,10 @@ namespace GitHub.Runner.Worker.Handlers
                             {
                                 repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}";
                             }
+
+                            warningActions.Add(repoActionFullName);
+                            executionContext.Global.Variables.Set("Node16ForceActionsWarnings", StringUtil.ConvertToJson(warningActions));
                         }
-                        executionContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, repoActionFullName));
                         nodeData.NodeVersion = "node16";
                     }
                 }
