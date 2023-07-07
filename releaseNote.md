@@ -1,25 +1,19 @@
 ## Features
-- Resolve Actions Directly From Launch for Run Service Jobs (#2529)
-- Send annotations to run-service (#2574)
-- Add `--no-default-labels` config option to self-hosted runners (#2443)
-- Update container-hooks to 0.3.2 in runner docker image (#2618)
-- Set runner environment in context and env (#2518)
-- Switch runner image from Debian to Ubuntu 22.04 (#2651)
+- Add warning to notify about forcing actions to run on node16 instead of node12 (#2678)
 
 ## Bugs
-- Handle conflict errors from run service (#2570)
-- Fix null guard bug (#2576)
-- Trace WebSocket exception into verbose level to reduce noise in diag log (#2591)
-- Ensure multiple composite annotations are correctly written (#2311)
-- Adding Consistency to 'Failed To Resolve Action Download Info' Infrastructure Error Flagging (#2488)
-- Filter out empty arguments in container hooks (#2633)
-- Fix uses: docker://image:tag steps when container hook is used (#2626)
+- Remove job completion from runner listener (#2659)
+- Fix double error reporting (#2656)
+- Fix a bug with incorrect parsing of image values in a container action (#1873)
+- Fix error message reported on non-local action setup (#2668)
+- Extend github context with host-workspace (#2517)
+- Fixed a bug where a misplaced = character could bypass heredoc-style processing (#2627)
 
 ## Misc
-- Contribute.md: Fix link to style guidelines (#2560)
-- Remove Temporary Serialization Shim (#2549)
-- Move Using V2 Flow log to Trace (#2635)
-- Add utf8 with bom (#2641)
+- Send environment url to Run Service (#2650)
+- Reduce token service and unnecessary calls - send token to redirects (#2660)
+- Add 'http://' to http(s)_proxy if there is no protocol (#2663)
+- Remove extra result step for job itself (#2620)
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
