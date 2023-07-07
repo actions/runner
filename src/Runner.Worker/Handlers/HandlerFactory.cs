@@ -72,7 +72,7 @@ namespace GitHub.Runner.Worker.Handlers
                         if (repoAction != null)
                         {
                             var warningActions = new HashSet<string>();
-                            if (executionContext.Global.Variables.TryGetValue("Node16ForceActionsWarnings", out var node16ForceWarnings))
+                            if (executionContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
                             {
                                 warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings);
                             }
