@@ -170,6 +170,8 @@ namespace GitHub.Runner.Common
             public static readonly string UnsupportedSummarySize = "$GITHUB_STEP_SUMMARY upload aborted, supports content up to a size of {0}k, got {1}k. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
             public static readonly string SummaryUploadError = "$GITHUB_STEP_SUMMARY upload aborted, an error occurred when uploading the summary. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
             public static readonly string Node12DetectedAfterEndOfLife = "Node.js 12 actions are deprecated. Please update the following actions to use Node.js 16: {0}. For more information see: https://github.blog/changelog/2022-09-22-github-actions-all-actions-will-begin-running-on-node16-instead-of-node12/.";
+            public static readonly string EnforcedNode12DetectedAfterEndOfLife = "The following actions uses node12 which is deprecated and will be forced to run on node16: {0}. For more info: https://github.blog/changelog/2023-06-13-github-actions-all-actions-will-run-on-node16-instead-of-node12-by-default/";
+            public static readonly string EnforcedNode12DetectedAfterEndOfLifeEnvVariable = "Node16ForceActionsWarnings";
         }
 
         public static class RunnerEvent
