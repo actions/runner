@@ -310,6 +310,7 @@ namespace GitHub.Runner.Worker.Handlers
                             // Mark job as cancelled
                             ExecutionContext.Root.Result = TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                            step.ExecutionContext.SetGitHubContext("action_status", (ExecutionContext.Root.Result?.ToActionResult() ?? ActionResult.Cancelled).ToString().ToLowerInvariant());
 
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                             var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
@@ -420,6 +421,8 @@ namespace GitHub.Runner.Worker.Handlers
         {
             Trace.Info($"Starting: {step.DisplayName}");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
+            // composite steps inherit the timeout from the parent, set by https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
+            step.ExecutionContext.SetTimeout(step.ExecutionContext.Parent.GetRemainingTimeout());
 
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 
