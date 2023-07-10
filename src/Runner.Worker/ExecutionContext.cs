@@ -78,6 +78,7 @@ namespace GitHub.Runner.Worker
         List<string> StepEnvironmentOverrides { get; }
 
         ExecutionContext Root { get; }
+        ExecutionContext Parent { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -264,6 +265,14 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        public ExecutionContext Parent
+        {
+            get
+            {
+                return _parentExecutionContext;
+            }
+        }
+
         public JobContext JobContext
         {
             get
@@ -406,7 +415,7 @@ namespace GitHub.Runner.Worker
 
         /// <summary>
         /// An embedded execution context shares the same record ID, record name, logger,
-        /// and a linked cancellation token.
+        /// but NOT the cancellation token (just like workflow steps contexts - they don't share a token)
         /// </summary>
         public IExecutionContext CreateEmbeddedChild(
             string scopeName,
@@ -416,7 +425,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> intraActionState = null,
             string siblingScopeName = null)
         {
-            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
+            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: null, intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
         }
 
         public void Start(string currentOperation = null)
@@ -597,7 +606,31 @@ namespace GitHub.Runner.Worker
             if (timeout != null)
             {
                 _cancellationTokenSource.CancelAfter(timeout.Value);
+                m_timeoutStartedAt = DateTime.UtcNow;
+                m_timeout = timeout.Value;
             }
+        }
+
+        DateTime? m_timeoutStartedAt;
+        TimeSpan? m_timeout;
+        public TimeSpan? GetRemainingTimeout()
+        {
+            if (m_timeoutStartedAt != null && m_timeout != null)
+            {
+                var elapsedSinceTimeoutSet = DateTime.UtcNow - m_timeoutStartedAt.Value;
+                var remainingTimeout = m_timeout.Value - elapsedSinceTimeoutSet;
+                if (remainingTimeout.Ticks > 0)
+                {
+                    return remainingTimeout;
+                }
+                else
+                {
+                    // there was a timeout and it has expired
+                    return TimeSpan.Zero;
+                }
+            }
+            // no timeout was ever set
+            return null;
         }
 
         public void Progress(int percentage, string currentOperation = null)
