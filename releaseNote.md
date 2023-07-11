@@ -2,6 +2,7 @@
 - Runner changes for communication with Results service (#2510, #2531, #2535, #2516) 
 - Add `*.ghe.localhost` domains to hosted server check (#2536) 
 - Add `OrchestrationId` to user-agent for better telemetry correlation. (#2568) 
+- Add warning to notify about forcing actions to run on node16 instead of node12 (#2678)
 
 ## Bugs
 - Fix JIT configurations on Windows (#2497) 
