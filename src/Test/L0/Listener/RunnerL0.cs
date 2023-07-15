@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using Moq;
@@ -155,13 +155,13 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new()
-                                                                    {
-                                                                        // staring with run command, configured as run as service, should start the runner
-                                                                        { new [] { "run" }, true, Times.Once() },
-                                                                        // starting with no argument, configured not to run as service, should start runner interactively
-                                                                        { new [] { "run" }, false, Times.Once() }
-                                                                    };
+        public static TheoryData<string[], bool, Times> RunAsServiceTestData = new TheoryData<string[], bool, Times>()
+        {
+            // staring with run command, configured as run as service, should start the runner
+            { new [] { "run" }, true, Times.Once() },
+            // starting with no argument, configured not to run as service, should start runner interactively
+            { new [] { "run" }, false, Times.Once() }
+        };
         [Theory]
         [MemberData(nameof(RunAsServiceTestData))]
         [Trait("Level", "L0")]

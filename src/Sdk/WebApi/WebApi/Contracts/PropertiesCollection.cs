@@ -25,7 +25,7 @@ namespace GitHub.Services.WebApi
     //and come back as that from the service. There is a special TryGetValue that can be used to try to convert the type
     //from string back to the type it is supposed to be.
 
- 
+
     /// <summary>
     /// The class represents a property bag as a collection of key-value pairs. Values of all primitive types (any type with a `TypeCode != TypeCode.Object`) 
     /// except for `DBNull` are accepted. Values of type Byte[], Int32, Double, DateType and String preserve their type, 

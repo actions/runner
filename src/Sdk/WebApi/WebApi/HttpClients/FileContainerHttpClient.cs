@@ -97,7 +97,7 @@ namespace GitHub.Services.FileContainer.Client
             {
                 throw new ArgumentException(WebApiResources.ContainerIdMustBeGreaterThanZero(), "containerId");
             }
-            
+
             List<KeyValuePair<String, String>> query = AppendItemQueryString(itemPath, scopeIdentifier, includeDownloadTickets, isShallow);
             return SendAsync<List<FileContainerItem>>(HttpMethod.Get, FileContainerResourceIds.FileContainer, routeValues: new { containerId = containerId }, version: s_currentApiVersion, queryParameters: query, userState: userState, cancellationToken: cancellationToken);
         }
@@ -445,7 +445,7 @@ namespace GitHub.Services.FileContainer.Client
             int statusCode = (int)response?.StatusCode;
             return statusCode >= 400 && statusCode <= 499;
         }
-        
+
         protected override bool ShouldThrowError(HttpResponseMessage response)
         {
             return !response.IsSuccessStatusCode && !IsFastFailResponse(response);

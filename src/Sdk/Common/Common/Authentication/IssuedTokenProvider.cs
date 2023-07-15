@@ -262,7 +262,7 @@ namespace GitHub.Services.Common
                 aadAuthTokenTimer.Stop();
                 TimeSpan getTokenTime = aadAuthTokenTimer.Elapsed;
 
-                if(getTokenTime.TotalSeconds >= c_slowTokenAcquisitionTimeInSeconds)
+                if (getTokenTime.TotalSeconds >= c_slowTokenAcquisitionTimeInSeconds)
                 {
                     // It may seem strange to pass the string value of TotalSeconds into this method, but testing
                     // showed that ETW is persnickety when you register a method in an EventSource that doesn't
@@ -513,7 +513,7 @@ namespace GitHub.Services.Common
                 {
 
                     VssHttpEventSource.Log.IssuedTokenWaitStart(traceActivity, this.Provider, this.ActivityId);
-                token = await Task.Factory.ContinueWhenAll<IssuedToken>(new Task[] { CompletionSource.Task }, (x) => CompletionSource.Task.Result, cancellationToken).ConfigureAwait(false);
+                    token = await Task.Factory.ContinueWhenAll<IssuedToken>(new Task[] { CompletionSource.Task }, (x) => CompletionSource.Task.Result, cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {

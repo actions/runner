@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -821,8 +821,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.Complete();
 
                 // Assert.
-                Assert.Equal(1, ec.Global.StepsResult.Count);
-                Assert.Equal(TaskResult.Succeeded, ec.Global.StepsResult.Single().Conclusion);
+                Assert.Equal(0, ec.Global.StepsResult.Count);
             }
         }
 

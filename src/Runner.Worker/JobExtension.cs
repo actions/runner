@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -175,7 +175,14 @@ namespace GitHub.Runner.Worker
                     context.Debug("Update context data");
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                     context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
-                    context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
+
+                    var githubWorkspace = Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory);
+                    if (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+                    {
+                        // This value is used to translate paths from the container path back to the host path.
+                        context.SetGitHubContext("host-workspace", githubWorkspace);
+                    }
+                    context.SetGitHubContext("workspace", githubWorkspace);
 
                     // Temporary hack for GHES alpha
                     var configurationStore = HostContext.GetService<IConfigurationStore>();

@@ -1,4 +1,4 @@
-#if OS_LINUX
+﻿#if OS_LINUX
 using System;
 using System.Collections.Generic;
 using System.IO;

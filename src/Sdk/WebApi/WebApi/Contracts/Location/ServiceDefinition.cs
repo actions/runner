@@ -139,10 +139,10 @@ namespace GitHub.Services.Location
         /// The service which owns this definition e.g. TFS, ELS, etc.
         /// </summary>
         [DataMember]
-        public Guid ServiceOwner 
-        { 
-            get; 
-            set; 
+        public Guid ServiceOwner
+        {
+            get;
+            set;
         }
 
         /// <summary>
@@ -338,7 +338,7 @@ namespace GitHub.Services.Location
                     return null;
                 }
                 else
-                {            
+                {
                     return MaxVersion.ToString(2);
                 }
             }
@@ -376,7 +376,7 @@ namespace GitHub.Services.Location
                     return null;
                 }
                 else
-                {            
+                {
                     return ReleasedVersion.ToString(2);
                 }
             }
@@ -634,7 +634,7 @@ namespace GitHub.Services.Location
 
         #region ISecuredObject
         Guid ISecuredObject.NamespaceId => LocationSecurityConstants.NamespaceId;
-    
+
         int ISecuredObject.RequiredPermissions => LocationSecurityConstants.Read;
 
         string ISecuredObject.GetToken()

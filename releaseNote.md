@@ -1,18 +1,19 @@
 ## Features
-- Runner changes for communication with Results service (#2510, #2531, #2535, #2516) 
-- Add `*.ghe.localhost` domains to hosted server check (#2536) 
-- Add `OrchestrationId` to user-agent for better telemetry correlation. (#2568) 
+- Add warning to notify about forcing actions to run on node16 instead of node12 (#2678)
 
 ## Bugs
-- Fix JIT configurations on Windows (#2497) 
-- Guard against NullReference while creating HostContext (#2343) 
-- Handles broken symlink in `Which` (#2150, #2196) 
-- Adding curl retry for external tool downloads (#2552, #2557) 
-- Limit the time we wait for waiting websocket to connect. (#2554) 
+- Remove job completion from runner listener (#2659)
+- Fix double error reporting (#2656)
+- Fix a bug with incorrect parsing of image values in a container action (#1873)
+- Fix error message reported on non-local action setup (#2668)
+- Extend github context with host-workspace (#2517)
+- Fixed a bug where a misplaced = character could bypass heredoc-style processing (#2627)
 
 ## Misc
-- Bump container hooks version to 0.3.1 in runner image (#2496) 
-- Runner changes to communicate with vNext services (#2487, #2500, #2505, #2541, #2547) 
+- Send environment url to Run Service (#2650)
+- Reduce token service and unnecessary calls - send token to redirects (#2660)
+- Add 'http://' to http(s)_proxy if there is no protocol (#2663)
+- Remove extra result step for job itself (#2620)
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 

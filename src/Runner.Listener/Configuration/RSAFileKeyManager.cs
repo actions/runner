@@ -1,4 +1,4 @@
-#if OS_LINUX || OS_OSX
+﻿#if OS_LINUX || OS_OSX
 using System;
 using System.IO;
 using System.Security.Cryptography;

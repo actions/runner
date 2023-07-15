@@ -1,4 +1,4 @@
-using Pipelines = GitHub.DistributedTask.Pipelines;
+﻿using Pipelines = GitHub.DistributedTask.Pipelines;
 using System;
 using System.Collections.Generic;
 using System.Threading;

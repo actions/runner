@@ -1,9 +1,11 @@
-FROM mcr.microsoft.com/dotnet/runtime-deps:6.0 as build
+# Source: https://github.com/dotnet/dotnet-docker
+FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy as build
 
 ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.3.1
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.3.2
+ARG RUNNER_ARCH="x64"
 ARG DOCKER_VERSION=20.10.23
 
 RUN apt update -y && apt install curl unzip -y
@@ -26,7 +28,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && tar zxvf docker.tgz \
     && rm -rf docker.tgz
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:6.0
+FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
@@ -35,6 +37,7 @@ ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
     sudo \
+    lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \

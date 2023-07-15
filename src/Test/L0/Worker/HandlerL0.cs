@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Runtime.CompilerServices;
 using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.Pipelines;

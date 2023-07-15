@@ -55,8 +55,8 @@ namespace GitHub.Services.WebApi
 
             return settings;
         }
-        
-        private static Lazy<VssClientHttpRequestSettings> s_defaultSettings 
+
+        private static Lazy<VssClientHttpRequestSettings> s_defaultSettings
             = new Lazy<VssClientHttpRequestSettings>(ConstructDefaultSettings);
 
         private const String c_settingsKey = "Services\\RequestSettings";

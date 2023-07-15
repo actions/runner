@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -137,7 +137,7 @@ namespace GitHub.Runner.Listener.Configuration
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     runnerSettings.UseV2Flow = authResult.UseV2Flow;
-                    _term.WriteLine($"Using V2 flow: {runnerSettings.UseV2Flow}");
+                    Trace.Info($"Using V2 flow: {runnerSettings.UseV2Flow}");
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
                 }

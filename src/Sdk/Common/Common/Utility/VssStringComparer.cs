@@ -152,7 +152,7 @@ namespace GitHub.Services.Common
         public static VssStringComparer LinkName { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer MachineName { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer MailAddress { get { return s_ordinalIgnoreCase; } }
-        public static VssStringComparer PropertyName { get { return s_ordinalIgnoreCase; } }        
+        public static VssStringComparer PropertyName { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer RegistrationAttributeName { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer ReservedGroupName { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer WMDSchemaClassName { get { return s_ordinalIgnoreCase; } }
@@ -188,7 +188,7 @@ namespace GitHub.Services.Common
         public static VssStringComparer Collation { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer FeatureAvailabilityName { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer TagName { get { return s_currentCultureIgnoreCase; } }
-        
+
         //Framework Hosting comparers.
         public static VssStringComparer HostingAccountPropertyName { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer MessageBusName { get { return s_ordinalIgnoreCase; } }
@@ -213,7 +213,7 @@ namespace GitHub.Services.Common
         public static VssStringComparer DomainUrl { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer AccountInfoAccount { get { return s_ordinalIgnoreCase; } }
         public static VssStringComparer AccountInfoPassword { get { return s_ordinal; } }
-        public static VssStringComparer AttributesDescriptor { get { return s_ordinalIgnoreCase; } }        
+        public static VssStringComparer AttributesDescriptor { get { return s_ordinalIgnoreCase; } }
 
         // Converters comparer
         public static VssStringComparer VSSServerPath { get { return s_ordinalIgnoreCase; } }
