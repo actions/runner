@@ -353,7 +353,7 @@ namespace GitHub.Runner.Worker
                         output = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
                     }
                     // Normal style NAME=VALUE
-                    else if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
+                    else if (equalsIndex >= 0 && heredocIndex < 0)
                     {
                         var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
                         if (string.IsNullOrEmpty(line))
@@ -363,6 +363,12 @@ namespace GitHub.Runner.Worker
 
                         key = split[0];
                         output = split[1];
+
+                        if (output.StartsWith("<<"))
+                        {
+                            throw new Exception($"Invalid format '{line}'. Invalid Mix of heredoc and single line key/val pair.");
+                        }
+                        
                     }
                     else
                     {
