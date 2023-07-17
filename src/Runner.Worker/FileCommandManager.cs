@@ -353,7 +353,7 @@ namespace GitHub.Runner.Worker
                         output = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
                     }
                     // Normal style NAME=VALUE
-                    else if (equalsIndex >= 0 && heredocIndex < 0)
+                    else if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
                     {
                         var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
                         if (string.IsNullOrEmpty(line))
