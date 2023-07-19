@@ -1468,7 +1468,7 @@ namespace GitHub.Runner.Worker
 
         private bool logTemplateErrorsAsDebugMessages()
         {
-            if (_executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug))
+            if (_executionContext.Global.Variables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug))
             {
                 return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false);
             }
