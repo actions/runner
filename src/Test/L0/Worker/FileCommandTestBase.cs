@@ -238,6 +238,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_KEY_4<<EOF",
                     "EOF EOF",
                     "EOF",
+                    "MY_KEY_5=abc << def",
+                    "MY_KEY_6=    <<EOF",
+                    "white space test",
+                    "EOF"
                 };
                 TestUtil.WriteContent(stateFile, content);
                 _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
@@ -247,6 +251,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal($"hello=two", _store["MY_KEY_2"]);
                 Assert.Equal($" EOF", _store["MY_KEY_3"]);
                 Assert.Equal($"EOF EOF", _store["MY_KEY_4"]);
+                Assert.Equal($"abc << def", _store["MY_KEY_5"]);
+                Assert.Equal($"white space test", _store["MY_KEY_6="]);
             }
         }
 
