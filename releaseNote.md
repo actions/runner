@@ -1,19 +1,9 @@
-## Features
-- Add warning to notify about forcing actions to run on node16 instead of node12 (#2678)
-
 ## Bugs
-- Remove job completion from runner listener (#2659)
-- Fix double error reporting (#2656)
-- Fix a bug with incorrect parsing of image values in a container action (#1873)
-- Fix error message reported on non-local action setup (#2668)
-- Extend github context with host-workspace (#2517)
-- Fixed a bug where a misplaced = character could bypass heredoc-style processing (#2627)
+- Fixes `if:cancelled()` composite steps not running and normal composite steps not interrupting when the job is cancelled (#2638)
+- Fix the bug causing double error reporting fix to remain inactive (#2703)
 
 ## Misc
-- Send environment url to Run Service (#2650)
-- Reduce token service and unnecessary calls - send token to redirects (#2660)
-- Add 'http://' to http(s)_proxy if there is no protocol (#2663)
-- Remove extra result step for job itself (#2620)
+- Collect telemetry on GitHub-related HTTP requests (#2691) 
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
