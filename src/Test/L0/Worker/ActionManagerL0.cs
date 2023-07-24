@@ -127,7 +127,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 string archiveFile = await CreateRepoArchive();
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
-                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                mockClientHandler.Protected()
+                    .SetupSequence<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound))
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound))
                     .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
 
                 var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
