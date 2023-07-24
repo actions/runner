@@ -848,8 +848,15 @@ namespace GitHub.Runner.Worker
                                     }
                                     else if (response.StatusCode == HttpStatusCode.NotFound)
                                     {
-                                        // It doesn't make sense to retry in this case, so just stop
-                                        throw new ActionNotFoundException(new Uri(link));
+                                        if (retryCount == 2)
+                                        {
+                                            throw new ActionNotFoundException(new Uri(link));
+                                        }
+                                        else
+                                        {
+                                            Trace.Info($"Download action at '{link}' returned NotFound");
+                                            retryCount++;
+                                        }
                                     }
                                     else
                                     {
