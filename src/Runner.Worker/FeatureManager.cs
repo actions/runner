@@ -11,5 +11,10 @@ namespace GitHub.Runner.Worker
             var isContainerHooksPathSet = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath));
             return isContainerHookFeatureFlagSet && isContainerHooksPathSet;
         }
+        public static bool IsStallDetectEnabled(Variables variables)
+        {
+            var isStallDetectFeatureFlagSet = variables?.GetBoolean(Constants.Runner.Features.AllowRunnerStallDetect) ?? false;
+            return isStallDetectFeatureFlagSet;
+        }
     }
 }

@@ -43,11 +43,14 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Make sure only particular task get run as runner plugin.
             var runnerPlugin = HostContext.GetService<IRunnerPluginManager>();
-            using (var outputManager = new OutputManager(ExecutionContext, ActionCommandManager))
+            StallManager stallManager = FeatureManager.IsStallDetectEnabled(ExecutionContext.Global.Variables) ? new StallManager(ExecutionContext) : null;
+
+            using (OutputManager outputManager = new OutputManager(ExecutionContext, ActionCommandManager, null, stallManager))
             {
                 ActionCommandManager.EnablePluginInternalCommand();
                 try
                 {
+                    stallManager?.Initialize();
                     await runnerPlugin.RunPluginActionAsync(ExecutionContext, plugin, Inputs, Environment, RuntimeVariables, outputManager.OnDataReceived);
                 }
                 finally

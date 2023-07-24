@@ -321,13 +321,15 @@ namespace GitHub.Runner.Worker.Handlers
             ExecutionContext.Debug($"{fileName} {arguments}");
 
             Inputs.TryGetValue("standardInInput", out var standardInInput);
-            using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
-            using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
+            StallManager stallManager = FeatureManager.IsStallDetectEnabled(ExecutionContext.Global.Variables) ? new StallManager(ExecutionContext) : null;
+            using (OutputManager stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, null, stallManager),
+                                 stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, null, stallManager))
             {
                 StepHost.OutputDataReceived += stdoutManager.OnDataReceived;
                 StepHost.ErrorDataReceived += stderrManager.OnDataReceived;
 
                 // Execute
+                stallManager?.Initialize();
                 int exitCode = await StepHost.ExecuteAsync(ExecutionContext,
                                             workingDirectory: StepHost.ResolvePathForStepHost(ExecutionContext, workingDirectory),
                                             fileName: fileName,

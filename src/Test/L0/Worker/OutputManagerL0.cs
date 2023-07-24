@@ -1014,7 +1014,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                     return false;
                 });
 
-            _outputManager = new OutputManager(_executionContext.Object, _commandManager.Object, stepContainer);
+            StallManager stallManager = new StallManager(_executionContext.Object);
+            _outputManager = new OutputManager(_executionContext.Object, _commandManager.Object, stepContainer, stallManager);
             return hostContext;
         }
 
