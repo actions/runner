@@ -387,7 +387,7 @@ namespace GitHub.Runner.Worker
                 child.ExpressionFunctions.Add(item);
             }
             child._cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
-            if(timeout != null)
+            if (timeout != null)
             {
                 // composite steps inherit the timeout from the parent, set by https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
                 child.SetTimeout(timeout);
