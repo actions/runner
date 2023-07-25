@@ -136,13 +136,13 @@ namespace GitHub.Runner.Worker.Handlers
             // Remove environment variable that may cause conflicts with the node within the runner.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
 
-            if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node12Warning) ?? false))
+            if (Data.NodeVersion == "node16" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node16Warning) ?? false))
             {
                 var repoAction = Action as RepositoryPathReference;
                 var warningActions = new HashSet<string>();
-                if (ExecutionContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
+                if (ExecutionContext.Global.Variables.TryGetValue("Node16ActionsWarnings", out var node16Warnings))
                 {
-                    warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings);
+                    warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node16Warnings);
                 }
 
                 var repoActionFullName = "";
@@ -156,7 +156,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 warningActions.Add(repoActionFullName);
-                ExecutionContext.Global.Variables.Set("Node12ActionsWarnings", StringUtil.ConvertToJson(warningActions));
+                ExecutionContext.Global.Variables.Set("Node16ActionsWarnings", StringUtil.ConvertToJson(warningActions));
             }
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
