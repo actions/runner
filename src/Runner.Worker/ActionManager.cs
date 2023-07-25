@@ -846,17 +846,9 @@ namespace GitHub.Runner.Worker
                                             break;
                                         }
                                     }
-                                    else if (response.StatusCode == HttpStatusCode.NotFound)
+                                    else if (response.StatusCode == HttpStatusCode.NotFound && retryCount >= 2)
                                     {
-                                        if (retryCount == 2)
-                                        {
-                                            throw new ActionNotFoundException(new Uri(link));
-                                        }
-                                        else
-                                        {
-                                            Trace.Info($"Download action at '{link}' returned NotFound");
-                                            retryCount++;
-                                        }
+                                        throw new ActionNotFoundException(new Uri(link));
                                     }
                                     else
                                     {
