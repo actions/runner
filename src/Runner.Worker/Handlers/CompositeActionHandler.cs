@@ -421,8 +421,6 @@ namespace GitHub.Runner.Worker.Handlers
         {
             Trace.Info($"Starting: {step.DisplayName}");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
-            // composite steps inherit the timeout from the parent, set by https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
-            step.ExecutionContext.SetTimeout(step.ExecutionContext.Parent.GetRemainingTimeout());
 
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 
