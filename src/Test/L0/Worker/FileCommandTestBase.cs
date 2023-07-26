@@ -242,6 +242,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                     "MY_KEY_6=    <<EOF",
                     "white space test",
                     "EOF"
+                    "MY_KEY_7 << =EOF="
+                    "abc"
+                    "=EOF="
                 };
                 TestUtil.WriteContent(stateFile, content);
                 _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
