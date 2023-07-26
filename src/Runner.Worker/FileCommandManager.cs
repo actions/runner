@@ -329,11 +329,11 @@ namespace GitHub.Runner.Worker
                     var isHeredoc = heredocIndex >= 0 &&
                     (
                         equalsIndex < 0 ||
-                        heredocIndex < equalsIndex ||
+                        
                         (
                             heredocIndex > equalsIndex &&
                             OnlyContainsWhiteSpaceBetweenPositions(line, equalsIndex, heredocIndex)
-                        )
+                        ) || heredocIndex < equalsIndex
                     );
                     
                     if (isHeredoc)
@@ -401,15 +401,13 @@ namespace GitHub.Runner.Worker
             // Check if the provided positions are valid
             if (pos1 < 0 || pos2 < 0 || pos1 >= str.Length || pos2 >= str.Length)
             {
-                throw new ArgumentOutOfRangeException("Whitespace check: Positions should be within the string length.");
+                throw new ArgumentOutOfRangeException("OnlyContainsWhiteSpaceBetweenPositions: Positions should be within the string length.");
             }
 
             // Ensure pos1 is always the smaller position
             if (pos2 < pos1)
             {
-                int temp = pos2;
-                pos2 = pos1;
-                pos1 = temp;
+                throw new ArgumentException("OnlyContainsWhiteSpaceBetweenPositions: pos1 must be less than or equal to pos2.")
             }
 
             for (int i = pos1 + 1; i < pos2; i++)
