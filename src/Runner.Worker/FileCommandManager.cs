@@ -407,7 +407,7 @@ namespace GitHub.Runner.Worker
             // Ensure pos1 is always the smaller position
             if (pos2 < pos1)
             {
-                throw new ArgumentException("OnlyContainsWhiteSpaceBetweenPositions: pos1 must be less than or equal to pos2.")
+                throw new ArgumentException("OnlyContainsWhiteSpaceBetweenPositions: pos1 must be less than or equal to pos2.");
             }
 
             for (int i = pos1 + 1; i < pos2; i++)
