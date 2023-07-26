@@ -329,11 +329,11 @@ namespace GitHub.Runner.Worker
                     var isHeredoc = heredocIndex >= 0 &&
                     (
                         equalsIndex < 0 ||
-                        
+                        heredocIndex < equalsIndex ||
                         (
                             heredocIndex > equalsIndex &&
                             OnlyContainsWhiteSpaceBetweenPositions(line, equalsIndex, heredocIndex)
-                        ) || heredocIndex < equalsIndex
+                        ) 
                     );
                     
                     if (isHeredoc)
