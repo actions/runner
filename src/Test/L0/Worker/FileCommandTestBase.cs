@@ -256,6 +256,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal($"EOF EOF", _store["MY_KEY_4"]);
                 Assert.Equal($"abc << def", _store["MY_KEY_5"]);
                 Assert.Equal($"white space test", _store["MY_KEY_6="]);
+                Assert.Equal($"abc", _store["MY_KEY_7"]);
             }
         }
 
