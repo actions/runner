@@ -396,7 +396,7 @@ namespace GitHub.Runner.Worker
         }
 
         // accepts a string, two indexes, and returns true if only whitespace chars exist between those two indexes (non-inclusive)
-        private static bool CheckIfOnlyWhitespaceBetweenPositions(string str, int pos1, int pos2)
+        private static bool OnlyContainsWhiteSpaceBetweenPositions(string str, int pos1, int pos2)
         {
             // Check if the provided positions are valid
             if (pos1 < 0 || pos2 < 0 || pos1 >= str.Length || pos2 >= str.Length)
