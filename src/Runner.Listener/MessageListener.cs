@@ -245,7 +245,7 @@ namespace GitHub.Runner.Listener
                     _accessTokenRevoked = true;
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
+                catch (AccessDeniedException e) when (e.ErrorCode == 1)
                 {
                     throw;
                 }
