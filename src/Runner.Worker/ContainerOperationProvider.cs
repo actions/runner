@@ -527,7 +527,7 @@ namespace GitHub.Runner.Worker
             }
 #pragma warning restore CA1416
 #else
-            var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
+            var initProcessCgroup = File.ReadLines("/proc/self/cgroup");
             if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
             {
                 throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
