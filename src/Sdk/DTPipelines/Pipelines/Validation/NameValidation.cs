@@ -34,7 +34,9 @@ namespace GitHub.DistributedTask.Pipelines.Validation
 
         public static String Sanitize(
             String name,
-            Boolean allowHyphens = false)
+            Boolean allowHyphens = false,
+            Boolean allowSlashes = false,
+            Boolean allowDots = false)
         {
             if (name == null)
             {
@@ -48,7 +50,9 @@ namespace GitHub.DistributedTask.Pipelines.Validation
                     (name[i] >= 'A' && name[i] <= 'Z') ||
                     (name[i] >= '0' && name[i] <= '9' && sb.Length > 0) ||
                     (name[i] == '_') ||
-                    (allowHyphens && name[i] == '-' && sb.Length > 0))
+                    (allowHyphens && name[i] == '-' && sb.Length > 0) ||
+                    (allowSlashes && name[i] == '/' && sb.Length > 0) ||
+                    (allowDots && name[i] == '.' && sb.Length > 0))
                 {
                     sb.Append(name[i]);
                 }
