@@ -265,7 +265,7 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> DockerRemove(IExecutionContext context, string containerId)
         {
-            return await ExecuteDockerCommandAsync(context, "rm", $"--force {containerId}", context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "rm", $"-v --force {containerId}", context.CancellationToken);
         }
 
         public async Task<int> DockerLogs(IExecutionContext context, string containerId)
