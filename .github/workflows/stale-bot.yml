@@ -2,7 +2,7 @@ name: ‘Close stale Runner issues’
 on:
   workflow_dispatch:
   schedule:
-    - cron: ‘0 0 * * MON’ # every monday at midnight
+    - cron: '0 0 * * 1' # every monday at midnight
 jobs:
   stale:
     runs-on: ubuntu-latest
