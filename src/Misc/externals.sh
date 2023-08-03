@@ -5,7 +5,7 @@ PRECACHE=$2
 NODE_URL=https://nodejs.org/dist
 UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
 NODE12_VERSION="12.22.7"
-NODE16_VERSION="16.16.0"
+NODE16_VERSION="16.20.1"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
