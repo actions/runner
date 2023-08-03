@@ -123,8 +123,15 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
-                    if (ex is VssOAuthTokenRequestException && creds.Federated is VssOAuthCredential vssOAuthCred)
+                    if (ex is VssOAuthTokenRequestException vssOAuthEx && creds.Federated is VssOAuthCredential vssOAuthCred)
                     {
+                        // "invalid_client" means the runner registration has been deleted from the server.
+                        if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure.");
+                            return false;
+                        }
+
                         // Check whether we get 401 because the runner registration already removed by the service.
                         // If the runner registration get deleted, we can't exchange oauth token.
                         Trace.Error("Test oauth app registration.");
