@@ -69,7 +69,7 @@ namespace GitHub.Runner.Worker.Handlers
                             warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings);
                         }
 
-                        var repoActionFullName = "";
+                        string repoActionFullName;
                         if (string.IsNullOrEmpty(repoAction.Name))
                         {
                             repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
