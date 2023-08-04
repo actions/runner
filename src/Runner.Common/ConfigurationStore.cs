@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common
         private bool? _isHostedServer;
 
         [DataMember(EmitDefaultValue = false)]
-        public int AgentId { get; set; }
+        public ulong AgentId { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public string AgentName { get; set; }

@@ -117,7 +117,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     updater.Initialize(hc);
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -180,7 +180,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                              .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.200.0"), DownloadUrl = _packageUrl }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -234,7 +234,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     updater.Initialize(hc);
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -289,7 +289,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     updater.Initialize(hc);
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -344,7 +344,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                          .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = new List<TrimmedPackageMetadata>() { new TrimmedPackageMetadata() } }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -416,7 +416,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     updater.Initialize(hc);
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -490,7 +490,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                          .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -579,7 +579,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                          .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -681,7 +681,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -758,7 +758,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                          .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
 
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, int a, string s, string t) =>
+                                 .Callback((int p, ulong a, string s, string t) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
