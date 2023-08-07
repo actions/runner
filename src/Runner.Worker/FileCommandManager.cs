@@ -343,7 +343,7 @@ namespace GitHub.Runner.Worker
                         {
                             throw new Exception($"Invalid format '{line}'. Name must not be empty and delimiter must not be empty");
                         }
-                        key = split[0];
+                        key = split[0].Trim().TrimEnd('=');
                         var delimiter = split[1];
                         var startIndex = index; // Start index of the value (inclusive)
                         var endIndex = index;   // End index of the value (exclusive)
