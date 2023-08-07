@@ -236,10 +236,10 @@ namespace GitHub.Runner.Listener.Configuration
                 runnerSettings.DisableUpdate = command.DisableUpdate;
                 runnerSettings.Ephemeral = command.Ephemeral;
                 runnerSettings.AgentName = command.GetRunnerName();
+                runnerSettings.UserLabels = command.GetLabels();
 
                 _term.WriteLine();
 
-                var userLabels = command.GetLabels();
                 _term.WriteLine();
                 List<TaskAgent> agents;
                 if (runnerSettings.UseV2Flow)
@@ -259,7 +259,7 @@ namespace GitHub.Runner.Listener.Configuration
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version.
-                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate, command.NoDefaultLabels);
+                        agent = UpdateExistingAgent(agent, publicKey, runnerSettings.UserLabels, runnerSettings.Ephemeral, command.DisableUpdate, command.NoDefaultLabels);
 
                         try
                         {
@@ -293,7 +293,7 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent.
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate, command.NoDefaultLabels);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, runnerSettings.UserLabels, runnerSettings.Ephemeral, command.DisableUpdate, command.NoDefaultLabels);
 
                     try
                     {

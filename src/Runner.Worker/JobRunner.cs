@@ -150,6 +150,7 @@ namespace GitHub.Runner.Worker
 
                 _runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.SetRunnerContext("name", _runnerSettings.AgentName);
+                jobContext.SetRunnerContext("user_labels", _runnerSettings.UserLabels);
 
                 if (jobContext.Global.Variables.TryGetValue(WellKnownDistributedTaskVariables.RunnerEnvironment, out var runnerEnvironment))
                 {

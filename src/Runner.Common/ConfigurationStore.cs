@@ -1,5 +1,6 @@
 ﻿using GitHub.Runner.Sdk;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -22,6 +23,9 @@ namespace GitHub.Runner.Common
 
         [DataMember(EmitDefaultValue = false)]
         public string AgentName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public ISet<string> UserLabels { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public bool SkipSessionRecover { get; set; }

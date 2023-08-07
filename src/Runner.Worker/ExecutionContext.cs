@@ -96,6 +96,7 @@ namespace GitHub.Runner.Worker
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
         void SetEnvContext(string name, string value);
         void SetRunnerContext(string name, string value);
+        void SetRunnerContext(string name, ISet<string> values);
         string GetGitHubContext(string name);
         void SetGitHubContext(string name, string value);
         void SetOutput(string name, string value, out string reference);
@@ -548,6 +549,18 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             var runnerContext = ExpressionValues["runner"] as RunnerContext;
             runnerContext[name] = new StringContextData(value);
+        }
+
+        public void SetRunnerContext(string name, ISet<string> values)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            var arrayContext = new ArrayContextData();
+            foreach (var value in values)
+            {
+                arrayContext.Add(new StringContextData(value));
+            }
+            var runnerContext = ExpressionValues["runner"] as RunnerContext;
+            runnerContext[name] = arrayContext;
         }
 
         public void SetEnvContext(string name, string value)
