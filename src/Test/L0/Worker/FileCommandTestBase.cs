@@ -250,13 +250,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TestUtil.WriteContent(stateFile, content);
                 _fileCmdExtension.ProcessCommand(_executionContext.Object, stateFile, null);
                 Assert.Equal(0, _issues.Count);
-                Assert.Equal(4, _store.Count);
+                Assert.Equal(7, _store.Count);
                 Assert.Equal($"hello{BREAK}{BREAK}three{BREAK}", _store["MY_KEY_1"]);
                 Assert.Equal($"hello=two", _store["MY_KEY_2"]);
                 Assert.Equal($" EOF", _store["MY_KEY_3"]);
                 Assert.Equal($"EOF EOF", _store["MY_KEY_4"]);
                 Assert.Equal($"abc << def", _store["MY_KEY_5"]);
-                Assert.Equal($"white space test", _store["MY_KEY_6="]);
+                Assert.Equal($"white space test", _store["MY_KEY_6"]);
                 Assert.Equal($"abc", _store["MY_KEY_7"]);
             }
         }
