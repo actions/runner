@@ -151,7 +151,6 @@ fi
 # Download the external tools only for Windows.
 if [[ "$PACKAGERUNTIME" == "win-arm64" ]]; then
     # todo: replace these with official release when available
-
     acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_UNOFFICIAL_VERSION}/$PACKAGERUNTIME/node.exe" node16/bin
     acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_UNOFFICIAL_VERSION}/$PACKAGERUNTIME/node.lib" node16/bin
     if [[ "$PRECACHE" != "" ]]; then
