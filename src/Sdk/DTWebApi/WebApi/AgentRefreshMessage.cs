@@ -16,7 +16,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         public AgentRefreshMessage(
-            Int32 agentId,
+            ulong agentId,
             String targetVersion,
             TimeSpan? timeout = null)
         {
@@ -26,7 +26,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember]
-        public Int32 AgentId
+        public ulong AgentId
         {
             get;
             private set;

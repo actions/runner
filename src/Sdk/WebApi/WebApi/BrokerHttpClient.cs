@@ -86,6 +86,11 @@ namespace GitHub.Actions.RunService.WebApi
                 return result.Value;
             }
 
+            if (result.StatusCode == HttpStatusCode.Forbidden)
+            {
+                throw new AccessDeniedException(result.Error);
+            }
+
             throw new Exception($"Failed to get job message: {result.Error}");
         }
     }
