@@ -156,6 +156,15 @@ namespace GitHub.Runner.Worker.Handlers
                     gitHubContext = gitHubContext.ShallowCopy();
                     step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
 
+                    // Replace GITHUB_ACTION_PATH in composite action steps
+                    var ActionReference = step.Action.Reference;
+                    if (ActionReference is GitHub.DistributedTask.Pipelines.RepositoryPathReference)
+                    {
+                        var repoReference = ActionReference as GitHub.DistributedTask.Pipelines.RepositoryPathReference;
+                        repoReference.Path = repoReference.Path.Replace("${GITHUB_ACTION_PATH}", ActionDirectory);
+                        step.Action.Reference = repoReference;
+                    }
+
                     // Set GITHUB_ACTION_PATH
                     step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
 
