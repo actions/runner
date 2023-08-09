@@ -102,6 +102,8 @@ jobs:
     - name: Test
       run: |
         set -x
+        gharun -C testworkflows/workflowerrors || :
+        gharun -C testworkflows/workflowerrors --trace --var system.runner.server.sendlostevents=true || :
         gharun -W testworkflows/testlocalcheckout.yml
         gharun -W testworkflows/testhashfiles.yml
         gharun -W testworkflows/dumpcontexts.yml

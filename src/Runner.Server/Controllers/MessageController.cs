@@ -7157,6 +7157,8 @@ namespace Runner.Server.Controllers
             }
             var hook = obj.Key;
             var requestAborted = HttpContext.RequestAborted;
+            // For debugging purposes of missing logs in Runner.Client
+            bool sendLostLogEvents = varEnvironments.TryGetValue("", out var fflags) && fflags.TryGetValue("system.runner.server.sendlostevents", out var fflagvalue) ? string.Equals(fflagvalue, "true", StringComparison.OrdinalIgnoreCase) : false;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
                 ConcurrentDictionary<Guid, Job> jobCache = new ConcurrentDictionary<Guid, Job>();
@@ -7173,12 +7175,18 @@ namespace Runner.Server.Controllers
                         if (TimelineController.dict.TryGetValue(timelineId2, out var val) && val.Item1.Any() && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        } else if(sendLostLogEvents) {
+                            // For debugging purposes of missing logs in Runner.Client
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = async (timelineId2, timeline) => {
                         if(TimelineController.dict.TryGetValue(timelineId2, out var val) && val.Item1.Any() && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
                             await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        } else if(sendLostLogEvents) {
+                            // For debugging purposes of missing logs in Runner.Client
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules, repository, format, path) => {

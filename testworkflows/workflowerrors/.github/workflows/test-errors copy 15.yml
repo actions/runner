@@ -1,0 +1,7 @@
+on: _
+jobs:
+  _:
+    runs-on: {}
+    steps:
+    - run: echo "we use this tool in weird manner"
+    - run: echo '${{ tojson(github) }}'

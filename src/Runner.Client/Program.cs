@@ -160,6 +160,7 @@ namespace Runner.Client
             public string RunnerVersion { get; set; }
             public bool Interactive { get; internal set; }
             public string[] LocalRepositories { get; set; }
+            public bool Trace { get; set; }
 
             public Parameters ShallowCopy()
             {
@@ -862,6 +863,9 @@ namespace Runner.Client
             var interactiveOpt = new Option<bool>(
                 new[] {"--interactive"},
                 "Run interactively");
+            var traceOpt = new Option<bool>(
+                new[] {"--trace"},
+                "Client Trace of console log events, to debug missing live logs");
             var quietOpt = new Option<bool>(
                 new[] {"-q", "--quiet"},
                 "Display no progress in the cli");
@@ -982,6 +986,7 @@ namespace Runner.Client
                 actorOpt,
                 watchOpt,
                 interactiveOpt,
+                traceOpt,
                 quietOpt,
                 privilegedOpt,
                 usernsOpt,
@@ -2005,6 +2010,10 @@ namespace Runner.Client
                                             if(line == "event: ") {
                                                 break;
                                             }
+                                            if(parameters.Trace) {
+                                                Console.WriteLine($"##[Trace]{line}");
+                                                Console.WriteLine($"##[Trace]{data}");
+                                            }
                                             if(!parameters.Quiet && line == "event: log") {
                                                 var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
                                                 TimeLineEntry rec;
@@ -2378,6 +2387,7 @@ namespace Runner.Client
                 parameters.Actor = bindingContext.ParseResult.GetValueForOption(actorOpt);
                 parameters.Watch = bindingContext.ParseResult.GetValueForOption(watchOpt);
                 parameters.Interactive = bindingContext.ParseResult.GetValueForOption(interactiveOpt);
+                parameters.Trace = bindingContext.ParseResult.GetValueForOption(traceOpt);
                 parameters.Quiet = bindingContext.ParseResult.GetValueForOption(quietOpt);
                 parameters.Privileged = bindingContext.ParseResult.GetValueForOption(privilegedOpt);
                 parameters.Userns = bindingContext.ParseResult.GetValueForOption(usernsOpt);
