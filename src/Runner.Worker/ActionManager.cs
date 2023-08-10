@@ -10,15 +10,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Services.Common;
-using WebApi = GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants;
-using GitHub.DistributedTask.WebApi;
+using WebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Worker
 {
@@ -835,6 +835,12 @@ namespace GitHub.Runner.Worker
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(link))
                                 {
+                                    var requestId = UrlUtil.GetGitHubRequestId(response.Headers);
+                                    if (!string.IsNullOrEmpty(requestId))
+                                    {
+                                        Trace.Info($"Request URL: {link} X-GitHub-Request-Id: {requestId} Http Status: {response.StatusCode}");
+                                    }
+
                                     if (response.IsSuccessStatusCode)
                                     {
                                         using (var result = await response.Content.ReadAsStreamAsync())
@@ -849,7 +855,7 @@ namespace GitHub.Runner.Worker
                                     else if (response.StatusCode == HttpStatusCode.NotFound)
                                     {
                                         // It doesn't make sense to retry in this case, so just stop
-                                        throw new ActionNotFoundException(new Uri(link));
+                                        throw new ActionNotFoundException(new Uri(link), requestId);
                                     }
                                     else
                                     {
