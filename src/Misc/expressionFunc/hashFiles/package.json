@@ -32,6 +32,6 @@
     "eslint-plugin-github": "^4.9.2",
     "eslint-plugin-prettier": "^5.0.0",
     "prettier": "^3.0.1",
-    "typescript": "^3.6.4"
+    "typescript": "^5.1.6"
   }
 }
