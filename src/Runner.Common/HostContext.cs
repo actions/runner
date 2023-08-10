@@ -203,7 +203,7 @@ namespace GitHub.Runner.Common
 
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
             {
-                _trace.Warning($"Runner is running under insecure mode: HTTPS server certifcate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
+                _trace.Warning($"Runner is running under insecure mode: HTTPS server certificate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
             }
 
             var credFile = GetConfigFile(WellKnownConfigFile.Credentials);
