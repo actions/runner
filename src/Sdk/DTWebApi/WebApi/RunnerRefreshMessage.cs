@@ -16,7 +16,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         public RunnerRefreshMessage(
-            Int32 runnerId,
+            ulong runnerId,
             String targetVersion,
             int? timeoutInSeconds = null)
         {
@@ -26,7 +26,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember]
-        public Int32 RunnerId
+        public ulong RunnerId
         {
             get;
             private set;

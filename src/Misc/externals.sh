@@ -4,8 +4,10 @@ PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
 UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
-NODE16_VERSION="16.16.0"
+NODE16_VERSION="16.20.1"
 NODE20_VERSION="20.5.0"
+# used only for win-arm64, remove node16 unofficial version when official version is available
+NODE16_UNOFFICIAL_VERSION="16.20.0"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -149,8 +151,8 @@ fi
 # Download the external tools only for Windows.
 if [[ "$PACKAGERUNTIME" == "win-arm64" ]]; then
     # todo: replace these with official release when available
-    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_VERSION}/$PACKAGERUNTIME/node.exe" node16/bin
-    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_VERSION}/$PACKAGERUNTIME/node.lib" node16/bin
+    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_UNOFFICIAL_VERSION}/$PACKAGERUNTIME/node.exe" node16/bin
+    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_UNOFFICIAL_VERSION}/$PACKAGERUNTIME/node.lib" node16/bin
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.exe" node20/bin
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.lib" node20/bin
     if [[ "$PRECACHE" != "" ]]; then
