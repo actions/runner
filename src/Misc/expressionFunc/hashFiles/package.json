@@ -28,7 +28,7 @@
     "@typescript-eslint/parser": "^5.15.0",
     "@vercel/ncc": "^0.36.1",
     "eslint": "^8.11.0",
-    "eslint-plugin-github": "^4.3.5",
+    "eslint-plugin-github": "^4.9.2",
     "prettier": "^1.19.1",
     "typescript": "^3.6.4"
   }
