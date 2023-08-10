@@ -30,19 +30,9 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Theory]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        [InlineData("node12", "", "", "", "node12")]
-        [InlineData("node12", "true", "", "", "node16")]
-        [InlineData("node12", "true", "", "true", "node12")]
-        [InlineData("node12", "true", "true", "", "node12")]
-        [InlineData("node12", "true", "true", "true", "node12")]
-        [InlineData("node12", "true", "false", "true", "node16")] // workflow overrides env
-        [InlineData("node16", "", "", "", "node16")]
-        [InlineData("node16", "true", "", "", "node16")]
-        [InlineData("node16", "true", "", "true", "node16")]
-        [InlineData("node16", "true", "true", "", "node16")]
-        [InlineData("node16", "true", "true", "true", "node16")]
-        [InlineData("node16", "true", "false", "true", "node16")]
-        public void IsNodeVersionUpgraded(string inputVersion, string serverFeatureFlag, string workflowOptOut, string machineOptOut, string expectedVersion)
+        [InlineData("node12", "node16")]
+        [InlineData("node16", "node16")]
+        public void IsNodeVersionUpgraded(string inputVersion, string expectedVersion)
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -52,24 +42,10 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Server Feature Flag
                 var variables = new Dictionary<string, VariableValue>();
-                if (!string.IsNullOrEmpty(serverFeatureFlag))
-                {
-                    variables["DistributedTask.ForceGithubJavascriptActionsToNode16"] = serverFeatureFlag;
-                }
                 Variables serverVariables = new(hc, variables);
 
                 // Workflow opt-out
                 var workflowVariables = new Dictionary<string, string>();
-                if (!string.IsNullOrEmpty(workflowOptOut))
-                {
-                    workflowVariables[Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion] = workflowOptOut;
-                }
-
-                // Machine opt-out
-                if (!string.IsNullOrEmpty(machineOptOut))
-                {
-                    Environment.SetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion, machineOptOut);
-                }
 
                 _ec.Setup(x => x.Global).Returns(new GlobalContext()
                 {

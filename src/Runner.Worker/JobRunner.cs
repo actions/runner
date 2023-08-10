@@ -269,10 +269,10 @@ namespace GitHub.Runner.Worker
         {
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
-            if (jobContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
             {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings));
-                jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
             }
 
             // Make sure to clean temp after file upload since they may be pending fileupload still use the TEMP dir.
@@ -366,12 +366,6 @@ namespace GitHub.Runner.Worker
                     // Ignore any error since suggest runner update is best effort.
                     Trace.Error($"Caught exception during runner version check: {ex}");
                 }
-            }
-
-            if (jobContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
-            {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings));
-                jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
             }
 
             if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
