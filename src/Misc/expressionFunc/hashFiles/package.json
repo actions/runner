@@ -24,7 +24,7 @@
     "@actions/glob": "^0.1.0"
   },
   "devDependencies": {
-    "@types/node": "^12.7.12",
+    "@types/node": "^20.4.10",
     "@typescript-eslint/parser": "^6.3.0",
     "@vercel/ncc": "^0.36.1",
     "eslint": "^8.11.0",
