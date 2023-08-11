@@ -32,6 +32,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         [InlineData("node12", "node16")]
         [InlineData("node16", "node16")]
+        [InlineData("node20", "node20")]
         public void IsNodeVersionUpgraded(string inputVersion, string expectedVersion)
         {
             using (TestHostContext hc = CreateTestContext())

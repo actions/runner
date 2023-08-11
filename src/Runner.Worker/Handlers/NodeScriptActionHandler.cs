@@ -108,8 +108,8 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Output($"The node12 is not supported. Use node16 instead.");
                 Data.NodeVersion = "node16";
             }
-            string forcedNodeVersion = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
 
+            string forcedNodeVersion = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
             if (forcedNodeVersion == "node16" && Data.NodeVersion != "node16")
             {
                 Data.NodeVersion = "node16";
