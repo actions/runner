@@ -29,7 +29,7 @@
     "@vercel/ncc": "^0.36.1",
     "eslint": "^8.11.0",
     "eslint-plugin-github": "^4.3.5",
-    "prettier": "^1.19.1",
+    "prettier": "^3.0.1",
     "typescript": "^5.1.6"
   }
 }
