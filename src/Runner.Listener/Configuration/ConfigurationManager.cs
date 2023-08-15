@@ -709,7 +709,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -772,7 +772,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
