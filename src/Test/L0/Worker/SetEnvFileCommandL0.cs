@@ -187,7 +187,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetOutputFileCommand_BlockListItemsFiltered()
+        public void SetEnvFileCommand_BlockListItemsFiltered()
         {
             using (var hostContext = Setup())
             {
@@ -206,7 +206,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetOutputFileCommand_BlockListItemsFiltered_Heredoc()
+        public void SetEnvFileCommand_BlockListItemsFiltered_Heredoc()
         {
             using (var hostContext = Setup())
             {
