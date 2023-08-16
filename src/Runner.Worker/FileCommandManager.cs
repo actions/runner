@@ -284,7 +284,7 @@ namespace GitHub.Runner.Worker
                         var issue = new Issue()
                         {
                             Type = IssueType.Error,
-                            Message = $"Can't update {blocked} environment variable using ::set-env:: command."
+                            Message = $"Can't store {blocked} output parameter using GITHUB_OUTPUT command."
                         };
                         issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{pair.Key}";
                         context.AddIssue(issue, ExecutionContextLogOptions.Default);
