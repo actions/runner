@@ -275,6 +275,7 @@ namespace GitHub.Runner.Worker
             var pairs = new EnvFileKeyValuePairs(context, filePath);
             foreach (var pair in pairs)
             {
+                var isBlocked = false;
                 foreach (var blocked in _setEnvBlockList)
                 {
                     if (string.Equals(blocked, pair.Key, StringComparison.OrdinalIgnoreCase))
@@ -288,8 +289,13 @@ namespace GitHub.Runner.Worker
                         issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{pair.Key}";
                         context.AddIssue(issue, ExecutionContextLogOptions.Default);
 
-                        continue;
+                        isBlocked = true;
+                        break;
                     }
+                }
+                if (isBlocked)
+                {
+                    continue;
                 }
                 context.SetOutput(pair.Key, pair.Value, out var reference);
                 context.Debug($"Set output {pair.Key} = {pair.Value}");
