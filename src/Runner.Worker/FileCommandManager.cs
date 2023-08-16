@@ -176,6 +176,11 @@ namespace GitHub.Runner.Worker
             context.SetEnvContext(name, value);
             context.Debug($"{name}='{value}'");
         }
+
+        private string[] _setEnvBlockList =
+        {
+            "NODE_OPTIONS"
+        };
     }
 
     public sealed class CreateStepSummaryCommand : RunnerService, IFileCommandExtension
@@ -301,11 +306,6 @@ namespace GitHub.Runner.Worker
                 context.Debug($"Set output {pair.Key} = {pair.Value}");
             }
         }
-
-        private string[] _setEnvBlockList =
-        {
-            "NODE_OPTIONS"
-        };
     }
 
     public sealed class EnvFileKeyValuePairs : IEnumerable<KeyValuePair<string, string>>
