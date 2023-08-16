@@ -7,7 +7,7 @@ namespace GitHub.Runner.Common.Util
     {
         private const string _defaultNodeVersion = "node16";
 
-        public static readonly ReadOnlyCollection<string> BuiltInNodeVersions = new(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) && System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? new[] { "node16" } : new[] { "node12", "node16" });
+        public static readonly ReadOnlyCollection<string> BuiltInNodeVersions = new(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) && System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? new[] { "node16", "node20" } : new[] { "node12", "node16", "node20" });
 
         public static string GetInternalNodeVersion()
         {

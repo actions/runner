@@ -30,19 +30,10 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Theory]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        [InlineData("node12", "", "", "", "node12")]
-        [InlineData("node12", "true", "", "", "node16")]
-        [InlineData("node12", "true", "", "true", "node12")]
-        [InlineData("node12", "true", "true", "", "node12")]
-        [InlineData("node12", "true", "true", "true", "node12")]
-        [InlineData("node12", "true", "false", "true", "node16")] // workflow overrides env
-        [InlineData("node16", "", "", "", "node16")]
-        [InlineData("node16", "true", "", "", "node16")]
-        [InlineData("node16", "true", "", "true", "node16")]
-        [InlineData("node16", "true", "true", "", "node16")]
-        [InlineData("node16", "true", "true", "true", "node16")]
-        [InlineData("node16", "true", "false", "true", "node16")]
-        public void IsNodeVersionUpgraded(string inputVersion, string serverFeatureFlag, string workflowOptOut, string machineOptOut, string expectedVersion)
+        [InlineData("node12", "node16")]
+        [InlineData("node16", "node16")]
+        [InlineData("node20", "node20")]
+        public void IsNodeVersionUpgraded(string inputVersion, string expectedVersion)
         {
             using (TestHostContext hc = CreateTestContext())
             {
