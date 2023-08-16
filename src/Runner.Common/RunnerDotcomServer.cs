@@ -42,7 +42,7 @@ namespace GitHub.Runner.Common
         }
 
 
-        public async Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName = null)
+        public async Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
@@ -52,11 +52,11 @@ namespace GitHub.Runner.Common
                 // org runner
                 if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runner-groups/{runnerGroupId}/runners";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
                 else
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runner-groups/{runnerGroupId}/runners";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
             }
             else if (path.Length == 2)
@@ -69,11 +69,11 @@ namespace GitHub.Runner.Common
 
                 if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runner-groups/{runnerGroupId}/runners";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
                 else
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runner-groups/{runnerGroupId}/runners";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
             }
             else
@@ -82,14 +82,8 @@ namespace GitHub.Runner.Common
             }
 
             var runnersList = await RetryRequest<ListRunnersResponse>(githubApiUrl, githubToken, RequestType.Get, 3, "Failed to get agents pools");
-            var agents = runnersList.ToTaskAgents();
 
-            if (string.IsNullOrEmpty(agentName))
-            {
-                return agents;
-            }
-
-            return agents.Where(x => string.Equals(x.Name, agentName, StringComparison.OrdinalIgnoreCase)).ToList();
+            return runnersList.ToTaskAgents();
         }
 
         public async Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken)
