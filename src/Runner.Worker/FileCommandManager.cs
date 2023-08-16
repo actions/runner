@@ -322,9 +322,21 @@ namespace GitHub.Runner.Worker
                     var equalsIndex = line.IndexOf("=", StringComparison.Ordinal);
                     var heredocIndex = line.IndexOf("<<", StringComparison.Ordinal);
 
-                    // Heredoc style NAME<<EOF (where EOF is typically randomly-generated Base64 and may include an '=' character)
-                    // see https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
-                    if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
+                    // Normal style NAME=VALUE
+                    if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
+                    {
+                        var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            throw new Exception($"Invalid format '{line}'. Name must not be empty");
+                        }
+
+                        key = split[0];
+                        output = split[1];
+                    }
+
+                    // Heredoc style NAME<<EOF
+                    else if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
                     {
                         var split = line.Split(new[] { "<<" }, 2, StringSplitOptions.None);
                         if (string.IsNullOrEmpty(split[0]) || string.IsNullOrEmpty(split[1]))
@@ -351,18 +363,6 @@ namespace GitHub.Runner.Worker
                         }
 
                         output = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
-                    }
-                    // Normal style NAME=VALUE
-                    else if (equalsIndex >= 0 && heredocIndex < 0)
-                    {
-                        var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
-                        if (string.IsNullOrEmpty(line))
-                        {
-                            throw new Exception($"Invalid format '{line}'. Name must not be empty");
-                        }
-
-                        key = split[0];
-                        output = split[1];
                     }
                     else
                     {
