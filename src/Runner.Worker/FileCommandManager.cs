@@ -275,10 +275,31 @@ namespace GitHub.Runner.Worker
             var pairs = new EnvFileKeyValuePairs(context, filePath);
             foreach (var pair in pairs)
             {
+                foreach (var blocked in _setEnvBlockList)
+                {
+                    if (string.Equals(blocked, pair.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Log Telemetry and let user know they shouldn't do this
+                        var issue = new Issue()
+                        {
+                            Type = IssueType.Error,
+                            Message = $"Can't update {blocked} environment variable using ::set-env:: command."
+                        };
+                        issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{pair.Key}";
+                        context.AddIssue(issue, ExecutionContextLogOptions.Default);
+
+                        continue;
+                    }
+                }
                 context.SetOutput(pair.Key, pair.Value, out var reference);
                 context.Debug($"Set output {pair.Key} = {pair.Value}");
             }
         }
+
+        private string[] _setEnvBlockList =
+        {
+            "NODE_OPTIONS"
+        };
     }
 
     public sealed class EnvFileKeyValuePairs : IEnumerable<KeyValuePair<string, string>>
