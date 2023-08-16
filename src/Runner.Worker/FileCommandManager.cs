@@ -141,6 +141,28 @@ namespace GitHub.Runner.Worker
             var pairs = new EnvFileKeyValuePairs(context, filePath);
             foreach (var pair in pairs)
             {
+                var isBlocked = false;
+                foreach (var blocked in _setEnvBlockList)
+                {
+                    if (string.Equals(blocked, pair.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Log Telemetry and let user know they shouldn't do this
+                        var issue = new Issue()
+                        {
+                            Type = IssueType.Error,
+                            Message = $"Can't store {blocked} output parameter using '$GITHUB_ENV' command."
+                        };
+                        issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{pair.Key}";
+                        context.AddIssue(issue, ExecutionContextLogOptions.Default);
+
+                        isBlocked = true;
+                        break;
+                    }
+                }
+                if (isBlocked)
+                {
+                    continue;
+                }
                 SetEnvironmentVariable(context, pair.Key, pair.Value);
             }
         }
@@ -154,6 +176,11 @@ namespace GitHub.Runner.Worker
             context.SetEnvContext(name, value);
             context.Debug($"{name}='{value}'");
         }
+
+        private string[] _setEnvBlockList =
+        {
+            "NODE_OPTIONS"
+        };
     }
 
     public sealed class CreateStepSummaryCommand : RunnerService, IFileCommandExtension

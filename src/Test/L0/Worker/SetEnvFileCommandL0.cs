@@ -183,6 +183,47 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_BlockListItemsFiltered()
+        {
+            using (var hostContext = Setup())
+            {
+                var stateFile = Path.Combine(_rootDirectory, "simple");
+                var content = new List<string>
+                {
+                    "NODE_OPTIONS=asdf",
+                };
+                WriteContent(stateFile, content);
+                _setEnvFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                Assert.Equal(1, _issues.Count);
+                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_BlockListItemsFiltered_Heredoc()
+        {
+            using (var hostContext = Setup())
+            {
+                var stateFile = Path.Combine(_rootDirectory, "simple");
+                var content = new List<string>
+                {
+                    "NODE_OPTIONS<<EOF",
+                    "asdf",
+                    "EOF",
+                };
+                WriteContent(stateFile, content);
+                _setEnvFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                Assert.Equal(1, _issues.Count);
+                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
