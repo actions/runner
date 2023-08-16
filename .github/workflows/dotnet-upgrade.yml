@@ -5,13 +5,15 @@ on:
     - cron: '0 0 * * 1'
   workflow_dispatch:
 
+env: 
+  MAJOR_MINOR_VERSION: "6.0"
+
 jobs:
   dotnet-update:
     runs-on: ubuntu-latest
-    env: 
-      MAJOR_MINOR_VERSION: "6.0"
     outputs:
       BRANCH_NAME: ${{ steps.create_branch.outputs.BRANCH_NAME }}
+      LATEST_PATCH_VERSION: ${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
       SHOULD_UPDATE: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE }}
     steps:
       - name: Checkout repository
@@ -70,7 +72,11 @@ jobs:
     needs: [dotnet-update]
     outputs: 
       BRANCH_NAME: ${{ needs.dotnet-update.outputs.BRANCH_NAME }}
+      LATEST_PATCH_VERSION: ${{ needs.dotnet-update.outputs.LATEST_PATCH_VERSION }}
     strategy:
+      # this matrix can still be optimized to remove this, the problem is overlapping `git commits` and needing the latest commits from remote causing merge issues.
+      # Potential solution is to archive all the files needing to be changed and unarchive them and commit them all at once, or compute the hashes from the matrix and run the file changes/git commit at once after they all finish
+      max-parallel: 1
       matrix:
         runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
         include:
@@ -122,7 +128,6 @@ jobs:
         echo "Current Externals hash result: $EXTERNALS_HASH"
 
         echo "$EXTERNALS_HASH" > ./src/Misc/contentHash/externals/${{ matrix.runtime }}
-       
         echo "$DOTNET_RUNTIME_HASH" > ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
       env:
         DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
@@ -149,7 +154,7 @@ jobs:
     - name: Create Pull Request
       env:
         TARGET_BRANCH: ${{ needs.build-hashes.outputs.BRANCH_NAME }}
-        TITLE: Update dotnet sdk to latest version @ ${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
+        TITLE: Update dotnet sdk to latest version @ ${{ needs.create-pr.outputs.LATEST_PATCH_VERSION }}
         BODY: '
           https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ env.MAJOR_MINOR_VERSION }}/latest.version
           
