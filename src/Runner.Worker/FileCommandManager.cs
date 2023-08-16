@@ -150,7 +150,7 @@ namespace GitHub.Runner.Worker
                         var issue = new Issue()
                         {
                             Type = IssueType.Error,
-                            Message = $"Can't store {blocked} output parameter using GITHUB_ENV command."
+                            Message = $"Can't store {blocked} output parameter using '$GITHUB_ENV' command."
                         };
                         issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{pair.Key}";
                         context.AddIssue(issue, ExecutionContextLogOptions.Default);
