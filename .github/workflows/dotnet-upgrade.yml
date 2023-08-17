@@ -5,43 +5,51 @@ on:
     - cron: '0 0 * * 1'
   workflow_dispatch:
 
-env: 
-  MAJOR_MINOR_VERSION: "6.0"
-
 jobs:
   dotnet-update:
     runs-on: ubuntu-latest
-    outputs:
-      BRANCH_NAME: ${{ steps.create_branch.outputs.BRANCH_NAME }}
-      LATEST_PATCH_VERSION: ${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
-      SHOULD_UPDATE: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Get current major minor version
+        id: fetch_current_minor_version
+        shell: bash
+        run: |
+          current_patch_version=$(jq .sdk.version ./src/global.json | xargs)
+          current_major_minor_version=$(cut -d '.' -f 1,2 <<< "$current_patch_version")
+
+          echo "DOTNET_CURRENT_VERSION=${current_patch_version}" >> $GITHUB_OUTPUT
+          echo "DOTNET_MINOR_VERSION=${current_major_minor_version}" >> $GITHUB_OUTPUT
       - name: Check patch version
         id: fetch_latest_patch
         shell: bash
         run: |
-          latest_patch_version=$(curl -sb -H "Accept: application/json" "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ env.MAJOR_MINOR_VERSION }}/latest.version")
+          latest_patch_version=$(curl -sb -H "Accept: application/json" "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ steps.fetch_current_minor_version.outputs.DOTNET_MINOR_VERSION }}/latest.version")
           current_patch_version=$(jq .sdk.version ./src/global.json | xargs)
 
-          exit_code=0
-          function version { printf "%03d%03d%03d%03d" $(echo "$1" | tr '.' ' '); }
-          
-          [ $(version $current_patch_version) -ge $(version $latest_patch_version) ] && exit_code=1
+          should_update=0
+          [ $current_patch_version != $latest_patch_version ] && should_update=1
 
-          echo "DOTNET_CURRENT_VERSION=${current_patch_version}" >> $GITHUB_OUTPUT
+          # check if git branch already exists for the upgrade
+          branch_already_exists=0
+          git fetch
+          [ `git branch | grep feature/dotnetsdk-upgrade/$latest_patch_version` ] && branch_already_exists=1 && should_update=0
+
           echo "DOTNET_LATEST_VERSION=${latest_patch_version}" >> $GITHUB_OUTPUT
-          echo "SHOULD_UPDATE=${exit_code}" >> $GITHUB_OUTPUT
+          echo "SHOULD_UPDATE=${should_update}" >> $GITHUB_OUTPUT
+          echo "BRANCH_EXISTS=${branch_already_exists}" >> $GITHUB_OUTPUT
+      - name: Create annotation for branch error
+        if: ${{ steps.fetch_latest_patch.outputs.BRANCH_EXISTS == 1 }}
+        run: echo "::error ::Branch feature/dotnetsdk-upgrade/${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }} already exists. Please address take a look and delete that branch if you wish to recreate"
       - name: Create annotation for build error
-        if: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE == 1 }}
+        if: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE == 0 && steps.fetch_latest_patch.outputs.BRANCH_EXISTS == 0 }}
         run: echo "::warning ::Latest DotNet SDK patch is ${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}, and we are on ${{ steps.fetch_latest_patch.outputs.DOTNET_CURRENT_VERSION }}. No need to update"
       - name: Update patch version
-        if: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE == 0 }}
+        if: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE == 1 && steps.fetch_latest_patch.outputs.BRANCH_EXISTS == 0 }}
         shell: bash
         run: |
           patch_version="${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}"
-          current_version="${{ steps.fetch_latest_patch.outputs.DOTNET_CURRENT_VERSION }}"
+          current_version="${{ steps.fetch_current_minor_version.outputs.DOTNET_CURRENT_VERSION }}"
 
           # Update globals
           echo $(cat ./src/global.json | jq --arg patch_version "$patch_version" '.sdk.version = $patch_version') > ./src/global.json
@@ -52,27 +60,24 @@ jobs:
           # Update dev.sh
           sed -i "s/DOTNETSDK_VERSION=\"$current_version\"/DOTNETSDK_VERSION=\"$patch_version\"/g" ./src/dev.sh
       - name: GIT commit and push all changed files
-        if: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE == 0 }}
+        if: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE == 1 && steps.fetch_latest_patch.outputs.BRANCH_EXISTS == 0 }}
         id: create_branch
-        env: 
-          CI_COMMIT_MESSAGE: Upgrade dotnet sdk to v${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
-          CI_COMMIT_AUTHOR: AutoUpdater
-          BRANCH_NAME: feature/dotnetsdk-upgrade/${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
         run: |
-          git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+          branch_name="feature/dotnetsdk-upgrade/${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}"
+          git config --global user.name "AutoUpdater"
           git config --global user.email "username@users.noreply.github.com"
 
-          git checkout -b ${{ env.BRANCH_NAME }}
-          git commit -a -m "${{ env.CI_COMMIT_MESSAGE }}"
-          git push --set-upstream origin ${{ env.BRANCH_NAME }}
+          git checkout -b $branch_name
+          git commit -a -m "Upgrade dotnet sdk to v${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}"
+          git push --set-upstream origin $branch_name
 
-          echo "BRANCH_NAME=${{ env.BRANCH_NAME }}" >> "$GITHUB_OUTPUT"
   build-hashes:
-    if: ${{ needs.dotnet-update.outputs.SHOULD_UPDATE == 0 }}
+    if: ${{ needs.dotnet-update.outputs.SHOULD_UPDATE == 1 && steps.fetch_latest_patch.outputs.BRANCH_EXISTS == 0 }}
     needs: [dotnet-update]
     outputs: 
-      BRANCH_NAME: ${{ needs.dotnet-update.outputs.BRANCH_NAME }}
-      LATEST_PATCH_VERSION: ${{ needs.dotnet-update.outputs.LATEST_PATCH_VERSION }}
+      # pass outputs from this job to create-pr for use
+      LATEST_PATCH_VERSION: ${{ needs.dotnet-update.steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
+      MAJOR_MINOR_VERSION: ${{ needs.dotnet-update.steps.fetch_current_minor_version.outputs.DOTNET_MINOR_VERSION }}
     strategy:
       # this matrix can still be optimized to remove this, the problem is overlapping `git commits` and needing the latest commits from remote causing merge issues.
       # Potential solution is to archive all the files needing to be changed and unarchive them and commit them all at once, or compute the hashes from the matrix and run the file changes/git commit at once after they all finish
@@ -112,7 +117,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        ref: ${{ needs.dotnet-update.outputs.BRANCH_NAME }}
+        ref: feature/dotnetsdk-upgrade/${{ needs.dotnet-update.steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
 
     # Build runner layout
     - name: Build & Layout Release
@@ -123,45 +128,93 @@ jobs:
     # Check runtime/externals hash
     - name: Compute/Compare runtime and externals Hash
       shell: bash
+      env:
+        DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
+        EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
       run: |
         echo "Current dotnet runtime hash result: $DOTNET_RUNTIME_HASH"
         echo "Current Externals hash result: $EXTERNALS_HASH"
 
         echo "$EXTERNALS_HASH" > ./src/Misc/contentHash/externals/${{ matrix.runtime }}
         echo "$DOTNET_RUNTIME_HASH" > ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
-      env:
-        DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
-        EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
     - name: GIT commit and push all changed files
-      env: 
-        CI_COMMIT_MESSAGE: Update ${{ matrix.runtime }} hashes
-        CI_COMMIT_AUTHOR: AutoUpdater
       shell: bash
       run: |
-        git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+        git config --global user.name "AutoUpdater"
         git config --global user.email "username@users.noreply.github.com"
 
-        git commit -a -m "${{ env.CI_COMMIT_MESSAGE }}"
-        git push --set-upstream origin ${{ needs.dotnet-update.outputs.BRANCH_NAME }}
+        git commit -a -m "Update ${{ matrix.runtime }} hashes"
+        git push --set-upstream origin feature/dotnetsdk-upgrade/${{ needs.dotnet-update.steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
 
   create-pr:
     needs: [build-hashes]
+    outputs:
+      # pass outputs from this job to run-tests for use
+      LATEST_PATCH_VERSION: ${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }}
+      MAJOR_MINOR_VERSION: ${{ needs.build-hashes.outputs.MAJOR_MINOR_VERSION }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
       with:
-        ref: ${{ needs.build-hashes.outputs.BRANCH_NAME }}
+        ref: feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }}
     - name: Create Pull Request
       env:
-        TARGET_BRANCH: ${{ needs.build-hashes.outputs.BRANCH_NAME }}
-        TITLE: Update dotnet sdk to latest version @ ${{ needs.create-pr.outputs.LATEST_PATCH_VERSION }}
-        BODY: '
-          https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ env.MAJOR_MINOR_VERSION }}/latest.version
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh pr create -B main -H feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }} --title "Update dotnet sdk to latest version @${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }}" --body "
+          https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ needs.build-hashes.outputs.MAJOR_MINOR_VERSION }}/latest.version
           
             
           ---
             
-          Autogenerated by [DotNet SDK Upgrade Workflow](https://github.com/actions/runner/blob/main/.github/workflows/dotnet-upgrade.yml)'
+          Autogenerated by [DotNet SDK Upgrade Workflow](https://github.com/actions/runner/blob/main/.github/workflows/dotnet-upgrade.yml)"
+
+  run-tests:
+    needs: [create-pr]
+    strategy:
+      # this matrix can still be optimized to remove this, the problem is overlapping `git commits` and needing the latest commits from remote causing merge issues.
+      # Potential solution is to archive all the files needing to be changed and unarchive them and commit them all at once, or compute the hashes from the matrix and run the file changes/git commit at once after they all finish
+      max-parallel: 1
+      matrix:
+        runtime: [ linux-x64, win-x64, osx-x64 ]
+        include:
+        - runtime: linux-x64
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+        - runtime: osx-x64
+          os: macOS-latest
+          devScript: ./dev.sh
+
+        - runtime: win-x64
+          os: windows-2019
+          devScript: ./dev
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }}
+
+    # Build runner layout
+    - name: Build & Layout Release
+      run: |
+        ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
+      working-directory: src
+
+    # Run tests
+    - name: L0
+      id: tests
+			continue-on-error: true
+      run: |
+        ${{ matrix.devScript }} test
+      working-directory: src
+
+    - name: More user friendly error on failure			  
+      if: steps.tests.outcome == 'failure'
+      env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh pr create -B main -H ${{ env.TARGET_BRANCH }} --title "${{ env.TITLE }}" --body "${{ env.BODY }}"
+        gh pr comment feature/dotnetsdk-upgrade/${{ needs.create-pr.outputs.LATEST_PATCH_VERSION }} --body "There was a failure in the L0 tests on this PR, you might need to update some libraries. Please inspect [this run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details"  
+        echo "::error ::L0 Tests failed, perhaps a library is missing for the upgrade, you might need to manually inspect and add it to this PR"
+        
