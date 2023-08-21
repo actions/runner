@@ -156,7 +156,6 @@ jobs:
     outputs:
       # pass outputs from this job to run-tests for use
       DOTNET_LATEST_VERSION: ${{ needs.build-hashes.outputs.DOTNET_LATEST_VERSION }}
-      DOTNET_MINOR_VERSION: ${{ needs.build-hashes.outputs.DOTNET_MINOR_VERSION }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -199,7 +198,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        ref: feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.DOTNET_LATEST_VERSION }}
+        ref: feature/dotnetsdk-upgrade/${{ needs.create-pr.outputs.DOTNET_LATEST_VERSION }}
 
     # Build runner layout
     - name: Build & Layout Release
