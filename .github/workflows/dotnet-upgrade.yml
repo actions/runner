@@ -8,6 +8,11 @@ on:
 jobs:
   dotnet-update:
     runs-on: ubuntu-latest
+    outputs: 
+      SHOULD_UPDATE: ${{ steps.fetch_latest_patch.outputs.SHOULD_UPDATE }}
+      BRANCH_EXISTS: ${{ steps.fetch_latest_patch.outputs.BRANCH_EXISTS }}
+      DOTNET_LATEST_VERSION: ${{ steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
+      DOTNET_MINOR_VERSION: ${{ steps.fetch_current_minor_version.outputs.DOTNET_MINOR_VERSION }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -72,12 +77,12 @@ jobs:
           git push --set-upstream origin $branch_name
 
   build-hashes:
-    if: ${{ needs.dotnet-update.outputs.SHOULD_UPDATE == 1 && steps.fetch_latest_patch.outputs.BRANCH_EXISTS == 0 }}
+    if: ${{ needs.dotnet-update.outputs.SHOULD_UPDATE == 1 && needs.dotnet-update.outputs.BRANCH_EXISTS == 0 }}
     needs: [dotnet-update]
     outputs: 
       # pass outputs from this job to create-pr for use
-      LATEST_PATCH_VERSION: ${{ needs.dotnet-update.steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
-      MAJOR_MINOR_VERSION: ${{ needs.dotnet-update.steps.fetch_current_minor_version.outputs.DOTNET_MINOR_VERSION }}
+      DOTNET_LATEST_VERSION: ${{ needs.dotnet-update.outputs.DOTNET_LATEST_VERSION }}
+      DOTNET_MINOR_VERSION: ${{ needs.dotnet-update.outputs.DOTNET_MINOR_VERSION }}
     strategy:
       # this matrix can still be optimized to remove this, the problem is overlapping `git commits` and needing the latest commits from remote causing merge issues.
       # Potential solution is to archive all the files needing to be changed and unarchive them and commit them all at once, or compute the hashes from the matrix and run the file changes/git commit at once after they all finish
@@ -117,7 +122,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        ref: feature/dotnetsdk-upgrade/${{ needs.dotnet-update.steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
+        ref: feature/dotnetsdk-upgrade/${{ needs.dotnet-update.outputs.DOTNET_LATEST_VERSION }}
 
     # Build runner layout
     - name: Build & Layout Release
@@ -144,25 +149,25 @@ jobs:
         git config --global user.email "username@users.noreply.github.com"
 
         git commit -a -m "Update ${{ matrix.runtime }} hashes"
-        git push --set-upstream origin feature/dotnetsdk-upgrade/${{ needs.dotnet-update.steps.fetch_latest_patch.outputs.DOTNET_LATEST_VERSION }}
+        git push --set-upstream origin feature/dotnetsdk-upgrade/${{ needs.dotnet-update.outputs.DOTNET_LATEST_VERSION }}
 
   create-pr:
     needs: [build-hashes]
     outputs:
       # pass outputs from this job to run-tests for use
-      LATEST_PATCH_VERSION: ${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }}
-      MAJOR_MINOR_VERSION: ${{ needs.build-hashes.outputs.MAJOR_MINOR_VERSION }}
+      DOTNET_LATEST_VERSION: ${{ needs.build-hashes.outputs.DOTNET_LATEST_VERSION }}
+      DOTNET_MINOR_VERSION: ${{ needs.build-hashes.outputs.DOTNET_MINOR_VERSION }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
       with:
-        ref: feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }}
+        ref: feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.DOTNET_LATEST_VERSION }}
     - name: Create Pull Request
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh pr create -B main -H feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }} --title "Update dotnet sdk to latest version @${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }}" --body "
-          https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ needs.build-hashes.outputs.MAJOR_MINOR_VERSION }}/latest.version
+        gh pr create -B main -H feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.DOTNET_LATEST_VERSION }} --title "Update dotnet sdk to latest version @${{ needs.build-hashes.outputs.DOTNET_LATEST_VERSION }}" --body "
+          https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ needs.build-hashes.outputs.DOTNET_MINOR_VERSION }}/latest.version
           
             
           ---
@@ -194,7 +199,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        ref: feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.LATEST_PATCH_VERSION }}
+        ref: feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.DOTNET_LATEST_VERSION }}
 
     # Build runner layout
     - name: Build & Layout Release
@@ -205,7 +210,7 @@ jobs:
     # Run tests
     - name: L0
       id: tests
-			continue-on-error: true
+      continue-on-error: true
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
@@ -215,6 +220,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh pr comment feature/dotnetsdk-upgrade/${{ needs.create-pr.outputs.LATEST_PATCH_VERSION }} --body "There was a failure in the L0 tests on this PR, you might need to update some libraries. Please inspect [this run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details"  
+        gh pr comment feature/dotnetsdk-upgrade/${{ needs.create-pr.outputs.DOTNET_LATEST_VERSION }} --body "There was a failure in the L0 tests on this PR, you might need to update some libraries. Please inspect [this run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details"  
         echo "::error ::L0 Tests failed, perhaps a library is missing for the upgrade, you might need to manually inspect and add it to this PR"
         
