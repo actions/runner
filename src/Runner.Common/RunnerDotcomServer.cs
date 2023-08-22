@@ -19,8 +19,6 @@ namespace GitHub.Runner.Common
 
         Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
         Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken);
-
-        string GetGitHubRequestId(HttpResponseHeaders headers);
     }
 
     public enum RequestType
@@ -195,7 +193,7 @@ namespace GitHub.Runner.Common
                         if (response != null)
                         {
                             responseStatus = response.StatusCode;
-                            var githubRequestId = GetGitHubRequestId(response.Headers);
+                            var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                             if (response.IsSuccessStatusCode)
                             {
@@ -223,15 +221,6 @@ namespace GitHub.Runner.Common
                 Trace.Info($"Retrying in {backOff.Seconds} seconds");
                 await Task.Delay(backOff);
             }
-        }
-
-        public string GetGitHubRequestId(HttpResponseHeaders headers)
-        {
-            if (headers.TryGetValues("x-github-request-id", out var headerValues))
-            {
-                return headerValues.FirstOrDefault();
-            }
-            return string.Empty;
         }
     }
 }

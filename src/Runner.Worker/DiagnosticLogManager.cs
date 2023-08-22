@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
             var configurationStore = HostContext.GetService<IConfigurationStore>();
             RunnerSettings settings = configurationStore.GetSettings();
-            int runnerId = settings.AgentId;
+            ulong runnerId = settings.AgentId;
             string runnerName = settings.AgentName;
             int poolId = settings.PoolId;
 

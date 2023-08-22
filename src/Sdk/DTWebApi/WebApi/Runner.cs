@@ -47,7 +47,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [JsonProperty("id")]
-        public Int32 Id
+        public ulong Id
         {
             get;
             internal set;

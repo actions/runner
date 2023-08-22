@@ -1,19 +1,19 @@
 ## Features
-- Add warning to notify about forcing actions to run on node16 instead of node12 (#2678)
-
-## Bugs
-- Remove job completion from runner listener (#2659)
-- Fix double error reporting (#2656)
-- Fix a bug with incorrect parsing of image values in a container action (#1873)
-- Fix error message reported on non-local action setup (#2668)
-- Extend github context with host-workspace (#2517)
-- Fixed a bug where a misplaced = character could bypass heredoc-style processing (#2627)
+- Support linux/arm64 docker build (#2601)
+- Add node20 to runner (#2732)
+- Update node16 to latest version (#2736)
+- Remove node12 from runner (#2717)
 
 ## Misc
-- Send environment url to Run Service (#2650)
-- Reduce token service and unnecessary calls - send token to redirects (#2660)
-- Add 'http://' to http(s)_proxy if there is no protocol (#2663)
-- Remove extra result step for job itself (#2620)
+- Pass timeout in ExecutionContext instead of StepsRunner (#2714)
+- Return early on invalid_client OAuth exception (#2721)
+- Expose results service endpoint as environment variable (#2726)
+- Update HTTPEventSourceListener to trace the right events (#2727)
+- Change RunnerId/AgentId from int32 to uint64 (#2661)
+- Configure stale bot for Runner (#2729)
+- Add in dependabot security scanning/updates (#2743)
+- Bump dotnet sdk to latest version (#2733)
+- Switch from InnerException to ErrorCode on disableupdate check (#2718)
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 

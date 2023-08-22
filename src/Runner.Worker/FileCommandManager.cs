@@ -141,6 +141,28 @@ namespace GitHub.Runner.Worker
             var pairs = new EnvFileKeyValuePairs(context, filePath);
             foreach (var pair in pairs)
             {
+                var isBlocked = false;
+                foreach (var blocked in _setEnvBlockList)
+                {
+                    if (string.Equals(blocked, pair.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Log Telemetry and let user know they shouldn't do this
+                        var issue = new Issue()
+                        {
+                            Type = IssueType.Error,
+                            Message = $"Can't store {blocked} output parameter using '$GITHUB_ENV' command."
+                        };
+                        issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{pair.Key}";
+                        context.AddIssue(issue, ExecutionContextLogOptions.Default);
+
+                        isBlocked = true;
+                        break;
+                    }
+                }
+                if (isBlocked)
+                {
+                    continue;
+                }
                 SetEnvironmentVariable(context, pair.Key, pair.Value);
             }
         }
@@ -154,6 +176,11 @@ namespace GitHub.Runner.Worker
             context.SetEnvContext(name, value);
             context.Debug($"{name}='{value}'");
         }
+
+        private string[] _setEnvBlockList =
+        {
+            "NODE_OPTIONS"
+        };
     }
 
     public sealed class CreateStepSummaryCommand : RunnerService, IFileCommandExtension
@@ -322,9 +349,21 @@ namespace GitHub.Runner.Worker
                     var equalsIndex = line.IndexOf("=", StringComparison.Ordinal);
                     var heredocIndex = line.IndexOf("<<", StringComparison.Ordinal);
 
-                    // Heredoc style NAME<<EOF (where EOF is typically randomly-generated Base64 and may include an '=' character)
-                    // see https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
-                    if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
+                    // Normal style NAME=VALUE
+                    if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
+                    {
+                        var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
+                        if (string.IsNullOrEmpty(line))
+                        {
+                            throw new Exception($"Invalid format '{line}'. Name must not be empty");
+                        }
+
+                        key = split[0];
+                        output = split[1];
+                    }
+
+                    // Heredoc style NAME<<EOF
+                    else if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
                     {
                         var split = line.Split(new[] { "<<" }, 2, StringSplitOptions.None);
                         if (string.IsNullOrEmpty(split[0]) || string.IsNullOrEmpty(split[1]))
@@ -351,18 +390,6 @@ namespace GitHub.Runner.Worker
                         }
 
                         output = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
-                    }
-                    // Normal style NAME=VALUE
-                    else if (equalsIndex >= 0 && heredocIndex < 0)
-                    {
-                        var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
-                        if (string.IsNullOrEmpty(line))
-                        {
-                            throw new Exception($"Invalid format '{line}'. Name must not be empty");
-                        }
-
-                        key = split[0];
-                        output = split[1];
                     }
                     else
                     {
