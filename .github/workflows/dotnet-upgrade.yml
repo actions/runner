@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           current_major_minor_patch_version=$(jq .sdk.version ./src/global.json | xargs)
-          current_major_minor_version=$(cut -d '.' -f 1,2 <<< "$current_patch_version")
+          current_major_minor_version=$(cut -d '.' -f 1,2 <<< "$current_major_minor_patch_version")
 
           echo "DOTNET_CURRENT_MAJOR_MINOR_PATCH_VERSION=${current_major_minor_patch_version}" >> $GITHUB_OUTPUT
           echo "DOTNET_CURRENT_MAJOR_MINOR_VERSION=${current_major_minor_version}" >> $GITHUB_OUTPUT
