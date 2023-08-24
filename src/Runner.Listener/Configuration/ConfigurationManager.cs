@@ -263,7 +263,23 @@ namespace GitHub.Runner.Listener.Configuration
 
                         try
                         {
-                            agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            if (runnerSettings.UseV2Flow)
+                            {
+                                var runner = await _dotcomServer.ReplaceRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                                runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                                agent.Id = runner.Id;
+                                agent.Authorization = new TaskAgentAuthorization()
+                                {
+                                    AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                                    ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                                };
+                            }
+                            else
+                            {
+                                agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            }
+
                             if (command.DisableUpdate &&
                                 command.DisableUpdate != agent.DisableUpdate)
                             {
