@@ -60,7 +60,6 @@ jobs:
 
     # Check runtime/externals hash
     - name: Compute/Compare runtime and externals Hash
-      continue-on-error: true
       shell: bash
       run: |
         echo "Current dotnet runtime hash result: $DOTNET_RUNTIME_HASH"
