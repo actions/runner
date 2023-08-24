@@ -101,7 +101,8 @@ namespace GitHub.Runner.Listener.Check
                     }
                     else
                     {
-                        gitProxy = $"-c http.proxy={proxy.AbsoluteUri}";
+                        string proxyUrlWithPort = UrlUtil.GetAbsoluteUrlWithPort(proxy);
+                        gitProxy = $"-c http.proxy={proxyUrlWithPort}";
                     }
                 }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
 
@@ -59,6 +60,37 @@ namespace GitHub.Runner.Sdk
                 return headerValues.FirstOrDefault();
             }
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Uri.AbsoluteUri strips default port 80 (https://learn.microsoft.com/en-us/dotnet/api/system.uri)
+        /// When the git runner command initiates, it infers default SOCKS(5) proxy port of 1080. This function
+        /// optionally overrides the behavior of Uri.AbsoluteUri when port 80 is explicitly required.
+        /// </summary>
+        /// <param name="uri">The Uri object to convert to a string with port.</param>
+        public static string GetAbsoluteUrlWithPort(Uri uri)
+        {
+
+            string userInfoClean = "";
+            if (!string.IsNullOrEmpty(uri.UserInfo))
+            {
+                string[] userInfoSegments = uri.UserInfo
+                        .Split(":")
+                        .Select(field => Uri.EscapeDataString(field))
+                        .ToArray();
+                userInfoClean = string.Join(":", userInfoSegments);
+            }
+
+            return string.Join("", new List<string> {
+                uri.Scheme,             // http(s) 
+                Uri.SchemeDelimiter,    // //:
+                userInfoClean,          // user:pass
+                string.IsNullOrEmpty(uri.UserInfo) ? "" : "@",
+                uri.Host,               // sub.domain.com  
+                ":",
+                uri.Port.ToString(),    // :80
+                uri.PathAndQuery        // path/page1
+            });
         }
     }
 }
