@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(RunnerDotcomServer))]
     public interface IRunnerDotcomServer : IRunnerService
     {
-        Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName);
+        Task<List<TaskAgent>> GetRunnerByNameAsync(string githubUrl, string githubToken, string agentName);
 
         Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
         Task<DistributedTask.WebApi.Runner> ReplaceRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
@@ -41,7 +41,7 @@ namespace GitHub.Runner.Common
         }
 
 
-        public async Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName)
+        public async Task<List<TaskAgent>> GetRunnerByNameAsync(string githubUrl, string githubToken, string agentName)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
