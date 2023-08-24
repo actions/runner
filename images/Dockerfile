@@ -1,5 +1,5 @@
 # Source: https://github.com/dotnet/dotnet-docker
-FROM mcr.microsoft.com/dotnet/runtime-deps:7.0-jammy as build
+FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy as build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -27,7 +27,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && tar zxvf docker.tgz \
     && rm -rf docker.tgz
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:7.0-jammy
+FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
