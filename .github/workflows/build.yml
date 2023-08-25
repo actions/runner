@@ -88,7 +88,7 @@ jobs:
         DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
         EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
     - name: update hash
-      if: ${{ ! github.event.pull_request.head.repo.fork && github.event_name == 'pull_request' && steps.compute-hash.outputs.NEED_UPDATE }}
+      if: ${{ ! github.event.pull_request.head.repo.fork && github.event_name == 'pull_request' && steps.compute-hash.outputs.NEED_UPDATE == true }}
       shell: bash
       run: |
         ExternalHash=${{ steps.compute-hash.outputs.EXTERNAL_HASH }}
@@ -102,7 +102,7 @@ jobs:
           echo "$DotNetRuntimeHash" > ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
         fi
     - name: cache updated hashes
-      if: ${{ ! github.event.pull_request.head.repo.fork && github.event_name == 'pull_request' && steps.compute-hash.outputs.NEED_UPDATE }}
+      if: ${{ ! github.event.pull_request.head.repo.fork && github.event_name == 'pull_request' && steps.compute-hash.outputs.NEED_UPDATE == true }}
       uses: actions/cache/save@v3
       with:
         enableCrossOsArchive: true
@@ -111,11 +111,11 @@ jobs:
           ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
         key: compute-hashes-${{ matrix.runtime }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
     - name: Create an warning annotation if computed hashes will automatically be updated    
-      if: ${{ ! github.event.pull_request.head.repo.fork && github.event_name == 'pull_request' && steps.compute-hash.outputs.NEED_UPDATE }}
+      if: ${{ ! github.event.pull_request.head.repo.fork && github.event_name == 'pull_request' && steps.compute-hash.outputs.NEED_UPDATE == true }}
       shell: bash
       run: echo "::warning ::Computed hashes do not match, we will automatically update these for you, you can safely ignore the errors on this job" && exit 1
     - name: Create an error annotation if computed hashes need to be updated for a fork      
-      if: ${{ github.event.pull_request.head.repo.fork && github.event_name == 'pull_request' && steps.compute-hash.outputs.NEED_UPDATE }}
+      if: ${{ github.event.pull_request.head.repo.fork && github.event_name == 'pull_request' && steps.compute-hash.outputs.NEED_UPDATE == true }}
       shell: bash
       run: |
         ExternalHash=${{ steps.compute-hash.outputs.EXTERNAL_HASH }}
@@ -138,7 +138,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: ${{ ! steps.compute-hash.outputs.NEED_UPDATE && matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64' }}
+      if: ${{ steps.compute-hash.outputs.NEED_UPDATE == false && matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64' }}
 
     # Create runner package tar.gz/zip
     - name: Package Release
