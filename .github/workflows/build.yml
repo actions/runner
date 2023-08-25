@@ -17,6 +17,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
         include:
@@ -60,6 +61,8 @@ jobs:
 
     # Check runtime/externals hash
     - name: Compute/Compare runtime and externals Hash
+      id: compute-hash
+      continue-on-error: true
       shell: bash
       run: |
         echo "Current dotnet runtime hash result: $DOTNET_RUNTIME_HASH"
@@ -68,11 +71,15 @@ jobs:
         NeedUpdate=0
         if [ "$EXTERNALS_HASH" != "$(cat ./src/Misc/contentHash/externals/${{ matrix.runtime }})" ] ;then
           echo Hash mismatch, Update ./src/Misc/contentHash/externals/${{ matrix.runtime }} to $EXTERNALS_HASH
+
+          echo "EXTERNAL_HASH=$EXTERNALS_HASH" >> $GITHUB_OUTPUT
           NeedUpdate=1
         fi
 
         if [ "$DOTNET_RUNTIME_HASH" != "$(cat ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }})" ] ;then
           echo Hash mismatch, Update ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }} to $DOTNET_RUNTIME_HASH
+
+          echo "DOTNET_RUNTIME_HASH=$DOTNET_RUNTIME_HASH" >> $GITHUB_OUTPUT
           NeedUpdate=1
         fi
 
@@ -80,13 +87,41 @@ jobs:
       env:
         DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
         EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
+    - name: update hash
+      if: github.event_name == 'pull_request' && steps.compute-hash.outcome != 'success' 
+      shell: bash
+      run: |
+        ExternalHash=${{ steps.compute-hash.outputs.EXTERNAL_HASH }}
+        DotNetRuntimeHash=${{ steps.compute-hash.outputs.DOTNET_RUNTIME_HASH }}
 
+        if [ -n "$ExternalHash" ]; then
+          echo "$ExternalHash" > ./src/Misc/contentHash/externals/${{ matrix.runtime }}
+        fi
+
+        if [ -n "$DotNetRuntimeHash" ]; then
+          echo "$DotNetRuntimeHash" > ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
+        fi
+    - name: cache updated hashes
+      if: github.event_name == 'pull_request' && steps.compute-hash.outcome != 'success' 
+      uses: actions/cache/save@v3
+      with:
+        path: |
+          ./src/Misc/contentHash/externals/${{ matrix.runtime }}
+          ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
+        key: compute-hashes-${{ matrix.runtime }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Create an warning annotation if computed hashes need to be updated        
+      if: github.event_name == 'pull_request' && steps.compute-hash.outcome != 'success' 
+      shell: bash
+      run: |
+        echo "::warning ::Computed hashes do not match, we will automatically update these for you, you can safely ignore the errors on this job"
+        # We need to exit with a failure code so the commit can be process through
+        exit 1
     # Run tests
     - name: L0
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64'
+      if: steps.compute-hash.outcome == 'success' && matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64'
 
     # Create runner package tar.gz/zip
     - name: Package Release
@@ -106,3 +141,83 @@ jobs:
           _package_trims/trim_externals
           _package_trims/trim_runtime
           _package_trims/trim_runtime_externals
+
+  hash-update:
+    needs: [build]
+    # only run this if we get a failure from the build step - most likely meaning we need a hash update
+    if: ${{ always() && contains(needs.build.result, 'failure') && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with: 
+        ref: ${{ github.head_ref }}
+    - name: Restore cached hashes - linux-x64
+      id: cache-restore-linux-x64
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          ./src/Misc/contentHash/externals/linux-x64
+          ./src/Misc/contentHash/dotnetRuntime/linux-x64
+        key: compute-hashes-linux-x64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - linux-arm64
+      id: cache-restore-linux-arm64
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          ./src/Misc/contentHash/externals/linux-arm64
+          ./src/Misc/contentHash/dotnetRuntime/linux-arm64
+        key: compute-hashes-linux-arm64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - linux-arm
+      id: cache-restore-linux-arm
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          ./src/Misc/contentHash/externals/linux-arm
+          ./src/Misc/contentHash/dotnetRuntime/linux-arm
+        key: compute-hashes-linux-arm-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - win-x64
+      id: cache-restore-win-x64
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          ./src/Misc/contentHash/externals/win-x64
+          ./src/Misc/contentHash/dotnetRuntime/win-x64
+        key: compute-hashes-win-x64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - win-arm64
+      id: cache-restore-win-arm64
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          ./src/Misc/contentHash/externals/win-arm64
+          ./src/Misc/contentHash/dotnetRuntime/win-arm64
+        key: compute-hashes-win-arm64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - osx-x64
+      id: cache-restore-osx-x64
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          ./src/Misc/contentHash/externals/osx-x64
+          ./src/Misc/contentHash/dotnetRuntime/osx-x64
+        key: compute-hashes-osx-x64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - osx-arm64
+      id: cache-restore-osx-arm64
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          ./src/Misc/contentHash/externals/osx-arm64
+          ./src/Misc/contentHash/dotnetRuntime/osx-arm64
+        key: compute-hashes-osx-arm64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Fetch cached computed hashes
+      if: steps.cache-restore-linux-x64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-linux-arm64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-linux-arm.outputs.cache-hit == 'true' ||
+          steps.cache-restore-win-x64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-win-arm64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-osx-x64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-osx-arm64.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git commit -a -m "Update computed hashes"
+        git push
