@@ -44,7 +44,7 @@
     "eslint-plugin-github": "^4.9.2",
     "eslint-plugin-prettier": "^5.0.0",
     "prettier": "^3.0.1",
-    "typescript": "^5.1.6",
+    "typescript": "^5.2.2",
     "husky": "^8.0.3",
     "lint-staged": "^14.0.0"
   }
