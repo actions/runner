@@ -60,10 +60,10 @@ jobs:
           current_version="${{ steps.fetch_current_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_PATCH_VERSION }}"
 
           # Update globals
-          cat ./src/global.json | jq --arg patch_version "$patch_version" '.sdk.version = $patch_version' > ./src/global.json
+          cat ./src/global.json | jq --arg patch_version "$patch_version" '.sdk.version = $patch_version' | tee ./src/global.json
 
           # Update devcontainer
-          cat ./.devcontainer/devcontainer.json | jq --arg patch_version "$patch_version" '.features."ghcr.io/devcontainers/features/dotnet".version = $patch_version' > ./.devcontainer/devcontainer.json
+          cat ./.devcontainer/devcontainer.json | jq --arg patch_version "$patch_version" '.features."ghcr.io/devcontainers/features/dotnet".version = $patch_version' | tee ./.devcontainer/devcontainer.json
 
           # Update dev.sh
           sed -i "s/DOTNETSDK_VERSION=\"$current_version\"/DOTNETSDK_VERSION=\"$patch_version\"/g" ./src/dev.sh
