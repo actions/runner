@@ -46,8 +46,6 @@ runsvc.sh
 Sdk.deps.json
 Sdk.dll
 Sdk.pdb
-System.Diagnostics.EventLog.dll
-System.Diagnostics.EventLog.Messages.dll
 System.IdentityModel.Tokens.Jwt.dll
 System.Net.Http.Formatting.dll
 System.Security.Cryptography.Pkcs.dll
