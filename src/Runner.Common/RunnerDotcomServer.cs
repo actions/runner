@@ -131,7 +131,7 @@ namespace GitHub.Runner.Common
 
         public async Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
         {
-           return await AddOrReplaceRunner(runnerGroupId, agent, githubUrl, githubToken, publicKey, false);
+            return await AddOrReplaceRunner(runnerGroupId, agent, githubUrl, githubToken, publicKey, false);
         }
 
         public async Task<DistributedTask.WebApi.Runner> ReplaceRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
