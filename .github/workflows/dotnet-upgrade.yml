@@ -187,6 +187,10 @@ jobs:
           ./src/Misc/contentHash/externals/${{ matrix.runtime }}
           ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
         key: compute-hashes-${{ matrix.runtime }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Create an error annotation if computed hashes need to be updated for a fork      
+      if: ${{ steps.compute-hash.outputs.NEED_UPDATE == 1 }}
+      shell: bash
+      run: exit 1
 
 
   hash-update:
