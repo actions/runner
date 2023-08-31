@@ -84,7 +84,14 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Creating job server with URL: {jobServerUrl}");
                 // jobServerQueue is the throttling reporter.
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-                VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
+                var delegatingHandlers = new List<DelegatingHandler>() { new ThrottlingReportHandler(_jobServerQueue) };
+                message.Variables.TryGetValue("system.github.enable_http_redirects", out VariableValue enableHttpRedirects);
+                if (StringUtil.ConvertToBoolean(enableHttpRedirects?.Value) &&
+                    !StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_NO_HTTP_REDIRECTS")))
+                {
+                    delegatingHandlers.Add(new RedirectMessageHandler(Trace));
+                }
+                VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, delegatingHandlers);
                 await jobServer.ConnectAsync(jobConnection);
 
                 _jobServerQueue.Start(message);
