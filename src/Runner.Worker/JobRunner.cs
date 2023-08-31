@@ -85,7 +85,7 @@ namespace GitHub.Runner.Worker
                 // jobServerQueue is the throttling reporter.
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
                 var delegatingHandlers = new List<DelegatingHandler>() { new ThrottlingReportHandler(_jobServerQueue) };
-                message.Variables.TryGetValue("system.github.enable_http_redirects", out VariableValue enableHttpRedirects);
+                message.Variables.TryGetValue("Actions.EnableHttpRedirects", out VariableValue enableHttpRedirects);
                 if (StringUtil.ConvertToBoolean(enableHttpRedirects?.Value) &&
                     !StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_NO_HTTP_REDIRECTS")))
                 {
