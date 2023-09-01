@@ -91,6 +91,7 @@ jobs:
       # pass outputs from this job to create-pr for use
       DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION: ${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
       DOTNET_CURRENT_MAJOR_MINOR_VERSION: ${{ needs.dotnet-update.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}
+      NEEDS_HASH_UPDATE: ${{ needs.compute-hash.outputs.NEED_UPDATE }}
     strategy:
       fail-fast: false
       matrix:
@@ -187,16 +188,11 @@ jobs:
           ./src/Misc/contentHash/externals/${{ matrix.runtime }}
           ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
         key: compute-hashes-${{ matrix.runtime }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
-    - name: Create an error annotation if computed hashes need to be updated for a fork      
-      if: ${{ steps.compute-hash.outputs.NEED_UPDATE == 1 }}
-      shell: bash
-      run: exit 1
 
 
   hash-update:
     needs: [build-hashes]
-    # only run this if we get a failure from the build step - most likely meaning we need a hash update
-    if: ${{ always() && contains(needs.build.result, 'failure') }}
+    if: ${{ needs.build-hashes.outputs.NEEDS_HASH_UPDATE == 1 }}
     outputs: 
       # pass outputs from this job to create-pr for use
       DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION: ${{ needs.build-hashes.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
