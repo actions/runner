@@ -241,8 +241,6 @@ jobs:
           steps.cache-restore-osx-arm64.outputs.cache-hit == 'true'
       shell: bash
       run: |
-        Environments=( "linux-x64" "linux-arm64" "linux-arm" "win-x64" "win-arm64" "osx-x64" "osx-arm64" )
-
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git commit -a -m "Update computed hashes"
