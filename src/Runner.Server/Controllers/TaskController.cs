@@ -25,34 +25,10 @@ namespace Runner.Server.Controllers
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
     public class TaskController : VssControllerBase
     {
-        private string GitServerUrl;
         private IMemoryCache cache;
-
-        private string GitHubAppPrivateKeyFile { get; }
-        private int GitHubAppId { get; }
-        private bool AllowPrivateActionAccess { get; }
-        private string GITHUB_TOKEN;
-        private string GitApiServerUrl;
-        private List<ActionDownloadUrls> downloadUrls;
-        private class ActionDownloadUrls
-        {
-            public string TarbalUrl { get => TarballUrl; set => TarballUrl = value; }
-            public string ZipbalUrl { get => ZipballUrl; set => ZipballUrl = value; }
-            public string TarballUrl { get; set; }
-            public string ZipballUrl { get; set; }
-            public string GitApiServerUrl { get; set; }
-            public string GITHUB_TOKEN { get; set; }
-        }
 
         public TaskController(IConfiguration configuration, IMemoryCache cache) : base(configuration)
         {
-            downloadUrls = configuration.GetSection("Runner.Server:ActionDownloadUrls").Get<List<ActionDownloadUrls>>();
-            GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
-            GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
-            AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
-            GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
-            GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
-            GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
             this.cache = cache;
         }
 
