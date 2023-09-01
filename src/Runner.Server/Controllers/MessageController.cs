@@ -52,7 +52,7 @@ namespace Runner.Server.Controllers
     [ApiController]
     [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
-    public class MessageController : VssControllerBase
+    public class MessageController : GitHubAppIntegrationBase
     {
         private string GitServerUrl;
         private string GitApiServerUrl;
@@ -73,8 +73,6 @@ namespace Runner.Server.Controllers
         private bool WriteAccessForPullRequestsFromForks { get; }
         private bool AllowJobNameOnJobProperties { get; }
         private bool HasPullRequestMergePseudoBranch { get; }
-        private string GitHubAppPrivateKeyFile { get; }
-        private int GitHubAppId { get; }
         private Dictionary<string, string> GitHubContext { get; }
         private bool AllowPrivateActionAccess { get; }
         private int Verbosity { get; }
@@ -136,8 +134,6 @@ namespace Runner.Server.Controllers
             WriteAccessForPullRequestsFromForks = configuration.GetSection("Runner.Server")?.GetValue<bool>("WriteAccessForPullRequestsFromForks") ?? false;
             AllowJobNameOnJobProperties = configuration.GetSection("Runner.Server")?.GetValue<bool>("AllowJobNameOnJobProperties") ?? false;
             HasPullRequestMergePseudoBranch = configuration.GetSection("Runner.Server")?.GetValue<bool>("HasPullRequestMergePseudoBranch") ?? false;
-            GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
-            GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
             GitHubContext = configuration.GetSection("Runner.Server:GitHubContext").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             Verbosity = configuration.GetSection("Runner.Server")?.GetValue<int>("Verbosity", 1) ?? 1;
@@ -878,43 +874,6 @@ namespace Runner.Server.Controllers
             }
         }
 
-        private async Task<string> CreateGithubAppToken(string repository_name) {
-            if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                try {
-                    var ownerAndRepo = repository_name.Split("/", 2);
-                    // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                    var generator = new GitHubJwt.GitHubJwtFactory(
-                        new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                        new GitHubJwt.GitHubJwtFactoryOptions
-                        {
-                            AppIntegrationId = GitHubAppId, // The GitHub App Id
-                            ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                        }
-                    );
-                    var jwtToken = generator.CreateEncodedJwtToken();
-                    // Pass the JWT as a Bearer token to Octokit.net
-                    var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                    {
-                        Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                    };
-                    var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                    var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", contents = "read" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                    return response.Body.Token;
-                } catch {
-
-                }
-            }
-            return null;
-        }
-
-        private async Task DeleteGithubAppToken(string token) {
-            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-            {
-                Credentials = new Octokit.Credentials(token)
-            };
-            await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
-        }
-
         private class WorkflowContext {
             public CancellationToken CancellationToken {get;set;}
             public CancellationToken? ForceCancellationToken {get;set;}
@@ -1136,30 +1095,14 @@ namespace Runner.Server.Controllers
                         } catch {
 
                         }
-                    } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                        try {
-                            // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                            var generator = new GitHubJwt.GitHubJwtFactory(
-                                new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                                new GitHubJwt.GitHubJwtFactoryOptions
-                                {
-                                    AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                    ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                                }
-                            );
-                            var jwtToken = generator.CreateEncodedJwtToken();
-                            // Pass the JWT as a Bearer token to Octokit.net
-                            var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                            {
-                                Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                            };
-                            var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                            var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                            {
-                                Credentials = new Octokit.Credentials(response.Body.Token)
-                            };
+                    } else {
+                        var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
+                        if(ghAppToken != null) {
                             try {
+                                var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
+                                {
+                                    Credentials = new Octokit.Credentials(ghAppToken)
+                                };
                                 Octokit.CheckConclusion? conclusion = null;
                                 if(status == TaskResult.Skipped) {
                                     conclusion = Octokit.CheckConclusion.Skipped;
@@ -1174,10 +1117,8 @@ namespace Runner.Server.Controllers
                                 var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
                                 next.CheckRunStarted = true;
                             } finally {
-                                await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
+                                await DeleteGithubAppToken(ghAppToken);
                             }
-                        } catch {
-
                         }
                         
                     }
@@ -3111,30 +3052,14 @@ namespace Runner.Server.Controllers
                         } catch {
 
                         }
-                    } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                        try {
-                            // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                            var generator = new GitHubJwt.GitHubJwtFactory(
-                                new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                                new GitHubJwt.GitHubJwtFactoryOptions
-                                {
-                                    AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                    ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                                }
-                            );
-                            var jwtToken = generator.CreateEncodedJwtToken();
-                            // Pass the JWT as a Bearer token to Octokit.net
-                            var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                            {
-                                Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                            };
-                            var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                            var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                            {
-                                Credentials = new Octokit.Credentials(response.Body.Token)
-                            };
+                    } else {
+                        var ghAppToken = await CreateGithubAppToken(repository_name, new { Permissions = new { metadata = "read", checks = "write" } });
+                        if(ghAppToken != null) {
                             try {
+                                var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
+                                {
+                                    Credentials = new Octokit.Credentials(ghAppToken)
+                                };
                                 Octokit.CheckConclusion? conclusion = null;
                                 if(status == TaskResult.Skipped) {
                                     conclusion = Octokit.CheckConclusion.Skipped;
@@ -3149,12 +3074,9 @@ namespace Runner.Server.Controllers
                                 var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
                                 next.CheckRunStarted = true;
                             } finally {
-                                await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
+                                await DeleteGithubAppToken(ghAppToken);
                             }
-                        } catch {
-
                         }
-                        
                     }
                 }
             };
@@ -5726,34 +5648,15 @@ namespace Runner.Server.Controllers
                         }
                         if(!string.IsNullOrEmpty(github_token?.Value) || variables.TryGetValue("github_token", out github_token) && !string.IsNullOrEmpty(github_token.Value)) {
                             variables["github_token"] = variables["system.github.token"] = github_token;
-                        } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                            try {
-                                var ownerAndRepo = repo.Split("/", 2);
-                                // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                                var generator = new GitHubJwt.GitHubJwtFactory(
-                                    new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                                    new GitHubJwt.GitHubJwtFactoryOptions
-                                    {
-                                        AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                        ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                                    }
-                                );
-                                var jwtToken = generator.CreateEncodedJwtToken();
-                                // Pass the JWT as a Bearer token to Octokit.net
-                                var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                                {
-                                    Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                                };
-                                var installation = appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]).GetAwaiter().GetResult();
-                                var ghappPerm = new Dictionary<string, string>(calculatedPermissions, StringComparer.OrdinalIgnoreCase);
-                                // id_token is provided by the systemvssconnection, not by github_token
-                                ghappPerm.Remove("id_token");
-                                var response = appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = ghappPerm }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview).GetAwaiter().GetResult();
-                                runnerToken = response.Body.Token;
-                                variables["github_token"] = variables["system.github.token"] = new VariableValue(response.Body.Token, true);
+                        } else {
+                            var ownerAndRepo = repo.Split("/", 2);
+                            var ghappPerm = new Dictionary<string, string>(calculatedPermissions, StringComparer.OrdinalIgnoreCase);
+                            // id_token is provided by the systemvssconnection, not by github_token
+                            ghappPerm.Remove("id_token");
+                            runnerToken = CreateGithubAppToken(repo, new { Permissions = ghappPerm }).GetAwaiter().GetResult();
+                            if(runnerToken != null) {
+                                variables["github_token"] = variables["system.github.token"] = new VariableValue(runnerToken, true);
                                 variables["system.github.token.permissions"] = new VariableValue(Newtonsoft.Json.JsonConvert.SerializeObject(calculatedPermissions), false);
-                            } catch {
-
                             }
                         }
                         var tokenDescriptor = new SecurityTokenDescriptor

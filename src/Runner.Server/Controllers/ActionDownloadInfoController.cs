@@ -23,11 +23,9 @@ namespace Runner.Server.Controllers
     [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
-    public class ActionDownloadInfoController : VssControllerBase
+    public class ActionDownloadInfoController : GitHubAppIntegrationBase
     {
         private string GitServerUrl;
-        private string GitHubAppPrivateKeyFile { get; }
-        private int GitHubAppId { get; }
         private bool AllowPrivateActionAccess { get; }
         private string GITHUB_TOKEN;
         private string GitApiServerUrl;
@@ -48,8 +46,6 @@ namespace Runner.Server.Controllers
         {
             this._cache = memoryCache;
             downloadUrls = configuration.GetSection("Runner.Server:ActionDownloadUrls").Get<List<ActionDownloadUrls>>();
-            GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
-            GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
             if(string.IsNullOrEmpty(GITHUB_TOKEN)) {
@@ -57,43 +53,6 @@ namespace Runner.Server.Controllers
             }
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
-        }
-
-        private async Task<string> CreateGithubAppToken(string repository_name) {
-            if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                try {
-                    var ownerAndRepo = repository_name.Split("/", 2);
-                    // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                    var generator = new GitHubJwt.GitHubJwtFactory(
-                        new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                        new GitHubJwt.GitHubJwtFactoryOptions
-                        {
-                            AppIntegrationId = GitHubAppId, // The GitHub App Id
-                            ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
-                        }
-                    );
-                    var jwtToken = generator.CreateEncodedJwtToken();
-                    // Pass the JWT as a Bearer token to Octokit.net
-                    var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-                    {
-                        Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                    };
-                    var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                    var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", contents = "read" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                    return response.Body.Token;
-                } catch {
-
-                }
-            }
-            return null;
-        }
-
-        private async Task DeleteGithubAppToken(string token) {
-            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
-            {
-                Credentials = new Octokit.Credentials(token)
-            };
-            await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
         }
 
         [HttpGet("localcheckout")]
