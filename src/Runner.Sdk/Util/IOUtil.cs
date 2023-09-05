@@ -204,6 +204,38 @@ namespace GitHub.Runner.Sdk
             }
         }
 
+        private static bool IsChildPath(string relativeTo, string sourceDir) {
+            var relativePath = Path.GetRelativePath(relativeTo, sourceDir);
+            return relativePath != sourceDir && !relativePath.StartsWith("..");
+        }
+
+        private static DriveInfo GetDrive(DriveInfo[] allDrives, string sourceDir)
+        {
+            DriveInfo ret = null;
+            foreach (DriveInfo drive in allDrives)
+            {
+                if (IsChildPath(drive.RootDirectory.FullName, sourceDir) && (ret == null || IsChildPath(ret.RootDirectory.FullName, drive.RootDirectory.FullName)))
+                {
+                    ret = drive;
+                }
+            }
+            return ret;
+        }
+
+        private static void MoveOrCopy(string sourceDir, string targetDir, CancellationToken token)
+        {
+            DriveInfo[] allDrives = DriveInfo.GetDrives();
+            if (GetDrive(allDrives, sourceDir) != GetDrive(allDrives, targetDir))
+            {
+                CopyDirectory(sourceDir, targetDir, token);
+                DeleteDirectory(sourceDir, token);
+            }
+            else
+            {
+                Directory.Move(sourceDir, targetDir);
+            }
+        }
+
         public static void MoveDirectory(string sourceDir, string targetDir, string stagingDir, CancellationToken token)
         {
             ArgUtil.Directory(sourceDir, nameof(sourceDir));
@@ -217,7 +249,7 @@ namespace GitHub.Runner.Sdk
             Directory.CreateDirectory(Path.GetDirectoryName(stagingDir));
 
             // move source to staging
-            Directory.Move(sourceDir, stagingDir);
+            MoveOrCopy(sourceDir, stagingDir, token);
 
             // delete existing targetDir
             DeleteDirectory(targetDir, token);
@@ -226,7 +258,7 @@ namespace GitHub.Runner.Sdk
             Directory.CreateDirectory(Path.GetDirectoryName(targetDir));
 
             // move staging to target
-            Directory.Move(stagingDir, targetDir);
+            MoveOrCopy(stagingDir, targetDir, token);
         }
 
         /// <summary>
