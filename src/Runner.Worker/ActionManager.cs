@@ -115,6 +115,14 @@ namespace GitHub.Runner.Worker
                 executionContext.Result = TaskResult.Failed;
                 throw;
             }
+            catch (InvalidActionArchiveException ex)
+            {
+                // Log the error and fail the PrepareActionsAsync Initialization.
+                Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
+                executionContext.InfrastructureError(ex.Message);
+                executionContext.Result = TaskResult.Failed;
+                throw;
+            }
             if (!FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 if (state.ImagesToPull.Count > 0)
@@ -907,7 +915,14 @@ namespace GitHub.Runner.Worker
                 Directory.CreateDirectory(stagingDirectory);
 
 #if OS_WINDOWS
-                ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
+                try
+                {
+                    ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
+                }
+                catch (InvalidDataException e)
+                {
+                    throw new InvalidActionArchiveException($"Can't un-zip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}. error: {ex}.");
+                }
 #else
                 string tar = WhichUtil.Which("tar", require: true, trace: Trace);
 
@@ -933,7 +948,7 @@ namespace GitHub.Runner.Worker
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
-                        throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
+                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}. return code: {exitCode}.");
                     }
                 }
 #endif
