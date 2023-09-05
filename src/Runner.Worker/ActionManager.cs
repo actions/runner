@@ -948,7 +948,7 @@ namespace GitHub.Runner.Worker
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
-                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}. return code: {exitCode}.");
+                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. Action being checked out: {downloadInfo.NameWithOwner}. return code: {exitCode}.");
                     }
                 }
 #endif
