@@ -921,7 +921,7 @@ namespace GitHub.Runner.Worker
                 }
                 catch (InvalidDataException e)
                 {
-                    throw new InvalidActionArchiveException($"Can't un-zip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}. error: {ex}.");
+                    throw new InvalidActionArchiveException($"Can't un-zip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}. error: {e}.");
                 }
 #else
                 string tar = WhichUtil.Which("tar", require: true, trace: Trace);
