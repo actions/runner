@@ -921,7 +921,7 @@ namespace GitHub.Runner.Worker
                 }
                 catch (InvalidDataException e)
                 {
-                    throw new InvalidActionArchiveException($"Can't un-zip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}. error: {e}.");
+                    throw new InvalidActionArchiveException($"Can't un-zip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. error: {e}.");
                 }
 #else
                 string tar = WhichUtil.Which("tar", require: true, trace: Trace);
@@ -948,7 +948,7 @@ namespace GitHub.Runner.Worker
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
-                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. Action being checked out: {downloadInfo.NameWithOwner}. return code: {exitCode}.");
+                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
                     }
                 }
 #endif
