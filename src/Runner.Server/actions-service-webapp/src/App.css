@@ -30,3 +30,9 @@
     transform: rotate(360deg);
   }
 }
+
+.progress-ring{
+  animation: App-logo-spin infinite 1s linear;
+  transform-origin: 50% 50%;
+  display: inline-block;
+}

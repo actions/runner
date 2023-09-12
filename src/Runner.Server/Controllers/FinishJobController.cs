@@ -50,7 +50,7 @@ namespace Runner.Server.Controllers
                     }
                 }
                 {
-                    var job = _context.Jobs.Find(ev.JobId);
+                    var job = (from j in _context.Jobs where j.JobId == ev.JobId select j).Include(j => j.WorkflowRunAttempt).FirstOrDefault();
                     if(job != null) {
                         if(job.Result != null) {
                             // Prevent overriding job with a result
@@ -62,6 +62,7 @@ namespace Runner.Server.Controllers
                         } else {
                             ev.Outputs = new Dictionary<String, VariableValue>(StringComparer.OrdinalIgnoreCase);
                         }
+                        MessageController.UpdateJob(this, job);
                         _context.SaveChanges();
                         new TimelineController(_context, Configuration).SyncLiveLogsToDb(job.TimeLineId);
                     }

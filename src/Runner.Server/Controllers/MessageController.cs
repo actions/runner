@@ -698,6 +698,10 @@ namespace Runner.Server.Controllers
             } else {
                 _context.SaveChanges();
             }
+            run.Result = _attempt.Result;
+            run.Ref = _attempt.Ref;
+            run.Sha = _attempt.Sha;
+            run.EventName = _attempt.EventName;
             Task.Run(() => runevent?.Invoke(owner_name, repo_name, run));
             workflowrun?.Invoke(run.Id);
             var runid = run.Id;
@@ -795,6 +799,10 @@ namespace Runner.Server.Controllers
             } else {
                 _context.SaveChanges();
             }
+            run.Result = _attempt.Result;
+            run.Ref = _attempt.Ref;
+            run.Sha = _attempt.Sha;
+            run.EventName = _attempt.EventName;
             Task.Run(() => runevent?.Invoke(owner_name, repo_name, run));
             workflowrun?.Invoke(run.Id);
             var runid = run.Id;
@@ -861,6 +869,10 @@ namespace Runner.Server.Controllers
             } catch (Exception m){
                 throw new Exception("Failed to add job  " + job.name + " / " + job.WorkflowIdentifier + " / " + job.Matrix + " / " + job.JobId  + ": " + m.Message);
             }
+        }
+
+        public static void UpdateJob(object sender, Job job) {
+            Task.Run(() => jobupdateevent?.Invoke(sender, job.repo, job));
         }
 
         private Job GetJob(Guid id) {
@@ -1400,6 +1412,7 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                     } else {
                         attempt.Result = TaskResult.Skipped;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
@@ -1802,8 +1815,9 @@ namespace Runner.Server.Controllers
                 workflowContext.WorkflowRunName = callingJob?.WorkflowRunName ?? evalRunName(workflowTraceWriter, (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "run-name" select r).FirstOrDefault().Value) ?? evalRunName(workflowContext.HasFeature("system.runner.server.debugdefrunname") ? workflowTraceWriter : new EmptyTraceWriter(), new BasicExpressionToken(null, null, null, "github.event_name == 'push' && github.event.head_commit.message || startswith(github.event_name, 'pull_request') && github.event.pull_request.title || ''")) ?? workflowname;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowContext.WorkflowRunName}");
-                    if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowContext.WorkflowRunName)) {
+                    if(attempt.WorkflowRun != null && !string.IsNullOrEmpty(workflowContext.WorkflowRunName)) {
                         attempt.WorkflowRun.DisplayName = workflowContext.WorkflowRunName;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                 }
@@ -2673,6 +2687,7 @@ namespace Runner.Server.Controllers
                             WorkflowStates.Remove(runid, out _);
                             workflowevent?.Invoke(evargs);
                             attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
+                            UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
                         }
                         _context.Dispose();
@@ -2934,6 +2949,7 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = true });
                     } else {
                         attempt.Result = TaskResult.Succeeded;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                 }
@@ -2944,6 +2960,7 @@ namespace Runner.Server.Controllers
                 } else {
                     //updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
                     attempt.Result = TaskResult.Failed;
+                    UpdateWorkflowRun(attempt, repository_name);
                     _context.SaveChanges();
                 }
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
@@ -2954,6 +2971,16 @@ namespace Runner.Server.Controllers
                 }
             }
             return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
+        }
+
+        private static void UpdateWorkflowRun(WorkflowRunAttempt attempt, string repository_name)
+        {
+            attempt.WorkflowRun.Result = attempt.Result;
+            attempt.WorkflowRun.Ref = attempt.Ref;
+            attempt.WorkflowRun.Sha = attempt.Sha;
+            attempt.WorkflowRun.EventName = attempt.EventName;
+            var ownerAndRepo = repository_name.Split("/", 2);
+            Task.Run(() => runupdateevent?.Invoke(ownerAndRepo[0], ownerAndRepo[1], attempt.WorkflowRun));
         }
 
         private struct NugetVersion {
@@ -3297,6 +3324,7 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                     } else {
                         attempt.Result = TaskResult.Skipped;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
@@ -3347,8 +3375,9 @@ namespace Runner.Server.Controllers
                 workflowname = pipeline.Name ?? workflowname;
                 if(callingJob == null) {
                     workflowTraceWriter.Info($"Updated Workflow Name: {workflowname}");
-                    if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
+                    if(attempt.WorkflowRun != null && !string.IsNullOrEmpty(workflowname)) {
                         attempt.WorkflowRun.DisplayName = workflowname;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                 }
@@ -4570,6 +4599,7 @@ namespace Runner.Server.Controllers
                             WorkflowStates.Remove(runid, out _);
                             workflowevent?.Invoke(evargs);
                             attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
+                            UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
                         }
                         _context.Dispose();
@@ -4787,6 +4817,7 @@ namespace Runner.Server.Controllers
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = true });
                     } else {
                         attempt.Result = TaskResult.Succeeded;
+                        UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
                     }
                 }
@@ -4797,6 +4828,7 @@ namespace Runner.Server.Controllers
                 } else {
                     //updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
                     attempt.Result = TaskResult.Failed;
+                    UpdateWorkflowRun(attempt, repository_name);
                     _context.SaveChanges();
                 }
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
@@ -7210,7 +7242,8 @@ namespace Runner.Server.Controllers
 
         [HttpGet("workflow/runs")]
         public async Task<IActionResult> GetWorkflows([FromQuery] int? page, [FromQuery] string owner, [FromQuery] string repo) {
-            var query = (from j in _context.Set<WorkflowRunAttempt>() where j.Attempt == 1 && j.WorkflowRun.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower() && j.WorkflowRun.Workflow.Repository.Name.ToLower() == repo.ToLower() orderby j.WorkflowRun.Id descending select j).Include(j => j.WorkflowRun).Select(j => new WorkflowRun() { EventName = j.EventName, Ref = j.Ref, Sha = j.Sha, Result = j.Result, FileName = j.WorkflowRun.FileName, DisplayName = j.WorkflowRun.DisplayName, Id = j.WorkflowRun.Id});
+            //var query = (from j in _context.Set<WorkflowRun>() where j.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower() && j.Workflow.Repository.Name.ToLower() == repo.ToLower() orderby j.WorkflowRun.Id descending select j).Select(g => new WorkflowRun() { EventName = from _context.Set<WorkflowRunAttempt>() .EventName, Ref = g.Last().Ref, Sha = g.Last().Sha, Result = g.Last().Result, FileName = g.Last().WorkflowRun.FileName, DisplayName = g.Last().WorkflowRun.DisplayName, Id = g.Last().WorkflowRun.Id});
+            var query = (from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && run.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower() && run.Workflow.Repository.Name.ToLower() == repo.ToLower() orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id});
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
@@ -7464,9 +7497,11 @@ namespace Runner.Server.Controllers
 
         private delegate void JobEvent(object sender, string repo, Job job);
         private static event JobEvent jobevent;
+        private static event JobEvent jobupdateevent;
         private static event Action<Owner> ownerevent;
         private static event Action<Repository> repoevent;
         private static event Action<string, string, WorkflowRun> runevent;
+        private static event Action<string, string, WorkflowRun> runupdateevent;
         public class WorkflowEventArgs {
             public long runid {get;set;}
             public bool Success {get;set;}
@@ -7530,6 +7565,12 @@ namespace Runner.Server.Controllers
                             chwriter.WriteAsync(new KeyValuePair<string, object>("job", job));
                         }
                     };
+                    JobEvent updatehandler = (sender, crepo, job) => {
+                        var repoowner = crepo.Split("/", 2);
+                        if((string.IsNullOrEmpty(owner) || owner.ToLower() == repoowner[0].ToLower()) && (string.IsNullOrEmpty(repo) || repo.ToLower() == repoowner[1].ToLower()) && (runid == null || runid == job.runid)) {
+                            chwriter.WriteAsync(new KeyValuePair<string, object>("jobupdate", job));
+                        }
+                    };
                     Action<Owner> ownerh = cowner => {
                         if(string.IsNullOrEmpty(owner)) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("owner", cowner));
@@ -7543,6 +7584,11 @@ namespace Runner.Server.Controllers
                     Action<string, string, WorkflowRun> runh = (cowner, crepo, crun) => {
                         if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) || (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("workflowrun", crun));
+                        }
+                    };
+                    Action<string, string, WorkflowRun> runupdateh = (cowner, crepo, crun) => {
+                        if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) || (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
+                            chwriter.WriteAsync(new KeyValuePair<string, object>("workflowrunupdate", crun));
                         }
                     };
                     var chreader = queue2.Reader;
@@ -7567,17 +7613,21 @@ namespace Runner.Server.Controllers
                         }
                     }, requestAborted);
                     jobevent += handler;
+                    jobupdateevent += updatehandler;
                     ownerevent += ownerh;
                     repoevent += repoh;
                     runevent += runh;
+                    runupdateevent += runupdateh;
                     try {
                         await ping;
                     } catch(OperationCanceledException) {
 
                     } finally {
+                        runupdateevent -= runupdateh;
                         runevent -= runh;
                         repoevent -= repoh;
                         ownerevent -= ownerh;
+                        jobupdateevent -= updatehandler;
                         jobevent -= handler;
                     }
                 }
