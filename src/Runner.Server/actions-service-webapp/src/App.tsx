@@ -44,11 +44,18 @@ function List() {
           setLoading(false);
         }
       })()
+      var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event2?filter=${encodeURIComponent(params.owner + "/" + params.repo)}&runid=${encodeURIComponent(params.runid || "null")}`);
       if(page === 0) {
-        var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event2?filter=${encodeURIComponent(params.owner + "/" + params.repo)}&runid=${encodeURIComponent(params.runid || "null")}`);
         source.addEventListener("job", ev => {
           var x = JSON.parse((ev as MessageEvent).data) as IJob;
           setJobs(_jobs => {
+              for(var i in _jobs) {
+                if(_jobs[i].jobId === x.jobId) {
+                  var final = [..._jobs];
+                  final[i] = x;
+                  return final;
+                }
+              }
               var jobs = [..._jobs];
               var insertp = jobs.findIndex(j => j.runid > x.runid && j.attempt > x.attempt && j.requestId > x.requestId);
               var sp = insertp > 0 ? jobs.splice(insertp) : jobs.splice(0);
@@ -63,26 +70,21 @@ function List() {
               return final;
           });
         });
-        source.addEventListener("jobupdate", ev => {
-          console.log("jobupdate: " + JSON.stringify(ev));
-          var x = JSON.parse((ev as MessageEvent).data) as IJob;
-          setJobs(_jobs => {
-              var jobs = [..._jobs];
-              var insertp = jobs.findIndex(j => j.runid > x.runid && j.attempt > x.attempt && j.requestId > x.requestId);
-              var sp = insertp > 0 ? jobs.splice(insertp) : jobs.splice(0);
-              if(sp.length > 0 && sp[0].jobId === x.jobId) {
-                sp.shift();
-              }
-              var final = [...jobs, x, ...sp];
-              // Remove elements from the first page
-              if(final.length > 30) {
-                  final.length = 30;
-              }
-              return final;
-          });
-        });
-        return () => source.close();
       }
+      source.addEventListener("jobupdate", ev => {
+        var x = JSON.parse((ev as MessageEvent).data) as IJob;
+        setJobs(_jobs => {
+          for(var i in _jobs) {
+            if(_jobs[i].jobId === x.jobId) {
+              var final = [..._jobs];
+              final[i] = x;
+              return final;
+            }
+          }
+          return _jobs;
+        });
+      });
+      return () => source.close();
     }
   }, [page, params.page, params.owner, params.repo, params.runid]);
   return (<span style={{
