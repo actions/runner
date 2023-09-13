@@ -1,4 +1,4 @@
-name: ‘Close stale Runner issues’
+name: Stale Bot
 on:
   workflow_dispatch:
   schedule:
@@ -9,9 +9,8 @@ jobs:
     steps:
       - uses: actions/stale@v8
         with:
-          stale-issue-message: ‘This issue is stale because it has been open 365 days with no activity. Remove stale label or comment or this will be closed in 15 days.’
-          close-issue-message: ‘This issue was closed because it has been stalled for 15 days with no activity.’
-          exempt-issue-labels: ‘keep’
+          stale-issue-message: "This issue is stale because it has been open 365 days with no activity. Remove stale label or comment or this will be closed in 15 days."
+          close-issue-message: "This issue was closed because it has been stalled for 15 days with no activity."
+          exempt-issue-labels: "keep"
           days-before-stale: 365
           days-before-close: 15
-          debug-only: true

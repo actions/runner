@@ -99,6 +99,63 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_DownloadActionFromDotCom_ZipFileError()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+                const string ActionName = "ownerName/sample-action";
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = ActionName,
+                            Ref = "main",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                // Create a corrupted ZIP file for testing
+                var tempDir = _hc.GetDirectory(WellKnownDirectory.Temp);
+                Directory.CreateDirectory(tempDir);
+                var archiveFile = Path.Combine(tempDir, Path.GetRandomFileName());
+                using (var fileStream = new FileStream(archiveFile, FileMode.Create))
+                {
+                    // Used Co-Pilot for magic bytes here. They represent the tar header and just need to be invalid for the CLI to break.
+                    var buffer = new byte[] { 0x50, 0x4B, 0x03, 0x04, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00 };
+                    fileStream.Write(buffer, 0, buffer.Length);
+                }
+                using var stream = File.OpenRead(archiveFile);
+
+                string dotcomArchiveLink = GetLinkToActionArchive("https://api.github.com", ActionName, "main");
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(dotcomArchiveLink)), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+
+                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
+                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
+                _hc.SetSingleton(mockHandlerFactory.Object);
+
+                _configurationStore.Object.GetSettings().IsHostedServer = true;
+
+                // Act + Assert
+                await Assert.ThrowsAsync<InvalidActionArchiveException>(async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void PrepareActions_DownloadUnknownActionFromGraph_OnPremises_Legacy()
         {
             try

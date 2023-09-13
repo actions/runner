@@ -9,6 +9,8 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
   - The runner needs to access `https://api.github.com` for downloading actions.
   - The runner needs to access `https://vstoken.actions.githubusercontent.com/_apis/.../` for requesting an access token.
   - The runner needs to access `https://pipelines.actions.githubusercontent.com/_apis/.../` for receiving workflow jobs.
+  ---
+  **NOTE:** for the full list of domains that are required to be in the firewall allow list refer to the [GitHub self-hosted runners requirements documentation](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-between-self-hosted-runners-and-github).
 
   These can by tested by running the following `curl` commands from your self-hosted runner machine:
 
