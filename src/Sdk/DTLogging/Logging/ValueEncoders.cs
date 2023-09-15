@@ -98,7 +98,17 @@ namespace GitHub.DistributedTask.Logging
                 var secretSection = string.Empty;
                 if (value.Contains("&+"))
                 {
-                    secretSection = value.Substring(0, value.IndexOf("&+") + "&+".Length);
+                    int endIndex = value.IndexOf("&+") + "&+".Length;
+                    
+                    // If string ends with "&+", grab the whole string
+                    if (endIndex == value.Length)
+                    {
+                        secretSection = value;
+                    }
+                    else
+                    {
+                        secretSection = value.Substring(0, endIndex);
+                    }
                 }
                 else
                 {
