@@ -27,5 +27,9 @@ namespace Runner.Server.Models
         public String Sha { get; set; }
         [NotMapped]
         public TaskResult? Result { get; set; }
+        [NotMapped]
+        public String Owner { get; set; }
+        [NotMapped]
+        public String Repo { get; set; }
     }
 }

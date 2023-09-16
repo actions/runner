@@ -37,6 +37,9 @@ using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Quartz;
 using Microsoft.Data.Sqlite;
 using System.Reflection;
+using Microsoft.AspNetCore.Rewrite;
+using System.Net;
+using Microsoft.Net.Http.Headers;
 
 namespace Runner.Server
 {
@@ -378,11 +381,41 @@ namespace Runner.Server
                 endpoints.MapControllers();
             });
 
+            var defaultWebUIView = Configuration.GetSection("Runner.Server")?.GetValue<string>("DefaultWebUIView");
+            if(!string.IsNullOrEmpty(defaultWebUIView)) {
+                var rewriteOptions = new RewriteOptions();
+                rewriteOptions.Rules.Add(new AllWorlflowsRedirect(defaultWebUIView));
+                app.UseRewriter(rewriteOptions);
+            }
+
             DefaultFilesOptions options = new DefaultFilesOptions();
             options.DefaultFileNames.Clear();
             options.DefaultFileNames.Add("index.html");
             app.UseDefaultFiles(options);
             app.UseStaticFiles();
+        }
+    }
+
+    internal class AllWorlflowsRedirect : IRule
+    {
+        public AllWorlflowsRedirect(string defaultWebUIView) {
+            DefaultWebUIView = defaultWebUIView;
+        }
+
+        public string DefaultWebUIView { get; }
+
+        public void ApplyRule(RewriteContext context)
+        {
+            var request = context.HttpContext.Request;            
+            if (request.Path.Value == null || request.Query.ContainsKey("view") || request.Path != "/")
+            {
+                return;
+            }
+
+            var response = context.HttpContext.Response;
+            response.StatusCode = (int) HttpStatusCode.Moved;
+            context.Result = RuleResult.EndResponse;
+            response.Headers[HeaderNames.Location] = "/" + request.QueryString.Add("view", DefaultWebUIView);
         }
     }
 }
