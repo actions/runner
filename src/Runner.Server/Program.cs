@@ -27,9 +27,8 @@ namespace Runner.Server
                     Console.WriteLine($"Failed to change Process Group exception");
                 }
             }
-            //var b = new ConfigurationBuilder();
-            //b.AddJsonFile("C:\\Users\\Christopher\\runner\\src\\Runner.Server\\appsettings.Development.json");
-            //new MessageController(/* new Logger<MessageController>(new LoggerFactory()) */b.Build(), new MemoryCache(new Options())).ConvertYaml("C:/Users/Christopher/runner/src/Runner.Server/test.yml");
+            // Delete the environment variable, otherwise it is defined inside the job
+            System.Environment.SetEnvironmentVariable("GHARUN_CHANGE_PROCESS_GROUP", null);
             CreateHostBuilder(args).Build().Run();
         }
 

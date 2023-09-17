@@ -24,6 +24,9 @@ namespace GitHub.Runner.Listener
                     Console.WriteLine($"Failed to change Process Group exception");
                 }
             }
+            // Delete the environment variable, otherwise it is defined inside the job
+            System.Environment.SetEnvironmentVariable("GHARUN_CHANGE_PROCESS_GROUP", null);
+
             // Add environment variables from .env file
             LoadAndSetEnv();
 

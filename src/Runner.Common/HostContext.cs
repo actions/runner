@@ -66,6 +66,7 @@ namespace GitHub.Runner.Common
         private StartupType _startupType;
         private string _perfFile;
         private RunnerWebProxy _webProxy = new RunnerWebProxy();
+        private string configRoot = null;
 
         public event EventHandler Unloading;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
@@ -77,6 +78,8 @@ namespace GitHub.Runner.Common
         {
             // Validate args.
             ArgUtil.NotNullOrEmpty(hostType, nameof(hostType));
+
+            configRoot = Environment.GetEnvironmentVariable("RUNNER_SERVER_CONFIG_ROOT");
 
             _loadContext = AssemblyLoadContext.GetLoadContext(typeof(HostContext).GetTypeInfo().Assembly);
             _loadContext.Unloading += LoadContext_Unloading;
@@ -265,7 +268,7 @@ namespace GitHub.Runner.Common
                     break;
 
                 case WellKnownDirectory.ConfigRoot:
-                    path = Environment.GetEnvironmentVariable("RUNNER_SERVER_CONFIG_ROOT") ?? GetDirectory(WellKnownDirectory.Root);
+                    path = configRoot ?? GetDirectory(WellKnownDirectory.Root);
                     break;
 
                 case WellKnownDirectory.Temp:

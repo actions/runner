@@ -13,6 +13,8 @@ namespace GitHub.Runner.Worker
         {
             using (HostContext context = new HostContext("Worker"))
             {
+                // Delete the environment variable, otherwise it is defined inside the job
+                Environment.SetEnvironmentVariable("RUNNER_SERVER_CONFIG_ROOT", null);
                 return MainAsync(context, args).GetAwaiter().GetResult();
             }
         }

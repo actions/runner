@@ -496,6 +496,8 @@ namespace Runner.Client
                         var code = await inv.ExecuteAsync(tmpdir, file, arguments, runnerEnv, true, null, true, CancellationTokenSource.CreateLinkedTokenSource(source.Token, new CancellationTokenSource(60 * 1000).Token).Token);
                         int execAttempt = 1;
                         var success = false;
+                        // unset RUNNER_SERVER_CONFIG_ROOT to not appear in jobs created by external runners
+                        runnerEnv.Remove("RUNNER_SERVER_CONFIG_ROOT");
                         while(true) {
                             file = runner;
                             try {
