@@ -84,7 +84,14 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Creating job server with URL: {jobServerUrl}");
                 // jobServerQueue is the throttling reporter.
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-                VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
+                var delegatingHandlers = new List<DelegatingHandler>() { new ThrottlingReportHandler(_jobServerQueue) };
+                message.Variables.TryGetValue("Actions.EnableHttpRedirects", out VariableValue enableHttpRedirects);
+                if (StringUtil.ConvertToBoolean(enableHttpRedirects?.Value) &&
+                    !StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_NO_HTTP_REDIRECTS")))
+                {
+                    delegatingHandlers.Add(new RedirectMessageHandler(Trace));
+                }
+                VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, delegatingHandlers);
                 await jobServer.ConnectAsync(jobConnection);
 
                 _jobServerQueue.Start(message);
@@ -229,7 +236,7 @@ namespace GitHub.Runner.Worker
                 finally
                 {
                     Trace.Info("Finalize job.");
-                    jobExtension.FinalizeJob(jobContext, message, jobStartTimeUtc);
+                    await jobExtension.FinalizeJob(jobContext, message, jobStartTimeUtc);
                 }
 
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");
@@ -269,10 +276,10 @@ namespace GitHub.Runner.Worker
         {
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
-            if (jobContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
             {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings));
-                jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
             }
 
             // Make sure to clean temp after file upload since they may be pending fileupload still use the TEMP dir.
@@ -366,12 +373,6 @@ namespace GitHub.Runner.Worker
                     // Ignore any error since suggest runner update is best effort.
                     Trace.Error($"Caught exception during runner version check: {ex}");
                 }
-            }
-
-            if (jobContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
-            {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings));
-                jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
             }
 
             if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))

@@ -99,6 +99,63 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_DownloadActionFromDotCom_ZipFileError()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+                const string ActionName = "ownerName/sample-action";
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = ActionName,
+                            Ref = "main",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                // Create a corrupted ZIP file for testing
+                var tempDir = _hc.GetDirectory(WellKnownDirectory.Temp);
+                Directory.CreateDirectory(tempDir);
+                var archiveFile = Path.Combine(tempDir, Path.GetRandomFileName());
+                using (var fileStream = new FileStream(archiveFile, FileMode.Create))
+                {
+                    // Used Co-Pilot for magic bytes here. They represent the tar header and just need to be invalid for the CLI to break.
+                    var buffer = new byte[] { 0x50, 0x4B, 0x03, 0x04, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00 };
+                    fileStream.Write(buffer, 0, buffer.Length);
+                }
+                using var stream = File.OpenRead(archiveFile);
+
+                string dotcomArchiveLink = GetLinkToActionArchive("https://api.github.com", ActionName, "main");
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(dotcomArchiveLink)), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+
+                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
+                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
+                _hc.SetSingleton(mockHandlerFactory.Object);
+
+                _configurationStore.Object.GetSettings().IsHostedServer = true;
+
+                // Act + Assert
+                await Assert.ThrowsAsync<InvalidActionArchiveException>(async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void PrepareActions_DownloadUnknownActionFromGraph_OnPremises_Legacy()
         {
             try
@@ -1424,6 +1481,74 @@ runs:
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LoadsNode20ActionDefinition()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                const string Content = @"
+# Container action
+name: 'Hello World'
+description: 'Greet the world and record the time'
+author: 'GitHub'
+inputs:
+  greeting: # id of input
+    description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
+    required: true
+    default: 'Hello'
+  entryPoint: # id of input
+    description: 'optional docker entrypoint overwrite.'
+    required: false
+outputs:
+  time: # id of output
+    description: 'The time we did the greeting'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  using: 'node20'
+  main: 'task.js'
+";
+                Pipelines.ActionStep instance;
+                string directory;
+                CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
+
+                // Act.
+                Definition definition = _actionManager.LoadAction(_ec.Object, instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+                Dictionary<string, string> inputDefaults = new(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("Hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
+                Assert.NotNull(definition.Data.Execution); // execution
+
+                Assert.NotNull(definition.Data.Execution as NodeJSActionExecutionData);
+                Assert.Equal("task.js", (definition.Data.Execution as NodeJSActionExecutionData).Script);
+                Assert.Equal("node20", (definition.Data.Execution as NodeJSActionExecutionData).NodeVersion);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]

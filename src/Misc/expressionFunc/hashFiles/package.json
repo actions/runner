@@ -9,7 +9,9 @@
     "format-check": "prettier --check **/*.ts",
     "lint": "eslint src/**/*.ts",
     "pack": "ncc build -o ../../layoutbin/hashFiles",
-    "all": "npm run build && npm run format && npm run lint && npm run pack"
+    "all": "npm run format && npm run lint && npm run build && npm run pack",
+    "prepare": "cd ../../../../ && husky install"
+
   },
   "repository": {
     "type": "git",
@@ -18,18 +20,32 @@
   "keywords": [
     "actions"
   ],
+  "lint-staged": {
+    "*.md": [
+      "prettier --write",
+      "git add ."
+    ],
+    "*.{ts,json}": [
+      "sh -c 'npm run all'",
+      "git add ."
+    ]
+  },
   "author": "GitHub Actions",
   "license": "MIT",
   "dependencies": {
-    "@actions/glob": "^0.1.0"
+    "@actions/glob": "^0.4.0"
   },
   "devDependencies": {
-    "@types/node": "^12.7.12",
-    "@typescript-eslint/parser": "^5.15.0",
-    "@vercel/ncc": "^0.36.0",
-    "eslint": "^8.11.0",
-    "eslint-plugin-github": "^4.3.5",
-    "prettier": "^1.19.1",
-    "typescript": "^3.6.4"
+    "@types/node": "^20.5.6",
+    "@typescript-eslint/eslint-plugin": "^6.4.0",
+    "@typescript-eslint/parser": "^6.4.1",
+    "@vercel/ncc": "^0.36.1",
+    "eslint": "^8.47.0",
+    "eslint-plugin-github": "^4.9.2",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.1",
+    "typescript": "^5.2.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^14.0.0"
   }
 }

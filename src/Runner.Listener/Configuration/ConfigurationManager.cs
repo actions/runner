@@ -244,7 +244,7 @@ namespace GitHub.Runner.Listener.Configuration
                 List<TaskAgent> agents;
                 if (runnerSettings.UseV2Flow)
                 {
-                    agents = await _dotcomServer.GetRunnersAsync(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
+                    agents = await _dotcomServer.GetRunnerByNameAsync(runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
                 }
                 else
                 {
@@ -263,7 +263,23 @@ namespace GitHub.Runner.Listener.Configuration
 
                         try
                         {
-                            agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            if (runnerSettings.UseV2Flow)
+                            {
+                                var runner = await _dotcomServer.ReplaceRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                                runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                                agent.Id = runner.Id;
+                                agent.Authorization = new TaskAgentAuthorization()
+                                {
+                                    AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                                    ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                                };
+                            }
+                            else
+                            {
+                                agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            }
+
                             if (command.DisableUpdate &&
                                 command.DisableUpdate != agent.DisableUpdate)
                             {
@@ -709,7 +725,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -772,7 +788,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {

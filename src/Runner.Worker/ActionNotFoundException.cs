@@ -5,8 +5,8 @@ namespace GitHub.Runner.Worker
 {
     public class ActionNotFoundException : Exception
     {
-        public ActionNotFoundException(Uri actionUri)
-            : base(FormatMessage(actionUri))
+        public ActionNotFoundException(Uri actionUri, string requestId)
+            : base(FormatMessage(actionUri, requestId))
         {
         }
 
@@ -25,8 +25,13 @@ namespace GitHub.Runner.Worker
         {
         }
 
-        private static string FormatMessage(Uri actionUri)
+        private static string FormatMessage(Uri actionUri, string requestId)
         {
+            if (!string.IsNullOrEmpty(requestId))
+            {
+                return $"An action could not be found at the URI '{actionUri}' ({requestId})";
+            }
+
             return $"An action could not be found at the URI '{actionUri}'";
         }
     }

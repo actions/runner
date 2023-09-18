@@ -38,7 +38,7 @@ namespace GitHub.Runner.Listener
         private ITerminal _terminal;
         private IRunnerServer _runnerServer;
         private int _poolId;
-        private int _agentId;
+        private ulong _agentId;
         private readonly ConcurrentQueue<string> _updateTrace = new();
         private Task _cloneAndCalculateContentHashTask;
         private string _dotnetRuntimeCloneDirectory;

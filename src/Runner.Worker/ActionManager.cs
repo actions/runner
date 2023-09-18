@@ -10,15 +10,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Services.Common;
-using WebApi = GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants;
-using GitHub.DistributedTask.WebApi;
+using WebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Worker
 {
@@ -108,6 +108,14 @@ namespace GitHub.Runner.Worker
                 result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
             }
             catch (FailedToResolveActionDownloadInfoException ex)
+            {
+                // Log the error and fail the PrepareActionsAsync Initialization.
+                Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
+                executionContext.InfrastructureError(ex.Message);
+                executionContext.Result = TaskResult.Failed;
+                throw;
+            }
+            catch (InvalidActionArchiveException ex)
             {
                 // Log the error and fail the PrepareActionsAsync Initialization.
                 Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
@@ -835,6 +843,12 @@ namespace GitHub.Runner.Worker
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(link))
                                 {
+                                    var requestId = UrlUtil.GetGitHubRequestId(response.Headers);
+                                    if (!string.IsNullOrEmpty(requestId))
+                                    {
+                                        Trace.Info($"Request URL: {link} X-GitHub-Request-Id: {requestId} Http Status: {response.StatusCode}");
+                                    }
+
                                     if (response.IsSuccessStatusCode)
                                     {
                                         using (var result = await response.Content.ReadAsStreamAsync())
@@ -849,7 +863,7 @@ namespace GitHub.Runner.Worker
                                     else if (response.StatusCode == HttpStatusCode.NotFound)
                                     {
                                         // It doesn't make sense to retry in this case, so just stop
-                                        throw new ActionNotFoundException(new Uri(link));
+                                        throw new ActionNotFoundException(new Uri(link), requestId);
                                     }
                                     else
                                     {
@@ -901,7 +915,14 @@ namespace GitHub.Runner.Worker
                 Directory.CreateDirectory(stagingDirectory);
 
 #if OS_WINDOWS
-                ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
+                try
+                {
+                    ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
+                }
+                catch (InvalidDataException e)
+                {
+                    throw new InvalidActionArchiveException($"Can't un-zip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. error: {e}.");
+                }
 #else
                 string tar = WhichUtil.Which("tar", require: true, trace: Trace);
 
@@ -927,7 +948,7 @@ namespace GitHub.Runner.Worker
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
-                        throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
+                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
                     }
                 }
 #endif

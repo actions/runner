@@ -97,7 +97,7 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Runner OAuth token has been revoked. Unable to pull message.");
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
+                catch (AccessDeniedException e) when (e.ErrorCode == 1)
                 {
                     throw;
                 }
@@ -108,7 +108,7 @@ namespace GitHub.Runner.Listener
 
                     if (!IsGetNextMessageExceptionRetriable(ex))
                     {
-                        throw;
+                        throw new NonRetryableException("Get next message failed with non-retryable error.", ex);
                     }
                     else
                     {

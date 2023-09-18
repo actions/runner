@@ -15,12 +15,11 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(RunnerDotcomServer))]
     public interface IRunnerDotcomServer : IRunnerService
     {
-        Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName);
+        Task<List<TaskAgent>> GetRunnerByNameAsync(string githubUrl, string githubToken, string agentName);
 
         Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
+        Task<DistributedTask.WebApi.Runner> ReplaceRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
         Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken);
-
-        string GetGitHubRequestId(HttpResponseHeaders headers);
     }
 
     public enum RequestType
@@ -42,7 +41,7 @@ namespace GitHub.Runner.Common
         }
 
 
-        public async Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName = null)
+        public async Task<List<TaskAgent>> GetRunnerByNameAsync(string githubUrl, string githubToken, string agentName)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
@@ -52,11 +51,11 @@ namespace GitHub.Runner.Common
                 // org runner
                 if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runner-groups/{runnerGroupId}/runners";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
                 else
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runner-groups/{runnerGroupId}/runners";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
             }
             else if (path.Length == 2)
@@ -69,11 +68,11 @@ namespace GitHub.Runner.Common
 
                 if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runner-groups/{runnerGroupId}/runners";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
                 else
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runner-groups/{runnerGroupId}/runners";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
             }
             else
@@ -82,14 +81,8 @@ namespace GitHub.Runner.Common
             }
 
             var runnersList = await RetryRequest<ListRunnersResponse>(githubApiUrl, githubToken, RequestType.Get, 3, "Failed to get agents pools");
-            var agents = runnersList.ToTaskAgents();
 
-            if (string.IsNullOrEmpty(agentName))
-            {
-                return agents;
-            }
-
-            return agents.Where(x => string.Equals(x.Name, agentName, StringComparison.OrdinalIgnoreCase)).ToList();
+            return runnersList.ToTaskAgents();
         }
 
         public async Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken)
@@ -138,6 +131,16 @@ namespace GitHub.Runner.Common
 
         public async Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
         {
+            return await AddOrReplaceRunner(runnerGroupId, agent, githubUrl, githubToken, publicKey, false);
+        }
+
+        public async Task<DistributedTask.WebApi.Runner> ReplaceRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
+        {
+            return await AddOrReplaceRunner(runnerGroupId, agent, githubUrl, githubToken, publicKey, true);
+        }
+
+        private async Task<DistributedTask.WebApi.Runner> AddOrReplaceRunner(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey, bool replace)
+        {
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
             string githubApiUrl;
@@ -159,8 +162,14 @@ namespace GitHub.Runner.Common
                         {"updates_disabled", agent.DisableUpdate},
                         {"ephemeral", agent.Ephemeral},
                         {"labels", agent.Labels},
-                        {"public_key", publicKey}
+                        {"public_key", publicKey},
                     };
+
+            if (replace)
+            {
+                bodyObject.Add("runner_id", agent.Id);
+                bodyObject.Add("replace", replace);
+            }
 
             var body = new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json");
 
@@ -195,7 +204,7 @@ namespace GitHub.Runner.Common
                         if (response != null)
                         {
                             responseStatus = response.StatusCode;
-                            var githubRequestId = GetGitHubRequestId(response.Headers);
+                            var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                             if (response.IsSuccessStatusCode)
                             {
@@ -223,15 +232,6 @@ namespace GitHub.Runner.Common
                 Trace.Info($"Retrying in {backOff.Seconds} seconds");
                 await Task.Delay(backOff);
             }
-        }
-
-        public string GetGitHubRequestId(HttpResponseHeaders headers)
-        {
-            if (headers.TryGetValues("x-github-request-id", out var headerValues))
-            {
-                return headerValues.FirstOrDefault();
-            }
-            return string.Empty;
         }
     }
 }
