@@ -15,9 +15,10 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(RunnerDotcomServer))]
     public interface IRunnerDotcomServer : IRunnerService
     {
-        Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName);
+        Task<List<TaskAgent>> GetRunnerByNameAsync(string githubUrl, string githubToken, string agentName);
 
         Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
+        Task<DistributedTask.WebApi.Runner> ReplaceRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey);
         Task<List<TaskAgentPool>> GetRunnerGroupsAsync(string githubUrl, string githubToken);
     }
 
@@ -40,7 +41,7 @@ namespace GitHub.Runner.Common
         }
 
 
-        public async Task<List<TaskAgent>> GetRunnersAsync(int runnerGroupId, string githubUrl, string githubToken, string agentName)
+        public async Task<List<TaskAgent>> GetRunnerByNameAsync(string githubUrl, string githubToken, string agentName)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
@@ -130,6 +131,16 @@ namespace GitHub.Runner.Common
 
         public async Task<DistributedTask.WebApi.Runner> AddRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
         {
+            return await AddOrReplaceRunner(runnerGroupId, agent, githubUrl, githubToken, publicKey, false);
+        }
+
+        public async Task<DistributedTask.WebApi.Runner> ReplaceRunnerAsync(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey)
+        {
+            return await AddOrReplaceRunner(runnerGroupId, agent, githubUrl, githubToken, publicKey, true);
+        }
+
+        private async Task<DistributedTask.WebApi.Runner> AddOrReplaceRunner(int runnerGroupId, TaskAgent agent, string githubUrl, string githubToken, string publicKey, bool replace)
+        {
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
             string githubApiUrl;
@@ -151,8 +162,14 @@ namespace GitHub.Runner.Common
                         {"updates_disabled", agent.DisableUpdate},
                         {"ephemeral", agent.Ephemeral},
                         {"labels", agent.Labels},
-                        {"public_key", publicKey}
+                        {"public_key", publicKey},
                     };
+
+            if (replace)
+            {
+                bodyObject.Add("runner_id", agent.Id);
+                bodyObject.Add("replace", replace);
+            }
 
             var body = new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json");
 
