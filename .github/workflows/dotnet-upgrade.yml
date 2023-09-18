@@ -1,0 +1,306 @@
+name: "DotNet SDK Upgrade"
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  dotnet-update:
+    runs-on: ubuntu-latest
+    outputs: 
+      SHOULD_UPDATE: ${{ steps.fetch_latest_version.outputs.SHOULD_UPDATE }}
+      BRANCH_EXISTS: ${{ steps.fetch_latest_version.outputs.BRANCH_EXISTS }}
+      DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION: ${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
+      DOTNET_CURRENT_MAJOR_MINOR_VERSION: ${{ steps.fetch_current_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Get current major minor version
+        id: fetch_current_version
+        shell: bash
+        run: |
+          current_major_minor_patch_version=$(jq .sdk.version ./src/global.json | xargs)
+          current_major_minor_version=$(cut -d '.' -f 1,2 <<< "$current_major_minor_patch_version")
+
+          echo "DOTNET_CURRENT_MAJOR_MINOR_PATCH_VERSION=${current_major_minor_patch_version}" >> $GITHUB_OUTPUT
+          echo "DOTNET_CURRENT_MAJOR_MINOR_VERSION=${current_major_minor_version}" >> $GITHUB_OUTPUT
+      - name: Check patch version
+        id: fetch_latest_version
+        shell: bash
+        run: |
+          latest_patch_version=$(curl -sb -H "Accept: application/json" "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ steps.fetch_current_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}/latest.version")
+          current_patch_version=${{ steps.fetch_current_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_PATCH_VERSION }}
+
+          should_update=0
+          [ "$current_patch_version" != "$latest_patch_version" ] && should_update=1
+
+          # check if git branch already exists for the upgrade
+          branch_already_exists=0
+          
+          if git ls-remote --heads --exit-code origin refs/heads/feature/dotnetsdk-upgrade/${latest_patch_version};
+          then 
+            branch_already_exists=1
+            should_update=0
+          fi
+          echo "DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION=${latest_patch_version}" >> $GITHUB_OUTPUT
+          echo "SHOULD_UPDATE=${should_update}" >> $GITHUB_OUTPUT
+          echo "BRANCH_EXISTS=${branch_already_exists}" >> $GITHUB_OUTPUT
+      - name: Create an error annotation if branch exists
+        if: ${{ steps.fetch_latest_version.outputs.BRANCH_EXISTS == 1 }}
+        run: echo "::error links::feature/dotnet-sdk-upgrade${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }} https://github.com/actions/runner/tree/feature/dotnet-sdk-upgrade${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}::Branch feature/dotnetsdk-upgrade/${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }} already exists. Please take a look and delete that branch if you wish to recreate"
+      - name: Create a warning annotation if no need to update
+        if: ${{ steps.fetch_latest_version.outputs.SHOULD_UPDATE == 0 && steps.fetch_latest_version.outputs.BRANCH_EXISTS == 0 }}
+        run: echo "::warning ::Latest DotNet SDK patch is ${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}, and we are on ${{ steps.fetch_latest_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_PATCH_VERSION }}. No need to update"
+      - name: Update patch version
+        if: ${{ steps.fetch_latest_version.outputs.SHOULD_UPDATE == 1 && steps.fetch_latest_version.outputs.BRANCH_EXISTS == 0 }}
+        shell: bash
+        run: |
+          patch_version="${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}"
+          current_version="${{ steps.fetch_current_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_PATCH_VERSION }}"
+
+          # Update globals
+          echo Updating globals
+          globals_temp=$(mktemp)
+          jq --unbuffered --arg patch_version "$patch_version" '.sdk.version = $patch_version' ./src/global.json > "$globals_temp" && mv "$globals_temp" ./src/global.json
+
+          # Update devcontainer
+          echo Updating devcontainer
+          devcontainer_temp=$(mktemp)
+          jq --unbuffered --arg patch_version "$patch_version" '.features."ghcr.io/devcontainers/features/dotnet".version = $patch_version' ./.devcontainer/devcontainer.json > "$devcontainer_temp" && mv "$devcontainer_temp" ./.devcontainer/devcontainer.json
+
+          # Update dev.sh
+          echo Updating start script
+          sed -i "s/DOTNETSDK_VERSION=\"$current_version\"/DOTNETSDK_VERSION=\"$patch_version\"/g" ./src/dev.sh
+      - name: GIT commit and push all changed files
+        if: ${{ steps.fetch_latest_version.outputs.SHOULD_UPDATE == 1 && steps.fetch_latest_version.outputs.BRANCH_EXISTS == 0 }}
+        id: create_branch
+        run: |
+          branch_name="feature/dotnetsdk-upgrade/${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "<41898282+github-actions[bot]@users.noreply.github.com>"
+
+          git checkout -b $branch_name
+          git commit -a -m "Upgrade dotnet sdk to v${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}"
+          git push --set-upstream origin $branch_name
+
+  build-hashes:
+    if: ${{ needs.dotnet-update.outputs.SHOULD_UPDATE == 1 && needs.dotnet-update.outputs.BRANCH_EXISTS == 0 }}
+    needs: [dotnet-update]
+    outputs: 
+      # pass outputs from this job to create-pr for use
+      DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION: ${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
+      DOTNET_CURRENT_MAJOR_MINOR_VERSION: ${{ needs.dotnet-update.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}
+      NEEDS_HASH_UPDATE: ${{ steps.compute-hash.outputs.NEED_UPDATE }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
+        include:
+        - runtime: linux-x64
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+        - runtime: linux-arm64
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+        - runtime: linux-arm
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+        - runtime: osx-x64
+          os: macOS-latest
+          devScript: ./dev.sh
+
+        - runtime: osx-arm64
+          os: macOS-latest
+          devScript: ./dev.sh
+
+        - runtime: win-x64
+          os: windows-2019
+          devScript: ./dev
+
+        - runtime: win-arm64
+          os: windows-latest
+          devScript: ./dev
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3 
+      with:
+        ref: feature/dotnetsdk-upgrade/${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
+
+    # Build runner layout
+    - name: Build & Layout Release
+      run: |
+        ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
+      working-directory: src
+
+    # Check runtime/externals hash
+    - name: Compute/Compare runtime and externals Hash
+      id: compute-hash
+      continue-on-error: true
+      shell: bash
+      run: |
+        echo "Current dotnet runtime hash result: $DOTNET_RUNTIME_HASH"
+        echo "Current Externals hash result: $EXTERNALS_HASH"
+
+        NeedUpdate=0
+        if [ "$EXTERNALS_HASH" != "$(cat ./src/Misc/contentHash/externals/${{ matrix.runtime }})" ] ;then
+          echo Hash mismatch, Update ./src/Misc/contentHash/externals/${{ matrix.runtime }} to $EXTERNALS_HASH
+
+          echo "EXTERNAL_HASH=$EXTERNALS_HASH" >> $GITHUB_OUTPUT
+          NeedUpdate=1
+        fi
+
+        if [ "$DOTNET_RUNTIME_HASH" != "$(cat ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }})" ] ;then
+          echo Hash mismatch, Update ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }} to $DOTNET_RUNTIME_HASH
+
+          echo "DOTNET_RUNTIME_HASH=$DOTNET_RUNTIME_HASH" >> $GITHUB_OUTPUT
+          NeedUpdate=1
+        fi
+
+        echo "NEED_UPDATE=$NeedUpdate" >> $GITHUB_OUTPUT
+      env:
+        DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
+        EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
+    - name: update hash
+      if: ${{ steps.compute-hash.outputs.NEED_UPDATE == 1 }}
+      shell: bash
+      run: |
+        ExternalHash=${{ steps.compute-hash.outputs.EXTERNAL_HASH }}
+        DotNetRuntimeHash=${{ steps.compute-hash.outputs.DOTNET_RUNTIME_HASH }}
+
+        if [ -n "$ExternalHash" ]; then
+          echo "$ExternalHash" > ./src/Misc/contentHash/externals/${{ matrix.runtime }}
+        fi
+
+        if [ -n "$DotNetRuntimeHash" ]; then
+          echo "$DotNetRuntimeHash" > ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
+        fi
+    - name: cache updated hashes
+      if: ${{ steps.compute-hash.outputs.NEED_UPDATE == 1 }}
+      uses: actions/cache/save@v3
+      with:
+        enableCrossOsArchive: true
+        path: |
+          ./src/Misc/contentHash/externals/${{ matrix.runtime }}
+          ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }}
+        key: compute-hashes-${{ matrix.runtime }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+
+
+  hash-update:
+    needs: [build-hashes]
+    if: ${{ needs.build-hashes.outputs.NEEDS_HASH_UPDATE == 1 }}
+    outputs: 
+      # pass outputs from this job to create-pr for use
+      DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION: ${{ needs.build-hashes.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
+      DOTNET_CURRENT_MAJOR_MINOR_VERSION: ${{ needs.build-hashes.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with: 
+        ref: feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
+    - name: Restore cached hashes - linux-x64
+      id: cache-restore-linux-x64
+      uses: actions/cache/restore@v3
+      with:
+        enableCrossOsArchive: true
+        path: |
+          ./src/Misc/contentHash/externals/linux-x64
+          ./src/Misc/contentHash/dotnetRuntime/linux-x64
+        key: compute-hashes-linux-x64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - linux-arm64
+      id: cache-restore-linux-arm64
+      uses: actions/cache/restore@v3
+      with:
+        enableCrossOsArchive: true
+        path: |
+          ./src/Misc/contentHash/externals/linux-arm64
+          ./src/Misc/contentHash/dotnetRuntime/linux-arm64
+        key: compute-hashes-linux-arm64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - linux-arm
+      id: cache-restore-linux-arm
+      uses: actions/cache/restore@v3
+      with:
+        enableCrossOsArchive: true
+        path: |
+          ./src/Misc/contentHash/externals/linux-arm
+          ./src/Misc/contentHash/dotnetRuntime/linux-arm
+        key: compute-hashes-linux-arm-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - osx-x64
+      id: cache-restore-osx-x64
+      uses: actions/cache/restore@v3
+      with:
+        enableCrossOsArchive: true
+        path: |
+          ./src/Misc/contentHash/externals/osx-x64
+          ./src/Misc/contentHash/dotnetRuntime/osx-x64
+        key: compute-hashes-osx-x64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - osx-arm64
+      id: cache-restore-osx-arm64
+      uses: actions/cache/restore@v3
+      with:
+        enableCrossOsArchive: true
+        path: |
+          ./src/Misc/contentHash/externals/osx-arm64
+          ./src/Misc/contentHash/dotnetRuntime/osx-arm64
+        key: compute-hashes-osx-arm64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - win-x64
+      id: cache-restore-win-x64
+      uses: actions/cache/restore@v3
+      with:
+        enableCrossOsArchive: true
+        path: |
+          ./src/Misc/contentHash/externals/win-x64
+          ./src/Misc/contentHash/dotnetRuntime/win-x64
+        key: compute-hashes-win-x64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Restore cached hashes - win-arm64
+      id: cache-restore-win-arm64
+      uses: actions/cache/restore@v3
+      with:
+        enableCrossOsArchive: true
+        path: |
+          ./src/Misc/contentHash/externals/win-arm64
+          ./src/Misc/contentHash/dotnetRuntime/win-arm64
+        key: compute-hashes-win-arm64-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+    - name: Fetch cached computed hashes
+      if: steps.cache-restore-linux-x64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-linux-arm64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-linux-arm.outputs.cache-hit == 'true' ||
+          steps.cache-restore-win-x64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-win-arm64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-osx-x64.outputs.cache-hit == 'true' ||
+          steps.cache-restore-osx-arm64.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        Environments=( "linux-x64" "linux-arm64" "linux-arm" "win-x64" "win-arm64" "osx-x64" "osx-arm64" )
+
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git commit -a -m "Update computed hashes"
+        git push --set-upstream origin feature/dotnetsdk-upgrade/${{ needs.build-hashes.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
+
+  create-pr:
+    needs: [hash-update]
+    outputs:
+      # pass outputs from this job to run-tests for use
+      DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION: ${{ needs.hash-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
+      DOTNET_CURRENT_MAJOR_MINOR_VERSION: ${{ needs.hash-update.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: feature/dotnetsdk-upgrade/${{ needs.hash-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
+    - name: Create Pull Request
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh pr create -B main -H feature/dotnetsdk-upgrade/${{ needs.hash-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }} --title "Update dotnet sdk to latest version @${{ needs.hash-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}" --body "
+          https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ needs.hash-update.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}/latest.version
+          
+            
+          ---
+            
+          Autogenerated by [DotNet SDK Upgrade Workflow](https://github.com/actions/runner/blob/main/.github/workflows/dotnet-upgrade.yml)"
