@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Channels;
@@ -46,7 +47,9 @@ namespace GitHub.Runner.Worker.Container
         {
             base.Initialize(hostContext);
             DockerPath = WhichUtil.Which("docker", true, Trace);
-            DockerInstanceLabel = IOUtil.GetSha256Hash(hostContext.GetDirectory(WellKnownDirectory.Root)).Substring(0, 6);
+            string path = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), ".runner");
+            string json = File.ReadAllText(path, Encoding.UTF8);
+            DockerInstanceLabel = IOUtil.GetSha256Hash(json).Substring(0, 6);
         }
 
         public async Task<DockerVersion> DockerVersion(IExecutionContext context)
