@@ -38,12 +38,12 @@
   "devDependencies": {
     "@types/node": "^20.6.2",
     "@typescript-eslint/eslint-plugin": "^6.4.0",
-    "@typescript-eslint/parser": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.2",
     "@vercel/ncc": "^0.36.1",
     "eslint": "^8.49.0",
-    "eslint-plugin-github": "^4.9.2",
+    "eslint-plugin-github": "^4.10.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "prettier": "^3.0.1",
+    "prettier": "^3.0.3",
     "typescript": "^5.2.2",
     "husky": "^8.0.3",
     "lint-staged": "^14.0.0"
