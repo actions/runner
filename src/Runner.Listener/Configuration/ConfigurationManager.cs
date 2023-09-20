@@ -248,7 +248,7 @@ namespace GitHub.Runner.Listener.Configuration
                 }
                 else
                 {
-                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
+                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.AgentName);
                 }
 
                 Trace.Verbose("Returns {0} agents", agents.Count);
