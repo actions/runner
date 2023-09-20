@@ -52,7 +52,6 @@ namespace GitHub.Runner.Worker
 
         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
         private const int _defaultCopyBufferSize = 81920;
-        private const string _dotcomApiUrl = "https://api.github.com";
 
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new();
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
@@ -739,10 +738,7 @@ namespace GitHub.Runner.Worker
 
             ArgUtil.NotNull(actionDownloadInfos, nameof(actionDownloadInfos));
             ArgUtil.NotNull(actionDownloadInfos.Actions, nameof(actionDownloadInfos.Actions));
-            var apiUrl = GetApiUrl(executionContext);
             var defaultAccessToken = executionContext.GetGitHubContext("token");
-            var configurationStore = HostContext.GetService<IConfigurationStore>();
-            var runnerSettings = configurationStore.GetSettings();
 
             foreach (var actionDownloadInfo in actionDownloadInfos.Actions.Values)
             {
@@ -783,26 +779,6 @@ namespace GitHub.Runner.Worker
             }
 
             await DownloadRepositoryActionAsync(executionContext, downloadInfo, destDirectory);
-        }
-
-        private string GetApiUrl(IExecutionContext executionContext)
-        {
-            string apiUrl = executionContext.GetGitHubContext("api_url");
-            if (!string.IsNullOrEmpty(apiUrl))
-            {
-                return apiUrl;
-            }
-            // Once the api_url is set for hosted, we can remove this fallback (it doesn't make sense for GHES)
-            return _dotcomApiUrl;
-        }
-
-        private static string BuildLinkToActionArchive(string apiUrl, string repository, string @ref)
-        {
-#if OS_WINDOWS
-            return $"{apiUrl}/repos/{repository}/zipball/{@ref}";
-#else
-            return $"{apiUrl}/repos/{repository}/tarball/{@ref}";
-#endif
         }
 
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo, string destDirectory)
@@ -991,29 +967,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private void ConfigureAuthorizationFromContext(IExecutionContext executionContext, HttpClient httpClient)
-        {
-            var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
-            if (string.IsNullOrEmpty(authToken))
-            {
-                // TODO: Deprecate the PREVIEW_ACTION_TOKEN
-                authToken = executionContext.Global.Variables.Get("PREVIEW_ACTION_TOKEN");
-            }
-
-            if (!string.IsNullOrEmpty(authToken))
-            {
-                HostContext.SecretMasker.AddValue(authToken);
-                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-            }
-            else
-            {
-                var accessToken = executionContext.GetGitHubContext("token");
-                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-            }
-        }
-
         private string GetWatermarkFilePath(string directory) => directory + ".completed";
 
         private ActionSetupInfo PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
@@ -1184,13 +1137,6 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(repositoryReference.Name, nameof(repositoryReference.Name));
             ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
             return $"{repositoryReference.Name}@{repositoryReference.Ref}";
-        }
-
-        private static string GetDownloadInfoLookupKey(WebApi.ActionDownloadInfo info)
-        {
-            ArgUtil.NotNullOrEmpty(info.NameWithOwner, nameof(info.NameWithOwner));
-            ArgUtil.NotNullOrEmpty(info.Ref, nameof(info.Ref));
-            return $"{info.NameWithOwner}@{info.Ref}";
         }
 
         private AuthenticationHeaderValue CreateAuthHeader(string token)
