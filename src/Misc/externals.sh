@@ -5,7 +5,7 @@ PRECACHE=$2
 NODE_URL=https://nodejs.org/dist
 UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
 NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
-NODE16_VERSION="16.20.1"
+NODE16_VERSION="16.20.2"
 NODE20_VERSION="20.5.0"
 # used only for win-arm64, remove node16 unofficial version when official version is available
 NODE16_UNOFFICIAL_VERSION="16.20.0"
