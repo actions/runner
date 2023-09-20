@@ -4,10 +4,10 @@ PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
 UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
-NODE16_VERSION="16.20.1"
+NODE16_VERSION="16.20.2"
 NODE20_VERSION="20.5.0"
 # used only for win-arm64, remove node16 unofficial version when official version is available
-NODE16_UNOFFICIAL_VERSION="16.20.0"
+NODE16_UNOFFICIAL_VERSION="16.20.2"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
