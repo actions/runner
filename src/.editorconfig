@@ -1,5 +1,5 @@
 [*.cs]
-charset = utf-8
+charset = utf-8-bom
 insert_final_newline = true
 
 csharp_new_line_before_else = true

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Runtime.Serialization;
 using GitHub.Services.Common;
 
@@ -2512,6 +2512,25 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         private FailedToResolveActionDownloadInfoException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+    }
+
+    [Serializable]
+    public sealed class InvalidActionArchiveException : DistributedTaskException
+    {
+        public InvalidActionArchiveException(String message)
+            : base(message)
+        {
+        }
+
+        public InvalidActionArchiveException(String message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        private InvalidActionArchiveException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
         }

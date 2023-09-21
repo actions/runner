@@ -26,7 +26,7 @@ namespace GitHub.Services.WebApi.Patch
         /// <summary>
         /// The path to copy/move from, applies only to the Copy/Move operation.
         /// </summary>
-        string From { get;  }
+        string From { get; }
 
         /// <summary>
         /// The value to set with this patch operation.  Only applies to

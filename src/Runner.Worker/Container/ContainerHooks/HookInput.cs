@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -83,7 +83,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public HookContainer(ContainerInfo container)
         {
             Image = container.ContainerImage;
-            EntryPointArgs = container.ContainerEntryPointArgs?.Split(' ').Select(arg => arg.Trim()) ?? new List<string>();
+            EntryPointArgs = container.ContainerEntryPointArgs?.Split(' ').Select(arg => arg.Trim()).Where(arg => !string.IsNullOrEmpty(arg)) ?? new List<string>();
             EntryPoint = container.ContainerEntryPoint;
             WorkingDirectory = container.ContainerWorkDirectory;
             CreateOptions = container.ContainerCreateOptions;

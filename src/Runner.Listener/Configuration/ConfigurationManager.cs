@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -137,7 +137,7 @@ namespace GitHub.Runner.Listener.Configuration
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     runnerSettings.UseV2Flow = authResult.UseV2Flow;
-                    _term.WriteLine($"Using V2 flow: {runnerSettings.UseV2Flow}");
+                    Trace.Info($"Using V2 flow: {runnerSettings.UseV2Flow}");
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
                 }
@@ -244,11 +244,11 @@ namespace GitHub.Runner.Listener.Configuration
                 List<TaskAgent> agents;
                 if (runnerSettings.UseV2Flow)
                 {
-                    agents = await _dotcomServer.GetRunnersAsync(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
+                    agents = await _dotcomServer.GetRunnerByNameAsync(runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
                 }
                 else
                 {
-                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
+                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.AgentName);
                 }
 
                 Trace.Verbose("Returns {0} agents", agents.Count);
@@ -263,7 +263,23 @@ namespace GitHub.Runner.Listener.Configuration
 
                         try
                         {
-                            agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            if (runnerSettings.UseV2Flow)
+                            {
+                                var runner = await _dotcomServer.ReplaceRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                                runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                                agent.Id = runner.Id;
+                                agent.Authorization = new TaskAgentAuthorization()
+                                {
+                                    AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                                    ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                                };
+                            }
+                            else
+                            {
+                                agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            }
+
                             if (command.DisableUpdate &&
                                 command.DisableUpdate != agent.DisableUpdate)
                             {
@@ -709,7 +725,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -772,7 +788,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {

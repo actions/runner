@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Worker.Container
@@ -65,6 +66,16 @@ namespace GitHub.Runner.Worker.Container
             return "";
         }
 
+        public static bool IsDockerfile(string image)
+        {
+            if (image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            var imageWithoutPath = image.Split('/').Last();
+            return imageWithoutPath.StartsWith("Dockerfile.", StringComparison.OrdinalIgnoreCase) || imageWithoutPath.EndsWith("Dockerfile", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string CreateEscapedOption(string flag, string key)
         {
             if (String.IsNullOrEmpty(key))
@@ -96,7 +107,7 @@ namespace GitHub.Runner.Worker.Container
             // https://docs.microsoft.com/en-us/dotnet/api/system.environment.getcommandlineargs?redirectedfrom=MSDN&view=net-6.0#remarks
 
             // First, find any \ followed by a " and double the number of \ + 1.
-             value = QuoteEscape.Replace(value, @"$1$1\" + "\"");
+            value = QuoteEscape.Replace(value, @"$1$1\" + "\"");
             // Next, what if it ends in `\`, it would escape the end quote. So, we need to detect that at the end of the string and perform the same escape
             // Luckily, we can just use the $ character with detects the end of string in regex
             value = EndOfStringEscape.Replace(value, @"$1$1");

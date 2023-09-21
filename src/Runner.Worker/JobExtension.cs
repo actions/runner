@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -34,12 +36,13 @@ namespace GitHub.Runner.Worker
     public interface IJobExtension : IRunnerService
     {
         Task<List<IStep>> InitializeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message);
-        void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
+        Task FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
     }
 
     public sealed class JobExtension : RunnerService, IJobExtension
     {
         private readonly HashSet<string> _existingProcesses = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<Task<string>> _connectivityCheckTasks = new();
         private bool _processCleanup;
         private string _processLookupId = $"github_{Guid.NewGuid()}";
         private CancellationTokenSource _diskSpaceCheckToken = new();
@@ -175,7 +178,14 @@ namespace GitHub.Runner.Worker
                     context.Debug("Update context data");
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                     context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
-                    context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
+
+                    var githubWorkspace = Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory);
+                    if (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+                    {
+                        // This value is used to translate paths from the container path back to the host path.
+                        context.SetGitHubContext("host-workspace", githubWorkspace);
+                    }
+                    context.SetGitHubContext("workspace", githubWorkspace);
 
                     // Temporary hack for GHES alpha
                     var configurationStore = HostContext.GetService<IConfigurationStore>();
@@ -421,6 +431,22 @@ namespace GitHub.Runner.Worker
                         _diskSpaceCheckTask = CheckDiskSpaceAsync(context, _diskSpaceCheckToken.Token);
                     }
 
+                    // Check server connectivity in background
+                    ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                    if (systemConnection.Data.TryGetValue("ConnectivityChecks", out var connectivityChecksPayload) &&
+                        !string.IsNullOrEmpty(connectivityChecksPayload))
+                    {
+                        Trace.Info($"Start checking server connectivity.");
+                        var checkUrls = StringUtil.ConvertFromJson<List<string>>(connectivityChecksPayload);
+                        if (checkUrls?.Count > 0)
+                        {
+                            foreach (var checkUrl in checkUrls)
+                            {
+                                _connectivityCheckTasks.Add(CheckConnectivity(checkUrl));
+                            }
+                        }
+                    }
+
                     return steps;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
@@ -465,7 +491,7 @@ namespace GitHub.Runner.Worker
             return reference;
         }
 
-        public void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
+        public async Task FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
         {
             Trace.Entering();
             ArgUtil.NotNull(jobContext, nameof(jobContext));
@@ -642,6 +668,28 @@ namespace GitHub.Runner.Worker
                     {
                         _diskSpaceCheckToken.Cancel();
                     }
+
+                    // Collect server connectivity check result
+                    if (_connectivityCheckTasks.Count > 0)
+                    {
+                        try
+                        {
+                            Trace.Info($"Wait for all connectivity checks to finish.");
+                            await Task.WhenAll(_connectivityCheckTasks);
+                            foreach (var check in _connectivityCheckTasks)
+                            {
+                                var result = await check;
+                                Trace.Info($"Connectivity check result: {result}");
+                                context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = result });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Fail to check server connectivity.");
+                            Trace.Error(ex);
+                            context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check server connectivity. {ex.Message}" });
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -655,6 +703,37 @@ namespace GitHub.Runner.Worker
                     context.Complete();
                 }
             }
+        }
+
+        private async Task<string> CheckConnectivity(string endpointUrl)
+        {
+            Trace.Info($"Check server connectivity for {endpointUrl}.");
+            string result = string.Empty;
+            using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+            {
+                try
+                {
+                    using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                    using (var httpClient = new HttpClient(httpClientHandler))
+                    {
+                        httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                        var response = await httpClient.GetAsync(endpointUrl, timeoutTokenSource.Token);
+                        result = $"{endpointUrl}: {response.StatusCode}";
+                    }
+                }
+                catch (Exception ex) when (ex is OperationCanceledException && timeoutTokenSource.IsCancellationRequested)
+                {
+                    Trace.Error($"Request timeout during connectivity check: {ex}");
+                    result = $"{endpointUrl}: timeout";
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error($"Catch exception during connectivity check: {ex}");
+                    result = $"{endpointUrl}: {ex.Message}";
+                }
+            }
+
+            return result;
         }
 
         private async Task CheckDiskSpaceAsync(IExecutionContext context, CancellationToken token)

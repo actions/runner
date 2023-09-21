@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Data.Image = Data.Image.Substring("docker://".Length);
             }
-            else if (Data.Image.EndsWith("Dockerfile") || Data.Image.EndsWith("dockerfile"))
+            else if (DockerUtil.IsDockerfile(Data.Image))
             {
                 // ensure docker file exist
                 dockerFile = Path.Combine(ActionDirectory, Data.Image);
@@ -227,6 +227,10 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
                 Environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
+            }
+            if (systemConnection.Data.TryGetValue("ResultsServiceUrl", out var resultsUrl) && !string.IsNullOrEmpty(resultsUrl))
+            {
+                Environment["ACTIONS_RESULTS_URL"] = resultsUrl;
             }
 
             foreach (var variable in this.Environment)

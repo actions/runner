@@ -64,7 +64,7 @@ namespace GitHub.Runner.Sdk
 
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
             {
-                settings.AllowAutoRedirect = true;
+                settings.AllowAutoRedirectForBroker = true;
             }
 
             // Remove Invariant from the list of accepted languages.

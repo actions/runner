@@ -16,7 +16,7 @@ namespace GitHub.Services.WebApi.Patch
             this.Operation = Operation.Replace;
         }
 
-        public ReplacePatchOperation(string path, object value): this()
+        public ReplacePatchOperation(string path, object value) : this()
         {
             this.Path = path;
             this.Value = value;

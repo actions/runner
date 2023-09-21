@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -78,11 +78,12 @@ namespace GitHub.Runner.Worker
         List<string> StepEnvironmentOverrides { get; }
 
         ExecutionContext Root { get; }
+        ExecutionContext Parent { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null, TimeSpan? timeout = null);
         IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null);
 
         // logging
@@ -264,6 +265,14 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        public ExecutionContext Parent
+        {
+            get
+            {
+                return _parentExecutionContext;
+            }
+        }
+
         public JobContext JobContext
         {
             get
@@ -348,7 +357,8 @@ namespace GitHub.Runner.Worker
             bool isEmbedded = false,
             CancellationTokenSource cancellationTokenSource = null,
             Guid embeddedId = default(Guid),
-            string siblingScopeName = null)
+            string siblingScopeName = null,
+            TimeSpan? timeout = null)
         {
             Trace.Entering();
 
@@ -377,6 +387,12 @@ namespace GitHub.Runner.Worker
                 child.ExpressionFunctions.Add(item);
             }
             child._cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
+            if (timeout != null)
+            {
+                // composite steps inherit the timeout from the parent, set by https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepstimeout-minutes
+                child.SetTimeout(timeout);
+            }
+
             child.EchoOnActionCommand = EchoOnActionCommand;
 
             if (recordOrder != null)
@@ -406,7 +422,7 @@ namespace GitHub.Runner.Worker
 
         /// <summary>
         /// An embedded execution context shares the same record ID, record name, logger,
-        /// and a linked cancellation token.
+        /// but NOT the cancellation token (just like workflow steps contexts - they don't share a token)
         /// </summary>
         public IExecutionContext CreateEmbeddedChild(
             string scopeName,
@@ -416,7 +432,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> intraActionState = null,
             string siblingScopeName = null)
         {
-            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
+            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: null, intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName, timeout: GetRemainingTimeout());
         }
 
         public void Start(string currentOperation = null)
@@ -477,28 +493,32 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
-            var stepResult = new StepResult
+            if (_record.RecordType == "Task")
             {
-                ExternalID = _record.Id,
-                Conclusion = _record.Result ?? TaskResult.Succeeded,
-                Status = _record.State,
-                Number = _record.Order,
-                Name = _record.Name,
-                StartedAt = _record.StartTime,
-                CompletedAt = _record.FinishTime,
-                Annotations = new List<Annotation>()
-            };
-
-            _record.Issues?.ForEach(issue =>
-            {
-                var annotation = issue.ToAnnotation();
-                if (annotation != null)
+                var stepResult = new StepResult
                 {
-                    stepResult.Annotations.Add(annotation.Value);
-                }
-            });
+                    ExternalID = _record.Id,
+                    Conclusion = _record.Result ?? TaskResult.Succeeded,
+                    Status = _record.State,
+                    Number = _record.Order,
+                    Name = _record.Name,
+                    StartedAt = _record.StartTime,
+                    CompletedAt = _record.FinishTime,
+                    Annotations = new List<Annotation>()
+                };
 
-            Global.StepsResult.Add(stepResult);
+                _record.Issues?.ForEach(issue =>
+                {
+                    var annotation = issue.ToAnnotation();
+                    if (annotation != null)
+                    {
+                        stepResult.Annotations.Add(annotation.Value);
+                    }
+                });
+
+                Global.StepsResult.Add(stepResult);
+            }
+
 
             if (Root != this)
             {
@@ -593,7 +613,31 @@ namespace GitHub.Runner.Worker
             if (timeout != null)
             {
                 _cancellationTokenSource.CancelAfter(timeout.Value);
+                m_timeoutStartedAt = DateTime.UtcNow;
+                m_timeout = timeout.Value;
             }
+        }
+
+        DateTime? m_timeoutStartedAt;
+        TimeSpan? m_timeout;
+        public TimeSpan? GetRemainingTimeout()
+        {
+            if (m_timeoutStartedAt != null && m_timeout != null)
+            {
+                var elapsedSinceTimeoutSet = DateTime.UtcNow - m_timeoutStartedAt.Value;
+                var remainingTimeout = m_timeout.Value - elapsedSinceTimeoutSet;
+                if (remainingTimeout.Ticks > 0)
+                {
+                    return remainingTimeout;
+                }
+                else
+                {
+                    // there was a timeout and it has expired
+                    return TimeSpan.Zero;
+                }
+            }
+            // no timeout was ever set
+            return null;
         }
 
         public void Progress(int percentage, string currentOperation = null)
@@ -763,9 +807,9 @@ namespace GitHub.Runner.Worker
 
             Global.Variables = new Variables(HostContext, variables);
 
-            if (Global.Variables.GetBoolean("DistributedTask.ForceInternalNodeVersionOnRunnerTo12") ?? false)
+            if (Global.Variables.GetBoolean("DistributedTask.ForceInternalNodeVersionOnRunnerTo16") ?? false)
             {
-                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion, "node12");
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion, "node16");
             }
 
             // Environment variables shared across all actions
@@ -1355,6 +1399,12 @@ namespace GitHub.Runner.Worker
         {
             foreach (var key in dict.Keys.ToList())
             {
+                if (key == PipelineTemplateConstants.HostWorkspace)
+                {
+                    // The HostWorkspace context var is excluded so that there is a var that always points to the host path. 
+                    // This var can be used to translate back from container paths, e.g. in HashFilesFunction, which always runs on the host machine
+                    continue;
+                }
                 if (dict[key] is StringContextData)
                 {
                     var value = dict[key].ToString();
@@ -1401,7 +1451,15 @@ namespace GitHub.Runner.Worker
 
         public void Error(string format, params Object[] args)
         {
-            _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
+            /* TraceWriter should be used for logging and not creating erros. */
+            if (logTemplateErrorsAsDebugMessages())
+            {
+                _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));
+            }
+            else
+            {
+                _executionContext.Error(string.Format(CultureInfo.CurrentCulture, format, args));
+            }
         }
 
         public void Info(string format, params Object[] args)
@@ -1414,7 +1472,17 @@ namespace GitHub.Runner.Worker
             // todo: switch to verbose?
             _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, $"{format}", args));
         }
+
+        private bool logTemplateErrorsAsDebugMessages()
+        {
+            if (_executionContext.Global.Variables.TryGetValue(Constants.Runner.Features.LogTemplateErrorsAsDebugMessages, out var logErrorsAsDebug))
+            {
+                return StringUtil.ConvertToBoolean(logErrorsAsDebug, defaultValue: false);
+            }
+            return false;
+        }
     }
+
 
     public static class WellKnownTags
     {

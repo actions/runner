@@ -56,7 +56,7 @@ namespace GitHub.Services.OAuth
         }
 
         protected virtual void Dispose(Boolean disposing)
-        {     
+        {
         }
 
         /// <summary>

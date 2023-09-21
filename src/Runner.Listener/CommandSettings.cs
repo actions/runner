@@ -1,4 +1,4 @@
-using GitHub.Runner.Listener.Configuration;
+﻿using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
 using System;
 using System.Collections;

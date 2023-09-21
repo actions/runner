@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 
@@ -134,7 +134,7 @@ namespace GitHub.Runner.Sdk
         {
             var fileInfo = new FileInfo(path);
             var linkTargetFullPath = fileInfo.Directory?.FullName + Path.DirectorySeparatorChar + fileInfo.LinkTarget;
-            if(fileInfo.LinkTarget == null || File.Exists(linkTargetFullPath) || File.Exists(fileInfo.LinkTarget)) return true;
+            if (fileInfo.LinkTarget == null || File.Exists(linkTargetFullPath) || File.Exists(fileInfo.LinkTarget)) return true;
             trace?.Info($"the target '{fileInfo.LinkTarget}' of the symbolic link '{path}', does not exist");
             return false;
         }

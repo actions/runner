@@ -25,12 +25,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-           return omitSource ? new BooleanToken(null, null, null, m_value) : new BooleanToken(FileId, Line, Column, m_value);
+            return omitSource ? new BooleanToken(null, null, null, m_value) : new BooleanToken(FileId, Line, Column, m_value);
         }
 
         public override String ToString()
         {
-           return m_value ? "true" : "false";
+            return m_value ? "true" : "false";
         }
 
         Boolean IBoolean.GetBoolean()

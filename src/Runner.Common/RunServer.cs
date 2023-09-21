@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +26,7 @@ namespace GitHub.Runner.Common
             Dictionary<String, VariableValue> outputs,
             IList<StepResult> stepResults,
             IList<Annotation> jobAnnotations,
+            string environmentUrl,
             CancellationToken token);
 
         Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken token);
@@ -70,11 +71,12 @@ namespace GitHub.Runner.Common
             Dictionary<String, VariableValue> outputs,
             IList<StepResult> stepResults,
             IList<Annotation> jobAnnotations,
+            string environmentUrl,
             CancellationToken cancellationToken)
         {
             CheckConnection();
             return RetryRequest(
-                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, cancellationToken), cancellationToken);
+                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, environmentUrl, cancellationToken), cancellationToken);
         }
 
         public Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken cancellationToken)

@@ -9,5 +9,8 @@ namespace GitHub.DistributedTask.WebApi
 
         [EnumMember]
         ActionCommand = 1,
+
+        [EnumMember]
+        ConnectivityCheck = 2,
     }
 }

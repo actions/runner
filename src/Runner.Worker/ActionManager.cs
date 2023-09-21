@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -10,15 +10,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Services.Common;
-using WebApi = GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants;
-using GitHub.DistributedTask.WebApi;
+using WebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Worker
 {
@@ -52,7 +52,6 @@ namespace GitHub.Runner.Worker
 
         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
         private const int _defaultCopyBufferSize = 81920;
-        private const string _dotcomApiUrl = "https://api.github.com";
 
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new();
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
@@ -108,6 +107,14 @@ namespace GitHub.Runner.Worker
                 result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
             }
             catch (FailedToResolveActionDownloadInfoException ex)
+            {
+                // Log the error and fail the PrepareActionsAsync Initialization.
+                Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
+                executionContext.InfrastructureError(ex.Message);
+                executionContext.Result = TaskResult.Failed;
+                throw;
+            }
+            catch (InvalidActionArchiveException ex)
             {
                 // Log the error and fail the PrepareActionsAsync Initialization.
                 Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
@@ -317,15 +324,28 @@ namespace GitHub.Runner.Worker
 
             if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
-                Trace.Info("Load action that reference container from registry.");
-                CachedActionContainers.TryGetValue(action.Id, out var container);
-                ArgUtil.NotNull(container, nameof(container));
-                definition.Data.Execution = new ContainerActionExecutionData()
+                if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
                 {
-                    Image = container.ContainerImage
-                };
+                    Trace.Info("Load action that will run container through container hooks.");
+                    var containerAction = action.Reference as Pipelines.ContainerRegistryReference;
+                    definition.Data.Execution = new ContainerActionExecutionData()
+                    {
+                        Image = containerAction.Image,
+                    };
+                    Trace.Info($"Using action container image: {containerAction.Image}.");
+                }
+                else
+                {
+                    Trace.Info("Load action that reference container from registry.");
+                    CachedActionContainers.TryGetValue(action.Id, out var container);
+                    ArgUtil.NotNull(container, nameof(container));
+                    definition.Data.Execution = new ContainerActionExecutionData()
+                    {
+                        Image = container.ContainerImage
+                    };
 
-                Trace.Info($"Using action container image: {container.ContainerImage}.");
+                    Trace.Info($"Using action container image: {container.ContainerImage}.");
+                }
             }
             else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
             {
@@ -718,10 +738,7 @@ namespace GitHub.Runner.Worker
 
             ArgUtil.NotNull(actionDownloadInfos, nameof(actionDownloadInfos));
             ArgUtil.NotNull(actionDownloadInfos.Actions, nameof(actionDownloadInfos.Actions));
-            var apiUrl = GetApiUrl(executionContext);
             var defaultAccessToken = executionContext.GetGitHubContext("token");
-            var configurationStore = HostContext.GetService<IConfigurationStore>();
-            var runnerSettings = configurationStore.GetSettings();
 
             foreach (var actionDownloadInfo in actionDownloadInfos.Actions.Values)
             {
@@ -764,26 +781,6 @@ namespace GitHub.Runner.Worker
             await DownloadRepositoryActionAsync(executionContext, downloadInfo, destDirectory);
         }
 
-        private string GetApiUrl(IExecutionContext executionContext)
-        {
-            string apiUrl = executionContext.GetGitHubContext("api_url");
-            if (!string.IsNullOrEmpty(apiUrl))
-            {
-                return apiUrl;
-            }
-            // Once the api_url is set for hosted, we can remove this fallback (it doesn't make sense for GHES)
-            return _dotcomApiUrl;
-        }
-
-        private static string BuildLinkToActionArchive(string apiUrl, string repository, string @ref)
-        {
-#if OS_WINDOWS
-            return $"{apiUrl}/repos/{repository}/zipball/{@ref}";
-#else
-            return $"{apiUrl}/repos/{repository}/tarball/{@ref}";
-#endif
-        }
-
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo, string destDirectory)
         {
             //download and extract action in a temp folder and rename it on success
@@ -822,6 +819,12 @@ namespace GitHub.Runner.Worker
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(link))
                                 {
+                                    var requestId = UrlUtil.GetGitHubRequestId(response.Headers);
+                                    if (!string.IsNullOrEmpty(requestId))
+                                    {
+                                        Trace.Info($"Request URL: {link} X-GitHub-Request-Id: {requestId} Http Status: {response.StatusCode}");
+                                    }
+
                                     if (response.IsSuccessStatusCode)
                                     {
                                         using (var result = await response.Content.ReadAsStreamAsync())
@@ -836,7 +839,7 @@ namespace GitHub.Runner.Worker
                                     else if (response.StatusCode == HttpStatusCode.NotFound)
                                     {
                                         // It doesn't make sense to retry in this case, so just stop
-                                        throw new ActionNotFoundException(new Uri(link));
+                                        throw new ActionNotFoundException(new Uri(link), requestId);
                                     }
                                     else
                                     {
@@ -888,7 +891,14 @@ namespace GitHub.Runner.Worker
                 Directory.CreateDirectory(stagingDirectory);
 
 #if OS_WINDOWS
-                ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
+                try
+                {
+                    ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
+                }
+                catch (InvalidDataException e)
+                {
+                    throw new InvalidActionArchiveException($"Can't un-zip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. error: {e}.");
+                }
 #else
                 string tar = WhichUtil.Which("tar", require: true, trace: Trace);
 
@@ -914,7 +924,7 @@ namespace GitHub.Runner.Worker
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
-                        throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
+                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
                     }
                 }
 #endif
@@ -954,29 +964,6 @@ namespace GitHub.Runner.Worker
                     //it is not critical if we fail to delete the temp folder
                     Trace.Warning("Failed to delete temp folder '{0}'. Exception: {1}", tempDirectory, ex);
                 }
-            }
-        }
-
-        private void ConfigureAuthorizationFromContext(IExecutionContext executionContext, HttpClient httpClient)
-        {
-            var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
-            if (string.IsNullOrEmpty(authToken))
-            {
-                // TODO: Deprecate the PREVIEW_ACTION_TOKEN
-                authToken = executionContext.Global.Variables.Get("PREVIEW_ACTION_TOKEN");
-            }
-
-            if (!string.IsNullOrEmpty(authToken))
-            {
-                HostContext.SecretMasker.AddValue(authToken);
-                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-            }
-            else
-            {
-                var accessToken = executionContext.GetGitHubContext("token");
-                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
             }
         }
 
@@ -1029,7 +1016,7 @@ namespace GitHub.Runner.Worker
                 if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Container)
                 {
                     var containerAction = actionDefinitionData.Execution as ContainerActionExecutionData;
-                    if (containerAction.Image.EndsWith("Dockerfile") || containerAction.Image.EndsWith("dockerfile"))
+                    if (DockerUtil.IsDockerfile(containerAction.Image))
                     {
                         var dockerFileFullPath = Path.Combine(actionEntryDirectory, containerAction.Image);
                         executionContext.Debug($"Dockerfile for action: '{dockerFileFullPath}'.");
@@ -1114,8 +1101,16 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                var fullPath = IOUtil.ResolvePath(actionEntryDirectory, "."); // resolve full path without access filesystem.
-                throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
+                var reference = repositoryReference.Name;
+                if (!string.IsNullOrEmpty(repositoryReference.Path))
+                {
+                    reference = $"{reference}/{repositoryReference.Path}";
+                }
+                if (!string.IsNullOrEmpty(repositoryReference.Ref))
+                {
+                    reference = $"{reference}@{repositoryReference.Ref}";
+                }
+                throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' for action '{reference}'.");
             }
         }
 
@@ -1142,13 +1137,6 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(repositoryReference.Name, nameof(repositoryReference.Name));
             ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
             return $"{repositoryReference.Name}@{repositoryReference.Ref}";
-        }
-
-        private static string GetDownloadInfoLookupKey(WebApi.ActionDownloadInfo info)
-        {
-            ArgUtil.NotNullOrEmpty(info.NameWithOwner, nameof(info.NameWithOwner));
-            ArgUtil.NotNullOrEmpty(info.Ref, nameof(info.Ref));
-            return $"{info.NameWithOwner}@{info.Ref}";
         }
 
         private AuthenticationHeaderValue CreateAuthHeader(string token)

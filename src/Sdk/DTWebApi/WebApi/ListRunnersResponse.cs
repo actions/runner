@@ -1,4 +1,4 @@
-using GitHub.Services.WebApi;
+﻿using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
@@ -41,7 +41,7 @@ namespace GitHub.DistributedTask.WebApi
 
         public List<TaskAgent> ToTaskAgents()
         {
-            return Runners.Select(runner => new TaskAgent() { Name = runner.Name }).ToList();
+            return Runners.Select(runner => new TaskAgent() { Id = runner.Id, Name = runner.Name }).ToList();
         }
     }
 

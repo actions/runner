@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -84,6 +84,11 @@ namespace GitHub.Actions.RunService.WebApi
             if (result.IsSuccess)
             {
                 return result.Value;
+            }
+
+            if (result.StatusCode == HttpStatusCode.Forbidden)
+            {
+                throw new AccessDeniedException(result.Error);
             }
 
             throw new Exception($"Failed to get job message: {result.Error}");
