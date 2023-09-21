@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" 
+<Project ToolsVersion="14.0" DefaultTargets="Build"
     xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <Target Name="GenerateConstant">
         <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true">
@@ -43,12 +43,12 @@
     <Target Name="Build" DependsOnTargets="GenerateConstant">
         <MSBuild Targets="Restore" Projects="@(ProjectFiles)" StopOnFirstFailure="true" />
         <MSBuild Targets="Publish" Projects="@(ProjectFiles)" BuildInParallel="false" StopOnFirstFailure="true" Properties="Configuration=$(BUILDCONFIG);PackageRuntime=$(PackageRuntime);Version=$(RunnerVersion);RuntimeIdentifier=$(PackageRuntime);PublishDir=$(MSBuildProjectDirectory)/../_layout/bin" />
-        <Exec Command="%22$(DesktopMSBuild)%22 Runner.Service/Windows/RunnerService.csproj /p:Configuration=$(BUILDCONFIG) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'" />
+        <Exec Command="%22$(DesktopMSBuild)%22 Runner.Service/Windows/RunnerService.csproj /p:Configuration=$(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86' Or '$(PackageRuntime)' == 'win-arm64'" />
     </Target>
 
     <Target Name="Test" DependsOnTargets="GenerateConstant">
         <Exec Command="dotnet build Test/Test.csproj -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
-        <Exec Command="dotnet test Test/Test.csproj --no-build --logger:trx" ConsoleToMSBuild="true" />
+        <Exec Command="dotnet test Test/Test.csproj -c $(BUILDCONFIG) --no-build --logger:trx" ConsoleToMSBuild="true" />
     </Target>
 
     <Target Name="Layout" DependsOnTargets="Clean;Build">
@@ -61,9 +61,9 @@
         <Copy SourceFiles="@(LayoutBinFiles)" DestinationFolder="$(MSBuildProjectDirectory)/../_layout/bin/%(RecursiveDir)"/>
 
         <ItemGroup>
-            <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.cmd" Condition="'$(PackageRuntime)' != 'win-x64' And '$(PackageRuntime)' != 'win-x86'"/>
-            <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.sh" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'"/>
-            <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/bin/RunnerService.js" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86'"/>
+            <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.cmd" Condition="'$(PackageRuntime)' != 'win-x64' And '$(PackageRuntime)' != 'win-x86' And '$(PackageRuntime)' != 'win-arm64'"/>
+            <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/*.sh" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86' Or '$(PackageRuntime)' == 'win-arm64'"/>
+            <LayoutRootFilesToDelete Include="$(MSBuildProjectDirectory)/../_layout/bin/RunnerService.js" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86' Or '$(PackageRuntime)' == 'win-arm64'"/>
         </ItemGroup>
 
         <Delete Files="@(LayoutRootFilesToDelete)" />

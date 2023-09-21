@@ -1,5 +1,4 @@
-﻿using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
+﻿using GitHub.Runner.Sdk;
 using System;
 using System.IO;
 using System.Threading;
@@ -15,7 +14,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Delete_DeletesDirectory()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -49,7 +48,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void Delete_DeletesFile()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -83,7 +82,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteDirectory_DeletesDirectoriesRecursively()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -115,7 +114,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public async Task DeleteDirectory_DeletesDirectoryReparsePointChain()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -179,7 +178,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public async Task DeleteDirectory_DeletesDirectoryReparsePointsBeforeDirectories()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -230,7 +229,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteDirectory_DeletesFilesRecursively()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -264,7 +263,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteDirectory_DeletesReadOnlyDirectories()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -305,7 +304,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteDirectory_DeletesReadOnlyRootDirectory()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -341,7 +340,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteDirectory_DeletesReadOnlyFiles()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -381,7 +380,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public async Task DeleteDirectory_DoesNotFollowDirectoryReparsePoint()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -428,7 +427,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public async Task DeleteDirectory_DoesNotFollowNestLevel1DirectoryReparsePoint()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -477,7 +476,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public async Task DeleteDirectory_DoesNotFollowNestLevel2DirectoryReparsePoint()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -528,7 +527,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteDirectory_IgnoresFile()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -563,7 +562,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteFile_DeletesFile()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -597,7 +596,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteFile_DeletesReadOnlyFile()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -637,7 +636,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void DeleteFile_IgnoresDirectory()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -670,7 +669,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void GetRelativePath()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -768,7 +767,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void ResolvePath()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -867,7 +866,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void ValidateExecutePermission_DoesNotExceedFailsafe()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -896,7 +895,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void ValidateExecutePermission_ExceedsFailsafe()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -927,6 +926,36 @@ namespace GitHub.Runner.Common.Tests.Util
                     {
                         Directory.Delete(directory, recursive: true);
                     }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void LoadObject_ThrowsOnRequiredLoadObject()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory with a file.
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
+
+                string file = Path.Combine(directory, "empty file");
+                Directory.CreateDirectory(directory);
+
+                File.WriteAllText(path: file, contents: "");
+                Assert.Throws<ArgumentNullException>(() => IOUtil.LoadObject<RunnerSettings>(file, true));
+
+                file = Path.Combine(directory, "invalid type file");
+                File.WriteAllText(path: file, contents: " ");
+                Assert.Throws<ArgumentException>(() => IOUtil.LoadObject<RunnerSettings>(file, true));
+
+                // Cleanup.
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, recursive: true);
                 }
             }
         }

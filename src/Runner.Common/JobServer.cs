@@ -1,5 +1,4 @@
-using GitHub.DistributedTask.WebApi;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,11 +8,13 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using GitHub.Services.OAuth;
+using GitHub.Services.Results.Client;
 using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Utilities.Internal;
-using Newtonsoft.Json;
 
 namespace GitHub.Runner.Common
 {
@@ -140,8 +141,8 @@ namespace GitHub.Runner.Common
 
         public void InitializeWebsocketClient(ServiceEndpoint serviceEndpoint)
         {
-             this._serviceEndpoint = serviceEndpoint;
-             InitializeWebsocketClient(TimeSpan.Zero);
+            this._serviceEndpoint = serviceEndpoint;
+            InitializeWebsocketClient(TimeSpan.Zero);
         }
 
         public ValueTask DisposeAsync()
@@ -163,9 +164,9 @@ namespace GitHub.Runner.Common
 
         private void InitializeWebsocketClient(TimeSpan delay)
         {
-             if (_serviceEndpoint.Authorization != null &&
-                 _serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out var accessToken) &&
-                 !string.IsNullOrEmpty(accessToken))
+            if (_serviceEndpoint.Authorization != null &&
+                _serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out var accessToken) &&
+                !string.IsNullOrEmpty(accessToken))
             {
                 if (_serviceEndpoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl) && !string.IsNullOrEmpty(feedStreamUrl))
                 {
@@ -177,7 +178,7 @@ namespace GitHub.Runner.Common
                     var userAgentValues = new List<ProductInfoHeaderValue>();
                     userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
                     userAgentValues.AddRange(HostContext.UserAgents);
-                    this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x=>x.ToString())));
+                    this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
 
                     this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
                 }
@@ -198,13 +199,15 @@ namespace GitHub.Runner.Common
             {
                 Trace.Info($"Attempting to start websocket client with delay {delay}.");
                 await Task.Delay(delay);
-                await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), default(CancellationToken));
+                using var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
                 Trace.Info($"Successfully started websocket client.");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now instead of websocket.");
                 Trace.Error(ex);
+                this._websocketClient = null;
             }
         }
 
@@ -231,7 +234,7 @@ namespace GitHub.Runner.Common
             // ...in other words, if websocket client is null, we will skip sending to websocket and just use rest api calls to send data
             if (_websocketClient != null)
             {
-                var linesWrapper =  startLine.HasValue? new TimelineRecordFeedLinesWrapper(stepId, lines, startLine.Value):  new TimelineRecordFeedLinesWrapper(stepId, lines);
+                var linesWrapper = startLine.HasValue ? new TimelineRecordFeedLinesWrapper(stepId, lines, startLine.Value) : new TimelineRecordFeedLinesWrapper(stepId, lines);
                 var jsonData = StringUtil.ConvertToJson(linesWrapper);
                 try
                 {
@@ -242,7 +245,7 @@ namespace GitHub.Runner.Common
                     {
                         var lastChunk = i + (1 * 1024) >= jsonDataBytes.Length;
                         var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1 * 1024, jsonDataBytes.Length - i));
-                        await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage:lastChunk, cancellationToken);
+                        await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage: lastChunk, cancellationToken);
                     }
 
                     pushedLinesViaWebsocket = true;
@@ -251,7 +254,7 @@ namespace GitHub.Runner.Common
                 {
                     failedAttemptsToPostBatchedLinesByWebsocket++;
                     Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
-                    Trace.Error(ex);
+                    Trace.Verbose(ex.ToString());
                     if (totalBatchedLinesAttemptedByWebsocket > _minWebsocketBatchedLinesCountToConsider)
                     {
                         // let's consider failure percentage
@@ -274,7 +277,7 @@ namespace GitHub.Runner.Common
                 }
             }
 
-            if (!pushedLinesViaWebsocket)
+            if (!pushedLinesViaWebsocket && !cancellationToken.IsCancellationRequested)
             {
                 if (startLine.HasValue)
                 {
@@ -305,6 +308,7 @@ namespace GitHub.Runner.Common
             CheckConnection();
             return _taskClient.CreateAttachmentAsync(scopeIdentifier, hubName, planId, timelineId, timelineRecordId, type, name, uploadStream, cancellationToken: cancellationToken);
         }
+
 
         public Task<TaskLog> CreateLogAsync(Guid scopeIdentifier, string hubName, Guid planId, TaskLog log, CancellationToken cancellationToken)
         {

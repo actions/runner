@@ -23,10 +23,10 @@ namespace GitHub.Runner.Plugins.Artifact
         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
         private const int _defaultCopyBufferSize = 81920;
 
-        private readonly ConcurrentQueue<string> _fileUploadQueue = new ConcurrentQueue<string>();
-        private readonly ConcurrentQueue<DownloadInfo> _fileDownloadQueue = new ConcurrentQueue<DownloadInfo>();
-        private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _fileUploadTraceLog = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
-        private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _fileUploadProgressLog = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
+        private readonly ConcurrentQueue<string> _fileUploadQueue = new();
+        private readonly ConcurrentQueue<DownloadInfo> _fileDownloadQueue = new();
+        private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _fileUploadTraceLog = new();
+        private readonly ConcurrentDictionary<string, ConcurrentQueue<string>> _fileUploadProgressLog = new();
         private readonly FileContainerHttpClient _fileContainerHttpClient;
 
         private CancellationTokenSource _uploadCancellationTokenSource;
@@ -67,7 +67,7 @@ namespace GitHub.Runner.Plugins.Artifact
             CancellationToken cancellationToken)
         {
             // Find out all container items need to be processed
-            List<FileContainerItem> containerItems = new List<FileContainerItem>();
+            List<FileContainerItem> containerItems = new();
             int retryCount = 0;
             while (retryCount < 3)
             {
@@ -106,7 +106,7 @@ namespace GitHub.Runner.Plugins.Artifact
             // Create all required empty folders and emptry files, gather a list of files that we need to download from server.
             int foldersCreated = 0;
             int emptryFilesCreated = 0;
-            List<DownloadInfo> downloadFiles = new List<DownloadInfo>();
+            List<DownloadInfo> downloadFiles = new();
             foreach (var item in containerItems.OrderBy(x => x.Path))
             {
                 if (!item.Path.StartsWith(_containerPath, StringComparison.OrdinalIgnoreCase))
@@ -306,7 +306,7 @@ namespace GitHub.Runner.Plugins.Artifact
             Task downloadMonitor = DownloadReportingAsync(context, files.Count(), token);
 
             // Start parallel download tasks.
-            List<Task<DownloadResult>> parallelDownloadingTasks = new List<Task<DownloadResult>>();
+            List<Task<DownloadResult>> parallelDownloadingTasks = new();
             for (int downloader = 0; downloader < concurrentDownloads; downloader++)
             {
                 parallelDownloadingTasks.Add(DownloadAsync(context, downloader, token));
@@ -358,7 +358,7 @@ namespace GitHub.Runner.Plugins.Artifact
             Task uploadMonitor = UploadReportingAsync(context, files.Count(), _uploadCancellationTokenSource.Token);
 
             // Start parallel upload tasks.
-            List<Task<UploadResult>> parallelUploadingTasks = new List<Task<UploadResult>>();
+            List<Task<UploadResult>> parallelUploadingTasks = new();
             for (int uploader = 0; uploader < concurrentUploads; uploader++)
             {
                 parallelUploadingTasks.Add(UploadAsync(context, uploader, _uploadCancellationTokenSource.Token));
@@ -381,8 +381,8 @@ namespace GitHub.Runner.Plugins.Artifact
 
         private async Task<DownloadResult> DownloadAsync(RunnerActionPluginExecutionContext context, int downloaderId, CancellationToken token)
         {
-            List<DownloadInfo> failedFiles = new List<DownloadInfo>();
-            Stopwatch downloadTimer = new Stopwatch();
+            List<DownloadInfo> failedFiles = new();
+            Stopwatch downloadTimer = new();
             while (_fileDownloadQueue.TryDequeue(out DownloadInfo fileToDownload))
             {
                 token.ThrowIfCancellationRequested();
@@ -396,7 +396,7 @@ namespace GitHub.Runner.Plugins.Artifact
                         {
                             context.Debug($"Start downloading file: '{fileToDownload.ItemPath}' (Downloader {downloaderId})");
                             downloadTimer.Restart();
-                            using (FileStream fs = new FileStream(fileToDownload.LocalPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
+                            using (FileStream fs = new(fileToDownload.LocalPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
                             using (var downloadStream = await _fileContainerHttpClient.DownloadFileAsync(_containerId, fileToDownload.ItemPath, token, _projectId))
                             {
                                 await downloadStream.CopyToAsync(fs, _defaultCopyBufferSize, token);
@@ -453,10 +453,10 @@ namespace GitHub.Runner.Plugins.Artifact
 
         private async Task<UploadResult> UploadAsync(RunnerActionPluginExecutionContext context, int uploaderId, CancellationToken token)
         {
-            List<string> failedFiles = new List<string>();
+            List<string> failedFiles = new();
             long uploadedSize = 0;
             string fileToUpload;
-            Stopwatch uploadTimer = new Stopwatch();
+            Stopwatch uploadTimer = new();
             while (_fileUploadQueue.TryDequeue(out fileToUpload))
             {
                 token.ThrowIfCancellationRequested();

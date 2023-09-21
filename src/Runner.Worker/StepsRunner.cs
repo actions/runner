@@ -1,12 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
@@ -14,8 +11,6 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Expressions;
-using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
-using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -26,6 +21,8 @@ namespace GitHub.Runner.Worker
         string DisplayName { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         TemplateToken Timeout { get; }
+        bool TryUpdateDisplayName(out bool updated);
+        bool EvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated);
         Task RunAsync();
     }
 
@@ -112,6 +109,7 @@ namespace GitHub.Runner.Worker
                         foreach (var env in actionEnvironment)
                         {
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                            step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
                         }
                     }
                     catch (Exception ex)
@@ -194,6 +192,12 @@ namespace GitHub.Runner.Worker
                         }
                         else
                         {
+                            // This is our last, best chance to expand the display name.  (At this point, all the requirements for successful expansion should be met.)
+                            // That being said, evaluating the display name should still be considered as a "best effort" exercise.  (It's not critical or paramount.)
+                            // For that reason, we call a safe "Try..." wrapper method to ensure that any potential problems we encounter in evaluating the display name
+                            // don't interfere with our ultimate goal within this code block:  evaluation of the condition.
+                            step.TryUpdateDisplayName(out _);
+
                             try
                             {
                                 var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
@@ -255,14 +259,6 @@ namespace GitHub.Runner.Worker
 
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)
         {
-            // Check to see if we can expand the display name
-            if (step is IActionRunner actionRunner &&
-                actionRunner.Stage == ActionRunStage.Main &&
-                actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
-            {
-                step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
-            }
-
             // Start the step
             Trace.Info("Starting the step.");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");

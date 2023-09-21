@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -23,6 +23,7 @@ namespace GitHub.Runner.Listener
         Task DeleteSessionAsync();
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
+        void OnJobStatus(object sender, JobStatusEventArgs e);
     }
 
     public sealed class MessageListener : RunnerService, IMessageListener
@@ -37,7 +38,9 @@ namespace GitHub.Runner.Listener
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
-        private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new();
+        private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
+        private CancellationTokenSource _getMessagesTokenSource;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -120,8 +123,15 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
-                    if (ex is VssOAuthTokenRequestException && creds.Federated is VssOAuthCredential vssOAuthCred)
+                    if (ex is VssOAuthTokenRequestException vssOAuthEx && creds.Federated is VssOAuthCredential vssOAuthCred)
                     {
+                        // "invalid_client" means the runner registration has been deleted from the server.
+                        if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure.");
+                            return false;
+                        }
+
                         // Check whether we get 401 because the runner registration already removed by the service.
                         // If the runner registration get deleted, we can't exchange oauth token.
                         Trace.Error("Test oauth app registration.");
@@ -170,6 +180,23 @@ namespace GitHub.Runner.Listener
             }
         }
 
+        public void OnJobStatus(object sender, JobStatusEventArgs e)
+        {
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
+            {
+                Trace.Info("Received job status event. JobState: {0}", e.Status);
+                runnerStatus = e.Status;
+                try
+                {
+                    _getMessagesTokenSource?.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    Trace.Info("_getMessagesTokenSource is already disposed.");
+                }
+            }
+        }
+
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
         {
             Trace.Entering();
@@ -178,18 +205,21 @@ namespace GitHub.Runner.Listener
             bool encounteringError = false;
             int continuousError = 0;
             string errorMessage = string.Empty;
-            Stopwatch heartbeat = new Stopwatch();
+            Stopwatch heartbeat = new();
             heartbeat.Restart();
             while (true)
             {
                 token.ThrowIfCancellationRequested();
                 TaskAgentMessage message = null;
+                _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
                 {
                     message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 _session.SessionId,
                                                                 _lastMessageId,
-                                                                token);
+                                                                runnerStatus,
+                                                                BuildConstants.RunnerPackage.Version,
+                                                                _getMessagesTokenSource.Token);
 
                     // Decrypt the message body if the session is using encryption
                     message = DecryptMessage(message);
@@ -206,6 +236,11 @@ namespace GitHub.Runner.Listener
                         continuousError = 0;
                     }
                 }
+                catch (OperationCanceledException) when (_getMessagesTokenSource.Token.IsCancellationRequested && !token.IsCancellationRequested)
+                {
+                    Trace.Info("Get messages has been cancelled using local token source. Continue to get messages with new status.");
+                    continue;
+                }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
                     Trace.Info("Get next message has been cancelled.");
@@ -215,6 +250,10 @@ namespace GitHub.Runner.Listener
                 {
                     Trace.Info("Runner OAuth token has been revoked. Unable to pull message.");
                     _accessTokenRevoked = true;
+                    throw;
+                }
+                catch (AccessDeniedException e) when (e.ErrorCode == 1)
+                {
                     throw;
                 }
                 catch (Exception ex)
@@ -260,6 +299,10 @@ namespace GitHub.Runner.Listener
                         Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
                         await HostContext.Delay(_getNextMessageRetryInterval, token);
                     }
+                }
+                finally
+                {
+                    _getMessagesTokenSource.Dispose();
                 }
 
                 if (message == null)

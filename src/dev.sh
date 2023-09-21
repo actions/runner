@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###############################################################################
-#  
+#
 #  ./dev.sh build/layout/test/package [Debug/Release]
 #
 ###############################################################################
@@ -22,11 +22,17 @@ DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 PACKAGE_TRIMS_DIR="$SCRIPT_DIR/../_package_trims"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="6.0.100"
+DOTNETSDK_VERSION="6.0.414"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 RUNNER_VERSION=$(cat runnerversion)
 
 pushd "$SCRIPT_DIR"
+
+if which pwsh; then
+    POWERSHELL="pwsh"
+else
+    POWERSHELL="powershell"
+fi
 
 BUILD_CONFIG="Debug"
 if [[ "$DEV_CONFIG" == "Release" ]]; then
@@ -43,6 +49,9 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     if [[ "$PROCESSOR_ARCHITECTURE" == 'x86' ]]; then
         RUNTIME_ID='win-x86'
     fi
+    if [[ "$PROCESSOR_ARCHITECTURE" == 'ARM64' ]]; then
+        RUNTIME_ID='win-arm64'
+    fi
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
     RUNTIME_ID="linux-x64"
     if command -v uname > /dev/null; then
@@ -54,6 +63,12 @@ elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
     fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
     RUNTIME_ID='osx-x64'
+    if command -v uname > /dev/null; then
+        CPU_NAME=$(uname -m)
+        case $CPU_NAME in
+            arm64) RUNTIME_ID="osx-arm64";;
+        esac
+    fi
 fi
 
 if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
@@ -61,11 +76,11 @@ if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
 fi
 
 # Make sure current platform support publish the dotnet runtime
-# Windows can publish win-x86/x64
+# Windows can publish win-x86/x64/arm64
 # Linux can publish linux-x64/arm/arm64
-# OSX can publish osx-x64
+# OSX can publish osx-x64/arm64
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
-    if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') ]]; then
+    if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') && ("$RUNTIME_ID" != 'win-arm64') ]]; then
         echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
         exit 1
     fi
@@ -75,7 +90,7 @@ elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
        exit 1
     fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
-    if [[ ("$RUNTIME_ID" != 'osx-x64') ]]; then
+    if [[ ("$RUNTIME_ID" != 'osx-x64') && ("$RUNTIME_ID" != 'osx-arm64') ]]; then
        echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
        exit 1
     fi
@@ -185,7 +200,14 @@ function runtest ()
         ulimit -n 1024
     fi
 
-    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests" 
+    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests"
+}
+
+function format()
+{
+    heading "Formatting..."
+    files="$(git status -s "*.cs" | awk '{print $2}' | tr '\n' ' ')"
+    dotnet format ${SCRIPT_DIR}/ActionsRunner.sln --exclude / --include $files || failed "failed formatting"
 }
 
 function package ()
@@ -220,13 +242,13 @@ function package ()
         window_path=${LAYOUT_DIR:1}
         window_path=${window_path:0:1}:${window_path:1}
         echo "Creating $zip_name in ${window_path}"
-        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
     fi
 
     popd > /dev/null
 
     runner_trim_externals_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noexternals"
-    heading "Packaging ${runner_trim_externals_pkg_name} (Trimmed)" 
+    heading "Packaging ${runner_trim_externals_pkg_name} (Trimmed)"
 
     PACKAGE_TRIM_EXTERNALS_DIR="$PACKAGE_TRIMS_DIR/trim_externals"
     mkdir -p "$PACKAGE_TRIM_EXTERNALS_DIR"
@@ -241,12 +263,12 @@ function package ()
         window_path=${LAYOUT_TRIM_EXTERNALS_DIR:1}
         window_path=${window_path:0:1}:${window_path:1}
         echo "Creating $zip_name in ${window_path}"
-        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
     fi
     popd > /dev/null
 
     runner_trim_runtime_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noruntime"
-    heading "Packaging ${runner_trim_runtime_pkg_name} (Trimmed)" 
+    heading "Packaging ${runner_trim_runtime_pkg_name} (Trimmed)"
 
     PACKAGE_TRIM_RUNTIME_DIR="$PACKAGE_TRIMS_DIR/trim_runtime"
     mkdir -p "$PACKAGE_TRIM_RUNTIME_DIR"
@@ -261,12 +283,12 @@ function package ()
         window_path=${LAYOUT_TRIM_RUNTIME_DIR:1}
         window_path=${window_path:0:1}:${window_path:1}
         echo "Creating $zip_name in ${window_path}"
-        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
     fi
     popd > /dev/null
 
     runner_trim_runtime_externals_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noruntime-noexternals"
-    heading "Packaging ${runner_trim_runtime_externals_pkg_name} (Trimmed)" 
+    heading "Packaging ${runner_trim_runtime_externals_pkg_name} (Trimmed)"
 
     PACKAGE_TRIM_RUNTIME_EXTERNALS_DIR="$PACKAGE_TRIMS_DIR/trim_runtime_externals"
     mkdir -p "$PACKAGE_TRIM_RUNTIME_EXTERNALS_DIR"
@@ -281,13 +303,13 @@ function package ()
         window_path=${LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR:1}
         window_path=${window_path:0:1}:${window_path:1}
         echo "Creating $zip_name in ${window_path}"
-        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
     fi
     popd > /dev/null
 }
 
 if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet") ]]; then
-    
+
     # Download dotnet SDK to ../_dotnetsdk directory
     heading "Ensure Dotnet SDK"
 
@@ -303,7 +325,7 @@ if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTN
         echo "Convert ${DOTNETSDK_INSTALLDIR} to Windows style path"
         sdkinstallwindow_path=${DOTNETSDK_INSTALLDIR:1}
         sdkinstallwindow_path=${sdkinstallwindow_path:0:1}:${sdkinstallwindow_path:1}
-        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "& \"./Misc/dotnet-install.ps1\" -Version ${DOTNETSDK_VERSION} -InstallDir \"${sdkinstallwindow_path}\" -NoPath; exit \$LastExitCode;" || checkRC dotnet-install.ps1
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "& \"./Misc/dotnet-install.ps1\" -Version ${DOTNETSDK_VERSION} -InstallDir \"${sdkinstallwindow_path}\" -NoPath; exit \$LastExitCode;" || checkRC dotnet-install.ps1
     else
         bash ./Misc/dotnet-install.sh --version ${DOTNETSDK_VERSION} --install-dir "${DOTNETSDK_INSTALLDIR}" --no-path || checkRC dotnet-install.sh
     fi
@@ -345,7 +367,9 @@ case $DEV_CMD in
     "l") layout;;
     "package") package;;
     "p") package;;
-    *) echo "Invalid cmd.  Use build(b), test(t), layout(l) or package(p)";;
+    "format") format;;
+    "f") format;;
+    *) echo "Invalid cmd.  Use build(b), test(t), layout(l), package(p), or format(f)";;
 esac
 
 popd

@@ -32,7 +32,7 @@ namespace GitHub.Runner.Worker
     {
         private static string DateTimeFormat = "yyyyMMdd-HHmmss";
         public void UploadDiagnosticLogs(IExecutionContext executionContext,
-                                         IExecutionContext parentContext, 
+                                         IExecutionContext parentContext,
                                          Pipelines.AgentJobRequestMessage message,
                                          DateTime jobStartTimeUtc)
         {
@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker
             // \_layout\_work\_temp\[jobname-support]\files\environment.txt
             var configurationStore = HostContext.GetService<IConfigurationStore>();
             RunnerSettings settings = configurationStore.GetSettings();
-            int runnerId = settings.AgentId;
+            ulong runnerId = settings.AgentId;
             string runnerName = settings.AgentName;
             int poolId = settings.PoolId;
 

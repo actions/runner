@@ -11,7 +11,7 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     # Make sure ./releaseVersion match ./src/runnerversion
     # Query GitHub release ensure version is not used
@@ -50,25 +50,33 @@ jobs:
       linux-arm64-sha: ${{ steps.sha.outputs.linux-arm64-sha256 }}
       linux-arm-sha: ${{ steps.sha.outputs.linux-arm-sha256 }}
       win-x64-sha: ${{ steps.sha.outputs.win-x64-sha256 }}
+      win-arm64-sha: ${{ steps.sha.outputs.win-arm64-sha256 }}
       osx-x64-sha: ${{ steps.sha.outputs.osx-x64-sha256 }}
+      osx-arm64-sha: ${{ steps.sha.outputs.osx-arm64-sha256 }}
       linux-x64-sha-noexternals: ${{ steps.sha_noexternals.outputs.linux-x64-sha256 }}
       linux-arm64-sha-noexternals: ${{ steps.sha_noexternals.outputs.linux-arm64-sha256 }}
       linux-arm-sha-noexternals: ${{ steps.sha_noexternals.outputs.linux-arm-sha256 }}
       win-x64-sha-noexternals: ${{ steps.sha_noexternals.outputs.win-x64-sha256 }}
+      win-arm64-sha-noexternals: ${{ steps.sha_noexternals.outputs.win-arm64-sha256 }}
       osx-x64-sha-noexternals: ${{ steps.sha_noexternals.outputs.osx-x64-sha256 }}
+      osx-arm64-sha-noexternals: ${{ steps.sha_noexternals.outputs.osx-arm64-sha256 }}
       linux-x64-sha-noruntime: ${{ steps.sha_noruntime.outputs.linux-x64-sha256 }}
       linux-arm64-sha-noruntime: ${{ steps.sha_noruntime.outputs.linux-arm64-sha256 }}
       linux-arm-sha-noruntime: ${{ steps.sha_noruntime.outputs.linux-arm-sha256 }}
       win-x64-sha-noruntime: ${{ steps.sha_noruntime.outputs.win-x64-sha256 }}
+      win-arm64-sha-noruntime: ${{ steps.sha_noruntime.outputs.win-arm64-sha256 }}
       osx-x64-sha-noruntime: ${{ steps.sha_noruntime.outputs.osx-x64-sha256 }}
+      osx-arm64-sha-noruntime: ${{ steps.sha_noruntime.outputs.osx-arm64-sha256 }}
       linux-x64-sha-noruntime-noexternals: ${{ steps.sha_noruntime_noexternals.outputs.linux-x64-sha256 }}
       linux-arm64-sha-noruntime-noexternals: ${{ steps.sha_noruntime_noexternals.outputs.linux-arm64-sha256 }}
       linux-arm-sha-noruntime-noexternals: ${{ steps.sha_noruntime_noexternals.outputs.linux-arm-sha256 }}
       win-x64-sha-noruntime-noexternals: ${{ steps.sha_noruntime_noexternals.outputs.win-x64-sha256 }}
+      win-arm64-sha-noruntime-noexternals: ${{ steps.sha_noruntime_noexternals.outputs.win-arm64-sha256 }}
       osx-x64-sha-noruntime-noexternals: ${{ steps.sha_noruntime_noexternals.outputs.osx-x64-sha256 }}
+      osx-arm64-sha-noruntime-noexternals: ${{ steps.sha_noruntime_noexternals.outputs.osx-arm64-sha256 }}
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64, osx-arm64, win-arm64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -86,26 +94,27 @@ jobs:
           os: macOS-latest
           devScript: ./dev.sh
 
+        - runtime: osx-arm64
+          os: macOS-latest
+          devScript: ./dev.sh
+
         - runtime: win-x64
           os: windows-2019
           devScript: ./dev
 
+        - runtime: win-arm64
+          os: windows-latest
+          devScript: ./dev
+
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     # Build runner layout
     - name: Build & Layout Release
       run: |
         ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
       working-directory: src
-
-    # Run tests
-    #- name: L0
-    #  run: |
-    #    ${{ matrix.devScript }} test
-    #  working-directory: src
-    #  if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
 
     # Create runner package tar.gz/zip
     - name: Package Release
@@ -122,7 +131,7 @@ jobs:
         file=$(ls)
         sha=$(sha256sum $file | awk '{ print $1 }')
         echo "Computed sha256: $sha for $file"
-        echo "::set-output name=${{matrix.runtime}}-sha256::$sha"
+        echo "${{matrix.runtime}}-sha256=$sha" >> $GITHUB_OUTPUT
       shell: bash
       id: sha
       name: Compute SHA256
@@ -131,8 +140,8 @@ jobs:
         file=$(ls)
         sha=$(sha256sum $file | awk '{ print $1 }')
         echo "Computed sha256: $sha for $file"
-        echo "::set-output name=${{matrix.runtime}}-sha256::$sha"
-        echo "::set-output name=sha256::$sha"
+        echo "${{matrix.runtime}}-sha256=$sha" >> $GITHUB_OUTPUT
+        echo "sha256=$sha" >> $GITHUB_OUTPUT
       shell: bash
       id: sha_noexternals
       name: Compute SHA256
@@ -141,8 +150,8 @@ jobs:
         file=$(ls)
         sha=$(sha256sum $file | awk '{ print $1 }')
         echo "Computed sha256: $sha for $file"
-        echo "::set-output name=${{matrix.runtime}}-sha256::$sha"
-        echo "::set-output name=sha256::$sha"
+        echo "${{matrix.runtime}}-sha256=$sha" >> $GITHUB_OUTPUT
+        echo "sha256=$sha" >> $GITHUB_OUTPUT
       shell: bash
       id: sha_noruntime
       name: Compute SHA256
@@ -151,15 +160,15 @@ jobs:
         file=$(ls)
         sha=$(sha256sum $file | awk '{ print $1 }')
         echo "Computed sha256: $sha for $file"
-        echo "::set-output name=${{matrix.runtime}}-sha256::$sha"
-        echo "::set-output name=sha256::$sha"
+        echo "${{matrix.runtime}}-sha256=$sha" >> $GITHUB_OUTPUT
+        echo "sha256=$sha" >> $GITHUB_OUTPUT
       shell: bash
       id: sha_noruntime_noexternals
       name: Compute SHA256
       working-directory: _package_trims/trim_runtime_externals
-    
+
     - name: Create trimmedpackages.json for ${{ matrix.runtime }}
-      if: matrix.runtime == 'win-x64'
+      if: matrix.runtime == 'win-x64' || matrix.runtime == 'win-arm64'
       uses: actions/github-script@0.3.0
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
@@ -179,7 +188,7 @@ jobs:
           fs.writeFileSync('${{ matrix.runtime }}-trimmedpackages.json', trimmedPackages)
 
     - name: Create trimmedpackages.json for ${{ matrix.runtime }}
-      if: matrix.runtime != 'win-x64'
+      if: matrix.runtime != 'win-x64' && matrix.runtime != 'win-arm64'
       uses: actions/github-script@0.3.0
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
@@ -217,7 +226,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact
@@ -238,22 +247,30 @@ jobs:
           const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
           var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
           releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, '${{needs.build.outputs.win-x64-sha}}')
+          releaseNote = releaseNote.replace(/<WIN_ARM64_SHA>/g, '${{needs.build.outputs.win-arm64-sha}}')
           releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, '${{needs.build.outputs.osx-x64-sha}}')
+          releaseNote = releaseNote.replace(/<OSX_ARM64_SHA>/g, '${{needs.build.outputs.osx-arm64-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, '${{needs.build.outputs.linux-x64-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, '${{needs.build.outputs.linux-arm-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, '${{needs.build.outputs.linux-arm64-sha}}')
           releaseNote = releaseNote.replace(/<WIN_X64_SHA_NOEXTERNALS>/g, '${{needs.build.outputs.win-x64-sha-noexternals}}')
+          releaseNote = releaseNote.replace(/<WIN_ARM64_SHA_NOEXTERNALS>/g, '${{needs.build.outputs.win-arm64-sha-noexternals}}')
           releaseNote = releaseNote.replace(/<OSX_X64_SHA_NOEXTERNALS>/g, '${{needs.build.outputs.osx-x64-sha-noexternals}}')
+          releaseNote = releaseNote.replace(/<OSX_ARM64_SHA_NOEXTERNALS>/g, '${{needs.build.outputs.osx-arm64-sha-noexternals}}')
           releaseNote = releaseNote.replace(/<LINUX_X64_SHA_NOEXTERNALS>/g, '${{needs.build.outputs.linux-x64-sha-noexternals}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM_SHA_NOEXTERNALS>/g, '${{needs.build.outputs.linux-arm-sha-noexternals}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA_NOEXTERNALS>/g, '${{needs.build.outputs.linux-arm64-sha-noexternals}}')
           releaseNote = releaseNote.replace(/<WIN_X64_SHA_NORUNTIME>/g, '${{needs.build.outputs.win-x64-sha-noruntime}}')
+          releaseNote = releaseNote.replace(/<WIN_ARM64_SHA_NORUNTIME>/g, '${{needs.build.outputs.win-arm64-sha-noruntime}}')
           releaseNote = releaseNote.replace(/<OSX_X64_SHA_NORUNTIME>/g, '${{needs.build.outputs.osx-x64-sha-noruntime}}')
+          releaseNote = releaseNote.replace(/<OSX_ARM64_SHA_NORUNTIME>/g, '${{needs.build.outputs.osx-arm64-sha-noruntime}}')
           releaseNote = releaseNote.replace(/<LINUX_X64_SHA_NORUNTIME>/g, '${{needs.build.outputs.linux-x64-sha-noruntime}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM_SHA_NORUNTIME>/g, '${{needs.build.outputs.linux-arm-sha-noruntime}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA_NORUNTIME>/g, '${{needs.build.outputs.linux-arm64-sha-noruntime}}')
           releaseNote = releaseNote.replace(/<WIN_X64_SHA_NORUNTIME_NOEXTERNALS>/g, '${{needs.build.outputs.win-x64-sha-noruntime-noexternals}}')
+          releaseNote = releaseNote.replace(/<WIN_ARM64_SHA_NORUNTIME_NOEXTERNALS>/g, '${{needs.build.outputs.win-arm64-sha-noruntime-noexternals}}')
           releaseNote = releaseNote.replace(/<OSX_X64_SHA_NORUNTIME_NOEXTERNALS>/g, '${{needs.build.outputs.osx-x64-sha-noruntime-noexternals}}')
+          releaseNote = releaseNote.replace(/<OSX_ARM64_SHA_NORUNTIME_NOEXTERNALS>/g, '${{needs.build.outputs.osx-arm64-sha-noruntime-noexternals}}')
           releaseNote = releaseNote.replace(/<LINUX_X64_SHA_NORUNTIME_NOEXTERNALS>/g, '${{needs.build.outputs.linux-x64-sha-noruntime-noexternals}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM_SHA_NORUNTIME_NOEXTERNALS>/g, '${{needs.build.outputs.linux-arm-sha-noruntime-noexternals}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA_NORUNTIME_NOEXTERNALS>/g, '${{needs.build.outputs.linux-arm64-sha-noruntime-noexternals}}')
@@ -266,7 +283,9 @@ jobs:
       run: |
         ls -l
         echo "${{needs.build.outputs.win-x64-sha}}  actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip" | shasum -a 256 -c
+        echo "${{needs.build.outputs.win-arm64-sha}}  actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip" | shasum -a 256 -c
         echo "${{needs.build.outputs.osx-x64-sha}}  actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
+        echo "${{needs.build.outputs.osx-arm64-sha}}  actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
         echo "${{needs.build.outputs.linux-x64-sha}}  actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
         echo "${{needs.build.outputs.linux-arm-sha}}  actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
         echo "${{needs.build.outputs.linux-arm64-sha}}  actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
@@ -294,6 +313,16 @@ jobs:
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
         asset_content_type: application/octet-stream
 
+    - name: Upload Release Asset (win-arm64)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/_package/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_content_type: application/octet-stream
+
     - name: Upload Release Asset (linux-x64)
       uses: actions/upload-release-asset@v1.0.1
       env:
@@ -312,6 +341,16 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/_package/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (osx-arm64)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/_package/actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_name: actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm)
@@ -345,6 +384,17 @@ jobs:
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}-noexternals.zip
         asset_content_type: application/octet-stream
 
+    # Upload release assets (trim externals)
+    - name: Upload Release Asset (win-arm64-noexternals)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/_package_trims/trim_externals/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}-noexternals.zip
+        asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}-noexternals.zip
+        asset_content_type: application/octet-stream
+
     - name: Upload Release Asset (linux-x64-noexternals)
       uses: actions/upload-release-asset@v1.0.1
       env:
@@ -363,6 +413,16 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/_package_trims/trim_externals/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}-noexternals.tar.gz
         asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}-noexternals.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (osx-arm64-noexternals)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/_package_trims/trim_externals/actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}-noexternals.tar.gz
+        asset_name: actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}-noexternals.tar.gz
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm-noexternals)
@@ -396,6 +456,17 @@ jobs:
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}-noruntime.zip
         asset_content_type: application/octet-stream
 
+    # Upload release assets (trim runtime)
+    - name: Upload Release Asset (win-arm64-noruntime)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/_package_trims/trim_runtime/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}-noruntime.zip
+        asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}-noruntime.zip
+        asset_content_type: application/octet-stream
+
     - name: Upload Release Asset (linux-x64-noruntime)
       uses: actions/upload-release-asset@v1.0.1
       env:
@@ -414,6 +485,16 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/_package_trims/trim_runtime/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}-noruntime.tar.gz
         asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}-noruntime.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (osx-arm64-noruntime)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/_package_trims/trim_runtime/actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}-noruntime.tar.gz
+        asset_name: actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}-noruntime.tar.gz
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm-noruntime)
@@ -447,6 +528,17 @@ jobs:
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}-noruntime-noexternals.zip
         asset_content_type: application/octet-stream
 
+    # Upload release assets (trim runtime and externals)
+    - name: Upload Release Asset (win-arm64-noruntime-noexternals)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/_package_trims/trim_runtime_externals/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}-noruntime-noexternals.zip
+        asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}-noruntime-noexternals.zip
+        asset_content_type: application/octet-stream
+
     - name: Upload Release Asset (linux-x64-noruntime-noexternals)
       uses: actions/upload-release-asset@v1.0.1
       env:
@@ -465,6 +557,16 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/_package_trims/trim_runtime_externals/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}-noruntime-noexternals.tar.gz
         asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}-noruntime-noexternals.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (osx-arm64-noruntime-noexternals)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/_package_trims/trim_runtime_externals/actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}-noruntime-noexternals.tar.gz
+        asset_name: actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}-noruntime-noexternals.tar.gz
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm-noruntime-noexternals)
@@ -498,6 +600,17 @@ jobs:
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}-trimmedpackages.json
         asset_content_type: application/octet-stream
 
+    # Upload release assets (trimmedpackages.json)
+    - name: Upload Release Asset (win-arm64-trimmedpackages.json)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/win-arm64-trimmedpackages.json
+        asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}-trimmedpackages.json
+        asset_content_type: application/octet-stream
+
     - name: Upload Release Asset (linux-x64-trimmedpackages.json)
       uses: actions/upload-release-asset@v1.0.1
       env:
@@ -516,6 +629,16 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/osx-x64-trimmedpackages.json
         asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}-trimmedpackages.json
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (osx-arm64-trimmedpackages.json)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/osx-arm64-trimmedpackages.json
+        asset_name: actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}-trimmedpackages.json
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm-trimmedpackages.json)
@@ -537,3 +660,55 @@ jobs:
         asset_path: ${{ github.workspace }}/linux-arm64-trimmedpackages.json
         asset_name: actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}-trimmedpackages.json
         asset_content_type: application/octet-stream
+
+  publish-image:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Compute image version
+        id: image
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const runnerVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '')
+            console.log(`Using runner version ${runnerVersion}`)
+            core.setOutput('version', runnerVersion);
+
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v3
+        with:
+          context: ./images
+          platforms: |
+            linux/amd64
+            linux/arm64
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            RUNNER_VERSION=${{ steps.image.outputs.version }}
+          push: true
+          labels: |
+            org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
+            org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
+            org.opencontainers.image.licenses=MIT

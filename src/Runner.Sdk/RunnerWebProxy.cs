@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -23,9 +23,9 @@ namespace GitHub.Runner.Sdk
         private string _httpsProxyPassword;
         private string _noProxyString;
 
-        private readonly List<ByPassInfo> _noProxyList = new List<ByPassInfo>();
-        private readonly HashSet<string> _noProxyUnique = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private readonly Regex _validIpRegex = new Regex("^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$", RegexOptions.Compiled);
+        private readonly List<ByPassInfo> _noProxyList = new();
+        private readonly HashSet<string> _noProxyUnique = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Regex _validIpRegex = new("^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$", RegexOptions.Compiled);
 
         public string HttpProxyAddress => _httpProxyAddress;
         public string HttpProxyUsername => _httpProxyUsername;
@@ -69,6 +69,10 @@ namespace GitHub.Runner.Sdk
                 return;
             }
 
+            if (!string.IsNullOrEmpty(httpProxyAddress) && !Uri.TryCreate(httpProxyAddress, UriKind.Absolute, out var _))
+            {
+                httpProxyAddress = PrependHttpIfMissing(httpProxyAddress);
+            }
             if (!string.IsNullOrEmpty(httpProxyAddress) && Uri.TryCreate(httpProxyAddress, UriKind.Absolute, out var proxyHttpUri))
             {
                 _httpProxyAddress = proxyHttpUri.OriginalString;
@@ -99,6 +103,10 @@ namespace GitHub.Runner.Sdk
                 }
             }
 
+            if (!string.IsNullOrEmpty(httpsProxyAddress) && !Uri.TryCreate(httpsProxyAddress, UriKind.Absolute, out var _))
+            {
+                httpsProxyAddress = PrependHttpIfMissing(httpsProxyAddress);
+            }
             if (!string.IsNullOrEmpty(httpsProxyAddress) && Uri.TryCreate(httpsProxyAddress, UriKind.Absolute, out var proxyHttpsUri))
             {
                 _httpsProxyAddress = proxyHttpsUri.OriginalString;
@@ -164,7 +172,6 @@ namespace GitHub.Runner.Sdk
                         {
                             continue;
                         }
-
                         _noProxyList.Add(noProxyInfo);
                     }
                 }
@@ -207,6 +214,11 @@ namespace GitHub.Runner.Sdk
         {
             foreach (var noProxy in _noProxyList)
             {
+                // bypass on wildcard no_proxy
+                if (string.Equals(noProxy.Host, "*", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
                 var matchHost = false;
                 var matchPort = false;
 
@@ -235,6 +247,21 @@ namespace GitHub.Runner.Sdk
             }
 
             return false;
+        }
+
+        private string PrependHttpIfMissing(string proxyAddress)
+        {
+            // much like in golang, see https://github.com/golang/net/blob/f5464ddb689c015d1abf4df78a806a54af977e6c/http/httpproxy/proxy.go#LL156C31-L156C31
+            if (!proxyAddress.StartsWith("http://", StringComparison.Ordinal) && !proxyAddress.StartsWith("https://", StringComparison.Ordinal))
+            {
+                var prependedProxyAddress = "http://" + proxyAddress;
+                if (Uri.TryCreate(prependedProxyAddress, UriKind.Absolute, out var _))
+                {
+                    // if prepending http:// turns the proxyAddress into a valid Uri, then use that
+                    return prependedProxyAddress;
+                }
+            }
+            return proxyAddress;
         }
     }
 }

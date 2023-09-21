@@ -13,7 +13,7 @@ set -e
 
 flags_found=false
 
-while getopts 's:g:n:r:u:l:' opt; do
+while getopts 's:g:n:r:u:l:df' opt; do
     flags_found=true
 
     case $opt in
@@ -35,6 +35,12 @@ while getopts 's:g:n:r:u:l:' opt; do
     l)
         labels=$OPTARG
         ;;
+    f)
+        replace='true'
+        ;;
+    d)
+        disableupdate='true'
+        ;;
     *)
         echo "
 Runner Service Installer
@@ -49,7 +55,9 @@ Usage:
     -n          optional  name of the runner, defaults to hostname
     -r          optional  name of the runner group to add the runner to, defaults to the Default group
     -u          optional  user svc will run as, defaults to current
-    -l          optional  list of labels (split by comma) applied on the runner"
+    -l          optional  list of labels (split by comma) applied on the runner
+    -d          optional  allow runner to remain on the current version for one month after the release of a newer version
+    -f          optional  replace any existing runner with the same name"
         exit 0
         ;;
     esac
@@ -169,8 +177,8 @@ fi
 
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup \"$runner_group\"}"
-sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"}
+echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup \"$runner_group\"} ${disableupdate:+--disableupdate}"
+sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}
 
 #---------------------------------------
 # Configuring as a service

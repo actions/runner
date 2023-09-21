@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Xunit;
 using GitHub.Services.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
@@ -40,7 +39,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
         {
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = null;
             Guid jobId = Guid.NewGuid();
             return new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
@@ -157,12 +156,12 @@ namespace GitHub.Runner.Common.Tests.Listener
         }
 
         public static TheoryData<string[], bool, Times> RunAsServiceTestData = new TheoryData<string[], bool, Times>()
-                                                                    {
-                                                                        // staring with run command, configured as run as service, should start the runner
-                                                                        { new [] { "run" }, true, Times.Once() },
-                                                                        // starting with no argument, configured not to run as service, should start runner interactively
-                                                                        { new [] { "run" }, false, Times.Once() }
-                                                                    };
+        {
+            // staring with run command, configured as run as service, should start the runner
+            { new [] { "run" }, true, Times.Once() },
+            // starting with no argument, configured not to run as service, should start runner interactively
+            { new [] { "run" }, false, Times.Once() }
+        };
         [Theory]
         [MemberData(nameof(RunAsServiceTestData))]
         [Trait("Level", "L0")]
@@ -501,6 +500,35 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async void TestRemoveLocalRunnerConfig()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+
+                var command = new CommandSettings(hc, new[] { "remove", "--local" });
+
+                _configStore.Setup(x => x.IsConfigured())
+                    .Returns(true);
+
+                _configStore.Setup(x => x.HasCredentials())
+                    .Returns(true);
+
+
+                var runner = new Runner.Listener.Runner();
+                runner.Initialize(hc);
+                await runner.ExecuteCommand(command);
+
+                // verify that we delete the local runner config with the correct remove parameter
+                _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Once());
             }
         }
     }

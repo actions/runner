@@ -38,7 +38,7 @@ namespace GitHub.DistributedTask.WebApi
         [DataMember(EmitDefaultValue = false)]
         public Guid StepId { get; set; }
 
-        [DataMember (EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false)]
         public Int64? StartLine { get; private set; }
     }
 }

@@ -1,9 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -41,10 +40,19 @@ namespace GitHub.Runner.Sdk
             File.WriteAllText(path, StringUtil.ConvertToJson(obj), Encoding.UTF8);
         }
 
-        public static T LoadObject<T>(string path)
+        public static T LoadObject<T>(string path, bool required = false)
         {
             string json = File.ReadAllText(path, Encoding.UTF8);
-            return StringUtil.ConvertFromJson<T>(json);
+            if (required && string.IsNullOrEmpty(json))
+            {
+                throw new ArgumentNullException($"File {path} is empty");
+            }
+            T result = StringUtil.ConvertFromJson<T>(json);
+            if (required && result == null)
+            {
+                throw new ArgumentException("Converting json to object resulted in a null value");
+            }
+            return result;
         }
 
         public static string GetSha256Hash(string path)
@@ -53,7 +61,7 @@ namespace GitHub.Runner.Sdk
             using (SHA256 sha256hash = SHA256.Create())
             {
                 byte[] data = sha256hash.ComputeHash(Encoding.UTF8.GetBytes(hashString));
-                StringBuilder sBuilder = new StringBuilder();
+                StringBuilder sBuilder = new();
                 for (int i = 0; i < data.Length; i++)
                 {
                     sBuilder.Append(data[i].ToString("x2"));
@@ -78,7 +86,7 @@ namespace GitHub.Runner.Sdk
         public static void DeleteDirectory(string path, bool contentsOnly, bool continueOnContentDeleteError, CancellationToken cancellationToken)
         {
             ArgUtil.NotNullOrEmpty(path, nameof(path));
-            DirectoryInfo directory = new DirectoryInfo(path);
+            DirectoryInfo directory = new(path);
             if (!directory.Exists)
             {
                 return;
@@ -364,12 +372,12 @@ namespace GitHub.Runner.Sdk
             Directory.CreateDirectory(target);
 
             // Get the file contents of the directory to copy.
-            DirectoryInfo sourceDir = new DirectoryInfo(source);
+            DirectoryInfo sourceDir = new(source);
             foreach (FileInfo sourceFile in sourceDir.GetFiles() ?? new FileInfo[0])
             {
                 // Check if the file already exists.
                 cancellationToken.ThrowIfCancellationRequested();
-                FileInfo targetFile = new FileInfo(Path.Combine(target, sourceFile.Name));
+                FileInfo targetFile = new(Path.Combine(target, sourceFile.Name));
                 if (!targetFile.Exists ||
                     sourceFile.Length != targetFile.Length ||
                     sourceFile.LastWriteTime != targetFile.LastWriteTime)
@@ -422,6 +430,12 @@ namespace GitHub.Runner.Sdk
 
             // This should never happen.
             throw new NotSupportedException($"Unable to validate execute permissions for directory '{directory}'. Exceeded maximum iterations.");
+        }
+
+        public static void CreateEmptyFile(string path)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(path, null);
         }
 
         /// <summary>

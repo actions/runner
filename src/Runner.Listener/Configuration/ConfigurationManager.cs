@@ -1,10 +1,4 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
-using GitHub.Services.Common;
-using GitHub.Services.OAuth;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -13,6 +7,13 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
+using GitHub.Services.Common.Internal;
+using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -30,12 +31,14 @@ namespace GitHub.Runner.Listener.Configuration
     {
         private IConfigurationStore _store;
         private IRunnerServer _runnerServer;
+        private IRunnerDotcomServer _dotcomServer;
         private ITerminal _term;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _runnerServer = HostContext.GetService<IRunnerServer>();
+            _dotcomServer = HostContext.GetService<IRunnerDotcomServer>();
             Trace.Verbose("Creating _store");
             _store = hostContext.GetService<IConfigurationStore>();
             Trace.Verbose("store created");
@@ -80,17 +83,39 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteLine("--------------------------------------------------------------------------------");
 
             Trace.Info(nameof(ConfigureAsync));
+
+            if (command.GenerateServiceConfig)
+            {
+#if OS_LINUX
+                if (!IsConfigured())
+                {
+                    throw new InvalidOperationException("--generateServiceConfig requires that the runner is already configured. For configuring a new runner as a service, run './config.sh'.");
+                }
+
+                RunnerSettings settings = _store.GetSettings();
+
+                Trace.Info($"generate service config for runner: {settings.AgentId}");
+                var controlManager = HostContext.GetService<ILinuxServiceControlManager>();
+                controlManager.GenerateScripts(settings);
+
+                return;
+#else
+                throw new NotSupportedException("--generateServiceConfig is only supported on Linux.");
+#endif
+            }
+
             if (IsConfigured())
             {
                 throw new InvalidOperationException("Cannot configure the runner because it is already configured. To reconfigure the runner, run 'config.cmd remove' or './config.sh remove' first.");
             }
 
-            RunnerSettings runnerSettings = new RunnerSettings();
+            RunnerSettings runnerSettings = new();
 
             // Loop getting url and creds until you can connect
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
             _term.WriteSection("Authentication");
+            string registerToken = string.Empty;
             while (true)
             {
                 // When testing against a dev deployment of Actions Service, set this environment variable
@@ -108,9 +133,11 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     runnerSettings.GitHubUrl = inputUrl;
-                    var registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
+                    registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
+                    runnerSettings.UseV2Flow = authResult.UseV2Flow;
+                    Trace.Info($"Using V2 flow: {runnerSettings.UseV2Flow}");
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
                 }
@@ -128,7 +155,7 @@ namespace GitHub.Runner.Listener.Configuration
                         // Example githubServerUrl is https://my-ghes
                         var actionsServerUrl = new Uri(runnerSettings.ServerUrl);
                         var githubServerUrl = new Uri(runnerSettings.GitHubUrl);
-                        if (!string.Equals(actionsServerUrl.Authority, githubServerUrl.Authority, StringComparison.OrdinalIgnoreCase))
+                        if (!UriUtility.IsSubdomainOf(actionsServerUrl.Authority, githubServerUrl.Authority))
                         {
                             throw new InvalidOperationException($"GitHub Actions is not properly configured in GHES. GHES url: {runnerSettings.GitHubUrl}, Actions url: {runnerSettings.ServerUrl}.");
                         }
@@ -154,9 +181,11 @@ namespace GitHub.Runner.Listener.Configuration
             // We want to use the native CSP of the platform for storage, so we use the RSACSP directly
             RSAParameters publicKey;
             var keyManager = HostContext.GetService<IRSAKeyManager>();
+            string publicKeyXML;
             using (var rsa = keyManager.CreateKey())
             {
                 publicKey = rsa.ExportParameters(false);
+                publicKeyXML = rsa.ToXmlString(includePrivateParameters: false);
             }
 
             _term.WriteSection("Runner Registration");
@@ -164,9 +193,17 @@ namespace GitHub.Runner.Listener.Configuration
             // If we have more than one runner group available, allow the user to specify which one to be added into
             string poolName = null;
             TaskAgentPool agentPool = null;
-            List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
-            TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
+            List<TaskAgentPool> agentPools;
+            if (runnerSettings.UseV2Flow)
+            {
+                agentPools = await _dotcomServer.GetRunnerGroupsAsync(runnerSettings.GitHubUrl, registerToken);
+            }
+            else
+            {
+                agentPools = await _runnerServer.GetAgentPoolsAsync();
+            }
 
+            TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
             if (agentPools?.Where(x => !x.IsHosted).Count() > 0)
             {
                 poolName = command.GetRunnerGroupName(defaultPool?.Name);
@@ -204,8 +241,16 @@ namespace GitHub.Runner.Listener.Configuration
 
                 var userLabels = command.GetLabels();
                 _term.WriteLine();
+                List<TaskAgent> agents;
+                if (runnerSettings.UseV2Flow)
+                {
+                    agents = await _dotcomServer.GetRunnerByNameAsync(runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
+                }
+                else
+                {
+                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.AgentName);
+                }
 
-                var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
                 Trace.Verbose("Returns {0} agents", agents.Count);
                 agent = agents.FirstOrDefault();
                 if (agent != null)
@@ -214,11 +259,27 @@ namespace GitHub.Runner.Listener.Configuration
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version.
-                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
+                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate, command.NoDefaultLabels);
 
                         try
                         {
-                            agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            if (runnerSettings.UseV2Flow)
+                            {
+                                var runner = await _dotcomServer.ReplaceRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                                runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                                agent.Id = runner.Id;
+                                agent.Authorization = new TaskAgentAuthorization()
+                                {
+                                    AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                                    ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                                };
+                            }
+                            else
+                            {
+                                agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            }
+
                             if (command.DisableUpdate &&
                                 command.DisableUpdate != agent.DisableUpdate)
                             {
@@ -248,11 +309,27 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent.
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate, command.NoDefaultLabels);
 
                     try
                     {
-                        agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
+                        if (runnerSettings.UseV2Flow)
+                        {
+                            var runner = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                            runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                            agent.Id = runner.Id;
+                            agent.Authorization = new TaskAgentAuthorization()
+                            {
+                                AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                                ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                            };
+                        }
+                        else
+                        {
+                            agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
+                        }
+
                         if (command.DisableUpdate &&
                             command.DisableUpdate != agent.DisableUpdate)
                         {
@@ -303,24 +380,28 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // Testing agent connection, detect any potential connection issue, like local clock skew that cause OAuth token expired.
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            VssCredentials credential = credMgr.LoadCredentials();
-            try
+
+            if (!runnerSettings.UseV2Flow)
             {
-                await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
-                // ConnectAsync() hits _apis/connectionData which is an anonymous endpoint
-                // Need to hit an authenticate endpoint to trigger OAuth token exchange.
-                await _runnerServer.GetAgentPoolsAsync();
-                _term.WriteSuccessMessage("Runner connection is good");
-            }
-            catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
-            {
-                // there are two exception messages server send that indicate clock skew.
-                // 1. The bearer token expired on {jwt.ValidTo}. Current server time is {DateTime.UtcNow}.
-                // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.
-                Trace.Error("Catch exception during test agent connection.");
-                Trace.Error(ex);
-                throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
+                var credMgr = HostContext.GetService<ICredentialManager>();
+                VssCredentials credential = credMgr.LoadCredentials();
+                try
+                {
+                    await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
+                    // ConnectAsync() hits _apis/connectionData which is an anonymous endpoint
+                    // Need to hit an authenticate endpoint to trigger OAuth token exchange.
+                    await _runnerServer.GetAgentPoolsAsync();
+                    _term.WriteSuccessMessage("Runner connection is good");
+                }
+                catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
+                {
+                    // there are two exception messages server send that indicate clock skew.
+                    // 1. The bearer token expired on {jwt.ValidTo}. Current server time is {DateTime.UtcNow}.
+                    // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.
+                    Trace.Error("Catch exception during test agent connection.");
+                    Trace.Error(ex);
+                    throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
+                }
             }
 
             _term.WriteSection("Runner settings");
@@ -489,7 +570,7 @@ namespace GitHub.Runner.Listener.Configuration
         }
 
 
-        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
+        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate, bool noDefaultLabels)
         {
             ArgUtil.NotNull(agent, nameof(agent));
             agent.Authorization = new TaskAgentAuthorization
@@ -506,9 +587,16 @@ namespace GitHub.Runner.Listener.Configuration
 
             agent.Labels.Clear();
 
-            agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
-            agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
-            agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+            if (!noDefaultLabels)
+            {
+                agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
+                agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
+                agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+            }
+            else if (userLabels.Count == 0)
+            {
+                throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
+            }
 
             foreach (var userLabel in userLabels)
             {
@@ -518,9 +606,9 @@ namespace GitHub.Runner.Listener.Configuration
             return agent;
         }
 
-        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
+        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate, bool noDefaultLabels)
         {
-            TaskAgent agent = new TaskAgent(agentName)
+            TaskAgent agent = new(agentName)
             {
                 Authorization = new TaskAgentAuthorization
                 {
@@ -533,9 +621,16 @@ namespace GitHub.Runner.Listener.Configuration
                 DisableUpdate = disableUpdate
             };
 
-            agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
-            agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
-            agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+            if (!noDefaultLabels)
+            {
+                agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
+                agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
+                agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+            }
+            else if (userLabels.Count == 0)
+            {
+                throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
+            }
 
             foreach (var userLabel in userLabels)
             {
@@ -614,7 +709,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             int retryCount = 0;
-            while(retryCount < 3)
+            while (retryCount < 3)
             {
                 using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                 using (var httpClient = new HttpClient(httpClientHandler))
@@ -624,28 +719,29 @@ namespace GitHub.Runner.Listener.Configuration
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-                    
+
                     var responseStatus = System.Net.HttpStatusCode.OK;
                     try
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
                         responseStatus = response.StatusCode;
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
-                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' ({githubRequestId})");
                             var jsonResponse = await response.Content.ReadAsStringAsync();
                             return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(jsonResponse);
                         }
                         else
                         {
-                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' (Request Id: {githubRequestId})");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
                             response.EnsureSuccessStatusCode();
                         }
                     }
-                    catch(Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
                         Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
@@ -692,22 +788,23 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
-                        if(response.IsSuccessStatusCode)
+                        if (response.IsSuccessStatusCode)
                         {
-                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' ({githubRequestId})");
                             var jsonResponse = await response.Content.ReadAsStringAsync();
                             return StringUtil.ConvertFromJson<GitHubAuthResult>(jsonResponse);
                         }
                         else
                         {
-                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' (Request Id: {githubRequestId})");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
                             response.EnsureSuccessStatusCode();
                         }
                     }
-                    catch(Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
+                    catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
                         Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");

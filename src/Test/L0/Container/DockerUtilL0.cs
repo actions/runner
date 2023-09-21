@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using GitHub.Runner.Worker.Container;
 using Xunit;
@@ -185,6 +185,55 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         public void IsDockerfile(string input, bool expected)
         {
             var actual = DockerUtil.IsDockerfile(input);
+            Assert.Equal(expected, actual);
+        }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData("", "")]
+        [InlineData("foo", "foo")]
+        [InlineData("foo \\ bar", "foo \\ bar")]
+        [InlineData("foo \\", "foo \\\\")]
+        [InlineData("foo \\\\", "foo \\\\\\\\")]
+        [InlineData("foo \\\" bar", "foo \\\\\\\" bar")]
+        [InlineData("foo \\\\\" bar", "foo \\\\\\\\\\\" bar")]
+        public void CreateEscapedOption_keyOnly(string input, string escaped)
+        {
+            var flag = "--example";
+            var actual = DockerUtil.CreateEscapedOption(flag, input);
+            string expected;
+            if (String.IsNullOrEmpty(input))
+            {
+                expected = "";
+            }
+            else
+            {
+                expected = $"{flag} \"{escaped}\"";
+            }
+            Assert.Equal(expected, actual);
+        }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData("foo", "bar", "foo=bar")]
+        [InlineData("foo\\", "bar", "foo\\=bar")]
+        [InlineData("foo\\", "bar\\", "foo\\=bar\\\\")]
+        [InlineData("foo \\", "bar \\", "foo \\=bar \\\\")]
+        public void CreateEscapedOption_keyValue(string keyInput, string valueInput, string escapedString)
+        {
+            var flag = "--example";
+            var actual = DockerUtil.CreateEscapedOption(flag, keyInput, valueInput);
+            string expected;
+            if (String.IsNullOrEmpty(keyInput))
+            {
+                expected = "";
+            }
+            else
+            {
+                expected = $"{flag} \"{escapedString}\"";
+            }
             Assert.Equal(expected, actual);
         }
     }

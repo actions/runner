@@ -93,7 +93,7 @@ namespace GitHub.Services.WebApi.Location
 
                     XmlNode parentServiceTypeNode = definitionNode.SelectSingleNode("./" + s_parentServiceType);
                     definition.ParentServiceType = (parentServiceTypeNode != null) ? parentServiceTypeNode.InnerText : null;
-                    
+
                     XmlNode parentIdentifierNode = definitionNode.SelectSingleNode("./" + s_parentIdentifier);
                     definition.ParentIdentifier = (parentIdentifierNode != null) ? XmlConvert.ToGuid(parentIdentifierNode.InnerText) : Guid.Empty;
 

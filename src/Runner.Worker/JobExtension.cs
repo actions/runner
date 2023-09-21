@@ -4,18 +4,19 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Worker;
+using GitHub.Services.Common;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -35,15 +36,16 @@ namespace GitHub.Runner.Worker
     public interface IJobExtension : IRunnerService
     {
         Task<List<IStep>> InitializeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message);
-        void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
+        Task FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
     }
 
     public sealed class JobExtension : RunnerService, IJobExtension
     {
-        private readonly HashSet<string> _existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _existingProcesses = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<Task<string>> _connectivityCheckTasks = new();
         private bool _processCleanup;
         private string _processLookupId = $"github_{Guid.NewGuid()}";
-        private CancellationTokenSource _diskSpaceCheckToken = new CancellationTokenSource();
+        private CancellationTokenSource _diskSpaceCheckToken = new();
         private Task _diskSpaceCheckTask = null;
 
         // Download all required actions.
@@ -60,8 +62,8 @@ namespace GitHub.Runner.Worker
             context.StepTelemetry.Type = "runner";
             context.StepTelemetry.Action = "setup_job";
 
-            List<IStep> preJobSteps = new List<IStep>();
-            List<IStep> jobSteps = new List<IStep>();
+            List<IStep> preJobSteps = new();
+            List<IStep> jobSteps = new();
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try
@@ -176,7 +178,14 @@ namespace GitHub.Runner.Worker
                     context.Debug("Update context data");
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                     context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
-                    context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
+
+                    var githubWorkspace = Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory);
+                    if (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+                    {
+                        // This value is used to translate paths from the container path back to the host path.
+                        context.SetGitHubContext("host-workspace", githubWorkspace);
+                    }
+                    context.SetGitHubContext("workspace", githubWorkspace);
 
                     // Temporary hack for GHES alpha
                     var configurationStore = HostContext.GetService<IConfigurationStore>();
@@ -206,6 +215,7 @@ namespace GitHub.Runner.Worker
                     // Evaluate the job container
                     context.Debug("Evaluating job container");
                     var container = templateEvaluator.EvaluateJobContainer(message.JobContainer, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
+                    ValidateJobContainer(container);
                     if (container != null)
                     {
                         jobContext.Global.Container = new Container.ContainerInfo(HostContext, container);
@@ -220,6 +230,11 @@ namespace GitHub.Runner.Worker
                         {
                             var networkAlias = pair.Key;
                             var serviceContainer = pair.Value;
+                            if (serviceContainer == null)
+                            {
+                                context.Output($"The service '{networkAlias}' will not be started because the container definition has an empty image.");
+                                continue;
+                            }
                             jobContext.Global.ServiceContainers.Add(new Container.ContainerInfo(HostContext, serviceContainer, false, networkAlias));
                         }
                     }
@@ -301,17 +316,43 @@ namespace GitHub.Runner.Worker
                                 }
                             }
 
-                            actionRunner.TryEvaluateDisplayName(contextData, context);
+                            actionRunner.EvaluateDisplayName(contextData, context, out _);
                             jobSteps.Add(actionRunner);
 
                             if (prepareResult.PreStepTracker.TryGetValue(step.Id, out var preStep))
                             {
                                 Trace.Info($"Adding pre-{action.DisplayName}.");
-                                preStep.TryEvaluateDisplayName(contextData, context);
+                                preStep.EvaluateDisplayName(contextData, context, out _);
                                 preStep.DisplayName = $"Pre {preStep.DisplayName}";
                                 preJobSteps.Add(preStep);
                             }
                         }
+                    }
+
+                    if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
+                    {
+                        var usesLogText = $"Uses: {workflowFileFullPath.Value}";
+                        var reference = GetWorkflowReference(message.Variables);
+                        context.Output(usesLogText + reference);
+
+                        if (message.ContextData.TryGetValue("inputs", out var pipelineContextData))
+                        {
+                            var inputs = pipelineContextData.AssertDictionary("inputs");
+                            if (inputs.Any())
+                            {
+                                context.Output($"##[group] Inputs");
+                                foreach (var input in inputs)
+                                {
+                                    context.Output($"  {input.Key}: {input.Value}");
+                                }
+                                context.Output("##[endgroup]");
+                            }
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(message.JobDisplayName))
+                    {
+                        context.Output($"Complete job name: {message.JobDisplayName}");
                     }
 
                     var intraActionStates = new Dictionary<Guid, Dictionary<string, string>>();
@@ -363,7 +404,7 @@ namespace GitHub.Runner.Worker
                                                                           data: (object)jobHookData));
                     }
 
-                    List<IStep> steps = new List<IStep>();
+                    List<IStep> steps = new();
                     steps.AddRange(preJobSteps);
                     steps.AddRange(jobSteps);
 
@@ -390,6 +431,22 @@ namespace GitHub.Runner.Worker
                         _diskSpaceCheckTask = CheckDiskSpaceAsync(context, _diskSpaceCheckToken.Token);
                     }
 
+                    // Check server connectivity in background
+                    ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                    if (systemConnection.Data.TryGetValue("ConnectivityChecks", out var connectivityChecksPayload) &&
+                        !string.IsNullOrEmpty(connectivityChecksPayload))
+                    {
+                        Trace.Info($"Start checking server connectivity.");
+                        var checkUrls = StringUtil.ConvertFromJson<List<string>>(connectivityChecksPayload);
+                        if (checkUrls?.Count > 0)
+                        {
+                            foreach (var checkUrl in checkUrls)
+                            {
+                                _connectivityCheckTasks.Add(CheckConnectivity(checkUrl));
+                            }
+                        }
+                    }
+
                     return steps;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
@@ -398,14 +455,6 @@ namespace GitHub.Runner.Worker
                     Trace.Error($"Caught cancellation exception from JobExtension Initialization: {ex}");
                     context.Error(ex);
                     context.Result = TaskResult.Canceled;
-                    throw;
-                }
-                catch (FailedToResolveActionDownloadInfoException ex)
-                {
-                    // Log the error and fail the JobExtension Initialization.
-                    Trace.Error($"Caught exception from JobExtenion Initialization: {ex}");
-                    context.InfrastructureError(ex.Message);
-                    context.Result = TaskResult.Failed;
                     throw;
                 }
                 catch (Exception ex)
@@ -424,7 +473,25 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
+        private string GetWorkflowReference(IDictionary<string, VariableValue> variables)
+        {
+            var reference = "";
+            if (variables.TryGetValue("system.workflowFileSha", out VariableValue workflowFileSha))
+            {
+                if (variables.TryGetValue("system.workflowFileRef", out VariableValue workflowFileRef)
+                    && !string.IsNullOrEmpty(workflowFileRef.Value))
+                {
+                    reference += $"@{workflowFileRef.Value} ({workflowFileSha.Value})";
+                }
+                else
+                {
+                    reference += $"@{workflowFileSha.Value}";
+                }
+            }
+            return reference;
+        }
+
+        public async Task FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
         {
             Trace.Entering();
             ArgUtil.NotNull(jobContext, nameof(jobContext));
@@ -601,6 +668,28 @@ namespace GitHub.Runner.Worker
                     {
                         _diskSpaceCheckToken.Cancel();
                     }
+
+                    // Collect server connectivity check result
+                    if (_connectivityCheckTasks.Count > 0)
+                    {
+                        try
+                        {
+                            Trace.Info($"Wait for all connectivity checks to finish.");
+                            await Task.WhenAll(_connectivityCheckTasks);
+                            foreach (var check in _connectivityCheckTasks)
+                            {
+                                var result = await check;
+                                Trace.Info($"Connectivity check result: {result}");
+                                context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = result });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Fail to check server connectivity.");
+                            Trace.Error(ex);
+                            context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check server connectivity. {ex.Message}" });
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -614,6 +703,37 @@ namespace GitHub.Runner.Worker
                     context.Complete();
                 }
             }
+        }
+
+        private async Task<string> CheckConnectivity(string endpointUrl)
+        {
+            Trace.Info($"Check server connectivity for {endpointUrl}.");
+            string result = string.Empty;
+            using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+            {
+                try
+                {
+                    using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                    using (var httpClient = new HttpClient(httpClientHandler))
+                    {
+                        httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                        var response = await httpClient.GetAsync(endpointUrl, timeoutTokenSource.Token);
+                        result = $"{endpointUrl}: {response.StatusCode}";
+                    }
+                }
+                catch (Exception ex) when (ex is OperationCanceledException && timeoutTokenSource.IsCancellationRequested)
+                {
+                    Trace.Error($"Request timeout during connectivity check: {ex}");
+                    result = $"{endpointUrl}: timeout";
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error($"Catch exception during connectivity check: {ex}");
+                    result = $"{endpointUrl}: {ex.Message}";
+                }
+            }
+
+            return result;
         }
 
         private async Task CheckDiskSpaceAsync(IExecutionContext context, CancellationToken token)
@@ -634,7 +754,7 @@ namespace GitHub.Runner.Worker
                 {
                     var issue = new Issue() { Type = IssueType.Warning, Message = $"You are running out of disk space. The runner will stop working when the machine runs out of disk space. Free space left: {freeSpaceInMB} MB" };
                     issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.LowDiskSpace;
-                    context.AddIssue(issue);
+                    context.AddIssue(issue, ExecutionContextLogOptions.Default);
                     return;
                 }
 
@@ -651,7 +771,7 @@ namespace GitHub.Runner.Worker
 
         private Dictionary<int, Process> SnapshotProcesses()
         {
-            Dictionary<int, Process> snapshot = new Dictionary<int, Process>();
+            Dictionary<int, Process> snapshot = new();
             foreach (var proc in Process.GetProcesses())
             {
                 try
@@ -671,6 +791,14 @@ namespace GitHub.Runner.Worker
 
             Trace.Info($"Total accessible running process: {snapshot.Count}.");
             return snapshot;
+        }
+
+        private static void ValidateJobContainer(JobContainer container)
+        {
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer)) && container == null)
+            {
+                throw new ArgumentException("Jobs without a job container are forbidden on this runner, please add a 'container:' to your job or contact your self-hosted runner administrator.");
+            }
         }
     }
 }

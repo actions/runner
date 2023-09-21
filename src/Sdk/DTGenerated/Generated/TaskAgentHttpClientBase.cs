@@ -97,7 +97,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         public virtual async Task DeleteAgentAsync(
             int poolId,
-            int agentId,
+            ulong agentId,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -243,7 +243,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         public virtual Task<TaskAgent> ReplaceAgentAsync(
             int poolId,
-            int agentId,
+            ulong agentId,
             TaskAgent agent,
             object userState = null,
             CancellationToken cancellationToken = default)
@@ -450,6 +450,8 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="poolId"></param>
         /// <param name="sessionId"></param>
         /// <param name="lastMessageId"></param>
+        /// <param name="status"></param>
+        /// <param name="runnerVersion"></param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -457,6 +459,8 @@ namespace GitHub.DistributedTask.WebApi
             int poolId,
             Guid sessionId,
             long? lastMessageId = null,
+            TaskAgentStatus? status = null,
+            string runnerVersion = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -470,12 +474,20 @@ namespace GitHub.DistributedTask.WebApi
             {
                 queryParams.Add("lastMessageId", lastMessageId.Value.ToString(CultureInfo.InvariantCulture));
             }
+            if (status != null)
+            {
+                queryParams.Add("status", status.Value.ToString());
+            }
+            if (runnerVersion != null)
+            {
+                queryParams.Add("runnerVersion", runnerVersion);
+            }
 
             return SendAsync<TaskAgentMessage>(
                 httpMethod,
                 locationId,
                 routeValues: routeValues,
-                version: new ApiResourceVersion(5.1, 1),
+                version: new ApiResourceVersion(6.0, 1),
                 queryParameters: queryParams,
                 userState: userState,
                 cancellationToken: cancellationToken);
@@ -774,7 +786,7 @@ namespace GitHub.DistributedTask.WebApi
         [EditorBrowsable(EditorBrowsableState.Never)]
         public virtual Task<TaskAgent> UpdateAgentUpdateStateAsync(
             int poolId,
-            int agentId,
+            ulong agentId,
             string currentState,
             string updateTrace,
             object userState = null,

@@ -20,7 +20,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RunnerLayoutParts_NewFilesCrossAll()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
                 var runnerCoreAssetsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RunnerLayoutParts_OverlapFiles()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
                 var runnerCoreAssetsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
@@ -77,7 +77,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RunnerLayoutParts_NewRunnerCoreAssets()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
                 var runnerCoreAssetsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
@@ -120,7 +120,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RunnerLayoutParts_NewDotnetRuntimeAssets()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
                 var runnerDotnetRuntimeFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnerdotnetruntimeassets");
@@ -156,7 +156,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RunnerLayoutParts_CheckDotnetRuntimeHash()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
                 var dotnetRuntimeHashFile = Path.Combine(TestUtil.GetSrcPath(), $"Misc/contentHash/dotnetRuntime/{BuildConstants.RunnerPackage.PackageName}");
@@ -166,9 +166,9 @@ namespace GitHub.Runner.Common.Tests
                 string binDir = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/bin");
 
 #if OS_WINDOWS
-                string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node12\bin\node");
+                string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node16\bin\node");
 #else
-                string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node12/bin/node");
+                string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node16/bin/node");
 #endif
                 string hashFilesScript = Path.Combine(binDir, "hashFiles");
                 var hashResult = string.Empty;
@@ -217,7 +217,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RunnerLayoutParts_CheckExternalsHash()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
                 var externalsHashFile = Path.Combine(TestUtil.GetSrcPath(), $"Misc/contentHash/externals/{BuildConstants.RunnerPackage.PackageName}");
@@ -228,9 +228,9 @@ namespace GitHub.Runner.Common.Tests
                 string binDir = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/bin");
 
 #if OS_WINDOWS
-                string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node12\bin\node");
+                string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node16\bin\node");
 #else
-                string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node12/bin/node");
+                string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node16/bin/node");
 #endif
                 string hashFilesScript = Path.Combine(binDir, "hashFiles");
                 var hashResult = string.Empty;

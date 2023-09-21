@@ -190,7 +190,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _trackingManager.Setup(x => x.LoadIfExists(_ec.Object, _trackingFile)).Returns(_existingConfig);
 
                 // Act.
-                Assert.ThrowsAny<ArgumentException>(()=> _pipelineDirectoryManager.UpdateRepositoryDirectory(_ec.Object, "actions/notrunner", Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), "not_under_pipeline_directory"), false));
+                Assert.ThrowsAny<ArgumentException>(() => _pipelineDirectoryManager.UpdateRepositoryDirectory(_ec.Object, "actions/notrunner", Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), "not_under_pipeline_directory"), false));
             }
         }
 
@@ -199,13 +199,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             [CallerMemberName] string name = "")
         {
             // Setup the host context.
-            TestHostContext hc = new TestHostContext(this, name);
+            TestHostContext hc = new(this, name);
 
             // Setup the execution context.
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
 
-            GitHubContext githubContext = new GitHubContext();
+            GitHubContext githubContext = new();
             _ec.Setup(x => x.GetGitHubContext("repository")).Returns("actions/runner");
 
             // Store the expected tracking file path.

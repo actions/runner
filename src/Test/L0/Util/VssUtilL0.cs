@@ -1,10 +1,6 @@
-﻿using GitHub.Runner.Common.Util;
-using GitHub.Services.Common;
+﻿using GitHub.Services.Common;
 using System;
-using System.Collections.Generic;
-using System.Net.Http.Headers;
 using Xunit;
-using System.Text.RegularExpressions;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common.Tests.Util
@@ -16,7 +12,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Trait("Category", "Common")]
         public void VerifyOverwriteVssConnectionSetting()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 

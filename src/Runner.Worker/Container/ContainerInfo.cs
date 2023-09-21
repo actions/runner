@@ -1,21 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace GitHub.Runner.Worker.Container
 {
     public class ContainerInfo
     {
-        private IDictionary<string, string> _userMountVolumes;
         private List<MountVolume> _mountVolumes;
         private IDictionary<string, string> _userPortMappings;
         private List<PortMapping> _portMappings;
         private IDictionary<string, string> _environmentVariables;
-        private List<PathMapping> _pathMappings = new List<PathMapping>();
+        private List<PathMapping> _pathMappings = new();
 
         public ContainerInfo()
         {
@@ -68,8 +68,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 foreach (var volume in container.Volumes)
                 {
-                    UserMountVolumes[volume] = volume;
-                    MountVolumes.Add(new MountVolume(volume));
+                    MountVolumes.Add(new MountVolume(volume, isUserProvided: true));
                 }
             }
 
@@ -91,6 +90,9 @@ namespace GitHub.Runner.Worker.Container
         public string RegistryAuthUsername { get; set; }
         public string RegistryAuthPassword { get; set; }
         public bool IsJobContainer { get; set; }
+        public bool IsAlpine { get; set; }
+
+        public bool FailedInitialization { get; set; }
 
         public IDictionary<string, string> ContainerEnvironmentVariables
         {
@@ -104,19 +106,20 @@ namespace GitHub.Runner.Worker.Container
                 return _environmentVariables;
             }
         }
-
-        public IDictionary<string, string> UserMountVolumes
+        public ReadOnlyCollection<MountVolume> UserMountVolumes
         {
             get
             {
-                if (_userMountVolumes == null)
-                {
-                    _userMountVolumes = new Dictionary<string, string>();
-                }
-                return _userMountVolumes;
+                return MountVolumes.Where(v => !string.IsNullOrEmpty(v.UserProvidedValue)).ToList().AsReadOnly();
             }
         }
-
+        public ReadOnlyCollection<MountVolume> SystemMountVolumes
+        {
+            get
+            {
+                return MountVolumes.Where(v => string.IsNullOrEmpty(v.UserProvidedValue)).ToList().AsReadOnly();
+            }
+        }
         public List<MountVolume> MountVolumes
         {
             get
@@ -232,6 +235,14 @@ namespace GitHub.Runner.Worker.Container
             }
         }
 
+        public void AddPortMappings(IDictionary<string, string> portMappings)
+        {
+            foreach (var pair in portMappings)
+            {
+                PortMappings.Add(new PortMapping(pair.Key, pair.Value));
+            }
+        }
+
         public void AddPathTranslateMapping(string hostCommonPath, string containerCommonPath)
         {
             _pathMappings.Insert(0, new PathMapping(hostCommonPath, containerCommonPath));
@@ -260,16 +271,25 @@ namespace GitHub.Runner.Worker.Container
 
     public class MountVolume
     {
+        public string UserProvidedValue { get; set; }
         public MountVolume(string sourceVolumePath, string targetVolumePath, bool readOnly = false)
         {
             this.SourceVolumePath = sourceVolumePath;
             this.TargetVolumePath = targetVolumePath;
             this.ReadOnly = readOnly;
         }
-
         public MountVolume(string fromString)
         {
             ParseVolumeString(fromString);
+        }
+
+        public MountVolume(string fromString, bool isUserProvided)
+        {
+            ParseVolumeString(fromString);
+            if (isUserProvided)
+            {
+                UserProvidedValue = fromString;
+            }
         }
 
         private void ParseVolumeString(string volume)
@@ -313,6 +333,12 @@ namespace GitHub.Runner.Worker.Container
 
     public class PortMapping
     {
+        public PortMapping(string hostPort, string containerPort)
+        {
+            this.HostPort = hostPort;
+            this.ContainerPort = containerPort;
+        }
+
         public PortMapping(string hostPort, string containerPort, string protocol)
         {
             this.HostPort = hostPort;

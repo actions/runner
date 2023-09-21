@@ -76,7 +76,7 @@ namespace GitHub.Runner.Common
 
         public async Task<WorkerMessage> ReceiveAsync(CancellationToken cancellationToken)
         {
-            WorkerMessage result = new WorkerMessage(MessageType.NotInitialized, string.Empty);
+            WorkerMessage result = new(MessageType.NotInitialized, string.Empty);
             result.MessageType = (MessageType)await _readStream.ReadInt32Async(cancellationToken);
             result.Body = await _readStream.ReadStringAsync(cancellationToken);
             Trace.Info($"Receiving message of length {result.Body.Length}, with hash '{IOUtil.GetSha256Hash(result.Body)}'");
