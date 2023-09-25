@@ -69,6 +69,8 @@ namespace GitHub.Runner.Common
             public static readonly OSPlatform Platform = OSPlatform.OSX;
 #elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
+#else
+            public static readonly OSPlatform Platform = OSPlatform.Linux;
 #endif
 
 #if X86
@@ -79,6 +81,8 @@ namespace GitHub.Runner.Common
             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
 #elif ARM64
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#else
+            public static readonly Architecture PlatformArchitecture = Architecture.X64;
 #endif
 
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);
