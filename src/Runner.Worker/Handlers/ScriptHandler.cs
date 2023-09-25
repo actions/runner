@@ -215,7 +215,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Set up default command and arguments
             if (string.IsNullOrEmpty(shell))
             {
-#if !OS_WINDOWS
+#if OS_WINDOWS
                 shellCommand = "pwsh";
                 if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
                 {
