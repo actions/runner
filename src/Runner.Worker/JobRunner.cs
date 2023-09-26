@@ -380,7 +380,7 @@ namespace GitHub.Runner.Worker
                     Trace.Error($"Caught exception during runner version check: {ex}");
                 }
             }
-            
+
             if (jobContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
             {
                 var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings));

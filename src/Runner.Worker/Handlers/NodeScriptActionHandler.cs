@@ -134,7 +134,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Remove environment variable that may cause conflicts with the node within the runner.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
 
-            if(Data.NodeVersion == Constants.Runner.DeprecatedNodeVersion && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node16Warning) ?? false))
+            if (string.Equals(Data.NodeVersion, Constants.Runner.DeprecatedNodeVersion, StringComparison.OrdinalIgnoreCase) && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node16Warning) ?? false))
             {
                 var repoAction = Action as RepositoryPathReference;
                 var warningActions = new HashSet<string>();
@@ -143,17 +143,16 @@ namespace GitHub.Runner.Worker.Handlers
                     warningActions = StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings);
                 }
 
-                var repoActionFullName = "";
                 if (string.IsNullOrEmpty(repoAction.Name))
                 {
-                    repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
+                    // local actions don't have a 'Name'
+                    warningActions.Add(repoAction.Path);
                 }
                 else
                 {
-                    repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}";
+                    warningActions.Add($"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}");
                 }
 
-                warningActions.Add(repoActionFullName);
                 ExecutionContext.Global.Variables.Set(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, StringUtil.ConvertToJson(warningActions));
             }
 
