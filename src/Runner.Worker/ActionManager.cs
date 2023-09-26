@@ -792,8 +792,6 @@ namespace GitHub.Runner.Worker
             string link = downloadInfo?.TarballUrl;
 #endif
 
-            // i will remove the trace.info later, it here for better diff.
-            Trace.Info($"Save archive '{link}' into {archiveFile}.");
             try
             {
                 var useActionArchiveCache = false;
