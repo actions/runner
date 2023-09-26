@@ -4,7 +4,7 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy as build
 ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.3.2
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.4.0
 ARG DOCKER_VERSION=23.0.6
 
 RUN apt update -y && apt install curl unzip -y
