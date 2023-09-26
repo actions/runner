@@ -95,7 +95,6 @@ namespace GitHub.Runner.Worker.Handlers
                     {
                         shellCommand = "powershell";
                         Trace.Info($"Defaulting to {shellCommand}");
-
                         if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
                         {
                             shellCommandPath = WhichUtil.Which2(shellCommand, require: true, Trace, prependPath);
