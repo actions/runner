@@ -796,7 +796,48 @@ namespace GitHub.Runner.Worker
             Trace.Info($"Save archive '{link}' into {archiveFile}.");
             try
             {
-                await DownloadRepositoryArchive(executionContext, link, downloadInfo.Authentication?.Token, archiveFile);
+                var useActionArchiveCache = false;
+                if (executionContext.Global.Variables.GetBoolean("DistributedTask.UseActionArchiveCache") == true)
+                {
+                    var hasActionArchiveCache = false;
+                    var actionArchiveCacheDir = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory);
+                    if (!string.IsNullOrEmpty(actionArchiveCacheDir) &&
+                        Directory.Exists(actionArchiveCacheDir))
+                    {
+                        hasActionArchiveCache = true;
+                        Trace.Info($"Check if action archive '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}' already exists in cache directory '{actionArchiveCacheDir}'");
+#if OS_WINDOWS
+                        var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.zip");
+#else
+                        var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.tar.gz");
+#endif
+                        if (File.Exists(cacheArchiveFile))
+                        {
+                            try
+                            {
+                                Trace.Info($"Found action archive '{cacheArchiveFile}' in cache directory '{actionArchiveCacheDir}'");
+                                File.Copy(cacheArchiveFile, archiveFile);
+                                useActionArchiveCache = true;
+                                executionContext.Debug($"Copied action archive '{cacheArchiveFile}' to '{archiveFile}'");
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Error($"Failed to copy action archive '{cacheArchiveFile}' to '{archiveFile}'. Error: {ex}");
+                            }
+                        }
+                    }
+
+                    executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                    {
+                        Type = JobTelemetryType.General,
+                        Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache}"
+                    });
+                }
+
+                if (!useActionArchiveCache)
+                {
+                    await DownloadRepositoryArchive(executionContext, link, downloadInfo.Authentication?.Token, archiveFile);
+                }
 
                 var stagingDirectory = Path.Combine(tempDirectory, "_staging");
                 Directory.CreateDirectory(stagingDirectory);
