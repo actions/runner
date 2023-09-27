@@ -72,7 +72,7 @@ namespace GitHub.Runner.Worker
                     launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
                 }
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-                _jobServerQueue.Start(message, resultServiceOnly: true);
+                _jobServerQueue.Start(message, resultsServiceOnly: true);
             }
             else
             {

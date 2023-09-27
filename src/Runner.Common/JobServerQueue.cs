@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
         TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultServiceOnly = false);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines);
@@ -96,14 +96,14 @@ namespace GitHub.Runner.Common
             _resultsServer = hostContext.GetService<IResultsServer>();
         }
 
-        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultServiceOnly = false)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false)
         {
             Trace.Entering();
-            _resultsServiceOnly = resultServiceOnly;
+            _resultsServiceOnly = resultsServiceOnly;
 
             var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
-            if (!resultServiceOnly)
+            if (!resultsServiceOnly)
             {
                 _jobServer.InitializeWebsocketClient(serviceEndPoint);
             }
@@ -119,7 +119,7 @@ namespace GitHub.Runner.Common
             {
                 string liveConsoleFeedUrl = null;
                 Trace.Info("Initializing results client");
-                if (resultServiceOnly
+                if (resultsServiceOnly
                     && serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl)
                     && !string.IsNullOrEmpty(feedStreamUrl))
                 {
@@ -545,9 +545,8 @@ namespace GitHub.Runner.Common
                             if (!_resultsServiceOnly)
                             {
                                 _resultsClientInitiated = false;
+                                SendResultsTelemetry(ex);
                             }
-
-                            SendResultsTelemetry(ex);
                         }
                     }
 
@@ -666,9 +665,8 @@ namespace GitHub.Runner.Common
                                 if (!_resultsServiceOnly)
                                 {
                                     _resultsClientInitiated = false;
+                                    SendResultsTelemetry(e);
                                 }
-
-                                SendResultsTelemetry(e);
                             }
 
                             if (_bufferedRetryRecords.Remove(update.TimelineId))
