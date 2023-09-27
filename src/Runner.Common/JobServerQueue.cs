@@ -541,8 +541,11 @@ namespace GitHub.Runner.Common
                             Trace.Error(ex);
                             errorCount++;
 
-                            // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results
-                            _resultsClientInitiated = false;
+                            // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results unless Results is serving logs
+                            if (!_resultsServiceOnly)
+                            {
+                                _resultsClientInitiated = false;
+                            }
 
                             SendResultsTelemetry(ex);
                         }
@@ -660,7 +663,10 @@ namespace GitHub.Runner.Common
                             {
                                 Trace.Info("Catch exception during update steps, skip update Results.");
                                 Trace.Error(e);
-                                _resultsClientInitiated = false;
+                                if (!_resultsServiceOnly)
+                                {
+                                    _resultsClientInitiated = false;
+                                }
 
                                 SendResultsTelemetry(e);
                             }
