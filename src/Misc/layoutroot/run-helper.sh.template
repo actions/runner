@@ -72,5 +72,5 @@ elif [[ $returnCode == 4 ]]; then
     exit 2
 else
     echo "Exiting with unknown error code: ${returnCode}"
-    exit 0
+    exit $returnCode
 fi

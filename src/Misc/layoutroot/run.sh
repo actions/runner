@@ -21,7 +21,7 @@ run() {
             echo "Restarting runner..."
         else
             echo "Exiting runner..."
-            exit 0
+            exit $returnCode
         fi
     done
 }
