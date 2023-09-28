@@ -128,7 +128,7 @@ namespace GitHub.Runner.Listener
                         // "invalid_client" means the runner registration has been deleted from the server.
                         if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
-                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure.");
+                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners who have not connected to the service recently.");
                             return false;
                         }
 
@@ -139,7 +139,7 @@ namespace GitHub.Runner.Listener
                         var authError = await oauthTokenProvider.ValidateCredentialAsync(token);
                         if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
-                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure.");
+                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners who have not connected to the service recently.");
                             return false;
                         }
                     }
