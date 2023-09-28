@@ -13,5 +13,5 @@ jobs:
           exempt-issue-labels: "keep"
           stale-issue-label: "actions-bug"
           only-labels: "actions-related-bug"
-          days-before-stale: 1
-          days-before-close: 1
+          days-before-stale: 0
+          days-before-close: 0
