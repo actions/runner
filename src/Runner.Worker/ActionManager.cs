@@ -854,6 +854,11 @@ namespace GitHub.Runner.Worker
                             Trace.Info("Action download has been cancelled.");
                             throw;
                         }
+                        catch (OperationCanceledException ex) when (!executionContext.CancellationToken.IsCancellationRequested && retryCount >= 2)
+                        {
+                            Trace.Info($"Action download final retry timeout after {timeoutSeconds} seconds.");
+                            throw new TimeoutException($"Action '{link}' download has timed out. Error: {ex.Message}");
+                        }
                         catch (ActionNotFoundException)
                         {
                             Trace.Info($"The action at '{link}' does not exist");
