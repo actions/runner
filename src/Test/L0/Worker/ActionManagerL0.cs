@@ -296,6 +296,118 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_DownloadActionFromGraph_UseCache()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                Directory.CreateDirectory(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache"));
+                Directory.CreateDirectory(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache", "actions_download-artifact"));
+                Directory.CreateDirectory(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact"));
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory, Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache"));
+
+                const string Content = @"
+# Container action
+name: '1ae80bcb-c1df-4362-bdaa-54f729c60281'
+description: 'Greet the world and record the time'
+author: 'GitHub'
+inputs:
+  greeting: # id of input
+    description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
+    required: true
+    default: 'Hello'
+  entryPoint: # id of input
+    description: 'optional docker entrypoint overwrite.'
+    required: false
+outputs:
+  time: # id of output
+    description: 'The time we did the greeting'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  using: 'node12'
+  main: 'task.js'
+";
+                await File.WriteAllTextAsync(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact", "action.yml"), Content);
+
+#if OS_WINDOWS
+                ZipFile.CreateFromDirectory(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact"), Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache", "actions_download-artifact", "master-sha.zip"), CompressionLevel.Fastest, true);
+#else
+                string tar = WhichUtil.Which("tar", require: true, trace: _hc.GetTrace());
+
+                // tar -xzf
+                using (var processInvoker = new ProcessInvokerWrapper())
+                {
+                    processInvoker.Initialize(_hc);
+                    processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
+                    {
+                        if (!string.IsNullOrEmpty(args.Data))
+                        {
+                            _hc.GetTrace().Info(args.Data);
+                        }
+                    });
+
+                    processInvoker.ErrorDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
+                    {
+                        if (!string.IsNullOrEmpty(args.Data))
+                        {
+                            _hc.GetTrace().Error(args.Data);
+                        }
+                    });
+
+                    string cwd = Path.GetDirectoryName(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact"));
+                    string inputDirectory = Path.GetFileName(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact"));
+                    string archiveFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache", "actions_download-artifact", "master-sha.tar.gz");
+                    int exitCode = await processInvoker.ExecuteAsync(_hc.GetDirectory(WellKnownDirectory.Bin), tar, $"-czf \"{archiveFile}\" -C \"{cwd}\" \"{inputDirectory}\"", null, CancellationToken.None);
+                    if (exitCode != 0)
+                    {
+                        throw new NotSupportedException($"Can't use 'tar -czf' to create archive file: {archiveFile}. return code: {exitCode}.");
+                    }
+                }
+#endif
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/download-artifact",
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                _ec.Object.Global.Variables.Set("DistributedTask.UseActionArchiveCache", bool.TrueString);
+
+                //Act
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "master.completed");
+                Assert.True(File.Exists(watermarkFile));
+
+                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "master", "action.yml");
+                Assert.True(File.Exists(actionYamlFile));
+
+                _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
+
+                Assert.Contains("1ae80bcb-c1df-4362-bdaa-54f729c60281", File.ReadAllText(actionYamlFile));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory, null);
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void PrepareActions_AlwaysClearActionsCache()
         {
             try
@@ -2272,6 +2384,7 @@ runs:
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Object.Global.FileTable = new List<String>();
             _ec.Object.Global.Plan = new TaskOrchestrationPlanReference();
+            _ec.Object.Global.JobTelemetry = new List<JobTelemetry>();
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>())).Callback((Issue issue, ExecutionContextLogOptions logOptions) => { _hc.GetTrace().Info($"[{issue.Type}]{logOptions.LogMessageOverride ?? issue.Message}"); });
             _ec.Setup(x => x.GetGitHubContext("workspace")).Returns(Path.Combine(_workFolder, "actions", "actions"));
@@ -2294,6 +2407,8 @@ runs:
                         {
                             NameWithOwner = action.NameWithOwner,
                             Ref = action.Ref,
+                            ResolvedNameWithOwner = action.NameWithOwner,
+                            ResolvedSha = $"{action.Ref}-sha",
                             TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
                             ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
                         };
@@ -2313,6 +2428,8 @@ runs:
                         {
                             NameWithOwner = action.NameWithOwner,
                             Ref = action.Ref,
+                            ResolvedNameWithOwner = action.NameWithOwner,
+                            ResolvedSha = $"{action.Ref}-sha",
                             TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
                             ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
                         };
