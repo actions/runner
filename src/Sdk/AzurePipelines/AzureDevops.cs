@@ -439,7 +439,12 @@ public class AzureDevops {
     }
 
     public static string RelativeTo(string cwd, string filename) {
-        var path = $"{cwd}/{filename}".Split("/").ToList();
+        var fullPath = $"{cwd}/{filename}";
+        if (filename.StartsWith("/")) // use filename if absolute path is provided
+        {
+            fullPath = filename;
+        }
+        var path = fullPath.Split("/").ToList();
         for(int i = 0; i < path.Count; i++) {
             if(path[i] == "." || string.IsNullOrEmpty(path[i])) {
                 path.RemoveAt(i);

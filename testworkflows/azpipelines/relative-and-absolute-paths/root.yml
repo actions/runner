@@ -1,0 +1,6 @@
+stages:
+- stage:
+  jobs:
+  - job:
+    steps:
+    - script: exit 0
