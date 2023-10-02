@@ -423,9 +423,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                                     eachExpressionState.Sequence = res as SequenceToken;
                                     eachExpressionState.Mapping = res as MappingToken;
                                     if(eachExpressionState.Sequence == null && eachExpressionState.Mapping == null) {
-                                        m_context.Error(eachExpressionState.Value, $"Expected a sequence, or a mapping, got: {res?.ToString() ?? "null"}");
-                                        m_current.Remove();
-                                        m_current = eachExpressionState.ToStringToken();
+                                        if(res is NullToken) {
+                                            eachExpressionState.Sequence = new SequenceToken(null, null, null);
+                                        } else {
+                                            m_context.Error(eachExpressionState.Value, $"Expected a sequence, or a mapping, got: {res?.ToString() ?? "null"}");
+                                            m_current.Remove();
+                                            m_current = eachExpressionState.ToStringToken();
+                                        }
                                     } else if(!eachExpressionState.IsEnd) {
                                         m_current = eachExpressionState.MoveNext(m_context);
                                     }
@@ -590,9 +594,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                                 eachExpressionState.Sequence = res as SequenceToken;
                                 eachExpressionState.Mapping = res as MappingToken;
                                 if(eachExpressionState.Sequence == null && eachExpressionState.Mapping == null) {
-                                    m_context.Error(eachExpressionState.Value, $"Expected a sequence, or a mapping, got: {res?.ToString() ?? "null"}");
-                                    m_current.Remove();
-                                    m_current = eachExpressionState.ToStringToken();
+                                    if(res is NullToken) {
+                                        eachExpressionState.Sequence = new SequenceToken(null, null, null);
+                                    } else {
+                                        m_context.Error(eachExpressionState.Value, $"Expected a sequence, or a mapping, got: {res?.ToString() ?? "null"}");
+                                        m_current.Remove();
+                                        m_current = eachExpressionState.ToStringToken();
+                                    }
                                 } else if(!eachExpressionState.IsEnd) {
                                     m_current = eachExpressionState.InsertMoveNext(m_context);
                                 }

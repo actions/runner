@@ -1,0 +1,22 @@
+parameters:
+
+- name: objectArray
+  type: object
+  default:
+  - name: one
+    options:
+    - a
+    - b
+  - name: two
+    # does not specify options
+
+stages:
+- ${{ each item in parameters.objectArray }}:
+  - stage: ${{ item.name }}
+    jobs:
+    - job: ${{ item.name }}
+      steps:
+      - checkout: none
+      - ${{ each option in item.options }}: # errors when options is null
+        - bash: echo '${{ option }}'
+          displayName: 'Option ${{ option }}'
