@@ -70,7 +70,7 @@ namespace GitHub.Runner.Common.Tests
                 typeof(IStepHost),
                 typeof(IDiagnosticLogManager),
                 typeof(IEnvironmentContextData),
-                typeof(IHookArgs),                
+                typeof(IHookArgs),
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,

@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.Expressions2;
+﻿using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
@@ -462,6 +462,49 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Load_Node20Action()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+
+                //Act
+                var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "node20action.yml"));
+
+                //Assert
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal(1, result.Deprecated.Count);
+
+                Assert.True(result.Deprecated.ContainsKey("greeting"));
+                result.Deprecated.TryGetValue("greeting", out string value);
+                Assert.Equal("This property has been deprecated", value);
+
+                Assert.Equal(ActionExecutionType.NodeJS, result.Execution.ExecutionType);
+
+                var nodeAction = result.Execution as NodeJSActionExecutionData;
+
+                Assert.Equal("main.js", nodeAction.Script);
+                Assert.Equal("node20", nodeAction.NodeVersion);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Load_NodeAction_Pre()
         {
             try
@@ -670,7 +713,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Teardown();
             }
-        }        
+        }
 
         [Fact]
         [Trait("Level", "L0")]
@@ -715,7 +758,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Assert
                 var err = Assert.Throws<ArgumentException>(() => actionManifest.Load(_ec.Object, action_path));
                 Assert.Contains($"Fail to load {action_path}", err.Message);
-                _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12' or 'node16'.")), It.IsAny<string>()), Times.Once);
+                _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12', 'node16' or 'node20'.")), It.IsAny<ExecutionContextLogOptions>()), Times.Once);
             }
             finally
             {
@@ -860,7 +903,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
-            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
+            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>())).Callback((Issue issue, ExecutionContextLogOptions logOptions) => { _hc.GetTrace().Info($"[{issue.Type}]{logOptions.LogMessageOverride ?? issue.Message}"); });
         }
 
         private void Teardown()

@@ -337,7 +337,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
 
-                    // Assert.                    
+                    // Assert.
                     Assert.Equal(2, variableSet.Step.Length);
                     variableSet.Step[0].Verify(x => x.RunAsync());
                     variableSet.Step[1].Verify(x => x.RunAsync(), variableSet.Expected ? Times.Once() : Times.Never());
@@ -590,7 +590,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             step.Setup(x => x.Condition).Returns(condition);
             step.Setup(x => x.ContinueOnError).Returns(new BooleanToken(null, null, null, continueOnError));
             step.Setup(x => x.Action)
-                .Returns(new DistributedTask.Pipelines.ActionStep()
+                .Returns(new GitHub.DistributedTask.Pipelines.ActionStep()
                 {
                     Name = name,
                     Id = Guid.NewGuid(),

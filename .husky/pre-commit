@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+cd src/Misc/expressionFunc/hashFiles
+
+npx lint-staged

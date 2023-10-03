@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -85,6 +85,33 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async Task DetermineNode20RuntimeVersionInAlpineContainerAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+
+                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                    .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
+                    {
+                        output.Add("alpine");
+                    })
+                    .ReturnsAsync(0);
+
+                // Act.
+                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node20");
+
+                // Assert.
+                Assert.Equal("node20_alpine", nodeVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async Task DetermineNodeRuntimeVersionInUnknowContainerAsync()
         {
             using (TestHostContext hc = CreateTestContext())
@@ -106,6 +133,33 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal("node16", nodeVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DetermineNode20RuntimeVersionInUnknowContainerAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+
+                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                    .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
+                    {
+                        output.Add("github");
+                    })
+                    .ReturnsAsync(0);
+
+                // Act.
+                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node20");
+
+                // Assert.
+                Assert.Equal("node20", nodeVersion);
             }
         }
 #endif

@@ -14,7 +14,7 @@
 
 - A Proxy may try to modify the HTTPS request (like add or change some http headers) and causes the request become incompatible with the Actions Service (ASP.NetCore), Ex: [Nginx](https://github.com/dotnet/aspnetcore/issues/17081)
 
-- Firewall rules that block action runner from accessing certain hosts, ex: `*.github.com`, `*.actions.githubusercontent.com`, etc
+- Firewall rules that block action runner from accessing [certain hosts](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-between-self-hosted-runners-and-github), ex: `*.github.com`, `*.actions.githubusercontent.com`, etc
 
 
 ### Identify and solve these problems

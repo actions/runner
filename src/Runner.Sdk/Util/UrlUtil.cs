@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Net.Http.Headers;
 
 namespace GitHub.Runner.Sdk
 {
@@ -11,10 +13,11 @@ namespace GitHub.Runner.Sdk
                 return false;
             }
 
-            return 
+            return
                 string.Equals(gitHubUrl.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(gitHubUrl.Host, "www.github.com", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase) ||
+                gitHubUrl.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase) ||
                 gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -46,6 +49,16 @@ namespace GitHub.Runner.Sdk
             }
 
             return credUri.Uri;
+        }
+
+        public static string GetGitHubRequestId(HttpResponseHeaders headers)
+        {
+            if (headers != null &&
+                headers.TryGetValues("x-github-request-id", out var headerValues))
+            {
+                return headerValues.FirstOrDefault();
+            }
+            return string.Empty;
         }
     }
 }

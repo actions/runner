@@ -75,7 +75,7 @@ namespace GitHub.Services.Common.Internal
         /// </summary>
         /// <param name="propertyName"></param>
         public static void ValidatePropertyName(String propertyName)
-        {            
+        {
             ValidatePropertyString(propertyName, c_maxPropertyNameLengthInChars, "propertyName");
 
             // Key must not start or end in whitespace. ValidatePropertyString() checks for null and empty strings, 

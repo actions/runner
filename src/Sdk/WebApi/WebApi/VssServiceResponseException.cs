@@ -19,7 +19,7 @@ namespace GitHub.Services.WebApi
         }
 
         protected VssServiceResponseException(SerializationInfo info, StreamingContext context)
-            : base(info, context) 
+            : base(info, context)
         {
             HttpStatusCode = (HttpStatusCode)info.GetInt32("HttpStatusCode");
         }
