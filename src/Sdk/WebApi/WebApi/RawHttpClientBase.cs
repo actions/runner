@@ -68,6 +68,20 @@ namespace Sdk.WebApi.WebApi
             m_formatter = new VssJsonMediaTypeFormatter();
         }
 
+        protected RawHttpClientBase(
+            Uri baseUrl,
+            HttpMessageHandler pipeline,
+            int timeoutSeconds,
+            bool disposeHandler)
+        {
+            m_client = new HttpClient(pipeline, disposeHandler);
+            m_client.BaseAddress = baseUrl;
+            m_formatter = new VssJsonMediaTypeFormatter();
+
+            // customize timeout seconds
+            m_client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        }
+
         public void Dispose()
         {
             if (!m_isDisposed)
