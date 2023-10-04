@@ -15,8 +15,8 @@ namespace GitHub.Runner.Worker.Handlers
             ["cmd"] = "/D /E:ON /V:OFF /S /C \"CALL \"{0}\"\"",
             ["pwsh"] = "-command \". '{0}'\"",
             ["powershell"] = "-command \". '{0}'\"",
-            ["bash"] = "--noprofile --norc -e -o pipefail {0}",
-            ["sh"] = "-e {0}",
+            ["bash"] = "--noprofile --norc -e -o pipefail \"{0}\"",
+            ["sh"] = "-e \"{0}\"",
             ["python"] = "{0}"
         };
 
