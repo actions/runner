@@ -22,7 +22,7 @@ namespace GitHub.Services.Results.Client
             HttpMessageHandler pipeline,
             string token,
             bool disposeHandler)
-            : base(baseUrl, pipeline, 30, disposeHandler)
+            : base(baseUrl, pipeline,disposeHandler)
         {
             m_token = token;
             m_resultsServiceUrl = baseUrl;
