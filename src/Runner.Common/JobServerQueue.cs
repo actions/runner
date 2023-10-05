@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
         TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultServiceOnly = false);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines);
@@ -96,14 +96,14 @@ namespace GitHub.Runner.Common
             _resultsServer = hostContext.GetService<IResultsServer>();
         }
 
-        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultServiceOnly = false)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false)
         {
             Trace.Entering();
-            _resultsServiceOnly = resultServiceOnly;
+            _resultsServiceOnly = resultsServiceOnly;
 
             var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
-            if (!resultServiceOnly)
+            if (!resultsServiceOnly)
             {
                 _jobServer.InitializeWebsocketClient(serviceEndPoint);
             }
@@ -119,7 +119,7 @@ namespace GitHub.Runner.Common
             {
                 string liveConsoleFeedUrl = null;
                 Trace.Info("Initializing results client");
-                if (resultServiceOnly
+                if (resultsServiceOnly
                     && serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl)
                     && !string.IsNullOrEmpty(feedStreamUrl))
                 {
@@ -541,10 +541,12 @@ namespace GitHub.Runner.Common
                             Trace.Error(ex);
                             errorCount++;
 
-                            // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results
-                            _resultsClientInitiated = false;
-
-                            SendResultsTelemetry(ex);
+                            // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results unless Results is serving logs
+                            if (!_resultsServiceOnly)
+                            {
+                                _resultsClientInitiated = false;
+                                SendResultsTelemetry(ex);
+                            }
                         }
                     }
 
@@ -660,9 +662,11 @@ namespace GitHub.Runner.Common
                             {
                                 Trace.Info("Catch exception during update steps, skip update Results.");
                                 Trace.Error(e);
-                                _resultsClientInitiated = false;
-
-                                SendResultsTelemetry(e);
+                                if (!_resultsServiceOnly)
+                                {
+                                    _resultsClientInitiated = false;
+                                    SendResultsTelemetry(e);
+                                }
                             }
 
                             if (_bufferedRetryRecords.Remove(update.TimelineId))
