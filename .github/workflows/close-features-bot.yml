@@ -2,7 +2,7 @@ name: Close Features Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *' # every monday at midnight
+    - cron: '0 0 * * *' # every day at midnight
 jobs:
   stale:
     runs-on: ubuntu-latest
@@ -14,5 +14,5 @@ jobs:
           stale-issue-label: "actions-feature"
           only-labels: "actions-feature"
           days-before-stale: 0
-          days-before-close: 0
+          days-before-close: 1
           close-issue-reason: "completed"
