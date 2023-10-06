@@ -1,0 +1,5 @@
+
+jobs:
+- job: job1
+  steps:
+  - template: step.yml@shared # scoped relative path

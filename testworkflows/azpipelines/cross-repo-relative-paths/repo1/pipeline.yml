@@ -1,0 +1,9 @@
+resources:
+  repositories:
+  - repository: shared
+    name: central/shared
+    type: git
+    ref: main
+
+jobs:
+- template: /templates/job.yml@shared
