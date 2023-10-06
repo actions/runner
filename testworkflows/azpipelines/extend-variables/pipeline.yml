@@ -1,0 +1,5 @@
+variables:
+  pipeline: value
+
+extends:
+  template: base.yml

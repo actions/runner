@@ -174,6 +174,7 @@ jobs:
         gharun --event azpipelines -C testworkflows/azpipelines/relative-and-absolute-paths -W testworkflows/azpipelines/relative-and-absolute-paths/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/null-each-loop -W testworkflows/azpipelines/null-each-loop/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-relative-paths/repo1 -W testworkflows/azpipelines/cross-repo-relative-paths/repo1/pipeline.yml --local-repository central/shared@main=testworkflows/azpipelines/cross-repo-relative-paths/repo2
+        gharun --event azpipelines -C testworkflows/azpipelines/extend-variables -W testworkflows/azpipelines/extend-variables/pipeline.yml
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
