@@ -2,6 +2,7 @@
 
 namespace GitHub.DistributedTask.WebApi
 {
+    // do NOT add new enum since it will break backward compatibility with GHES
     public enum JobTelemetryType
     {
         [EnumMember]
