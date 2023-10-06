@@ -51,6 +51,13 @@ namespace GitHub.Runner.Worker
                 HostContext.UserAgents.Add(new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
             }
 
+            var jobServerQueueTelemetry = false;
+            if (message.Variables.TryGetValue("DistributedTask.EnableJobServerQueueTelemetry", out VariableValue enableJobServerQueueTelemetry) &&
+                !string.IsNullOrEmpty(enableJobServerQueueTelemetry?.Value))
+            {
+                jobServerQueueTelemetry = StringUtil.ConvertToBoolean(enableJobServerQueueTelemetry.Value);
+            }
+
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (MessageUtil.IsRunServiceJob(message.MessageType))
             {
@@ -72,7 +79,7 @@ namespace GitHub.Runner.Worker
                     launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
                 }
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-                _jobServerQueue.Start(message, resultsServiceOnly: true);
+                _jobServerQueue.Start(message, resultsServiceOnly: true, enableTelemetry: jobServerQueueTelemetry);
             }
             else
             {
@@ -94,7 +101,7 @@ namespace GitHub.Runner.Worker
                 VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, delegatingHandlers);
                 await jobServer.ConnectAsync(jobConnection);
 
-                _jobServerQueue.Start(message);
+                _jobServerQueue.Start(message, enableTelemetry: jobServerQueueTelemetry);
                 server = jobServer;
             }
 
@@ -403,6 +410,13 @@ namespace GitHub.Runner.Worker
                 Trace.Error("This indicate a failure during publish output variables. Fail the job to prevent unexpected job outputs.");
                 Trace.Error(ex);
                 result = TaskResultUtil.MergeTaskResults(result, TaskResult.Failed);
+            }
+
+            // include any job telemetry from the background upload process.
+            if (_jobServerQueue != null &&
+                _jobServerQueue.JobTelemetries.Count > 0)
+            {
+                jobContext.Global.JobTelemetry.AddRange(_jobServerQueue.JobTelemetries);
             }
 
             // Clean TEMP after finish process jobserverqueue, since there might be a pending fileupload still use the TEMP dir.
