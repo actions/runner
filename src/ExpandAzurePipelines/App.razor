@@ -127,8 +127,8 @@
                 TraceWriter = new GitHub.DistributedTask.ObjectTemplating.EmptyTraceWriter(),
                 Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives
             };
-            var template = AzureDevops.ReadTemplate(context, currentFileName);
-            var pipeline = new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
+            var template = await AzureDevops.ReadTemplate(context, currentFileName);
+            var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
             var newcontent = pipeline.ToContextData().ToJToken().ToString();
             var deserializer = new YamlDotNet.Serialization.DeserializerBuilder().Build();
             var serializer = new YamlDotNet.Serialization.SerializerBuilder().WithEventEmitter(emitter => {

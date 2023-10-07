@@ -2,11 +2,12 @@ on:
   push:
     branches:
     - main
+  pull_request:
 jobs:
   deploy:
     # Allow one concurrent deployment
     concurrency:
-      group: "pages"
+      group: ${{ github.event_name == 'push' && 'pages' || github.run_id }}
       cancel-in-progress: true
     # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
     permissions:
@@ -14,7 +15,7 @@ jobs:
       pages: write
       id-token: write
     environment:
-      name: github-pages
+      name: ${{ github.event_name == 'push' && 'github-pages' || '' }}
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     env:
@@ -32,11 +33,14 @@ jobs:
           mkdir webapp
           mv out/wwwroot webapp/ExpandAzurePipelines
       - name: Setup Pages
+        if: github.event_name == 'push'
         uses: actions/configure-pages@v3
       - name: Upload artifact
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v1
         with:
           path: 'webapp'
       - name: Deploy to GitHub Pages
+        if: github.event_name == 'push'
         id: deployment
         uses: actions/deploy-pages@v1

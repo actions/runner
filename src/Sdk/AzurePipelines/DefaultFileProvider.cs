@@ -1,7 +1,9 @@
+using System.Threading.Tasks;
+
 public class DefaultFileProvider : IFileProvider
 {
-    public string ReadFile(string repositoryAndRef, string path)
+    public Task<string> ReadFile(string repositoryAndRef, string path)
     {
-        return System.IO.File.ReadAllText(path);
+        return Task.FromResult(System.IO.File.ReadAllText(path));
     }
 }

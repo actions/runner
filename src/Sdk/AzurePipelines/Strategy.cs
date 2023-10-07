@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -19,13 +20,13 @@ public class Strategy {
         public List<TaskStep> Steps { get; set; }
         public Pool Pool { get; set; }
 
-        public DeploymentHook Parse(Context context, TemplateToken src) {
+        public async Task<DeploymentHook> Parse(Context context, TemplateToken src) {
             foreach(var kv in src.AssertMapping("")) {
                 switch(kv.Key.AssertString("").Value) {
                     case "steps":
                         Steps = new List<TaskStep>();
                         foreach(var step2 in kv.Value.AssertSequence("")) {
-                            AzureDevops.ParseSteps(context, Steps, step2);
+                            await AzureDevops.ParseSteps(context, Steps, step2);
                         }
                     break;
                     case "pool":

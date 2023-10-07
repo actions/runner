@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -21,7 +22,7 @@ public class Stage {
     public Pool Pool { get; set; }
     public String LockBehavior { get; set; }
 
-    public Stage Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
+    public async Task<Stage> Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var jobToken = source.AssertMapping("job-root");
         foreach(var kv in jobToken) {
             switch(kv.Key.AssertString("key").Value) {
@@ -39,13 +40,13 @@ public class Stage {
                 break;
                 case "variables":
                     variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                    AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
+                    await AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
                     Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                     variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                 break;
                 case "jobs":
                     Jobs = new List<Job>();
-                    Job.ParseJobs(context, Jobs, kv.Value.AssertSequence(""));
+                    await Job.ParseJobs(context, Jobs, kv.Value.AssertSequence(""));
                 break;
                 case "templateContext":
                     TemplateContext = AzureDevops.ConvertAllScalarsToString(kv.Value);
@@ -61,7 +62,7 @@ public class Stage {
         return this;
     }
 
-    public static void ParseStages(Runner.Server.Azure.Devops.Context context, List<Stage> stages, SequenceToken stagesToken) {
+    public static async Task ParseStages(Runner.Server.Azure.Devops.Context context, List<Stage> stages, SequenceToken stagesToken) {
         foreach(var job in stagesToken) {
             if(job is MappingToken mstep && mstep.Count > 0) {
                 if((mstep[0].Key as StringToken)?.Value == "template") {
@@ -69,10 +70,10 @@ public class Stage {
                     if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
                         throw new Exception($"Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters");
                     }
-                    var file = AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
-                    ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
+                    var file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
+                    await ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
                 } else {
-                    stages.Add(new Stage().Parse(context, mstep));
+                    stages.Add(await new Stage().Parse(context, mstep));
                 }
             }
         }

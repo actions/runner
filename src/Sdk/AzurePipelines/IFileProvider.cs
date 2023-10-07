@@ -1,3 +1,5 @@
+using System.Threading.Tasks;
+
 public interface IFileProvider {
-    string ReadFile(string repositoryAndRef, string path);
+    Task<string> ReadFile(string repositoryAndRef, string path);
 }

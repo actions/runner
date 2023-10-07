@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -22,7 +23,7 @@ public class Pipeline {
     public bool? AppendCommitMessageToRunName { get; set; }
     public String LockBehavior { get; set; }
 
-    public Pipeline Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
+    public async Task<Pipeline> Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var pipelineRootToken = source.AssertMapping("pipeline-root");
         Pipeline parent = null;
         foreach(var kv in pipelineRootToken) {
@@ -32,7 +33,7 @@ public class Pipeline {
                 break;
                 case "variables":
                     variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                    AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
+                    await AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
                     Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                     variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                 break;
@@ -50,22 +51,22 @@ public class Pipeline {
                             break;
                         }
                     }
-                    var templ = AzureDevops.ReadTemplate(context, template, parameters);
-                    parent = new Pipeline().Parse(context.ChildContext(templ, template), templ);
+                    var templ = await AzureDevops.ReadTemplate(context, template, parameters);
+                    parent = await new Pipeline().Parse(context.ChildContext(templ, template), templ);
                 break;
                 case "stages":
                     Stages = new List<Stage>();
-                    Stage.ParseStages(context, Stages, kv.Value.AssertSequence("stages"));
+                    await Stage.ParseStages(context, Stages, kv.Value.AssertSequence("stages"));
                 break;
                 case "steps":
-                    var implicitJob = new Job().Parse(context, source);
+                    var implicitJob = await new Job().Parse(context, source);
                     implicitJob.Name = null;
                     Stages = new List<Stage>{ new Stage {
                         Jobs = new List<Job>{ implicitJob }
                     } };
                 break;
                 case "jobs":
-                    var implicitStage = new Stage().Parse(context, source);
+                    var implicitStage = await new Stage().Parse(context, source);
                     implicitStage.Name = null;
                     Stages = new List<Stage>{ implicitStage };
                 break;

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk.Functions.v1;
 using GitHub.DistributedTask.ObjectTemplating;
@@ -55,7 +56,7 @@ public class AzureDevops {
         return templateContext;
     }
 
-    public static void ParseVariables(Runner.Server.Azure.Devops.Context context, IDictionary<string, VariableValue> vars, TemplateToken rawvars, bool onlyStaticVars = false) {
+    public static async Task ParseVariables(Runner.Server.Azure.Devops.Context context, IDictionary<string, VariableValue> vars, TemplateToken rawvars, bool onlyStaticVars = false) {
         if(rawvars is MappingToken mvars) {
             foreach(var kv in mvars) {
                 // Skip expressions if we parse static variables
@@ -116,15 +117,15 @@ public class AzureDevops {
                         }
                     }
                 } else if(template != null) {
-                    var file = ReadTemplate(context, template, parameters != null ? parameters.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
-                    ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First());
+                    var file = await ReadTemplate(context, template, parameters != null ? parameters.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
+                    await ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First());
                 } else {
                     vars[name] = new VariableValue(value, isReadonly: isReadonly);
                 }
             }
         }
     }
-    public static void ParseSteps(Runner.Server.Azure.Devops.Context context, IList<TaskStep> steps, TemplateToken step) {
+    public static async Task ParseSteps(Runner.Server.Azure.Devops.Context context, IList<TaskStep> steps, TemplateToken step) {
         var values = "task, powershell, pwsh, bash, script, checkout, download, downloadBuild, getPackage, publish, reviewApp, template";
         var mstep = step.AssertMapping($"steps.* a step must contain one of the following keyworlds as the first key {values}");
         mstep.AssertNotEmpty($"steps.* a step must contain one of the following keyworlds as the first key {values}");
@@ -304,9 +305,9 @@ public class AzureDevops {
                 if(unparsedTokens.Count == 1 && (unparsedTokens[0].Key as StringToken)?.Value != "parameters") {
                     throw new Exception($"Unexpected yaml key {(unparsedTokens[0].Key as StringToken)?.Value} expected parameters");
                 }
-                var file = ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
+                var file = await ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
                 foreach(var step2 in (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence("")) {
-                    ParseSteps(context.ChildContext(file, primaryValue), steps, step2);
+                    await ParseSteps(context.ChildContext(file, primaryValue), steps, step2);
                 }
             break;
             default:
@@ -314,7 +315,7 @@ public class AzureDevops {
         }
     }
 
-    private static PipelineContextData ConvertValue(Runner.Server.Azure.Devops.Context context, TemplateToken val, string type, TemplateToken values) {
+    private static async Task<PipelineContextData> ConvertValue(Runner.Server.Azure.Devops.Context context, TemplateToken val, string type, TemplateToken values) {
         var steps = new List<TaskStep>();
         var jobs = new List<Job>();
         var stages = new List<Stage>();
@@ -352,14 +353,14 @@ public class AzureDevops {
             if(val == null) {
                 return null;
             }
-            ParseSteps(context, steps, val);
+            await ParseSteps(context, steps, val);
             return steps[0].ToContextData();
             case "stepList":
             if(val == null) {
                 return new ArrayContextData();
             }
             foreach(var step2 in val.AssertSequence("")) {
-                ParseSteps(context, steps, step2);
+                await ParseSteps(context, steps, step2);
             }
             var stepList = new ArrayContextData();
             foreach(var step in steps) {
@@ -370,12 +371,12 @@ public class AzureDevops {
             if(val == null) {
                 return null;
             }
-            return new Job().Parse(context, val).ToContextData();
+            return (await new Job().Parse(context, val)).ToContextData();
             case "jobList":
             if(val == null) {
                 return new ArrayContextData();
             }
-            Job.ParseJobs(context, jobs, val.AssertSequence(""));
+            await Job.ParseJobs(context, jobs, val.AssertSequence(""));
             var jobList = new ArrayContextData();
             foreach(var job in jobs) {
                 jobList.Add(job.ToContextData());
@@ -385,14 +386,14 @@ public class AzureDevops {
             if(val == null) {
                 return null;
             }
-            var djob = new Job().Parse(context, val);
+            var djob = await new Job().Parse(context, val);
             if(!djob.DeploymentJob) throw new Exception("Only Deployment Jobs are valid");
             return djob.ToContextData();
             case "deploymentList":
             if(val == null) {
                 return new ArrayContextData();
             }
-            Job.ParseJobs(context, jobs, val.AssertSequence(""));
+            await Job.ParseJobs(context, jobs, val.AssertSequence(""));
             var djobList = new ArrayContextData();
             foreach(var job in jobs) {
                 if(!job.DeploymentJob) throw new Exception("Only Deployment Jobs are valid");
@@ -403,12 +404,12 @@ public class AzureDevops {
             if(val == null) {
                 return null;
             }
-            return new Stage().Parse(context, val).ToContextData();
+            return (await new Stage().Parse(context, val)).ToContextData();
             case "stageList":
             if(val == null) {
                 return new ArrayContextData();
             }
-            Stage.ParseStages(context, stages, val.AssertSequence(""));
+            await Stage.ParseStages(context, stages, val.AssertSequence(""));
             var stageList = new ArrayContextData();
             foreach(var stage in stages) {
                 stageList.Add(stage.ToContextData());
@@ -458,7 +459,7 @@ public class AzureDevops {
         return string.Join('/', path.ToArray());
     }
 
-    public static MappingToken ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null) {
+    public static async Task<MappingToken> ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null) {
         var variables = context.VariablesProvider?.GetVariablesForEnvironment("");
         var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), new List<string>(), context.Flags);
         var afilenameAndRef = filenameAndRef.Split("@", 2);
@@ -470,7 +471,7 @@ public class AzureDevops {
         if(finalFileName == null) {
             throw new Exception($"Couldn't find template location {filenameAndRef}");
         }
-        var fileContent = context.FileProvider.ReadFile(finalRepository, finalFileName);
+        var fileContent = await context.FileProvider.ReadFile(finalRepository, finalFileName);
         if(fileContent == null) {
             throw new Exception($"Couldn't read template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"})");
         }
@@ -515,7 +516,7 @@ public class AzureDevops {
         }
         if(rawStaticVariables != null) {
             IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-            ParseVariables(context, pvars, rawStaticVariables, true);
+            await ParseVariables(context, pvars, rawStaticVariables, true);
             foreach(var v in pvars) {
                 variablesData[v.Key] = new StringContextData(v.Value.Value);
             }
@@ -562,9 +563,9 @@ public class AzureDevops {
                         break;
                     }
                 }
-                var defCtxData = ConvertValue(context, def, type, values);
+                var defCtxData = await ConvertValue(context, def, type, values);
                 if(cparameters?.TryGetValue(name, out var value) == true) {
-                    parametersData[name] = ConvertValue(context, value, type, values);
+                    parametersData[name] = await ConvertValue(context, value, type, values);
                     providedParameter++;
                 } else {
                     parametersData[name] = defCtxData;

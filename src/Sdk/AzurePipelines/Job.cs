@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -31,7 +32,7 @@ public class Job {
     public string[] UsesPools { get; set; }
     public string WorkspaceClean { get; set; }
 
-    public Job Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
+    public async Task<Job> Parse(Runner.Server.Azure.Devops.Context context, TemplateToken source) {
         var jobToken = source.AssertMapping("job-root");
         foreach(var kv in jobToken) {
             switch(kv.Key.AssertString("key").Value) {
@@ -55,29 +56,29 @@ public class Job {
                     Strategy = new Strategy();
                     foreach(var sv in kv.Value.AssertMapping("strategy")) {
                         if(DeploymentJob) {
-                            Action<MappingToken, Strategy.RunOnceStrategy> parseRunOnce = (src, runOnce) => {
+                            Func<MappingToken, Strategy.RunOnceStrategy, Task> parseRunOnce = async (src, runOnce) => {
                                 foreach(var uv in src) {
                                     switch(uv.Key.AssertString("").Value) {
                                         case "preDeploy":
-                                        runOnce.PreDeploy = new Strategy.DeploymentHook().Parse(context, uv.Value);
+                                        runOnce.PreDeploy = await new Strategy.DeploymentHook().Parse(context, uv.Value);
                                         break;
                                         case "deploy":
-                                        runOnce.Deploy = new Strategy.DeploymentHook().Parse(context, uv.Value);
+                                        runOnce.Deploy = await new Strategy.DeploymentHook().Parse(context, uv.Value);
                                         break;
                                         case "routeTraffic":
-                                        runOnce.RouteTraffic = new Strategy.DeploymentHook().Parse(context, uv.Value);
+                                        runOnce.RouteTraffic = await new Strategy.DeploymentHook().Parse(context, uv.Value);
                                         break;
                                         case "postRouteTraffic":
-                                        runOnce.PostRouteTraffic = new Strategy.DeploymentHook().Parse(context, uv.Value);
+                                        runOnce.PostRouteTraffic = await new Strategy.DeploymentHook().Parse(context, uv.Value);
                                         break;
                                         case "on":
                                         foreach(var kv2 in uv.Value as MappingToken) {
                                             switch(kv2.Key.AssertString("").Value) {
                                             case "failure":
-                                                runOnce.OnFailure = new Strategy.DeploymentHook().Parse(context, kv2.Value);
+                                                runOnce.OnFailure = await new Strategy.DeploymentHook().Parse(context, kv2.Value);
                                                 break;
                                             case "success":
-                                                runOnce.OnSuccess = new Strategy.DeploymentHook().Parse(context, kv2.Value);
+                                                runOnce.OnSuccess = await new Strategy.DeploymentHook().Parse(context, kv2.Value);
                                                 break;
                                             }
                                         }
@@ -88,11 +89,11 @@ public class Job {
                             switch(sv.Key.AssertString("key").Value) {
                                 case "runOnce":
                                     Strategy.RunOnce = new Strategy.RunOnceStrategy();
-                                    parseRunOnce(sv.Value as MappingToken, Strategy.RunOnce);
+                                    await parseRunOnce(sv.Value as MappingToken, Strategy.RunOnce);
                                 break;
                                 case "canary":
                                     Strategy.Canary = new Strategy.CanaryStrategy();
-                                    parseRunOnce(sv.Value as MappingToken, Strategy.Canary);
+                                    await parseRunOnce(sv.Value as MappingToken, Strategy.Canary);
                                     var rawIncrements = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "increments" select k.Value).FirstOrDefault()?.AssertSequence("canary increments");
                                     if(rawIncrements != null) {
                                         Strategy.Canary.Increments = (from inc in rawIncrements select inc.AssertLiteralString("canary increment")).ToArray();
@@ -100,7 +101,7 @@ public class Job {
                                 break;
                                 case "rolling":
                                     Strategy.Rolling = new Strategy.RollingStrategy();
-                                    parseRunOnce(sv.Value as MappingToken, Strategy.Rolling);
+                                    await parseRunOnce(sv.Value as MappingToken, Strategy.Rolling);
                                     Strategy.Rolling.MaxParallel = (from k in sv.Value as MappingToken where k.Key.AssertString("").Value == "maxParallel" select k.Value).FirstOrDefault()?.AssertLiteralString("maxParallel");
                                 break;
                             }
@@ -137,7 +138,7 @@ public class Job {
                 break;
                 case "variables":
                     variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                    AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
+                    await AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
                     Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                     variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
                 break;
@@ -147,7 +148,7 @@ public class Job {
                 case "steps":
                     Steps = new List<TaskStep>();
                     foreach(var step2 in kv.Value.AssertSequence("")) {
-                        AzureDevops.ParseSteps(context, Steps, step2);
+                        await AzureDevops.ParseSteps(context, Steps, step2);
                     }
                 break;
                 case "templateContext":
@@ -198,7 +199,7 @@ public class Job {
         return this;
     }
 
-    public static void ParseJobs(Context context, List<Job> jobs, SequenceToken jobsToken) {
+    public static async Task ParseJobs(Context context, List<Job> jobs, SequenceToken jobsToken) {
         foreach(var job in jobsToken) {
             if(job is MappingToken mstep && mstep.Count > 0) {
                 if((mstep[0].Key as StringToken)?.Value == "template") {
@@ -206,10 +207,10 @@ public class Job {
                     if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
                         throw new Exception($"Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters");
                     }
-                    var file = AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "job-template-root");
-                    ParseJobs(context.ChildContext(file, path), jobs, (from e in file where e.Key.AssertString("").Value == "jobs" select e.Value).First().AssertSequence(""));
+                    var file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "job-template-root");
+                    await ParseJobs(context.ChildContext(file, path), jobs, (from e in file where e.Key.AssertString("").Value == "jobs" select e.Value).First().AssertSequence(""));
                 } else {
-                    jobs.Add(new Job().Parse(context, mstep));
+                    jobs.Add(await new Job().Parse(context, mstep));
                 }
             }
         }

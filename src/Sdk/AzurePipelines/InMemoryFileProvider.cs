@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.Threading.Tasks;
 
 public class DefaultInMemoryFileProviderFileProvider : IFileProvider
 {
@@ -12,13 +13,13 @@ public class DefaultInMemoryFileProviderFileProvider : IFileProvider
     private Func<string, string, string> readFile;
     public Dictionary<string, string> Workflows { get; private set; }
 
-    public string ReadFile(string repositoryAndRef, string path)
+    public Task<string> ReadFile(string repositoryAndRef, string path)
     {
         if(repositoryAndRef == null && Workflows.TryGetValue(path, out var content)) {
-            return content;
+            return Task.FromResult(content);
         } else if(readFile != null) {
-            return readFile(path, repositoryAndRef);
+            return Task.FromResult(readFile(path, repositoryAndRef));
         }
-        return null;
+        return Task.FromResult<string>(null);
     }
 }
