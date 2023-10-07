@@ -436,6 +436,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 #else
             _context["env"] = new CaseSensitiveDictionaryContextData();
 #endif
+            _context["vars"] = new DictionaryContextData();
 
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.Global).Returns(new GlobalContext());

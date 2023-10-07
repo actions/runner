@@ -407,7 +407,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Setup translation info
                 var container = new ContainerInfo();
                 var containerDirectory = "/some-container-directory";
-                var containerFile = Path.Combine(containerDirectory, "my-matcher.json");
+                var containerFile = $"{containerDirectory}/my-matcher.json";
                 container.AddPathTranslateMapping(hostDirectory, containerDirectory);
 
                 // Act

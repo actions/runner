@@ -159,7 +159,7 @@ namespace GitHub.Runner.Worker.Container
         {
             if (!string.IsNullOrEmpty(path))
             {
-                foreach (var mapping in _pathMappings.Concat(_osPathMappings[Os]))
+                foreach (var mapping in _pathMappings.Concat(_osPathMappings[Os ?? "linux"]))
                 {
                     if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                         var hostPath = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
@@ -194,7 +194,7 @@ namespace GitHub.Runner.Worker.Container
         {
             if (!string.IsNullOrEmpty(path))
             {
-                foreach (var mapping in _pathMappings.Concat(_osPathMappings[Os]))
+                foreach (var mapping in _pathMappings.Concat(_osPathMappings[Os ?? "linux"]))
                 {
                     if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                         var comp = Os == "windows" ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;

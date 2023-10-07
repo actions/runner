@@ -2,7 +2,6 @@ using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
 using Xunit;
 using Moq;
-using GitHub.Runner.Worker.Container.ContainerHooks;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -18,7 +17,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         private TestHostContext _hc;
         private Mock<IExecutionContext> _ec;
         private Mock<IDockerCommandManager> _dockerManager;
-        private Mock<IContainerHookManager> _containerHookManager;
         private ContainerOperationProvider containerOperationProvider;
         private Mock<IJobServerQueue> serverQueue;
         private Mock<IPagingLogger> pagingLogger;
@@ -108,7 +106,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             pagingLogger = new Mock<IPagingLogger>();
 
             _dockerManager = new Mock<IDockerCommandManager>();
-            _containerHookManager = new Mock<IContainerHookManager>();
             containerOperationProvider = new ContainerOperationProvider();
 
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
@@ -116,7 +113,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             _hc.SetSingleton<IPagingLogger>(pagingLogger.Object);
 
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
-            _hc.SetSingleton<IContainerHookManager>(_containerHookManager.Object);
 
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
 

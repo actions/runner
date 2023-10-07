@@ -309,7 +309,7 @@ namespace GitHub.Runner.Worker
                 var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                 if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
                 {
-                    if(Path.IsPathFullyQualified(repoAction.Path)) {
+                    if(!string.IsNullOrEmpty(repoAction?.Path) && Path.IsPathFullyQualified(repoAction.Path)) {
                         actionDirectory = repoAction.Path;
                     } else {
                         actionDirectory = executionContext.GetGitHubContext("workspace");

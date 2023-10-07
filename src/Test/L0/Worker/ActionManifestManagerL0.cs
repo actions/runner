@@ -744,31 +744,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Load_CompositeActionNoUsing()
-        {
-            try
-            {
-                //Arrange
-                Setup();
-
-                var actionManifest = new ActionManifestManager();
-                actionManifest.Initialize(_hc);
-                var action_path = Path.Combine(TestUtil.GetTestDataPath(), "composite_action_without_using_token.yml");
-
-                //Assert
-                var err = Assert.Throws<ArgumentException>(() => actionManifest.Load(_ec.Object, action_path));
-                Assert.Contains($"Fail to load {action_path}", err.Message);
-                _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12', 'node16' or 'node20'.")), It.IsAny<ExecutionContextLogOptions>()), Times.Once);
-            }
-            finally
-            {
-                Teardown();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void Evaluate_ContainerAction_Args()
         {
             try

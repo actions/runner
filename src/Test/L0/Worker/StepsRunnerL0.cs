@@ -18,6 +18,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class StepsRunnerL0
     {
         private Mock<IExecutionContext> _ec;
+        private Mock<IProcessInvoker> _processInvoker;
         private StepsRunner _stepsRunner;
         private Variables _variables;
         private Dictionary<string, string> _env;
@@ -41,11 +42,22 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.Global).Returns(new GlobalContext { WriteDebug = true });
             _ec.Object.Global.Variables = _variables;
             _ec.Object.Global.EnvironmentVariables = _env;
+            _processInvoker = new Mock<IProcessInvoker>();
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+            hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
 
             _contexts = new DictionaryContextData();
             _jobContext = new JobContext();
             _contexts["github"] = new GitHubContext();
             _contexts["runner"] = new DictionaryContextData();
+            _contexts["vars"] = new DictionaryContextData();
             _contexts["job"] = _jobContext;
             _ec.Setup(x => x.ExpressionValues).Returns(_contexts);
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
@@ -658,6 +670,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             });
             var trace = hc.GetTrace();
             stepContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
+            stepContext.Setup(x => x.StepEnvironmentOverrides).Returns(new List<string>());
             stepContext.Object.Result = result;
             step.Setup(x => x.ExecutionContext).Returns(stepContext.Object);
 
