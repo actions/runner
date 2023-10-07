@@ -86,6 +86,35 @@ namespace GitHub.Runner.Sdk
             IEnumerable<DelegatingHandler> additionalDelegatingHandler = null,
             TimeSpan? timeout = null)
         {
+            RawClientHttpRequestSettings settings = GetHttpRequestSettings(timeout);
+            RawConnection connection = new(serverUri, new RawHttpMessageHandler(credentials.Federated, settings), additionalDelegatingHandler);
+            return connection;
+        }
+
+        public static VssCredentials GetVssCredential(ServiceEndpoint serviceEndpoint)
+        {
+            ArgUtil.NotNull(serviceEndpoint, nameof(serviceEndpoint));
+            ArgUtil.NotNull(serviceEndpoint.Authorization, nameof(serviceEndpoint.Authorization));
+            ArgUtil.NotNullOrEmpty(serviceEndpoint.Authorization.Scheme, nameof(serviceEndpoint.Authorization.Scheme));
+
+            if (serviceEndpoint.Authorization.Parameters.Count == 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(serviceEndpoint));
+            }
+
+            VssCredentials credentials = null;
+            string accessToken;
+            if (serviceEndpoint.Authorization.Scheme == EndpointAuthorizationSchemes.OAuth &&
+                serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
+            {
+                credentials = new VssCredentials(new VssOAuthAccessTokenCredential(accessToken), CredentialPromptType.DoNotPrompt);
+            }
+
+            return credentials;
+        }
+
+        public static RawClientHttpRequestSettings GetHttpRequestSettings(TimeSpan? timeout = null)
+        {
             RawClientHttpRequestSettings settings = RawClientHttpRequestSettings.Default.Clone();
 
             int maxRetryRequest;
@@ -116,30 +145,7 @@ namespace GitHub.Runner.Sdk
             // settings are applied to an HttpRequestMessage.
             settings.AcceptLanguages.Remove(CultureInfo.InvariantCulture);
 
-            RawConnection connection = new(serverUri, new RawHttpMessageHandler(credentials.Federated, settings), additionalDelegatingHandler);
-            return connection;
-        }
-
-        public static VssCredentials GetVssCredential(ServiceEndpoint serviceEndpoint)
-        {
-            ArgUtil.NotNull(serviceEndpoint, nameof(serviceEndpoint));
-            ArgUtil.NotNull(serviceEndpoint.Authorization, nameof(serviceEndpoint.Authorization));
-            ArgUtil.NotNullOrEmpty(serviceEndpoint.Authorization.Scheme, nameof(serviceEndpoint.Authorization.Scheme));
-
-            if (serviceEndpoint.Authorization.Parameters.Count == 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(serviceEndpoint));
-            }
-
-            VssCredentials credentials = null;
-            string accessToken;
-            if (serviceEndpoint.Authorization.Scheme == EndpointAuthorizationSchemes.OAuth &&
-                serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
-            {
-                credentials = new VssCredentials(new VssOAuthAccessTokenCredential(accessToken), CredentialPromptType.DoNotPrompt);
-            }
-
-            return credentials;
+            return settings;
         }
     }
 }
