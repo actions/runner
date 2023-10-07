@@ -28,10 +28,26 @@ jobs:
           dotnet-version: 7.0.x
       - name: Build ExpandAzurePipelines
         run: dotnet publish src/ExpandAzurePipelines -c Release --output out
+      - uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      - name: Build azure-pipelines-vscode-ext
+        run: |
+          npm install
+          dotnet workload install wasm-tools
+          npm run build
+        working-directory: src/azure-pipelines-vscode-ext
       - name: Make layout
         run: |
           mkdir webapp
           mv out/wwwroot webapp/ExpandAzurePipelines
+          mkdir -p webapp/azure-pipelines-vscode-ext
+          mv src/azure-pipelines-vscode-ext/build webapp/azure-pipelines-vscode-ext/
+          mv src/azure-pipelines-vscode-ext/dist webapp/azure-pipelines-vscode-ext/
+          mv src/azure-pipelines-vscode-ext/package.json webapp/azure-pipelines-vscode-ext/
       - name: Setup Pages
         if: github.event_name == 'push'
         uses: actions/configure-pages@v3

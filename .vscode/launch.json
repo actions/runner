@@ -53,6 +53,14 @@
             "processId": "${command:pickProcess}",
             "requireExactSource": false
         },
+        {
+			"name": "Run azure-pipelines-vscode-ext Extension",
+            "type": "extensionHost",
+            "debugWebWorkerHost": true,
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": ["--extensionDevelopmentPath=${workspaceFolder}/src/azure-pipelines-vscode-ext"]
+		}
     ],
 }
 
