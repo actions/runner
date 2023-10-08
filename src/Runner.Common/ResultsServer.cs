@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Security;
@@ -52,14 +53,34 @@ namespace GitHub.Runner.Common
 
         public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token)
         {
-            var httpMessageHandler = HostContext.CreateHttpClientHandler();
-            this._resultsClient = new ResultsHttpClient(uri, httpMessageHandler, token, disposeHandler: true);
+            this._resultsClient = CreateHttpClient(uri, token);
+
             _token = token;
             if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
             {
                 _liveConsoleFeedUrl = liveConsoleFeedUrl;
                 InitializeWebsocketClient(liveConsoleFeedUrl, token, TimeSpan.Zero, retryConnection: true);
             }
+        }
+
+        public ResultsHttpClient CreateHttpClient(Uri uri, string token)
+        {
+            // Using default 100 timeout
+            RawClientHttpRequestSettings settings = VssUtil.GetHttpRequestSettings(null);
+
+            // Create retry handler
+            IEnumerable<DelegatingHandler> delegatingHandlers = new List<DelegatingHandler>();
+            if (settings.MaxRetryRequest > 0)
+            {
+                delegatingHandlers = new DelegatingHandler[] { new VssHttpRetryMessageHandler(settings.MaxRetryRequest) };
+            }
+
+            // Setup RawHttpMessageHandler without credentials
+            var httpMessageHandler = new RawHttpMessageHandler(new NoOpCredentials(null), settings);
+
+            var pipeline = HttpClientFactory.CreatePipeline(httpMessageHandler, delegatingHandlers);
+
+            return new ResultsHttpClient(uri, pipeline, token, disposeHandler: true);
         }
 
         public Task CreateResultsStepSummaryAsync(string planId, string jobId, Guid stepId, string file,
