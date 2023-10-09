@@ -87,8 +87,7 @@ sudo echo
 runner_plat=linux
 [ ! -z "$(which sw_vers)" ] && runner_plat=osx;
 
-function fatal()
-{
+fatal() {
    echo "error: $1" >&2
    exit 1
 }
