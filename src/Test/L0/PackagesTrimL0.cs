@@ -273,5 +273,29 @@ namespace GitHub.Runner.Common.Tests
                 Assert.True(string.Equals(hashResult, File.ReadAllText(externalsHashFile).Trim()), $"Hash mismatch for externals. You might need to update `Misc/contentHash/externals/{BuildConstants.RunnerPackage.PackageName}` or check if `hashFiles.ts` ever changed recently.");
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public Task RunnerLayoutParts_ContentHashFilesNoNewline()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                var dotnetRuntimeHashFile = Path.Combine(TestUtil.GetSrcPath(), $"Misc/contentHash/dotnetRuntime/{BuildConstants.RunnerPackage.PackageName}");
+                var dotnetRuntimeHash = File.ReadAllText(dotnetRuntimeHashFile);
+                trace.Info($"Current hash: {dotnetRuntimeHash}");
+
+                var externalsHashFile = Path.Combine(TestUtil.GetSrcPath(), $"Misc/contentHash/externals/{BuildConstants.RunnerPackage.PackageName}");
+                var externalsHash = File.ReadAllText(externalsHashFile);
+                trace.Info($"Current hash: {externalsHash}");
+
+                Assert.False(externalsHash.Any(x => char.IsWhiteSpace(x)), $"Found whitespace in externals hash file.");
+                Assert.False(dotnetRuntimeHash.Any(x => char.IsWhiteSpace(x)), $"Found whitespace in dotnet runtime hash file.");
+
+                return Task.CompletedTask;
+            }
+        }
     }
 }
