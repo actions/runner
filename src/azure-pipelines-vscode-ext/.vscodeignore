@@ -1,0 +1,8 @@
+node_modules
+ext-core
+**.mjs
+**.js
+build/**
+!build/AppBundle/_framework
+dist/*
+!dist/main.js

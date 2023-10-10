@@ -1,9 +1,10 @@
 using System.Threading.Tasks;
 using System.Runtime.InteropServices.JavaScript;
 public static partial class Interop {
-    [JSImport("globalThis.href")]
-    internal static partial Task<string> GetHRef();
-
     [JSImport("readFile", "extension.js")]
-    internal static partial Task<string> ReadFile(string name);
+    internal static partial Task<string> ReadFile(JSObject handle, string name);
+    [JSImport("message", "extension.js")]
+    internal static partial Task Message(int type, string message);
+    [JSImport("sleep", "extension.js")]
+    internal static partial Task Sleep(int time);
 }

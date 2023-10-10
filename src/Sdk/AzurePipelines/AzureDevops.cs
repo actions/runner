@@ -466,7 +466,7 @@ public class AzureDevops {
         var filename = afilenameAndRef[0];
         var fileId = templateContext.GetFileId(filename);
         // Read the file
-        var finalRepository = afilenameAndRef.Length == 1 ? context.RepositoryAndRef : string.Equals(afilenameAndRef[1], "self", StringComparison.OrdinalIgnoreCase) ? null : context.Repositories.TryGetValue(afilenameAndRef[1], out var ralias) ? ralias : throw new Exception($"Couldn't find repository with alias {afilenameAndRef[1]} in repository resources");
+        var finalRepository = afilenameAndRef.Length == 1 ? context.RepositoryAndRef : string.Equals(afilenameAndRef[1], "self", StringComparison.OrdinalIgnoreCase) ? null : (context.Repositories?.TryGetValue(afilenameAndRef[1], out var ralias) ?? false) ? ralias : throw new Exception($"Couldn't find repository with alias {afilenameAndRef[1]} in repository resources");
         var finalFileName = context.RepositoryAndRef == finalRepository ? RelativeTo(context.CWD ?? ".", filename) : filename;
         if(finalFileName == null) {
             throw new Exception($"Couldn't find template location {filenameAndRef}");

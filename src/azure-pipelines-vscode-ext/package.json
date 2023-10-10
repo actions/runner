@@ -1,8 +1,8 @@
 {
 	"name": "azure-pipelines-vscode-ext",
 	"description": "Azure Pipelines VSCode Tools",
-	"version": "0.0.1",
-	"publisher": "Christopher Homberger",
+	"version": "0.0.2",
+	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
 		"vscode": "^1.74.0"
@@ -11,6 +11,10 @@
 	"browser": "./dist/main.js",
 	"contributes": {
 		"commands": [
+			{
+				"command": "extension.validateAzurePipeline",
+				"title": "Validate Azure Pipeline"
+			},
 			{
 				"command": "extension.expandAzurePipeline",
 				"title": "Expand Azure Pipeline"
@@ -25,6 +29,6 @@
 		"webpack-cli": "^5.1.4"
 	},
 	"dependencies": {
-		"vscode": "^1.1.37"
-	}
+	},
+	"license": "MIT"
 }
