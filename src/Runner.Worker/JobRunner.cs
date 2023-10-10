@@ -402,7 +402,12 @@ namespace GitHub.Runner.Worker
 
             try
             {
-                await ShutdownQueue(throwOnFailure: true);
+                var jobQueueTelemetry = await ShutdownQueue(throwOnFailure: true);
+                // include any job telemetry from the background upload process.
+                if (jobQueueTelemetry.Count > 0)
+                {
+                    jobContext.Global.JobTelemetry.AddRange(jobQueueTelemetry);
+                }
             }
             catch (Exception ex)
             {
@@ -410,13 +415,6 @@ namespace GitHub.Runner.Worker
                 Trace.Error("This indicate a failure during publish output variables. Fail the job to prevent unexpected job outputs.");
                 Trace.Error(ex);
                 result = TaskResultUtil.MergeTaskResults(result, TaskResult.Failed);
-            }
-
-            // include any job telemetry from the background upload process.
-            if (_jobServerQueue != null &&
-                _jobServerQueue.JobTelemetries.Count > 0)
-            {
-                jobContext.Global.JobTelemetry.AddRange(_jobServerQueue.JobTelemetries);
             }
 
             // Clean TEMP after finish process jobserverqueue, since there might be a pending fileupload still use the TEMP dir.
@@ -511,7 +509,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task ShutdownQueue(bool throwOnFailure)
+        private async Task<IList<JobTelemetry>> ShutdownQueue(bool throwOnFailure)
         {
             if (_jobServerQueue != null)
             {
@@ -519,6 +517,7 @@ namespace GitHub.Runner.Worker
                 {
                     Trace.Info("Shutting down the job server queue.");
                     await _jobServerQueue.ShutdownAsync();
+                    return _jobServerQueue.JobTelemetries;
                 }
                 catch (Exception ex) when (!throwOnFailure)
                 {
@@ -530,6 +529,8 @@ namespace GitHub.Runner.Worker
                     _jobServerQueue = null; // Prevent multiple attempts.
                 }
             }
+
+            return Array.Empty<JobTelemetry>();
         }
     }
 }
