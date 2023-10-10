@@ -836,7 +836,6 @@ namespace GitHub.Runner.Worker
             // Actions environment
             ActionsEnvironment = message.ActionsEnvironment;
 
-
             // Service container info
             Global.ServiceContainers = new List<ContainerInfo>();
 
