@@ -29,6 +29,7 @@
 * Use RawHttpMessageHandler and VssHttpRetryMessageHandler in ResultsHttpClient by @yacaovsnc in https://github.com/actions/runner/pull/2908
 * Retries to lock Services database on Windows by @sugymt in https://github.com/actions/runner/pull/2880
 * Update default version to node20 by @takost in https://github.com/actions/runner/pull/2844
+  * Revert "Update default version to node20" by @takost in https://github.com/actions/runner/pull/2918
 * Fixed Attempt typo by @corycalahan in https://github.com/actions/runner/pull/2849
 * Fix typo by @rajbos in https://github.com/actions/runner/pull/2670
 
