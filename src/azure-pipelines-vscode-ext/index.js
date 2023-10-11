@@ -110,23 +110,17 @@ function activate(context) {
 
 	statusbar.command = 'extension.validateAzurePipeline';
 
-	var onDocumentChanged = document => {
-		if(document && document.languageId && (document.languageId === "azure-pipelines" || document.languageId === "yaml")) {
+	var onLanguageChanged = languageId => {
+		if(languageId === "azure-pipelines" || languageId === "yaml") {
 			statusbar.show();
 		} else {
 			statusbar.hide();
 		}
 	};
-	var onTextEditChanged = texteditor => onDocumentChanged(texteditor ? texteditor.document : null);
+	var onTextEditChanged = texteditor => onLanguageChanged(texteditor && texteditor.document && texteditor.document.languageId ? texteditor.document.languageId : null);
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(onTextEditChanged))
-	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => {
-		var texteditor = vscode.window.activeTextEditor;
-		onDocumentChanged(texteditor && texteditor.document === document ? document : null);
-	}));
-	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
-		var texteditor = vscode.window.activeTextEditor;
-		onDocumentChanged(texteditor && texteditor.document === document ? document : null);
-	}));
+	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => onLanguageChanged(document && document.languageId ? document.languageId : null)));
+	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => onLanguageChanged(document && document.languageId ? document.languageId : null)));
 	onTextEditChanged(vscode.window.activeTextEditor);
 }
 

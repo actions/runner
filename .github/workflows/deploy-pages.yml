@@ -39,6 +39,8 @@ jobs:
           npm install
           dotnet workload install wasm-tools
           npm run build
+          node_modules/.bin/vsce pack -o azure-pipelines-vscode-ext.vsix
+          node_modules/.bin/vsce pack --pre-release -o azure-pipelines-vscode-ext-pre-release.vsix
         working-directory: src/azure-pipelines-vscode-ext
       - name: Make layout
         run: |
@@ -48,6 +50,7 @@ jobs:
           mv src/azure-pipelines-vscode-ext/build webapp/azure-pipelines-vscode-ext/
           mv src/azure-pipelines-vscode-ext/dist webapp/azure-pipelines-vscode-ext/
           mv src/azure-pipelines-vscode-ext/package.json webapp/azure-pipelines-vscode-ext/
+          mv src/azure-pipelines-vscode-ext/*.vsix webapp/azure-pipelines-vscode-ext/
       - name: Setup Pages
         if: github.event_name == 'push'
         uses: actions/configure-pages@v3
