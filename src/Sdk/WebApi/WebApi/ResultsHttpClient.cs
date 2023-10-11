@@ -268,18 +268,31 @@ namespace GitHub.Services.Results.Client
                 throw new Exception("Failed to get step log upload url");
             }
 
-            // Create the Append blob
-            if (firstBlock)
+            if (firstBlock && finalize)
             {
-                await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+                // This is the one and only block, just use a block blob
+                using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+                {
+                    var response = await UploadBlockFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, fileStream, cancellationToken);
+                }
+            }
+            else
+            {
+                // This is either not the first block, which means it's using appendBlob; or first block and need to wait for additional blocks.  Using append blob in either case. 
+                // Create the Append blob
+                if (firstBlock)
+                {
+                    await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+                }
+
+                // Upload content
+                var fileSize = new FileInfo(file).Length;
+                using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+                {
+                    var response = await UploadAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
+                }
             }
 
-            // Upload content
-            var fileSize = new FileInfo(file).Length;
-            using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
-            {
-                var response = await UploadAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
-            }
 
             // Update metadata
             if (finalize)
