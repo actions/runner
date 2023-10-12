@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 
 
@@ -44,6 +45,13 @@ namespace GitHub.DistributedTask.WebApi
         {
             get;
             private set;
+        }
+
+        [DataMember]
+        public Dictionary<String, String> Package
+        {
+            get;
+            set;
         }
     }
 }
