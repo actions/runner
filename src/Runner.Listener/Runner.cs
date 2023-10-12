@@ -464,14 +464,14 @@ namespace GitHub.Runner.Listener
                                 {
                                     autoUpdateInProgress = true;
                                     AgentRefreshMessage runnerUpdateMessage = null;
+                                    RunnerRefreshMessage brokerRunnerUpdateMessage = null;
                                     if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                                     {
                                         runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     }
                                     else
                                     {
-                                        var brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
-                                        runnerUpdateMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds));
+                                        brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
                                     }
 #if DEBUG
                                     // Can mock the update for testing
@@ -494,8 +494,18 @@ namespace GitHub.Runner.Listener
                                         }
                                     }
 #endif
-                                    var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                    if (brokerRunnerUpdateMessage != null)
+                                    {
+                                        var selfUpdater = new SelfUpdaterV2();
+                                        selfUpdater.Initialize(HostContext);
+                                        selfUpdater = selfUpdater.SelfUpdate(brokerRunnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                    }
+                                    else
+                                    {
+                                        var selfUpdater = HostContext.GetService<ISelfUpdater>();
+                                        selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                    }
+                                   
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else

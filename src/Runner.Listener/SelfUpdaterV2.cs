@@ -21,22 +21,13 @@ namespace GitHub.Runner.Listener
 {
     public class SelfUpdaterV2 : RunnerService, ISelfUpdater
     {
-        private static string _packageType = "agent";
         private static string _platform = BuildConstants.RunnerPackage.PackageName;
-        private static string _dotnetRuntime = "dotnetRuntime";
-        private static string _externals = "externals";
-        private readonly Dictionary<string, string> _contentHashes = new();
-
         private PackageMetadata _targetPackage;
         private ITerminal _terminal;
         private IRunnerServer _runnerServer;
         private int _poolId;
         private ulong _agentId;
         private readonly ConcurrentQueue<string> _updateTrace = new();
-        private Task _cloneAndCalculateContentHashTask;
-        private string _dotnetRuntimeCloneDirectory;
-        private string _externalsCloneDirectory;
-
         public bool Busy { get; private set; }
 
         public override void Initialize(IHostContext hostContext)
@@ -49,8 +40,6 @@ namespace GitHub.Runner.Listener
             var settings = configStore.GetSettings();
             _poolId = settings.PoolId;
             _agentId = settings.AgentId;
-            _dotnetRuntimeCloneDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "__dotnet_runtime__");
-            _externalsCloneDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "__externals__");
         }
 
         public async Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token)
@@ -64,25 +53,12 @@ namespace GitHub.Runner.Listener
                 // So we can re-use them with trimmed runner package, if possible.
                 // This process is best effort, if we can't use trimmed runner package, 
                 // we will just go with the full package.
-                var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
-                _cloneAndCalculateContentHashTask = CloneAndCalculateAssetsHash(_dotnetRuntimeCloneDirectory, _externalsCloneDirectory, linkedTokenSource.Token);
-
                 Trace.Info($"An update is available.");
                 _updateTrace.Enqueue($"RunnerPlatform: {_targetPackage.Platform}");
 
                 // Print console line that warn user not shutdown runner.
                 await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
                 await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
-
-                linkedTokenSource.Cancel();
-                try
-                {
-                    await _cloneAndCalculateContentHashTask;
-                }
-                catch (Exception ex)
-                {
-                    Trace.Info($"Ingore errors after cancelling cloning assets task: {ex}");
-                }
 
                 await DownloadLatestRunner(token, updateMessage.TargetVersion);
                 Trace.Info($"Download latest runner and unzip into runner root.");
@@ -142,39 +118,6 @@ namespace GitHub.Runner.Listener
                 await UpdateRunnerUpdateStateAsync("Runner update process finished.");
                 Busy = false;
             }
-        }
-
-        private async Task<bool> UpdateNeeded(string targetVersion, CancellationToken token)
-        {
-            // when talk to old version server, always prefer latest package.
-            // old server won't send target version as part of update message.
-            if (string.IsNullOrEmpty(targetVersion))
-            {
-                var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, true, token);
-                if (packages == null || packages.Count == 0)
-                {
-                    Trace.Info($"There is no package for {_packageType} and {_platform}.");
-                    return false;
-                }
-
-                _targetPackage = packages.FirstOrDefault();
-            }
-            else
-            {
-                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, true, token);
-                if (_targetPackage == null)
-                {
-                    Trace.Info($"There is no package for {_packageType} and {_platform} with version {targetVersion}.");
-                    return false;
-                }
-            }
-
-            Trace.Info($"Version '{_targetPackage.Version}' of '{_targetPackage.Type}' package available in server.");
-            PackageVersion serverVersion = new(_targetPackage.Version);
-            Trace.Info($"Current running runner version is {BuildConstants.RunnerPackage.Version}");
-            PackageVersion runnerVersion = new(BuildConstants.RunnerPackage.Version);
-
-            return serverVersion.CompareTo(runnerVersion) > 0;
         }
 
         /// <summary>
@@ -272,74 +215,6 @@ namespace GitHub.Runner.Listener
                 {
                     //it is not critical if we fail to delete the .zip file
                     Trace.Warning("Failed to delete runner package zip '{0}'. Exception: {1}", archiveFile, ex);
-                }
-            }
-
-            var trimmedPackageRestoreTasks = new List<Task<bool>>();
-            if (!fallbackToFullPackage)
-            {
-                // Skip restoring externals and runtime if we are going to fullback to the full package.
-                if (externalsTrimmed)
-                {
-                    trimmedPackageRestoreTasks.Add(RestoreTrimmedExternals(latestRunnerDirectory, token));
-                }
-                if (runtimeTrimmed)
-                {
-                    trimmedPackageRestoreTasks.Add(RestoreTrimmedDotnetRuntime(latestRunnerDirectory, token));
-                }
-            }
-
-            if (trimmedPackageRestoreTasks.Count > 0)
-            {
-                var restoreResults = await Task.WhenAll(trimmedPackageRestoreTasks);
-                if (restoreResults.Any(x => x == false))
-                {
-                    // if any of the restore failed, fallback to full package.
-                    fallbackToFullPackage = true;
-                }
-            }
-
-            if (fallbackToFullPackage)
-            {
-                Trace.Error("Something wrong with the trimmed runner package, failback to use the full package for runner updates.");
-                _updateTrace.Enqueue($"FallbackToFullPackage: {fallbackToFullPackage}");
-
-                IOUtil.DeleteDirectory(latestRunnerDirectory, token);
-                Directory.CreateDirectory(latestRunnerDirectory);
-
-                packageDownloadUrl = _targetPackage.DownloadUrl;
-                packageHashValue = _targetPackage.HashValue;
-                _updateTrace.Enqueue($"DownloadUrl: {packageDownloadUrl}");
-
-                try
-                {
-                    archiveFile = await DownLoadRunner(latestRunnerDirectory, packageDownloadUrl, packageHashValue, token);
-
-                    if (string.IsNullOrEmpty(archiveFile))
-                    {
-                        throw new TaskCanceledException($"Runner package '{packageDownloadUrl}' failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts");
-                    }
-
-                    await ValidateRunnerHash(archiveFile, packageHashValue);
-
-                    await ExtractRunnerPackage(archiveFile, latestRunnerDirectory, token);
-                }
-                finally
-                {
-                    try
-                    {
-                        // delete .zip file
-                        if (!string.IsNullOrEmpty(archiveFile) && File.Exists(archiveFile))
-                        {
-                            Trace.Verbose("Deleting latest runner package zip: {0}", archiveFile);
-                            IOUtil.DeleteFile(archiveFile);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        //it is not critical if we fail to delete the .zip file
-                        Trace.Warning("Failed to delete runner package zip '{0}'. Exception: {1}", archiveFile, ex);
-                    }
                 }
             }
 
@@ -721,71 +596,6 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Error(ex);
                 Trace.Info($"Catch exception during report update state, ignore this error and continue auto-update.");
-            }
-        }
-
-        private async Task<bool> RestoreTrimmedExternals(string downloadDirectory, CancellationToken token)
-        {
-            // Copy the current runner's externals if we are using a externals trimmed package
-            // Execute the node.js to make sure the copied externals is working.
-            var stopWatch = Stopwatch.StartNew();
-            try
-            {
-                Trace.Info($"Copy {_externalsCloneDirectory} to {Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory)}.");
-                IOUtil.CopyDirectory(_externalsCloneDirectory, Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory), token);
-
-                // try run node.js to see if current node.js works fine after copy over to new location.
-                var nodeVersions = NodeUtil.BuiltInNodeVersions;
-                foreach (var nodeVersion in nodeVersions)
-                {
-                    var newNodeBinary = Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory, nodeVersion, "bin", $"node{IOUtil.ExeExtension}");
-                    if (File.Exists(newNodeBinary))
-                    {
-                        using (var p = HostContext.CreateService<IProcessInvoker>())
-                        {
-                            var outputs = "";
-                            p.ErrorDataReceived += (_, data) =>
-                            {
-                                if (!string.IsNullOrEmpty(data.Data))
-                                {
-                                    Trace.Error(data.Data);
-                                }
-                            };
-                            p.OutputDataReceived += (_, data) =>
-                            {
-                                if (!string.IsNullOrEmpty(data.Data))
-                                {
-                                    Trace.Info(data.Data);
-                                    outputs = data.Data;
-                                }
-                            };
-                            var exitCode = await p.ExecuteAsync(HostContext.GetDirectory(WellKnownDirectory.Root), newNodeBinary, $"-e \"console.log('{nameof(RestoreTrimmedExternals)}')\"", null, token);
-                            if (exitCode != 0)
-                            {
-                                Trace.Error($"{newNodeBinary} -e \"console.log()\" failed with exit code {exitCode}");
-                                return false;
-                            }
-
-                            if (!string.Equals(outputs, nameof(RestoreTrimmedExternals), StringComparison.OrdinalIgnoreCase))
-                            {
-                                Trace.Error($"{newNodeBinary} -e \"console.log()\" did not output expected content.");
-                                return false;
-                            }
-                        }
-                    }
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Trace.Error($"Fail to restore externals for trimmed package: {ex}");
-                return false;
-            }
-            finally
-            {
-                stopWatch.Stop();
-                _updateTrace.Enqueue($"{nameof(RestoreTrimmedExternals)}Time: {stopWatch.ElapsedMilliseconds}ms");
             }
         }
 
