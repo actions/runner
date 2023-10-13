@@ -461,6 +461,8 @@ namespace GitHub.DistributedTask.WebApi
             long? lastMessageId = null,
             TaskAgentStatus? status = null,
             string runnerVersion = null,
+            string os = null,
+            string architecture = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -481,6 +483,16 @@ namespace GitHub.DistributedTask.WebApi
             if (runnerVersion != null)
             {
                 queryParams.Add("runnerVersion", runnerVersion);
+            }
+
+            if (os != null)
+            {
+                queryParams.Add("os", os);
+            }
+
+            if (architecture != null)
+            {
+                queryParams.Add("architecture", architecture);
             }
 
             return SendAsync<TaskAgentMessage>(

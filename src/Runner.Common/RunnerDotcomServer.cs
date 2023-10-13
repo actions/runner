@@ -224,7 +224,7 @@ namespace GitHub.Runner.Common
                     }
                     catch (Exception ex) when (retry < maxRetryAttemptsCount && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
-                        Trace.Error($"{errorMessage} -- Atempt: {retry}");
+                        Trace.Error($"{errorMessage} -- Attempt: {retry}");
                         Trace.Error(ex);
                     }
                 }

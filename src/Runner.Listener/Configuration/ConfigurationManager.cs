@@ -744,7 +744,7 @@ namespace GitHub.Runner.Listener.Configuration
                     catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
-                        Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
+                        Trace.Error($"Failed to get JIT runner token -- Attempt: {retryCount}");
                         Trace.Error(ex);
                     }
                 }
@@ -807,7 +807,7 @@ namespace GitHub.Runner.Listener.Configuration
                     catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
-                        Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
+                        Trace.Error($"Failed to get tenant credentials -- Attempt: {retryCount}");
                         Trace.Error(ex);
                     }
                 }

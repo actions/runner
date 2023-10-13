@@ -51,6 +51,13 @@ namespace GitHub.Runner.Worker
                 HostContext.UserAgents.Add(new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
             }
 
+            var jobServerQueueTelemetry = false;
+            if (message.Variables.TryGetValue("DistributedTask.EnableJobServerQueueTelemetry", out VariableValue enableJobServerQueueTelemetry) &&
+                !string.IsNullOrEmpty(enableJobServerQueueTelemetry?.Value))
+            {
+                jobServerQueueTelemetry = StringUtil.ConvertToBoolean(enableJobServerQueueTelemetry.Value);
+            }
+
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (MessageUtil.IsRunServiceJob(message.MessageType))
             {
@@ -72,7 +79,7 @@ namespace GitHub.Runner.Worker
                     launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
                 }
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-                _jobServerQueue.Start(message, resultServiceOnly: true);
+                _jobServerQueue.Start(message, resultsServiceOnly: true, enableTelemetry: jobServerQueueTelemetry);
             }
             else
             {
@@ -94,7 +101,7 @@ namespace GitHub.Runner.Worker
                 VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, delegatingHandlers);
                 await jobServer.ConnectAsync(jobConnection);
 
-                _jobServerQueue.Start(message);
+                _jobServerQueue.Start(message, enableTelemetry: jobServerQueueTelemetry);
                 server = jobServer;
             }
 
@@ -276,6 +283,12 @@ namespace GitHub.Runner.Worker
         {
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
+            {
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.DetectedNodeAfterEndOfLifeMessage, actions));
+            }
+
             if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
             {
                 var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
@@ -375,6 +388,12 @@ namespace GitHub.Runner.Worker
                 }
             }
 
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
+            {
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.DetectedNodeAfterEndOfLifeMessage, actions));
+            }
+
             if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
             {
                 var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
@@ -383,7 +402,12 @@ namespace GitHub.Runner.Worker
 
             try
             {
-                await ShutdownQueue(throwOnFailure: true);
+                var jobQueueTelemetry = await ShutdownQueue(throwOnFailure: true);
+                // include any job telemetry from the background upload process.
+                if (jobQueueTelemetry.Count > 0)
+                {
+                    jobContext.Global.JobTelemetry.AddRange(jobQueueTelemetry);
+                }
             }
             catch (Exception ex)
             {
@@ -485,7 +509,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task ShutdownQueue(bool throwOnFailure)
+        private async Task<IList<JobTelemetry>> ShutdownQueue(bool throwOnFailure)
         {
             if (_jobServerQueue != null)
             {
@@ -493,6 +517,7 @@ namespace GitHub.Runner.Worker
                 {
                     Trace.Info("Shutting down the job server queue.");
                     await _jobServerQueue.ShutdownAsync();
+                    return _jobServerQueue.JobTelemetries;
                 }
                 catch (Exception ex) when (!throwOnFailure)
                 {
@@ -504,6 +529,8 @@ namespace GitHub.Runner.Worker
                     _jobServerQueue = null; // Prevent multiple attempts.
                 }
             }
+
+            return Array.Empty<JobTelemetry>();
         }
     }
 }
