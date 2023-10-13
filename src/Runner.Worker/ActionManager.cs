@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -874,8 +875,17 @@ namespace GitHub.Runner.Worker
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
+                        var sha256hash = "unknown";
+                        using (FileStream stream = File.OpenRead(archiveFile))
+                        {
+                            using (SHA256 sha256 = SHA256.Create())
+                            {
+                                byte[] srcHashBytes = await sha256.ComputeHashAsync(stream);
+                                sha256hash = PrimitiveExtensions.ConvertToHexString(srcHashBytes);
+                            }
+                        }
                         FileInfo fi = new FileInfo(archiveFile);
-                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile} ({fi.Length} Bytes). Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
+                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile} (SHA256 {sha256hash} / {fi.Length} Bytes). Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
                     }
                 }
 #endif
