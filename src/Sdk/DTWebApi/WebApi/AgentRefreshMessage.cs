@@ -48,7 +48,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember]
-        public Dictionary<String, String> Package
+        public PackageMetadata PackageMetadata
         {
             get;
             set;

@@ -498,7 +498,17 @@ namespace GitHub.Runner.Listener
                                     {
                                         var selfUpdater = new SelfUpdaterV2();
                                         selfUpdater.Initialize(HostContext);
-                                        selfUpdater = selfUpdater.SelfUpdate(brokerRunnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                        var refreshMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds))
+                                        {
+                                            PackageMetadata = new PackageMetadata() 
+                                            { 
+                                                DownloadUrl = brokerRunnerUpdateMessage.Package?.DownloadUrl, 
+                                                HashValue = brokerRunnerUpdateMessage.Package?.HashValue,
+                                                Platform = brokerRunnerUpdateMessage.Package?.Platform,
+                                                Version = new PackageVersion(brokerRunnerUpdateMessage.TargetVersion)
+                                            }
+                                        };
+                                        selfUpdateTask = selfUpdater.SelfUpdate(refreshMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     }
                                     else
                                     {

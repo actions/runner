@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 
 
@@ -9,6 +10,37 @@ namespace GitHub.DistributedTask.WebApi
     public sealed class RunnerRefreshMessage
     {
         public static readonly String MessageType = "RunnerRefresh";
+
+        [DataContract]
+        public sealed class BrokerPackageMetadata
+        {
+            [JsonConstructor]
+            internal BrokerPackageMetadata()
+            {
+            }
+
+
+            [DataMember(Name = "download_url")]
+            public string DownloadUrl
+            {
+                get;
+                set;
+            }
+
+            [DataMember(Name = "sha256_checksum")]
+            public string HashValue
+            {
+                get;
+                set;
+            }
+
+            [DataMember(Name = "os")]
+            public string Platform
+            {
+                get;
+                set;
+            }
+        }
 
         [JsonConstructor]
         internal RunnerRefreshMessage()
@@ -46,6 +78,12 @@ namespace GitHub.DistributedTask.WebApi
             private set;
         }
 
-        [DataMember] PackageMetadata Package  { get; set; }
+    
+        [DataMember] 
+        public BrokerPackageMetadata Package  
+        { 
+            get; 
+            set; 
+        }
     }
 }

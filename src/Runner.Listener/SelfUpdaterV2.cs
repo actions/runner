@@ -44,6 +44,7 @@ namespace GitHub.Runner.Listener
 
         public async Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token)
         {
+            _targetPackage = updateMessage.PackageMetadata;
             Busy = true;
             try
             {
@@ -57,14 +58,14 @@ namespace GitHub.Runner.Listener
                 _updateTrace.Enqueue($"RunnerPlatform: {_targetPackage.Platform}");
 
                 // Print console line that warn user not shutdown runner.
-                await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
-                await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
+                _terminal.WriteLine("Runner update in progress, do not shutdown runner.");
+                _terminal.WriteLine($"Downloading {_targetPackage.Version} runner");
 
                 await DownloadLatestRunner(token, updateMessage.TargetVersion);
                 Trace.Info($"Download latest runner and unzip into runner root.");
 
                 // wait till all running job finish
-                await UpdateRunnerUpdateStateAsync("Waiting for current job finish running.");
+                _terminal.WriteLine("Waiting for current job finish running.");
 
                 await jobDispatcher.WaitAsync(token);
                 Trace.Info($"All running job has exited.");
@@ -77,7 +78,7 @@ namespace GitHub.Runner.Listener
                 stopWatch.Stop();
                 // generate update script from template
                 _updateTrace.Enqueue($"DeleteRunnerBackupTime: {stopWatch.ElapsedMilliseconds}ms");
-                await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
+                _terminal.WriteLine("Generate and execute update script.");
 
                 string updateScript = GenerateUpdateScript(restartInteractiveRunner);
                 Trace.Info($"Generate update script into: {updateScript}");
@@ -104,7 +105,7 @@ namespace GitHub.Runner.Listener
                 totalUpdateTime.Stop();
 
                 _updateTrace.Enqueue($"TotalUpdateTime: {totalUpdateTime.ElapsedMilliseconds}ms");
-                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.");
+                _terminal.WriteLine("Runner will exit shortly for update, should be back online within 10 seconds.");
 
                 return true;
             }
@@ -115,7 +116,7 @@ namespace GitHub.Runner.Listener
             }
             finally
             {
-                await UpdateRunnerUpdateStateAsync("Runner update process finished.");
+                _terminal.WriteLine("Runner update process finished.");
                 Busy = false;
             }
         }
@@ -562,41 +563,6 @@ namespace GitHub.Runner.Listener
 
             File.WriteAllText(updateScript, template);
             return updateScript;
-        }
-
-        private async Task UpdateRunnerUpdateStateAsync(string currentState)
-        {
-            _terminal.WriteLine(currentState);
-
-            var traces = new List<string>();
-            while (_updateTrace.TryDequeue(out var trace))
-            {
-                traces.Add(trace);
-            }
-
-            if (traces.Count > 0)
-            {
-                foreach (var trace in traces)
-                {
-                    Trace.Info(trace);
-                }
-            }
-
-            try
-            {
-                await _runnerServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState, string.Join(Environment.NewLine, traces));
-                _updateTrace.Clear();
-            }
-            catch (VssResourceNotFoundException)
-            {
-                // ignore VssResourceNotFoundException, this exception means the runner is configured against a old server that doesn't support report runner update detail.
-                Trace.Info($"Catch VssResourceNotFoundException during report update state, ignore this error for backcompat.");
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
-                Trace.Info($"Catch exception during report update state, ignore this error and continue auto-update.");
-            }
         }
 
         private async Task<string> HashFiles(string fileFolder, CancellationToken token)
