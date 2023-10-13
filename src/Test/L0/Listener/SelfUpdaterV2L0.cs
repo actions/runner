@@ -182,59 +182,56 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Runner")]
-        // public async void TestSelfUpdateAsync_ValidateHash()
-        // {
-        //     try
-        //     {
-        //         await FetchLatestRunner();
-        //         Assert.NotNull(_packageUrl);
-        //         Assert.NotNull(_trimmedPackages);
-        //         Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
-        //         using (var hc = new TestHostContext(this))
-        //         {
-        //             hc.GetTrace().Info(_packageUrl);
-        //             hc.GetTrace().Info(StringUtil.ConvertToJson(_trimmedPackages));
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async void TestSelfUpdateAsync_ValidateHash()
+        {
+            try
+            {
+                await FetchLatestRunner();
+                Assert.NotNull(_packageUrl);
+                Assert.NotNull(_trimmedPackages);
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
+                using (var hc = new TestHostContext(this))
+                {
+                    hc.GetTrace().Info(_packageUrl);
+                    hc.GetTrace().Info(StringUtil.ConvertToJson(_trimmedPackages));
 
-        //             //Arrange
-        //             var updater = new Runner.Listener.SelfUpdaterV2();
-        //             hc.SetSingleton<ITerminal>(_term.Object);
-        //             hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-        //             hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-        //             hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
+                    //Arrange
+                    var updater = new Runner.Listener.SelfUpdaterV2();
+                    hc.SetSingleton<ITerminal>(_term.Object);
+                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
-        //             _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
-        //                      .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, HashValue = "bad_hash" }));
+                    var p1 = new ProcessInvokerWrapper();
+                    p1.Initialize(hc);
+                    var p2 = new ProcessInvokerWrapper();
+                    p2.Initialize(hc);
+                    var p3 = new ProcessInvokerWrapper();
+                    p3.Initialize(hc);
+                    hc.EnqueueInstance<IProcessInvoker>(p1);
+                    hc.EnqueueInstance<IProcessInvoker>(p2);
+                    hc.EnqueueInstance<IProcessInvoker>(p3);
+                    updater.Initialize(hc);
 
-        //             var p1 = new ProcessInvokerWrapper();
-        //             p1.Initialize(hc);
-        //             var p2 = new ProcessInvokerWrapper();
-        //             p2.Initialize(hc);
-        //             var p3 = new ProcessInvokerWrapper();
-        //             p3.Initialize(hc);
-        //             hc.EnqueueInstance<IProcessInvoker>(p1);
-        //             hc.EnqueueInstance<IProcessInvoker>(p2);
-        //             hc.EnqueueInstance<IProcessInvoker>(p3);
-        //             updater.Initialize(hc);
-
-        //             var packageMetadata = new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl };
-        //             var message = new AgentRefreshMessage(1, "2.999.0")
-        //             {
-        //                 PackageMetadata = packageMetadata
-        //             };
+                    var packageMetadata = new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, HashValue = "bad_hash" };
+                    var message = new AgentRefreshMessage(1, "2.999.0")
+                    {
+                        PackageMetadata = packageMetadata
+                    };
 
 
-        //             var ex = await Assert.ThrowsAsync<Exception>(() => updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
-        //             Assert.Contains("did not match expected Runner Hash", ex.Message);
-        //         }
-        //     }
-        //     finally
-        //     {
-        //         Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
-        //     }
-        // }
+                    var ex = await Assert.ThrowsAsync<Exception>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
+                    Assert.Contains("did not match expected Runner Hash", ex.Message);
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
+            }
+        }
     }
 }
 #endif
