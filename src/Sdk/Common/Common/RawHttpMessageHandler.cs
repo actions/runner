@@ -109,7 +109,7 @@ namespace GitHub.Services.Common
             lock (m_thisLock)
             {
                 // Ensure that we attempt to use the most appropriate authentication mechanism by default.
-                if (m_tokenProvider == null)
+                if (m_tokenProvider == null && !(this.Credentials is NoOpCredentials))
                 {
                     m_tokenProvider = this.Credentials.CreateTokenProvider(request.RequestUri, null, null);
                 }
@@ -121,7 +121,8 @@ namespace GitHub.Services.Common
             HttpResponseMessageWrapper responseWrapper;
 
             Boolean lastResponseDemandedProxyAuth = false;
-            Int32 retries = m_maxAuthRetries;
+            // do not retry if we cannot recreate tokens
+            Int32 retries = this.Credentials is NoOpCredentials ? 0 : m_maxAuthRetries;
             try
             {
                 tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -138,8 +139,12 @@ namespace GitHub.Services.Common
                     }
 
                     // Let's start with sending a token
-                    IssuedToken token = await m_tokenProvider.GetTokenAsync(null, tokenSource.Token).ConfigureAwait(false);
-                    ApplyToken(request, token, applyICredentialsToWebProxy: lastResponseDemandedProxyAuth);
+                    IssuedToken token = null;
+                    if (m_tokenProvider != null)
+                    {
+                        token = await m_tokenProvider.GetTokenAsync(null, tokenSource.Token).ConfigureAwait(false);
+                        ApplyToken(request, token, applyICredentialsToWebProxy: lastResponseDemandedProxyAuth);
+                    }
 
                     // The WinHttpHandler will chunk any content that does not have a computed length which is
                     // not what we want. By loading into a buffer up-front we bypass this behavior and there is
