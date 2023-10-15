@@ -1,0 +1,8 @@
+# ExpectedException: NotSupportedException
+# ExpectedErrorMessage: __built-in-schema.yml (Line: 40, Col:11): 'variables' is already defined
+
+variables:
+  myVar: one
+
+extends:
+  template: base.yml

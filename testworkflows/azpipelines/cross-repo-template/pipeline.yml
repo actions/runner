@@ -1,3 +1,6 @@
+# LOCALREPOSITORY: az/typedtemplates@main=typedtemplates
+# LOCALREPOSITORY: az/untypedtemplates@main=untypedtemplates
+
 resources:
   repositories:
   - repository: typedtemplates

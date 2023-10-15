@@ -1,0 +1,12 @@
+# ExpectedException: TemplateValidationException
+# ExpectedErrorMessage: A value for the 'required' parameter must be provided.
+parameters:
+- name: parametersObject
+  type: object
+  default:
+    expected: provided
+    # missing required
+
+steps:
+- template: steps.yml
+  parameters: ${{ parameters.parametersObject }}

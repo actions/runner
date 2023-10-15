@@ -1,3 +1,6 @@
+# Name: cross-repo-relative-paths
+# LocalRepository: central/shared@main=cross-repo-relative-paths/repo2
+
 resources:
   repositories:
   - repository: shared

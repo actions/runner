@@ -540,7 +540,6 @@ public class AzureDevops {
                 throw new Exception("Provided undeclared parameters");
             }
         } else if(parameters is SequenceToken sparameters) {
-            int providedParameter = 0;
             foreach(var mparam in sparameters) {
                 var varm = mparam.AssertMapping("varm");
                 string name = null;
@@ -566,19 +565,28 @@ public class AzureDevops {
                 var defCtxData = await ConvertValue(context, def, type, values);
                 if(cparameters?.TryGetValue(name, out var value) == true) {
                     parametersData[name] = await ConvertValue(context, value, type, values);
-                    providedParameter++;
                 } else {
+                    if (def == null) // handle missing required parameter
+                    {
+                        templateContext.Error(new TemplateValidationError($"A value for the '{name}' parameter must be provided."));
+                    }
                     parametersData[name] = defCtxData;
                 }
-            }
-            if(cparameters != null && providedParameter != cparameters?.Count) {
-                throw new Exception("Provided undeclared parameters");
             }
         } else {
             if(cparameters != null && 0 != cparameters.Count) {
                 throw new Exception("Provided undeclared parameters");
             }
         }
+
+        if (cparameters != null)
+        {
+            foreach(var unexpectedParameter in cparameters.Keys.Where(i => !parametersData.ContainsKey(i))) {
+                templateContext.Error(parameters, $"Unexpected parameter '{unexpectedParameter}'");
+            }
+        }
+
+        templateContext.Errors.Check();
 
         templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
 

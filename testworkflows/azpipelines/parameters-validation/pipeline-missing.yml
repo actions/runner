@@ -1,0 +1,10 @@
+# ExpectedException: TemplateValidationException
+# ExpectedErrorMessage: A value for the 'required' parameter must be provided.
+
+trigger: none
+
+steps:
+- template: steps.yml
+  parameters:
+    expected: 'present'
+    # missing 'required'

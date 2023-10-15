@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29411.138
@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Runner.Plugins", "Runner.Pl
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Runner.Sdk", "Runner.Sdk\Runner.Sdk.csproj", "{D0484633-DA97-4C34-8E47-1DADE212A57A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RunnerService", "Runner.Service\Windows\RunnerService.csproj", "{D12EBD71-0464-46D0-8394-40BCFBA0A6F2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RunnerService", "Runner.Service\Windows\RunnerService.csproj", "{D12EBD71-0464-46D0-8394-40BCFBA0A6F2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Runner.Worker", "Runner.Worker\Runner.Worker.csproj", "{C2F5B9FA-2621-411F-8EB2-273ED276F503}"
 EndProject
@@ -26,9 +26,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Runner.Server", "Runner.Server\Runner.Server.csproj", "{43BFD5CB-4939-46F1-B94C-5CCB8493FC00}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Runner.Server", "Runner.Server\Runner.Server.csproj", "{43BFD5CB-4939-46F1-B94C-5CCB8493FC00}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Runner.Client", "Runner.Client\Runner.Client.csproj", "{20089019-022B-48F6-85A4-A524D7E8161D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Runner.Client", "Runner.Client\Runner.Client.csproj", "{20089019-022B-48F6-85A4-A524D7E8161D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sdk.Tests", "Sdk.Tests\Sdk.Tests.csproj", "{9E191751-BE28-498F-8A21-6EDA151197CB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -80,10 +82,10 @@ Global
 		{20089019-022B-48F6-85A4-A524D7E8161D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{20089019-022B-48F6-85A4-A524D7E8161D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{20089019-022B-48F6-85A4-A524D7E8161D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{911D4E90-F306-4B56-87DD-A2642EB0BA95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{911D4E90-F306-4B56-87DD-A2642EB0BA95}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{911D4E90-F306-4B56-87DD-A2642EB0BA95}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{911D4E90-F306-4B56-87DD-A2642EB0BA95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E191751-BE28-498F-8A21-6EDA151197CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E191751-BE28-498F-8A21-6EDA151197CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E191751-BE28-498F-8A21-6EDA151197CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E191751-BE28-498F-8A21-6EDA151197CB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

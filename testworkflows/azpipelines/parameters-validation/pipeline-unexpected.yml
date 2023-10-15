@@ -1,0 +1,9 @@
+# ExpectedException: TemplateValidationException
+# ExpectedErrorMessage: steps.yml (Line: 2, Col: 1): Unexpected parameter 'unexpected'
+trigger: none
+
+steps:
+- template: steps.yml
+  parameters:
+    required: 'present'
+    unexpected: 'bogus'

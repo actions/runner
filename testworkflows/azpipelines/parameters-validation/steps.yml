@@ -1,0 +1,9 @@
+parameters:
+- name: expected
+  type: string
+
+- name: required
+  type: string
+
+steps:
+- script: exit 0
