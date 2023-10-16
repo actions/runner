@@ -19,7 +19,6 @@ namespace GitHub.DistributedTask.WebApi
             {
             }
 
-
             [DataMember(Name = "download_url")]
             public string DownloadUrl
             {
@@ -46,7 +45,6 @@ namespace GitHub.DistributedTask.WebApi
         internal RunnerRefreshMessage()
         {
         }
-
         public RunnerRefreshMessage(
             ulong runnerId,
             String targetVersion,
@@ -77,7 +75,6 @@ namespace GitHub.DistributedTask.WebApi
             get;
             private set;
         }
-
 
         [DataMember]
         public BrokerPackageMetadata Package
