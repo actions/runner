@@ -500,9 +500,9 @@ namespace GitHub.Runner.Listener
                                         selfUpdater.Initialize(HostContext);
                                         var refreshMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds))
                                         {
-                                            PackageMetadata = new PackageMetadata() 
-                                            { 
-                                                DownloadUrl = brokerRunnerUpdateMessage.Package?.DownloadUrl, 
+                                            PackageMetadata = new PackageMetadata()
+                                            {
+                                                DownloadUrl = brokerRunnerUpdateMessage.Package?.DownloadUrl,
                                                 HashValue = brokerRunnerUpdateMessage.Package?.HashValue,
                                                 Platform = brokerRunnerUpdateMessage.Package?.Platform,
                                                 Version = new PackageVersion(brokerRunnerUpdateMessage.TargetVersion)
@@ -515,7 +515,7 @@ namespace GitHub.Runner.Listener
                                         var selfUpdater = HostContext.GetService<ISelfUpdater>();
                                         selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     }
-                                   
+
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
