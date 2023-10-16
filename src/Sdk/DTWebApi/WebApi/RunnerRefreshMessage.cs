@@ -78,12 +78,12 @@ namespace GitHub.DistributedTask.WebApi
             private set;
         }
 
-    
-        [DataMember] 
-        public BrokerPackageMetadata Package  
-        { 
-            get; 
-            set; 
+
+        [DataMember]
+        public BrokerPackageMetadata Package
+        {
+            get;
+            set;
         }
     }
 }
