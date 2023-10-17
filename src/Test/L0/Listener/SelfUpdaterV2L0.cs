@@ -109,10 +109,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     try
                     {
                         var packageMetadata = new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl };
-                        var message = new AgentRefreshMessage(1, "2.999.0")
-                        {
-                            PackageMetadata = packageMetadata
-                        };
+                        var message = new AgentRefreshMessage(1, "2.999.0", packageMetadata: packageMetadata);
 
                         var result = await updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
                         Assert.True(result);
@@ -167,10 +164,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     updater.Initialize(hc);
 
                     var packageMetadata = new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = "https://github.com/actions/runner/notthere" };
-                    var message = new AgentRefreshMessage(1, "2.999.0")
-                    {
-                        PackageMetadata = packageMetadata
-                    };
+                    var message = new AgentRefreshMessage(1, "2.999.0", packageMetadata: packageMetadata);
 
                     var ex = await Assert.ThrowsAsync<TaskCanceledException>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
                     Assert.Contains($"failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts", ex.Message);
@@ -217,11 +211,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     updater.Initialize(hc);
 
                     var packageMetadata = new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = _packageUrl, HashValue = "bad_hash" };
-                    var message = new AgentRefreshMessage(1, "2.999.0")
-                    {
-                        PackageMetadata = packageMetadata
-                    };
-
+                    var message = new AgentRefreshMessage(1, "2.999.0", packageMetadata: packageMetadata);
 
                     var ex = await Assert.ThrowsAsync<Exception>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
                     Assert.Contains("did not match expected Runner Hash", ex.Message);
