@@ -19,11 +19,13 @@ namespace GitHub.DistributedTask.WebApi
         public AgentRefreshMessage(
             ulong agentId,
             String targetVersion,
-            TimeSpan? timeout = null)
+            TimeSpan? timeout = null,
+            PackageMetadata packageMetadata = null)
         {
             this.AgentId = agentId;
             this.Timeout = timeout ?? TimeSpan.FromMinutes(60);
             this.TargetVersion = targetVersion;
+            this.PackageMetadata = packageMetadata;
         }
 
         [DataMember]
@@ -51,7 +53,7 @@ namespace GitHub.DistributedTask.WebApi
         public PackageMetadata PackageMetadata
         {
             get;
-            set;
+            private set;
         }
     }
 }

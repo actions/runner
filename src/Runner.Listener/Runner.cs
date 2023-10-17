@@ -498,16 +498,14 @@ namespace GitHub.Runner.Listener
                                     {
                                         var selfUpdater = new SelfUpdaterV2();
                                         selfUpdater.Initialize(HostContext);
-                                        var refreshMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds))
+                                        var packageMetadata = new PackageMetadata()
                                         {
-                                            PackageMetadata = new PackageMetadata()
-                                            {
-                                                DownloadUrl = brokerRunnerUpdateMessage.Package?.DownloadUrl,
-                                                HashValue = brokerRunnerUpdateMessage.Package?.HashValue,
-                                                Platform = brokerRunnerUpdateMessage.Package?.Platform,
-                                                Version = new PackageVersion(brokerRunnerUpdateMessage.TargetVersion)
-                                            }
+                                            DownloadUrl = brokerRunnerUpdateMessage.Package?.DownloadUrl,
+                                            HashValue = brokerRunnerUpdateMessage.Package?.HashValue,
+                                            Platform = brokerRunnerUpdateMessage.Package?.Platform,
+                                            Version = new PackageVersion(brokerRunnerUpdateMessage.TargetVersion)
                                         };
+                                        var refreshMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds), packageMetadata);
                                         selfUpdateTask = selfUpdater.SelfUpdate(refreshMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     }
                                     else

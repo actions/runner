@@ -19,6 +19,9 @@ using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Listener
 {
+    // This class is a fork of SelfUpdater.cs and is intended to only be used for the
+    // new self-update flow where the PackageMetadata is sent in the message directly. 
+    // Forking the class prevents us from accidentally breaking the old flow while it's still in production
     public class SelfUpdaterV2 : RunnerService, ISelfUpdater
     {
         private static string _platform = BuildConstants.RunnerPackage.PackageName;
