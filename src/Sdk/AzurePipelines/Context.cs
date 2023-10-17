@@ -1,10 +1,10 @@
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using System;
 using System.Collections.Generic;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.WebApi;
-using GitHub.DistributedTask.Expressions2;
 
-namespace Runner.Server.Azure.Devops {
+namespace Runner.Server.Azure.Devops
+{
     public class Context {
         public ExpressionFlags Flags { get; set; }
         public IFileProvider FileProvider { get; set; }

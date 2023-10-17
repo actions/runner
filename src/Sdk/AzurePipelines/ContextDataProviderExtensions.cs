@@ -1,9 +1,11 @@
+using GitHub.DistributedTask.Pipelines.ContextData;
+using System;
+
 namespace Runner.Server.Azure.Devops
 {
-    // TODO: Move to Sdk.AzurePipelines folder
-    public static class PipelineExtensions
+    public static class ContextDataProviderExtensions
     {
-        public static string ToYaml(this Pipeline pipeline)
+        public static string ToYaml(this IContextDataProvider pipeline)
         {
             // convert back to JToken
             var newcontent = pipeline.ToContextData().ToJToken().ToString();

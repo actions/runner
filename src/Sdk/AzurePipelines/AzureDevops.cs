@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
-using GitHub.DistributedTask.Expressions2.Sdk.Functions.v1;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;

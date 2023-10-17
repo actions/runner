@@ -8,7 +8,7 @@
         <NoWarn>NU1701;NU1603;NU1605</NoWarn>
         <Version>$(Version)</Version>
         <DefineConstants>TRACE</DefineConstants>
-        <LangVersion>7.3</LangVersion>
+        <LangVersion>8.0</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     </PropertyGroup>

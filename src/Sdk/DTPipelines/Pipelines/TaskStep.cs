@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 
 namespace GitHub.DistributedTask.Pipelines
 {
-    public class TaskStep : JobStep
+    public class TaskStep : JobStep, IContextDataProvider
     {
         [JsonConstructor]
         public TaskStep() {
