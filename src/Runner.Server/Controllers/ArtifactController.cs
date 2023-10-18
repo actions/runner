@@ -59,7 +59,7 @@ namespace Runner.Server.Controllers {
             Directory.CreateDirectory(_targetFilePath);
         }
 
-        public async Task<ArtifactFileContainer> CreateContainer(long run, long attempt, CreateActionsStorageArtifactParameters req, long artifactsMinAttempt = -1) {
+        internal async Task<ArtifactFileContainer> CreateContainer(long run, long attempt, CreateActionsStorageArtifactParameters req, long artifactsMinAttempt = -1) {
             var filecontainer = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt == attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Id == req.ContainerId select fileContainer).Include(f => f.Container).Include(f => f.Files).FirstOrDefault();
             if(filecontainer != null) {
                 var files = filecontainer.Files;
@@ -99,8 +99,7 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpPost("{run}/artifacts")]
-        public async Task<FileStreamResult> CreateContainer(long run) {
-            var req = await FromBody<CreateActionsStorageArtifactParameters>();
+        public async Task<FileStreamResult> CreateContainer(long run, [FromBody, Vss] CreateActionsStorageArtifactParameters req) {
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
             var artifactsMinAttempt = Int64.Parse(User.FindFirst("artifactsMinAttempt")?.Value ?? "-1");
             // azp build artifact / parse "{\"id\":0,\"name\":\"drop\",\"source\":null,\"resource\":{\"type\":\"Container\",\"data\":\"#/10/drop\",\"properties\":{\"localpath\":\"/home/christopher/.local/share/gharun/a/l53fnlmg.djp/w/1/a\",\"artifactsize\":\"28710\"}}}"
@@ -112,8 +111,7 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpPatch("{run}/artifacts")]
-        public async Task<FileStreamResult> PatchContainer(long run, [FromQuery] string artifactName) {
-            var req = await FromBody<CreateActionsStorageArtifactParameters>();
+        public async Task<FileStreamResult> PatchContainer(long run, [FromQuery] string artifactName, [FromBody, Vss] CreateActionsStorageArtifactParameters req) {
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
             var artifactsMinAttempt = Int64.Parse(User.FindFirst("artifactsMinAttempt")?.Value ?? "-1");
             var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && fileContainer.Container.Attempt.Attempt <= attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name.ToLower() == artifactName.ToLower() select fileContainer).First();

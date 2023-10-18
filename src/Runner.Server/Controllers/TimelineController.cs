@@ -17,6 +17,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using GitHub.Actions.Pipelines.WebApi;
 using Newtonsoft.Json;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -33,7 +34,7 @@ namespace Runner.Server.Controllers
             _context = context;
         }
 
-        public void SyncLiveLogsToDb(Guid timelineId) {
+        internal void SyncLiveLogsToDb(Guid timelineId) {
             if(dict.TryGetValue(timelineId, out var entry)) {
                 foreach(var rec in (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList()) {
                     if(rec.Log == null && entry.Item2.TryGetValue(rec.Id, out var value)) {
@@ -68,12 +69,13 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/timeline")]
-        public async Task<IActionResult> CreateTimeline() {
-            var timeline = await FromBody<Timeline>();
+        [SwaggerResponse(200, type: typeof(Timeline))]
+        public async Task<IActionResult> CreateTimeline([FromBody, Vss] Timeline timeline) {
             return await Ok(timeline);
         }
 
         [HttpGet("{scopeIdentifier}/{hubName}/{planId}/timeline/{timelineid}")]
+        [SwaggerResponse(200, type: typeof(Timeline))]
         public async Task<IActionResult> GetTimeline(Guid timelineId) {
             var timeline = new Timeline(timelineId);
             var l = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
@@ -83,6 +85,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPut("{scopeIdentifier}/{hubName}/{planId}/{timelineId}/attachments/{recordId}/{type}/{name}")]
+        [SwaggerResponse(200, type: typeof(TaskAttachment))]
         public async Task<IActionResult> PutAttachment(Guid timelineId, Guid recordId, string type, string name) {
             var jobInfo = (from j in _context.Jobs where j.TimeLineId == timelineId select new { j.runid, j.Attempt }).FirstOrDefault();
             var artifacts = new ArtifactController(_context, Configuration);
@@ -172,13 +175,13 @@ namespace Runner.Server.Controllers
 
         [HttpPatch("{scopeIdentifier}/{hubName}/{planId}/{timelineId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
-        public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId)
+        [SwaggerResponse(200, type: typeof(VssJsonCollectionWrapper<List<TimelineRecord>>))]
+        public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, [FromBody, Vss] VssJsonCollectionWrapper<List<TimelineRecord>> patch)
         {
-            var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
             return await UpdateTimeLine(timelineId, patch, true);
         }
 
-        public async Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch, bool outOfSyncTimeLineUpdate = false)
+        internal async Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch, bool outOfSyncTimeLineUpdate = false)
         {
             var old = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
             var records = old.ToList();

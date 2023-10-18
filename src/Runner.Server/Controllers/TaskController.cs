@@ -17,6 +17,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -49,6 +50,7 @@ namespace Runner.Server.Controllers
 
         [HttpGet("{taskid}/{version}")]
         [AllowAnonymous]
+        [SwaggerResponse(200, contentTypes: new[]{"application/octet-stream"})]
         public IActionResult GetTaskArchive(Guid taskid, string version) {
             var srunid = User.FindFirst("runid")?.Value;
             long runid = -1;

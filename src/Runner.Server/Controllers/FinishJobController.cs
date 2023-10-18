@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -38,7 +38,7 @@ namespace Runner.Server.Controllers
         public static event JobAssigned OnJobAssigned;
         public static event JobStarted OnJobStarted;
 
-        public void InvokeJobCompleted(JobCompletedEvent ev) {
+        internal void InvokeJobCompleted(JobCompletedEvent ev) {
             try {
                 {
                     var job = _cache.Get<Job>(ev.JobId);
@@ -81,9 +81,8 @@ namespace Runner.Server.Controllers
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
-        public async Task<IActionResult> OnEvent(Guid scopeIdentifier, string hubName, Guid planId)
+        public IActionResult OnEvent(Guid scopeIdentifier, string hubName, Guid planId, [FromBody, Vss] JobEvent jevent)
         {
-            var jevent = await FromBody<JobEvent>();
             if (jevent is JobCompletedEvent ev) {
                 InvokeJobCompleted(ev);
                 return Ok();

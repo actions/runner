@@ -41,13 +41,6 @@ namespace Runner.Server.Controllers
             ServerUrl = configuration?.GetSection("Runner.Server")?.GetValue<string>("ServerUrl");
         }
 
-        protected async Task<T> FromBody<T>() {
-            using(var reader = new StreamReader(Request.Body)) {
-                string text = await reader.ReadToEndAsync();
-                return JsonConvert.DeserializeObject<T>(text);
-            }
-        }
-
         protected async Task<KeyValuePair<T, JObject>> FromBody2<T>(HashAlgorithm hash = null, string expected = null) {
             var stream = Request.Body;
             if(hash != null && expected != null) {

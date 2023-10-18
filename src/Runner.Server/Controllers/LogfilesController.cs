@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -31,9 +32,9 @@ namespace Runner.Server.Controllers
         }
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
-        public async Task<IActionResult> CreateLog(Guid scopeIdentifier, string hubName, Guid planId)
+        [SwaggerResponse(200, type: typeof(TaskLog))]
+        public async Task<IActionResult> CreateLog(Guid scopeIdentifier, string hubName, Guid planId, [FromBody, Vss] TaskLog log)
         {
-            var log = await FromBody<TaskLog>();
             _context.Logs.Add(new SqLiteDb.LogStorage() { Ref = log });
             await _context.SaveChangesAsync();
             return await Ok(log);

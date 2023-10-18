@@ -39,9 +39,8 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPatch("{poolId}/{requestId}")]
-        public async Task<IActionResult> UpdateAgentRequest(int poolId, long requestId)
+        public async Task<IActionResult> UpdateAgentRequest(int poolId, long requestId, [FromBody, Vss] TaskAgentJobRequest patch)
         {
-            var patch = await FromBody<TaskAgentJobRequest>();
             patch.LockedUntil = DateTime.UtcNow.AddDays(1);
             return await Ok(patch);
         }

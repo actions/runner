@@ -96,7 +96,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
-        public async Task<IActionResult> Get(Guid scopeIdentifier, string hubName, Guid planId)
+        public async Task<IActionResult> Get(Guid scopeIdentifier, string hubName, Guid planId, [FromBody, Vss] ActionReferenceList reflist)
         {
             var localcheckout = User.FindFirst("localcheckout")?.Value ?? "";
             var runid = User.FindFirst("runid")?.Value ?? "";
@@ -104,7 +104,6 @@ namespace Runner.Server.Controllers
             if(!string.IsNullOrEmpty(token)) {
                 GITHUB_TOKEN = token;
             }
-            ActionReferenceList reflist = await FromBody<ActionReferenceList>();
             var repository = User.FindFirst("repository")?.Value;
             var defGhToken = await CreateGithubAppToken(repository);
             try {

@@ -1,9 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Newtonsoft.Json;
 
-namespace Runner.Server {
+namespace Runner.Server
+{
     public static class Extension {
 
         public static TemplateToken AssertPermissionsValues(this TemplateToken token, string objectDescription) {
@@ -105,5 +112,31 @@ namespace Runner.Server {
         //         }
         //     }
         // }
+    }
+
+    public class VssBinder : IModelBinder
+    {
+        public async Task BindModelAsync(ModelBindingContext bindingContext)
+        {
+            if (!bindingContext.HttpContext.Request.HasJsonContentType())
+            {
+                throw new BadHttpRequestException(
+                    "Request content type was not a recognized JSON content type.",
+                    StatusCodes.Status415UnsupportedMediaType);
+            }
+
+            using var sr = new StreamReader(bindingContext.HttpContext.Request.Body);
+            var str = await sr.ReadToEndAsync();
+
+            var valueType = bindingContext.ModelType;
+            var obj = JsonConvert.DeserializeObject(str, valueType);
+            bindingContext.Result = ModelBindingResult.Success(obj);
+        }
+    }
+
+    public class VssAttribute : ModelBinderAttribute {
+        public VssAttribute() : base(typeof(VssBinder)) {
+
+        }
     }
 }

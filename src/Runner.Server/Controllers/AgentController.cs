@@ -16,6 +16,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Runner.Server.Models;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -39,8 +40,8 @@ namespace Runner.Server.Controllers
 
         [HttpPost("{poolId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
-        public async Task<IActionResult> Post(int poolId) {
-            TaskAgent agent = await FromBody<TaskAgent>();
+        [SwaggerResponse(200, type: typeof(TaskAgent))]
+        public async Task<IActionResult> Post(int poolId, [FromBody, Vss] TaskAgent agent) {
             lock(lok) {
                 // Without a lock we get rsa message exchange problems, decryption error of rsa encrypted session aes key
                 agent.Authorization.AuthorizationUrl = new Uri(new Uri(ServerUrl), "_apis/v1/auth/");
@@ -52,6 +53,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{poolId}/{agentId}")]
+        [SwaggerResponse(200, type: typeof(TaskAgent))]
         public async Task<ActionResult> Get(int poolId, int agentId)
         {
             return await Ok(Agent.GetAgent(_cache, _context, poolId, agentId).TaskAgent);
@@ -71,9 +73,8 @@ namespace Runner.Server.Controllers
 
         [HttpPut("{poolId}/{agentId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
-        public async Task<ActionResult> Replace(int poolId, int agentId)
+        public async Task<ActionResult> Replace(int poolId, int agentId, [FromBody, Vss] TaskAgent tagent)
         {
-            TaskAgent tagent = await FromBody<TaskAgent>();
             lock(lok) {
                 var agent = Agent.GetAgent(_cache, _context, poolId, agentId);
                 agent.TaskAgent.Authorization = new TaskAgentAuthorization() { ClientId = agent.ClientId, PublicKey = new TaskAgentPublicKey(agent.Exponent, agent.Modulus), AuthorizationUrl = new Uri(new Uri(ServerUrl), "_apis/v1/auth/") };
@@ -105,6 +106,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{poolId}")]
+        [SwaggerResponse(200, type: typeof(VssJsonCollectionWrapper<IEnumerable<TaskAgent>>))]
         public async Task<ActionResult> Get(int poolId, [FromQuery] string agentName)
         {
             return await Ok(new VssJsonCollectionWrapper<IEnumerable<TaskAgent>>(from agent in _context.Agents where (poolId == 0 || poolId == -1 || agent.Pool.Id == poolId) && (string.IsNullOrEmpty(agentName) || agent.TaskAgent.Name == agentName) select agent.TaskAgent));

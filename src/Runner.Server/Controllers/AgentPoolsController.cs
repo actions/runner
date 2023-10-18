@@ -12,6 +12,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -42,6 +43,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet]
+        [SwaggerResponse(200, type: typeof(VssJsonCollectionWrapper<IEnumerable<TaskAgentPool>>))]
         public Task<FileStreamResult> Get(string poolName = "", string properties = "", string poolType = "")
         {
             return Ok((from pool in db.Pools.Include(a => a.TaskAgentPool).AsEnumerable() select pool.TaskAgentPool).ToList());

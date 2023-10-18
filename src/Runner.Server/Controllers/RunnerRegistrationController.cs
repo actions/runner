@@ -18,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using Runner.Server.Models;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -32,7 +33,7 @@ namespace Runner.Server.Controllers
             RUNNER_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("RUNNER_TOKEN") ?? "";
         }
 
-        class AddRemoveRunner
+        public class AddRemoveRunner
         {
             [DataMember(Name = "url")]
             public string Url {get;set;}
@@ -43,7 +44,8 @@ namespace Runner.Server.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> Get()
+        [SwaggerResponse(200, type: typeof(GitHubAuthResult))]
+        public async Task<IActionResult> Get([FromBody, Vss] AddRemoveRunner payload)
         {
             StringValues auth;
             if(!Request.Headers.TryGetValue("Authorization", out auth)) {
@@ -52,7 +54,6 @@ namespace Runner.Server.Controllers
             if(auth.FirstOrDefault()?.StartsWith("RemoteAuth ") != true || (RUNNER_TOKEN.Length > 0 && auth.First() != "RemoteAuth " + RUNNER_TOKEN) ) {
                 return NotFound();
             }
-            var payload = await FromBody<AddRemoveRunner>();
             var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
 
             var myIssuer = "http://githubactionsserver";
@@ -74,7 +75,7 @@ namespace Runner.Server.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var payloadUrl = new Uri(payload.Url);
             var components = payloadUrl.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            return await Ok(new Runner.Server.Models.GitHubAuthResult() {
+            return await Ok(new GitHubAuthResult() {
                 TenantUrl = new Uri(new Uri(ServerUrl), components.Length == 0 ? "runner/server" : components.Length > 1 ?  $"{components[0]}/{components[1]}" : $"{components[0]}/server").ToString(),
                 Token = tokenHandler.WriteToken(token),
                 TokenSchema = "OAuthAccessToken"

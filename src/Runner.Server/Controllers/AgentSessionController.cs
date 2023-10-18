@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Runner.Server.Models;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -36,9 +37,9 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{poolId}")]
-        public async Task<IActionResult> Create(int poolId)
+        [SwaggerResponse(200, type: typeof(TaskAgentSession))]
+        public async Task<IActionResult> Create(int poolId, [FromBody, Vss] TaskAgentSession session)
         {
-            var session = await FromBody<TaskAgentSession>();
             session.SessionId = Guid.NewGuid();
             var aes = Aes.Create();
             Agent agent = Agent.GetAgent(_cache, _context, poolId, session.Agent.Id);

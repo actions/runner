@@ -46,6 +46,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Quartz;
 using Quartz.Impl.Matchers;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -4866,7 +4867,7 @@ namespace Runner.Server.Controllers
             sh.Token.Cancel();
         }
 
-        public async Task<string> GetFile(long runid, string path, string repository = null) {
+        internal async Task<string> GetFile(long runid, string path, string repository = null) {
             var sh = new shared2();
             sh.Token = new CancellationTokenSource(20 * 1000);
             Guid id = Guid.NewGuid();
@@ -4877,7 +4878,7 @@ namespace Runner.Server.Controllers
             return sh.Content;
         }
 
-        public bool TryGetFile(long runid, string path, out string content, string repository = null) {
+        internal bool TryGetFile(long runid, string path, out string content, string repository = null) {
             content = GetFile(runid, path, repository).GetAwaiter().GetResult();
             return content != null;
         }
@@ -4892,7 +4893,7 @@ namespace Runner.Server.Controllers
             sh.Token.Cancel();
         }
 
-        public async Task<bool> RepoExists(long runid, string repository = null) {
+        internal async Task<bool> RepoExists(long runid, string repository = null) {
             var sh = new shared2();
             sh.Token = new CancellationTokenSource(20 * 1000);
             Guid id = Guid.NewGuid();
@@ -6395,6 +6396,9 @@ namespace Runner.Server.Controllers
 
         [HttpGet("{poolId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "Agent")]
+        [SwaggerResponse(200, type: typeof(TaskAgentMessage))]
+        [SwaggerResponse(204, "No message for 50s")]
+        [SwaggerResponse(403, type: typeof(WrappedException))]
         public async Task<IActionResult> GetMessage(int poolId, Guid sessionId)
         {
             Session session;
@@ -7219,6 +7223,7 @@ namespace Runner.Server.Controllers
         private static ConcurrentDictionary<Guid, Job> initializingJobs = new ConcurrentDictionary<Guid, Job>();
 
         [HttpGet]
+        [SwaggerResponse(200, type: typeof(Job[]))]
         public async Task<IActionResult> GetJobs([FromQuery] string repo, [FromQuery] long[] runid, [FromQuery] int? depending, [FromQuery] Guid? jobid, [FromQuery] int? page) {
             if(jobid != null) {
                 var j = GetJob(jobid.Value);
@@ -7235,41 +7240,48 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("owners")]
+        [SwaggerResponse(200, type: typeof(Owner[]))]
         public async Task<IActionResult> GetOwners([FromQuery] int? page) {
             var query = from j in _context.Set<Owner>() orderby j.Id descending select j;
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
         [HttpGet("repositories")]
+        [SwaggerResponse(200, type: typeof(Repository[]))]
         public async Task<IActionResult> GetRepositories([FromQuery] int? page, [FromQuery] string owner) {
             var query = from j in _context.Set<Repository>() where j.Owner.Name.ToLower() == owner.ToLower() orderby j.Id descending select j;
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
         [HttpGet("workflow/runs")]
+        [SwaggerResponse(200, type: typeof(WorkflowRun[]))]
         public async Task<IActionResult> GetWorkflows([FromQuery] int? page, [FromQuery] string owner, [FromQuery] string repo) {
             var query = (from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && (string.IsNullOrEmpty(owner) || run.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower()) && (string.IsNullOrEmpty(repo) || run.Workflow.Repository.Name.ToLower() == repo.ToLower()) orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id, Owner = run.Workflow.Repository.Owner.Name, Repo = run.Workflow.Repository.Name});
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
         [HttpGet("workflow/run/{id}")]
+        [SwaggerResponse(200, type: typeof(WorkflowRun))]
         public async Task<IActionResult> GetWorkflows(long id) {
             return await Ok((from r in _context.Set<WorkflowRun>() where r.Id == id select r).First(), true);
         }
 
         [HttpGet("workflow/run/{id}/attempts")]
+        [SwaggerResponse(200, type: typeof(WorkflowRunAttempt[]))]
         public async Task<IActionResult> GetWorkflowAttempts(long id, [FromQuery] int? page) {
             var query = from r in _context.Set<WorkflowRunAttempt>() where r.WorkflowRun.Id == id select r;
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
         [HttpGet("workflow/run/{id}/attempt/{attempt}")]
+        [SwaggerResponse(200, type: typeof(WorkflowRunAttempt))]
         public async Task<IActionResult> GetWorkflows(long id, int attempt) {
             var query = from r in _context.Set<WorkflowRunAttempt>() where r.WorkflowRun.Id == id && r.Attempt == attempt select r;
             return await Ok(query.First(), true);
         }
 
         [HttpGet("workflow/run/{id}/attempt/{attempt}/jobs")]
+        [SwaggerResponse(200, type: typeof(Job[]))]
         public async Task<IActionResult> GetWorkflowAttempts(long id, int attempt, [FromQuery] int? page) {
             var query = from j in _context.Jobs where j.WorkflowRunAttempt.WorkflowRun.Id == id && j.WorkflowRunAttempt.Attempt == attempt select j;
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
@@ -7515,6 +7527,7 @@ namespace Runner.Server.Controllers
         public static event Action<WorkflowEventArgs> workflowevent;
 
         [HttpGet("event")]
+        [SwaggerResponse(200, contentTypes: new[]{"text/event-stream"})]
         public IActionResult Message(string owner, string repo, [FromQuery] string filter, [FromQuery] long? runid)
         {
             var mfilter = new WorkflowPattern(filter ?? (owner + "/" + repo), RegexOptions.IgnoreCase);
@@ -7556,6 +7569,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("event2")]
+        [SwaggerResponse(200, contentTypes: new[]{"text/event-stream"})]
         public IActionResult LiveUpdateEvents([FromQuery] string owner, [FromQuery] string repo, [FromQuery] long? runid)
         {
             var requestAborted = HttpContext.RequestAborted;

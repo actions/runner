@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers
 {
@@ -22,6 +23,7 @@ namespace Runner.Server.Controllers
 
         [HttpGet]
         [AllowAnonymous]
+        [SwaggerResponse(200, type: typeof(ConnectionData))]
         public async Task<IActionResult> Get()
         {
             return await Ok(new ConnectionData() {

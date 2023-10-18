@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Runner.Server.Models;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Runner.Server.Controllers {
 
@@ -34,7 +35,7 @@ namespace Runner.Server.Controllers {
             public int cacheId {get;set;}
         }
 
-        private class ReserveCacheRequest {
+        public class ReserveCacheRequest {
             public string key {get;set;}
             public string version  {get;set;}
         }
@@ -47,8 +48,8 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpPost("caches")]
-        public async Task<FileStreamResult> ReserveCache(string owner, string repo) {
-            var req = await FromBody<ReserveCacheRequest>();
+        [SwaggerResponse(200, type: typeof(ReserveCacheResponse))]
+        public async Task<FileStreamResult> ReserveCache(string owner, string repo, [FromBody, Vss] ReserveCacheRequest req) {
             var filename = Path.GetRandomFileName();
             var reference = User.FindFirst("ref")?.Value ?? "refs/heads/main";
             var repository = User.FindFirst("repository")?.Value ?? "Unknown/Unknown";
@@ -59,6 +60,7 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpGet("cache")]
+        [SwaggerResponse(200, type: typeof(ArtifactCacheEntry))]
         public async Task<IActionResult> GetCacheEntry( string owner, string repo, [FromQuery] string keys, [FromQuery] string version) {
             var a = keys.Split(',');
             var defaultRef = User.FindFirst("defaultRef")?.Value ?? "refs/heads/main";

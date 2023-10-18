@@ -143,9 +143,8 @@ namespace Runner.Server.Controllers
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/{timelineId}/{recordId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
-        public async Task<IActionResult> AppendTimelineRecordFeed(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid recordId)
+        public IActionResult AppendTimelineRecordFeed(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid recordId, [FromBody, Vss] TimelineRecordFeedLinesWrapper record)
         {
-            var record = await FromBody<TimelineRecordFeedLinesWrapper>();
             // It seems the actions/runner sends faulty lines with linebreaks
             var regex = new Regex("\r?\n");
             var nl = record.Value.SelectMany(lines => regex.Split(lines)).ToList();
