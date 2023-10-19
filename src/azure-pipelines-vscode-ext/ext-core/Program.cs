@@ -18,10 +18,7 @@ public class MyClass {
         private JSObject handle;
         public async Task<string> ReadFile(string repositoryAndRef, string path)
         {
-            if(!string.IsNullOrEmpty(repositoryAndRef)) {
-                return await Interop.ReadFile(handle, $"{repositoryAndRef}/{path}");
-            }
-            return await Interop.ReadFile(handle, path);
+            return await Interop.ReadFile(handle, repositoryAndRef, path);
         }
     }
 

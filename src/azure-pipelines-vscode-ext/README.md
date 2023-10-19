@@ -6,8 +6,9 @@ This is a minimal Azure Pipelines Extension
 
 ### Remote Template References
 
-**Subject to change**
-Checkout your dependent template repository under a folder named like `repo@ref`, `owner/repo@ref` within the same workspace as your pipeline.
+The `azure-pipelines.repositories` settings maps the external Repositories to local or remote folders.
+
+Syntax `[<owner>/]<repo>@<ref>=<uri>` per line. `<uri>` can be formed like `file:///<folder>` (raw file paths are not supported (yet?)), `vscode-vfs://github/<owner>/<repository>` and `vscode-vfs://azurerepos/<owner>/<project>/<repository>`
 
 ### Validate Azure Pipeline
 

@@ -35,15 +35,26 @@ function activate(context) {
 			})();
 		}).create();
 		runtime.setModuleImports("extension.js", {
-			readFile: async (handle, filename) => {
+			readFile: async (handle, repositoryAndRef, filename) => {
 				try {
+					var uri = "";
+					if(repositoryAndRef) {
+						if(handle.repositories && repositoryAndRef in handle.repositories) {
+							var base = vscode.Uri.parse(handle.repositories[repositoryAndRef]);
+							uri = base.with({ path: base.path + "/" + filename });
+						} else {
+							return null;
+						}
+					} else {
 					// Get current textEditor content for the entrypoint
 					var doc = handle.textEditor.document;
 					if(handle.filename === filename && doc) {
 						return doc.getText();
+						}
+						uri = handle.base.with({ path: handle.base.path + "/" + filename });
 					}
 					// Read template references via filesystem api
-					var content = await vscode.workspace.fs.readFile(handle.base.with({ path: handle.base.path + "/" + filename }));	
+					var content = await vscode.workspace.fs.readFile(uri);	
 					var scontent = new TextDecoder().decode(content);
 					return scontent;
 				} catch {
@@ -75,6 +86,14 @@ function activate(context) {
 			await vscode.window.showErrorMessage("No active TextEditor");
 			return;
 		}
+		var conf = vscode.workspace.getConfiguration("azure-pipelines");
+		var repositories = {};
+		for(var repo of conf.repositories ?? []) {
+			var line = repo.split("=");
+			var name = line.shift();
+			repositories[name] = line.join("=");
+		}
+
 		var runtime = await runtimePromise;
 		var base = null;
 		var filename = null;
@@ -90,7 +109,7 @@ function activate(context) {
 		var li = current.path.lastIndexOf("/");
 		base ??= current.with({ path: current.path.substring(0, li)});
 		filename ??= current.path.substring(li + 1);
-		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")({ base: base, textEditor: textEditor, filename: filename }, filename);
+		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")({ base: base, textEditor: textEditor, filename: filename, repositories: repositories }, filename);
 		if(result) {
 			if(validate) {
 				await vscode.window.showInformationMessage("No issues found");

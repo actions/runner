@@ -51,6 +51,11 @@ jobs:
           mv src/azure-pipelines-vscode-ext/dist webapp/azure-pipelines-vscode-ext/
           mv src/azure-pipelines-vscode-ext/package.json webapp/azure-pipelines-vscode-ext/
           mv src/azure-pipelines-vscode-ext/*.vsix webapp/azure-pipelines-vscode-ext/
+      - name: Upload vsix
+        uses: actions/upload-artifact@v3
+        with:
+          name: azure-pipelines-vscode-ext-pre-release
+          path: webapp/azure-pipelines-vscode-ext/azure-pipelines-vscode-ext-pre-release.vsix
       - name: Setup Pages
         if: github.event_name == 'push'
         uses: actions/configure-pages@v3
