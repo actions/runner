@@ -7,4 +7,6 @@ public static partial class Interop {
     internal static partial Task Message(int type, string message);
     [JSImport("sleep", "extension.js")]
     internal static partial Task Sleep(int time);
+    [JSImport("log", "extension.js")]
+    internal static partial void Log(int type, string message);
 }

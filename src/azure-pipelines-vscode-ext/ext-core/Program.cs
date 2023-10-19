@@ -22,12 +22,45 @@ public class MyClass {
         }
     }
 
+    public class TraceWriter : GitHub.DistributedTask.ObjectTemplating.ITraceWriter {
+        public void Error(string format, params object[] args)
+        {
+            if(args?.Length == 1 && args[0] is Exception ex) {
+                Interop.Log(5, string.Format("{0} {1}", format, ex.Message));
+                return;
+            }
+            try {
+                Interop.Log(5, args?.Length > 0 ? string.Format(format, args) : format);
+            } catch {
+                Interop.Log(5, format);
+            }
+        }
+
+        public void Info(string format, params object[] args)
+        {
+            try {
+                Interop.Log(3, args?.Length > 0 ? string.Format(format, args) : format);
+            } catch {
+                Interop.Log(3, format);
+            }
+        }
+
+        public void Verbose(string format, params object[] args)
+        {
+            try {
+                Interop.Log(2, args?.Length > 0 ? string.Format(format, args) : format);
+            } catch {
+                Interop.Log(2, format);
+            }
+        }
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName) {
         try {
             var context = new Runner.Server.Azure.Devops.Context {
                 FileProvider = new MyFileProvider(handle),
-                TraceWriter = new GitHub.DistributedTask.ObjectTemplating.EmptyTraceWriter(),
+                TraceWriter = new TraceWriter(),
                 Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives
             };
             var template = await AzureDevops.ReadTemplate(context, currentFileName);

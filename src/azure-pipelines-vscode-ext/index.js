@@ -10,11 +10,14 @@ function activate(context) {
 	customImports["dotnet.runtime.js"] = require("./build/AppBundle/_framework/dotnet.runtime.js");
 	customImports["dotnet.native.js"] = require("./build/AppBundle/_framework/dotnet.native.js");
 
+	var logchannel = vscode.window.createOutputChannel("Azure Pipeline Evalation Log", { log: true });
+
 	var runtimePromise = vscode.window.withProgress({
 		location: vscode.ProgressLocation.Notification,
 		title: "Updating Runtime",
 		cancellable: true
 	}, async (progress, token) => {
+		logchannel.appendLine("Updating Runtime");
 		var items = 1;
 		var citem = 0;
 		var runtime = await dotnet.withOnConfigLoaded(async config => {
@@ -46,10 +49,10 @@ function activate(context) {
 							return null;
 						}
 					} else {
-					// Get current textEditor content for the entrypoint
-					var doc = handle.textEditor.document;
-					if(handle.filename === filename && doc) {
-						return doc.getText();
+						// Get current textEditor content for the entrypoint
+						var doc = handle.textEditor.document;
+						if(handle.filename === filename && doc) {
+							return doc.getText();
 						}
 						uri = handle.base.with({ path: handle.base.path + "/" + filename });
 					}
@@ -64,19 +67,43 @@ function activate(context) {
 			message: async (type, content) => {
 				switch(type) {
 					case 0:
+						logchannel.info(content);
 						await vscode.window.showInformationMessage(content);
 						break;
 					case 1:
+						logchannel.warn(content);
 						await vscode.window.showWarningMessage(content);
 						break;
 					case 2:
+						logchannel.error(content);
 						await vscode.window.showErrorMessage(content);
 						break;
 				}
 			},
-			sleep: time => new Promise((resolve, reject) => setTimeout(resolve), time)
+			sleep: time => new Promise((resolve, reject) => setTimeout(resolve), time),
+			log: (type, message) => {
+				switch(type) {
+					case 1:
+						logchannel.trace(message);
+						break;
+					case 2:
+						logchannel.debug(message);
+						break;
+					case 3:
+						logchannel.info(message);
+						break;
+					case 4:
+						logchannel.warn(message);
+						break;
+					case 5:
+						logchannel.error(message);
+						break;
+				}
+			}
 		});
+		logchannel.appendLine("Starting extension main to keep dotnet alive");
 		runtime.runMainAndExit("ext-core", []);
+		logchannel.appendLine("Runtime is now ready");
 		return runtime;
 	});
 
@@ -111,6 +138,7 @@ function activate(context) {
 		filename ??= current.path.substring(li + 1);
 		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")({ base: base, textEditor: textEditor, filename: filename, repositories: repositories }, filename);
 		if(result) {
+			logchannel.debug(result);
 			if(validate) {
 				await vscode.window.showInformationMessage("No issues found");
 			} else {
