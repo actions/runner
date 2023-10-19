@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -855,11 +856,13 @@ namespace GitHub.Runner.Worker
                 // tar -xzf
                 using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                 {
+                    var tarOutputs = new List<string>();
                     processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
                     {
                         if (!string.IsNullOrEmpty(args.Data))
                         {
                             Trace.Info(args.Data);
+                            tarOutputs.Add($"STDOUT: {args.Data}");
                         }
                     });
 
@@ -868,13 +871,23 @@ namespace GitHub.Runner.Worker
                         if (!string.IsNullOrEmpty(args.Data))
                         {
                             Trace.Error(args.Data);
+                            tarOutputs.Add($"STDERR: {args.Data}");
                         }
                     });
 
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
-                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
+                        if (executionContext.Global.Variables.GetBoolean("DistributedTask.DetailUntarFailure") == true)
+                        {
+                            var fileInfo = new FileInfo(archiveFile);
+                            var sha256hash = await IOUtil.GetFileContentSha256HashAsync(archiveFile);
+                            throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile} (SHA256 '{sha256hash}', size '{fileInfo.Length}' bytes, tar outputs '{string.Join(' ', tarOutputs)}'). Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
+                        }
+                        else
+                        {
+                            throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
+                        }
                     }
                 }
 #endif
