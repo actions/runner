@@ -563,6 +563,10 @@ public class AzureDevops {
                         break;
                     }
                 }
+                if (name == null) {
+                    templateContext.Error(sparameters, "A value for the 'name' parameter must be provided.");
+                    continue;
+                }
                 var defCtxData = await ConvertValue(context, def, type, values);
                 if(cparameters?.TryGetValue(name, out var value) == true) {
                     parametersData[name] = await ConvertValue(context, value, type, values);

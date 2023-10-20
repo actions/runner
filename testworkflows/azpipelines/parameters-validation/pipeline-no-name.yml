@@ -1,0 +1,12 @@
+# Name: parameters-without-name
+# ExpectedException: TemplateValidationException
+
+parameters:
+- parameter: value # incorrect, should be 'name'
+  type: object
+  default:
+  - a
+  - b
+
+steps:
+- script: echo ${{ converttojson(parameters.val) }}

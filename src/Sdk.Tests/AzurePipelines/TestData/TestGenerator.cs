@@ -110,7 +110,7 @@ namespace Runner.Server.Azure.Devops
                 return matches.Where(i => i.Success).Select(i => i.Groups[1].Value).DefaultIfEmpty().ToArray();
             }
 
-            public static Type? LoadType(string? typeName)
+            private static Type? LoadType(string? typeName)
             {
                 if (typeName == null)
                 {

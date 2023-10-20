@@ -47,6 +47,7 @@ namespace Runner.Server.Azure.Devops
         public void TestWorkflowResolve()
         {
             var results = TestGenerator.ResolveWorkflows(TestUtil.GetAzPipelineFolder()).ToArray();
+            results.ShouldNotBeNull();
         }
     }
 }
