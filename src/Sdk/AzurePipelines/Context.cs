@@ -15,6 +15,7 @@ namespace Runner.Server.Azure.Devops
         public Dictionary<string, string> Repositories { get; set; }
 
         public ITaskByNameAndVersionProvider TaskByNameAndVersion { get; set; }
+        public IRequiredParametersProvider RequiredParametersProvider { get; set; }
 
         public Context Clone() {
             return MemberwiseClone() as Context;
@@ -25,6 +26,7 @@ namespace Runner.Server.Azure.Devops
                 Repositories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             }
             var childContext = Clone();
+            childContext.RequiredParametersProvider = null;
             foreach(var kv in template) {
                 switch(kv.Key.AssertString("key").Value) {
                     case "resources":

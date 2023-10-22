@@ -6,7 +6,7 @@
 		"Testing",
 		"Programming Languages"
 	],
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -40,6 +40,24 @@
 						"default":[],
 						"scope":"window",
 						"description":"Syntax [<owner>/]<repo>@<ref>=<uri>. <uri> can be formed like file:///<folder>, vscode-vfs://github/<owner>/<repository> and vscode-vfs://azurerepos/<owner>/<project>/<repository>"
+					},
+					"azure-pipelines.variables": {
+						"type":"array",
+						"items": {
+							"type":"string"
+						},
+						"default":[],
+						"scope":"window",
+						"description":"Syntax <name>=<value>"
+					},
+					"azure-pipelines.parameters": {
+						"type":"array",
+						"items": {
+							"type":"string"
+						},
+						"default":[],
+						"scope": "resource",
+						"description":"Syntax <name>=<yaml value>"
 					}
 				}
 			}

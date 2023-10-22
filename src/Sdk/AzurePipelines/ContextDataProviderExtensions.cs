@@ -33,7 +33,7 @@ namespace Runner.Server.Azure.Devops
                     StaticType = staticType;
                 }
 
-                public object? Value { get; set; }
+                public object Value { get; set; }
                 public Type Type { get; private set; }
                 public Type StaticType { get; private set; }
                 public YamlDotNet.Core.ScalarStyle ScalarStyle { get; set; }

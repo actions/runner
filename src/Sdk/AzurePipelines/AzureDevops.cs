@@ -568,7 +568,7 @@ public class AzureDevops {
                     continue;
                 }
                 var defCtxData = await ConvertValue(context, def, type, values);
-                if(cparameters?.TryGetValue(name, out var value) == true) {
+                if(cparameters?.TryGetValue(name, out var value) == true || def == null && (value = await (context.RequiredParametersProvider?.GetRequiredParameter(name) ?? Task.FromResult<TemplateToken>(null))) != null) {
                     parametersData[name] = await ConvertValue(context, value, type, values);
                 } else {
                     if (def == null) // handle missing required parameter

@@ -1,5 +1,8 @@
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Runner.Server.Azure.Devops;
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.JavaScript;
@@ -55,15 +58,29 @@ public class MyClass {
         }
     }
 
+    private class VariablesProvider : IVariablesProvider {
+        public IDictionary<string, string> Variables { get; set; }
+        public IDictionary<string, string> GetVariablesForEnvironment(string name = null) {
+            return Variables;
+        }
+    }
+
+
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName) {
+    public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters) {
         try {
             var context = new Runner.Server.Azure.Devops.Context {
                 FileProvider = new MyFileProvider(handle),
                 TraceWriter = new TraceWriter(),
-                Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives
+                Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
+                RequiredParametersProvider = new RequiredParametersProvider(handle),
+                VariablesProvider = new VariablesProvider { Variables = JsonConvert.DeserializeObject<Dictionary<string, string>>(variables) }
             };
-            var template = await AzureDevops.ReadTemplate(context, currentFileName);
+            Dictionary<string, TemplateToken> cparameters = new Dictionary<string, TemplateToken>();
+            foreach(var kv in JsonConvert.DeserializeObject<Dictionary<string, string>>(parameters)) {
+                cparameters[kv.Key] = RequiredParametersProvider.ConvertStringToTemplateToken(kv.Value);
+            }
+            var template = await AzureDevops.ReadTemplate(context, currentFileName, cparameters);
             var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
             return pipeline.ToYaml();
         } catch(Exception ex) {

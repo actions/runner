@@ -46,7 +46,21 @@ function activate(context) {
 							var base = vscode.Uri.parse(handle.repositories[repositoryAndRef]);
 							uri = base.with({ path: base.path + "/" + filename });
 						} else {
-							return null;
+							var result = await vscode.window.showInputBox({
+								ignoreFocusOut: true,
+								placeHolder: "value",
+								prompt: `${repositoryAndRef} (${filename})`,
+								title: "Provide the uri to the required Repository"
+							})
+							if(result) {
+								handle.repositories ??= {};
+								handle.repositories[repositoryAndRef] = result;
+								var base = vscode.Uri.parse(result);
+								uri = base.with({ path: base.path + "/" + filename });
+							} else {
+								logchannel.error(`Cannot access remote repository ${repositoryAndRef} (${filename})`);
+								return null;
+							}
 						}
 					} else {
 						// Get current textEditor content for the entrypoint
@@ -60,7 +74,8 @@ function activate(context) {
 					var content = await vscode.workspace.fs.readFile(uri);	
 					var scontent = new TextDecoder().decode(content);
 					return scontent;
-				} catch {
+				} catch(ex) {
+					logchannel.error(`Failed to access ${filename} (${repositoryAndRef ?? "self"}), error: ${ex.toString()}`);
 					return null;
 				}
 			},
@@ -99,6 +114,14 @@ function activate(context) {
 						logchannel.error(message);
 						break;
 				}
+			},
+			requestRequiredParameter: async (handle, name) => {
+				return await vscode.window.showInputBox({
+					ignoreFocusOut: true,
+					placeHolder: "value",
+					prompt: name,
+					title: "Provide required Variables in yaml notation"
+				})
 			}
 		});
 		logchannel.appendLine("Starting extension main to keep dotnet alive");
@@ -120,6 +143,18 @@ function activate(context) {
 			var name = line.shift();
 			repositories[name] = line.join("=");
 		}
+		var variables = {};
+		for(var repo of conf.variables ?? []) {
+			var line = repo.split("=");
+			var name = line.shift();
+			variables[name] = line.join("=");
+		}
+		var parameters = {};
+		for(var repo of conf.parameters ?? []) {
+			var line = repo.split("=");
+			var name = line.shift();
+			parameters[name] = line.join("=");
+		}
 
 		var runtime = await runtimePromise;
 		var base = null;
@@ -136,7 +171,8 @@ function activate(context) {
 		var li = current.path.lastIndexOf("/");
 		base ??= current.with({ path: current.path.substring(0, li)});
 		filename ??= current.path.substring(li + 1);
-		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")({ base: base, textEditor: textEditor, filename: filename, repositories: repositories }, filename);
+		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")({ base: base, textEditor: textEditor, filename: filename, repositories: repositories }, filename, JSON.stringify(variables), JSON.stringify(parameters));
+		
 		if(result) {
 			logchannel.debug(result);
 			if(validate) {

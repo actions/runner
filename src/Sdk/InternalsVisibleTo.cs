@@ -5,3 +5,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Test")]
 [assembly: InternalsVisibleTo("Sdk.Tests")]
 [assembly: InternalsVisibleTo("azuredevopsutility")]
+[assembly: InternalsVisibleTo("ext-core")]
