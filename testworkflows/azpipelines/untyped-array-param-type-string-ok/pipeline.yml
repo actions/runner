@@ -1,0 +1,5 @@
+parameters:
+- name: str1
+  default: "Hello World"
+steps:
+- script: echo assert

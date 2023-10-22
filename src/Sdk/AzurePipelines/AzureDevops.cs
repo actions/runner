@@ -544,7 +544,7 @@ public class AzureDevops {
             foreach(var mparam in sparameters) {
                 var varm = mparam.AssertMapping("varm");
                 string name = null;
-                string type = "object";
+                string type = "string";
                 TemplateToken def = null;
                 TemplateToken values = null;
                 foreach(var kv in varm) {

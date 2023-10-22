@@ -1,0 +1,10 @@
+# ExpectedException: ArgumentException
+
+parameters:
+- name: str1
+  default:
+  - a
+  - b
+
+steps:
+- script: echo assert
