@@ -28,7 +28,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && tar zxvf docker.tgz \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
-    && curl -Lo /usr/local/lib/docker/cli-plugins/docker-buildx \
+    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
