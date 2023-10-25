@@ -27,10 +27,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && curl -fLo docker.tgz https://download.docker.com/${TARGETOS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
     && tar zxvf docker.tgz \
     && rm -rf docker.tgz \
-    && mkdir -p /usr/local/lib/docker/cli-plugins \
-    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
-        "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
-    && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+    && curl -fLo docker-buildx "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}"
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy
 
@@ -55,6 +52,10 @@ WORKDIR /home/runner
 
 COPY --chown=runner:docker --from=build /actions-runner .
 
-RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
+RUN install -o root -g root -m 755 docker/* /usr/bin/ \
+    && rm -rf docker \
+    && mkdir -p /usr/local/lib/docker/cli-plugins \
+    && install -o root -g root -m 755 docker-buildx /usr/local/lib/docker/cli-plugins/ \
+    && rm -rf docker-buildx
 
 USER runner
