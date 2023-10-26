@@ -1,4 +1,4 @@
-# ADR 0000: Container Hooks
+# ADR 1891: Container Hooks
 
 **Date**: 2022-05-12
 
@@ -6,8 +6,8 @@
 
 # Background
 
-[Job Hooks](https://github.com/actions/runner/blob/main/docs/adrs/1751-runner-job-hooks.md) have given users the ability to customize how their self hosted runners run a job.
-Users also want the ability to customize how they run containers during the scope of the job, rather then being locked into the docker implementation we have in the runner. They may want to use podman, kubernetes, or even change the docker commands we run. 
+[Job Hooks](https://github.com/actions/runner/blob/main/docs/adrs/1751-runner-job-hooks.md) have given users the ability to customize how their self-hosted runners run a job.
+Users also want the ability to customize how they run containers during the scope of the job, rather than being locked into the docker implementation we have in the runner. They may want to use podman, kubernetes, or even change the docker commands that run. 
 We should give them that option, and publish examples how how they can create their own hooks.
 
 # Guiding Principles
@@ -17,11 +17,11 @@ We should give them that option, and publish examples how how they can create th
 
 ## Interface
 - You will set the variable `ACTIONS_RUNNER_CONTAINER_HOOKS=/Users/foo/runner/hooks.js` which is the entrypoint to your hook handler.
-  - There is no partial opt in, you must handle every hook 
+  - There is no partial opt-in, you must handle every hook 
 - We will pass a command and some args via `stdin`
 - An exit code of 0 is a success, every other exit code is a failure
 - We will support the same runner commands we support in [Job Hooks](https://github.com/actions/runner/blob/main/docs/adrs/1751-runner-job-hooks.md)
-- On timeout, we will send a sigint to your process. If you fail to terminate within a reasonable amount of time, we will send a sigkill, and eventually kill the process tree.
+- On timeout, we will send a `sigint` to your process. If you fail to terminate within a reasonable amount of time, we will send a `sigkill`, and eventually kill the process tree.
 
 An example input looks like
 ```json
@@ -49,7 +49,7 @@ All text written to stdout or stderr should appear in the job or step logs. With
 For 1, users typically view logging information as a safe action, so we worry someone accidentialy logging unsantized information and causing unexpected or un-secure behavior. We eventually plan to move off of stdout/stderr style commands in favor of a runner cli. 
 Investing in this area doesn't make a lot of sense at this time.
 
-While writing to a file to communicate isn't the most ideal pattern, its an existing pattern in the runner and serves us well, so lets reuse it.
+While writing to a file to communicate isn't the most ideal pattern, it's an existing pattern in the runner and serves us well, so let's reuse it.
 
 ### Output
 Your output must be correctly formatted json. An example output looks like:
@@ -88,14 +88,14 @@ We will not version these hooks at launch. If needed, we can always major versio
 The [job context](https://docs.github.com/en/actions/learn-github-actions/contexts#example-contents-of-the-job-context) currently has a variety of fields that correspond to containers. We should consider allowing hooks to populate new fields in the job context. That is out of scope for this original release however.
 
 ## Hooks
-Hooks are to be implemented at a very high level, and map to actions the runner does, rather then specific docker actions like `docker build` or `docker create`. By mapping to runner actions, we create a very extensible framework that is flexible enough to solve any user concerns in the future. By providing first party implementations, we give users easy starting points to customize specific hooks (like `docker build`) without having to write full blown solutions.
+Hooks are to be implemented at a very high level, and map to actions the runner does, rather than specific docker actions like `docker build` or `docker create`. By mapping to runner actions, we create a very extensible framework that is flexible enough to solve any user concerns in the future. By providing first party implementations, we give users easy starting points to customize specific hooks (like `docker build`) without having to write full blown solutions.
 
 The other would be to provide hooks that mirror every docker call we make, and expose more hooks to help support k8s users, with the expectation that users may have to no-op on multiple hooks if they don't correspond to our use case.
 
 Why we don't want to go that way
 - It feels clunky, users need to understand which hooks they need to implement and which they can ignore, which isn't a great UX
 - It doesn't scale well, I don't want to build a solution where we may need to add more hooks, by mapping to runner actions, updating hooks is a painful experience for users
-- Its overwhelming, its easier to tell users to build 4 hooks and track data themselves, rather then 16 hooks where the runner needs certain information and then needs to provide that information back into each hook. If we expose `Container Create`, you need to return the container you created, then we do `container run` which uses that container. If we just give you an image and say create and run this container, you don't need to store the container id in the runner, and it maps better to k8s scenarios where we don't really have container ids.
+- It's overwhelming, it's easier to tell users to build 4 hooks and track data themselves, rather than 16 hooks where the runner needs certain information and then needs to provide that information back into each hook. If we expose `Container Create`, you need to return the container you created, then we do `container run` which uses that container. If we just give you an image and say create and run this container, you don't need to store the container id in the runner, and it maps better to k8s scenarios where we don't really have container ids.
 
 ### Prepare_job hook
 The `prepare_job` hook is called when a job is started. We pass in any job or service containers the job has. We expect that you:
@@ -214,34 +214,34 @@ jobContainer: **Optional** An Object containing information about the specified 
   "workingDirectory": **Required** A string containing the absolute path of the working directory
   "createOptions": **Optional** The optional create options specified in the [YAML](https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#example-running-a-job-within-a-container)
   "environmentVariables": **Optional** A map of key value env's to set
-  "userMountVolumes: ** Optional** an array of user mount volumes set in the [YAML](https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#example-running-a-job-within-a-container)
+  "userMountVolumes: **Optional** An array of user mount volumes set in the [YAML](https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#example-running-a-job-within-a-container)
     "sourceVolumePath": **Required** The source path to the volume to be mounted into the docker container
     "targetVolumePath": **Required** The target path to the volume to be mounted into the docker container
-    "readOnly": false **Required** whether or not the mount should be read only
-  "mountVolumes": **Required** an array of mounts to mount into the container, same fields as above
+    "readOnly": false **Required** Whether or not the mount should be read only
+  "mountVolumes": **Required** An array of mounts to mount into the container, same fields as above
     "sourceVolumePath": **Required** The source path to the volume to be mounted into the docker container
     "targetVolumePath": **Required** The target path to the volume to be mounted into the docker container
-    "readOnly": false **Required** whether or not the mount should be read only
-  "registry" **Optional** docker registry credentials to use when using a private container registry
-    "username": **Optional** the username
-    "password": **Optional** the password
-    "serverUrl": **Optional** the registry url
-  "portMappings": **Optional** an array of source:target ports to map into the container
+    "readOnly": false **Required** Whether or not the mount should be read only
+  "registry" **Optional** Docker registry credentials to use when using a private container registry
+    "username": **Optional** The username
+    "password": **Optional** The password
+    "serverUrl": **Optional** The registry url
+  "portMappings": **Optional** An array of `source:target` ports to map into the container
  
 "services": an array of service containers to spin up
-  "contextName": **Required** the name of the service in the Job context
+  "contextName": **Required** The name of the service in the Job context
   "image": **Required** A string containing the docker image
   "createOptions": **Optional** The optional create options specified in the [YAML](https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#example-running-a-job-within-a-container)
   "environmentVariables": **Optional** A map of key value env's to set
-  "mountVolumes": **Required** an array of mounts to mount into the container, same fields as above
+  "mountVolumes": **Required** An array of mounts to mount into the container, same fields as above
     "sourceVolumePath": **Required** The source path to the volume to be mounted into the docker container
     "targetVolumePath": **Required** The target path to the volume to be mounted into the docker container
-    "readOnly": false **Required** whether or not the mount should be read only
-  "registry" **Optional** docker registry credentials to use when using a private container registry
-    "username": **Optional** the username
-    "password": **Optional** the password
-    "serverUrl": **Optional** the registry url
-  "portMappings": **Optional** an array of source:target ports to map into the container
+    "readOnly": false **Required** Whether or not the mount should be read only
+  "registry" **Optional** Docker registry credentials to use when using a private container registry
+    "username": **Optional** The username
+    "password": **Optional** The password
+    "serverUrl": **Optional** The registry url
+  "portMappings": **Optional** An array of `source:target` ports to map into the container
 ```
 
 </details>
@@ -292,7 +292,7 @@ The `cleanup_job` hook is called at the end of a job and expects you to:
 - Delete the network (if one exists)
 - Cleanup anything else that was created for the run
 
-Its input looks like
+Its input looks like:
 
 <details>
 <summary>Example Input</summary>
@@ -325,7 +325,7 @@ The `run_container_step` is called once per container action in your job and exp
 - Pull or build the required container (or fail if you cannot)
 - Run the container action and return the exit code of the container
 - Stream any step logs output to stdout and stderr
-- Cleanup the container after it executes
+- Clean up the container after it executes
 
 <details>
 <summary>Example Input for Image</summary>
@@ -508,20 +508,20 @@ Arg Fields:
 "workingDirectory": **Required** A string containing the absolute path of the working directory
 "createOptions": **Optional** The optional create options specified in the [YAML](https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#example-running-a-job-within-a-container)
 "environmentVariables": **Optional** A map of key value env's to set
-"prependPath": **Optional** an array of additional paths to prepend to the $PATH variable
-"userMountVolumes: ** Optional** an array of user mount volumes set in the [YAML](https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#example-running-a-job-within-a-container)
+"prependPath": **Optional** An array of additional paths to prepend to the `$PATH` variable
+"userMountVolumes: **Optional** An array of user mount volumes set in the [YAML](https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container#example-running-a-job-within-a-container)
   "sourceVolumePath": **Required** The source path to the volume to be mounted into the docker container
   "targetVolumePath": **Required** The target path to the volume to be mounted into the docker container
-  "readOnly": false **Required** whether or not the mount should be read only
-"mountVolumes": **Required** an array of mounts to mount into the container, same fields as above
+  "readOnly": false **Required** Whether or not the mount should be read only
+"mountVolumes": **Required** An array of mounts to mount into the container, same fields as above
   "sourceVolumePath": **Required** The source path to the volume to be mounted into the docker container
   "targetVolumePath": **Required** The target path to the volume to be mounted into the docker container
-  "readOnly": false **Required** whether or not the mount should be read only
-"registry" **Optional** docker registry credentials to use when using a private container registry
-  "username": **Optional** the username
-  "password": **Optional** the password
-  "serverUrl": **Optional** the registry url
-"portMappings": **Optional** an array of source:target ports to map into the container
+  "readOnly": false **Required** Whether or not the mount should be read only
+"registry" **Optional** Docker registry credentials to use when using a private container registry
+  "username": **Optional** The username
+  "password": **Optional** The password
+  "serverUrl": **Optional** The registry url
+"portMappings": **Optional** An array of `source:target` ports to map into the container
 ```
   
 </details>
@@ -576,7 +576,7 @@ Arg Fields:
   
 "entryPointArgs": **Optional** A list containing the entry point args
 "entryPoint": **Optional** The container entry point to use if the default image entrypoint should be overwritten
-"prependPath": **Optional** an array of additional paths to prepend to the $PATH variable
+"prependPath": **Optional** An array of additional paths to prepend to the `$PATH` variable
 "workingDirectory": **Required** A string containing the absolute path of the working directory
 "environmentVariables": **Optional** A map of key value env's to set
 ```
@@ -588,9 +588,9 @@ No output is expected
 
 ## Limitations
 - We will only support linux on launch
-- Hooks are set by the runner admin, and thus are only supported on self hosted runners 
+- Hooks are set by the runner admin, and thus are only supported on self-hosted runners 
 
 ## Consequences
-- We support non docker scenarios for self hosted runners and allow customers to customize their docker invocations
+- We support non docker scenarios for self-hosted runners and allow customers to customize their docker invocations
 - We ship/maintain docs on docker hooks and an open source repo with examples
 - We support these hooks and add enough telemetry to be able to troubleshoot support issues as they come in.
