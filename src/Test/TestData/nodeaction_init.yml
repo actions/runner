@@ -13,6 +13,7 @@ inputs:
 outputs:
   time: # id of output
     description: 'The time we did the greeting'
+    deprecationMessage: 'This property has been deprecated'
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:

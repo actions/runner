@@ -102,7 +102,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "outputs":
-                            actionOutputs = actionPair.Value.AssertMapping("outputs");
+                            ConvertOutputs(actionPair.Value, actionDefinition);
                             break;
 
                         case "description":
@@ -537,6 +537,32 @@ namespace GitHub.Runner.Worker
                 if (!hasDefault)
                 {
                     actionDefinition.Inputs.Add(inputName, new StringToken(null, null, null, string.Empty));
+                }
+            }
+        }
+
+        private void ConvertOutputs(
+            TemplateToken outputsToken,
+            ActionDefinitionData actionDefinition)
+        {
+            actionDefinition.Outputs = new MappingToken(null, null, null);
+            var outputsMapping = outputsToken.AssertMapping("outputs");
+            foreach (var output in outputsMapping)
+            {
+                var outputName = output.Key.AssertString("output name");
+                var outputMetadata = output.Value.AssertMapping("output metadata");
+                foreach (var metadata in outputMetadata)
+                {
+                    var metadataName = metadata.Key.AssertString("output metadata").Value;
+                    if (string.Equals(metadataName, "deprecationMessage", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (actionDefinition.Deprecated == null)
+                        {
+                            actionDefinition.Deprecated = new Dictionary<String, String>();
+                        }
+                        var message = metadata.Value.AssertString("output deprecationMessage");
+                        actionDefinition.Deprecated.Add(outputName.Value, message.Value);
+                    }
                 }
             }
         }
