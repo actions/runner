@@ -29,6 +29,9 @@ using System.CommandLine.Binding;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using GitHub.Runner.Common;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using Runner.Server.Azure.Devops;
+using GitHub.DistributedTask.ObjectTemplating;
 
 namespace Runner.Client
 {
@@ -730,6 +733,96 @@ namespace Runner.Client
             }
             return defMismatch;
         }
+
+        private static bool MatchRepository(string l, string r)
+        {
+            var lnameAndRef = l.Split("=", 2).FirstOrDefault()?.Split("@", 2);
+            var rnameAndRef = r.Split("@", 2);
+            // Fallback to exact match, this should allow bad repository names to match for local azure tasks
+            return lnameAndRef?.Length == 2 && rnameAndRef?.Length == 2 ? string.Equals(lnameAndRef[0], rnameAndRef[0], StringComparison.OrdinalIgnoreCase) && lnameAndRef[1] == rnameAndRef[1] : l == r;
+        }
+
+        private class AzurePipelinesExpander {
+    
+            public class MyFileProvider : IFileProvider
+            {
+                public MyFileProvider(Parameters handle) {
+                    this.handle = handle;
+                }
+                private Parameters handle;
+                public Task<string> ReadFile(string repositoryAndRef, string path)
+                {
+                    var reporoot = repositoryAndRef == null ? Path.GetFullPath(handle.Directory ?? ".") : (from r in handle.LocalRepositories where MatchRepository(r, repositoryAndRef) select Path.GetFullPath(r.Substring($"{repositoryAndRef}=".Length))).LastOrDefault();
+                    if(string.IsNullOrEmpty(reporoot)) {
+                        return null;
+                    }
+                    return File.ReadAllTextAsync(Path.Join(reporoot, path), Encoding.UTF8);
+                }
+            }
+
+            public class TraceWriter : GitHub.DistributedTask.ObjectTemplating.ITraceWriter {
+                public void Error(string format, params object[] args)
+                {
+                    if(args?.Length == 1 && args[0] is Exception ex) {
+                        Console.Error.WriteLine(string.Format("{0} {1}", format, ex.Message));
+                        return;
+                    }
+                    try {
+                        Console.Error.WriteLine(args?.Length > 0 ? string.Format(format, args) : format);
+                    } catch {
+                        Console.Error.WriteLine(format);
+                    }
+                }
+
+                public void Info(string format, params object[] args)
+                {
+                    try {
+                        Console.WriteLine(args?.Length > 0 ? string.Format(format, args) : format);
+                    } catch {
+                        Console.WriteLine(format);
+                    }
+                }
+
+                public void Verbose(string format, params object[] args)
+                {
+                    try {
+                        Console.WriteLine(args?.Length > 0 ? string.Format(format, args) : format);
+                    } catch {
+                        Console.WriteLine(format);
+                    }
+                }
+            }
+
+            private class VariablesProvider : IVariablesProvider {
+                public Dictionary<string, Dictionary<string, string>> Variables { get; set; }
+                public IDictionary<string, string> GetVariablesForEnvironment(string name = null) {
+                    return Variables?.TryGetValue(name ?? "", out var dict) == true ? dict : null;
+                }
+            }
+
+            public static async Task<string> ExpandCurrentPipeline(Parameters handle, string currentFileName) {
+                var (secs, vars) = await ReadSecretsAndVariables(handle);
+                var context = new Runner.Server.Azure.Devops.Context {
+                    FileProvider = new MyFileProvider(handle),
+                    TraceWriter = handle.Quiet ? new EmptyTraceWriter() : new TraceWriter(),
+                    Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
+                    VariablesProvider = new VariablesProvider { Variables = vars }
+                };
+                Dictionary<string, TemplateToken> cparameters = new Dictionary<string, TemplateToken>();
+                if(handle.Inputs != null) {
+                    foreach(var input in handle.Inputs) {
+                        var opt = input;
+                        var subopt = opt.Split('=', 2);
+                        string varname = subopt[0];
+                        string varval = subopt.Length == 2 ? subopt[1] : null;
+                        cparameters[varname] = AzurePipelinesUtils.ConvertStringToTemplateToken(varval);
+                    }
+                }
+                var template = await AzureDevops.ReadTemplate(context, currentFileName, cparameters);
+                var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
+                return pipeline.ToYaml();
+            }
+        }
         
         static int Main(string[] args)
         {
@@ -776,6 +869,9 @@ namespace Runner.Client
                 "status",
                 "watch",
                 "workflow_run",
+                // Azure Pipelines Experiments
+                "azexpand",
+                "azpipelines",
             };
 
             var secretOpt = new Option<string[]>(
@@ -1057,7 +1153,8 @@ namespace Runner.Client
             // Note that the parameters of the handler method are matched according to the names of the options
             Func<Parameters, Task<int>> handler = async (parameters) =>
             {
-                if(parameters.Parallel == null && !parameters.StartServer && !parameters.List) {
+                var expandAzurePipeline = string.Equals(parameters.Event, "azexpand", StringComparison.OrdinalIgnoreCase);
+                if(parameters.Parallel == null && !parameters.StartServer && !parameters.List && !expandAzurePipeline) {
                     parameters.Parallel = 1;
                 }
                 if(parameters.Actor == null) {
@@ -1124,7 +1221,7 @@ namespace Runner.Client
                 }
                 List<Task> listener = new List<Task>();
                 try {
-                    if(parameters.Server == null || parameters.StartServer || parameters.StartRunner) {
+                    if(!expandAzurePipeline && (parameters.Server == null || parameters.StartServer || parameters.StartRunner)) {
                         var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                         EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
                             Console.WriteLine(e.Data);
@@ -1593,6 +1690,21 @@ namespace Runner.Client
                                     return 1;
                                 }
                             }
+                            if(expandAzurePipeline) {
+                                try {
+                                    foreach(var workflow in workflows) {
+                                        var name = Path.GetRelativePath(parameters.Directory ?? ".", workflow).Replace('\\', '/');
+                                        var res = await AzurePipelinesExpander.ExpandCurrentPipeline(parameters, name);
+                                        Console.WriteLine(res);
+                                    }
+                                    return 0;
+                                } catch (Exception except) {
+                                    Console.WriteLine($"Exception: {except.Message}, {except.StackTrace}");
+                                    return 1;
+                                } finally {
+                                    cancelWorkflow = null;
+                                }
+                            }
                             try {
                                 HttpClientHandler handler = new HttpClientHandler() {
                                     AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
@@ -1841,85 +1953,10 @@ namespace Runner.Client
                                         }
                                     }
                                     mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
-                                    var envSecrets = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-                                    if(parameters.EnvironmentSecretFiles?.Length > 0) {
-                                        foreach(var opt in parameters.EnvironmentSecretFiles) {
-                                            var subopt = opt.Split('=', 2);
-                                            string name = subopt.Length == 2 ? subopt[0] : "";
-                                            string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
-                                            var dict = envSecrets[name] = envSecrets.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                            Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
-                                        }
-                                    }
-                                    if(parameters.EnvironmentSecrets?.Length > 0) {
-                                        for(int i = 0; i < parameters.EnvironmentSecrets.Length; i++) {
-                                            var opt = parameters.EnvironmentSecrets[i];
-                                            var subopt = opt.Split('=', 3);
-                                            string name = subopt[0];
-                                            string varname = subopt[1];
-                                            string varval = subopt.Length == 3 ? subopt[2] : null;
-                                            if(varval == null) {
-                                                await Console.Out.WriteAsync($"{name}={varname}=");
-                                                varval = ReadSecret();
-                                                parameters.EnvironmentSecrets[i] = $"{name}={varname}={varval}";
-                                            }
-                                            var dict = envSecrets[name] = envSecrets.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                            dict[varname] = varval;
-                                        }
-                                    }
+                                    var (envSecrets, envVars) = await ReadSecretsAndVariables(parameters);
                                     foreach(var envVarKv in envSecrets) {
                                         var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
                                         mp.Add(new StringContent(ser.Serialize(envVarKv.Value)), "actions-environment-secrets", $"{envVarKv.Key}.secrets");
-                                    }
-                                    var envVars = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-                                    if(parameters.EnvironmentVarFiles?.Length > 0) {
-                                        foreach(var opt in parameters.EnvironmentVarFiles) {
-                                            var subopt = opt.Split('=', 2);
-                                            string name = subopt.Length == 2 ? subopt[0] : "";
-                                            string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
-                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                            Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
-                                        }
-                                    }
-                                    if(parameters.VarFiles?.Length > 0) {
-                                        foreach(var opt in parameters.VarFiles) {
-                                            string name = "";
-                                            string filename = opt;
-                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                            Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
-                                        }
-                                    }
-                                    if(parameters.EnvironmentVars?.Length > 0) {
-                                        for(int i = 0; i < parameters.EnvironmentVars.Length; i++) {
-                                            var opt = parameters.EnvironmentVars[i];
-                                            var subopt = opt.Split('=', 3);
-                                            string name = subopt[0];
-                                            string varname = subopt[1];
-                                            string varval = subopt.Length == 3 ? subopt[2] : null;
-                                            if(varval == null) {
-                                                await Console.Out.WriteAsync($"{name}={varname}=");
-                                                varval = await Console.In.ReadLineAsync();
-                                                parameters.EnvironmentVars[i] = $"{name}={varname}={varval}";
-                                            }
-                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                            dict[varname] = varval;
-                                        }
-                                    }
-                                    if(parameters.Vars?.Length > 0) {
-                                        for(int i = 0; i < parameters.Vars.Length; i++) {
-                                            var opt = parameters.Vars[i];
-                                            var subopt = opt.Split('=', 2);
-                                            string name = "";
-                                            string varname = subopt[0];
-                                            string varval = subopt.Length == 2 ? subopt[1] : null;
-                                            if(varval == null) {
-                                                await Console.Out.WriteAsync($"{varname}=");
-                                                varval = await Console.In.ReadLineAsync();
-                                                parameters.Vars[i] = $"{varname}={varval}";
-                                            }
-                                            var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                            dict[varname] = varval;
-                                        }
                                     }
                                     foreach(var envVarKv in envVars) {
                                         var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
@@ -2109,13 +2146,7 @@ namespace Runner.Client
                                             if(line == "event: repodownload") {
                                                 var endpoint = JsonConvert.DeserializeObject<RepoDownload>(data);
                                                 Task.Run(async () => {
-                                                    Func<string, string, bool> matchRepository = (l, r) => {
-                                                        var lnameAndRef = l.Split("=", 2).FirstOrDefault()?.Split("@", 2);
-                                                        var rnameAndRef = r.Split("@", 2);
-                                                        // Fallback to exact match, this should allow bad repository names to match for local azure tasks
-                                                        return lnameAndRef?.Length == 2 && rnameAndRef?.Length == 2 ? string.Equals(lnameAndRef[0], rnameAndRef[0], StringComparison.OrdinalIgnoreCase) && lnameAndRef[1] == rnameAndRef[1] : l == r;
-                                                    };
-                                                    var reporoot = endpoint.Repository == null ? Path.GetFullPath(parameters.Directory ?? ".") : (from r in parameters.LocalRepositories where matchRepository(r, endpoint.Repository) select Path.GetFullPath(r.Substring($"{endpoint.Repository}=".Length))).LastOrDefault();
+                                                    var reporoot = endpoint.Repository == null ? Path.GetFullPath(parameters.Directory ?? ".") : (from r in parameters.LocalRepositories where MatchRepository(r, endpoint.Repository) select Path.GetFullPath(r.Substring($"{endpoint.Repository}=".Length))).LastOrDefault();
                                                     if(string.Equals(endpoint.Format, "repoexists", StringComparison.OrdinalIgnoreCase) && endpoint.Path == null) {
                                                         if(reporoot == null) {
                                                             await client.DeleteAsync(parameters.Server + endpoint.Url, token);
@@ -2444,7 +2475,7 @@ namespace Runner.Client
                         cmd.AddOption(opt);
                     }
                 }
-                if(ev == "workflow_dispatch") {
+                if(ev == "workflow_dispatch" || ev == "azexpand") {
                     cmd.AddOption(workflowInputsOpt);
                 }
             }
@@ -2516,6 +2547,87 @@ namespace Runner.Client
             cargs.AddRange(args);
             // Parse the incoming args and invoke the handler
             return rootCommand.InvokeAsync(args.Length == 1 && args[0] == "--version" ? args : cargs.ToArray()).Result;
+        }
+
+        private static async Task<(Dictionary<string, Dictionary<string, string>>, Dictionary<string, Dictionary<string, string>>)> ReadSecretsAndVariables(Parameters parameters)
+        {
+            var envSecrets = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            if(parameters.EnvironmentSecretFiles?.Length > 0) {
+                foreach(var opt in parameters.EnvironmentSecretFiles) {
+                    var subopt = opt.Split('=', 2);
+                    string name = subopt.Length == 2 ? subopt[0] : "";
+                    string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
+                    var dict = envSecrets[name] = envSecrets.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
+                }
+            }
+            if(parameters.EnvironmentSecrets?.Length > 0) {
+                for(int i = 0; i < parameters.EnvironmentSecrets.Length; i++) {
+                    var opt = parameters.EnvironmentSecrets[i];
+                    var subopt = opt.Split('=', 3);
+                    string name = subopt[0];
+                    string varname = subopt[1];
+                    string varval = subopt.Length == 3 ? subopt[2] : null;
+                    if(varval == null) {
+                        await Console.Out.WriteAsync($"{name}={varname}=");
+                        varval = ReadSecret();
+                        parameters.EnvironmentSecrets[i] = $"{name}={varname}={varval}";
+                    }
+                    var dict = envSecrets[name] = envSecrets.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    dict[varname] = varval;
+                }
+            }
+            var envVars = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            if(parameters.EnvironmentVarFiles?.Length > 0) {
+                foreach(var opt in parameters.EnvironmentVarFiles) {
+                    var subopt = opt.Split('=', 2);
+                    string name = subopt.Length == 2 ? subopt[0] : "";
+                    string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
+                    var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
+                }
+            }
+            if(parameters.VarFiles?.Length > 0) {
+                foreach(var opt in parameters.VarFiles) {
+                    string name = "";
+                    string filename = opt;
+                    var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
+                }
+            }
+            if(parameters.EnvironmentVars?.Length > 0) {
+                for(int i = 0; i < parameters.EnvironmentVars.Length; i++) {
+                    var opt = parameters.EnvironmentVars[i];
+                    var subopt = opt.Split('=', 3);
+                    string name = subopt[0];
+                    string varname = subopt[1];
+                    string varval = subopt.Length == 3 ? subopt[2] : null;
+                    if(varval == null) {
+                        await Console.Out.WriteAsync($"{name}={varname}=");
+                        varval = await Console.In.ReadLineAsync();
+                        parameters.EnvironmentVars[i] = $"{name}={varname}={varval}";
+                    }
+                    var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    dict[varname] = varval;
+                }
+            }
+            if(parameters.Vars?.Length > 0) {
+                for(int i = 0; i < parameters.Vars.Length; i++) {
+                    var opt = parameters.Vars[i];
+                    var subopt = opt.Split('=', 2);
+                    string name = "";
+                    string varname = subopt[0];
+                    string varval = subopt.Length == 2 ? subopt[1] : null;
+                    if(varval == null) {
+                        await Console.Out.WriteAsync($"{varname}=");
+                        varval = await Console.In.ReadLineAsync();
+                        parameters.Vars[i] = $"{varname}={varval}";
+                    }
+                    var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    dict[varname] = varval;
+                }
+            }
+            return (envSecrets, envVars);
         }
 
         private static async Task CollectRepoFiles(string root, string wd, RepoDownload endpoint, MultipartFormDataContent repodownload, List<Stream> streamsToDispose, long level, Parameters parameters, CancellationTokenSource source) {

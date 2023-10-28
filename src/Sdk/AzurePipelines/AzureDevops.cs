@@ -515,13 +515,6 @@ public class AzureDevops {
                 variablesData[v.Key] = new StringContextData(v.Value);
             }
         }
-        if(rawStaticVariables != null) {
-            IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-            await ParseVariables(context, pvars, rawStaticVariables, true);
-            foreach(var v in pvars) {
-                variablesData[v.Key] = new StringContextData(v.Value.Value);
-            }
-        }
         
         if(parameters?.Type == TokenType.Mapping) {
             int providedParameter = 0;
@@ -592,6 +585,19 @@ public class AzureDevops {
         }
 
         templateContext.Errors.Check();
+
+        if(rawStaticVariables != null) {
+            // See "testworkflows/azpipelines/expressions-docs/Conditionally assign a variable.yml"
+            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
+            rawStaticVariables = TemplateEvaluator.Evaluate(templateContext, "workflow-value", rawStaticVariables, 0, fileId);
+            templateContext.Errors.Check();
+
+            IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+            await ParseVariables(context, pvars, rawStaticVariables, true);
+            foreach(var v in pvars) {
+                variablesData[v.Key] = new StringContextData(v.Value.Value);
+            }
+        }
 
         templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
 
