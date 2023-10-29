@@ -28,38 +28,120 @@
 				"title": "Expand Azure Pipeline"
 			}
 		],
-		"configuration":[
+		"configuration": [
 			{
 				"title": "Azure Pipelines",
 				"properties": {
 					"azure-pipelines.repositories": {
-						"type":"array",
+						"type": "array",
 						"items": {
-							"type":"string"
+							"type": "string"
 						},
-						"default":[],
-						"scope":"window",
-						"description":"Syntax [<owner>/]<repo>@<ref>=<uri>. <uri> can be formed like file:///<folder>, vscode-vfs://github/<owner>/<repository> and vscode-vfs://azurerepos/<owner>/<project>/<repository>"
+						"default": [],
+						"scope": "window",
+						"description": "Syntax [<owner>/]<repo>@<ref>=<uri>. <uri> can be formed like file:///<folder>, vscode-vfs://github/<owner>/<repository> and vscode-vfs://azurerepos/<owner>/<project>/<repository>"
 					},
 					"azure-pipelines.variables": {
-						"type":"array",
+						"type": "array",
 						"items": {
-							"type":"string"
+							"type": "string"
 						},
-						"default":[],
-						"scope":"window",
-						"description":"Syntax <name>=<value>"
+						"default": [],
+						"scope": "window",
+						"description": "Syntax <name>=<value>"
 					},
 					"azure-pipelines.parameters": {
-						"type":"array",
+						"type": "array",
 						"items": {
-							"type":"string"
+							"type": "string"
 						},
-						"default":[],
+						"default": [],
 						"scope": "resource",
-						"description":"Syntax <name>=<yaml value>"
+						"description": "Syntax <name>=<yaml value>"
 					}
 				}
+			}
+		],
+		"debuggers": [
+			{
+				"type": "azure-pipelines-vscode-ext",
+				"languages": [
+					"azure-pipelines"
+				],
+				"label": "Azure Pipeline Debug",
+				"configurationAttributes": {
+					"launch": {
+						"required": [
+							"program"
+						],
+						"properties": {
+							"program": {
+								"type": "string",
+								"description": "Absolute path to a yaml file.",
+								"default": "${workspaceFolder}/azure-pipeline.yml"
+							},
+							"trace": {
+								"type": "boolean",
+								"description": "Enable logging of the Debug Adapter Protocol.",
+								"default": false
+							},
+							"watch": {
+								"type": "boolean",
+								"description": "Keep Debug Session alive and watch for changes",
+								"default": false
+							},
+							"preview": {
+								"type": "boolean",
+								"description": "Keep Debug Session alive and watch for changes",
+								"default": true
+							},
+							"repositories": {
+								"type": "object",
+								"description": "Syntax \"[<owner>/]<repo>@<ref>\": \"<uri>\". <uri> can be formed like file:///<folder>, vscode-vfs://github/<owner>/<repository> and vscode-vfs://azurerepos/<owner>/<project>/<repository>",
+								"additionalProperties": {
+									"type": "string"
+								}
+							},
+							"variables": {
+								"type": "object",
+								"additionalProperties": {
+									"type": "string"
+								}
+							},
+							"parameters": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "Syntax \"<name>\": <json object>"
+							}
+						}
+					}
+				},
+				"initialConfigurations": [
+					{
+						"type": "azure-pipelines-vscode-ext",
+						"request": "launch",
+						"name": "Test Pipeline",
+						"program": "${workspaceFolder}/azure-pipeline.yml",
+						"repositories": {},
+						"parameters": {},
+						"variables": {}
+					}
+				],
+				"configurationSnippets": [
+					{
+						"label": "Azure Pipeline Debug: Launch",
+						"description": "A new configuration for checking a single azure pipeline file.",
+						"body": {
+							"type": "azure-pipelines-vscode-ext",
+							"request": "launch",
+							"name": "Test Pipeline",
+							"program": "^\"\\${workspaceFolder}/azure-pipeline.yml\"",
+							"repositories": {},
+							"parameters": {},
+							"variables": {}
+						}
+					}
+				]
 			}
 		]
 	},
@@ -71,5 +153,12 @@
 		"@vscode/vsce": "^2.21.1",
 		"webpack-cli": "^5.1.4"
 	},
-	"license": "MIT"
+	"license": "MIT",
+	"dependencies": {
+		"@vscode/debugadapter": "^1.64.0",
+		"@vscode/debugprotocol": "^1.64.0",
+		"ts-loader": "^9.5.0",
+		"url": "^0.11.3",
+		"vscode-languageclient": "^9.0.1"
+	}
 }

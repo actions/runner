@@ -11,4 +11,6 @@ public static partial class Interop {
     internal static partial void Log(int type, string message);
     [JSImport("requestRequiredParameter", "extension.js")]
     internal static partial Task<string> RequestRequiredParameter(JSObject handle, string name);
+    [JSImport("error", "extension.js")]
+    internal static partial Task Error(JSObject handle, string message);
 }

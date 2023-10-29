@@ -1,5 +1,6 @@
 const vscode = require('vscode');
-import { basePaths, customImports } from "./config.js" 
+import { basePaths, customImports } from "./config.js"
+import { AzurePipelinesDebugSession } from "./azure-pipelines-debug";
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -11,6 +12,16 @@ function activate(context) {
 	customImports["dotnet.native.js"] = require("./build/AppBundle/_framework/dotnet.native.js");
 
 	var logchannel = vscode.window.createOutputChannel("Azure Pipeline Evalation Log", { log: true });
+
+	var virtualFiles = {};
+	var myScheme = "azure-pipelines-vscode-ext";
+	var changeDoc = new vscode.EventEmitter();
+	vscode.workspace.registerTextDocumentContentProvider(myScheme, {
+		onDidChange: changeDoc.event,
+		provideTextDocumentContent(uri) {
+			return virtualFiles[uri.path];
+		}
+	});
 
 	var runtimePromise = vscode.window.withProgress({
 		location: vscode.ProgressLocation.Notification,
@@ -64,8 +75,8 @@ function activate(context) {
 						}
 					} else {
 						// Get current textEditor content for the entrypoint
-						var doc = handle.textEditor.document;
-						if(handle.filename === filename && doc) {
+						var doc = handle.textEditor ? handle.textEditor.document : null;
+						if(handle.filename === filename && doc && !handle.skipCurrentEditor) {
 							return doc.getText();
 						}
 						uri = handle.base.with({ path: handle.base.path + "/" + filename });
@@ -122,6 +133,9 @@ function activate(context) {
 					prompt: name,
 					title: "Provide required Variables in yaml notation"
 				})
+			},
+			error: async (handle, message) => {
+				await handle.error(message);
 			}
 		});
 		logchannel.appendLine("Starting extension main to keep dotnet alive");
@@ -130,9 +144,9 @@ function activate(context) {
 		return runtime;
 	});
 
-	var expandAzurePipeline = async validate => {
+	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error) => {
 		var textEditor = vscode.window.activeTextEditor;
-		if(!textEditor) {
+		if(!textEditor && !fspathname) {
 			await vscode.window.showErrorMessage("No active TextEditor");
 			return;
 		}
@@ -143,40 +157,85 @@ function activate(context) {
 			var name = line.shift();
 			repositories[name] = line.join("=");
 		}
+		if(repos) {
+			for(var name in repos) {
+				repositories[name] = repos[name];
+			}
+		}
 		var variables = {};
 		for(var repo of conf.variables ?? []) {
 			var line = repo.split("=");
 			var name = line.shift();
 			variables[name] = line.join("=");
 		}
+		if(vars) {
+			for(var name in vars) {
+				variables[name] = vars[name];
+			}
+		}
 		var parameters = {};
-		for(var repo of conf.parameters ?? []) {
-			var line = repo.split("=");
-			var name = line.shift();
-			parameters[name] = line.join("=");
+		if(params) {
+			for(var name in params) {
+				parameters[name] = JSON.stringify(params[name]);
+			}
+		} else {
+			for(var repo of conf.parameters ?? []) {
+				var line = repo.split("=");
+				var name = line.shift();
+				parameters[name] = line.join("=");
+			}
 		}
 
 		var runtime = await runtimePromise;
 		var base = null;
-		var filename = null;
-		var current = textEditor.document.uri;
-		for(var workspace of vscode.workspace.workspaceFolders) {
-			var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
-			if(workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
-				base = workspace.uri;
-				filename = current.path.substring(workspacePath.length);
-				break;
+
+		var skipCurrentEditor = false;
+		var filename = null
+		if(fspathname) {
+			skipCurrentEditor = true;
+			var uris = [vscode.Uri.parse(fspathname), vscode.Uri.file(fspathname)];
+			for(var current of uris) {
+				var rbase = vscode.workspace.getWorkspaceFolder(current);
+				var name = vscode.workspace.asRelativePath(current);
+				if(rbase && name) {
+					base = rbase.uri;
+					filename = name;
+					break;
+				}
 			}
-		}
-		var li = current.path.lastIndexOf("/");
-		base ??= current.with({ path: current.path.substring(0, li)});
-		filename ??= current.path.substring(li + 1);
-		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")({ base: base, textEditor: textEditor, filename: filename, repositories: repositories }, filename, JSON.stringify(variables), JSON.stringify(parameters));
-		
+			if(filename == null) {
+				for(var workspace of vscode.workspace.workspaceFolders) {
+					if(fspathname.startsWith(workspace.uri.fsPath)) {
+						base = workspace.uri;
+						filename = vscode.workspace.asRelativePath(workspace.uri.with({path: workspace.uri.path + "/" + fspathname.substring(workspace.uri.fsPath.length).replace(/[\\\/]+/g, "/")
+					}));
+						break;
+					}
+				}
+			}
+		} else {
+			filename = null;
+			var current = textEditor.document.uri;
+			for(var workspace of vscode.workspace.workspaceFolders) {
+				var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
+				if(workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
+					base = workspace.uri;
+					filename = current.path.substring(workspacePath.length);
+					break;
+				}
+			}
+			var li = current.path.lastIndexOf("/");
+			base ??= current.with({ path: current.path.substring(0, li)});
+			filename ??= current.path.substring(li + 1);
+		}	
+		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")({ base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, error: error }, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true);
+
 		if(result) {
 			logchannel.debug(result);
 			if(validate) {
 				await vscode.window.showInformationMessage("No issues found");
+			} else if(callback) {
+				callback(result);
 			} else {
 				await vscode.workspace.openTextDocument({ language: "yaml", content: result });
 			}
@@ -200,6 +259,13 @@ function activate(context) {
 			statusbar.hide();
 		}
 	};
+	var z = 0;
+	vscode.debug.registerDebugAdapterDescriptorFactory("azure-pipelines-vscode-ext", {
+		createDebugAdapterDescriptor: (session, executable) => {
+			return new vscode.DebugAdapterInlineImplementation(new AzurePipelinesDebugSession(virtualFiles, `azure-pipelines-preview-${z++}.yml`, expandAzurePipeline, arg => changeDoc.fire(arg)));
+		}
+	});
+
 	var onTextEditChanged = texteditor => onLanguageChanged(texteditor && texteditor.document && texteditor.document.languageId ? texteditor.document.languageId : null);
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(onTextEditChanged))
 	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => onLanguageChanged(document && document.languageId ? document.languageId : null)));

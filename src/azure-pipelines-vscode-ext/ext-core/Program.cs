@@ -67,7 +67,7 @@ public class MyClass {
 
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters) {
+    public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent) {
         try {
             var context = new Runner.Server.Azure.Devops.Context {
                 FileProvider = new MyFileProvider(handle),
@@ -84,7 +84,11 @@ public class MyClass {
             var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
             return pipeline.ToYaml();
         } catch(Exception ex) {
-            await Interop.Message(2, ex.ToString());
+            if(returnErrorContent) {
+                await Interop.Error(handle, ex.ToString());
+            } else {
+                await Interop.Message(2, ex.ToString());
+            }
             return null;
         }
     }
