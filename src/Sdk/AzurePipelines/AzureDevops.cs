@@ -560,7 +560,7 @@ public class AzureDevops {
                     templateContext.Error(sparameters, "A value for the 'name' parameter must be provided.");
                     continue;
                 }
-                var defCtxData = await ConvertValue(context, def, type, values);
+                var defCtxData = def == null ? null : await ConvertValue(context, def, type, values);
                 if(cparameters?.TryGetValue(name, out var value) == true || def == null && (value = await (context.RequiredParametersProvider?.GetRequiredParameter(name) ?? Task.FromResult<TemplateToken>(null))) != null) {
                     parametersData[name] = await ConvertValue(context, value, type, values);
                 } else {
