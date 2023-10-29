@@ -1,6 +1,8 @@
 # Azure Pipelines VSCode Extension
 
-This is a minimal Azure Pipelines Extension
+This is a minimal Azure Pipelines Extension, the first vscode Extension which can Validate and Expand Azure Pipeline YAML files locally without any REST service.
+
+![Demo](https://github.com/ChristopherHX/runner.server/blob/main/docs/azure-pipelines/demo.gif?raw=true)
 
 ## Features
 
@@ -23,6 +25,39 @@ _Once this extension has been activated by any command, you can validate your pi
 `> Expand Azure Pipeline`
 
 This command tries to evaluate your current open Azure Pipeline including templates and show the result in a new document, which you can save or validate via the official api.
+
+### Azure Pipelines Debug Adapter
+
+Sample Debugging configuration
+```jsonc
+{
+    "type": "azure-pipelines-vscode-ext",
+    "request": "launch",
+    "name": "Test Pipeline (watch)",
+    "program": "${workspaceFolder}/azure-pipeline.yml",
+    "repositories": {},
+    "parameters": {},
+    "variables": {},
+    "watch": true,
+    "preview": true
+}
+```
+
+## Pros
+- Make changes in multiple dependent template files and show a live preview on save
+- Everything is done locally
+- Whole template engine is open source
+- You can run template files with the same template engine locally using the Runner.Client tool using the official Azure Pipelines Agent
+- Fast feedback
+- Less trial and error commits
+- You can help by reporting bugs
+- It's fully Open Source under the MIT license
+
+## Cons
+- May contain different bugs than the Azure Pipelines Service
+- You could self-host Azure Devops Server and commit your changes to your local system, may have license implications with more accurate results of the template engine
+- May not have feature parity with Azure Pipelines
+- Missing predefined Variables, feel free to add them manually as needed
 
 ## Running the Extension
 

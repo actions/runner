@@ -83,21 +83,21 @@
 							"trace": {
 								"type": "boolean",
 								"description": "Enable logging of the Debug Adapter Protocol.",
-								"default": false
+								"default": true
 							},
 							"watch": {
 								"type": "boolean",
 								"description": "Keep Debug Session alive and watch for changes",
-								"default": false
+								"default": true
 							},
 							"preview": {
 								"type": "boolean",
-								"description": "Keep Debug Session alive and watch for changes",
+								"description": "Opens a live Preview side by side to your current code editor, if disabled you will only see a message with the conclusion",
 								"default": true
 							},
 							"repositories": {
 								"type": "object",
-								"description": "Syntax \"[<owner>/]<repo>@<ref>\": \"<uri>\". <uri> can be formed like file:///<folder>, vscode-vfs://github/<owner>/<repository> and vscode-vfs://azurerepos/<owner>/<project>/<repository>",
+								"description": "Syntax \"[owner/]repo@ref\": \"uri\". uri can be formed like file:///folder, vscode-vfs://github/owner/repository and vscode-vfs://azurerepos/owner/project/repository",
 								"additionalProperties": {
 									"type": "string"
 								}
@@ -111,7 +111,7 @@
 							"parameters": {
 								"type": "object",
 								"additionalProperties": {},
-								"description": "Syntax \"<name>\": <json object>"
+								"description": "Syntax \"name\": json-object"
 							}
 						}
 					}
@@ -120,11 +120,13 @@
 					{
 						"type": "azure-pipelines-vscode-ext",
 						"request": "launch",
-						"name": "Test Pipeline",
+						"name": "Test Pipeline (watch)",
 						"program": "${workspaceFolder}/azure-pipeline.yml",
 						"repositories": {},
 						"parameters": {},
-						"variables": {}
+						"variables": {},
+						"preview": true,
+						"watch": true
 					}
 				],
 				"configurationSnippets": [
@@ -139,6 +141,35 @@
 							"repositories": {},
 							"parameters": {},
 							"variables": {}
+						}
+					},
+					{
+						"label": "Azure Pipeline Debug: Launch (preview)",
+						"description": "A new configuration for checking a single azure pipeline file.",
+						"body": {
+							"type": "azure-pipelines-vscode-ext",
+							"request": "launch",
+							"name": "Test Pipeline (preview)",
+							"program": "^\"\\${workspaceFolder}/azure-pipeline.yml\"",
+							"repositories": {},
+							"parameters": {},
+							"variables": {},
+							"preview": true
+						}
+					},
+					{
+						"label": "Azure Pipeline Debug: Launch (watch)",
+						"description": "A new configuration for checking a single azure pipeline file.",
+						"body": {
+							"type": "azure-pipelines-vscode-ext",
+							"request": "launch",
+							"name": "Test Pipeline (watch)",
+							"program": "^\"\\${workspaceFolder}/azure-pipeline.yml\"",
+							"repositories": {},
+							"parameters": {},
+							"variables": {},
+							"preview": true,
+							"watch": true
 						}
 					}
 				]
