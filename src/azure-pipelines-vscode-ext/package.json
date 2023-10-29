@@ -6,7 +6,7 @@
 		"Testing",
 		"Programming Languages"
 	],
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
