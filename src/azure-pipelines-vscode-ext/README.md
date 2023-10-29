@@ -2,7 +2,7 @@
 
 This is a minimal Azure Pipelines Extension, the first vscode Extension which can Validate and Expand Azure Pipeline YAML files locally without any REST service.
 
-![Demo](https://github.com/ChristopherHX/runner.server/blob/main/docs/azure-pipelines/demo.gif?raw=true)
+![Demo](https://github.com/ChristopherHX/runner.server/blob/main/docs/azure-pipelines/images/demo.gif?raw=true)
 
 ## Features
 
