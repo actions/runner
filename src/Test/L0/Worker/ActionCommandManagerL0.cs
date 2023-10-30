@@ -443,6 +443,21 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void AddMaskWithPercentEncodedString()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Act
+                _commandManager.TryProcessCommand(_ec.Object, $"::add-mask::%252F%2F", null);
+
+                // Assert
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("%2F%2F"));
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
             var hostContext = new TestHostContext(this, testName);
