@@ -1,4 +1,5 @@
 ﻿using GitHub.Runner.Sdk;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
 
@@ -6,29 +7,29 @@ namespace GitHub.Runner.Common
 {
     public sealed class ActionCommand
     {
-        private static readonly EscapeMapping[] _escapeMappings = new[]
+        private static readonly StringEscapingUtil.EscapeMapping[] _escapeMappings = new[]
         {
-            new EscapeMapping(token: ";", replacement: "%3B"),
-            new EscapeMapping(token: "\r", replacement: "%0D"),
-            new EscapeMapping(token: "\n", replacement: "%0A"),
-            new EscapeMapping(token: "]", replacement: "%5D"),
-            new EscapeMapping(token: "%", replacement: "%25"),
+            new StringEscapingUtil.EscapeMapping(token: ";", replacement: "%3B"),
+            new StringEscapingUtil.EscapeMapping(token: "\r", replacement: "%0D"),
+            new StringEscapingUtil.EscapeMapping(token: "\n", replacement: "%0A"),
+            new StringEscapingUtil.EscapeMapping(token: "]", replacement: "%5D"),
+            new StringEscapingUtil.EscapeMapping(token: "%", replacement: "%25"),
         };
 
-        private static readonly EscapeMapping[] _escapeDataMappings = new[]
+        private static readonly StringEscapingUtil.EscapeMapping[] _escapeDataMappings = new[]
         {
-            new EscapeMapping(token: "\r", replacement: "%0D"),
-            new EscapeMapping(token: "\n", replacement: "%0A"),
-            new EscapeMapping(token: "%", replacement: "%25"),
+            new StringEscapingUtil.EscapeMapping(token: "\r", replacement: "%0D"),
+            new StringEscapingUtil.EscapeMapping(token: "\n", replacement: "%0A"),
+            new StringEscapingUtil.EscapeMapping(token: "%", replacement: "%25"),
         };
 
-        private static readonly EscapeMapping[] _escapePropertyMappings = new[]
+        private static readonly StringEscapingUtil.EscapeMapping[] _escapePropertyMappings = new[]
         {
-            new EscapeMapping(token: "\r", replacement: "%0D"),
-            new EscapeMapping(token: "\n", replacement: "%0A"),
-            new EscapeMapping(token: ":", replacement: "%3A"),
-            new EscapeMapping(token: ",", replacement: "%2C"),
-            new EscapeMapping(token: "%", replacement: "%25"),
+            new StringEscapingUtil.EscapeMapping(token: "\r", replacement: "%0D"),
+            new StringEscapingUtil.EscapeMapping(token: "\n", replacement: "%0A"),
+            new StringEscapingUtil.EscapeMapping(token: ":", replacement: "%3A"),
+            new StringEscapingUtil.EscapeMapping(token: ",", replacement: "%2C"),
+            new StringEscapingUtil.EscapeMapping(token: "%", replacement: "%25"),
         };
 
         private readonly Dictionary<string, string> _properties = new(StringComparer.OrdinalIgnoreCase);
@@ -103,12 +104,12 @@ namespace GitHub.Runner.Common
                         string[] pair = propertyStr.Split(new[] { '=' }, count: 2, options: StringSplitOptions.RemoveEmptyEntries);
                         if (pair.Length == 2)
                         {
-                            command.Properties[pair[0]] = UnescapeProperty(pair[1]);
+                            command.Properties[pair[0]] = StringEscapingUtil.UnescapeString(pair[1], _escapePropertyMappings);
                         }
                     }
                 }
 
-                command.Data = UnescapeData(message.Substring(endIndex + _commandKey.Length));
+                command.Data = StringEscapingUtil.UnescapeString(message.Substring(endIndex + _commandKey.Length), _escapeDataMappings);
                 return true;
             }
             catch
@@ -173,80 +174,18 @@ namespace GitHub.Runner.Common
                         string[] pair = propertyStr.Split(new[] { '=' }, count: 2, options: StringSplitOptions.RemoveEmptyEntries);
                         if (pair.Length == 2)
                         {
-                            command.Properties[pair[0]] = Unescape(pair[1]);
+                            command.Properties[pair[0]] = StringEscapingUtil.UnescapeString(pair[1], _escapeMappings);
                         }
                     }
                 }
 
-                command.Data = Unescape(message.Substring(rbIndex + 1));
+                command.Data = StringEscapingUtil.UnescapeString(message.Substring(rbIndex + 1), _escapeMappings);
                 return true;
             }
             catch
             {
                 command = null;
                 return false;
-            }
-        }
-
-        private static string Unescape(string escaped)
-        {
-            if (string.IsNullOrEmpty(escaped))
-            {
-                return string.Empty;
-            }
-
-            string unescaped = escaped;
-            foreach (EscapeMapping mapping in _escapeMappings)
-            {
-                unescaped = unescaped.Replace(mapping.Replacement, mapping.Token);
-            }
-
-            return unescaped;
-        }
-
-        private static string UnescapeProperty(string escaped)
-        {
-            if (string.IsNullOrEmpty(escaped))
-            {
-                return string.Empty;
-            }
-
-            string unescaped = escaped;
-            foreach (EscapeMapping mapping in _escapePropertyMappings)
-            {
-                unescaped = unescaped.Replace(mapping.Replacement, mapping.Token);
-            }
-
-            return unescaped;
-        }
-
-        private static string UnescapeData(string escaped)
-        {
-            if (string.IsNullOrEmpty(escaped))
-            {
-                return string.Empty;
-            }
-
-            string unescaped = escaped;
-            foreach (EscapeMapping mapping in _escapeDataMappings)
-            {
-                unescaped = unescaped.Replace(mapping.Replacement, mapping.Token);
-            }
-
-            return unescaped;
-        }
-
-        private sealed class EscapeMapping
-        {
-            public string Replacement { get; }
-            public string Token { get; }
-
-            public EscapeMapping(string token, string replacement)
-            {
-                ArgUtil.NotNullOrEmpty(token, nameof(token));
-                ArgUtil.NotNullOrEmpty(replacement, nameof(replacement));
-                Token = token;
-                Replacement = replacement;
             }
         }
     }

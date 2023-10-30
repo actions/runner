@@ -6,16 +6,10 @@ using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Common.Util
 {
-    public static class StrigEscapingUtil
+    public static class StringEscapingUtil
     {
 
-        private static readonly EscapeMapping[] _escapeDataMappings = new[]
-        {
-            new EscapeMapping(token: "\r", replacement: "%0D"),
-            new EscapeMapping(token: "\n", replacement: "%0A"),
-            new EscapeMapping(token: "%", replacement: "%25"),
-        };
-        public static string UnescapeData(string escaped)
+        public static string UnescapeString(string escaped, EscapeMapping[] _escapeDataMappings)
         {
             if (string.IsNullOrEmpty(escaped))
             {
@@ -30,7 +24,7 @@ namespace GitHub.Runner.Common.Util
 
             return unescaped;
         }
-        private sealed class EscapeMapping
+        public class EscapeMapping
         {
             public string Replacement { get; }
             public string Token { get; }
