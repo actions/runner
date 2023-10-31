@@ -454,7 +454,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _commandManager.TryProcessCommand(_ec.Object, $"::add-mask::%252F%2F", null);
 
                 // Assert
-                Assert.Equal("***", hc.SecretMasker.MaskSecrets("%2F%2F"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("%252F%2F"));
             }
         }
 

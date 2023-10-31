@@ -139,7 +139,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 message = "::do-something k1=;=%252C=%250D=%250A=]=%253A,::;-%250D-%250A-]-:-,";
                 test = new ActionCommand("do-something")
                 {
-                    Data = ";-%0D-%0A-]-:-,",
+                    Data = ";-%250D-%250A-]-:-,",
                 };
                 test.Properties.Add("k1", ";=%2C=%0D=%0A=]=%3A");
                 Assert.True(ActionCommand.TryParseV2(message, commands, out verify));
