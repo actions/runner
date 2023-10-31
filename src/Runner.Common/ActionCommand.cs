@@ -16,17 +16,10 @@ namespace GitHub.Runner.Common
             new StringEscapingUtil.EscapeMapping(token: "%", replacement: "%25"),
         };
 
-        private static readonly StringEscapingUtil.EscapeMapping[] _commandDataEscapeMappings = new[]
- {
-            new StringEscapingUtil.EscapeMapping(token: "\r", replacement: "%0D"),
-            new StringEscapingUtil.EscapeMapping(token: "\n", replacement: "%0A"),
-        };
-
         private static readonly StringEscapingUtil.EscapeMapping[] _escapeDataMappings = new[]
         {
             new StringEscapingUtil.EscapeMapping(token: "\r", replacement: "%0D"),
             new StringEscapingUtil.EscapeMapping(token: "\n", replacement: "%0A"),
-            // new StringEscapingUtil.EscapeMapping(token: "%", replacement: "%25"),
         };
 
         private static readonly StringEscapingUtil.EscapeMapping[] _escapePropertyMappings = new[]
@@ -115,7 +108,7 @@ namespace GitHub.Runner.Common
                     }
                 }
 
-                command.Data = StringEscapingUtil.UnescapeString(message.Substring(endIndex + _commandKey.Length), _commandDataEscapeMappings);
+                command.Data = StringEscapingUtil.UnescapeString(message.Substring(endIndex + _commandKey.Length), _escapeDataMappings);
                 return true;
             }
             catch
