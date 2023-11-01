@@ -174,7 +174,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         Package = new RunnerRefreshMessage.BrokerPackageMetadata()
                         {
                             Platform = BuildConstants.RunnerPackage.PackageName,
-                            DownloadUrl = _packageUrl
+                            DownloadUrl = "https://github.com/actions/runner/notexists"
                         }
                     };
 
@@ -227,7 +227,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                         Package = new RunnerRefreshMessage.BrokerPackageMetadata()
                         {
                             Platform = BuildConstants.RunnerPackage.PackageName,
-                            DownloadUrl = _packageUrl
+                            DownloadUrl = _packageUrl,
+                            HashValue = "badhash"
                         }
                     };
 
