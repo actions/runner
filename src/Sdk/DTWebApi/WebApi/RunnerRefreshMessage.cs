@@ -83,15 +83,15 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-         public PackageMetadata GetPackageMetadata()
+        public PackageMetadata GetPackageMetadata()
+        {
+            return new PackageMetadata()
             {
-                return new PackageMetadata()
-                {
-                    DownloadUrl = this.Package?.DownloadUrl,
-                    HashValue = this.Package?.HashValue,
-                    Platform = this.Package?.Platform,
-                    Version = new PackageVersion(this.TargetVersion)
-                };
-            }
+                DownloadUrl = this.Package?.DownloadUrl,
+                HashValue = this.Package?.HashValue,
+                Platform = this.Package?.Platform,
+                Version = new PackageVersion(this.TargetVersion)
+            };
+        }
     }
 }
