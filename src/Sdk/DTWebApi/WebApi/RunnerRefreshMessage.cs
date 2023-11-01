@@ -77,10 +77,21 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember]
-        public BrokerPackageMetadata Package
+        public BrokerPackageMetadata PackageMetadata
         {
             get;
             set;
         }
+
+         public PackageMetadata GetPackageMetadata()
+            {
+                return new PackageMetadata()
+                {
+                    DownloadUrl = this.PackageMetadata?.DownloadUrl,
+                    HashValue = this.PackageMetadata?.HashValue,
+                    Platform = this.PackageMetadata?.Platform,
+                    Version = new PackageVersion(this.TargetVersion)
+                };
+            }
     }
 }

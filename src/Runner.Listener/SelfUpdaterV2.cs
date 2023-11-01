@@ -22,7 +22,14 @@ namespace GitHub.Runner.Listener
     // This class is a fork of SelfUpdater.cs and is intended to only be used for the
     // new self-update flow where the PackageMetadata is sent in the message directly. 
     // Forking the class prevents us from accidentally breaking the old flow while it's still in production
-    public class SelfUpdaterV2 : RunnerService, ISelfUpdater
+
+    [ServiceLocator(Default = typeof(SelfUpdaterV2))]
+    public interface ISelfUpdaterV2 : IRunnerService
+    {
+        bool Busy { get; }
+        Task<bool> SelfUpdate(RunnerRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token);
+    }
+    public class SelfUpdaterV2 : RunnerService, ISelfUpdaterV2
     {
         private static string _platform = BuildConstants.RunnerPackage.PackageName;
         private PackageMetadata _targetPackage;
@@ -45,18 +52,14 @@ namespace GitHub.Runner.Listener
             _agentId = settings.AgentId;
         }
 
-        public async Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token)
+        public async Task<bool> SelfUpdate(RunnerRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token)
         {
-            _targetPackage = updateMessage.PackageMetadata;
+            _targetPackage = updateMessage.GetPackageMetadata();
             Busy = true;
             try
             {
                 var totalUpdateTime = Stopwatch.StartNew();
 
-                // Copy dotnet runtime and externals of current runner to a temp folder
-                // So we can re-use them with trimmed runner package, if possible.
-                // This process is best effort, if we can't use trimmed runner package, 
-                // we will just go with the full package.
                 Trace.Info($"An update is available.");
                 _updateTrace.Enqueue($"RunnerPlatform: {_targetPackage.Platform}");
 
