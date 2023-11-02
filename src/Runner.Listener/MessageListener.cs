@@ -222,6 +222,7 @@ namespace GitHub.Runner.Listener
                                                                 BuildConstants.RunnerPackage.Version,
                                                                 VarUtil.OS,
                                                                 VarUtil.OSArchitecture,
+                                                                _settings.DisableUpdate,
                                                                 _getMessagesTokenSource.Token);
 
                     // Decrypt the message body if the session is using encryption
