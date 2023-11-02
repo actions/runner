@@ -1,0 +1,2 @@
+stages:
+- template: .\stage\one.yml
