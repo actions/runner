@@ -16,6 +16,7 @@ namespace Runner.Server.Azure.Devops
 
         public ITaskByNameAndVersionProvider TaskByNameAndVersion { get; set; }
         public IRequiredParametersProvider RequiredParametersProvider { get; set; }
+        public List<string> FileTable { get; set; } = new List<string>();
 
         public Context Clone() {
             return MemberwiseClone() as Context;

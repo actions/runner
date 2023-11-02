@@ -461,22 +461,27 @@ public class AzureDevops {
 
     public static async Task<MappingToken> ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null) {
         var variables = context.VariablesProvider?.GetVariablesForEnvironment("");
-        var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), new List<string>(), context.Flags);
         var afilenameAndRef = filenameAndRef.Split("@", 2);
         var filename = afilenameAndRef[0];
-        var fileId = templateContext.GetFileId(filename);
         // Read the file
         var finalRepository = afilenameAndRef.Length == 1 ? context.RepositoryAndRef : string.Equals(afilenameAndRef[1], "self", StringComparison.OrdinalIgnoreCase) ? null : (context.Repositories?.TryGetValue(afilenameAndRef[1], out var ralias) ?? false) ? ralias : throw new Exception($"Couldn't find repository with alias {afilenameAndRef[1]} in repository resources");
         var finalFileName = RelativeTo(context.RepositoryAndRef == finalRepository ? context.CWD ?? "." : "/", filename);
         if(finalFileName == null) {
             throw new Exception($"Couldn't find template location {filenameAndRef}");
         }
+
         var fileContent = await context.FileProvider.ReadFile(finalRepository, finalFileName);
         if(fileContent == null) {
             throw new Exception($"Couldn't read template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"})");
         }
         context.TraceWriter?.Info("{0}", $"Parsing template {filenameAndRef} resolved to {finalFileName} ({finalRepository ?? "self"}) using Schema {schemaName ?? "pipeline-root"}");
         context.TraceWriter?.Verbose("{0}", fileContent);
+
+        var errorTemplateFileName = $"({finalRepository ?? "self"})/{finalFileName}";
+        context.FileTable ??= new List<string>();
+        context.FileTable.Add(errorTemplateFileName);
+        var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
+        var fileId = templateContext.GetFileId(errorTemplateFileName);
 
         TemplateToken token;
         using (var stringReader = new StringReader(fileContent))
