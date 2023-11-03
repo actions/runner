@@ -503,7 +503,6 @@ namespace GitHub.Runner.Listener
 
                                     var selfUpdater = HostContext.GetService<ISelfUpdaterV2>();
                                     selfUpdateTask = selfUpdater.SelfUpdate(brokerRunnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
-
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else

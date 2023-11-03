@@ -110,7 +110,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         var message = new RunnerRefreshMessage(1, "2.999.0")
                         {
-                            Package = new RunnerRefreshMessage.BrokerPackageMetadata()
+                            Package = new BrokerPackageMetadata()
                             {
                                 Platform = BuildConstants.RunnerPackage.PackageName,
                                 DownloadUrl = _packageUrl
@@ -171,7 +171,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     var message = new RunnerRefreshMessage(1, "2.999.0")
                     {
-                        Package = new RunnerRefreshMessage.BrokerPackageMetadata()
+                        Package = new BrokerPackageMetadata()
                         {
                             Platform = BuildConstants.RunnerPackage.PackageName,
                             DownloadUrl = "https://github.com/actions/runner/notexists"
@@ -224,7 +224,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     var message = new RunnerRefreshMessage(1, "2.999.0")
                     {
-                        Package = new RunnerRefreshMessage.BrokerPackageMetadata()
+                        Package = new BrokerPackageMetadata()
                         {
                             Platform = BuildConstants.RunnerPackage.PackageName,
                             DownloadUrl = _packageUrl,
