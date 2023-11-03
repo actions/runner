@@ -193,7 +193,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _runnerServer
                     .Setup(x => x.GetAgentMessageAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                    .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, CancellationToken cancellationToken) =>
+                    .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken) =>
                     {
                         await Task.Yield();
                         return messages.Dequeue();
@@ -208,7 +208,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 //Assert
                 _runnerServer
                     .Verify(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(arMessages.Length));
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(arMessages.Length));
             }
         }
 
@@ -293,7 +293,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _runnerServer
                     .Setup(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                     .Throws(new TaskAgentAccessTokenExpiredException("test"));
                 try
                 {
@@ -311,7 +311,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 //Assert
                 _runnerServer
                     .Verify(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>() It.IsAny<CancellationToken>()), Times.Once);
 
                 _runnerServer
                     .Verify(x => x.DeleteAgentSessionAsync(
