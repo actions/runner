@@ -510,7 +510,6 @@ namespace GitHub.Runner.Listener
                                 {
                                     Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
                                 }
-
                             }
                             else if (string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
                             {
