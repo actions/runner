@@ -17,7 +17,7 @@ namespace GitHub.DistributedTask.WebApi
         }
         public RunnerRefreshMessage(String targetVersion)
         {
-           this.TargetVersion = targetVersion;
+            this.TargetVersion = targetVersion;
         }
 
         [DataMember]

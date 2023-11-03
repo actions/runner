@@ -108,7 +108,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     try
                     {
-                        var message = new RunnerRefreshMessage(1, "2.999.0")
+                        var message = new RunnerRefreshMessage("2.999.0")
                         {
                             Package = new BrokerPackageMetadata()
                             {
@@ -169,7 +169,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.EnqueueInstance<IProcessInvoker>(p3);
                     updater.Initialize(hc);
 
-                    var message = new RunnerRefreshMessage(1, "2.999.0")
+                    var message = new RunnerRefreshMessage("2.999.0")
                     {
                         Package = new BrokerPackageMetadata()
                         {
@@ -222,7 +222,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.EnqueueInstance<IProcessInvoker>(p3);
                     updater.Initialize(hc);
 
-                    var message = new RunnerRefreshMessage(1, "2.999.0")
+                    var message = new RunnerRefreshMessage("2.999.0")
                     {
                         Package = new BrokerPackageMetadata()
                         {
