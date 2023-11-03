@@ -23,7 +23,7 @@ namespace GitHub.DistributedTask.Expressions2
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.ToJson>("converttojson", 1, 1);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.EndsWith>("endsWith", 2, 2);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Equal>("eq", 2, 2);
-            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy.Format>("format", 2, Int32.MaxValue);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Legacy.Format>("format", 1, Int32.MaxValue);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.GreaterThanOrEqual>("ge", 2, 2);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.GreaterThan>("gt", 2, 2);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.In>("in", 1, Int32.MaxValue);

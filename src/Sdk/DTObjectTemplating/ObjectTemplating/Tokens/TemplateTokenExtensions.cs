@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk;
+using Index = GitHub.DistributedTask.Expressions2.Sdk.Operators.Index;
 
 namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
@@ -250,6 +251,29 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             }
 
             return true;
+        }
+
+        public static IEnumerable<string> CheckUnknownParameters(
+            this TemplateToken token,
+            string context,
+            string[] names,
+            ExpressionFlags flags = ExpressionFlags.None)
+        {
+            var expressionTokens = token.Traverse()
+                .OfType<BasicExpressionToken>()
+                .ToArray();
+            var parser = new ExpressionParser() { Flags = flags };
+            foreach (var expressionToken in expressionTokens)
+            {
+                var tree = parser.ValidateSyntax(expressionToken.Expression, null);
+                foreach (var node in tree.Traverse())
+                {
+                    if (node is Index indexValue && indexValue.Parameters[0] is NamedValue namedValue && string.Equals(namedValue.Name, context, StringComparison.OrdinalIgnoreCase) && indexValue.Parameters[1] is Literal literal && literal.Value is String literalString && names.All(name => !string.Equals(literalString, name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        yield return literalString;
+                    }
+                }
+            }
         }
 
         /// <summary>

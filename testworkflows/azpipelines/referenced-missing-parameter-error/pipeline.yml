@@ -1,0 +1,9 @@
+# ExpectedException: TemplateValidationException
+# ExpectedErrorMessage: test6
+
+parameters:
+  - name: no
+    type: number
+    default: 0
+steps:
+  - script: echo ${{ parameters[format('{0}', 'test6')] }}

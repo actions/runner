@@ -592,9 +592,15 @@ public class AzureDevops {
 
         templateContext.Errors.Check();
 
+        var dict = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        foreach(var param in parametersData) {
+            dict[param.Key] = param.Value;
+        }
+
         if(rawStaticVariables != null) {
             // See "testworkflows/azpipelines/expressions-docs/Conditionally assign a variable.yml"
             templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
+            templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
             rawStaticVariables = TemplateEvaluator.Evaluate(templateContext, "workflow-value", rawStaticVariables, 0, fileId);
             templateContext.Errors.Check();
 
@@ -606,6 +612,7 @@ public class AzureDevops {
         }
 
         templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
+        templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
 
         var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
         templateContext.Errors.Check();
