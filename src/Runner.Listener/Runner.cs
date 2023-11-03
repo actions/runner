@@ -496,8 +496,7 @@ namespace GitHub.Runner.Listener
 #endif
                                     if (brokerRunnerUpdateMessage != null)
                                     {
-                                        var selfUpdater = new SelfUpdaterV2();
-                                        selfUpdater.Initialize(HostContext);
+                                        var selfUpdater = HostContext.GetService<ISelfUpdaterV2>();
                                         selfUpdateTask = selfUpdater.SelfUpdate(brokerRunnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     }
                                     else
