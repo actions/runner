@@ -46,12 +46,5 @@ namespace GitHub.DistributedTask.WebApi
             get;
             private set;
         }
-
-        [DataMember]
-        public PackageMetadata PackageMetadata
-        {
-            get;
-            private set;
-        }
     }
 }
