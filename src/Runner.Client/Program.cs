@@ -32,6 +32,7 @@ using GitHub.Runner.Common;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Runner.Server.Azure.Devops;
 using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.Services.Common;
 
 namespace Runner.Client
 {
@@ -156,6 +157,7 @@ namespace Runner.Client
             public string[] EnvironmentVars { get; set; }
             public string[] EnvironmentSecrets { get; set; }
             public string[] Inputs { get; set; }
+            public string[] InputFiles { get; set; }
             public string RunnerDirectory { get; set; }
             public bool GitHubConnect { get; set; }
             public string GitHubConnectToken { get; set; }
@@ -808,7 +810,12 @@ namespace Runner.Client
                     Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
                     VariablesProvider = new VariablesProvider { Variables = vars }
                 };
-                Dictionary<string, TemplateToken> cparameters = new Dictionary<string, TemplateToken>();
+                Dictionary<string, TemplateToken> cparameters = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
+                if(handle.InputFiles?.Length > 0) {
+                    foreach(var file in handle.InputFiles) {
+                        Util.ReadEnvFile(file, (varname, varval) => cparameters[varname] = AzurePipelinesUtils.ConvertStringToTemplateToken(varval));
+                    }
+                }
                 if(handle.Inputs != null) {
                     foreach(var input in handle.Inputs) {
                         var opt = input;
@@ -1056,6 +1063,9 @@ namespace Runner.Client
             var workflowInputsOpt = new Option<string[]>(
                 new[] {"-i", "--input"},
                 description: "Inputs to add to the payload. E.g. `--input name=value`");
+            var workflowInputFilesOpt = new Option<string[]>(
+                new[] {"--input-file"},
+                description: "Inputs for your Workflow");
             var localrepositoriesOpt = new Option<string[]>(
                 "--local-repository",
                 description: "Redirect dependent repositories to the local filesystem. E.g `--local-repository org/name@ref=/path/to/repository`");
@@ -1539,6 +1549,7 @@ namespace Runner.Client
                                 updateCommand.Add(environmentVarOpt);
                                 updateCommand.Add(environmentVarFileOpt);
                                 updateCommand.Add(workflowInputsOpt);
+                                updateCommand.Add(workflowInputFilesOpt);
                                 updateCommand.SetHandler(_ => {}, new MyCustomBinder(bindingContext => {
                                     var pResult = bindingContext.ParseResult;
                                     if(pResult.GetValueForOption(cleanOpt)) {
@@ -1556,6 +1567,7 @@ namespace Runner.Client
                                         parameters.EnvironmentSecretFiles = null;
                                         parameters.EnvironmentVarFiles = null;
                                         parameters.Inputs = null;
+                                        parameters.InputFiles = null;
                                         parameters.EnvironmentVars = null;
                                     } else if(pResult.GetValueForOption(resetOpt)) {
                                         parameters = orgParameters.ShallowCopy();
@@ -1574,6 +1586,7 @@ namespace Runner.Client
                                     parameters.EnvironmentSecretFiles = parameters.EnvironmentSecretFiles.SafeConcatArray(pResult.GetValueForOption(environmentSecretFileOpt));
                                     parameters.EnvironmentVarFiles = parameters.EnvironmentVarFiles.SafeConcatArray(pResult.GetValueForOption(environmentVarFileOpt));
                                     parameters.Inputs = parameters.Inputs.SafeConcatArray(pResult.GetValueForOption(workflowInputsOpt));
+                                    parameters.InputFiles = parameters.Inputs.SafeConcatArray(pResult.GetValueForOption(workflowInputFilesOpt));
                                     parameters.EnvironmentVars = parameters.EnvironmentVars.SafeConcatArray(pResult.GetValueForOption(environmentVarOpt));
                                     return parameters;
                                 }));
@@ -1944,16 +1957,49 @@ namespace Runner.Client
                                     } else if(parameters.NoDefaultPayload) {
                                         payloadContent = new JObject();
                                     }
-                                    if(parameters.Event == "workflow_dispatch" && parameters.Inputs?.Length > 0) {
-                                        var inputs = new JObject();
+                                    if(parameters.Event == "workflow_dispatch") {
+                                        var inputs = payloadContent.TryGetValue("inputs", out var oinputs) ? (JObject)oinputs : new JObject();
                                         payloadContent["inputs"] = inputs;
-                                        foreach(var input in parameters.Inputs) {
-                                            var kv = input.Split('=', 2);
-                                            inputs[kv[0]] = kv[1];
+                                        if(parameters.InputFiles?.Length > 0) {
+                                            foreach(var file in parameters.InputFiles) {
+                                                try {
+                                                    Util.ReadEnvFile(file, (k, v) => inputs[k] = v);
+                                                } catch(Exception ex) {
+                                                    Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                    return 1;
+                                                }
+                                            }
+                                        }
+                                        if(parameters.Inputs?.Length > 0) {
+                                            foreach(var input in parameters.Inputs) {
+                                                var kv = input.Split('=', 2);
+                                                inputs[kv[0]] = kv[1];
+                                            }
                                         }
                                     }
                                     mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
                                     var (envSecrets, envVars) = await ReadSecretsAndVariables(parameters);
+                                    var ffVars = envVars.GetOrAddValue("", () => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+                                    if(!ffVars.ContainsKey("system.runner.server.parameters")) {
+                                        var inputs = new JObject();
+                                        if(parameters.InputFiles?.Length > 0) {
+                                            foreach(var file in parameters.InputFiles) {
+                                                try {
+                                                    Util.ReadEnvFile(file, (k, v) => inputs[k] = v);
+                                                } catch(Exception ex) {
+                                                    Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                    return 1;
+                                                }
+                                            }
+                                        }
+                                        if(parameters.Inputs?.Length > 0) {
+                                            foreach(var input in parameters.Inputs) {
+                                                var kv = input.Split('=', 2);
+                                                inputs[kv[0]] = kv[1];
+                                            }
+                                        }
+                                        ffVars["system.runner.server.parameters"] = inputs.ToString();
+                                    }
                                     foreach(var envVarKv in envSecrets) {
                                         var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
                                         mp.Add(new StringContent(ser.Serialize(envVarKv.Value)), "actions-environment-secrets", $"{envVarKv.Key}.secrets");
@@ -2457,6 +2503,7 @@ namespace Runner.Client
                 parameters.Sha = bindingContext.ParseResult.GetValueForOption(shaOpt);
                 parameters.Ref = bindingContext.ParseResult.GetValueForOption(refOpt);
                 parameters.Inputs = bindingContext.ParseResult.GetValueForOption(workflowInputsOpt);
+                parameters.InputFiles = bindingContext.ParseResult.GetValueForOption(workflowInputFilesOpt);
                 parameters.Token = bindingContext.ParseResult.GetValueForOption(tokenOpt);
                 parameters.LocalRepositories = bindingContext.ParseResult.GetValueForOption(localrepositoriesOpt);
                 return parameters;
@@ -2475,8 +2522,9 @@ namespace Runner.Client
                         cmd.AddOption(opt);
                     }
                 }
-                if(ev == "workflow_dispatch" || ev == "azexpand") {
+                if(ev == "workflow_dispatch" || ev == "azexpand" || ev == "azpipelines") {
                     cmd.AddOption(workflowInputsOpt);
+                    cmd.AddOption(workflowInputFilesOpt);
                 }
             }
             var startserver = new Command("startserver", "Starts a server listening on the supplied address or selects a random free http address.");
