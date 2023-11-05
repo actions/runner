@@ -11,6 +11,10 @@ interface ILaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	program: string;
 	trace?: boolean;
 	watch?: boolean;
+	preview?: boolean;
+	repositories?: string[];
+	variables?: string[];
+	parameters?: string[];
 }
 
 interface IAttachRequestArguments extends ILaunchRequestArguments { }
@@ -22,6 +26,7 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
     name: string
     expandAzurePipeline: any
     changed: any
+	disposables: vscode.Disposable[]
 
 	public constructor(virtualFiles: any, name: string, expandAzurePipeline: any, changed: any) {
 		super("azure-pipelines-debug.yml");
@@ -31,6 +36,7 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
         this.name = name;
         this.expandAzurePipeline = expandAzurePipeline;
         this.changed = changed;
+		this.disposables = [];
 	}
 
 	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
@@ -67,11 +73,13 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 		return this.launchRequest(response, args);
 	}
 
-	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: any) {
-		logger.setup(args.trace ? Logger.LogLevel.Verbose : Logger.LogLevel.Stop, false);
+	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: ILaunchRequestArguments) {
+		logger.setup(args.trace ? Logger.LogLevel.Verbose : Logger.LogLevel.Warn, false);
 
 		var self = this;
 		var message = null;
+		var requestReOpen = false;
+		var assumeIsOpen = false;
 		if(args.preview) {
 			self.virtualFiles[self.name] = "";
 			var uri = vscode.Uri.from({
@@ -79,17 +87,40 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 				path: this.name
 			});
 			var doc = await vscode.workspace.openTextDocument(uri);
-			await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Beside, preserveFocus: true });
-			vscode.workspace.onDidCloseTextDocument(adoc => {
+			await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+			var previewIsOpen = () => vscode.window.tabGroups.all.some(g => g.tabs.some(t => t.input["uri"] && t.input["uri"].toString() === uri.toString()));
+			assumeIsOpen = !previewIsOpen();
+			if(assumeIsOpen) {
+				logger.error("failed to detect that the textdocument has been opended as a tab, assume that it is open and don't try to show it multiple times");
+			} else {
+				this.disposables.push(vscode.window.tabGroups.onDidChangeTabs(e => {
+					if(!previewIsOpen()) {
+						if(!requestReOpen) {
+							console.log(`file closed ${self.name}`);
+						}
+						requestReOpen = true;
+					} else {
+						if(requestReOpen) {
+							console.log(`file opened ${self.name}`);
+						}
+						requestReOpen = false;
+					}
+				}));
+			}
+			this.disposables.push(vscode.workspace.onDidCloseTextDocument(adoc => {
 				if(doc === adoc) {
-					this.sendEvent(new TerminatedEvent());
+					delete self.virtualFiles[self.name];
 				}
-			});
+			}));
 			self.changed(uri);
 		}
 		var run = async() => {
-			await this.expandAzurePipeline(false, args.repositories, args.variables, args.parameters, result => {
+			await this.expandAzurePipeline(false, args.repositories, args.variables, args.parameters, async result => {
 				if(args.preview) {
+					if(requestReOpen) {
+						await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+						requestReOpen = false;
+					}
 					self.virtualFiles[self.name] = result;
 					self.changed(uri);
 				} else {
@@ -97,6 +128,10 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 				}
 			}, args.program, async errmsg => {
 				if(args.preview) {
+					if(requestReOpen) {
+						await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+						requestReOpen = false;
+					}
 					self.virtualFiles[self.name] = errmsg;
 					self.changed(uri);
 				} else if(args.watch) {
@@ -148,6 +183,12 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
         if (this.watcher) {
             this.watcher.dispose();
         }
+		if (this.disposables) {
+			for(const disposable of this.disposables) {
+				disposable.dispose();
+			}
+		}
+		delete this.virtualFiles[self.name];
 		this.sendResponse(response);
 	}
 }

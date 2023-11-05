@@ -1,12 +1,13 @@
 {
 	"name": "azure-pipelines-vscode-ext",
-	"description": "Azure Pipelines VSCode Tools allows you to make local changes to Azure Pipeline Template Files, while beeing able to check for Syntax errors after expanding all templates into a single file before commit and pushing it to the repository",
+	"displayName": "Azure Pipelines Tools",
+	"description": "Azure Pipelines Tools allow you to make local changes to Azure Pipeline Template Files, while beeing able to check for Syntax errors after expanding all templates into a single file before commit and pushing it to the repository",
 	"categories": [
 		"Azure",
 		"Testing",
 		"Programming Languages"
 	],
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {

@@ -1,4 +1,4 @@
-# Azure Pipelines VSCode Extension
+# Azure Pipelines Tools VSCode Extension
 
 This is a minimal Azure Pipelines Extension, the first vscode Extension which can Validate and Expand Azure Pipeline YAML files locally without any REST service.
 
@@ -35,18 +35,84 @@ Sample Debugging configuration
     "request": "launch",
     "name": "Test Pipeline (watch)",
     "program": "${workspaceFolder}/azure-pipeline.yml",
-    "repositories": {},
-    "parameters": {},
-    "variables": {},
+    "repositories": {
+        "myrepo@windows": "file:///C:/AzurePipelines/myrepo",
+        "myrepo@unix": "file:///AzurePipelines/myrepo",
+        "myrepo@github": "vscode-vfs://github/AzurePipelines/myrepo", // Only default branch, url doesn't accept readable ref
+        "myrepo@azure": "vscode-vfs://azurerepos/AzurePipelines/myrepo/myrepo" // Only default branch, url doesn't accept readable ref
+    },
+    "parameters": {
+        "booleanparam": true,
+        "numberparam": 12,
+        "stringparam": "Hello World",
+        "objectparam": {
+            "booleanparam": true,
+            "numberparam": 12,
+            "stringparam": "Hello World",
+        },
+        "arrayparam": [
+            true,
+            12,
+            "Hello World"
+        ]
+    },
+    "variables": {
+        "system.debug": "true"
+    },
     "watch": true,
     "preview": true
 }
 ```
 
+Sample Pipeline which dumps the parameters object (legacy parameters syntax)
+```yaml
+parameters:
+  booleanparam:
+  numberparam:
+  stringparam:
+  objectparam:
+  arrayparam:
+steps:
+- script: echo '${{ converttojson(parameters) }}'
+- script: echo '${{ converttojson(variables) }}'
+```
+
+Output of the Sample Pipeline
+```yaml
+stages:
+- stage: 
+  jobs:
+  - job: 
+    steps:
+    - task: CmdLine@2
+      inputs:
+        script: |-
+          echo '{
+            "booleanparam": true,
+            "numberparam": 12,
+            "stringparam": "Hello World",
+            "objectparam": {
+              "booleanparam": true,
+              "numberparam": 12,
+              "stringparam": "Hello World"
+            },
+            "arrayparam": [
+              true,
+              12,
+              "Hello World"
+            ]
+          }'
+    - task: CmdLine@2
+      inputs:
+        script: |-
+          echo '{
+            "system.debug": "true"
+          }'
+```
+
 ## Pros
 - Make changes in multiple dependent template files and show a live preview on save
 - Everything is done locally
-- Whole template engine is open source
 - You can run template files with the same template engine locally using the Runner.Client tool using the official Azure Pipelines Agent
 - Fast feedback
 - Less trial and error commits
@@ -58,6 +124,10 @@ Sample Debugging configuration
 - You could self-host Azure Devops Server and commit your changes to your local system, may have license implications with more accurate results of the template engine
 - May not have feature parity with Azure Pipelines
 - Missing predefined Variables, feel free to add them manually as needed
+
+## Available in the VSCode Marketplace
+
+[christopherhx.azure-pipelines-vscode-ext](https://marketplace.visualstudio.com/items?itemName=christopherhx.azure-pipelines-vscode-ext)
 
 ## Running the Extension
 
