@@ -78,8 +78,8 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 
 		var self = this;
 		var message = null;
-		var requestReOpen = false;
-		var documentClosed = false;
+		var requestReOpen = true;
+		var documentClosed = true;
 		var assumeIsOpen = false;
 		var doc = null;
 		var uri = vscode.Uri.from({

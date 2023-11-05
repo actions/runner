@@ -153,3 +153,4 @@ npm run build
 
 ### v0.0.6
 - Fix handling of required parameters of type number
+- Add an Azure Pipelines Debug Adapter for pipeline specfic configurations and watching for file changes
