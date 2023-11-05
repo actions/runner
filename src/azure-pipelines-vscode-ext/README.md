@@ -138,3 +138,18 @@ npm run build
 ```
 
 - Run vscode target "Run azure-pipelines-vscode-ext Extension" to test it
+
+## Changelog
+
+### v0.0.8
+
+- Fix an unhandled exception introduced in v0.0.7 while running the debugger
+- Fix an error if the preview pane is closed for an extended amount of time
+
+### v0.0.7
+
+- Reopen the pipeline preview if closed, when updating a yaml file
+- Fix handling of backslash in paths
+
+### v0.0.6
+- Fix handling of required parameters of type number

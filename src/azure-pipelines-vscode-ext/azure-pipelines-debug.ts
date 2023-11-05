@@ -79,16 +79,27 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 		var self = this;
 		var message = null;
 		var requestReOpen = false;
+		var documentClosed = false;
 		var assumeIsOpen = false;
+		var doc = null;
+		var uri = vscode.Uri.from({
+			scheme: "azure-pipelines-vscode-ext",
+			path: this.name
+		});
+		var reopenPreviewIfNeeded = async () => {
+			if(requestReOpen) {
+				if(documentClosed || !doc || doc.isClosed) {
+					self.virtualFiles[self.name] = "";
+					doc = await vscode.workspace.openTextDocument(uri);
+				}
+				await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
+				requestReOpen = false;
+				documentClosed = false;
+			}
+		};
 		if(args.preview) {
-			self.virtualFiles[self.name] = "";
-			var uri = vscode.Uri.from({
-				scheme: "azure-pipelines-vscode-ext",
-				path: this.name
-			});
-			var doc = await vscode.workspace.openTextDocument(uri);
-			await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
-			var previewIsOpen = () => vscode.window.tabGroups.all.some(g => g.tabs.some(t => t.input["uri"] && t.input["uri"].toString() === uri.toString()));
+			await reopenPreviewIfNeeded();
+			var previewIsOpen = () => vscode.window.tabGroups && vscode.window.tabGroups.all && vscode.window.tabGroups.all.some(g => g && g.tabs && g.tabs.some(t => t && t.input && t.input["uri"] && t.input["uri"].toString() === uri.toString()));
 			assumeIsOpen = !previewIsOpen();
 			if(assumeIsOpen) {
 				logger.error("failed to detect that the textdocument has been opended as a tab, assume that it is open and don't try to show it multiple times");
@@ -110,6 +121,8 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 			this.disposables.push(vscode.workspace.onDidCloseTextDocument(adoc => {
 				if(doc === adoc) {
 					delete self.virtualFiles[self.name];
+					console.log(`document closed ${self.name}`);
+					documentClosed = true;
 				}
 			}));
 			self.changed(uri);
@@ -117,10 +130,7 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 		var run = async() => {
 			await this.expandAzurePipeline(false, args.repositories, args.variables, args.parameters, async result => {
 				if(args.preview) {
-					if(requestReOpen) {
-						await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
-						requestReOpen = false;
-					}
+					await reopenPreviewIfNeeded();
 					self.virtualFiles[self.name] = result;
 					self.changed(uri);
 				} else {
@@ -128,10 +138,7 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 				}
 			}, args.program, async errmsg => {
 				if(args.preview) {
-					if(requestReOpen) {
-						await vscode.window.showTextDocument(doc, { preview: true, viewColumn: vscode.ViewColumn.Two, preserveFocus: true });
-						requestReOpen = false;
-					}
+					await reopenPreviewIfNeeded();
 					self.virtualFiles[self.name] = errmsg;
 					self.changed(uri);
 				} else if(args.watch) {
