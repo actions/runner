@@ -15,34 +15,33 @@ namespace GitHub.DistributedTask.WebApi
         internal RunnerRefreshMessage()
         {
         }
-        public RunnerRefreshMessage(String targetVersion)
-        {
-            this.TargetVersion = targetVersion;
-        }
 
-        [DataMember]
+        [DataMember(Name = "target_version")]
         public String TargetVersion
-        {
-            get;
-            private set;
-        }
-
-        [DataMember]
-        public BrokerPackageMetadata Package
         {
             get;
             set;
         }
 
-        public PackageMetadata GetPackageMetadata()
+        [DataMember(Name = "download_url")]
+        public string DownloadUrl
         {
-            return new PackageMetadata()
-            {
-                DownloadUrl = this.Package?.DownloadUrl,
-                HashValue = this.Package?.HashValue,
-                Platform = this.Package?.Platform,
-                Version = new PackageVersion(this.TargetVersion)
-            };
+            get;
+            set;
+        }
+
+        [DataMember(Name = "sha256_checksum")]
+        public string HashValue
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Name = "os")]
+        public string Platform
+        {
+            get;
+            set;
         }
     }
 }

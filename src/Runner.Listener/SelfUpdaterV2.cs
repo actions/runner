@@ -32,7 +32,6 @@ namespace GitHub.Runner.Listener
     public class SelfUpdaterV2 : RunnerService, ISelfUpdaterV2
     {
         private static string _platform = BuildConstants.RunnerPackage.PackageName;
-        private PackageMetadata _targetPackage;
         private ITerminal _terminal;
         private IRunnerServer _runnerServer;
         private int _poolId;
@@ -54,20 +53,19 @@ namespace GitHub.Runner.Listener
 
         public async Task<bool> SelfUpdate(RunnerRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token)
         {
-            _targetPackage = updateMessage.GetPackageMetadata();
             Busy = true;
             try
             {
                 var totalUpdateTime = Stopwatch.StartNew();
 
                 Trace.Info($"An update is available.");
-                _updateTrace.Enqueue($"RunnerPlatform: {_targetPackage.Platform}");
+                _updateTrace.Enqueue($"RunnerPlatform: {updateMessage.Platform}");
 
                 // Print console line that warn user not shutdown runner.
                 _terminal.WriteLine("Runner update in progress, do not shutdown runner.");
-                _terminal.WriteLine($"Downloading {_targetPackage.Version} runner");
+                _terminal.WriteLine($"Downloading {updateMessage.TargetVersion} runner");
 
-                await DownloadLatestRunner(token, updateMessage.TargetVersion);
+                await DownloadLatestRunner(token, updateMessage.TargetVersion, updateMessage.DownloadUrl, updateMessage.HashValue, updateMessage.Platform);
                 Trace.Info($"Download latest runner and unzip into runner root.");
 
                 // wait till all running job finish
@@ -79,14 +77,14 @@ namespace GitHub.Runner.Listener
                 // We need to keep runner backup around for macOS until we fixed https://github.com/actions/runner/issues/743
                 // delete runner backup
                 var stopWatch = Stopwatch.StartNew();
-                DeletePreviousVersionRunnerBackup(token);
+                DeletePreviousVersionRunnerBackup(token, updateMessage.TargetVersion);
                 Trace.Info($"Delete old version runner backup.");
                 stopWatch.Stop();
                 // generate update script from template
                 _updateTrace.Enqueue($"DeleteRunnerBackupTime: {stopWatch.ElapsedMilliseconds}ms");
                 _terminal.WriteLine("Generate and execute update script.");
 
-                string updateScript = GenerateUpdateScript(restartInteractiveRunner);
+                string updateScript = GenerateUpdateScript(restartInteractiveRunner, updateMessage.TargetVersion);
                 Trace.Info($"Generate update script into: {updateScript}");
 
 
@@ -138,15 +136,13 @@ namespace GitHub.Runner.Listener
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        private async Task DownloadLatestRunner(CancellationToken token, string targetVersion)
+        private async Task DownloadLatestRunner(CancellationToken token, string targetVersion, string packageDownloadUrl, string packageHashValue, string targetPlatform)
         {
             string latestRunnerDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.UpdateDirectory);
             IOUtil.DeleteDirectory(latestRunnerDirectory, token);
             Directory.CreateDirectory(latestRunnerDirectory);
 
             string archiveFile = null;
-            var packageDownloadUrl = _targetPackage.DownloadUrl;
-            var packageHashValue = _targetPackage.HashValue;
 
             // Only try trimmed package if sever sends them and we have calculated hash value of the current runtime/externals.
             _updateTrace.Enqueue($"DownloadUrl: {packageDownloadUrl}");
@@ -171,7 +167,7 @@ namespace GitHub.Runner.Listener
                         Debugger.Break();
                     }
 
-                    if (_targetPackage.Platform.StartsWith("win"))
+                    if (targetPlatform.StartsWith("win"))
                     {
                         archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.zip");
                     }
@@ -196,7 +192,7 @@ namespace GitHub.Runner.Listener
                 // archiveFile is not null only if we mocked it above
                 if (string.IsNullOrEmpty(archiveFile))
                 {
-                    archiveFile = await DownLoadRunner(latestRunnerDirectory, packageDownloadUrl, packageHashValue, token);
+                    archiveFile = await DownLoadRunner(latestRunnerDirectory, packageDownloadUrl, packageHashValue, targetPlatform, token);
 
                     if (string.IsNullOrEmpty(archiveFile))
                     {
@@ -225,10 +221,10 @@ namespace GitHub.Runner.Listener
                 }
             }
 
-            await CopyLatestRunnerToRoot(latestRunnerDirectory, token);
+            await CopyLatestRunnerToRoot(latestRunnerDirectory, targetVersion, token);
         }
 
-        private async Task<string> DownLoadRunner(string downloadDirectory, string packageDownloadUrl, string packageHashValue, CancellationToken token)
+        private async Task<string> DownLoadRunner(string downloadDirectory, string packageDownloadUrl, string packageHashValue, string packagePlatform, CancellationToken token)
         {
             var stopWatch = Stopwatch.StartNew();
             int runnerSuffix = 1;
@@ -241,7 +237,7 @@ namespace GitHub.Runner.Listener
                 // Generate an available package name, and do our best effort to clean up stale local zip files
                 while (true)
                 {
-                    if (_targetPackage.Platform.StartsWith("win"))
+                    if (packagePlatform.StartsWith("win"))
                     {
                         archiveFile = Path.Combine(downloadDirectory, $"runner{runnerSuffix}.zip");
                     }
@@ -288,12 +284,6 @@ namespace GitHub.Runner.Listener
                         //open zip stream in async mode
                         using (HttpClient httpClient = new(HostContext.CreateHttpClientHandler()))
                         {
-                            if (!string.IsNullOrEmpty(_targetPackage.Token))
-                            {
-                                Trace.Info($"Adding authorization token ({_targetPackage.Token.Length} chars)");
-                                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _targetPackage.Token);
-                            }
-
                             Trace.Info($"Downloading {packageDownloadUrl}");
 
                             using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
@@ -420,18 +410,18 @@ namespace GitHub.Runner.Listener
             _updateTrace.Enqueue($"PackageExtractTime: {stopWatch.ElapsedMilliseconds}ms");
         }
 
-        private Task CopyLatestRunnerToRoot(string latestRunnerDirectory, CancellationToken token)
+        private Task CopyLatestRunnerToRoot(string latestRunnerDirectory, string targetVersion, CancellationToken token)
         {
             var stopWatch = Stopwatch.StartNew();
             // copy latest runner into runner root folder
             // copy bin from _work/_update -> bin.version under root
-            string binVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.BinDirectory}.{_targetPackage.Version}");
+            string binVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.BinDirectory}.{targetVersion}");
             Directory.CreateDirectory(binVersionDir);
             Trace.Info($"Copy {Path.Combine(latestRunnerDirectory, Constants.Path.BinDirectory)} to {binVersionDir}.");
             IOUtil.CopyDirectory(Path.Combine(latestRunnerDirectory, Constants.Path.BinDirectory), binVersionDir, token);
 
             // copy externals from _work/_update -> externals.version under root
-            string externalsVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.ExternalsDirectory}.{_targetPackage.Version}");
+            string externalsVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.ExternalsDirectory}.{targetVersion}");
             Directory.CreateDirectory(externalsVersionDir);
             Trace.Info($"Copy {Path.Combine(latestRunnerDirectory, Constants.Path.ExternalsDirectory)} to {externalsVersionDir}.");
             IOUtil.CopyDirectory(Path.Combine(latestRunnerDirectory, Constants.Path.ExternalsDirectory), externalsVersionDir, token);
@@ -454,7 +444,7 @@ namespace GitHub.Runner.Listener
             return Task.CompletedTask;
         }
 
-        private void DeletePreviousVersionRunnerBackup(CancellationToken token)
+        private void DeletePreviousVersionRunnerBackup(CancellationToken token, string targetVersion)
         {
             // delete previous backup runner (back compat, can be remove after serval sprints)
             // bin.bak.2.99.0
@@ -483,7 +473,7 @@ namespace GitHub.Runner.Listener
                 {
                     if (string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin"), StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{BuildConstants.RunnerPackage.Version}"), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
+                        string.Equals(oldBinDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"bin.{targetVersion}"), StringComparison.OrdinalIgnoreCase))
                     {
                         // skip for current runner version
                         continue;
@@ -512,7 +502,7 @@ namespace GitHub.Runner.Listener
                 {
                     if (string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals"), StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{BuildConstants.RunnerPackage.Version}"), StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{_targetPackage.Version}"), StringComparison.OrdinalIgnoreCase))
+                        string.Equals(oldExternalDir, Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"externals.{targetVersion}"), StringComparison.OrdinalIgnoreCase))
                     {
                         // skip for current runner version
                         continue;
@@ -532,7 +522,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private string GenerateUpdateScript(bool restartInteractiveRunner)
+        private string GenerateUpdateScript(bool restartInteractiveRunner, string targetVersion)
         {
             int processId = Process.GetCurrentProcess().Id;
             string updateLog = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Diag), $"SelfUpdate-{DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")}.log");
@@ -544,14 +534,14 @@ namespace GitHub.Runner.Listener
             string templateName = "update.sh.template";
 #endif
 
-            string templatePath = Path.Combine(runnerRoot, $"bin.{_targetPackage.Version}", templateName);
+            string templatePath = Path.Combine(runnerRoot, $"bin.{targetVersion}", templateName);
             string template = File.ReadAllText(templatePath);
 
             template = template.Replace("_PROCESS_ID_", processId.ToString());
             template = template.Replace("_RUNNER_PROCESS_NAME_", $"Runner.Listener{IOUtil.ExeExtension}");
             template = template.Replace("_ROOT_FOLDER_", runnerRoot);
             template = template.Replace("_EXIST_RUNNER_VERSION_", BuildConstants.RunnerPackage.Version);
-            template = template.Replace("_DOWNLOAD_RUNNER_VERSION_", _targetPackage.Version);
+            template = template.Replace("_DOWNLOAD_RUNNER_VERSION_", targetVersion);
             template = template.Replace("_UPDATE_LOG_", updateLog);
             template = template.Replace("_RESTART_INTERACTIVE_RUNNER_", restartInteractiveRunner ? "1" : "0");
 

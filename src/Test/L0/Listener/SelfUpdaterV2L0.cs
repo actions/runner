@@ -108,13 +108,12 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     try
                     {
-                        var message = new RunnerRefreshMessage("2.999.0")
+                        var message = new RunnerRefreshMessage()
                         {
-                            Package = new BrokerPackageMetadata()
-                            {
-                                Platform = BuildConstants.RunnerPackage.PackageName,
-                                DownloadUrl = _packageUrl
-                            }
+                            TargetVersion = "2.999.0",
+                            Platform = BuildConstants.RunnerPackage.PackageName,
+                            DownloadUrl = _packageUrl
+
                         };
 
                         var result = await updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
@@ -169,13 +168,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.EnqueueInstance<IProcessInvoker>(p3);
                     updater.Initialize(hc);
 
-                    var message = new RunnerRefreshMessage("2.999.0")
+                    var message = new RunnerRefreshMessage()
                     {
-                        Package = new BrokerPackageMetadata()
-                        {
-                            Platform = BuildConstants.RunnerPackage.PackageName,
-                            DownloadUrl = "https://github.com/actions/runner/notexists"
-                        }
+                        TargetVersion = "2.999.0",
+                        Platform = BuildConstants.RunnerPackage.PackageName,
+                        DownloadUrl = "https://github.com/actions/runner/notexists"
                     };
 
                     var ex = await Assert.ThrowsAsync<TaskCanceledException>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
@@ -222,14 +219,12 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.EnqueueInstance<IProcessInvoker>(p3);
                     updater.Initialize(hc);
 
-                    var message = new RunnerRefreshMessage("2.999.0")
+                    var message = new RunnerRefreshMessage()
                     {
-                        Package = new BrokerPackageMetadata()
-                        {
-                            Platform = BuildConstants.RunnerPackage.PackageName,
-                            DownloadUrl = _packageUrl,
-                            HashValue = "badhash"
-                        }
+                        TargetVersion = "2.999.0",
+                        Platform = BuildConstants.RunnerPackage.PackageName,
+                        DownloadUrl = _packageUrl,
+                        HashValue = "badhash"
                     };
 
                     var ex = await Assert.ThrowsAsync<Exception>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
