@@ -73,11 +73,11 @@ namespace GitHub.Runner.Listener
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
                 {
-                    message = await _brokerServer.GetRunnerMessageAsync(_getMessagesTokenSource.Token, 
-                                                                        runnerStatus, 
-                                                                        BuildConstants.RunnerPackage.Version, 
-                                                                        VarUtil.OS, 
-                                                                        VarUtil.OSArchitecture, 
+                    message = await _brokerServer.GetRunnerMessageAsync(_getMessagesTokenSource.Token,
+                                                                        runnerStatus,
+                                                                        BuildConstants.RunnerPackage.Version,
+                                                                        VarUtil.OS,
+                                                                        VarUtil.OSArchitecture,
                                                                         _settings.DisableUpdate);
 
                     if (message == null)
