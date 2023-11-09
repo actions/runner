@@ -11,7 +11,7 @@ function activate(context) {
 	customImports["dotnet.runtime.js"] = require("./build/AppBundle/_framework/dotnet.runtime.js");
 	customImports["dotnet.native.js"] = require("./build/AppBundle/_framework/dotnet.native.js");
 
-	var logchannel = vscode.window.createOutputChannel("Azure Pipeline Evalation Log", { log: true });
+	var logchannel = vscode.window.createOutputChannel("Azure Pipeline Evaluation Log", { log: true });
 
 	var virtualFiles = {};
 	var myScheme = "azure-pipelines-vscode-ext";
