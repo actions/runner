@@ -127,7 +127,7 @@ stages:
 
 ## Available in the VSCode Marketplace
 
-[christopherhx.azure-pipelines-vscode-ext](https://marketplace.visualstudio.com/items?itemName=christopherhx.azure-pipelines-vscode-ext)
+[Azure Pipelines Tools](https://marketplace.visualstudio.com/items?itemName=christopherhx.azure-pipelines-vscode-ext)
 
 ## Running the Extension
 
@@ -140,6 +140,10 @@ npm run build
 - Run vscode target "Run azure-pipelines-vscode-ext Extension" to test it
 
 ## Changelog
+
+### v0.0.9
+
+- Fix an error of non boolean if results
 
 ### v0.0.8
 

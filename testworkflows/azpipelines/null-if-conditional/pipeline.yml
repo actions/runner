@@ -1,0 +1,27 @@
+parameters:
+  - name: a
+    type: object
+    default: null
+steps:
+- ${{ each x in parameters.a }}:
+    - script: echo ${{ x }}
+- ${{ if parameters.a }}:
+    - error: assert
+- ${{ else }}:
+    - script: echo ok
+- ${{ if 0 }}:
+    - error: assert
+- ${{ else }}:
+    - script: echo ok
+- ${{ if 0.0.0.0 }}:
+    - script: echo ok
+- ${{ else }}:
+    - error: assert
+- ${{ if 'False' }}:
+    - script: echo ok
+- ${{ else }}:
+    - error: assert
+- ${{ if 1 }}:
+    - script: echo ok
+- ${{ else }}:
+    - error: assert

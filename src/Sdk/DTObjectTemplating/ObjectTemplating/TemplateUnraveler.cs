@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -894,7 +895,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             bool skip = false;
             bool metastate = false;
             if(expressionState.Value.Type == TokenType.IfExpression || (parentMappingState != null && parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip) || parentSequenceState != null && parentSequenceState.IfExpressionResults.TryGetValue(parentSequenceState.Index - 1, out skip)) && skip) {
-                metastate = skip = expressionState.Value.Type == TokenType.ElseExpression ? false : !new BasicExpressionToken(expressionState.Value.FileId, expressionState.Value.Line, expressionState.Value.Column, expressionState.Value.Condition).EvaluateTemplateToken(m_context, out _).AssertBoolean("bool").Value;
+                metastate = skip = expressionState.Value.Type == TokenType.ElseExpression ? false : !PipelineTemplateConverter.ConvertToIfResult(m_context, new BasicExpressionToken(expressionState.Value.FileId, expressionState.Value.Line, expressionState.Value.Column, expressionState.Value.Condition).EvaluateTemplateToken(m_context, out _));
             } else {
                 skip = true;
                 metastate = false;
