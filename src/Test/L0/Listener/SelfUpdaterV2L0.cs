@@ -111,7 +111,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         var message = new RunnerRefreshMessage()
                         {
                             TargetVersion = "2.999.0",
-                            Platform = BuildConstants.RunnerPackage.PackageName,
+                            OS = BuildConstants.RunnerPackage.PackageName,
                             DownloadUrl = _packageUrl
 
                         };
@@ -171,7 +171,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     var message = new RunnerRefreshMessage()
                     {
                         TargetVersion = "2.999.0",
-                        Platform = BuildConstants.RunnerPackage.PackageName,
+                        OS = BuildConstants.RunnerPackage.PackageName,
                         DownloadUrl = "https://github.com/actions/runner/notexists"
                     };
 
@@ -222,9 +222,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                     var message = new RunnerRefreshMessage()
                     {
                         TargetVersion = "2.999.0",
-                        Platform = BuildConstants.RunnerPackage.PackageName,
+                        OS = BuildConstants.RunnerPackage.PackageName,
                         DownloadUrl = _packageUrl,
-                        HashValue = "badhash"
+                        SHA256Checksum = "badhash"
                     };
 
                     var ex = await Assert.ThrowsAsync<Exception>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));

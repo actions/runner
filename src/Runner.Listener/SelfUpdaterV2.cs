@@ -59,13 +59,13 @@ namespace GitHub.Runner.Listener
                 var totalUpdateTime = Stopwatch.StartNew();
 
                 Trace.Info($"An update is available.");
-                _updateTrace.Enqueue($"RunnerPlatform: {updateMessage.Platform}");
+                _updateTrace.Enqueue($"RunnerPlatform: {updateMessage.OS}");
 
                 // Print console line that warn user not shutdown runner.
                 _terminal.WriteLine("Runner update in progress, do not shutdown runner.");
                 _terminal.WriteLine($"Downloading {updateMessage.TargetVersion} runner");
 
-                await DownloadLatestRunner(token, updateMessage.TargetVersion, updateMessage.DownloadUrl, updateMessage.HashValue, updateMessage.Platform);
+                await DownloadLatestRunner(token, updateMessage.TargetVersion, updateMessage.DownloadUrl, updateMessage.SHA256Checksum, updateMessage.OS);
                 Trace.Info($"Download latest runner and unzip into runner root.");
 
                 // wait till all running job finish

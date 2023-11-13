@@ -31,14 +31,14 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(Name = "sha256_checksum")]
-        public string HashValue
+        public string SHA256Checksum
         {
             get;
             set;
         }
 
         [DataMember(Name = "os")]
-        public string Platform
+        public string OS
         {
             get;
             set;
