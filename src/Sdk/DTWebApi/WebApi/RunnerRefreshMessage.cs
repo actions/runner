@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 
 
@@ -15,35 +16,32 @@ namespace GitHub.DistributedTask.WebApi
         {
         }
 
-        public RunnerRefreshMessage(
-            ulong runnerId,
-            String targetVersion,
-            int? timeoutInSeconds = null)
-        {
-            this.RunnerId = runnerId;
-            this.TimeoutInSeconds = timeoutInSeconds ?? TimeSpan.FromMinutes(60).Seconds;
-            this.TargetVersion = targetVersion;
-        }
-
-        [DataMember]
-        public ulong RunnerId
-        {
-            get;
-            private set;
-        }
-
-        [DataMember]
-        public int TimeoutInSeconds
-        {
-            get;
-            private set;
-        }
-
-        [DataMember]
+        [DataMember(Name = "target_version")]
         public String TargetVersion
         {
             get;
-            private set;
+            set;
+        }
+
+        [DataMember(Name = "download_url")]
+        public string DownloadUrl
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Name = "sha256_checksum")]
+        public string SHA256Checksum
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Name = "os")]
+        public string OS
+        {
+            get;
+            set;
         }
     }
 }
