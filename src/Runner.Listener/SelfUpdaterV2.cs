@@ -465,11 +465,12 @@ namespace GitHub.Runner.Listener
                 }
             }
 
+            var numberOfOldVersionsToKeep = 1;
             // delete old bin.2.99.0 folder, only leave the current version and the latest download version
             var allBinDirs = Directory.GetDirectories(HostContext.GetDirectory(WellKnownDirectory.Root), "bin.*");
-            if (allBinDirs.Length > 2)
+            if (allBinDirs.Length > numberOfOldVersionsToKeep)
             {
-                // there are more than 2 bin.version folder.
+                // there are more than {numberOfOldVersionsToKeep} bin.version folder.
                 // delete older bin.version folders.
                 foreach (var oldBinDir in allBinDirs)
                 {
@@ -496,9 +497,9 @@ namespace GitHub.Runner.Listener
 
             // delete old externals.2.99.0 folder, only leave the current version and the latest download version
             var allExternalsDirs = Directory.GetDirectories(HostContext.GetDirectory(WellKnownDirectory.Root), "externals.*");
-            if (allExternalsDirs.Length > 2)
+            if (allExternalsDirs.Length > numberOfOldVersionsToKeep)
             {
-                // there are more than 2 externals.version folder.
+                // there are more than {numberOfOldVersionsToKeep} externals.version folder.
                 // delete older externals.version folders.
                 foreach (var oldExternalDir in allExternalsDirs)
                 {
