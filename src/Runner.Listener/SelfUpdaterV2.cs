@@ -88,6 +88,7 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Generate update script into: {updateScript}");
 
 
+#if DEBUG
                 // For L0, we will skip execute update script.
                 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_EXECUTE_UPDATE_SCRIPT")))
                 {
@@ -105,6 +106,7 @@ namespace GitHub.Runner.Listener
                     invokeScript.Start();
                     Trace.Info($"Update script start running");
                 }
+#endif
 
                 totalUpdateTime.Stop();
 
