@@ -463,6 +463,7 @@ namespace GitHub.DistributedTask.WebApi
             string runnerVersion = null,
             string os = null,
             string architecture = null,
+            bool? disableUpdate = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -493,6 +494,11 @@ namespace GitHub.DistributedTask.WebApi
             if (architecture != null)
             {
                 queryParams.Add("architecture", architecture);
+            }
+
+            if (disableUpdate != null)
+            {
+                queryParams.Add("disableUpdate", disableUpdate.Value.ToString().ToLower());
             }
 
             return SendAsync<TaskAgentMessage>(
