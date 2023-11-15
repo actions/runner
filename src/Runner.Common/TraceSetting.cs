@@ -24,7 +24,7 @@ namespace GitHub.Runner.Common
                 // force user's TraceLevel to comply with runner TraceLevel enums
                 traceLevel = Math.Clamp(traceLevel, 0, 5);
 
-                DefaultTraceLevel = (TraceLevel) traceLevel;
+                DefaultTraceLevel = (TraceLevel)traceLevel;
             }
         }
 
