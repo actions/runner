@@ -172,6 +172,43 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+        [Theory]
+        [InlineData("randomString", "0", "VERB", "FALSELEVEL")]
+        [InlineData("", "-1", "", "INFO")]
+        [InlineData("", "6", "VERB", "FALSELEVEL")]
+        [InlineData("", "99", "VERB", "FALSELEVEL")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void TraceLevel(string trace, string traceLevel, string mustContainTraceLevel, string mustNotContainTraceLevel)
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TRACE", trace);
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_TRACE_LEVEL", traceLevel);
+
+                // Arrange.
+                Setup();
+                _hc.SetDefaultCulture("hu-HU"); // logs [VERB] if traceLevel allows it
+
+                // Assert.
+                var logFile = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), $"trace_{nameof(HostContextL0)}_{nameof(TraceLevel)}.log");
+                var tempFile = Path.GetTempFileName();
+                File.Delete(tempFile);
+                File.Copy(logFile, tempFile);
+
+                var content = File.ReadAllText(tempFile);
+                Assert.Contains($"{mustContainTraceLevel}", content);
+                Assert.DoesNotContain($"{mustNotContainTraceLevel}", content);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TRACE", null);
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_TRACE_LEVEL", null);
+                // Cleanup.
+                Teardown();
+            }
+        }
+
         private void Setup([CallerMemberName] string testName = "")
         {
             _tokenSource = new CancellationTokenSource();

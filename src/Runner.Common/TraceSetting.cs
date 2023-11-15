@@ -19,6 +19,13 @@ namespace GitHub.Runner.Common
             {
                 DefaultTraceLevel = TraceLevel.Verbose;
             }
+            else if (int.TryParse(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_TRACE_LEVEL"), out var traceLevel))
+            {
+                // force user's TraceLevel to comply with runner TraceLevel enums
+                traceLevel = Math.Clamp(traceLevel, 0, 5);
+
+                DefaultTraceLevel = (TraceLevel) traceLevel;
+            }
         }
 
         [DataMember(EmitDefaultValue = false)]
