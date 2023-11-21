@@ -86,6 +86,7 @@ namespace Runner.Server
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddHttpLogging(logging => {}); // dotnet 8.0 breaking See https://github.com/dotnet/aspnetcore/issues/51322
             services.TryAddSingleton<IPolicyEvaluator, AgentAuthenticationPolicyEvaluator>();
 
             services.AddControllers(options => {
