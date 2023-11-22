@@ -1,0 +1,6 @@
+steps:
+- ${{ if false }}:
+  # This else token is not an error if skipped by if
+  - ${{ else }}:
+- ${{ else }}:
+  - script: noop

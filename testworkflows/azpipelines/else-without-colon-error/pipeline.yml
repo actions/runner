@@ -1,0 +1,7 @@
+# ExpectedException: TemplateValidationException
+# ExpectedErrorMessage: else
+steps:
+- ${{ if false }}:
+  - ${{ else }}
+- ${{ else }}:
+  - script: noop
