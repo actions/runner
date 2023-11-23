@@ -178,7 +178,7 @@ namespace GitHub.Runner.Common
             public static readonly string DetectedNodeAfterEndOfLifeMessage = "Node.js 16 actions are deprecated. Please update the following actions to use Node.js 20: {0}. For more information see: https://github.blog/changelog/2023-09-22-github-actions-transitioning-from-node-16-to-node-20/.";
             public static readonly string DeprecatedNodeDetectedAfterEndOfLifeActions = "DeprecatedNodeActionsMessageWarnings";
             public static readonly string DeprecatedNodeVersion = "node16";
-            public static readonly string EnforcedNode12DetectedAfterEndOfLife = "The following actions uses node12 which is deprecated and will be forced to run on node16: {0}. For more info: https://github.blog/changelog/2023-06-13-github-actions-all-actions-will-run-on-node16-instead-of-node12-by-default/";
+            public static readonly string EnforcedNode12DetectedAfterEndOfLife = "The following actions use node12 which is deprecated and will be forced to run on node16: {0}. For more info: https://github.blog/changelog/2023-06-13-github-actions-all-actions-will-run-on-node16-instead-of-node12-by-default/";
             public static readonly string EnforcedNode12DetectedAfterEndOfLifeEnvVariable = "Node16ForceActionsWarnings";
         }
 
