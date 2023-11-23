@@ -59,6 +59,9 @@ namespace GitHub.Actions.RunService.WebApi
         public async Task<TaskAgentMessage> GetRunnerMessageAsync(
             string runnerVersion,
             TaskAgentStatus? status,
+            string os = null,
+            string architecture = null,
+            bool? disableUpdate = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -73,6 +76,21 @@ namespace GitHub.Actions.RunService.WebApi
             if (runnerVersion != null)
             {
                 queryParams.Add("runnerVersion", runnerVersion);
+            }
+
+            if (os != null)
+            {
+                queryParams.Add("os", os);
+            }
+
+            if (architecture != null)
+            {
+                queryParams.Add("architecture", architecture);
+            }
+
+            if (disableUpdate != null)
+            {
+                queryParams.Add("disableUpdate", disableUpdate.Value.ToString().ToLower());
             }
 
             var result = await SendAsync<TaskAgentMessage>(

@@ -457,22 +457,13 @@ namespace GitHub.Runner.Listener
 
                             message = await getNextMessage; //get next message
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
-                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
-                                    AgentRefreshMessage runnerUpdateMessage = null;
-                                    if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
-                                    }
-                                    else
-                                    {
-                                        var brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
-                                        runnerUpdateMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds));
-                                    }
+                                    AgentRefreshMessage runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+
 #if DEBUG
                                     // Can mock the update for testing
                                     if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
@@ -496,6 +487,22 @@ namespace GitHub.Runner.Listener
 #endif
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
                                     selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                    Trace.Info("Refresh message received, kick-off selfupdate background process.");
+                                }
+                                else
+                                {
+                                    Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
+                                }
+                            }
+                            else if (string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (autoUpdateInProgress == false)
+                                {
+                                    autoUpdateInProgress = true;
+                                    RunnerRefreshMessage brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
+
+                                    var selfUpdater = HostContext.GetService<ISelfUpdaterV2>();
+                                    selfUpdateTask = selfUpdater.SelfUpdate(brokerRunnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else

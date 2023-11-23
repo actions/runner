@@ -1,37 +1,20 @@
 ## What's Changed
-* Bump @types/node from 12.12.14 to 20.4.10 in /src/Misc/expressionFunc/hashFiles by @dependabot in https://github.com/actions/runner/pull/2759
-* Trace x-github-request-id when download action tarball. by @TingluoHuang in https://github.com/actions/runner/pull/2755
-* Fix typo by @kyanny in https://github.com/actions/runner/pull/2741
-* Bump prettier from 3.0.1 to 3.0.2 in /src/Misc/expressionFunc/hashFiles by @dependabot in https://github.com/actions/runner/pull/2772
-* Bump @types/node from 20.4.10 to 20.5.0 in /src/Misc/expressionFunc/hashFiles by @dependabot in https://github.com/actions/runner/pull/2773
-* Revert "Fixed a bug where a misplaced `=` character could bypass here… by @cory-miller in https://github.com/actions/runner/pull/2774
-* Filter NODE_OPTIONS from env for file output by @cory-miller in https://github.com/actions/runner/pull/2775
-* Bump @types/node from 20.5.0 to 20.5.1 in /src/Misc/expressionFunc/hashFiles by @dependabot in https://github.com/actions/runner/pull/2781
-* Update Docker Version in Images by @ajschmidt8 in https://github.com/actions/runner/pull/2694
-* Bump @types/node from 20.5.1 to 20.5.4 in /src/Misc/expressionFunc/hashFiles by @dependabot in https://github.com/actions/runner/pull/2789
-* Bump @typescript-eslint/parser from 6.4.0 to 6.4.1 in /src/Misc/expressionFunc/hashFiles by @dependabot in https://github.com/actions/runner/pull/2785
-* Bump Microsoft.AspNet.WebApi.Client from 5.2.4 to 5.2.9 in /src by @dependabot in https://github.com/actions/runner/pull/2751
-* Bump System.Buffers from 4.3.0 to 4.5.1 in /src by @dependabot in https://github.com/actions/runner/pull/2749
-* Bump dotnet/runtime-deps from 6.0-jammy to 7.0-jammy in /images by @dependabot in https://github.com/actions/runner/pull/2745
-* Remove need to manually compile JS binary for hashFiles utility by @vanZeben in https://github.com/actions/runner/pull/2770
-* Revert "Bump dotnet/runtime-deps from 6.0-jammy to 7.0-jammy in /images" by @TingluoHuang in https://github.com/actions/runner/pull/2790
-* Query runner by name on server side. by @TingluoHuang in https://github.com/actions/runner/pull/2771
-* Bump typescript from 5.1.6 to 5.2.2 in /src/Misc/expressionFunc/hashFiles by @dependabot in https://github.com/actions/runner/pull/2795
-* Bump @types/node from 20.5.4 to 20.5.6 in /src/Misc/expressionFunc/hashFiles by @dependabot in https://github.com/actions/runner/pull/2796
-* Bump Newtonsoft.Json from 13.0.1 to 13.0.3 in /src by @dependabot in https://github.com/actions/runner/pull/2797
-* Support replacing runners in v2 flow by @luketomlinson in https://github.com/actions/runner/pull/2791
-* Delegating handler for Http redirects by @paveliak in https://github.com/actions/runner/pull/2814
-* Add references to the firewall requirements docs by @paveliak in https://github.com/actions/runner/pull/2815
-* Create automated workflow that will auto-generate dotnet sdk patches by @vanZeben in https://github.com/actions/runner/pull/2776
-* Fixes minor issues with using proper output varaibles by @vanZeben in https://github.com/actions/runner/pull/2818
-* Throw NonRetryableException on GetNextMessage from broker as needed. by @TingluoHuang in https://github.com/actions/runner/pull/2828
-* Mark action download failures as infra failures by @cory-miller in https://github.com/actions/runner/pull/2827
+* Trim whitespace in `./Misc/contentHash/dotnetRuntime/*` by @TingluoHuang in https://github.com/actions/runner/pull/2915
+* Send os and arch during long poll by @luketomlinson in https://github.com/actions/runner/pull/2913
+* Revert "Update default version to node20 (#2844)" by @takost in https://github.com/actions/runner/pull/2918
+* Fix telemetry publish from JobServerQueue. by @TingluoHuang in https://github.com/actions/runner/pull/2919
+* Use block blob instead of append blob  by @yacaovsnc in https://github.com/actions/runner/pull/2924
+* Provide detail info on untar failures. by @TingluoHuang in https://github.com/actions/runner/pull/2939
+* Bump node.js to 20.8.1 by @TingluoHuang in https://github.com/actions/runner/pull/2945
+* Update dotnet sdk to latest version @6.0.415 by @github-actions in https://github.com/actions/runner/pull/2929
+* Fix typo in log strings by @rajbos in https://github.com/actions/runner/pull/2695
+* feat: add support of arm64 arch runners in service creation script by @tuxity in https://github.com/actions/runner/pull/2606
+* Add `buildx` to images by @ajschmidt8 in https://github.com/actions/runner/pull/2901
 
 ## New Contributors
-* @kyanny made their first contribution in https://github.com/actions/runner/pull/2741
-* @ajschmidt8 made their first contribution in https://github.com/actions/runner/pull/2694
+* @tuxity made their first contribution in https://github.com/actions/runner/pull/2606
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.308.0...v2.309.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.310.2...v2.311.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 

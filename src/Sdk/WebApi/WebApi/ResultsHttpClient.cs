@@ -258,6 +258,38 @@ namespace GitHub.Services.Results.Client
             await StepSummaryUploadCompleteAsync(planId, jobId, stepId, fileSize, cancellationToken);
         }
 
+        private async Task<HttpResponseMessage> UploadLogFile(string file, bool finalize, bool firstBlock, string sasUrl, string blobStorageType,
+            CancellationToken cancellationToken)
+        {
+            HttpResponseMessage response;
+            if (firstBlock && finalize)
+            {
+                // This is the one and only block, just use a block blob
+                using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+                {
+                    response = await UploadBlockFileAsync(sasUrl, blobStorageType, fileStream, cancellationToken);
+                }
+            }
+            else
+            {
+                // This is either not the first block, which means it's using appendBlob; or first block and need to wait for additional blocks.  Using append blob in either case. 
+                // Create the Append blob
+                if (firstBlock)
+                {
+                    await CreateAppendFileAsync(sasUrl, blobStorageType, cancellationToken);
+                }
+
+                // Upload content
+                var fileSize = new FileInfo(file).Length;
+                using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+                {
+                    response = await UploadAppendFileAsync(sasUrl, blobStorageType, fileStream, finalize, fileSize, cancellationToken);
+                }
+            }
+
+            return response;
+        }
+
         // Handle file upload for step log
         public async Task UploadResultsStepLogAsync(string planId, string jobId, Guid stepId, string file, bool finalize, bool firstBlock, long lineCount, CancellationToken cancellationToken)
         {
@@ -268,18 +300,7 @@ namespace GitHub.Services.Results.Client
                 throw new Exception("Failed to get step log upload url");
             }
 
-            // Create the Append blob
-            if (firstBlock)
-            {
-                await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
-            }
-
-            // Upload content
-            var fileSize = new FileInfo(file).Length;
-            using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
-            {
-                var response = await UploadAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
-            }
+            await UploadLogFile(file, finalize, firstBlock, uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
 
             // Update metadata
             if (finalize)
@@ -299,18 +320,7 @@ namespace GitHub.Services.Results.Client
                 throw new Exception("Failed to get job log upload url");
             }
 
-            // Create the Append blob
-            if (firstBlock)
-            {
-                await CreateAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
-            }
-
-            // Upload content
-            var fileSize = new FileInfo(file).Length;
-            using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
-            {
-                var response = await UploadAppendFileAsync(uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, fileStream, finalize, fileSize, cancellationToken);
-            }
+            await UploadLogFile(file, finalize, firstBlock, uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
 
             // Update metadata
             if (finalize)

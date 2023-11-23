@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
     {
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
-        Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken token, TaskAgentStatus status, string version);
+        Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken token, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
@@ -44,11 +44,11 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken cancellationToken, TaskAgentStatus status, string version)
+        public Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken cancellationToken, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate)
         {
             CheckConnection();
             var jobMessage = RetryRequest<TaskAgentMessage>(
-                async () => await _brokerHttpClient.GetRunnerMessageAsync(version, status, cancellationToken), cancellationToken);
+                async () => await _brokerHttpClient.GetRunnerMessageAsync(version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken);
 
             return jobMessage;
         }
