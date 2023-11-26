@@ -248,7 +248,7 @@ namespace GitHub.Runner.Listener.Configuration
                 }
                 else
                 {
-                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
+                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.AgentName);
                 }
 
                 Trace.Verbose("Returns {0} agents", agents.Count);
@@ -744,7 +744,7 @@ namespace GitHub.Runner.Listener.Configuration
                     catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
-                        Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
+                        Trace.Error($"Failed to get JIT runner token -- Attempt: {retryCount}");
                         Trace.Error(ex);
                     }
                 }
@@ -807,7 +807,7 @@ namespace GitHub.Runner.Listener.Configuration
                     catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
-                        Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
+                        Trace.Error($"Failed to get tenant credentials -- Attempt: {retryCount}");
                         Trace.Error(ex);
                     }
                 }

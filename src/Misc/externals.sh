@@ -4,8 +4,9 @@ PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
 UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
-NODE16_VERSION="16.20.1"
-NODE20_VERSION="20.5.0"
+NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
+NODE16_VERSION="16.20.2"
+NODE20_VERSION="20.8.1"
 # used only for win-arm64, remove node16 unofficial version when official version is available
 NODE16_UNOFFICIAL_VERSION="16.20.0"
 
@@ -175,9 +176,9 @@ fi
 # Download the external tools for Linux PACKAGERUNTIMEs.
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-x64.tar.gz" node16 fix_nested_dir
-    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE16_VERSION}/alpine/x64/node-v${NODE16_VERSION}-alpine-x64.tar.gz" node16_alpine
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-alpine-x64.tar.gz" node16_alpine
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-x64.tar.gz" node20 fix_nested_dir
-    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE20_VERSION}/alpine/x64/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then

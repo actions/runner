@@ -6,6 +6,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Sdk
 {
@@ -69,6 +71,25 @@ namespace GitHub.Runner.Sdk
 
                 string hash = sBuilder.ToString();
                 return hash;
+            }
+        }
+
+        public static async Task<string> GetFileContentSha256HashAsync(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return string.Empty;
+            }
+
+            using (FileStream stream = File.OpenRead(path))
+            {
+                using (SHA256 sha256 = SHA256.Create())
+                {
+                    byte[] srcHashBytes = await sha256.ComputeHashAsync(stream);
+                    var hash = PrimitiveExtensions.ConvertToHexString(srcHashBytes);
+                    return hash;
+                }
+
             }
         }
 

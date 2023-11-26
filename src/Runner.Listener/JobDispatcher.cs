@@ -98,7 +98,7 @@ namespace GitHub.Runner.Listener
                 Guid dispatchedJobId = _jobDispatchedQueue.Dequeue();
                 if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
                 {
-                    Trace.Verbose($"Retrive previous WorkerDispather for job {currentDispatch.JobId}.");
+                    Trace.Verbose($"Retrive previous WorkerDispatcher for job {currentDispatch.JobId}.");
                 }
             }
 
@@ -162,12 +162,12 @@ namespace GitHub.Runner.Listener
                 dispatchedJobId = _jobDispatchedQueue.Dequeue();
                 if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
                 {
-                    Trace.Verbose($"Retrive previous WorkerDispather for job {currentDispatch.JobId}.");
+                    Trace.Verbose($"Retrive previous WorkerDispatcher for job {currentDispatch.JobId}.");
                 }
             }
             else
             {
-                Trace.Verbose($"There is no running WorkerDispather needs to await.");
+                Trace.Verbose($"There is no running WorkerDispatcher needs to await.");
             }
 
             if (currentDispatch != null)
@@ -176,7 +176,7 @@ namespace GitHub.Runner.Listener
                 {
                     try
                     {
-                        Trace.Info($"Waiting WorkerDispather for job {currentDispatch.JobId} run to finish.");
+                        Trace.Info($"Waiting WorkerDispatcher for job {currentDispatch.JobId} run to finish.");
                         await currentDispatch.WorkerDispatch;
                         Trace.Info($"Job request {currentDispatch.JobId} processed succeed.");
                     }
@@ -190,7 +190,7 @@ namespace GitHub.Runner.Listener
                         WorkerDispatcher workerDispatcher;
                         if (_jobInfos.TryRemove(currentDispatch.JobId, out workerDispatcher))
                         {
-                            Trace.Verbose($"Remove WorkerDispather from {nameof(_jobInfos)} dictionary for job {currentDispatch.JobId}.");
+                            Trace.Verbose($"Remove WorkerDispatcher from {nameof(_jobInfos)} dictionary for job {currentDispatch.JobId}.");
                             workerDispatcher.Dispose();
                         }
                     }
@@ -209,7 +209,7 @@ namespace GitHub.Runner.Listener
                 {
                     try
                     {
-                        Trace.Info($"Ensure WorkerDispather for job {currentDispatch.JobId} run to finish, cancel any running job.");
+                        Trace.Info($"Ensure WorkerDispatcher for job {currentDispatch.JobId} run to finish, cancel any running job.");
                         await EnsureDispatchFinished(currentDispatch, cancelRunningJob: true);
                     }
                     catch (Exception ex)
@@ -222,7 +222,7 @@ namespace GitHub.Runner.Listener
                         WorkerDispatcher workerDispatcher;
                         if (_jobInfos.TryRemove(currentDispatch.JobId, out workerDispatcher))
                         {
-                            Trace.Verbose($"Remove WorkerDispather from {nameof(_jobInfos)} dictionary for job {currentDispatch.JobId}.");
+                            Trace.Verbose($"Remove WorkerDispatcher from {nameof(_jobInfos)} dictionary for job {currentDispatch.JobId}.");
                             workerDispatcher.Dispose();
                         }
                     }
@@ -327,7 +327,7 @@ namespace GitHub.Runner.Listener
                 WorkerDispatcher workerDispatcher;
                 if (_jobInfos.TryRemove(jobDispatch.JobId, out workerDispatcher))
                 {
-                    Trace.Verbose($"Remove WorkerDispather from {nameof(_jobInfos)} dictionary for job {jobDispatch.JobId}.");
+                    Trace.Verbose($"Remove WorkerDispatcher from {nameof(_jobInfos)} dictionary for job {jobDispatch.JobId}.");
                     workerDispatcher.Dispose();
                 }
             }
