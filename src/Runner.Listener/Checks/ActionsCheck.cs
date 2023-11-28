@@ -58,10 +58,19 @@ namespace GitHub.Runner.Listener.Check
                 actionsPipelinesServiceUrl = urlBuilder.Uri.AbsoluteUri;
             }
 
+            var codeLoadUrlBuilder = new UriBuilder(url);
+            codeLoadUrlBuilder.Host = $"codeload.{codeLoadUrlBuilder.Host}";
+            codeLoadUrlBuilder.Path = "_ping";
+
             // check github api
             checkTasks.Add(CheckUtil.CheckDns(githubApiUrl));
             checkTasks.Add(CheckUtil.CheckPing(githubApiUrl));
             checkTasks.Add(HostContext.CheckHttpsGetRequests(githubApiUrl, pat, expectedHeader: "X-GitHub-Request-Id"));
+
+            // check github codeload
+            checkTasks.Add(CheckUtil.CheckDns(codeLoadUrlBuilder.Uri.AbsoluteUri));
+            checkTasks.Add(CheckUtil.CheckPing(codeLoadUrlBuilder.Uri.AbsoluteUri));
+            checkTasks.Add(HostContext.CheckHttpsGetRequests(codeLoadUrlBuilder.Uri.AbsoluteUri, pat, expectedHeader: "X-GitHub-Request-Id"));
 
             // check actions token service
             checkTasks.Add(CheckUtil.CheckDns(actionsTokenServiceUrl));
