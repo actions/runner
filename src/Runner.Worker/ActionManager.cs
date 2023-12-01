@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -71,6 +69,20 @@ namespace GitHub.Runner.Worker
             // Assert inputs
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(steps, nameof(steps));
+
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.ActionsPreventLocalAction)))
+            {
+                foreach (var step in steps)
+                {
+                    if (step is Pipelines.ActionStep action &&
+                        action.Reference is Pipelines.RepositoryPathReference repoAction &&
+                        string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new NotSupportedException($"Local actions are not supported in this context.");
+                    }
+                }
+            }
+
             var state = new PrepareActionsState
             {
                 ImagesToBuild = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase),

@@ -1147,6 +1147,81 @@ runs:
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_PreventLocalActions_False()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "GitHub/actions",
+                            Ref = "main",
+                            RepositoryType = Pipelines.PipelineConstants.SelfAlias
+                        }
+                    }
+                };
+
+                //Act
+                var result = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                Assert.Equal(0, result.PreStepTracker.Count);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_PreventLocalActions_True()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                Environment.SetEnvironmentVariable(Constants.Variables.Actions.ActionsPreventLocalAction, "true");
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "GitHub/actions",
+                            Ref = "main",
+                            RepositoryType = Pipelines.PipelineConstants.SelfAlias
+                        }
+                    }
+                };
+
+                //Act
+                Func<Task> result = async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                var exception = await Assert.ThrowsAsync<NotSupportedException>(result);
+                Assert.Equal("Local actions are not supported in this context.", exception.Message);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Actions.ActionsPreventLocalAction, "false");
+                Teardown();
+            }
+        }
+
 #if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
