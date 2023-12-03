@@ -1,0 +1,45 @@
+parameters:
+- name: test
+  type: boolean
+  default: true
+stages:
+- stage:
+  variables:
+    nothing: test
+    othervar2: ${{ variables.requiredVar }}
+  jobs:
+  - job:
+    variables:
+      ${{ if not(parameters.test) }}:
+        requiredVar: Substitute-test-s
+        othervar10: ${{ variables.requiredVar }}
+      ${{ else }}:
+        requiredVar: Substitute-test-s3
+        othervar10: ${{ variables.requiredVar }}
+      ${{ if variables.requiredVar }}:
+        requiredVar2: ${{ variables.requiredVar }}-s2
+        othervar11: ${{ variables.requiredVar2 }}
+      othervar4: ${{ variables.othervar }}
+      othervar: ${{ variables.requiredVar }}
+      othervar3: ${{ variables.othervar }}
+      # TODO fix bug
+      # chained-0: loop-0
+      # ${{ each x in split('0,1|1,2|2,3', '|') }}:
+      #   chained-${{ split(x, ',')[1] }}: ${{ variables[format('chained-{0}', split(x, ',')[0])] }}-${{ split(x, ',')[1] }}
+    steps:
+    - ${{ if ne(variables.requiredVar, 'Substitute-test-s3') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables.othervar10, 'Substitute-test-s3') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables.requiredVar2, 'Substitute-test-s3-s2') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables.othervar11, 'Substitute-test-s3-s2') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables.othervar4, '') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables.othervar, 'Substitute-test-s3') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables.othervar3, 'Substitute-test-s3') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables.othervar2, '') }}:
+      - assert: ${{ converttojson(variables) }}

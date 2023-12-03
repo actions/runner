@@ -32,6 +32,36 @@
       ]
     },
 
+    "workflow-value-no-expand": {
+      "context": [
+        "no-expand"
+      ],
+      "one-of": [
+        "boolean", "mapping", "null", "number", "sequence", "string"
+      ]
+    },
+
+    "single-layer-workflow-mapping": {
+      "context": [
+        "parameters",
+        "variables"
+      ],
+      "mapping": {
+        "loose-key-type": "workflow-key",
+        "loose-value-type": "workflow-value-no-expand"
+      }
+    },
+
+    "single-layer-workflow-sequence": {
+      "context": [
+        "parameters",
+        "variables"
+      ],
+      "sequence": {
+        "item-type": "workflow-value-no-expand"
+      }
+    },
+
     "pipeline-container": {
       "description": "Pipeline container as of https://learn.microsoft.com/en-us/azure/devops/release-notes/2022/pipelines/sprint-212-update",
       "mapping": {
