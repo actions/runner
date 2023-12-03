@@ -438,7 +438,7 @@ public class AzureDevops {
         }
     }
 
-    private static async Task<PipelineContextData> ConvertValue(Runner.Server.Azure.Devops.Context context, TemplateToken val, string type, TemplateToken values) {
+    private static async Task<PipelineContextData> ConvertValue(Runner.Server.Azure.Devops.Context context, TemplateToken val, StringToken type, TemplateToken values) {
         var steps = new List<TaskStep>();
         var jobs = new List<Job>();
         var stages = new List<Stage>();
@@ -456,7 +456,7 @@ public class AzureDevops {
             }
             return s;
         };
-        switch(type) {
+        switch(type.Value) {
             case "object":
             return val == null ? null : val.ToContextData();
             case "boolean":
@@ -558,7 +558,7 @@ public class AzureDevops {
             }
             return containers;
             default:
-            throw new Exception("This parameter type is not supported: " + type);
+            throw new Exception($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(type)}This parameter type is not supported: " + type);
         }
     }
 
@@ -685,7 +685,7 @@ public class AzureDevops {
             {
                 var varm = mparam.AssertMapping("varm");
                 string name = null;
-                string type = "string";
+                StringToken type = new StringToken(null, null, null, "string");
                 TemplateToken def = null;
                 TemplateToken values = null;
                 foreach (var kv in varm)
@@ -696,7 +696,7 @@ public class AzureDevops {
                             name = kv.Value.AssertLiteralString("name");
                             break;
                         case "type":
-                            type = kv.Value.AssertLiteralString("type");
+                            type = new StringToken(kv.Value.FileId, kv.Value.Line, kv.Value.Column, kv.Value.AssertLiteralString("type"));
                             break;
                         case "default":
                             def = kv.Value;
@@ -708,7 +708,7 @@ public class AzureDevops {
                 }
                 if (name == null)
                 {
-                    templateContext.Error(sparameters, "A value for the 'name' parameter must be provided.");
+                    templateContext.Error(varm, "A value for the 'name' parameter must be provided.");
                     continue;
                 }
                 var defCtxData = def == null ? null : await ConvertValue(context, def, type, values);
@@ -736,9 +736,9 @@ public class AzureDevops {
 
         if (cparameters != null)
         {
-            foreach (var unexpectedParameter in cparameters.Keys.Where(i => !parametersData.ContainsKey(i)))
+            foreach (var unexpectedParameter in cparameters.Where(kv => !parametersData.ContainsKey(kv.Key)))
             {
-                templateContext.Error(parameters, $"Unexpected parameter '{unexpectedParameter}'");
+                templateContext.Error(unexpectedParameter.Value ?? parameters, $"Unexpected parameter '{unexpectedParameter.Key}'");
             }
         }
 

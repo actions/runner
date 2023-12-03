@@ -26,34 +26,40 @@ public class MyClass {
     }
 
     public class TraceWriter : GitHub.DistributedTask.ObjectTemplating.ITraceWriter {
+        private JSObject handle;
+
+        public TraceWriter(JSObject handle) {
+            this.handle = handle;
+        }
+
         public void Error(string format, params object[] args)
         {
             if(args?.Length == 1 && args[0] is Exception ex) {
-                Interop.Log(5, string.Format("{0} {1}", format, ex.Message));
+                Interop.Log(handle, 5, string.Format("{0} {1}", format, ex.Message));
                 return;
             }
             try {
-                Interop.Log(5, args?.Length > 0 ? string.Format(format, args) : format);
+                Interop.Log(handle, 5, args?.Length > 0 ? string.Format(format, args) : format);
             } catch {
-                Interop.Log(5, format);
+                Interop.Log(handle, 5, format);
             }
         }
 
         public void Info(string format, params object[] args)
         {
             try {
-                Interop.Log(3, args?.Length > 0 ? string.Format(format, args) : format);
+                Interop.Log(handle, 3, args?.Length > 0 ? string.Format(format, args) : format);
             } catch {
-                Interop.Log(3, format);
+                Interop.Log(handle, 3, format);
             }
         }
 
         public void Verbose(string format, params object[] args)
         {
             try {
-                Interop.Log(2, args?.Length > 0 ? string.Format(format, args) : format);
+                Interop.Log(handle, 2, args?.Length > 0 ? string.Format(format, args) : format);
             } catch {
-                Interop.Log(2, format);
+                Interop.Log(handle, 2, format);
             }
         }
     }
@@ -68,14 +74,14 @@ public class MyClass {
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent) {
+        var context = new Runner.Server.Azure.Devops.Context {
+            FileProvider = new MyFileProvider(handle),
+            TraceWriter = new TraceWriter(handle),
+            Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
+            RequiredParametersProvider = new RequiredParametersProvider(handle),
+            VariablesProvider = new VariablesProvider { Variables = JsonConvert.DeserializeObject<Dictionary<string, string>>(variables) }
+        };
         try {
-            var context = new Runner.Server.Azure.Devops.Context {
-                FileProvider = new MyFileProvider(handle),
-                TraceWriter = new TraceWriter(),
-                Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
-                RequiredParametersProvider = new RequiredParametersProvider(handle),
-                VariablesProvider = new VariablesProvider { Variables = JsonConvert.DeserializeObject<Dictionary<string, string>>(variables) }
-            };
             Dictionary<string, TemplateToken> cparameters = new Dictionary<string, TemplateToken>();
             foreach(var kv in JsonConvert.DeserializeObject<Dictionary<string, string>>(parameters)) {
                 cparameters[kv.Key] = AzurePipelinesUtils.ConvertStringToTemplateToken(kv.Value);
@@ -84,10 +90,14 @@ public class MyClass {
             var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
             return pipeline.ToYaml();
         } catch(Exception ex) {
+            var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
+            var errorContent = fileIdReplacer.Replace(ex.Message, match => {
+                return $"File: {context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
+            });
             if(returnErrorContent) {
-                await Interop.Error(handle, ex.ToString());
+                await Interop.Error(handle, errorContent);
             } else {
-                await Interop.Message(2, ex.ToString());
+                await Interop.Message(handle, 2, errorContent);
             }
             return null;
         }

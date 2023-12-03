@@ -1,3 +1,4 @@
+using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
@@ -69,7 +70,12 @@ namespace Runner.Server.Azure.Devops
                         if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
                             throw new Exception($"Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters");
                         }
-                        var file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
+                        MappingToken file;
+                        try {
+                            file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
+                        } catch(Exception ex) when (!(ex is TemplateValidationException)) {
+                            throw new TemplateValidationException($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}{ex.Message}");
+                        }
                         await ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
                     } else {
                         stages.Add(await new Stage().Parse(context, mstep));

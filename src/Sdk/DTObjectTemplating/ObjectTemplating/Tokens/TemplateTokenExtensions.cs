@@ -14,11 +14,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             if(value?.FileId != null) {
                 builder.Add($"FileId: {value.FileId}");
             }
-            if(value?.Line != null) {
-                builder.Add($"Line: {value.Line}");
-            }
-            if(value?.Column != null) {
-                builder.Add($"Column: {value.Column}");
+            if(value?.Line != null && value?.Column != null) {
+                builder.Add(TemplateStrings.LineColumn(value?.Line, value?.Column) + ":");
             }
             return String.Join(" ", builder) + " ";
         }

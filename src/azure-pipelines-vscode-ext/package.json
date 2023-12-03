@@ -1,13 +1,14 @@
 {
 	"name": "azure-pipelines-vscode-ext",
 	"displayName": "Azure Pipelines Tools",
-	"description": "Azure Pipelines Tools allow you to make local changes to Azure Pipeline Template Files, while beeing able to check for Syntax errors after expanding all templates into a single file before commit and pushing it to the repository",
+	"description": "Test local changes to Azure Pipeline Template Files, for both entrypoint and nested ones, before commit and push",
 	"categories": [
 		"Azure",
 		"Testing",
 		"Programming Languages"
 	],
-	"version": "0.0.9",
+	"icon": "pipeline-rocket.png",
+	"version": "0.0.10",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -15,25 +16,27 @@
 	},
 	"activationEvents": [
 		"onLanguage:yaml",
-		"onLanguage:azure-pipelines"
+		"onLanguage:azure-pipelines",
+		"onTaskType:azure-pipelines-vscode-ext",
+		"onDebug"
 	],
 	"browser": "./dist/main.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "extension.validateAzurePipeline",
+				"command": "azure-pipelines-vscode-ext.validateAzurePipeline",
 				"title": "Validate Azure Pipeline"
 			},
 			{
-				"command": "extension.expandAzurePipeline",
+				"command": "azure-pipelines-vscode-ext.expandAzurePipeline",
 				"title": "Expand Azure Pipeline"
 			}
 		],
 		"configuration": [
 			{
-				"title": "Azure Pipelines",
+				"title": "Azure Pipelines Tools",
 				"properties": {
-					"azure-pipelines.repositories": {
+					"azure-pipelines-vscode-ext.repositories": {
 						"type": "array",
 						"items": {
 							"type": "string"
@@ -42,7 +45,7 @@
 						"scope": "window",
 						"description": "Syntax [<owner>/]<repo>@<ref>=<uri>. <uri> can be formed like file:///<folder>, vscode-vfs://github/<owner>/<repository> and vscode-vfs://azurerepos/<owner>/<project>/<repository>"
 					},
-					"azure-pipelines.variables": {
+					"azure-pipelines-vscode-ext.variables": {
 						"type": "array",
 						"items": {
 							"type": "string"
@@ -51,7 +54,7 @@
 						"scope": "window",
 						"description": "Syntax <name>=<value>"
 					},
-					"azure-pipelines.parameters": {
+					"azure-pipelines-vscode-ext.parameters": {
 						"type": "array",
 						"items": {
 							"type": "string"
@@ -174,6 +177,51 @@
 						}
 					}
 				]
+			}
+		],
+		"taskDefinitions": [
+			{
+				"properties": {
+					"program": {
+						"type": "string",
+						"description": "Absolute path to a yaml file.",
+						"default": "${workspaceFolder}/azure-pipeline.yml"
+					},
+					"trace": {
+						"type": "boolean",
+						"description": "Enable logging of the Debug Adapter Protocol.",
+						"default": true
+					},
+					"watch": {
+						"type": "boolean",
+						"description": "Keep Debug Session alive and watch for changes",
+						"default": true
+					},
+					"preview": {
+						"type": "boolean",
+						"description": "Opens a live Preview side by side to your current code editor, if disabled you will only see a message with the conclusion",
+						"default": true
+					},
+					"repositories": {
+						"type": "object",
+						"description": "Syntax \"[owner/]repo@ref\": \"uri\". uri can be formed like file:///folder, vscode-vfs://github/owner/repository and vscode-vfs://azurerepos/owner/project/repository",
+						"additionalProperties": {
+							"type": "string"
+						}
+					},
+					"variables": {
+						"type": "object",
+						"additionalProperties": {
+							"type": "string"
+						}
+					},
+					"parameters": {
+						"type": "object",
+						"additionalProperties": {},
+						"description": "Syntax \"name\": json-object"
+					}
+				},
+				"type": "azure-pipelines-vscode-ext"
 			}
 		]
 	},
