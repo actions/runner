@@ -178,7 +178,7 @@ namespace GitHub.Services.Results.Client
         private BlobClient GetBlobClient(string url)
         {
             var blobUri = ParseSasToken(url);
-            
+
             var opts = new BlobClientOptions
             {
                 Retry =
@@ -190,11 +190,11 @@ namespace GitHub.Services.Results.Client
 
             return new BlobClient(blobUri.path, new AzureSasCredential(blobUri.sas), opts);
         }
-        
+
         private AppendBlobClient GetAppendBlobClient(string url)
         {
             var blobUri = ParseSasToken(url);
-            
+
             var opts = new BlobClientOptions
             {
                 Retry =
