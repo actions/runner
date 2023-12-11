@@ -414,11 +414,6 @@ namespace GitHub.Services.Results.Client
         public static readonly string CreateJobLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateJobLogsMetadata";
         public static readonly string ResultsProtoApiV1Endpoint = "twirp/github.actions.results.api.v1.WorkflowStepUpdateService/";
         public static readonly string WorkflowStepsUpdate = ResultsProtoApiV1Endpoint + "WorkflowStepsUpdate";
-
-        public static readonly string AzureBlobSealedHeader = "x-ms-blob-sealed";
-        public static readonly string AzureBlobTypeHeader = "x-ms-blob-type";
-        public static readonly string AzureBlockBlob = "BlockBlob";
-        public static readonly string AzureAppendBlob = "AppendBlob";
     }
 
 }
