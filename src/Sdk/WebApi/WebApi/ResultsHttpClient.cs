@@ -175,13 +175,43 @@ namespace GitHub.Services.Results.Client
             return (new Uri(blobPath), sasUrl);
         }
 
+        private BlobClient GetBlobClient(string url)
+        {
+            var blobUri = ParseSasToken(url);
+            
+            var opts = new BlobClientOptions
+            {
+                Retry =
+                {
+                    MaxRetries = Constants.DefaultBlobUploadRetries,
+                    NetworkTimeout = TimeSpan.FromSeconds(Constants.DefaultNetworkTimeoutInSeconds)
+                }
+            };
+
+            return new BlobClient(blobUri.path, new AzureSasCredential(blobUri.sas), opts);
+        }
+        
+        private AppendBlobClient GetAppendBlobClient(string url)
+        {
+            var blobUri = ParseSasToken(url);
+            
+            var opts = new BlobClientOptions
+            {
+                Retry =
+                {
+                    MaxRetries = Constants.DefaultBlobUploadRetries,
+                    NetworkTimeout = TimeSpan.FromSeconds(Constants.DefaultNetworkTimeoutInSeconds)
+                }
+            };
+
+            return new AppendBlobClient(blobUri.path, new AzureSasCredential(blobUri.sas), opts);
+        }
+
         private async Task UploadBlockFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken)
         {
             if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
-                var blobUri = ParseSasToken(url);
-                var blobClient = new BlobClient(blobUri.path, new AzureSasCredential(blobUri.sas));
-
+                var blobClient = GetBlobClient(url);
                 try
                 {
                     await blobClient.UploadAsync(file, cancellationToken);
@@ -197,8 +227,7 @@ namespace GitHub.Services.Results.Client
         {
             if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
-                var blobUri = ParseSasToken(url);
-                var appendBlobClient = new AppendBlobClient(blobUri.path, new AzureSasCredential(blobUri.sas));
+                var appendBlobClient = GetAppendBlobClient(url);
                 try
                 {
                     await appendBlobClient.CreateAsync(cancellationToken: cancellationToken);
@@ -210,15 +239,18 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        private async Task UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, long fileSize, CancellationToken cancellationToken)
+        private async Task UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, CancellationToken cancellationToken)
         {
             if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
-                var blobUri = ParseSasToken(url);
-                var appendBlobClient = new AppendBlobClient(blobUri.path, new AzureSasCredential(blobUri.sas));
+                var appendBlobClient = GetAppendBlobClient(url);
                 try
                 {
                     await appendBlobClient.AppendBlockAsync(file, cancellationToken: cancellationToken);
+                    if (finalize)
+                    {
+                        await appendBlobClient.SealAsync(cancellationToken: cancellationToken);
+                    }
                 }
                 catch (RequestFailedException e)
                 {
@@ -278,7 +310,7 @@ namespace GitHub.Services.Results.Client
                 var fileSize = new FileInfo(file).Length;
                 using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
                 {
-                    await UploadAppendFileAsync(sasUrl, blobStorageType, fileStream, finalize, fileSize, cancellationToken);
+                    await UploadAppendFileAsync(sasUrl, blobStorageType, fileStream, finalize, cancellationToken);
                 }
             }
         }
@@ -414,6 +446,9 @@ namespace GitHub.Services.Results.Client
         public static readonly string CreateJobLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateJobLogsMetadata";
         public static readonly string ResultsProtoApiV1Endpoint = "twirp/github.actions.results.api.v1.WorkflowStepUpdateService/";
         public static readonly string WorkflowStepsUpdate = ResultsProtoApiV1Endpoint + "WorkflowStepsUpdate";
+
+        public static readonly int DefaultNetworkTimeoutInSeconds = 30;
+        public static readonly int DefaultBlobUploadRetries = 3;
     }
 
 }
