@@ -7,6 +7,7 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
 
 - For GitHub.com
   - The runner needs to access `https://api.github.com` for downloading actions.
+  - The runner needs to access `https://codeload.github.com` for downloading actions tar.gz/zip.
   - The runner needs to access `https://vstoken.actions.githubusercontent.com/_apis/.../` for requesting an access token.
   - The runner needs to access `https://pipelines.actions.githubusercontent.com/_apis/.../` for receiving workflow jobs.
   ---
@@ -16,12 +17,14 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
 
     ```
     curl -v https://api.github.com/zen
+    curl -v https://codeload.github.com/_ping
     curl -v https://vstoken.actions.githubusercontent.com/_apis/health
     curl -v https://pipelines.actions.githubusercontent.com/_apis/health
     ```
 
 - For GitHub Enterprise Server
   - The runner needs to access `https://[hostname]/api/v3` for downloading actions.
+  - The runner needs to access `https://codeload.[hostname]/_ping` for downloading actions tar.gz/zip.
   - The runner needs to access `https://[hostname]/_services/vstoken/_apis/.../` for requesting an access token.
   - The runner needs to access `https://[hostname]/_services/pipelines/_apis/.../` for receiving workflow jobs.
   
@@ -29,6 +32,7 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
 
     ```
     curl -v https://[hostname]/api/v3/zen
+    curl -v https://codeload.[hostname]/_ping
     curl -v https://[hostname]/_services/vstoken/_apis/health
     curl -v https://[hostname]/_services/pipelines/_apis/health
     ```
@@ -43,6 +47,10 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
 - DNS lookup for api.github.com or myGHES.com using dotnet
 - Ping api.github.com or myGHES.com using dotnet
 - Make HTTP GET to https://api.github.com or https://myGHES.com/api/v3 using dotnet, check response headers contains `X-GitHub-Request-Id`
+---
+- DNS lookup for codeload.github.com or codeload.myGHES.com using dotnet
+- Ping codeload.github.com or codeload.myGHES.com using dotnet
+- Make HTTP GET to https://codeload.github.com/_ping or https://codeload.myGHES.com/_ping using dotnet, check response headers contains `X-GitHub-Request-Id`
 ---
 - DNS lookup for vstoken.actions.githubusercontent.com using dotnet
 - Ping vstoken.actions.githubusercontent.com using dotnet

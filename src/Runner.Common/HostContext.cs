@@ -200,6 +200,10 @@ namespace GitHub.Runner.Common
             {
                 _trace.Info($"No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)");
             }
+            else
+            {
+                _userAgents.Add(new ProductInfoHeaderValue("HttpProxyConfigured", bool.TrueString));
+            }
 
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
             {
