@@ -35,6 +35,8 @@ namespace GitHub.Runner.Worker.Expressions
 
             var workspaceData = workspace as StringContextData;
             ArgUtil.NotNull(workspaceData, nameof(workspaceData));
+            var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
 
             string githubWorkspace = workspaceData.Value;
 
@@ -71,7 +73,15 @@ namespace GitHub.Runner.Worker.Expressions
             string runnerRoot = new DirectoryInfo(binDir).Parent.FullName;
 
             string node = Path.Combine(runnerRoot, "externals", NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
-            string hashFilesScript = Path.Combine(binDir, "hashFiles");
+            //Feature flag to fetch a new version of hashFiles script
+            string hashFilesScript = string.Empty;
+            var isGlobHashFilesEnabled = executionContext.Global.Variables.GetBoolean("DistributedTask.UseGlobHashFiles") ?? false;
+            if (isGlobHashFilesEnabled)
+            {
+                hashFilesScript = Path.Combine(binDir, "hashFilesV2");
+            }
+            hashFilesScript = Path.Combine(binDir, "hashFiles");
+
             var hashResult = string.Empty;
             var p = new ProcessInvoker(new HashFilesTrace(context.Trace));
             p.ErrorDataReceived += ((_, data) =>

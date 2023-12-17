@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -164,13 +164,14 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public Dictionary<String, String> EvaluateStepInputs(
             TemplateToken token,
             DictionaryContextData contextData,
-            IList<IFunctionInfo> expressionFunctions)
+            IList<IFunctionInfo> expressionFunctions,
+            IEnumerable<KeyValuePair<String, Object>> expressionState = null)
         {
             var result = default(Dictionary<String, String>);
 
             if (token != null && token.Type != TokenType.Null)
             {
-                var context = CreateContext(contextData, expressionFunctions);
+                var context = CreateContext(contextData, expressionFunctions, expressionState);
                 try
                 {
                     token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepWith, token, 0, null, omitHeader: true);

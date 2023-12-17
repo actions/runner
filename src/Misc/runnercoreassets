@@ -4,6 +4,7 @@ checkScripts/downloadCert.js
 checkScripts/makeWebRequest.js
 darwin.svc.sh.template
 hashFiles/index.js
+hashFilesV2/index.js
 installdependencies.sh
 macos-run-invoker.js
 Microsoft.IdentityModel.Logging.dll
