@@ -15,4 +15,3 @@ jobs:
           only-labels: "actions-bug"
           days-before-stale: 0
           days-before-close: 1
-          close-issue-reason: "completed"

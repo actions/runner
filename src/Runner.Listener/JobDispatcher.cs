@@ -1134,6 +1134,15 @@ namespace GitHub.Runner.Listener
                     jobRecord.ErrorCount++;
                     jobRecord.Issues.Add(unhandledExceptionIssue);
 
+                    if (message.Variables.TryGetValue("DistributedTask.MarkJobAsFailedOnWorkerCrash", out var markJobAsFailedOnWorkerCrash) &&
+                        StringUtil.ConvertToBoolean(markJobAsFailedOnWorkerCrash?.Value))
+                    {
+                        Trace.Info("Mark the job as failed since the worker crashed");
+                        jobRecord.Result = TaskResult.Failed;
+                        // mark the job as completed so service will pickup the result
+                        jobRecord.State = TimelineRecordState.Completed;
+                    }
+
                     await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
                 }
                 catch (Exception ex)
