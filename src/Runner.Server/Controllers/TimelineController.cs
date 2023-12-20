@@ -89,9 +89,10 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> PutAttachment(Guid timelineId, Guid recordId, string type, string name) {
             var jobInfo = (from j in _context.Jobs where j.TimeLineId == timelineId select new { j.runid, j.Attempt }).FirstOrDefault();
             var artifacts = new ArtifactController(_context, Configuration);
-            var fname = $"Attachment_{timelineId}_{recordId}_{type}";
-            var container = await artifacts.CreateContainer(jobInfo.runid, jobInfo.Attempt, new CreateActionsStorageArtifactParameters() { Name = fname });
-            var record = new ArtifactRecord() {FileName = Path.Join(fname, name), StoreName = Path.GetRandomFileName(), GZip = false, FileContainer = container} ;
+            var prefix = $"Attachment_{timelineId}_{recordId}";
+            var fname = $"{prefix}_{type}_{name}";
+            var container = await artifacts.CreateContainer(jobInfo.runid, jobInfo.Attempt, new CreateActionsStorageArtifactParameters() { Name = prefix });
+            var record = new ArtifactRecord() {FileName = fname, StoreName = Path.GetRandomFileName(), GZip = false, FileContainer = container} ;
             _context.ArtifactRecords.Add(record);
             await _context.SaveChangesAsync();
             var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");

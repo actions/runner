@@ -33,6 +33,7 @@
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
     <PackageReference Include="GitHubJwt" Version="0.0.5" />
     <PackageReference Include="Octokit" Version="0.50.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.25.1" />
   </ItemGroup>
 
   <ItemGroup>

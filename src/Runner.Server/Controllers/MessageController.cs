@@ -5581,6 +5581,7 @@ namespace Runner.Server.Controllers
                         var feedStreamUrl = new UriBuilder(new Uri(new Uri(apiUrl), $"_apis/v1/TimeLineWebConsoleLog/feedstream/{Uri.EscapeDataString(timelineId.ToString())}/ws"));
                         feedStreamUrl.Scheme = feedStreamUrl.Scheme == "http" ? "ws" : "wss";
                         systemVssConnection.Data["FeedStreamUrl"] = feedStreamUrl.ToString();
+                        systemVssConnection.Data["ResultsServiceUrl"] = apiUrl;
                         if(calculatedPermissions.TryGetValue("id_token", out var p_id_token) && p_id_token == "write") {
                             var environment = deploymentEnvironmentValue?.Name ?? ("");
                             var claims = new Dictionary<string, string>();
@@ -5711,6 +5712,7 @@ namespace Runner.Server.Controllers
                                 new Claim("localcheckout", localcheckout ? "actions/checkout" : ""),
                                 new Claim("runid", runid.ToString()),
                                 new Claim("github_token", variables.TryGetValue("github_token", out var ghtoken) ? ghtoken.Value : ""),
+                                new Claim("scp", $"Actions.Results:{runid}:{job.JobId}")
                             }),
                             Expires = DateTime.UtcNow.AddMinutes(timeoutMinutes + 10),
                             Issuer = myIssuer,

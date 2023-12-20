@@ -156,6 +156,7 @@ jobs:
         gharun -C testworkflows/workflow_ref_and_job_workflow_ref
         gharun -C testworkflows/reusable-workflows-secrets-inherit-with-required-secrets -s TEST=topsecret -s OPT=testsec
         gharun -C testworkflows/inherit_vars --var ACTIONS_STEP_DEBUG=true
+        gharun -C testworkflows/actions_artifacts_v4 -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true --runner-version v2.311.0
         gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-checkout -W testworkflows/azpipelines/cross-repo-checkout/pipeline.yml --local-repository az/containermatrix@main=testworkflows/azpipelines/containermatrix
         gharun --event azpipelines -C testworkflows/azpipelines/typedtemplates -W testworkflows/azpipelines/typedtemplates/pipeline.yml
         gharun --event azpipelines -C testworkflows/azpipelines/untypedtemplates -W testworkflows/azpipelines/untypedtemplates/pipeline.yml
