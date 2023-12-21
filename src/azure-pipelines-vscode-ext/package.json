@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.0.10",
+	"version": "0.0.11",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -32,6 +32,18 @@
 				"title": "Expand Azure Pipeline"
 			}
 		],
+		"menus": {
+			"editor/context": [
+				{
+					"command": "azure-pipelines-vscode-ext.validateAzurePipeline",
+					"when": "editorLangId == yaml || editorLangId == azure-pipelines"
+				},
+				{
+					"command": "azure-pipelines-vscode-ext.expandAzurePipeline",
+					"when": "editorLangId == yaml || editorLangId == azure-pipelines"
+				}
+			]
+		},
 		"configuration": [
 			{
 				"title": "Azure Pipelines Tools",
