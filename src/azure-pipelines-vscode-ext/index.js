@@ -24,7 +24,8 @@ function activate(context) {
 		}
 	});
 
-	var runtimePromise = vscode.window.withProgress({
+	var loadingPromise = null;
+	var runtimePromise = () => loadingPromise ??= vscode.window.withProgress({
 		location: vscode.ProgressLocation.Notification,
 		title: "Updating Runtime",
 		cancellable: true
@@ -192,7 +193,7 @@ function activate(context) {
 			}
 		}
 
-		var runtime = await runtimePromise;
+		var runtime = await runtimePromise();
 		var base = null;
 
 		var skipCurrentEditor = false;
