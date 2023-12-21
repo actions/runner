@@ -23,7 +23,7 @@ function activate(context) {
 			return virtualFiles[uri.path];
 		}
 	});
-
+	var joinPath = (l, r) => l ? l + "/" + r : r;
 	var loadingPromise = null;
 	var runtimePromise = () => loadingPromise ??= vscode.window.withProgress({
 		location: vscode.ProgressLocation.Notification,
@@ -57,7 +57,7 @@ function activate(context) {
 					if(repositoryAndRef) {
 						if(handle.repositories && repositoryAndRef in handle.repositories) {
 							var base = vscode.Uri.parse(handle.repositories[repositoryAndRef]);
-							uri = base.with({ path: base.path + "/" + filename });
+							uri = base.with({ path: joinPath(base.path, filename) });
 						} else {
 							var result = await vscode.window.showInputBox({
 								ignoreFocusOut: true,
@@ -69,7 +69,7 @@ function activate(context) {
 								handle.repositories ??= {};
 								handle.repositories[repositoryAndRef] = result;
 								var base = vscode.Uri.parse(result);
-								uri = base.with({ path: base.path + "/" + filename });
+								uri = base.with({ path: joinPath(base.path, filename) });
 							} else {
 								logchannel.error(`Cannot access remote repository ${repositoryAndRef} (${filename})`);
 								return null;
@@ -79,9 +79,11 @@ function activate(context) {
 						// Get current textEditor content for the entrypoint
 						var doc = handle.textEditor ? handle.textEditor.document : null;
 						if(handle.filename === filename && doc && !handle.skipCurrentEditor) {
+							handle.referencedFiles.push(handle.textEditor.document.uri);
+							handle.refToUri[`(${repositoryAndRef ?? "self"})/${filename}`] = handle.textEditor.document.uri;
 							return doc.getText();
 						}
-						uri = handle.base.with({ path: handle.base.path + "/" + filename });
+						uri = handle.base.with({ path: joinPath(handle.base.path, filename) });
 					}
 					handle.referencedFiles.push(uri);
 					handle.refToUri[`(${repositoryAndRef ?? "self"})/${filename}`] = uri;
@@ -213,12 +215,33 @@ function activate(context) {
 			if(filename == null) {
 				for(var workspace of vscode.workspace.workspaceFolders) {
 					// Normalize
-					fspathname = vscode.Uri.file(fspathname).fsPath;
-					if(fspathname.startsWith(workspace.uri.fsPath)) {
+					var nativepathname = vscode.Uri.file(fspathname).fsPath;
+					if(nativepathname.startsWith(workspace.uri.fsPath)) {
 						base = workspace.uri;
-						filename = vscode.workspace.asRelativePath(workspace.uri.with({path: workspace.uri.path + "/" + fspathname.substring(workspace.uri.fsPath.length).replace(/[\\\/]+/g, "/")}), false);
+						filename = vscode.workspace.asRelativePath(workspace.uri.with({path: joinPath(workspace.uri.path, nativepathname.substring(workspace.uri.fsPath.length).replace(/[\\\/]+/g, "/"))}), false);
 						break;
 					}
+				}
+			}
+			if(filename == null) {
+				// untitled uris will land here
+				var current = vscode.Uri.parse(fspathname);
+				for(var workspace of vscode.workspace.workspaceFolders) {
+					var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
+					if(workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
+						base = workspace.uri;
+						filename = current.path.substring(workspacePath.length);
+						break;
+					}
+				}
+				var li = current.path.lastIndexOf("/");
+				base ??= current.with({ path: current.path.substring(0, li)});
+				filename ??= current.path.substring(li + 1);
+				try {
+					await vscode.workspace.fs.stat(current);
+				} catch {
+					// untitled uris cannot be read by readFile
+					skipCurrentEditor = false;
 				}
 			}
 		} else {
@@ -247,10 +270,15 @@ function activate(context) {
 				var msg = err[5];
 				var range = new vscode.Range(new vscode.Position(row, column), new vscode.Position(row, integer.MAX_VALUE));
 				var diag = new vscode.Diagnostic(range, msg, vscode.DiagnosticSeverity.Error);
-				items.push([handle.refToUri[`(${repositoryAndRef ?? "self"})${filename}`], [diag]]);
+				var uri = handle.refToUri[`(${repositoryAndRef ?? "self"})${filename}`];
+				if(uri) {
+					items.push([uri, [diag]]);
+				}
 			}
 			for(var uri of handle.referencedFiles) {
-				items.push([uri, []]);
+				if(uri) {
+					items.push([uri, []]);
+				}
 			}
 			collection.set(items);
 			return error(ex);
@@ -274,13 +302,47 @@ function activate(context) {
 		}
 	};
 
-	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.expandAzurePipeline', () => expandAzurePipeline(false)));
+	var expandAzurePipelineCommand = () => {
+		vscode.tasks.executeTask(
+			new vscode.Task({
+					type: "azure-pipelines-vscode-ext",
+					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
+					watch: true,
+					preview: true,
+					autoClosePreview: true
+				},
+				vscode.TaskScope.Workspace,
+				"Azure Pipeline Preview (watch)",
+				"azure-pipelines",
+				executor,
+				null
+			)
+		);
+	}
 
-	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.validateAzurePipeline', () => expandAzurePipeline(true)));
+	var validateAzurePipelineCommand = () => {
+		vscode.tasks.executeTask(
+			new vscode.Task({
+					type: "azure-pipelines-vscode-ext",
+					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
+					watch: true,
+				},
+				vscode.TaskScope.Workspace,
+				"Azure Pipeline Validate (watch)",
+				"azure-pipelines",
+				executor,
+				null
+			)
+		);
+	}
 
-	context.subscriptions.push(vscode.commands.registerCommand('extension.expandAzurePipeline', () => expandAzurePipeline(false)));
+	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.expandAzurePipeline', () => expandAzurePipelineCommand()));
 
-	context.subscriptions.push(vscode.commands.registerCommand('extension.validateAzurePipeline', () => expandAzurePipeline(true)));
+	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.validateAzurePipeline', () => validateAzurePipelineCommand()));
+
+	context.subscriptions.push(vscode.commands.registerCommand('extension.expandAzurePipeline', () => expandAzurePipelineCommand()));
+
+	context.subscriptions.push(vscode.commands.registerCommand('extension.validateAzurePipeline', () => validateAzurePipelineCommand()));
 
 	var statusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
@@ -359,31 +421,36 @@ function activate(context) {
 			close: close,
 			onDidWrite: writeEmitter.event,
 			open: () => {
+				var args = def;
+				if(args.preview) {
+					var previewIsOpen = () => vscode.window.tabGroups && vscode.window.tabGroups.all && vscode.window.tabGroups.all.some(g => g && g.tabs && g.tabs.some(t => t && t.input && t.input["uri"] && t.input["uri"].toString() === uri.toString()));
+					self.disposables.push(vscode.window.tabGroups.onDidChangeTabs(e => {
+						if(!previewIsOpen()) {
+							if(!requestReOpen) {
+								console.log(`file closed ${self.name}`);
+							}
+							requestReOpen = true;
+						} else {
+							if(requestReOpen) {
+								console.log(`file opened ${self.name}`);
+							}
+							requestReOpen = false;
+						}
+					}));
+					self.disposables.push(vscode.workspace.onDidCloseTextDocument(adoc => {
+						if(doc === adoc) {
+							if(args.autoClosePreview) {
+								close();
+								return;
+							}
+							delete self.virtualFiles[self.name];
+							console.log(`document closed ${self.name}`);
+							documentClosed = true;
+						}
+					}));
+				}
+
 				var run = async () => {
-					var args = def;
-					if(args.preview) {
-						var previewIsOpen = () => vscode.window.tabGroups && vscode.window.tabGroups.all && vscode.window.tabGroups.all.some(g => g && g.tabs && g.tabs.some(t => t && t.input && t.input["uri"] && t.input["uri"].toString() === uri.toString()));
-						self.disposables.push(vscode.window.tabGroups.onDidChangeTabs(e => {
-							if(!previewIsOpen()) {
-								if(!requestReOpen) {
-									console.log(`file closed ${self.name}`);
-								}
-								requestReOpen = true;
-							} else {
-								if(requestReOpen) {
-									console.log(`file opened ${self.name}`);
-								}
-								requestReOpen = false;
-							}
-						}));
-						self.disposables.push(vscode.workspace.onDidCloseTextDocument(adoc => {
-							if(doc === adoc) {
-								delete self.virtualFiles[self.name];
-								console.log(`document closed ${self.name}`);
-								documentClosed = true;
-							}
-						}));
-					}
 					await expandAzurePipeline(false, args.repositories, args.variables, args.parameters, async result => {
 						task.info(result);
 						if(args.preview) {

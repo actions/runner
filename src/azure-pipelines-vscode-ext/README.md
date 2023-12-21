@@ -2,7 +2,8 @@
 
 This is a minimal Azure Pipelines Extension, the first vscode Extension which can Validate and Expand Azure Pipeline YAML files locally without any REST service.
 
-![Demo](https://github.com/ChristopherHX/runner.server/blob/main/docs/azure-pipelines/images/demo.gif?raw=true)
+![Validate Azure Pipelines via ContextMenu](https://raw.githubusercontent.com/ChristopherHX/runner.server/main/docs/azure-pipelines/images/validate-azure-pipeline-via-contextmenu.gif)
+![Expand Azure Pipelines via ContextMenu](https://raw.githubusercontent.com/ChristopherHX/runner.server/main/docs/azure-pipelines/images/expand-azure-pipeline-via-contextmenu.gif)
 
 ## Features
 
@@ -113,6 +114,8 @@ steps:
 ```
 
 ### Azure Pipelines Debug Adapter
+
+![Demo](https://raw.githubusercontent.com/ChristopherHX/runner.server/main/docs/azure-pipelines/images/demo.gif)
 
 Sample Debugging configuration
 `.vscode/launch.json`
@@ -231,6 +234,15 @@ npm run build
 - Run vscode target "Run azure-pipelines-vscode-ext Extension" to test it
 
 ## Changelog
+
+### v0.0.11
+
+- Lazy load .net wasm Dependencies as soon as you really use the extension by a command / task or debug adapter
+  - Previously it has loaded them as soon as the Extension has been activated
+- Moved `> Validate Azure Pipeline` and `> Expand Azure Pipeline` to use auto generated watch Tasks
+  - You would have to stop the Task from the Terminal pane to stop watching
+- Add Context Menu Entries for `> Validate Azure Pipeline` and `> Expand Azure Pipeline` Commands to the editor of azure-pipelines and YAML files
+- Add new Demos
 
 ### v0.0.10
 
