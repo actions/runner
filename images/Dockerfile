@@ -41,6 +41,7 @@ ENV ImageOS=ubuntu22
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
+    jq \
     git \
     curl \
     sudo \
