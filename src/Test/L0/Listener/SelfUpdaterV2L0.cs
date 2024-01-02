@@ -23,7 +23,6 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IConfigurationStore> _configStore;
         private Mock<IJobDispatcher> _jobDispatcher;
         private AgentRefreshMessage _refreshMessage = new(1, "2.999.0");
-        private List<TrimmedPackageMetadata> _trimmedPackages = new();
 
 #if !OS_WINDOWS
         private string _packageUrl = null;
@@ -81,12 +80,10 @@ namespace GitHub.Runner.Common.Tests.Listener
             {
                 await FetchLatestRunner();
                 Assert.NotNull(_packageUrl);
-                Assert.NotNull(_trimmedPackages);
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
                 using (var hc = new TestHostContext(this))
                 {
                     hc.GetTrace().Info(_packageUrl);
-                    hc.GetTrace().Info(StringUtil.ConvertToJson(_trimmedPackages));
 
                     //Arrange
                     var updater = new Runner.Listener.SelfUpdaterV2();
@@ -143,12 +140,10 @@ namespace GitHub.Runner.Common.Tests.Listener
             {
                 await FetchLatestRunner();
                 Assert.NotNull(_packageUrl);
-                Assert.NotNull(_trimmedPackages);
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
                 using (var hc = new TestHostContext(this))
                 {
                     hc.GetTrace().Info(_packageUrl);
-                    hc.GetTrace().Info(StringUtil.ConvertToJson(_trimmedPackages));
 
                     //Arrange
                     var updater = new Runner.Listener.SelfUpdaterV2();
@@ -194,12 +189,10 @@ namespace GitHub.Runner.Common.Tests.Listener
             {
                 await FetchLatestRunner();
                 Assert.NotNull(_packageUrl);
-                Assert.NotNull(_trimmedPackages);
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
                 using (var hc = new TestHostContext(this))
                 {
                     hc.GetTrace().Info(_packageUrl);
-                    hc.GetTrace().Info(StringUtil.ConvertToJson(_trimmedPackages));
 
                     //Arrange
                     var updater = new Runner.Listener.SelfUpdaterV2();
