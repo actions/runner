@@ -6,6 +6,10 @@ darwin.svc.sh.template
 hashFiles/index.js
 installdependencies.sh
 macos-run-invoker.js
+Azure.Core.dll
+Azure.Storage.Blobs.dll
+Azure.Storage.Common.dll
+Microsoft.Bcl.AsyncInterfaces.dll
 Microsoft.IdentityModel.Logging.dll
 Microsoft.IdentityModel.Tokens.dll
 Minimatch.dll
@@ -46,7 +50,10 @@ runsvc.sh
 Sdk.deps.json
 Sdk.dll
 Sdk.pdb
+System.Diagnostics.DiagnosticSource.dll
 System.IdentityModel.Tokens.Jwt.dll
+System.IO.Hashing.dll
+System.Memory.Data.dll
 System.Net.Http.Formatting.dll
 System.Security.Cryptography.Pkcs.dll
 System.Security.Cryptography.ProtectedData.dll
