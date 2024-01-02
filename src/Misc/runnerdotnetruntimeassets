@@ -64,6 +64,10 @@ libmscordaccore.dylib
 libmscordaccore.so
 libmscordbi.dylib
 libmscordbi.so
+Azure.Core.dll
+Azure.Storage.Blobs.dll
+Azure.Storage.Common.dll
+Microsoft.Bcl.AsyncInterfaces.dll
 Microsoft.CSharp.dll
 Microsoft.DiaSymReader.Native.amd64.dll
 Microsoft.DiaSymReader.Native.arm64.dll
@@ -138,6 +142,7 @@ System.IO.FileSystem.dll
 System.IO.FileSystem.DriveInfo.dll
 System.IO.FileSystem.Primitives.dll
 System.IO.FileSystem.Watcher.dll
+System.IO.Hashing.dll
 System.IO.IsolatedStorage.dll
 System.IO.MemoryMappedFiles.dll
 System.IO.Pipes.AccessControl.dll
@@ -148,6 +153,7 @@ System.Linq.Expressions.dll
 System.Linq.Parallel.dll
 System.Linq.Queryable.dll
 System.Memory.dll
+System.Memory.Data.dll
 System.Native.a
 System.Native.dylib
 System.Native.so
