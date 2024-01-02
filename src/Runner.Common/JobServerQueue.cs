@@ -134,8 +134,8 @@ namespace GitHub.Runner.Common
                 {
                     liveConsoleFeedUrl = feedStreamUrl;
                 }
-
-                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken);
+                jobRequest.Variables.TryGetValue("system.github.results_upload_with_sdk", out VariableValue resultsUseSdkVariable);
+                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken, Convert.ToBoolean(resultsEndpointVariable?.Value));
                 _resultsClientInitiated = true;
             }
 

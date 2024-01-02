@@ -23,13 +23,15 @@ namespace GitHub.Services.Results.Client
             Uri baseUrl,
             HttpMessageHandler pipeline,
             string token,
-            bool disposeHandler)
+            bool disposeHandler,
+            bool useSdk)
             : base(baseUrl, pipeline, disposeHandler)
         {
             m_token = token;
             m_resultsServiceUrl = baseUrl;
             m_formatter = new JsonMediaTypeFormatter();
             m_changeIdCounter = 1;
+            m_useSdk = useSdk;
         }
 
         // Get Sas URL calls
@@ -209,7 +211,7 @@ namespace GitHub.Services.Results.Client
 
         private async Task UploadBlockFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken)
         {
-            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
                 var blobClient = GetBlobClient(url);
                 try
@@ -221,11 +223,32 @@ namespace GitHub.Services.Results.Client
                     throw new Exception($"Failed to upload block to Azure blob: {e.Message}");
                 }
             }
+            else
+            {
+                // Upload the file to the url
+                var request = new HttpRequestMessage(HttpMethod.Put, url)
+                {
+                    Content = new StreamContent(file)
+                };
+
+                if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+                {
+                    request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureBlockBlob);
+                }
+
+                using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Failed to upload file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                    }
+                }
+            }
         }
 
         private async Task CreateAppendFileAsync(string url, string blobStorageType, CancellationToken cancellationToken)
         {
-            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
                 var appendBlobClient = GetAppendBlobClient(url);
                 try
@@ -237,11 +260,31 @@ namespace GitHub.Services.Results.Client
                     throw new Exception($"Failed to create append blob in Azure blob: {e.Message}");
                 }
             }
+            else
+            {
+                var request = new HttpRequestMessage(HttpMethod.Put, url)
+                {
+                    Content = new StringContent("")
+                };
+                if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+                {
+                    request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureAppendBlob);
+                    request.Content.Headers.Add("Content-Length", "0");
+                }
+
+                using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Failed to create append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                    }
+                }
+            }
         }
 
-        private async Task UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, CancellationToken cancellationToken)
+        private async Task UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, long fileSize, CancellationToken cancellationToken)
         {
-            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
                 var appendBlobClient = GetAppendBlobClient(url);
                 try
@@ -255,6 +298,29 @@ namespace GitHub.Services.Results.Client
                 catch (RequestFailedException e)
                 {
                     throw new Exception($"Failed to upload append block in Azure blob: {e.Message}");
+                }
+            }
+            else
+            {
+                var comp = finalize ? "&comp=appendblock&seal=true" : "&comp=appendblock";
+                // Upload the file to the url
+                var request = new HttpRequestMessage(HttpMethod.Put, url + comp)
+                {
+                    Content = new StreamContent(file)
+                };
+
+                if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+                {
+                    request.Content.Headers.Add("Content-Length", fileSize.ToString());
+                    request.Content.Headers.Add(Constants.AzureBlobSealedHeader, finalize.ToString());
+                }
+
+                using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Failed to upload append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}, object: {response}, fileSize: {fileSize}");
+                    }
                 }
             }
         }
@@ -310,7 +376,7 @@ namespace GitHub.Services.Results.Client
                 var fileSize = new FileInfo(file).Length;
                 using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
                 {
-                    await UploadAppendFileAsync(sasUrl, blobStorageType, fileStream, finalize, cancellationToken);
+                    await UploadAppendFileAsync(sasUrl, blobStorageType, fileStream, finalize, fileSize, cancellationToken);
                 }
             }
         }
@@ -430,6 +496,7 @@ namespace GitHub.Services.Results.Client
         private Uri m_resultsServiceUrl;
         private string m_token;
         private int m_changeIdCounter;
+        private bool m_useSdk;
     }
 
     // Constants specific to results
@@ -449,6 +516,11 @@ namespace GitHub.Services.Results.Client
 
         public static readonly int DefaultNetworkTimeoutInSeconds = 30;
         public static readonly int DefaultBlobUploadRetries = 3;
+
+        public static readonly string AzureBlobSealedHeader = "x-ms-blob-sealed";
+        public static readonly string AzureBlobTypeHeader = "x-ms-blob-type";
+        public static readonly string AzureBlockBlob = "BlockBlob";
+        public static readonly string AzureAppendBlob = "AppendBlob";
     }
 
 }
