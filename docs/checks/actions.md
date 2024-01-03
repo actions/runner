@@ -10,7 +10,7 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
   - The runner needs to access `https://codeload.github.com` for downloading actions tar.gz/zip.
   - The runner needs to access `https://vstoken.actions.githubusercontent.com/_apis/.../` for requesting an access token.
   - The runner needs to access `https://pipelines.actions.githubusercontent.com/_apis/.../` for receiving workflow jobs.
-  - The runner needs to access `https://results-receiver.actions.githubusercontent.com/.../` for report progress and upload logs during a workflow job execution.
+  - The runner needs to access `https://results-receiver.actions.githubusercontent.com/.../` for reporting progress and uploading logs during a workflow job execution.
   ---
   **NOTE:** for the full list of domains that are required to be in the firewall allow list refer to the [GitHub self-hosted runners requirements documentation](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-between-self-hosted-runners-and-github).
 
