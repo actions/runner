@@ -26,6 +26,8 @@ namespace GitHub.Runner.Listener
         private CancellationTokenSource _getMessagesTokenSource;
         private IBrokerServer _brokerServer;
 
+        public string _sessionId;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -203,7 +205,8 @@ namespace GitHub.Runner.Listener
 
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
-            await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), creds);
+            var sessionResponse = await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), creds);
+            _sessionId = sessionResponse.id;
         }
     }
 }

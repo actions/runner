@@ -56,7 +56,32 @@ namespace GitHub.Actions.RunService.WebApi
         {
         }
 
+        public async Task<BrokerSession> CreateSessionAsync(
+            CancellationToken cancellationToken = default
+        )
+        {
+            var requestUri = new Uri(Client.BaseAddress, "session");
+
+            var result = await SendAsync<BrokerSession>(
+                new HttpMethod("POST"),
+                requestUri: requestUri,
+                cancellationToken: cancellationToken
+            );
+
+            if (result.IsSuccess)
+            {
+                return result.Value;
+            }
+
+            if (result.StatusCode == HttpStatusCode.Forbidden)
+            {
+                throw new AccessDeniedException(result.Error);
+            }
+
+            throw new Exception($"Failed to get job message: {result.Error}");
+        }
         public async Task<TaskAgentMessage> GetRunnerMessageAsync(
+            string sessionID,
             string runnerVersion,
             TaskAgentStatus? status,
             CancellationToken cancellationToken = default
@@ -66,6 +91,10 @@ namespace GitHub.Actions.RunService.WebApi
 
             List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
 
+            if (sessionID != null)
+            {
+                queryParams.Add("sessionID", runnerVersion);
+            }
             if (status != null)
             {
                 queryParams.Add("status", status.Value.ToString());

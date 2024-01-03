@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(BrokerServer))]
     public interface IBrokerServer : IRunnerService
     {
-        Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
+        Task<BrokerSession> ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken token, TaskAgentStatus status, string version);
     }
@@ -26,19 +26,25 @@ namespace GitHub.Runner.Common
         private Uri _brokerUri;
         private RawConnection _connection;
         private BrokerHttpClient _brokerHttpClient;
+        private bool _hasSession;
+        private BrokerSession _session;
 
-        public async Task ConnectAsync(Uri serverUri, VssCredentials credentials)
+        public async Task<BrokerSession> ConnectAsync(Uri serverUri, VssCredentials credentials)
         {
             _brokerUri = serverUri;
 
             _connection = VssUtil.CreateRawConnection(serverUri, credentials);
             _brokerHttpClient = await _connection.GetClientAsync<BrokerHttpClient>();
+            _session = await _brokerHttpClient.CreateSessionAsync();
             _hasConnection = true;
+            _hasSession = true;
+
+            return _session;
         }
 
         private void CheckConnection()
         {
-            if (!_hasConnection)
+            if (!_hasConnection || !_hasSession)
             {
                 throw new InvalidOperationException($"SetConnection");
             }
@@ -48,7 +54,7 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             var jobMessage = RetryRequest<TaskAgentMessage>(
-                async () => await _brokerHttpClient.GetRunnerMessageAsync(version, status, cancellationToken), cancellationToken);
+                async () => await _brokerHttpClient.GetRunnerMessageAsync(_session.id, version, status, cancellationToken), cancellationToken);
 
             return jobMessage;
         }
