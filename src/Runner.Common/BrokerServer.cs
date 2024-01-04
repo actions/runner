@@ -1,13 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿#nullable enable
+
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Actions.RunService.WebApi;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
-using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi.RawClient;
 
 namespace GitHub.Runner.Common
@@ -15,44 +14,33 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(BrokerServer))]
     public interface IBrokerServer : IRunnerService
     {
-        Task<BrokerSession> ConnectAsync(Uri serverUrl, VssCredentials credentials);
+        Task<BrokerSession> CreateSessionAsync(Uri serverUrl, VssCredentials credentials, CancellationToken token);
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken token, TaskAgentStatus status, string version);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
     {
-        private bool _hasConnection;
-        private Uri _brokerUri;
-        private RawConnection _connection;
-        private BrokerHttpClient _brokerHttpClient;
-        private bool _hasSession;
-        private BrokerSession _session;
+        private RawConnection? _connection;
+        private BrokerHttpClient? _brokerHttpClient;
+        private BrokerSession? _session;
 
-        public async Task<BrokerSession> ConnectAsync(Uri serverUri, VssCredentials credentials)
+        public async Task<BrokerSession> CreateSessionAsync(Uri serverUri, VssCredentials credentials, CancellationToken cancellationToken)
         {
-            _brokerUri = serverUri;
-
             _connection = VssUtil.CreateRawConnection(serverUri, credentials);
-            _brokerHttpClient = await _connection.GetClientAsync<BrokerHttpClient>();
-            _session = await _brokerHttpClient.CreateSessionAsync();
-            _hasConnection = true;
-            _hasSession = true;
-
-            return _session;
-        }
-
-        private void CheckConnection()
-        {
-            if (!_hasConnection || !_hasSession)
-            {
-                throw new InvalidOperationException($"SetConnection");
-            }
+            _brokerHttpClient = await _connection.GetClientAsync<BrokerHttpClient>(cancellationToken);
+            return await RetryRequest(
+                async () => _session = await _brokerHttpClient.CreateSessionAsync(),
+                cancellationToken
+            );
         }
 
         public Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken cancellationToken, TaskAgentStatus status, string version)
         {
-            CheckConnection();
+            if (_connection is null || _session is null || _brokerHttpClient is null)
+            {
+                throw new InvalidOperationException($"SetConnection");
+            }
             var jobMessage = RetryRequest<TaskAgentMessage>(
                 async () => await _brokerHttpClient.GetRunnerMessageAsync(_session.id, version, status, cancellationToken), cancellationToken);
 

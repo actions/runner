@@ -1,10 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -12,8 +7,6 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
-using GitHub.Runner.Common.Util;
-using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Listener
 {
@@ -38,7 +31,7 @@ namespace GitHub.Runner.Listener
 
         public async Task<Boolean> CreateSessionAsync(CancellationToken token)
         {
-            await RefreshBrokerConnection();
+            await RefreshBrokerSession(token);
             return await Task.FromResult(true);
         }
 
@@ -139,8 +132,8 @@ namespace GitHub.Runner.Listener
                             encounteringError = true;
                         }
 
-                        // re-create VssConnection before next retry
-                        await RefreshBrokerConnection();
+                        // re-create session before next retry
+                        await RefreshBrokerSession(token);
 
                         Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
                         await HostContext.Delay(_getNextMessageRetryInterval, token);
@@ -193,7 +186,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private async Task RefreshBrokerConnection()
+        private async Task RefreshBrokerSession(CancellationToken ct)
         {
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
@@ -205,8 +198,8 @@ namespace GitHub.Runner.Listener
 
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials creds = credMgr.LoadCredentials();
-            var sessionResponse = await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), creds);
-            _sessionId = sessionResponse.id;
+            var session = await _brokerServer.CreateSessionAsync(new Uri(_settings.ServerUrlV2), creds, ct);
+            _sessionId = session.id;
         }
     }
 }

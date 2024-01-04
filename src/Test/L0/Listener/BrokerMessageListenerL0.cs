@@ -31,20 +31,32 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreatesSessionAsync()
+        public async void CreatesSession()
         {
             using TestHostContext tc = CreateTestContext();
             using var tokenSource = new CancellationTokenSource();
 
-            // Arrange.
-            _brokerServer.Setup(x => x.ConnectAsync(new Uri(_settings.ServerUrlV2), It.Is<VssCredentials>(y => y != null))).Returns(Task.FromResult(new BrokerSession { id = "my-phony-session-id" }));
+            // Arrange
+            _brokerServer
+                .Setup(
+                    x => x.CreateSessionAsync(
+                        new Uri(_settings.ServerUrlV2),
+                        It.Is<VssCredentials>(y => y != null),
+                        tokenSource.Token
+                    )
+                )
+                .Returns(
+                    Task.FromResult(
+                        new BrokerSession { id = "my-phony-session-id" }
+                    )
+                );
             BrokerMessageListener listener = new();
             listener.Initialize(tc);
 
-            // Act.
+            // Act
             bool result = await listener.CreateSessionAsync(tokenSource.Token);
 
-            // Assert.
+            // Assert
             Assert.True(result);
             Assert.Equal("my-phony-session-id", listener._sessionId);
         }

@@ -78,6 +78,11 @@ namespace GitHub.Actions.RunService.WebApi
                 throw new AccessDeniedException(result.Error);
             }
 
+            if (result.StatusCode == HttpStatusCode.Conflict)
+            {
+                throw new TaskAgentSessionConflictException(result.Error);
+            }
+
             throw new Exception($"Failed to get job message: {result.Error}");
         }
         public async Task<TaskAgentMessage> GetRunnerMessageAsync(
