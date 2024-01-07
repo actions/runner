@@ -40,7 +40,11 @@ ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=ubuntu22
 
 RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \+
+    jq \
+    git \
+    curl \
+    yarn \
     sudo \
     lsb-release \
     && rm -rf /var/lib/apt/lists/*
