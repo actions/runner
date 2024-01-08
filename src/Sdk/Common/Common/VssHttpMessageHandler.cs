@@ -215,7 +215,7 @@ namespace GitHub.Services.Common
                     // SyncronizationContext (such as ASP.NET's) which keeps things from deadlocking...
 
                     var tmpResponse = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
-                    if (Settings.AllowAutoRedirectForBroker && tmpResponse.StatusCode == HttpStatusCode.Redirect)
+                    if (tmpResponse.StatusCode == HttpStatusCode.Redirect)
                     {
                         //Dispose of the previous response
                         tmpResponse?.Dispose();
