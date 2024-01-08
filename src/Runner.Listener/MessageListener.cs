@@ -183,18 +183,15 @@ namespace GitHub.Runner.Listener
 
         public void OnJobStatus(object sender, JobStatusEventArgs e)
         {
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
+            Trace.Info("Received job status event. JobState: {0}", e.Status);
+            runnerStatus = e.Status;
+            try
             {
-                Trace.Info("Received job status event. JobState: {0}", e.Status);
-                runnerStatus = e.Status;
-                try
-                {
-                    _getMessagesTokenSource?.Cancel();
-                }
-                catch (ObjectDisposedException)
-                {
-                    Trace.Info("_getMessagesTokenSource is already disposed.");
-                }
+                _getMessagesTokenSource?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                Trace.Info("_getMessagesTokenSource is already disposed.");
             }
         }
 
