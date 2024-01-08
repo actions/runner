@@ -171,10 +171,10 @@ namespace GitHub.Services.Results.Client
                 throw new Exception($"SAS url is empty");
             }
 
-            var blobUri = new Uri(url);
-            var blobPath = $"{blobUri.Scheme}://{blobUri.Authority}/{blobUri.AbsolutePath}";
+            var blobUri = new UriBuilder(url);
             var sasUrl = blobUri.Query.Substring(1); //remove starting "?"
-            return (new Uri(blobPath), sasUrl);
+            blobUri.Query = null; // remove query params
+            return (blobUri.Uri, sasUrl);
         }
 
         private BlobClient GetBlobClient(string url)
