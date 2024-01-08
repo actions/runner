@@ -135,7 +135,7 @@ namespace GitHub.Runner.Common
                     liveConsoleFeedUrl = feedStreamUrl;
                 }
                 jobRequest.Variables.TryGetValue("system.github.results_upload_with_sdk", out VariableValue resultsUseSdkVariable);
-                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken, Convert.ToBoolean(resultsUseSdkVariable?.Value));
+                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken, StringUtil.ConvertToBoolean(resultsUseSdkVariable?.Value));
                 _resultsClientInitiated = true;
             }
 
