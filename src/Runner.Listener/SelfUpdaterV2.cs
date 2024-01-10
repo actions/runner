@@ -149,7 +149,6 @@ namespace GitHub.Runner.Listener
 
             string archiveFile = null;
 
-            // Only try trimmed package if sever sends them and we have calculated hash value of the current runtime/externals.
             _updateTrace.Enqueue($"DownloadUrl: {packageDownloadUrl}");
 
             try

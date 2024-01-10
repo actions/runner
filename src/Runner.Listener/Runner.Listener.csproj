@@ -25,12 +25,6 @@
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.4.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="..\Misc\runnercoreassets">
-      <LogicalName>GitHub.Runner.Listener.runnercoreassets</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
-
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>portable</DebugType>
   </PropertyGroup>
