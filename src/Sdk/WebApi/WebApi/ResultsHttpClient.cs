@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -8,8 +7,11 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http.Formatting;
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Services.Common;
 using GitHub.Services.Results.Contracts;
 using Sdk.WebApi.WebApi;
 
@@ -21,13 +23,15 @@ namespace GitHub.Services.Results.Client
             Uri baseUrl,
             HttpMessageHandler pipeline,
             string token,
-            bool disposeHandler)
+            bool disposeHandler,
+            bool useSdk)
             : base(baseUrl, pipeline, disposeHandler)
         {
             m_token = token;
             m_resultsServiceUrl = baseUrl;
             m_formatter = new JsonMediaTypeFormatter();
             m_changeIdCounter = 1;
+            m_useSdk = useSdk;
         }
 
         // Get Sas URL calls
@@ -91,7 +95,6 @@ namespace GitHub.Services.Results.Client
         }
 
         // Create metadata calls
-
         private async Task SendRequest<R>(Uri uri, CancellationToken cancellationToken, R request, string timestamp)
         {
             using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, uri))
@@ -161,73 +164,164 @@ namespace GitHub.Services.Results.Client
             await SendRequest<JobLogsMetadataCreate>(createJobLogsMetadataEndpoint, cancellationToken, request, timestamp);
         }
 
-        private async Task<HttpResponseMessage> UploadBlockFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken)
+        private (Uri path, string sas) ParseSasToken(string url)
         {
-            // Upload the file to the url
-            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            if (String.IsNullOrEmpty(url))
             {
-                Content = new StreamContent(file)
-            };
-
-            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
-            {
-                request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureBlockBlob);
+                throw new Exception($"SAS url is empty");
             }
 
-            using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+            var blobUri = new UriBuilder(url);
+            var sasUrl = blobUri.Query.Substring(1); //remove starting "?"
+            blobUri.Query = null; // remove query params
+            return (blobUri.Uri, sasUrl);
+        }
+
+        private BlobClient GetBlobClient(string url)
+        {
+            var blobUri = ParseSasToken(url);
+
+            var opts = new BlobClientOptions
             {
-                if (!response.IsSuccessStatusCode)
+                Retry =
                 {
-                    throw new Exception($"Failed to upload file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                    MaxRetries = Constants.DefaultBlobUploadRetries,
+                    NetworkTimeout = TimeSpan.FromSeconds(Constants.DefaultNetworkTimeoutInSeconds)
                 }
-                return response;
+            };
+
+            return new BlobClient(blobUri.path, new AzureSasCredential(blobUri.sas), opts);
+        }
+
+        private AppendBlobClient GetAppendBlobClient(string url)
+        {
+            var blobUri = ParseSasToken(url);
+
+            var opts = new BlobClientOptions
+            {
+                Retry =
+                {
+                    MaxRetries = Constants.DefaultBlobUploadRetries,
+                    NetworkTimeout = TimeSpan.FromSeconds(Constants.DefaultNetworkTimeoutInSeconds)
+                }
+            };
+
+            return new AppendBlobClient(blobUri.path, new AzureSasCredential(blobUri.sas), opts);
+        }
+
+        private async Task UploadBlockFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken)
+        {
+            if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
+            {
+                var blobClient = GetBlobClient(url);
+                try
+                {
+                    await blobClient.UploadAsync(file, cancellationToken);
+                }
+                catch (RequestFailedException e)
+                {
+                    throw new Exception($"Failed to upload block to Azure blob: {e.Message}");
+                }
+            }
+            else
+            {
+                // Upload the file to the url
+                var request = new HttpRequestMessage(HttpMethod.Put, url)
+                {
+                    Content = new StreamContent(file)
+                };
+
+                if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+                {
+                    request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureBlockBlob);
+                }
+
+                using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Failed to upload file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                    }
+                }
             }
         }
 
-        private async Task<HttpResponseMessage> CreateAppendFileAsync(string url, string blobStorageType, CancellationToken cancellationToken)
+        private async Task CreateAppendFileAsync(string url, string blobStorageType, CancellationToken cancellationToken)
         {
-            var request = new HttpRequestMessage(HttpMethod.Put, url)
+            if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
-                Content = new StringContent("")
-            };
-            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
-            {
-                request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureAppendBlob);
-                request.Content.Headers.Add("Content-Length", "0");
-            }
-
-            using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
-            {
-                if (!response.IsSuccessStatusCode)
+                var appendBlobClient = GetAppendBlobClient(url);
+                try
                 {
-                    throw new Exception($"Failed to create append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                    await appendBlobClient.CreateAsync(cancellationToken: cancellationToken);
                 }
-                return response;
+                catch (RequestFailedException e)
+                {
+                    throw new Exception($"Failed to create append blob in Azure blob: {e.Message}");
+                }
+            }
+            else
+            {
+                var request = new HttpRequestMessage(HttpMethod.Put, url)
+                {
+                    Content = new StringContent("")
+                };
+                if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+                {
+                    request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureAppendBlob);
+                    request.Content.Headers.Add("Content-Length", "0");
+                }
+
+                using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Failed to create append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}");
+                    }
+                }
             }
         }
 
-        private async Task<HttpResponseMessage> UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, long fileSize, CancellationToken cancellationToken)
+        private async Task UploadAppendFileAsync(string url, string blobStorageType, FileStream file, bool finalize, long fileSize, CancellationToken cancellationToken)
         {
-            var comp = finalize ? "&comp=appendblock&seal=true" : "&comp=appendblock";
-            // Upload the file to the url
-            var request = new HttpRequestMessage(HttpMethod.Put, url + comp)
+            if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
-                Content = new StreamContent(file)
-            };
-
-            if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
-            {
-                request.Content.Headers.Add("Content-Length", fileSize.ToString());
-                request.Content.Headers.Add(Constants.AzureBlobSealedHeader, finalize.ToString());
-            }
-
-            using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
-            {
-                if (!response.IsSuccessStatusCode)
+                var appendBlobClient = GetAppendBlobClient(url);
+                try
                 {
-                    throw new Exception($"Failed to upload append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}, object: {response}, fileSize: {fileSize}");
+                    await appendBlobClient.AppendBlockAsync(file, cancellationToken: cancellationToken);
+                    if (finalize)
+                    {
+                        await appendBlobClient.SealAsync(cancellationToken: cancellationToken);
+                    }
                 }
-                return response;
+                catch (RequestFailedException e)
+                {
+                    throw new Exception($"Failed to upload append block in Azure blob: {e.Message}");
+                }
+            }
+            else
+            {
+                var comp = finalize ? "&comp=appendblock&seal=true" : "&comp=appendblock";
+                // Upload the file to the url
+                var request = new HttpRequestMessage(HttpMethod.Put, url + comp)
+                {
+                    Content = new StreamContent(file)
+                };
+
+                if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
+                {
+                    request.Content.Headers.Add("Content-Length", fileSize.ToString());
+                    request.Content.Headers.Add(Constants.AzureBlobSealedHeader, finalize.ToString());
+                }
+
+                using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Failed to upload append file, status code: {response.StatusCode}, reason: {response.ReasonPhrase}, object: {response}, fileSize: {fileSize}");
+                    }
+                }
             }
         }
 
@@ -251,23 +345,22 @@ namespace GitHub.Services.Results.Client
             // Upload the file
             using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
             {
-                var response = await UploadBlockFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, fileStream, cancellationToken);
+                await UploadBlockFileAsync(uploadUrlResponse.SummaryUrl, uploadUrlResponse.BlobStorageType, fileStream, cancellationToken);
             }
 
             // Send step summary upload complete message
             await StepSummaryUploadCompleteAsync(planId, jobId, stepId, fileSize, cancellationToken);
         }
 
-        private async Task<HttpResponseMessage> UploadLogFile(string file, bool finalize, bool firstBlock, string sasUrl, string blobStorageType,
+        private async Task UploadLogFile(string file, bool finalize, bool firstBlock, string sasUrl, string blobStorageType,
             CancellationToken cancellationToken)
         {
-            HttpResponseMessage response;
             if (firstBlock && finalize)
             {
                 // This is the one and only block, just use a block blob
                 using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
                 {
-                    response = await UploadBlockFileAsync(sasUrl, blobStorageType, fileStream, cancellationToken);
+                    await UploadBlockFileAsync(sasUrl, blobStorageType, fileStream, cancellationToken);
                 }
             }
             else
@@ -283,11 +376,9 @@ namespace GitHub.Services.Results.Client
                 var fileSize = new FileInfo(file).Length;
                 using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
                 {
-                    response = await UploadAppendFileAsync(sasUrl, blobStorageType, fileStream, finalize, fileSize, cancellationToken);
+                    await UploadAppendFileAsync(sasUrl, blobStorageType, fileStream, finalize, fileSize, cancellationToken);
                 }
             }
-
-            return response;
         }
 
         // Handle file upload for step log
@@ -405,6 +496,7 @@ namespace GitHub.Services.Results.Client
         private Uri m_resultsServiceUrl;
         private string m_token;
         private int m_changeIdCounter;
+        private bool m_useSdk;
     }
 
     // Constants specific to results
@@ -421,6 +513,9 @@ namespace GitHub.Services.Results.Client
         public static readonly string CreateJobLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateJobLogsMetadata";
         public static readonly string ResultsProtoApiV1Endpoint = "twirp/github.actions.results.api.v1.WorkflowStepUpdateService/";
         public static readonly string WorkflowStepsUpdate = ResultsProtoApiV1Endpoint + "WorkflowStepsUpdate";
+
+        public static readonly int DefaultNetworkTimeoutInSeconds = 30;
+        public static readonly int DefaultBlobUploadRetries = 3;
 
         public static readonly string AzureBlobSealedHeader = "x-ms-blob-sealed";
         public static readonly string AzureBlobTypeHeader = "x-ms-blob-type";

@@ -19,7 +19,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(ResultServer))]
     public interface IResultsServer : IRunnerService, IAsyncDisposable
     {
-        void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token);
+        void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token, bool useSdk);
 
         Task<bool> AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken);
 
@@ -51,9 +51,9 @@ namespace GitHub.Runner.Common
         private String _liveConsoleFeedUrl;
         private string _token;
 
-        public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token)
+        public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token, bool useSdk)
         {
-            this._resultsClient = CreateHttpClient(uri, token);
+            this._resultsClient = CreateHttpClient(uri, token, useSdk);
 
             _token = token;
             if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
@@ -63,7 +63,7 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public ResultsHttpClient CreateHttpClient(Uri uri, string token)
+        public ResultsHttpClient CreateHttpClient(Uri uri, string token, bool useSdk)
         {
             // Using default 100 timeout
             RawClientHttpRequestSettings settings = VssUtil.GetHttpRequestSettings(null);
@@ -80,7 +80,7 @@ namespace GitHub.Runner.Common
 
             var pipeline = HttpClientFactory.CreatePipeline(httpMessageHandler, delegatingHandlers);
 
-            return new ResultsHttpClient(uri, pipeline, token, disposeHandler: true);
+            return new ResultsHttpClient(uri, pipeline, token, disposeHandler: true, useSdk: useSdk);
         }
 
         public Task CreateResultsStepSummaryAsync(string planId, string jobId, Guid stepId, string file,
