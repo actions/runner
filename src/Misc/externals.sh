@@ -63,14 +63,13 @@ function acquireExternalTool() {
             echo "Curl version: $CURL_VERSION"
 
             # curl -f Fail silently (no output at all) on HTTP errors (H)
-            #      -k Allow connections to SSL sites without certs (H)
             #      -S Show error. With -s, make curl show errors when they occur
             #      -L Follow redirects (H)
             #      -o FILE    Write to FILE instead of stdout
             #      --retry 3   Retries transient errors 3 times (timeouts, 5xx)
             if [[ "$(printf '%s\n' "7.71.0" "$CURL_VERSION" | sort -V | head -n1)" != "7.71.0" ]]; then
                 # Curl version is less than or equal to 7.71.0, skipping retry-all-errors flag
-                 curl -fkSL --retry 3 -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
+                 curl -fSL --retry 3 -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
             else
                 # Curl version is greater than 7.71.0, running curl with --retry-all-errors flag
                  curl -fkSL --retry 3 --retry-all-errors -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
