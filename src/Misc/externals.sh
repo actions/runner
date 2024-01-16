@@ -72,7 +72,7 @@ function acquireExternalTool() {
                  curl -fSL --retry 3 -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
             else
                 # Curl version is greater than 7.71.0, running curl with --retry-all-errors flag
-                 curl -fkSL --retry 3 --retry-all-errors -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
+                 curl -fSL --retry 3 --retry-all-errors -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
             fi
 
             # Move the partial file to the download target.
