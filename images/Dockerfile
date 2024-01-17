@@ -29,7 +29,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
-        "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
+    "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy
@@ -42,8 +42,15 @@ ENV ImageOS=ubuntu22
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
     sudo \
+    curl \
+    gnupg \
+    jq \
+    git \
     lsb-release \
     && rm -rf /var/lib/apt/lists/*
+
+RUN curl -o- -L https://yarnpkg.com/install.sh | bash \
+    && export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
