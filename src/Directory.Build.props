@@ -56,6 +56,6 @@
   <!-- Set Treat tarnings as errors -->
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsNotAsErrors>NU1902</WarningsNotAsErrors>
+    <WarningsNotAsErrors>NU1902;SYSLIB0050;SYSLIB0051</WarningsNotAsErrors>
   </PropertyGroup>
 </Project>
