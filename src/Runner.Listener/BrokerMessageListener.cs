@@ -74,6 +74,7 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     message = await _brokerServer.GetRunnerMessageAsync(_getMessagesTokenSource.Token,
+                                                                        null,
                                                                         runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
                                                                         VarUtil.OS,
