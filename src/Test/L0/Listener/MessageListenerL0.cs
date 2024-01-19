@@ -24,6 +24,8 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<ICredentialManager> _credMgr;
         private Mock<IConfigurationStore> _store;
 
+        private Mock<IBrokerServer> _brokerServer;
+
         public MessageListenerL0()
         {
             _settings = new RunnerSettings { AgentId = 1, AgentName = "myagent", PoolId = 123, PoolName = "default", ServerUrl = "http://myserver", WorkFolder = "_work" };
@@ -32,6 +34,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             _runnerServer = new Mock<IRunnerServer>();
             _credMgr = new Mock<ICredentialManager>();
             _store = new Mock<IConfigurationStore>();
+            _brokerServer = new Mock<IBrokerServer>();
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -41,6 +44,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
+            tc.SetSingleton<IBrokerServer>(_brokerServer.Object);
             return tc;
         }
 

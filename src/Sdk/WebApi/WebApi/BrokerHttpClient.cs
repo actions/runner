@@ -118,9 +118,10 @@ namespace GitHub.Actions.RunService.WebApi
             throw new Exception($"Failed to get job message: {result.Error}");
         }
 
-         public async Task<TaskAgentSession> CreateSessionAsync(
-            TaskAgentSession session,
-            CancellationToken cancellationToken = default)
+        public async Task<TaskAgentSession> CreateSessionAsync(
+
+           TaskAgentSession session,
+           CancellationToken cancellationToken = default)
         {
 
             var requestUri = new Uri(Client.BaseAddress, "session");
@@ -137,7 +138,7 @@ namespace GitHub.Actions.RunService.WebApi
                 return result.Value;
             }
 
-             if (result.StatusCode == HttpStatusCode.Forbidden)
+            if (result.StatusCode == HttpStatusCode.Forbidden)
             {
                 throw new AccessDeniedException(result.Error);
             }

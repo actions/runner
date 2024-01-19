@@ -240,21 +240,21 @@ namespace GitHub.Runner.Listener
                     // Decrypt the message body if the session is using encryption
                     message = DecryptMessage(message);
 
-                    
+
                     if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                     {
                         Trace.Info("BrokerMigration message received. Polling Broker for messages...");
 
-                        var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);                        
+                        var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
                         var brokerServer = HostContext.GetService<IBrokerServer>();
 
                         await brokerServer.ConnectAsync(migrationMessage.BrokerBaseUrl, _creds);
-                        message = await brokerServer.GetRunnerMessageAsync(token, 
-                                                                        _session.SessionId, 
-                                                                        runnerStatus, 
+                        message = await brokerServer.GetRunnerMessageAsync(token,
+                                                                        _session.SessionId,
+                                                                        runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
-                                                                        VarUtil.OS, 
-                                                                        VarUtil.OSArchitecture, 
+                                                                        VarUtil.OS,
+                                                                        VarUtil.OSArchitecture,
                                                                         _settings.DisableUpdate);
                     }
 
