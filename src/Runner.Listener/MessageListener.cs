@@ -102,13 +102,13 @@ namespace GitHub.Runner.Listener
                                                         taskAgentSession,
                                                         token);
 
-                    // if (_session.SessionMigrationURI != null)
-                    // {
-                    //     Trace.Info($"Runner session is in migration mode: Creating Broker session with SessionMigrationURI: {0}", _session.SessionMigrationURI);
-                    //     var brokerServer = HostContext.GetService<IBrokerServer>();
-                    //     await brokerServer.ConnectAsync(_session.SessionMigrationURI, _creds);
-                    //     _session = await brokerServer.CreateSessionAsync(token, taskAgentSession);
-                    // }
+                    if (_session.BrokerMigrationMessage != null)
+                    {
+                        Trace.Info($"Runner session is in migration mode: Creating Broker session with BrokerBaseUrl: {0}", _session.BrokerMigrationMessage.BrokerBaseUrl);
+                        var brokerServer = HostContext.GetService<IBrokerServer>();
+                        await brokerServer.ConnectAsync(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
+                        _session = await brokerServer.CreateSessionAsync(token, taskAgentSession);
+                    }
 
                     Trace.Info($"Session created.");
                     if (encounteringError)
