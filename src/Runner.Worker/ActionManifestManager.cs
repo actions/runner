@@ -144,7 +144,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Error(error.Message);
                 }
 
-                throw new ArgumentException($"Fail to load {fileRelativePath}");
+                throw new ArgumentException($"Failed to load {fileRelativePath}");
             }
 
             if (actionDefinition.Execution == null)
