@@ -22,6 +22,7 @@
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.4.0" />
     <PackageReference Include="System.Threading.Channels" Version="4.4.0" />
     <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
+    <PackageReference Include="System.Private.Uri" Version="4.3.2" />
   </ItemGroup>
 
   <ItemGroup>
