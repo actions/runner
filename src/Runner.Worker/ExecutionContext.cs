@@ -397,11 +397,11 @@ namespace GitHub.Runner.Worker
 
             if (recordOrder != null)
             {
-                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder);
+                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder, embedded: isEmbedded);
             }
             else
             {
-                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
+                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder, embedded: isEmbedded);
             }
             if (logger != null)
             {
@@ -432,7 +432,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> intraActionState = null,
             string siblingScopeName = null)
         {
-            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: null, intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName, timeout: GetRemainingTimeout());
+            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: null, intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName, timeout: GetRemainingTimeout(), recordOrder: _record.Order);
         }
 
         public void Start(string currentOperation = null)
@@ -1160,7 +1160,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string displayName, string refName, int? order)
+        private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string displayName, string refName, int? order, bool embedded = false)
         {
             _mainTimelineId = timelineId;
             _record.Id = timelineRecordId;
@@ -1186,7 +1186,11 @@ namespace GitHub.Runner.Worker
             var configuration = HostContext.GetService<IConfigurationStore>();
             _record.WorkerName = configuration.GetSettings().AgentName;
 
-            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            // We don't want to update the timeline record for embedded steps since they are not really represented in the UI.
+            if (!embedded)
+            {
+                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            }
         }
 
         private void JobServerQueueThrottling_EventReceived(object sender, ThrottlingEventArgs data)
