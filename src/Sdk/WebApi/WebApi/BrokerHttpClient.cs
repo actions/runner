@@ -143,6 +143,11 @@ namespace GitHub.Actions.RunService.WebApi
                 throw new AccessDeniedException(result.Error);
             }
 
+            if (result.StatusCode == HttpStatusCode.Conflict)
+            {
+                throw new TaskAgentSessionConflictException(result.Error);
+            }
+
             throw new Exception($"Failed to create broker session: {result.Error}");
         }
     }

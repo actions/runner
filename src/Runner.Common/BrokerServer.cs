@@ -17,8 +17,10 @@ namespace GitHub.Runner.Common
     {
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
-        Task<TaskAgentSession> CreateSessionAsync(CancellationToken cancellationToken, TaskAgentSession session);
-        Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken token, Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate);
+        Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken);
+
+        Task DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken);
+        Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
@@ -45,7 +47,7 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public Task<TaskAgentSession> CreateSessionAsync(CancellationToken cancellationToken, TaskAgentSession session)
+        public Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken)
         {
             CheckConnection();
             var jobMessage = RetryRequest<TaskAgentSession>(
@@ -54,13 +56,18 @@ namespace GitHub.Runner.Common
             return jobMessage;
         }
 
-        public Task<TaskAgentMessage> GetRunnerMessageAsync(CancellationToken cancellationToken, Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate)
+        public Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken)
         {
             CheckConnection();
-            var jobMessage = RetryRequest<TaskAgentMessage>(
+            var brokerSession = RetryRequest<TaskAgentMessage>(
                 async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken);
 
-            return jobMessage;
+            return brokerSession;
+        }
+
+        public async Task DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            await Task.CompletedTask; // not implemented yet
         }
     }
 }
