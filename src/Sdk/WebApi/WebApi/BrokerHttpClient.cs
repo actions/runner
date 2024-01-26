@@ -123,7 +123,6 @@ namespace GitHub.Actions.RunService.WebApi
            TaskAgentSession session,
            CancellationToken cancellationToken = default)
         {
-
             var requestUri = new Uri(Client.BaseAddress, "session");
             var requestContent = new ObjectContent<TaskAgentSession>(session, new VssJsonMediaTypeFormatter(true));
 

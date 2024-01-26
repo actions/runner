@@ -364,7 +364,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _brokerServer
                    .Setup(x => x.GetRunnerMessageAsync(
                        expectedSession.SessionId, TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                   .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken) =>
+                   .Returns(async (Guid sessionId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken) =>
                    {
                        await Task.Yield();
                        return brokerMessageQueue.Dequeue();
@@ -384,7 +384,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _brokerServer
                     .Verify(x => x.GetRunnerMessageAsync(
-                    expectedSession.SessionId, TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(arMessages.Length));
+                    expectedSession.SessionId, TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(brokerMessages.Length));
             }
         }
 
