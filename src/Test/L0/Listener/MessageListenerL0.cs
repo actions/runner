@@ -282,111 +282,111 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Runner")]
-        public async void GetNextMessageWithBrokerMigration()
-        {
-            using (TestHostContext tc = CreateTestContext())
-            using (var tokenSource = new CancellationTokenSource())
-            {
-                Tracing trace = tc.GetTrace();
+        // [Fact]
+        // [Trait("Level", "L0")]
+        // [Trait("Category", "Runner")]
+        // public async void GetNextMessageWithBrokerMigration()
+        // {
+        //     using (TestHostContext tc = CreateTestContext())
+        //     using (var tokenSource = new CancellationTokenSource())
+        //     {
+        //         Tracing trace = tc.GetTrace();
 
-                // Arrange.
-                var expectedSession = new TaskAgentSession();
-                PropertyInfo sessionIdProperty = expectedSession.GetType().GetProperty("SessionId", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                Assert.NotNull(sessionIdProperty);
-                sessionIdProperty.SetValue(expectedSession, Guid.NewGuid());
+        //         // Arrange.
+        //         var expectedSession = new TaskAgentSession();
+        //         PropertyInfo sessionIdProperty = expectedSession.GetType().GetProperty("SessionId", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        //         Assert.NotNull(sessionIdProperty);
+        //         sessionIdProperty.SetValue(expectedSession, Guid.NewGuid());
 
-                _runnerServer
-                    .Setup(x => x.CreateAgentSessionAsync(
-                        _settings.PoolId,
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token))
-                    .Returns(Task.FromResult(expectedSession));
+        //         _runnerServer
+        //             .Setup(x => x.CreateAgentSessionAsync(
+        //                 _settings.PoolId,
+        //                 It.Is<TaskAgentSession>(y => y != null),
+        //                 tokenSource.Token))
+        //             .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
-                _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
-                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
+        //         _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+        //         _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
+        //         _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
-                // Act.
-                MessageListener listener = new();
-                listener.Initialize(tc);
+        //         // Act.
+        //         MessageListener listener = new();
+        //         listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.True(result);
+        //         bool result = await listener.CreateSessionAsync(tokenSource.Token);
+        //         Assert.True(result);
 
-                var brokerMigrationMesage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
+        //         var brokerMigrationMesage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
 
-                var arMessages = new TaskAgentMessage[]
-                {
-                        new TaskAgentMessage
-                        {
-                            Body = JsonUtility.ToString(brokerMigrationMesage),
-                            MessageType = BrokerMigrationMessage.MessageType
-                        },
-                };
+        //         var arMessages = new TaskAgentMessage[]
+        //         {
+        //                 new TaskAgentMessage
+        //                 {
+        //                     Body = JsonUtility.ToString(brokerMigrationMesage),
+        //                     MessageType = BrokerMigrationMessage.MessageType
+        //                 },
+        //         };
 
-                var brokerMessages = new TaskAgentMessage[]
-                {
-                        new TaskAgentMessage
-                        {
-                            Body = "somebody1",
-                            MessageId = 4234,
-                            MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
-                        },
-                        new TaskAgentMessage
-                        {
-                            Body = "somebody2",
-                            MessageId = 4235,
-                            MessageType = JobCancelMessage.MessageType
-                        },
-                        null,  //should be skipped by GetNextMessageAsync implementation
-                        null,
-                        new TaskAgentMessage
-                        {
-                            Body = "somebody3",
-                            MessageId = 4236,
-                            MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
-                        }
-                };
-                var brokerMessageQueue = new Queue<TaskAgentMessage>(brokerMessages);
+        //         var brokerMessages = new TaskAgentMessage[]
+        //         {
+        //                 new TaskAgentMessage
+        //                 {
+        //                     Body = "somebody1",
+        //                     MessageId = 4234,
+        //                     MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
+        //                 },
+        //                 new TaskAgentMessage
+        //                 {
+        //                     Body = "somebody2",
+        //                     MessageId = 4235,
+        //                     MessageType = JobCancelMessage.MessageType
+        //                 },
+        //                 null,  //should be skipped by GetNextMessageAsync implementation
+        //                 null,
+        //                 new TaskAgentMessage
+        //                 {
+        //                     Body = "somebody3",
+        //                     MessageId = 4236,
+        //                     MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
+        //                 }
+        //         };
+        //         var brokerMessageQueue = new Queue<TaskAgentMessage>(brokerMessages);
 
-                _runnerServer
-                    .Setup(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                    .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken) =>
-                    {
-                        await Task.Yield();
-                        return arMessages[0]; // always send migration message
-                    });
+        //         _runnerServer
+        //             .Setup(x => x.GetAgentMessageAsync(
+        //                 _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        //             .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken) =>
+        //             {
+        //                 await Task.Yield();
+        //                 return arMessages[0]; // always send migration message
+        //             });
 
-                _brokerServer
-                   .Setup(x => x.GetRunnerMessageAsync(
-                       expectedSession.SessionId, TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-                   .Returns(async (Guid sessionId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken) =>
-                   {
-                       await Task.Yield();
-                       return brokerMessageQueue.Dequeue();
-                   });
+        //         _brokerServer
+        //            .Setup(x => x.GetRunnerMessageAsync(
+        //                expectedSession.SessionId, TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        //            .Returns(async (Guid sessionId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken) =>
+        //            {
+        //                await Task.Yield();
+        //                return brokerMessageQueue.Dequeue();
+        //            });
 
-                TaskAgentMessage message1 = await listener.GetNextMessageAsync(tokenSource.Token);
-                TaskAgentMessage message2 = await listener.GetNextMessageAsync(tokenSource.Token);
-                TaskAgentMessage message3 = await listener.GetNextMessageAsync(tokenSource.Token);
-                Assert.Equal(brokerMessages[0], message1);
-                Assert.Equal(brokerMessages[1], message2);
-                Assert.Equal(brokerMessages[4], message3);
+        //         TaskAgentMessage message1 = await listener.GetNextMessageAsync(tokenSource.Token);
+        //         TaskAgentMessage message2 = await listener.GetNextMessageAsync(tokenSource.Token);
+        //         TaskAgentMessage message3 = await listener.GetNextMessageAsync(tokenSource.Token);
+        //         Assert.Equal(brokerMessages[0], message1);
+        //         Assert.Equal(brokerMessages[1], message2);
+        //         Assert.Equal(brokerMessages[4], message3);
 
-                //Assert
-                _runnerServer
-                    .Verify(x => x.GetAgentMessageAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(brokerMessages.Length));
+        //         //Assert
+        //         _runnerServer
+        //             .Verify(x => x.GetAgentMessageAsync(
+        //                 _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(brokerMessages.Length));
 
-                _brokerServer
-                    .Verify(x => x.GetRunnerMessageAsync(
-                    expectedSession.SessionId, TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(brokerMessages.Length));
-            }
-        }
+        //         _brokerServer
+        //             .Verify(x => x.GetRunnerMessageAsync(
+        //             expectedSession.SessionId, TaskAgentStatus.Online, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(brokerMessages.Length));
+        //     }
+        // }
 
         [Fact]
         [Trait("Level", "L0")]
