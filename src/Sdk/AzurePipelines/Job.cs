@@ -1,3 +1,4 @@
+using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -33,8 +34,12 @@ namespace Runner.Server.Azure.Devops
         public string[] UsesPools { get; set; }
         public string WorkspaceClean { get; set; }
 
-        public async Task<Job> Parse(Context context, TemplateToken source) {
+        public async Task<Job> Parse(Context context, TemplateToken source, bool skipRootCheck = false) {
             var jobToken = source.AssertMapping("job-root");
+            if(!skipRootCheck && (jobToken.Count == 0 || (jobToken[0].Key.ToString() != "job" && jobToken[0].Key.ToString() != "deployment"))) {
+                throw new TemplateValidationException(new [] {new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(jobToken)}Expected either job or deployment")});
+            }
+            var errors = new List<TemplateValidationError>();
             foreach(var kv in jobToken) {
                 switch(kv.Key.AssertString("key").Value) {
                     case "job":
@@ -148,9 +153,7 @@ namespace Runner.Server.Azure.Devops
                     break;
                     case "steps":
                         Steps = new List<TaskStep>();
-                        foreach(var step2 in kv.Value.AssertSequence("")) {
-                            await AzureDevops.ParseSteps(context, Steps, step2);
-                        }
+                        await AzureDevops.ParseSteps(context, Steps, kv.Value.AssertSequence(""));
                     break;
                     case "templateContext":
                         TemplateContext = AzureDevops.ConvertAllScalarsToString(kv.Value);
@@ -195,25 +198,56 @@ namespace Runner.Server.Azure.Devops
                             }
                         }
                     break;
+                    default:
+                        errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(kv.Key)}Unexpected Key {kv.Key}"));
+                    break;
                 }
+            }
+            if(errors.Any()) {
+                throw new TemplateValidationException(errors);
             }
             return this;
         }
 
         public static async Task ParseJobs(Context context, List<Job> jobs, SequenceToken jobsToken) {
+            var errors = new List<TemplateValidationError>();
             foreach(var job in jobsToken) {
-                if(job is MappingToken mstep && mstep.Count > 0) {
-                    if((mstep[0].Key as StringToken)?.Value == "template") {
-                        var path = (mstep[0].Value as LiteralToken)?.ToString();
-                        if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
-                            throw new Exception($"Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters");
+                try {
+                    if(job is MappingToken mstep && mstep.Count > 0) {
+                        if((mstep[0].Key as StringToken)?.Value == "template") {
+                            var path = (mstep[0].Value as LiteralToken)?.ToString();
+                            if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
+                                errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[1].Key)}Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters"));
+                                continue;    
+                            }
+                            if(mstep.Count > 2) {
+                                errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[2].Key)}Unexpected yaml keys {(mstep[2].Key as StringToken)?.Value} after template reference"));
+                                continue;
+                            }
+                            MappingToken file;
+                            try {
+                                try {
+                                    file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "job-template-root");
+                                } catch(Exception ex) when (!(ex is TemplateValidationException)) {
+                                    errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}{ex.Message}"));
+                                    continue;
+                                }
+                                await ParseJobs(context.ChildContext(file, path), jobs, (from e in file where e.Key.AssertString("").Value == "jobs" select e.Value).First().AssertSequence(""));
+                            } catch(TemplateValidationException ex) {
+                                throw new TemplateValidationException(ex.Errors.Prepend(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}Found Errors inside Template Reference: {ex.Message}")));
+                            }
+                        } else {
+                            jobs.Add(await new Job().Parse(context, mstep));
                         }
-                        var file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "job-template-root");
-                        await ParseJobs(context.ChildContext(file, path), jobs, (from e in file where e.Key.AssertString("").Value == "jobs" select e.Value).First().AssertSequence(""));
-                    } else {
-                        jobs.Add(await new Job().Parse(context, mstep));
                     }
+                } catch(TemplateValidationException ex) {
+                    errors.AddRange(ex.Errors);
+                } catch(Exception ex) {
+                    errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(job)}{ex.Message}"));
                 }
+            }
+            if(errors.Any()) {
+                throw new TemplateValidationException(errors);
             }
         }
 

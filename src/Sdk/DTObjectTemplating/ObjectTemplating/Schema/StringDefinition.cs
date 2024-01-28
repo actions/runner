@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.ObjectTemplating.Schema
@@ -44,6 +45,11 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                     IsExpression = isExpressionBooleanToken.Value;
                                     break;
 
+                                case TemplateConstants.Pattern:
+                                    var patternToken = mappingPair.Value.AssertString($"{TemplateConstants.Definition} {TemplateConstants.String} {TemplateConstants.Pattern}");
+                                    Pattern = patternToken.Value;
+                                    break;
+
                                 default:
                                     mappingKey.AssertUnexpectedValue($"{TemplateConstants.Definition} {TemplateConstants.String} key");
                                     break;
@@ -57,6 +63,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 }
             }
         }
+
+        public string Pattern { get; set; }
 
         internal override DefinitionType DefinitionType => DefinitionType.String;
 
@@ -78,6 +86,14 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     var comparison = IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
                     if (String.Equals(Constant, value, comparison))
+                    {
+                        return true;
+                    }
+                }
+                else if (!String.IsNullOrEmpty(Pattern))
+                {
+                    var pattern = new Regex(Pattern, IgnoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
+                    if (pattern.IsMatch(value))
                     {
                         return true;
                     }

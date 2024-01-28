@@ -67,15 +67,19 @@
       "mapping": {
         "properties": {
           "container": {
+            "type": "referenceName",
+            "first-property": true,
+            "required": true
+          },
+          "image": {
             "type": "string",
             "required": true
           },
-          "image": "string",
           "type": "string",
-          "trigger": "any",
+          "trigger": "container-trigger",
           "endpoint": "workflow-value",
           "env": "mapping",
-          "mapDockerSocket": "string",
+          "mapDockerSocket": "pipeline-boolean",
           "options": "workflow-value",
           "ports": "workflow-value",
           "volumes": "workflow-value",
@@ -84,14 +88,119 @@
           "resourceGroup": "string",
           "registry": "string",
           "repository": "string"
+        },
+        "loose-key-type": "workflow-key",
+        "loose-value-type": "workflow-value"
+      }
+    },
+
+    "includeExcludeStringFilters-object": {
+      "mapping": {
+        "properties": {
+          "include": "sequenceOfNonEmptyString",
+          "exclude": "sequenceOfNonEmptyString"
         }
       }
     },
 
+    "includeExcludeStringFilters": {
+      "one-of": [
+        "sequenceOfNonEmptyString",
+        "includeExcludeStringFilters-object"
+      ]
+    },
+
+    "containerResourceTrigger-object": {
+      "mapping": {
+        "properties": {
+          "enabled": {
+            "type": "pipeline-boolean"
+          },
+          "tags": {
+            "type": "includeExcludeStringFilters"
+          }
+        }
+      }
+    },
+
+    "container-trigger": {
+      "one-of": [
+        "pipelineResourceTrigger-none",
+        "pipelineResourceTrigger-true",
+        "containerResourceTrigger-object"
+      ]
+    },
+
     "pipeline-containers": {
+      "context": [
+        "parameters",
+        "variables"
+      ],
       "sequence": {
         "item-type": "pipeline-container"
       }
+    },
+
+    "pipeline-boolean-true": {
+      "string": {
+        "ignore-case": true,
+        "pattern": "^true$"
+      }
+    },
+    "pipeline-boolean-y": {
+      "string": {
+        "ignore-case": true,
+        "pattern": "^y$"
+      }
+    },
+    "pipeline-boolean-yes": {
+      "string": {
+        "ignore-case": true,
+        "pattern": "^yes$"
+      }
+    },
+    "pipeline-boolean-on": {
+      "string": {
+        "ignore-case": true,
+        "pattern": "^on$"
+      }
+    },
+    "pipeline-boolean-false": {
+      "string": {
+        "ignore-case": true,
+        "pattern": "^false$"
+      }
+    },
+    "pipeline-boolean-n": {
+      "string": {
+        "ignore-case": true,
+        "pattern": "^n$"
+      }
+    },
+    "pipeline-boolean-no": {
+      "string": {
+        "ignore-case": true,
+        "pattern": "^no$"
+      }
+    },
+    "pipeline-boolean-off": {
+      "string": {
+        "ignore-case": true,
+        "pattern": "^off$"
+      }
+    },
+
+    "pipeline-boolean": {
+      "one-of": [
+        "pipeline-boolean-true",
+        "pipeline-boolean-y",
+        "pipeline-boolean-yes",
+        "pipeline-boolean-on",
+        "pipeline-boolean-false",
+        "pipeline-boolean-n",
+        "pipeline-boolean-no",
+        "pipeline-boolean-off"
+      ]
     },
 
     "pipeline-repository": {
@@ -100,13 +209,17 @@
         "properties": {
           "repository": {
             "type": "string",
-            "required": true
+            "required": true,
+            "first-property": true
           },
-          "name": "mapping",
+          "name": "string",
           "type": "string",
           "endpoint": "string",
-          "ref": "workflow-value"
-        }
+          "ref": "workflow-value",
+          "trigger": "pipeline-trigger"
+        },
+        "loose-key-type": "workflow-key",
+        "loose-value-type": "workflow-value"
       }
     },
 
@@ -116,15 +229,365 @@
       }
     },
 
+    "pipeline-builds": {
+      "sequence": {
+        "item-type": "pipeline-build"
+      }
+    },
+
+    "pipeline-build": {
+      "mapping": {
+        "properties": {
+          "build": {
+            "description": "Alias or name of build artifact",
+            "type": "referenceName",
+            "first-property": true,
+            "required": true
+          },
+          "type": {
+            "description": "Name of the artifact type",
+            "type": "nonEmptyString",
+            "required": true
+          },
+          "connection": {
+            "description": "Name of the connection. This connection will be used for all the communication related to this artifact.",
+            "type": "nonEmptyString",
+            "required": true
+          },
+          "source": {
+            "description": "Name of the source definition/build/job",
+            "type": "nonEmptyString",
+            "required": true
+          },
+          "version": {
+            "type": "string_allowExpressions"
+          },
+          "branch": {
+            "type": "string_allowExpressions"
+          },
+          "trigger": {
+            "description": "When the artifact mentioned in this build resource completes a build, its allowed to trigger this pipeline.",
+            "type": "buildResourceTrigger"
+          }
+        }
+      }
+    },
+    "buildResourceTrigger": {
+      "allowed-values": [
+        "none", "true"
+      ]
+    },
+
+    "pipeline-pipelines": {
+      "sequence": {
+        "item-type": "pipeline-pipeline"
+      }
+    },
+
+    "pipeline-pipeline": {
+      "mapping": {
+        "properties": {
+          "pipeline": {
+            "description": "ID of the pipeline resource",
+            "type": "referenceName",
+            "first-property": true,
+            "required": true
+          },
+          "project": {
+            "type": "nonEmptyString"
+          },
+          "source": {
+            "type": "nonEmptyString"
+          },
+          "version": {
+            "type": "string_allowExpressions"
+          },
+          "branch": {
+            "type": "string_allowExpressions"
+          },
+          "tags": {
+            "type": "sequenceOfNonEmptyString"
+          },
+          "trigger": {
+            "type": "pipelineResourceTrigger"
+          }
+        }
+      }
+    },
+    "pipelineResourceTrigger-none": {
+      "string": {
+        "constant": "none"
+      }
+    },
+    "pipelineResourceTrigger-true": {
+      "string": {
+        "constant": "true"
+      }
+    },
+    "triggerBranchFilter": {
+      "one-of": [
+        "branchFilterArray",
+        "includeExcludeFilters"
+      ]
+    },
+    "pipelineResourceTrigger-object": {
+      "mapping": {
+        "properties": {
+          "enabled": {
+            "type": "pipeline-boolean"
+          },
+          "branches": {
+            "type": "triggerBranchFilter"
+          },
+          "stages": {
+            "type": "sequenceOfNonEmptyString"
+          },
+          "tags": {
+            "type": "sequenceOfNonEmptyString"
+          }
+        }
+      }
+    },
+    "pipelineResourceTrigger": {
+      "one-of": [
+        "pipelineResourceTrigger-none",
+        "pipelineResourceTrigger-true",
+        "pipelineResourceTrigger-object"
+      ]
+    },
+
+    "pipeline-webhooks": {
+      "sequence": {
+        "item-type": "pipeline-webhook"
+      }
+    },
+
+    "pipeline-packages": {
+      "sequence": {
+        "item-type": "pipeline-package"
+      }
+    },
+
+    "referenceName": {
+      "string": {
+        "pattern": "^[-_A-Za-z0-9]*$"
+      }
+    },
+
+    "pipeline-webhook": {
+      "mapping": {
+        "properties": {
+          "webhook": {
+            "description": "Name of the webhook",
+            "type": "referenceName",
+            "first-property": true,
+            "required": true
+          },
+          "connection": {
+            "description": "Name of the connection. In case of offline webhook this will be the type of Incoming Webhook otherwise it will be the type of the webhook extension.",
+            "type": "nonEmptyString",
+            "required": true
+          },
+          "type": {
+            "description": "Name of the webhook extension. leave this empty if its offline webhook.",
+            "type": "nonEmptyString"
+          },
+          "filters": {
+            "description": "List of trigger filters.",
+            "type": "webhookFilters"
+          }
+        }
+      }
+    },
+    "webhookFilters": {
+      "sequence": {
+        "item-type": "webhookFilter"
+      }
+    },
+    "webhookFilter": {
+      "mapping": {
+        "properties": {
+          "path": {
+            "description": "json path to select data from event payload",
+            "type": "nonEmptyString",
+            "first-property": true,
+            "required": true
+          },
+          "value": {
+            "description": "Expected value for the filter to match",
+            "type": "nonEmptyString",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "string_allowExpressions": {
+      "context": [
+        "parameters",
+        "variables"
+      ],
+      "string": {}
+    },
+
+    "pipeline-package": {
+      "mapping": {
+        "properties": {
+          "package": {
+            "description": "Alias of package artifact",
+            "type": "referenceName",
+            "first-property": true,
+            "required": true
+          },
+          "type": {
+            "description": "Type of the package. Ex - NuGet, NPM etc.",
+            "type": "nonEmptyString",
+            "required": true
+          },
+          "connection": {
+            "description": "Name of the connection. This connection will be used for all the communication related to this artifact.",
+            "type": "nonEmptyString",
+            "required": true
+          },
+          "name": {
+            "description": "Name of the package",
+            "type": "nonEmptyString",
+            "required": true
+          },
+          "version": {
+            "type": "string_allowExpressions"
+          },
+          "tag": {
+            "type": "string_allowExpressions"
+          },
+          "trigger": {
+            "description": "Trigger a new pipeline run when a new version of this package is available.",
+            "type": "packageResourceTrigger"
+          }
+        }
+      }
+    },
+    "packageResourceTrigger": {
+      "allowed-values": [
+        "none", "true"
+      ]
+    },
+
     "pipeline-resources": {
       "description": "Pipeline resources",
       "mapping": {
         "properties": {
+          "builds": "pipeline-builds",
           "containers": "pipeline-containers",
+          "pipelines": "pipeline-pipelines",
           "repositories": "pipeline-repositories",
-          "pipelines": "any",
-          "builds": "any",
-          "packages": "any"
+          "webhooks": "pipeline-webhooks",
+          "packages": "pipeline-packages"
+        }
+      }
+    },
+
+    "pipeline-trigger": {
+      "description": "Pipeline Trigger",
+      "one-of": [
+        "trigger-none",
+        "branchFilterArray",
+        "trigger-object"
+      ]
+    },
+
+    "trigger-none": {
+      "description": "None Trigger",
+      "string": {
+        "constant": "none"
+      }
+    },
+
+    "branchFilterArray": {
+      "sequence": {
+        "item-type": "branchFilter"
+      }
+    },
+
+    "branchFilter": {
+      "description": "branch name or prefix filter",
+      "string": {
+        "pattern": "^[^\\/~\\^\\: \\[\\]\\\\]+(\\/[^\\/~\\^\\: \\[\\]\\\\]+)*$"
+      }
+    },
+
+    "includeExcludeFilters": {
+      "mapping": {
+        "properties": {
+          "include": "branchFilterArray",
+          "exclude": "branchFilterArray"
+        }
+      }
+    },
+
+    "trigger-object": {
+      "description": "Object Trigger",
+      "mapping": {
+        "properties": {
+          "batch": "pipeline-boolean",
+          "branches": "includeExcludeFilters",
+          "paths": "includeExcludeFilters",
+          "tags": "includeExcludeFilters"
+        }
+      }
+    },
+
+    "pipeline-pr": {
+      "description": "Pipeline Pr",
+      "one-of": [
+        "trigger-none",
+        "branchFilterArray",
+        "pr-object"
+      ]
+    },
+
+    "pr-object": {
+      "description": "Object Pr",
+      "mapping": {
+        "properties": {
+          "autoCancel": "pipeline-boolean",
+          "branches": "includeExcludeFilters",
+          "paths": "includeExcludeFilters",
+          "drafts": "pipeline-boolean"
+        }
+      }
+    },
+
+    "pipeline-schedules": {
+      "sequence": {
+        "item-type": "schedule"
+      }
+    },
+
+    "nonEmptyString": {
+      "string": {
+          "require-non-empty": true
+      }
+    },
+
+    "sequenceOfNonEmptyString": {
+      "sequence": {
+        "item-type": "nonEmptyString"
+      }
+    },
+
+    "schedule": {
+      "mapping": {
+        "properties": {
+          "cron": {
+            "type": "nonEmptyString",
+            "first-property": true,
+            "required": true
+          },
+          "displayName": "string",
+          "branches": "includeExcludeFilters",
+          "batch": "pipeline-boolean",
+          "always": "pipeline-boolean"
         }
       }
     },
@@ -143,12 +606,12 @@
       "description": "Extends Pipeline file",
       "mapping": {
         "properties": {
-          "trigger": "any",
-          "pr": "any",
-          "schedules": "any",
+          "trigger": "pipeline-trigger",
+          "pr": "pipeline-pr",
+          "schedules": "pipeline-schedules",
           "name": "string",
           "appendCommitMessageToRunName": "string",
-          "resources": "workflow-value",
+          "resources": "pipeline-resources",
           "pool": "any",
           "lockBehavior": "any",
           "variables": "workflow-value",
@@ -165,12 +628,12 @@
       "description": "Stage Pipeline file",
       "mapping": {
         "properties": {
-          "trigger": "any",
-          "pr": "any",
-          "schedules": "any",
+          "trigger": "pipeline-trigger",
+          "pr": "pipeline-pr",
+          "schedules": "pipeline-schedules",
           "name": "string",
           "appendCommitMessageToRunName": "string",
-          "resources": "workflow-value",
+          "resources": "pipeline-resources",
           "pool": "any",
           "lockBehavior": "any",
           "variables": "workflow-value",
@@ -187,12 +650,12 @@
       "description": "Job Pipeline file",
       "mapping": {
         "properties": {
-          "trigger": "any",
-          "pr": "any",
-          "schedules": "any",
+          "trigger": "pipeline-trigger",
+          "pr": "pipeline-pr",
+          "schedules": "pipeline-schedules",
           "name": "string",
           "appendCommitMessageToRunName": "string",
-          "resources": "workflow-value",
+          "resources": "pipeline-resources",
           "pool": "any",
           "lockBehavior": "any",
           "variables": "workflow-value",
@@ -209,12 +672,12 @@
       "description": "Steps Pipeline file",
       "mapping": {
         "properties": {
-          "trigger": "any",
-          "pr": "any",
-          "schedules": "any",
+          "trigger": "pipeline-trigger",
+          "pr": "pipeline-pr",
+          "schedules": "pipeline-schedules",
           "name": "string",
           "appendCommitMessageToRunName": "string",
-          "resources": "workflow-value",
+          "resources": "pipeline-resources",
           "pool": "any",
           "lockBehavior": "any",
           "variables": "workflow-value",

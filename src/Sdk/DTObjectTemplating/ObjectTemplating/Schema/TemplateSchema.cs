@@ -245,11 +245,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         internal Boolean TryGetProperty(
             MappingDefinition definition,
             String name,
-            out String type)
+            out String type,
+            bool firstKey)
         {
             for (int i = 0; i < 10; i++)
             {
-                if (definition.Properties.TryGetValue(name, out PropertyValue property))
+                if (definition.Properties.TryGetValue(name, out PropertyValue property) && (!property.FirstProperty || firstKey))
                 {
                     type = property.Type;
                     return true;
@@ -270,7 +271,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         internal Boolean TryMatchKey(
             List<MappingDefinition> definitions,
             String key,
-            out String valueType)
+            out String valueType,
+            bool firstKey = false)
         {
             valueType = null;
 
@@ -280,7 +282,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
             {
                 var definition = definitions[i];
 
-                if (TryGetProperty(definition, key, out String t))
+                if (TryGetProperty(definition, key, out String t, firstKey))
                 {
                     if (valueType == null)
                     {
@@ -301,7 +303,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 {
                     for (var i = 0; i < definitions.Count;)
                     {
-                        if (TryGetProperty(definitions[i], key, out _))
+                        if (TryGetProperty(definitions[i], key, out _, firstKey))
                         {
                             i++;
                         }
@@ -405,6 +407,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(new StringToken(null, null, null,TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.RequireNonEmpty, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.IsExpression, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Pattern, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
                     schema.Definitions.Add(TemplateConstants.StringDefinitionProperties, mappingDefinition);
 
                     // sequence-definition
@@ -450,6 +453,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.Type, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.Required, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.FirstProperty, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.MappingPropertyValue, mappingDefinition);
 
 

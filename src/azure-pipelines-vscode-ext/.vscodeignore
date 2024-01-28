@@ -6,3 +6,5 @@ build/**
 !build/AppBundle/_framework
 dist/*
 !dist/main.js
+!dist/main-node.js
+!dist/main-node.js.map

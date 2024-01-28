@@ -130,10 +130,10 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                         stringDefinitions = new List<StringDefinition>();
                     }
                     // Multiple string definitions, all must be 'Constant'
-                    else if ((stringDefinitions.Count == 1 && String.IsNullOrEmpty(stringDefinitions[0].Constant))
-                        || String.IsNullOrEmpty(stringDefinition.Constant))
+                    else if ((stringDefinitions.Count == 1 && (String.IsNullOrEmpty(stringDefinitions[0].Constant) && String.IsNullOrEmpty(stringDefinitions[0].Pattern)))
+                        || (String.IsNullOrEmpty(stringDefinition.Constant) && String.IsNullOrEmpty(stringDefinition.Pattern)))
                     {
-                        throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.Scalar}', but some do not set '{TemplateConstants.Constant}'");
+                        throw new ArgumentException($"'{name}' refers to more than one '{TemplateConstants.Scalar}', but some do not set '{TemplateConstants.Constant}','{TemplateConstants.Pattern}'");
                     }
 
                     stringDefinitions.Add(stringDefinition);

@@ -10,6 +10,10 @@ namespace Runner.Server.Azure.Devops
         public string[] Demands { get; set; }
 
         public Pool Parse(Context context, TemplateToken source) {
+            if(source is ScalarToken) {
+                Name = source.AssertLiteralString("name");
+                return this;
+            }
             var poolToken = source.AssertMapping("pool-root");
             foreach(var kv in poolToken) {
                 switch(kv.Key.AssertString("key").Value) {

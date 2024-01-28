@@ -25,9 +25,7 @@ namespace Runner.Server.Azure.Devops
                     switch(kv.Key.AssertString("").Value) {
                         case "steps":
                             Steps = new List<TaskStep>();
-                            foreach(var step2 in kv.Value.AssertSequence("")) {
-                                await AzureDevops.ParseSteps(context, Steps, step2);
-                            }
+                            await AzureDevops.ParseSteps(context, Steps, kv.Value.AssertSequence(""));
                         break;
                         case "pool":
                             Pool = new Pool().Parse(context, kv.Value);

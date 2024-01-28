@@ -179,9 +179,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
             var keys = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
             var hasExpressionKey = false;
-
+            int i = 0;
             while (m_objectReader.AllowLiteral(out LiteralToken rawLiteral))
             {
+                var firstKey = i++ == 0;
                 var nextKeyScalar = ParseScalar(rawLiteral, definition);
                 // Expression
                 if (nextKeyScalar is ExpressionToken)
@@ -219,7 +220,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 }
 
                 // Well known
-                if (m_schema.TryMatchKey(mappingDefinitions, nextKey.Value, out String nextValueType))
+                if (m_schema.TryMatchKey(mappingDefinitions, nextKey.Value, out String nextValueType, firstKey))
                 {
                     m_memory.AddBytes(nextKey);
                     var nextValueDefinition = new DefinitionInfo(definition, nextValueType);
@@ -255,8 +256,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 var hitCount = new Dictionary<String, Int32>();
                 foreach (MappingDefinition mapdef in mappingDefinitions)
                 {
-                    foreach (String key in mapdef.Properties.Keys)
+                    foreach (var kv in mapdef.Properties)
                     {
+                        var key = kv.Key;
                         if (!hitCount.TryGetValue(key, out Int32 value))
                         {
                             hitCount.Add(key, 1);

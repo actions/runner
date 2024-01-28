@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.0.11",
+	"version": "0.0.12",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -21,6 +21,7 @@
 		"onDebug"
 	],
 	"browser": "./dist/main.js",
+	"main": "./dist/main-node.js",
 	"contributes": {
 		"commands": [
 			{
@@ -213,6 +214,11 @@
 						"type": "boolean",
 						"description": "Opens a live Preview side by side to your current code editor, if disabled you will only see a message with the conclusion",
 						"default": true
+					},
+					"autoClosePreview": {
+						"type": "boolean",
+						"description": "Stop Watch Task if the Preview Pane is closed for an extended period of time",
+						"default": false
 					},
 					"repositories": {
 						"type": "object",

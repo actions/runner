@@ -28,6 +28,9 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                         case TemplateConstants.Description:
                             Description = mappingPair.Value.AssertString($"{TemplateConstants.MappingPropertyValue} {TemplateConstants.Description}").Value;
                             break;
+                        case TemplateConstants.FirstProperty:
+                            FirstProperty = mappingPair.Value.AssertBoolean($"{TemplateConstants.MappingPropertyValue} {TemplateConstants.FirstProperty}").Value;
+                            break;
                         default:
                             mappingKey.AssertUnexpectedValue($"{TemplateConstants.MappingPropertyValue} key");
                             break;
@@ -35,6 +38,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 }
             }
         }
+
+        public bool FirstProperty { get; set; }
 
         internal String Type { get; set; }
 

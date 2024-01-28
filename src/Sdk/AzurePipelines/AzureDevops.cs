@@ -248,7 +248,7 @@ public class AzureDevops {
             }
         }
     }
-    public static async Task ParseSteps(Runner.Server.Azure.Devops.Context context, IList<TaskStep> steps, TemplateToken step) {
+    public static async Task ParseStep(Runner.Server.Azure.Devops.Context context, IList<TaskStep> steps, TemplateToken step) {
         var values = "task, powershell, pwsh, bash, script, checkout, download, downloadBuild, getPackage, publish, reviewApp, template";
         var mstep = step.AssertMapping($"steps.* a step must contain one of the following keyworlds as the first key {values}");
         mstep.AssertNotEmpty($"steps.* a step must contain one of the following keyworlds as the first key {values}");
@@ -426,15 +426,36 @@ public class AzureDevops {
             break;
             case "template":
                 if(unparsedTokens.Count == 1 && (unparsedTokens[0].Key as StringToken)?.Value != "parameters") {
-                    throw new Exception($"Unexpected yaml key {(unparsedTokens[0].Key as StringToken)?.Value} expected parameters");
+                    throw new TemplateValidationException(new [] {new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[2].Key)}Unexpected yaml key {(unparsedTokens[0].Key as StringToken)?.Value} expected parameters")});
                 }
-                var file = await ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
-                foreach(var step2 in (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence("")) {
-                    await ParseSteps(context.ChildContext(file, primaryValue), steps, step2);
+                if(mstep.Count > 2) {
+                    throw new TemplateValidationException(new [] {new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[2].Key)}Unexpected yaml keys {(mstep[2].Key as StringToken)?.Value} after template reference")});
+                }
+                try {
+                    var file = await ReadTemplate(context, primaryValue, unparsedTokens.Count == 1 ? unparsedTokens[0].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "step-template-root");
+                    await ParseSteps(context.ChildContext(file, primaryValue), steps, (from e in file where e.Key.AssertString("").Value == "steps" select e.Value).First().AssertSequence(""));
+                } catch(TemplateValidationException ex) {
+                    throw new TemplateValidationException(ex.Errors.Prepend(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}Found Errors inside Template Reference: {ex.Message}")));
                 }
             break;
             default:
             throw new Exception($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(step)}Unexpected step.key got {primaryKey} expected {values}");
+        }
+    }
+
+    public static async Task ParseSteps(Runner.Server.Azure.Devops.Context context, IList<TaskStep> steps, SequenceToken rawsteps) {
+        var errors = new List<TemplateValidationError>();
+        foreach(var step2 in rawsteps) {
+            try {
+                await ParseStep(context, steps, step2);
+            } catch(TemplateValidationException ex) {
+                errors.AddRange(ex.Errors);
+            } catch(Exception ex) {
+                errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(step2)}{ex.Message}"));
+            }
+        }
+        if(errors.Any()) {
+            throw new TemplateValidationException(errors);
         }
     }
 
@@ -476,15 +497,13 @@ public class AzureDevops {
             if(val == null) {
                 return null;
             }
-            await ParseSteps(context, steps, val);
+            await ParseStep(context, steps, val);
             return steps[0].ToContextData();
             case "stepList":
             if(val == null) {
                 return new ArrayContextData();
             }
-            foreach(var step2 in val.AssertSequence("")) {
-                await ParseSteps(context, steps, step2);
-            }
+            await ParseSteps(context, steps, val.AssertSequence(""));
             var stepList = new ArrayContextData();
             foreach(var step in steps) {
                 stepList.Add(step.ToContextData());
@@ -676,7 +695,7 @@ public class AzureDevops {
             }
             if (cparameters != null && providedParameter != cparameters?.Count)
             {
-                throw new Exception("Provided undeclared parameters");
+                templateContext.Error(token, "Provided undeclared parameters");
             }
         }
         else if (parameters is SequenceToken sparameters)
@@ -720,7 +739,7 @@ public class AzureDevops {
                 {
                     if (def == null) // handle missing required parameter
                     {
-                        templateContext.Error(new TemplateValidationError($"A value for the '{name}' parameter must be provided."));
+                        templateContext.Error(mparam, $"A value for the '{name}' parameter must be provided.");
                     }
                     parametersData[name] = defCtxData;
                 }
@@ -730,7 +749,7 @@ public class AzureDevops {
         {
             if (cparameters != null && 0 != cparameters.Count)
             {
-                throw new Exception("Provided undeclared parameters");
+                templateContext.Error(token, "Provided undeclared parameters");
             }
         }
 

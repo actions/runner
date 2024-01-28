@@ -61,5 +61,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
         internal const String True = "true";
         internal const String TrueConstant = "true-constant";
         internal const String Version = "version";
+        internal const String Pattern = "pattern";
+        internal const String FirstProperty = "first-property";
     }
 }

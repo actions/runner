@@ -22,8 +22,12 @@ namespace Runner.Server.Azure.Devops
         public Pool Pool { get; set; }
         public String LockBehavior { get; set; }
 
-        public async Task<Stage> Parse(Context context, TemplateToken source) {
+        public async Task<Stage> Parse(Context context, TemplateToken source, bool skipRootCheck = false) {
             var jobToken = source.AssertMapping("job-root");
+            if(!skipRootCheck && (jobToken.Count == 0 || jobToken[0].Key.ToString() != "stage")) {
+                throw new TemplateValidationException(new [] {new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(jobToken)}Expected stage")});
+            }
+            var errors = new List<TemplateValidationError>();
             foreach(var kv in jobToken) {
                 switch(kv.Key.AssertString("key").Value) {
                     case "stage":
@@ -57,30 +61,56 @@ namespace Runner.Server.Azure.Devops
                     case "lockBehavior":
                         LockBehavior = kv.Value.AssertLiteralString("lockBehavior have to be of type string");
                     break;
+                    default:
+                        errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(kv.Key)}Unexpected Key {kv.Key}"));
+                    break;
                 }
+            }
+            if(errors.Any()) {
+                throw new TemplateValidationException(errors);
             }
             return this;
         }
 
         public static async Task ParseStages(Context context, List<Stage> stages, SequenceToken stagesToken) {
+            var errors = new List<TemplateValidationError>();
             foreach(var job in stagesToken) {
-                if(job is MappingToken mstep && mstep.Count > 0) {
-                    if((mstep[0].Key as StringToken)?.Value == "template") {
-                        var path = (mstep[0].Value as LiteralToken)?.ToString();
-                        if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
-                            throw new Exception($"Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters");
+                try {
+                    if(job is MappingToken mstep && mstep.Count > 0) {
+                        if((mstep[0].Key as StringToken)?.Value == "template") {
+                            var path = (mstep[0].Value as LiteralToken)?.ToString();
+                            if(mstep.Count == 2 && (mstep[1].Key as StringToken)?.Value != "parameters") {
+                                errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[1].Key)}Unexpected yaml key {(mstep[1].Key as StringToken)?.Value} expected parameters"));
+                                continue;
+                            }
+                            if(mstep.Count > 2) {
+                                errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[2].Key)}Unexpected yaml keys {(mstep[2].Key as StringToken)?.Value} after template reference"));
+                                continue;
+                            }
+                            MappingToken file;
+                            try {
+                                try {
+                                    file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
+                                } catch(Exception ex) when (!(ex is TemplateValidationException)) {
+                                    errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}{ex.Message}"));
+                                    continue;
+                                }
+                                await ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
+                            } catch(TemplateValidationException ex) {
+                                throw new TemplateValidationException(ex.Errors.Prepend(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}Found Errors inside Template Reference: {ex.Message}")));
+                            }
+                        } else {
+                            stages.Add(await new Stage().Parse(context, mstep));
                         }
-                        MappingToken file;
-                        try {
-                            file = await AzureDevops.ReadTemplate(context, path, mstep.Count == 2 ? mstep[1].Value.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "stage-template-root");
-                        } catch(Exception ex) when (!(ex is TemplateValidationException)) {
-                            throw new TemplateValidationException($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(mstep[0].Key)}{ex.Message}");
-                        }
-                        await ParseStages(context.ChildContext(file, path), stages, (from e in file where e.Key.AssertString("").Value == "stages" select e.Value).First().AssertSequence(""));
-                    } else {
-                        stages.Add(await new Stage().Parse(context, mstep));
                     }
+                } catch(TemplateValidationException ex) {
+                    errors.AddRange(ex.Errors);
+                } catch(Exception ex) {
+                    errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(job)}{ex.Message}"));
                 }
+            }
+            if(errors.Any()) {
+                throw new TemplateValidationException(errors);
             }
         }
 

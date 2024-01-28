@@ -193,8 +193,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
             var keys = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
             var hasExpressionKey = false;
 
+            int i = 0;
             while (m_unraveler.AllowScalar(definition.Expand, out ScalarToken nextKeyScalar))
             {
+                var firstKey = i++ == 0;
                 // Expression
                 if (nextKeyScalar is ExpressionToken)
                 {
@@ -219,7 +221,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 }
 
                 // Well known
-                if (m_schema.TryMatchKey(mappingDefinitions, nextKey.Value, out String nextValueType))
+                if (m_schema.TryMatchKey(mappingDefinitions, nextKey.Value, out String nextValueType, firstKey))
                 {
                     var nextValueDefinition = new DefinitionInfo(definition, nextValueType);
                     var nextValue = Evaluate(nextValueDefinition);

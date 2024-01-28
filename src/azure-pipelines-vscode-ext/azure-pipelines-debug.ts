@@ -128,15 +128,17 @@ export class AzurePipelinesDebugSession extends LoggingDebugSession {
 			self.changed(uri);
 		}
 		var run = async() => {
+			var hasErrors = false;
 			await this.expandAzurePipeline(false, args.repositories, args.variables, args.parameters, async result => {
 				if(args.preview) {
 					await reopenPreviewIfNeeded();
 					self.virtualFiles[self.name] = result;
 					self.changed(uri);
-				} else {
+				} else if(!hasErrors) {
 					vscode.window.showInformationMessage("No Issues found");
 				}
 			}, args.program, async errmsg => {
+				hasErrors = true;
 				if(args.preview) {
 					await reopenPreviewIfNeeded();
 					self.virtualFiles[self.name] = errmsg;
