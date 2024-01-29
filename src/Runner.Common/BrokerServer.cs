@@ -47,11 +47,10 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken)
+        public async Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken)
         {
             CheckConnection();
-            var jobMessage = RetryRequest<TaskAgentSession>(
-                async () => await _brokerHttpClient.CreateSessionAsync(session, cancellationToken), cancellationToken);
+            var jobMessage = await _brokerHttpClient.CreateSessionAsync(session, cancellationToken);    
 
             return jobMessage;
         }
