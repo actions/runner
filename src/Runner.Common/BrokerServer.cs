@@ -19,7 +19,7 @@ namespace GitHub.Runner.Common
 
         Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken);
 
-        Task DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken);
+        Task DeleteSessionAsync(CancellationToken cancellationToken);
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
     }
 
@@ -64,9 +64,10 @@ namespace GitHub.Runner.Common
             return brokerSession;
         }
 
-        public async Task DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken)
+        public async Task DeleteSessionAsync(CancellationToken cancellationToken)
         {
-            await Task.CompletedTask; // not implemented yet
+            CheckConnection();
+            await _brokerHttpClient.DeleteSessionAsync(cancellationToken);
         }
     }
 }

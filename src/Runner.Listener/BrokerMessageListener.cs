@@ -49,7 +49,7 @@ namespace GitHub.Runner.Listener
             // Settings
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
-            var serverUrl = _settings.ServerUrl;
+            var serverUrl = _settings.ServerUrlV2;
             Trace.Info(_settings);
 
             // Create connection.
@@ -159,7 +159,7 @@ namespace GitHub.Runner.Listener
                 {
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
-                        await _brokerServer.DeleteSessionAsync(_session.SessionId, ts.Token);
+                        await _brokerServer.DeleteSessionAsync(ts.Token);
                     }
                 }
                 else

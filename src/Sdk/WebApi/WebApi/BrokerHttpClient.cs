@@ -149,5 +149,23 @@ namespace GitHub.Actions.RunService.WebApi
 
             throw new Exception($"Failed to create broker session: {result.Error}");
         }
+
+        public async Task DeleteSessionAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var requestUri = new Uri(Client.BaseAddress, $"session");
+
+            var result = await SendAsync<object>(
+                new HttpMethod("DELETE"),
+                requestUri: requestUri,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                return;
+            }
+
+            throw new Exception($"Failed to delete broker session: {result.Error}");
+        }
     }
 }

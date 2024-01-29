@@ -634,6 +634,7 @@ namespace GitHub.Runner.Listener
                     {
                         try
                         {
+                            Trace.Info("Deleting Runner Session...");
                             await _listener.DeleteSessionAsync();
                         }
                         catch (Exception ex) when (runOnce)
