@@ -551,6 +551,10 @@ namespace GitHub.Runner.Common
                             {
                                 await UploadSummaryFile(file);
                             }
+                            if (string.Equals(file.Type, CoreAttachmentType.DiagnosticLog, StringComparison.OrdinalIgnoreCase))
+                            {
+                                await UploadResultsDiagnosticLogFile(file);
+                            }
                             else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (file.RecordId != _jobTimelineRecordId)
@@ -920,6 +924,16 @@ namespace GitHub.Runner.Common
             };
 
             await UploadResultsFile(file, summaryHandler);
+        }
+
+        private async Task UploadDianosticLogsFile(ResultsUploadFileInfo file) {
+            Trace.Info($"Starting to upload diagnostic logs file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler diagnosticLogsHandler = async (file) =>
+            {
+                await _resultsServer.CreateResultsDiagnosticLogsAsync(file.PlanId, file.JobId, file.Path, CancellationToken.None);
+            };
+
+            await UploadResultsFile(file, diagnosticLogsHandler);
         }
 
         private async Task UploadResultsStepLogFile(ResultsUploadFileInfo file)

@@ -81,6 +81,19 @@ namespace GitHub.Services.Results.Client
             return await GetResultsSignedURLResponse<GetSignedStepLogsURLRequest, GetSignedStepLogsURLResponse>(getStepLogsSignedBlobURLEndpoint, cancellationToken, request);
         }
 
+        private async Task<GetSignedDiagnosticLogsURLResponse> GetSignedDiagnosticLogsURL(string planid, string jobid, cancellationtoken cancellationtoken)
+        {
+            var request = new GetSignedDiagnosticLogsURLRequest()
+            {
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+            };
+
+            var getDiagnosticLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetDiagnosticLogsSignedBlobURL);
+
+            return await GetSignedDiagnosticLogsURLResponse<GetSignedDiagnosticLogsURLRequest, GetSignedDiagnosticLogsURLResponse>(getDiagnosticLogsSignedBlobURLEndpoint, cancellationToken, request);
+        }
+
         private async Task<GetSignedJobLogsURLResponse> GetJobLogUploadUrlAsync(string planId, string jobId, CancellationToken cancellationToken)
         {
             var request = new GetSignedJobLogsURLRequest()
@@ -419,6 +432,18 @@ namespace GitHub.Services.Results.Client
                 // Send step log upload complete message
                 await JobLogUploadCompleteAsync(planId, jobId, lineCount, cancellationToken);
             }
+        }
+
+        public async Task UploadResultsDiagnosticLogsAsync(string planId, string jobId, string file, CancellationToken cancellationToken)
+        {
+            // Get the upload url
+            var uploadUrlResponse = await GetDiagnosticLogsUploadUrlAsync(planId, jobId, cancellationToken);
+            if (uploadUrlResponse == null || uploadUrlResponse.LogsUrl == null)
+            {
+                throw new Exception("Failed to get diagnostic logs upload url");
+            }
+
+            await UploadLogFile(file, true, true, uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
         }
 
         private Step ConvertTimelineRecordToStep(TimelineRecord r)

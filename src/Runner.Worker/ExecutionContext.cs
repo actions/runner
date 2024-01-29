@@ -968,6 +968,8 @@ namespace GitHub.Runner.Worker
             }
 
             _jobServerQueue.QueueFileUpload(_mainTimelineId, _record.Id, type, name, filePath, deleteSource: false);
+
+            _jobServerQueue.QueueResultsUpload(_record.Id, name, filePath, type, deleteSource: false, finalize: true, firstBlock: true, totalLines: 0);
         }
 
         public void QueueSummaryFile(string name, string filePath, Guid stepRecordId)
