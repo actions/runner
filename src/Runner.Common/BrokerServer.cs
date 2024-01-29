@@ -50,7 +50,7 @@ namespace GitHub.Runner.Common
         public async Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken)
         {
             CheckConnection();
-            var jobMessage = await _brokerHttpClient.CreateSessionAsync(session, cancellationToken);    
+            var jobMessage = await _brokerHttpClient.CreateSessionAsync(session, cancellationToken);
 
             return jobMessage;
         }

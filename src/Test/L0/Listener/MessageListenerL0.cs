@@ -204,6 +204,82 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
+        public async void DeleteSessionWithBrokerMigration()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = tc.GetTrace();
+
+                // Arrange.
+                var expectedSession = new TaskAgentSession()
+                {
+                    OwnerName = "legacy",
+                    BrokerMigrationMessage = new BrokerMigrationMessage(new Uri("https://broker.actions.github.com"))
+                };
+
+                var expectedBrokerSession = new TaskAgentSession()
+                {
+                    SessionId = Guid.NewGuid(),
+                    OwnerName = "broker"
+                };
+
+                _runnerServer
+                    .Setup(x => x.CreateAgentSessionAsync(
+                        _settings.PoolId,
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(Task.FromResult(expectedSession));
+
+                _brokerServer
+                    .Setup(x => x.CreateSessionAsync(
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(Task.FromResult(expectedBrokerSession));
+
+                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
+
+                // Act.
+                MessageListener listener = new();
+                listener.Initialize(tc);
+
+                bool result = await listener.CreateSessionAsync(tokenSource.Token);
+                trace.Info("result: {0}", result);
+
+                Assert.True(result);
+
+                _runnerServer
+                    .Verify(x => x.CreateAgentSessionAsync(
+                        _settings.PoolId,
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token), Times.Once());
+
+                _brokerServer
+                    .Verify(x => x.CreateSessionAsync(
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token), Times.Once());
+
+                _brokerServer
+                    .Setup(x => x.DeleteSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.CompletedTask);
+                
+                // Act.
+                await listener.DeleteSessionAsync();
+
+                //Assert
+                _runnerServer
+                    .Verify(x => x.DeleteAgentSessionAsync(
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()), Times.Never());
+                _brokerServer
+                    .Verify(x => x.DeleteSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
         public async void GetNextMessage()
         {
             using (TestHostContext tc = CreateTestContext())
