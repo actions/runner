@@ -456,7 +456,7 @@ namespace GitHub.Services.Results.Client
                 throw new Exception("Failed to get diagnostic logs upload url");
             }
 
-            await UploadLogFile(file, true, true, uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+            await UploadLogFile(file, true, true, uploadUrlResponse.DiagnosticLogsURL, uploadUrlResponse.BlobStorageType, cancellationToken);
         }
 
         private Step ConvertTimelineRecordToStep(TimelineRecord r)
