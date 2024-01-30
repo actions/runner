@@ -52,6 +52,11 @@ namespace GitHub.Runner.Listener
             var serverUrl = _settings.ServerUrlV2;
             Trace.Info(_settings);
 
+            if (string.IsNullOrEmpty(_settings.ServerUrlV2))
+            {
+                throw new InvalidOperationException("ServerUrlV2 is not set");
+            }
+
             // Create connection.
             Trace.Info("Loading Credentials");
             var credMgr = HostContext.GetService<ICredentialManager>();
@@ -380,6 +385,12 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Non-retriable exception: {ex.Message}");
                 return false;
             }
+
+            else if (ex is InvalidOperationException)
+            {
+                Trace.Info($"Non-retriable exception: {ex.Message}");
+                return false;
+            }
             else
             {
                 Trace.Info($"Retriable exception: {ex.Message}");
@@ -392,7 +403,7 @@ namespace GitHub.Runner.Listener
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
 
-            if (_settings.ServerUrlV2 == null)
+            if (string.IsNullOrEmpty(_settings.ServerUrlV2))
             {
                 throw new InvalidOperationException("ServerUrlV2 is not set");
             }
