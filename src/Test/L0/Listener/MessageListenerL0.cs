@@ -264,9 +264,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _brokerServer
                     .Setup(x => x.DeleteSessionAsync(It.IsAny<CancellationToken>()))
                     .Returns(Task.CompletedTask);
-                
+
                 // Act.
                 await listener.DeleteSessionAsync();
+
 
                 //Assert
                 _runnerServer
