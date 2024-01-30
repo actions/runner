@@ -247,6 +247,7 @@ namespace GitHub.Services.Results.Client
                 if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
                 {
                     request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureBlockBlob);
+                    request.Content.Headers.Add("Content-Type", "text/plain");
                 }
 
                 using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
