@@ -94,6 +94,19 @@ namespace GitHub.Services.Results.Client
             return await GetSignedDiagnosticLogsURLResponse<GetSignedDiagnosticLogsURLRequest, GetSignedDiagnosticLogsURLResponse>(getDiagnosticLogsSignedBlobURLEndpoint, cancellationToken, request);
         }
 
+        private async Task<GetSignedDiagnosticLogsURLResponse>GetDiagnosticLogsUploadUrlAsync(string planId, string jobId, CancellationToken cancellationToken)
+        {
+            var request = new GetSignedDiagnosticLogsURLRequest()
+            {
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+            };
+
+            var getDiagnosticLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetDiagnosticLogsSignedBlobURL);
+
+            return await GetResultsSignedURLResponse<GetSignedDiagnosticLogsURLRequest, GetSignedDiagnosticLogsURLResponse>(getDiagnosticLogsSignedBlobURLEndpoint, cancellationToken, request);
+        }
+
         private async Task<GetSignedJobLogsURLResponse> GetJobLogUploadUrlAsync(string planId, string jobId, CancellationToken cancellationToken)
         {
             var request = new GetSignedJobLogsURLRequest()

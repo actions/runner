@@ -107,8 +107,6 @@ namespace GitHub.Services.Results.Contracts
         public string DiagnosticLogsURL;
         [DataMember]
         public string BlobStorageType;
-        [DataMember]
-        public long SoftSizeLimit;
     }
 
     [DataContract]
