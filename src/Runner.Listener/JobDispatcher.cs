@@ -629,6 +629,20 @@ namespace GitHub.Runner.Listener
                                     Trace.Info("worker process has been killed.");
                                 }
                             }
+                            catch (Exception ex)
+                            {
+                                // message send failed, this might indicate worker process is already exited or stuck.
+                                Trace.Info($"Job cancel message sending for job {message.JobId} failed, kill running worker. {ex}");
+                                workerProcessCancelTokenSource.Cancel();
+                                try
+                                {
+                                    await workerProcessTask;
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    Trace.Info("worker process has been killed.");
+                                }
+                            }
 
                             // wait worker to exit 
                             // if worker doesn't exit within timeout, then kill worker.
