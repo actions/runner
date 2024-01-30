@@ -451,12 +451,12 @@ namespace GitHub.Services.Results.Client
         {
             // Get the upload url
             var uploadUrlResponse = await GetDiagnosticLogsUploadUrlAsync(planId, jobId, cancellationToken);
-            if (uploadUrlResponse == null || uploadUrlResponse.DiagnosticLogsURL == null)
+            if (uploadUrlResponse == null || uploadUrlResponse.DiagLogsURL == null)
             {
                 throw new Exception("Failed to get diagnostic logs upload url");
             }
 
-            await UploadLogFile(file, true, true, uploadUrlResponse.DiagnosticLogsURL, uploadUrlResponse.BlobStorageType, cancellationToken);
+            await UploadLogFile(file, true, true, uploadUrlResponse.DiagLogsURL, uploadUrlResponse.BlobStorageType, cancellationToken);
         }
 
         private Step ConvertTimelineRecordToStep(TimelineRecord r)

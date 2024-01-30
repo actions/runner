@@ -104,7 +104,7 @@ namespace GitHub.Services.Results.Contracts
     public class GetSignedDiagnosticLogsURLResponse
     {
         [DataMember]
-        public string DiagnosticLogsURL;
+        public string DiagLogsURL;
         [DataMember]
         public string BlobStorageType;
     }
