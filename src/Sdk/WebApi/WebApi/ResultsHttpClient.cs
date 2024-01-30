@@ -89,7 +89,7 @@ namespace GitHub.Services.Results.Client
                 WorkflowRunBackendId = planId,
             };
 
-            var getDiagnosticLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetDiagnosticLogsSignedBlobURL);
+            var getDiagnosticLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetJobDiagLogsSignedBlobURL);
 
             return await GetResultsSignedURLResponse<GetSignedDiagnosticLogsURLRequest, GetSignedDiagnosticLogsURLResponse>(getDiagnosticLogsSignedBlobURLEndpoint, cancellationToken, request);
         }
@@ -102,7 +102,7 @@ namespace GitHub.Services.Results.Client
                 WorkflowRunBackendId = planId,
             };
 
-            var getDiagnosticLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetDiagnosticLogsSignedBlobURL);
+            var getDiagnosticLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetJobDiagLogsSignedBlobURL);
 
             return await GetResultsSignedURLResponse<GetSignedDiagnosticLogsURLRequest, GetSignedDiagnosticLogsURLResponse>(getDiagnosticLogsSignedBlobURLEndpoint, cancellationToken, request);
         }
@@ -549,7 +549,7 @@ namespace GitHub.Services.Results.Client
         public static readonly string CreateStepLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateStepLogsMetadata";
         public static readonly string GetJobLogsSignedBlobURL = ResultsReceiverTwirpEndpoint + "GetJobLogsSignedBlobURL";
         public static readonly string CreateJobLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateJobLogsMetadata";
-        public static readonly string GetDiagnosticLogsSignedBlobURL = ResultsReceiverTwirpEndpoint + "GetDiagnosticLogsSignedBlobURL";
+        public static readonly string GetJobDiagLogsSignedBlobURL = ResultsReceiverTwirpEndpoint + "GetJobDiagLogsSignedBlobURL";
         public static readonly string ResultsProtoApiV1Endpoint = "twirp/github.actions.results.api.v1.WorkflowStepUpdateService/";
         public static readonly string WorkflowStepsUpdate = ResultsProtoApiV1Endpoint + "WorkflowStepsUpdate";
 
