@@ -253,10 +253,9 @@ namespace GitHub.Runner.Listener
                         Trace.Info("BrokerMigration message received. Polling Broker for messages...");
 
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
-                        var brokerServer = HostContext.GetService<IBrokerServer>();
 
-                        await brokerServer.ConnectAsync(migrationMessage.BrokerBaseUrl, _creds);
-                        message = await brokerServer.GetRunnerMessageAsync(_session.SessionId,
+                        await _brokerServer.ConnectAsync(migrationMessage.BrokerBaseUrl, _creds);
+                        message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
                                                                         runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
                                                                         VarUtil.OS,

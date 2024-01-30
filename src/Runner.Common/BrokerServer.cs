@@ -18,8 +18,8 @@ namespace GitHub.Runner.Common
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
         Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken);
-
         Task DeleteSessionAsync(CancellationToken cancellationToken);
+
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
     }
 
