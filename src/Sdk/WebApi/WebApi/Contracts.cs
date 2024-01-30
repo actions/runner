@@ -91,6 +91,28 @@ namespace GitHub.Services.Results.Contracts
 
     [DataContract]
     [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedDiagnosticLogsURLRequest
+    {
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string WorkflowRunBackendId;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedDiagnosticLogsURLResponse
+    {
+        [DataMember]
+        public string DiagnosticLogsURL;
+        [DataMember]
+        public string BlobStorageType;
+        [DataMember]
+        public long SoftSizeLimit;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
     public class JobLogsMetadataCreate
     {
         [DataMember]
