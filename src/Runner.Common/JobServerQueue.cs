@@ -553,7 +553,7 @@ namespace GitHub.Runner.Common
                             }
                             if (string.Equals(file.Type, CoreAttachmentType.DiagnosticLog, StringComparison.OrdinalIgnoreCase))
                             {
-                                await UploadResultsDiagnosticLogFile(file);
+                                await UploadResultsDiagnosticLogsFile(file);
                             }
                             else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
                             {
@@ -926,7 +926,7 @@ namespace GitHub.Runner.Common
             await UploadResultsFile(file, summaryHandler);
         }
 
-        private async Task UploadDiagnosticLogsFile(ResultsUploadFileInfo file) {
+        private async Task UploadResultsDiagnosticLogsFile(ResultsUploadFileInfo file) {
             Trace.Info($"Starting to upload diagnostic logs file to results service {file.Name}, {file.Path}");
             ResultsFileUploadHandler diagnosticLogsHandler = async (file) =>
             {
