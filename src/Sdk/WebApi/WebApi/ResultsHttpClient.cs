@@ -451,7 +451,7 @@ namespace GitHub.Services.Results.Client
         {
             // Get the upload url
             var uploadUrlResponse = await GetDiagnosticLogsUploadUrlAsync(planId, jobId, cancellationToken);
-            if (uploadUrlResponse == null || uploadUrlResponse.LogsUrl == null)
+            if (uploadUrlResponse == null || uploadUrlResponse.DiagnosticLogsURL == null)
             {
                 throw new Exception("Failed to get diagnostic logs upload url");
             }
