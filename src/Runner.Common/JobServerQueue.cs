@@ -926,7 +926,8 @@ namespace GitHub.Runner.Common
             await UploadResultsFile(file, summaryHandler);
         }
 
-        private async Task UploadResultsDiagnosticLogsFile(ResultsUploadFileInfo file) {
+        private async Task UploadResultsDiagnosticLogsFile(ResultsUploadFileInfo file)
+        {
             Trace.Info($"Starting to upload diagnostic logs file to results service {file.Name}, {file.Path}");
             ResultsFileUploadHandler diagnosticLogsHandler = async (file) =>
             {
