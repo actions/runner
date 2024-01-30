@@ -23,7 +23,13 @@ namespace GitHub.Runner.Sdk
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)
             {
-                headerValues.AddRange(VssClientHttpRequestSettings.Default.UserAgent);
+                foreach (var headerVal in VssClientHttpRequestSettings.Default.UserAgent)
+                {
+                    if (!headerValues.Contains(headerVal))
+                    {
+                        headerValues.Add(headerVal);
+                    }
+                }
             }
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
@@ -33,6 +39,23 @@ namespace GitHub.Runner.Sdk
             {
                 VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
             }
+
+            var rawHeaderValues = new List<ProductInfoHeaderValue>();
+            rawHeaderValues.AddRange(additionalUserAgents);
+            rawHeaderValues.Add(new ProductInfoHeaderValue($"({StringUtil.SanitizeUserAgentHeader(RuntimeInformation.OSDescription)})"));
+
+            if (RawClientHttpRequestSettings.Default.UserAgent != null && RawClientHttpRequestSettings.Default.UserAgent.Count > 0)
+            {
+                foreach (var headerVal in RawClientHttpRequestSettings.Default.UserAgent)
+                {
+                    if (!rawHeaderValues.Contains(headerVal))
+                    {
+                        rawHeaderValues.Add(headerVal);
+                    }
+                }
+            }
+
+            RawClientHttpRequestSettings.Default.UserAgent = rawHeaderValues;
         }
 
         public static VssConnection CreateConnection(
