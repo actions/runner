@@ -227,9 +227,16 @@ namespace GitHub.Services.Results.Client
             if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
                 var blobClient = GetBlobClient(url);
+								var uploadOptions = new BlobUploadOptions
+								{
+										HttpHeaders = new BlobHttpHeaders
+										{
+												ContentType = "text/plain"
+										}
+								};
                 try
                 {
-                    await blobClient.UploadAsync(file, cancellationToken);
+                    await blobClient.UploadAsync(file, uploadOptions, cancellationToken);
                 }
                 catch (RequestFailedException e)
                 {
