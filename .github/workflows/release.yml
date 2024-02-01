@@ -163,7 +163,6 @@ jobs:
           core.setOutput('note', releaseNote);
 
     - name: Validate Packages HASH
-      working-directory: _package
       run: |
         ls -l
         echo "${{needs.build.outputs.win-x64-sha}}  actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip" | shasum -a 256 -c
@@ -193,7 +192,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/_package/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
         asset_content_type: application/octet-stream
 
@@ -203,7 +202,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/_package/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
         asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
         asset_content_type: application/octet-stream
 
@@ -213,7 +212,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/_package/actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_path: ${{ github.workspace }}/actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_name: actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
@@ -223,7 +222,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/_package/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_path: ${{ github.workspace }}/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
@@ -233,7 +232,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/_package/actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_path: ${{ github.workspace }}/actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_name: actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
@@ -243,7 +242,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/_package/actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_path: ${{ github.workspace }}/actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_name: actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
@@ -253,7 +252,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/_package/actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_path: ${{ github.workspace }}/actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_name: actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 

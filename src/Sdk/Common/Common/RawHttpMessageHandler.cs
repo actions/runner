@@ -138,6 +138,8 @@ namespace GitHub.Services.Common
                         response.Dispose();
                     }
 
+                    this.Settings.ApplyTo(request);
+
                     // Let's start with sending a token
                     IssuedToken token = null;
                     if (m_tokenProvider != null)

@@ -49,6 +49,9 @@ namespace GitHub.Runner.Worker
                 !string.IsNullOrEmpty(orchestrationId.Value))
             {
                 HostContext.UserAgents.Add(new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
+
+                // make sure orchestration id is in the user-agent header.
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
             }
 
             var jobServerQueueTelemetry = false;
