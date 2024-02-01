@@ -227,15 +227,23 @@ namespace GitHub.Services.Results.Client
             if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
                 var blobClient = GetBlobClient(url);
-                var uploadOptions = new BlobUploadOptions();
+                var httpHeaders = new BlobHttpHeaders();
+                var conditions = new BlobRequestConditions
+                {
+                    IfMatch = new ETag("*")
+                };
                 string extension = System.IO.Path.GetExtension(file.Name);
                 if (extension == ".txt")
                 {
-                    uploadOptions.HttpHeaders.ContentType = "text/plain";
+                    httpHeaders.ContentType = "text/plain";
                 }
                 try
                 {
-                    await blobClient.UploadAsync(file, uploadOptions, cancellationToken);
+                    await blobClient.UploadAsync(file, new BlobUploadOptions()
+                    {
+                        HttpHeaders = httpHeaders,
+                        Conditions = conditions
+                    }, cancellationToken);
                 }
                 catch (RequestFailedException e)
                 {
