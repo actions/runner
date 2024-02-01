@@ -81,6 +81,19 @@ namespace GitHub.Services.Results.Client
             return await GetResultsSignedURLResponse<GetSignedStepLogsURLRequest, GetSignedStepLogsURLResponse>(getStepLogsSignedBlobURLEndpoint, cancellationToken, request);
         }
 
+        private async Task<GetSignedDiagnosticLogsURLResponse> GetDiagnosticLogsUploadUrlAsync(string planId, string jobId, CancellationToken cancellationToken)
+        {
+            var request = new GetSignedDiagnosticLogsURLRequest()
+            {
+                WorkflowJobRunBackendId = jobId,
+                WorkflowRunBackendId = planId,
+            };
+
+            var getDiagnosticLogsSignedBlobURLEndpoint = new Uri(m_resultsServiceUrl, Constants.GetJobDiagLogsSignedBlobURL);
+
+            return await GetResultsSignedURLResponse<GetSignedDiagnosticLogsURLRequest, GetSignedDiagnosticLogsURLResponse>(getDiagnosticLogsSignedBlobURLEndpoint, cancellationToken, request);
+        }
+
         private async Task<GetSignedJobLogsURLResponse> GetJobLogUploadUrlAsync(string planId, string jobId, CancellationToken cancellationToken)
         {
             var request = new GetSignedJobLogsURLRequest()
@@ -421,6 +434,18 @@ namespace GitHub.Services.Results.Client
             }
         }
 
+        public async Task UploadResultsDiagnosticLogsAsync(string planId, string jobId, string file, CancellationToken cancellationToken)
+        {
+            // Get the upload url
+            var uploadUrlResponse = await GetDiagnosticLogsUploadUrlAsync(planId, jobId, cancellationToken);
+            if (uploadUrlResponse == null || uploadUrlResponse.DiagLogsURL == null)
+            {
+                throw new Exception("Failed to get diagnostic logs upload url");
+            }
+
+            await UploadLogFile(file, true, true, uploadUrlResponse.DiagLogsURL, uploadUrlResponse.BlobStorageType, cancellationToken);
+        }
+
         private Step ConvertTimelineRecordToStep(TimelineRecord r)
         {
             return new Step()
@@ -511,6 +536,7 @@ namespace GitHub.Services.Results.Client
         public static readonly string CreateStepLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateStepLogsMetadata";
         public static readonly string GetJobLogsSignedBlobURL = ResultsReceiverTwirpEndpoint + "GetJobLogsSignedBlobURL";
         public static readonly string CreateJobLogsMetadata = ResultsReceiverTwirpEndpoint + "CreateJobLogsMetadata";
+        public static readonly string GetJobDiagLogsSignedBlobURL = ResultsReceiverTwirpEndpoint + "GetJobDiagLogsSignedBlobURL";
         public static readonly string ResultsProtoApiV1Endpoint = "twirp/github.actions.results.api.v1.WorkflowStepUpdateService/";
         public static readonly string WorkflowStepsUpdate = ResultsProtoApiV1Endpoint + "WorkflowStepsUpdate";
 

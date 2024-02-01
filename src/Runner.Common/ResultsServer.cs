@@ -35,6 +35,8 @@ namespace GitHub.Runner.Common
 
         Task UpdateResultsWorkflowStepsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId,
             IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
+
+        Task CreateResultsDiagnosticLogsAsync(string planId, string jobId, string file, CancellationToken cancellationToken);
     }
 
     public sealed class ResultServer : RunnerService, IResultsServer
@@ -136,6 +138,18 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Failed to update steps status due to {ex.GetType().Name}");
                     Trace.Error(ex);
                 }
+            }
+
+            throw new InvalidOperationException("Results client is not initialized.");
+        }
+
+        public Task CreateResultsDiagnosticLogsAsync(string planId, string jobId, string file,
+            CancellationToken cancellationToken)
+        {
+            if (_resultsClient != null)
+            {
+                return _resultsClient.UploadResultsDiagnosticLogsAsync(planId, jobId, file,
+                    cancellationToken: cancellationToken);
             }
 
             throw new InvalidOperationException("Results client is not initialized.");
