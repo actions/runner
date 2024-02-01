@@ -551,7 +551,7 @@ namespace GitHub.Runner.Common
                             {
                                 await UploadSummaryFile(file);
                             }
-                            if (string.Equals(file.Type, CoreAttachmentType.DiagnosticLog, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(file.Type, CoreAttachmentType.ResultsDiagnosticLog, StringComparison.OrdinalIgnoreCase))
                             {
                                 await UploadResultsDiagnosticLogsFile(file);
                             }

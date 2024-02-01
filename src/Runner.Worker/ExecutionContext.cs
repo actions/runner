@@ -988,12 +988,11 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             ArgUtil.NotNullOrEmpty(filePath, nameof(filePath));
 
-
             if (!File.Exists(filePath))
             {
                 throw new FileNotFoundException($"Can't upload diagnostic log file: {filePath}. File does not exist.");
             }
-            _jobServerQueue.QueueResultsUpload(_record.Id, name, filePath, CoreAttachmentType.DiagnosticLog, deleteSource: false, finalize: true, firstBlock: true, totalLines: 0);
+            _jobServerQueue.QueueResultsUpload(_record.Id, name, filePath, CoreAttachmentType.ResultsDiagnosticLog, deleteSource: false, finalize: true, firstBlock: true, totalLines: 0);
         }
 
         // Add OnMatcherChanged
