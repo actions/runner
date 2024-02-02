@@ -222,26 +222,33 @@ namespace GitHub.Services.Results.Client
             return new AppendBlobClient(blobUri.path, new AzureSasCredential(blobUri.sas), opts);
         }
 
-        private async Task UploadBlockFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken)
+        private async Task UploadBlockFileAsync(string url, string blobStorageType, FileStream file, CancellationToken cancellationToken, Dictionary<string, string> customHeaders = null)
         {
             if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
                 var blobClient = GetBlobClient(url);
                 var httpHeaders = new BlobHttpHeaders();
-                var conditions = new BlobRequestConditions
+                if (customHeaders != null)
                 {
-                    IfNoneMatch = new ETag("*")
-                };
-                if (url.Contains(".txt")) // check if blob path is .txt file
-                {
-                    httpHeaders.ContentType = "text/plain";
+                    foreach (var header in customHeaders)
+                    {
+                        switch (header.Key)
+                        {
+                            case Constants.ContentTypeHeader:
+                                httpHeaders.ContentType = header.Value;
+                                break;
+                        }
+                    }
                 }
                 try
                 {
                     await blobClient.UploadAsync(file, new BlobUploadOptions()
                     {
                         HttpHeaders = httpHeaders,
-                        Conditions = conditions
+                        Conditions = new BlobRequestConditions
+                        {
+                            IfNoneMatch = new ETag("*")
+                        }
                     }, cancellationToken);
                 }
                 catch (RequestFailedException e)
@@ -260,8 +267,15 @@ namespace GitHub.Services.Results.Client
                 if (blobStorageType == BlobStorageTypes.AzureBlobStorage)
                 {
                     request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureBlockBlob);
-                    request.Content.Headers.Add("Content-Type", "text/plain");
                 }
+
+                if (customHeaders != null)
+                {
+                    foreach (var header in customHeaders)
+                    {
+                        request.Content.Headers.Add(header.Key, header.Value);
+                    }
+                };
 
                 using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
                 {
@@ -380,14 +394,14 @@ namespace GitHub.Services.Results.Client
         }
 
         private async Task UploadLogFile(string file, bool finalize, bool firstBlock, string sasUrl, string blobStorageType,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, Dictionary<string, string> customHeaders = null)
         {
             if (firstBlock && finalize)
             {
                 // This is the one and only block, just use a block blob
                 using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
                 {
-                    await UploadBlockFileAsync(sasUrl, blobStorageType, fileStream, cancellationToken);
+                    await UploadBlockFileAsync(sasUrl, blobStorageType, fileStream, cancellationToken, customHeaders);
                 }
             }
             else
@@ -418,7 +432,12 @@ namespace GitHub.Services.Results.Client
                 throw new Exception("Failed to get step log upload url");
             }
 
-            await UploadLogFile(file, finalize, firstBlock, uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+            var customHeaders = new Dictionary<string, string>
+            {
+                { Constants.ContentTypeHeader, Constants.TextPlainContentType }
+            };
+
+            await UploadLogFile(file, finalize, firstBlock, uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken, customHeaders);
 
             // Update metadata
             if (finalize)
@@ -438,7 +457,12 @@ namespace GitHub.Services.Results.Client
                 throw new Exception("Failed to get job log upload url");
             }
 
-            await UploadLogFile(file, finalize, firstBlock, uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken);
+            var customHeaders = new Dictionary<string, string>
+            {
+                { Constants.ContentTypeHeader, Constants.TextPlainContentType }
+            };
+
+            await UploadLogFile(file, finalize, firstBlock, uploadUrlResponse.LogsUrl, uploadUrlResponse.BlobStorageType, cancellationToken, customHeaders);
 
             // Update metadata
             if (finalize)
@@ -561,6 +585,9 @@ namespace GitHub.Services.Results.Client
         public static readonly string AzureBlobTypeHeader = "x-ms-blob-type";
         public static readonly string AzureBlockBlob = "BlockBlob";
         public static readonly string AzureAppendBlob = "AppendBlob";
+
+        public const string ContentTypeHeader = "Content-Type";
+        public const string TextPlainContentType = "text/plain";
     }
 
 }
