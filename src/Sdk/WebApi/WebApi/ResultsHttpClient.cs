@@ -230,10 +230,9 @@ namespace GitHub.Services.Results.Client
                 var httpHeaders = new BlobHttpHeaders();
                 var conditions = new BlobRequestConditions
                 {
-                    IfMatch = new ETag("*")
+                    IfNoneMatch = new ETag("*")
                 };
-                string extension = System.IO.Path.GetExtension(file.Name);
-                if (extension == ".txt")
+                if (url.Contains(".txt")) // check if blob path is .txt file
                 {
                     httpHeaders.ContentType = "text/plain";
                 }
