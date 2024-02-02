@@ -298,6 +298,8 @@ namespace GitHub.Runner.Worker
                 jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
             }
 
+            await ShutdownQueue(throwOnFailure: false);
+
             // Make sure to clean temp after file upload since they may be pending fileupload still use the TEMP dir.
             _tempDirectoryManager?.CleanupTempDirectory();
 
