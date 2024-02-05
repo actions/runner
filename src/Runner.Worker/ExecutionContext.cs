@@ -90,6 +90,7 @@ namespace GitHub.Runner.Worker
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
         void QueueSummaryFile(string name, string filePath, Guid stepRecordId);
+        void QueueDiagnosticLogFile(string name, string filePath);
 
         // timeline record update methods
         void Start(string currentOperation = null);
@@ -980,6 +981,18 @@ namespace GitHub.Runner.Worker
                 throw new FileNotFoundException($"Can't upload (name:{name}) file: {filePath}. File does not exist.");
             }
             _jobServerQueue.QueueResultsUpload(stepRecordId, name, filePath, ChecksAttachmentType.StepSummary, deleteSource: false, finalize: true, firstBlock: true, totalLines: 0);
+        }
+
+        public void QueueDiagnosticLogFile(string name, string filePath)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            ArgUtil.NotNullOrEmpty(filePath, nameof(filePath));
+
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException($"Can't upload diagnostic log file: {filePath}. File does not exist.");
+            }
+            _jobServerQueue.QueueResultsUpload(_record.Id, name, filePath, CoreAttachmentType.ResultsDiagnosticLog, deleteSource: false, finalize: true, firstBlock: true, totalLines: 0);
         }
 
         // Add OnMatcherChanged

@@ -108,6 +108,8 @@ namespace GitHub.Runner.Worker
 
             parentContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
 
+            parentContext.QueueDiagnosticLogFile(name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
+
             executionContext.Debug("Diagnostic file upload complete.");
         }
 
