@@ -287,14 +287,34 @@ namespace GitHub.Services.Results.Client
             }
         }
 
-        private async Task CreateAppendFileAsync(string url, string blobStorageType, CancellationToken cancellationToken)
+        private async Task CreateAppendFileAsync(string url, string blobStorageType, CancellationToken cancellationToken, Dictionary<string, string> customHeaders = null)
         {
             if (m_useSdk && blobStorageType == BlobStorageTypes.AzureBlobStorage)
             {
                 var appendBlobClient = GetAppendBlobClient(url);
+                var httpHeaders = new BlobHttpHeaders();
+                if (customHeaders != null)
+                {
+                    foreach (var header in customHeaders)
+                    {
+                        switch (header.Key)
+                        {
+                            case Constants.ContentTypeHeader:
+                                httpHeaders.ContentType = header.Value;
+                                break;
+                        }
+                    }
+                }
                 try
                 {
-                    await appendBlobClient.CreateAsync(cancellationToken: cancellationToken);
+                    await appendBlobClient.CreateAsync(new AppendBlobCreateOptions()
+                    {
+                        HttpHeaders = httpHeaders,
+                        Conditions = new AppendBlobRequestConditions
+                        {
+                            IfNoneMatch = new ETag("*")
+                        }
+                    }, cancellationToken: cancellationToken);
                 }
                 catch (RequestFailedException e)
                 {
@@ -312,6 +332,13 @@ namespace GitHub.Services.Results.Client
                     request.Content.Headers.Add(Constants.AzureBlobTypeHeader, Constants.AzureAppendBlob);
                     request.Content.Headers.Add("Content-Length", "0");
                 }
+                if (customHeaders != null)
+                {
+                    foreach (var header in customHeaders)
+                    {
+                        request.Content.Headers.Add(header.Key, header.Value);
+                    }
+                };
 
                 using (var response = await SendAsync(request, HttpCompletionOption.ResponseHeadersRead, userState: null, cancellationToken))
                 {
@@ -410,7 +437,7 @@ namespace GitHub.Services.Results.Client
                 // Create the Append blob
                 if (firstBlock)
                 {
-                    await CreateAppendFileAsync(sasUrl, blobStorageType, cancellationToken);
+                    await CreateAppendFileAsync(sasUrl, blobStorageType, cancellationToken, customHeaders);
                 }
 
                 // Upload content
