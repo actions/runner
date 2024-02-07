@@ -596,6 +596,10 @@ namespace GitHub.Runner.Listener
                                 Trace.Info($"Service requests the hosted runner to shutdown. Reason: '{HostedRunnerShutdownMessage.Reason}'.");
                                 return Constants.Runner.ReturnCode.Success;
                             }
+                            else if (string.Equals(message.MessageType, TaskAgentMessageTypes.ForceTokenRefresh))
+                            {
+                                await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
+                            }
                             else
                             {
                                 Trace.Error($"Received message {message.MessageId} with unsupported message type {message.MessageType}.");
