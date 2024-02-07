@@ -49,6 +49,9 @@ namespace GitHub.Runner.Worker
                 !string.IsNullOrEmpty(orchestrationId.Value))
             {
                 HostContext.UserAgents.Add(new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
+
+                // make sure orchestration id is in the user-agent header.
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
             }
 
             var jobServerQueueTelemetry = false;
@@ -294,6 +297,8 @@ namespace GitHub.Runner.Worker
                 var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
                 jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
             }
+
+            await ShutdownQueue(throwOnFailure: false);
 
             // Make sure to clean temp after file upload since they may be pending fileupload still use the TEMP dir.
             _tempDirectoryManager?.CleanupTempDirectory();

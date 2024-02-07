@@ -19,7 +19,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(ResultServer))]
     public interface IResultsServer : IRunnerService, IAsyncDisposable
     {
-        void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token);
+        void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token, bool useSdk);
 
         Task<bool> AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken);
 
@@ -35,6 +35,8 @@ namespace GitHub.Runner.Common
 
         Task UpdateResultsWorkflowStepsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId,
             IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
+
+        Task CreateResultsDiagnosticLogsAsync(string planId, string jobId, string file, CancellationToken cancellationToken);
     }
 
     public sealed class ResultServer : RunnerService, IResultsServer
@@ -51,9 +53,9 @@ namespace GitHub.Runner.Common
         private String _liveConsoleFeedUrl;
         private string _token;
 
-        public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token)
+        public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token, bool useSdk)
         {
-            this._resultsClient = CreateHttpClient(uri, token);
+            this._resultsClient = CreateHttpClient(uri, token, useSdk);
 
             _token = token;
             if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
@@ -63,7 +65,7 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public ResultsHttpClient CreateHttpClient(Uri uri, string token)
+        public ResultsHttpClient CreateHttpClient(Uri uri, string token, bool useSdk)
         {
             // Using default 100 timeout
             RawClientHttpRequestSettings settings = VssUtil.GetHttpRequestSettings(null);
@@ -80,7 +82,7 @@ namespace GitHub.Runner.Common
 
             var pipeline = HttpClientFactory.CreatePipeline(httpMessageHandler, delegatingHandlers);
 
-            return new ResultsHttpClient(uri, pipeline, token, disposeHandler: true);
+            return new ResultsHttpClient(uri, pipeline, token, disposeHandler: true, useSdk: useSdk);
         }
 
         public Task CreateResultsStepSummaryAsync(string planId, string jobId, Guid stepId, string file,
@@ -136,6 +138,18 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Failed to update steps status due to {ex.GetType().Name}");
                     Trace.Error(ex);
                 }
+            }
+
+            throw new InvalidOperationException("Results client is not initialized.");
+        }
+
+        public Task CreateResultsDiagnosticLogsAsync(string planId, string jobId, string file,
+            CancellationToken cancellationToken)
+        {
+            if (_resultsClient != null)
+            {
+                return _resultsClient.UploadResultsDiagnosticLogsAsync(planId, jobId, file,
+                    cancellationToken: cancellationToken);
             }
 
             throw new InvalidOperationException("Results client is not initialized.");

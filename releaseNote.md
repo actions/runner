@@ -1,20 +1,26 @@
 ## What's Changed
-* Trim whitespace in `./Misc/contentHash/dotnetRuntime/*` by @TingluoHuang in https://github.com/actions/runner/pull/2915
-* Send os and arch during long poll by @luketomlinson in https://github.com/actions/runner/pull/2913
-* Revert "Update default version to node20 (#2844)" by @takost in https://github.com/actions/runner/pull/2918
-* Fix telemetry publish from JobServerQueue. by @TingluoHuang in https://github.com/actions/runner/pull/2919
-* Use block blob instead of append blob  by @yacaovsnc in https://github.com/actions/runner/pull/2924
-* Provide detail info on untar failures. by @TingluoHuang in https://github.com/actions/runner/pull/2939
-* Bump node.js to 20.8.1 by @TingluoHuang in https://github.com/actions/runner/pull/2945
-* Update dotnet sdk to latest version @6.0.415 by @github-actions in https://github.com/actions/runner/pull/2929
-* Fix typo in log strings by @rajbos in https://github.com/actions/runner/pull/2695
-* feat: add support of arm64 arch runners in service creation script by @tuxity in https://github.com/actions/runner/pull/2606
-* Add `buildx` to images by @ajschmidt8 in https://github.com/actions/runner/pull/2901
+* Fix `buildx` installation by @ajschmidt8 in https://github.com/actions/runner/pull/2952
+* Create close-features and close-bugs bot for runner issues by @ruvceskistefan in https://github.com/actions/runner/pull/2909
+* Send disableUpdate as query parameter  by @luketomlinson in https://github.com/actions/runner/pull/2970
+* Handle SelfUpdate Flow when Package is provided in Message  by @luketomlinson in https://github.com/actions/runner/pull/2926
+* Bump container hook version to 0.5.0 in runner image by @nikola-jokic in https://github.com/actions/runner/pull/3003
+* Set `ImageOS` environment variable in runner images by @int128 in https://github.com/actions/runner/pull/2878
+* Mark job as failed on worker crash. by @TingluoHuang in https://github.com/actions/runner/pull/3006
+* Include whether http proxy configured as part of UserAgent. by @TingluoHuang in https://github.com/actions/runner/pull/3009
+* Add codeload to the list of service we check during '--check'. by @TingluoHuang in https://github.com/actions/runner/pull/3011
+* close reason update by @ruvceskistefan in https://github.com/actions/runner/pull/3027
+* Update envlinux.md by @adjn in https://github.com/actions/runner/pull/3040
+* Extend `--check` to check Results-Receiver service. by @TingluoHuang in https://github.com/actions/runner/pull/3078
+* Use Azure SDK to upload files to Azure Blob by @yacaovsnc in https://github.com/actions/runner/pull/3033
+* Remove code in runner for handling trimmed packages. by @TingluoHuang in https://github.com/actions/runner/pull/3074
+* Update dotnet sdk to latest version @6.0.418 by @github-actions in https://github.com/actions/runner/pull/3085
+* Patch Curl to no longer use -k by @thboop in https://github.com/actions/runner/pull/3091
 
 ## New Contributors
-* @tuxity made their first contribution in https://github.com/actions/runner/pull/2606
+* @int128 made their first contribution in https://github.com/actions/runner/pull/2878
+* @adjn made their first contribution in https://github.com/actions/runner/pull/3040
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.310.2...v2.311.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.311.0...v2.312.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet. 
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository. 
@@ -119,27 +125,3 @@ The SHA-256 checksums for the packages included in this build are shown below:
 - actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-x64 --><LINUX_X64_SHA><!-- END SHA linux-x64 -->
 - actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-arm64 --><LINUX_ARM64_SHA><!-- END SHA linux-arm64 -->
 - actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-arm --><LINUX_ARM_SHA><!-- END SHA linux-arm -->
-
-- actions-runner-win-x64-<RUNNER_VERSION>-noexternals.zip <!-- BEGIN SHA win-x64_noexternals --><WIN_X64_SHA_NOEXTERNALS><!-- END SHA win-x64_noexternals -->
-- actions-runner-win-arm64-<RUNNER_VERSION>-noexternals.zip <!-- BEGIN SHA win-arm64_noexternals --><WIN_ARM64_SHA_NOEXTERNALS><!-- END SHA win-arm64_noexternals -->
-- actions-runner-osx-x64-<RUNNER_VERSION>-noexternals.tar.gz <!-- BEGIN SHA osx-x64_noexternals --><OSX_X64_SHA_NOEXTERNALS><!-- END SHA osx-x64_noexternals -->
-- actions-runner-osx-arm64-<RUNNER_VERSION>-noexternals.tar.gz <!-- BEGIN SHA osx-arm64_noexternals --><OSX_ARM64_SHA_NOEXTERNALS><!-- END SHA osx-arm64_noexternals -->
-- actions-runner-linux-x64-<RUNNER_VERSION>-noexternals.tar.gz <!-- BEGIN SHA linux-x64_noexternals --><LINUX_X64_SHA_NOEXTERNALS><!-- END SHA linux-x64_noexternals -->
-- actions-runner-linux-arm64-<RUNNER_VERSION>-noexternals.tar.gz <!-- BEGIN SHA linux-arm64_noexternals --><LINUX_ARM64_SHA_NOEXTERNALS><!-- END SHA linux-arm64_noexternals -->
-- actions-runner-linux-arm-<RUNNER_VERSION>-noexternals.tar.gz <!-- BEGIN SHA linux-arm_noexternals --><LINUX_ARM_SHA_NOEXTERNALS><!-- END SHA linux-arm_noexternals -->
-
-- actions-runner-win-x64-<RUNNER_VERSION>-noruntime.zip <!-- BEGIN SHA win-x64_noruntime --><WIN_X64_SHA_NORUNTIME><!-- END SHA win-x64_noruntime -->
-- actions-runner-win-arm64-<RUNNER_VERSION>-noruntime.zip <!-- BEGIN SHA win-arm64_noruntime --><WIN_ARM64_SHA_NORUNTIME><!-- END SHA win-arm64_noruntime -->
-- actions-runner-osx-x64-<RUNNER_VERSION>-noruntime.tar.gz <!-- BEGIN SHA osx-x64_noruntime --><OSX_X64_SHA_NORUNTIME><!-- END SHA osx-x64_noruntime -->
-- actions-runner-osx-arm64-<RUNNER_VERSION>-noruntime.tar.gz <!-- BEGIN SHA osx-arm64_noruntime --><OSX_ARM64_SHA_NORUNTIME><!-- END SHA osx-arm64_noruntime -->
-- actions-runner-linux-x64-<RUNNER_VERSION>-noruntime.tar.gz <!-- BEGIN SHA linux-x64_noruntime --><LINUX_X64_SHA_NORUNTIME><!-- END SHA linux-x64_noruntime -->
-- actions-runner-linux-arm64-<RUNNER_VERSION>-noruntime.tar.gz <!-- BEGIN SHA linux-arm64_noruntime --><LINUX_ARM64_SHA_NORUNTIME><!-- END SHA linux-arm64_noruntime -->
-- actions-runner-linux-arm-<RUNNER_VERSION>-noruntime.tar.gz <!-- BEGIN SHA linux-arm_noruntime --><LINUX_ARM_SHA_NORUNTIME><!-- END SHA linux-arm_noruntime -->
-
-- actions-runner-win-x64-<RUNNER_VERSION>-noruntime-noexternals.zip <!-- BEGIN SHA win-x64_noruntime_noexternals --><WIN_X64_SHA_NORUNTIME_NOEXTERNALS><!-- END SHA win-x64_noruntime_noexternals -->
-- actions-runner-win-arm64-<RUNNER_VERSION>-noruntime-noexternals.zip <!-- BEGIN SHA win-arm64_noruntime_noexternals --><WIN_ARM64_SHA_NORUNTIME_NOEXTERNALS><!-- END SHA win-arm64_noruntime_noexternals -->
-- actions-runner-osx-x64-<RUNNER_VERSION>-noruntime-noexternals.tar.gz <!-- BEGIN SHA osx-x64_noruntime_noexternals --><OSX_X64_SHA_NORUNTIME_NOEXTERNALS><!-- END SHA osx-x64_noruntime_noexternals -->
-- actions-runner-osx-arm64-<RUNNER_VERSION>-noruntime-noexternals.tar.gz <!-- BEGIN SHA osx-arm64_noruntime_noexternals --><OSX_ARM64_SHA_NORUNTIME_NOEXTERNALS><!-- END SHA osx-arm64_noruntime_noexternals -->
-- actions-runner-linux-x64-<RUNNER_VERSION>-noruntime-noexternals.tar.gz <!-- BEGIN SHA linux-x64_noruntime_noexternals --><LINUX_X64_SHA_NORUNTIME_NOEXTERNALS><!-- END SHA linux-x64_noruntime_noexternals -->
-- actions-runner-linux-arm64-<RUNNER_VERSION>-noruntime-noexternals.tar.gz <!-- BEGIN SHA linux-arm64_noruntime_noexternals --><LINUX_ARM64_SHA_NORUNTIME_NOEXTERNALS><!-- END SHA linux-arm64_noruntime_noexternals -->
-- actions-runner-linux-arm-<RUNNER_VERSION>-noruntime-noexternals.tar.gz <!-- BEGIN SHA linux-arm_noruntime_noexternals --><LINUX_ARM_SHA_NORUNTIME_NOEXTERNALS><!-- END SHA linux-arm_noruntime_noexternals -->

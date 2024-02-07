@@ -134,8 +134,8 @@ namespace GitHub.Runner.Common
                 {
                     liveConsoleFeedUrl = feedStreamUrl;
                 }
-
-                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken);
+                jobRequest.Variables.TryGetValue("system.github.results_upload_with_sdk", out VariableValue resultsUseSdkVariable);
+                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken, StringUtil.ConvertToBoolean(resultsUseSdkVariable?.Value));
                 _resultsClientInitiated = true;
             }
 
@@ -551,6 +551,10 @@ namespace GitHub.Runner.Common
                             {
                                 await UploadSummaryFile(file);
                             }
+                            if (string.Equals(file.Type, CoreAttachmentType.ResultsDiagnosticLog, StringComparison.OrdinalIgnoreCase))
+                            {
+                                await UploadResultsDiagnosticLogsFile(file);
+                            }
                             else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (file.RecordId != _jobTimelineRecordId)
@@ -920,6 +924,17 @@ namespace GitHub.Runner.Common
             };
 
             await UploadResultsFile(file, summaryHandler);
+        }
+
+        private async Task UploadResultsDiagnosticLogsFile(ResultsUploadFileInfo file)
+        {
+            Trace.Info($"Starting to upload diagnostic logs file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler diagnosticLogsHandler = async (file) =>
+            {
+                await _resultsServer.CreateResultsDiagnosticLogsAsync(file.PlanId, file.JobId, file.Path, CancellationToken.None);
+            };
+
+            await UploadResultsFile(file, diagnosticLogsHandler);
         }
 
         private async Task UploadResultsStepLogFile(ResultsUploadFileInfo file)
