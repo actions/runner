@@ -16,6 +16,7 @@
 * Add sshd to .devcontainer.json by @pje in https://github.com/actions/runner/pull/3079
 * Resolve CVE-2024-21626 by @luka5 in https://github.com/actions/runner/pull/3123
 * Handle ForceTokenRefresh message by @luketomlinson in https://github.com/actions/runner/pull/3133
+* Bump hook version to 0.5.1 by @nikola-jokic in https://github.com/actions/runner/pull/3129
 
 ## New Contributors
 * @diogotorres97 made their first contribution in https://github.com/actions/runner/pull/3100
