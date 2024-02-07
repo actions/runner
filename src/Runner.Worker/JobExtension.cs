@@ -264,7 +264,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
                     var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
-
+                    
                     // add hook to preJobSteps
                     var startedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(startedHookPath))
@@ -404,6 +404,27 @@ namespace GitHub.Runner.Worker
                                                                           data: (object)jobHookData));
                     }
 
+                    // Register custom image creation hook if the "snapshot" token is present in the message.
+                    if (message.Snapshot != null)
+                    {
+                        // todo replace with hardcoded image name with whichever one is passed in the Snapshot token. 
+                        var imageName = "TestCustomImageName";
+                        
+                        // 1. Create a file called "snapshot.js" which contains the snapshot script. 
+                        var snapshotScriptFilePath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "snapshot.js");
+                    
+                        var snapshotScript = GetSnapshotScript(imageName);
+                        await File.WriteAllTextAsync(snapshotScriptFilePath, snapshotScript);
+                        
+                        // 2. Use the file path to register a post-job step.
+                        var hookProvider = HostContext.GetService<IJobHookProvider>();
+                        var jobHookData = new JobHookData(ActionRunStage.Post, snapshotScriptFilePath);
+                        jobContext.RegisterPostJobStep(new JobExtensionRunner(runAsync: hookProvider.RunHook,
+                                                                          condition: $"{PipelineTemplateConstants.Always}()",
+                                                                          displayName: $"Create custom image",
+                                                                          data: (object)jobHookData));
+                    }
+                    
                     List<IStep> steps = new();
                     steps.AddRange(preJobSteps);
                     steps.AddRange(jobSteps);
@@ -800,5 +821,60 @@ namespace GitHub.Runner.Worker
                 throw new ArgumentException("Jobs without a job container are forbidden on this runner, please add a 'container:' to your job or contact your self-hosted runner administrator.");
             }
         }
+        
+
+        private static string GetSnapshotScript(string imageName)
+        {
+            return SnapshotScriptTemplate.Replace("##ImageNamePlaceholder##", imageName);
+        }
+
+        private const string SnapshotScriptTemplate = @"/*
+    This action is used to request a snapshot of the runner VM after the job completes.
+    It works by creating a JSON file in the runner's .snapshot directory containing the image name.
+    The snapshot process is then executed after the job completes.
+*/
+
+const fs = require('fs');
+const path = require('path');
+
+// Get the image name from the action input.
+const imageName = '##ImageNamePlaceholder##'
+
+// Determine the path to the snapshot request file.
+let snapshotFilePath;
+const runnerOS = process.env.RUNNER_OS;
+switch(runnerOS) {
+    case 'Windows':
+        snapshotFilePath = 'C:\\actions-runner\\.snapshot\\request.json';
+        break;
+    case 'Linux':
+        const home = process.env.HOME;
+        snapshotFilePath = `${home}/actions-runner/.snapshot/request.json`;
+        break;
+    default:
+        throw new Error(`Unsupported OS: ${runnerOS}`);
+}
+
+// Ensure the directory exists.
+const snapshotDir = path.dirname(snapshotFilePath);
+if (!fs.existsSync(snapshotDir)) {
+    fs.mkdirSync(snapshotDir, { recursive: true });
+}
+
+// Write the JSON file for the snapshot request.
+const jsonData = {
+    imageName: imageName
+};
+fs.writeFileSync(snapshotFilePath, JSON.stringify(jsonData, null, 2));
+
+// Test to ensure the file exists.
+if (!fs.existsSync(snapshotFilePath)) {
+    throw new Error(`There was a problem creating the snapshot file at: ${snapshotFilePath}`);
+}
+
+console.log(`A snapshot request was created with parameters: ${JSON.stringify(jsonData, null, 2)}\n`);
+console.log(""This request will be processed after the job completes. You will not receive any feedback on the snapshot process within the workflow logs of this job.\n"");
+console.log(""If the snapshot process is successful, you should see a new image with the requested name in the list of available custom images when creating a new GitHub-hosted Runner."");
+";
     }
 }
