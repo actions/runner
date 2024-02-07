@@ -598,7 +598,7 @@ namespace GitHub.Runner.Listener
                             }
                             else if (string.Equals(message.MessageType, TaskAgentMessageTypes.ForceTokenRefresh))
                             {
-                               await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
+                                await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
                             }
                             else
                             {
