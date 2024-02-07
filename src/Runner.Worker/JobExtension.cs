@@ -407,20 +407,23 @@ namespace GitHub.Runner.Worker
                     // Register custom image creation hook if the "snapshot" token is present in the message.
                     if (message.Snapshot != null)
                     {
+     
                         // todo replace with hardcoded image name with whichever one is passed in the Snapshot token. 
                         var imageName = "TestCustomImageName";
                         
                         // 1. Create a file called "snapshot.js" which contains the snapshot script. 
+                        // todo replace with C# implementation
                         var snapshotScriptFilePath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "snapshot.js");
                     
                         var snapshotScript = GetSnapshotScript(imageName);
                         await File.WriteAllTextAsync(snapshotScriptFilePath, snapshotScript);
                         
                         // 2. Use the file path to register a post-job step.
+                        // todo replace with C# implementation
                         var hookProvider = HostContext.GetService<IJobHookProvider>();
                         var jobHookData = new JobHookData(ActionRunStage.Post, snapshotScriptFilePath);
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(runAsync: hookProvider.RunHook,
-                                                                          condition: $"{PipelineTemplateConstants.Always}()",
+                                                                          condition: $"{PipelineTemplateConstants.Success}()",
                                                                           displayName: $"Create custom image",
                                                                           data: (object)jobHookData));
                     }
