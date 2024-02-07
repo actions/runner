@@ -8,6 +8,9 @@
     },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "16"
+    },
+    "ghcr.io/devcontainers/features/sshd:1": {
+        "version": "latest"
     }
   },
   "customizations": {

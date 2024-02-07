@@ -757,7 +757,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Assert
                 var err = Assert.Throws<ArgumentException>(() => actionManifest.Load(_ec.Object, action_path));
-                Assert.Contains($"Fail to load {action_path}", err.Message);
+                Assert.Contains($"Failed to load {action_path}", err.Message);
                 _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12', 'node16' or 'node20'.")), It.IsAny<ExecutionContextLogOptions>()), Times.Once);
             }
             finally
