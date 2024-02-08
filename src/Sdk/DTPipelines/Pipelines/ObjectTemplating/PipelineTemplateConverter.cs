@@ -661,7 +661,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             return hasStatusFunction ? condition : $"{PipelineTemplateConstants.Success}() && ({condition})";
         }
-        
+
         private static readonly INamedValueInfo[] s_jobIfNamedValues = new INamedValueInfo[]
         {
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
