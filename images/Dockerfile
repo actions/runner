@@ -5,7 +5,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
 ARG RUNNER_CONTAINER_HOOKS_VERSION=0.4.0
-ARG DOCKER_VERSION=25.0.2
+ARG DOCKER_VERSION=25.0.3
 ARG BUILDX_VERSION=0.12.1
 
 RUN apt update -y && apt install curl unzip -y
@@ -25,7 +25,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
     && curl -fLo docker.tgz https://download.docker.com/${TARGETOS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
-    && tar zxvf docker.tgz \
+    && tar zxvf docker.tgz --strip 1 -C . docker/docker \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
@@ -57,6 +57,6 @@ WORKDIR /home/runner
 COPY --chown=runner:docker --from=build /actions-runner .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
 
-RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
+RUN install -o root -g root -m 755 ./docker /usr/bin/ && rm -rf docker
 
 USER runner
