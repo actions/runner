@@ -375,7 +375,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 return null;
             }
-            
             return new Snapshot
             {
                 ImageName = imageName

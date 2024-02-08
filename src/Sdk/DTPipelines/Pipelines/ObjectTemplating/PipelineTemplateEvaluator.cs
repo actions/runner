@@ -369,7 +369,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             return result;
         }
-        
+
         public Snapshot EvaluateJobSnapshotRequest(TemplateToken token,
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
