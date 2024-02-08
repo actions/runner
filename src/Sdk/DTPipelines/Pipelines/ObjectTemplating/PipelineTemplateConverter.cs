@@ -380,7 +380,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 ImageName = imageName
             }; 
         }
-        
+
         private static ActionStep ConvertToStep(
             TemplateContext context,
             TemplateToken stepsItem,
