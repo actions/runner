@@ -404,22 +404,14 @@ namespace GitHub.Runner.Worker
                                                                           displayName: Constants.Hooks.JobCompletedStepName,
                                                                           data: (object)jobHookData));
                     }
-
+                    
+                    var snapshotRequest = templateEvaluator.EvaluateJobSnapshotRequest(message.Snapshot, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     // Register custom image creation post-job step if the "snapshot" token is present in the message.
-                    if (message.Snapshot != null)
+                    if (snapshotRequest != null)
                     {
-                        // todo replace hardcoded image name with whichever one is passed in the Snapshot token. 
-                        var imageName = "TestCustomImageName";
-                        
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(
                             runAsync: async (IExecutionContext executionContext, object data) =>
                             {
-                                // Create a snapshot request with the given image name. 
-                                var snapshotRequest = new
-                                {
-                                    imageName = imageName
-                                };
-                                
                                 // Write the object as JSON to a file in the /actions-runner/.snapshot directory.
                                 var snapshotRequestFilePath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), ".snapshot", "request.json");
                                 string snapshotRequestDirectoryPath = Path.GetDirectoryName(snapshotRequestFilePath);

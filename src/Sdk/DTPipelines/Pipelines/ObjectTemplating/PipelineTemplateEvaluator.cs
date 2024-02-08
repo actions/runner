@@ -369,6 +369,32 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             return result;
         }
+        
+        public Snapshot EvaluateJobSnapshotRequest(TemplateToken token,
+            DictionaryContextData contextData,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            var result = default(Snapshot);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(contextData, expressionFunctions);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.Snapshot, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = PipelineTemplateConverter.ConvertToJobSnapshotRequest(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result;
+        }
 
         private TemplateContext CreateContext(
             DictionaryContextData contextData,
