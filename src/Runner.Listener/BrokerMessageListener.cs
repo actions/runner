@@ -273,7 +273,7 @@ namespace GitHub.Runner.Listener
                         }
 
                         // re-create VssConnection before next retry
-                        await RefreshBrokerConnection();
+                        await RefreshBrokerConnectionAsync();
 
                         Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
                         await HostContext.Delay(_getNextMessageRetryInterval, token);
@@ -301,6 +301,11 @@ namespace GitHub.Runner.Listener
 
                 Trace.Info($"Message '{message.MessageId}' received.");
             }
+        }
+
+        public async Task RefreshListenerTokenAsync(CancellationToken cancellationToken)
+        {
+            await RefreshBrokerConnectionAsync();
         }
 
         public async Task DeleteMessageAsync(TaskAgentMessage message)
@@ -398,7 +403,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private async Task RefreshBrokerConnection()
+        private async Task RefreshBrokerConnectionAsync()
         {
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
