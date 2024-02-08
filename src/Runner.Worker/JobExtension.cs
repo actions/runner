@@ -265,7 +265,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
                     var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
-                    
+
                     // add hook to preJobSteps
                     var startedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(startedHookPath))
@@ -404,19 +404,19 @@ namespace GitHub.Runner.Worker
                                                                           displayName: Constants.Hooks.JobCompletedStepName,
                                                                           data: (object)jobHookData));
                     }
-                    
+
                     // Register custom image creation post-job step if the "snapshot" token is present in the message.
                     var snapshotRequest = templateEvaluator.EvaluateJobSnapshotRequest(message.Snapshot, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (snapshotRequest != null)
                     {
                         var snapshotOperationProvider = HostContext.GetService<ISnapshotOperationProvider>();
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(
-                            runAsync: (executionContext, _) => snapshotOperationProvider.CreateSnapshotRequestAsync(executionContext, snapshotRequest), 
+                            runAsync: (executionContext, _) => snapshotOperationProvider.CreateSnapshotRequestAsync(executionContext, snapshotRequest),
                             condition: $"{PipelineTemplateConstants.Success}()",
                             displayName: $"Create custom image",
                             data: null));
                     }
-                    
+
                     List<IStep> steps = new();
                     steps.AddRange(preJobSteps);
                     steps.AddRange(jobSteps);
