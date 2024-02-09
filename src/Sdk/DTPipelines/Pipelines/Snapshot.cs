@@ -10,7 +10,7 @@ namespace GitHub.DistributedTask.Pipelines
         {
             ImageName = imageName;
         }
-        
+
         [DataMember(EmitDefaultValue = false)]
         public String ImageName { get; set; }
     }
