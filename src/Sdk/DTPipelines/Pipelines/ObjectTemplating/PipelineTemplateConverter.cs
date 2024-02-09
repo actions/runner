@@ -375,10 +375,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 return null;
             }
-            return new Snapshot
-            {
-                ImageName = imageName
-            };
+
+            return new Snapshot(imageName); 
         }
 
         private static ActionStep ConvertToStep(
