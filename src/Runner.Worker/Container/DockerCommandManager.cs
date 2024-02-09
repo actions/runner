@@ -104,7 +104,7 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
         {
-            return await ExecuteDockerCommandAsync(context, "build", $"-t {tag} -f \"{dockerFile}\" \"{dockerContext}\"", workingDirectory, context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "build", $"--load -t {tag} -f \"{dockerFile}\" \"{dockerContext}\"", workingDirectory, context.CancellationToken);
         }
 
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
