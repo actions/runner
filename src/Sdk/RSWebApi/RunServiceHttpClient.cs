@@ -59,12 +59,14 @@ namespace GitHub.Actions.RunService.WebApi
         public async Task<AgentJobRequestMessage> GetJobMessageAsync(
             Uri requestUri,
             string messageId,
+            string runnerOS,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
             var payload = new AcquireJobRequest
             {
                 JobMessageId = messageId,
+                RunnerOS = runnerOS
             };
 
             requestUri = new Uri(requestUri, "acquirejob");
