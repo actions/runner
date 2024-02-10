@@ -36,8 +36,8 @@ namespace GitHub.Runner.Sdk
             {
                 if (!string.IsNullOrEmpty(pathSegment) && Directory.Exists(pathSegment))
                 {
-                    string[] matches = null;
 #if OS_WINDOWS
+                    string[] matches = null;
                     string pathExt = Environment.GetEnvironmentVariable("PATHEXT");
                     if (string.IsNullOrEmpty(pathExt))
                     {
@@ -95,20 +95,11 @@ namespace GitHub.Runner.Sdk
                         }
                     }
 #else
-                    try
+                    string commandPath = Path.Join(pathSegment, command);
+                    if (File.Exists(commandPath) && IsPathValid(commandPath, trace))
                     {
-                        matches = Directory.GetFiles(pathSegment, command);
-                    }
-                    catch (UnauthorizedAccessException ex)
-                    {
-                        trace?.Info("Ignore UnauthorizedAccess exception during Which.");
-                        trace?.Verbose(ex.ToString());
-                    }
-
-                    if (matches != null && matches.Length > 0 && IsPathValid(matches.First(), trace))
-                    {
-                        trace?.Info($"Location: '{matches.First()}'");
-                        return matches.First();
+                        trace?.Info($"Location: '{commandPath}'");
+                        return commandPath;
                     }
 #endif
                 }
