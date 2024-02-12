@@ -788,7 +788,7 @@ namespace GitHub.Runner.Worker
                 (downloadInfo.Ref.StartsWith("v1.") || (downloadInfo.Ref.StartsWith("v2.") // '.' is important to avoid v10 conflict
                 || downloadInfo.Ref == "v1" || downloadInfo.Ref == "v2")))
             {
-                executionContext.Error($"'{downloadInfo.NameWithOwner}@{downloadInfo.Ref}' is deprecated and will be disabled on xyz. Please upgrade to 'v4'. For more information, see (blogpost here)");
+                executionContext.Warning($"'{downloadInfo.NameWithOwner}@{downloadInfo.Ref}' is deprecated and will be disabled on xyz. Please upgrade to 'v4'. For more information, see (blogpost here)");
             }
 
             //download and extract action in a temp folder and rename it on success
