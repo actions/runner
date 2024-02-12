@@ -33,10 +33,16 @@ public class SnapshotOperationProviderL0
         await _snapshotOperationProvider!.CreateSnapshotRequestAsync(_ec!.Object, expectedSnapshot);
         
         //Assert
-        string snapshotFileContents = await File.ReadAllTextAsync(_snapshotRequestFilePath!);
-        var actualSnapshot = JsonConvert.DeserializeObject<Snapshot>(snapshotFileContents);
+        string snapshotRequestJson = await File.ReadAllTextAsync(_snapshotRequestFilePath!);
+        var actualSnapshot = JsonConvert.DeserializeObject<Snapshot>(snapshotRequestJson);
         Assert.NotNull(actualSnapshot);
         Assert.Equal(expectedSnapshot.ImageName, actualSnapshot!.ImageName);
+        
+        _ec.Verify(ec => ec.Write(null, $"A snapshot request was created with parameters: {snapshotRequestJson}"), Times.Once);
+        _ec.Verify(ec => ec.Write(null, $"Request written to: {_snapshotRequestFilePath}"), Times.Once);
+        _ec.Verify(ec => ec.Write(null, "This request will be processed after the job completes. You will not receive any feedback on the snapshot process within the workflow logs of this job."), Times.Once);
+        _ec.Verify(ec => ec.Write(null, "If the snapshot process is successful, you should see a new image with the requested name in the list of available custom images when creating a new GitHub-hosted Runner."), Times.Once);
+        _ec.VerifyNoOtherCalls();
     }
     
     private void Setup(bool shouldSnapshotDirectoryAlreadyExist, [CallerMemberName] string testName = "")
