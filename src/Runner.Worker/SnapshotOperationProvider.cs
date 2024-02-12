@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿#nullable enable
+using System.IO;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
@@ -17,7 +18,7 @@ public class SnapshotOperationProvider : RunnerService, ISnapshotOperationProvid
     public async Task CreateSnapshotRequestAsync(IExecutionContext executionContext, Snapshot snapshotRequest)
     {
         var snapshotRequestFilePath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), ".snapshot", "request.json");
-        string snapshotRequestDirectoryPath = Path.GetDirectoryName(snapshotRequestFilePath);
+        var snapshotRequestDirectoryPath = Path.GetDirectoryName(snapshotRequestFilePath);
         if (snapshotRequestDirectoryPath != null)
         {
             Directory.CreateDirectory(snapshotRequestDirectoryPath);

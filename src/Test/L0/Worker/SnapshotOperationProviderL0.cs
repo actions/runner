@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.Pipelines;
@@ -11,11 +12,11 @@ namespace GitHub.Runner.Common.Tests.Worker;
 
 public class SnapshotOperationProviderL0
 {
-    private TestHostContext _hc;
-    private Mock<IExecutionContext> _ec;
-    private SnapshotOperationProvider _snapshotOperationProvider;
-    private string _snapshotRequestFilePath;
-    private string _snapshotRequestDirectoryPath; 
+    private TestHostContext? _hc;
+    private Mock<IExecutionContext>? _ec;
+    private SnapshotOperationProvider? _snapshotOperationProvider;
+    private string? _snapshotRequestFilePath;
+    private string? _snapshotRequestDirectoryPath; 
 
     [Theory]
     [InlineData(true)]
@@ -29,13 +30,13 @@ public class SnapshotOperationProviderL0
         var expectedSnapshot = new Snapshot(Guid.NewGuid().ToString()); 
         
         //Act
-        await _snapshotOperationProvider.CreateSnapshotRequestAsync(_ec.Object, expectedSnapshot);
+        await _snapshotOperationProvider!.CreateSnapshotRequestAsync(_ec!.Object, expectedSnapshot);
         
         //Assert
-        string snapshotFileContents = await File.ReadAllTextAsync(_snapshotRequestFilePath);
+        string snapshotFileContents = await File.ReadAllTextAsync(_snapshotRequestFilePath!);
         var actualSnapshot = JsonConvert.DeserializeObject<Snapshot>(snapshotFileContents);
         Assert.NotNull(actualSnapshot);
-        Assert.Equal(expectedSnapshot.ImageName, actualSnapshot.ImageName);
+        Assert.Equal(expectedSnapshot.ImageName, actualSnapshot!.ImageName);
     }
     
     private void Setup(bool shouldSnapshotDirectoryAlreadyExist, [CallerMemberName] string testName = "")
