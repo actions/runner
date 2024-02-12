@@ -12,7 +12,6 @@ namespace GitHub.Runner.Common.Tests.Worker;
 
 public class SnapshotOperationProviderL0
 {
-    private TestHostContext? _hc;
     private Mock<IExecutionContext>? _ec;
     private SnapshotOperationProvider? _snapshotOperationProvider;
     private string? _snapshotRequestFilePath;
@@ -25,33 +24,35 @@ public class SnapshotOperationProviderL0
     [Trait("Category", "Worker")]
     public async void CreateSnapshotRequestAsync(bool shouldSnapshotDirectoryAlreadyExist)
     {
-        //Arrange
-        Setup(shouldSnapshotDirectoryAlreadyExist);
-        var expectedSnapshot = new Snapshot(Guid.NewGuid().ToString());
+        using (TestHostContext testHostContext = CreateTestHostContext())
+        {
+            //Arrange
+            Setup(testHostContext, shouldSnapshotDirectoryAlreadyExist);
+            var expectedSnapshot = new Snapshot(Guid.NewGuid().ToString());
 
-        //Act
-        await _snapshotOperationProvider!.CreateSnapshotRequestAsync(_ec!.Object, expectedSnapshot);
+            //Act
+            await _snapshotOperationProvider!.CreateSnapshotRequestAsync(_ec!.Object, expectedSnapshot);
 
-        //Assert
-        string snapshotRequestJson = await File.ReadAllTextAsync(_snapshotRequestFilePath!);
-        var actualSnapshot = JsonConvert.DeserializeObject<Snapshot>(snapshotRequestJson);
-        Assert.NotNull(actualSnapshot);
-        Assert.Equal(expectedSnapshot.ImageName, actualSnapshot!.ImageName);
+            //Assert
+            string snapshotRequestJson = await File.ReadAllTextAsync(_snapshotRequestFilePath!);
+            var actualSnapshot = JsonConvert.DeserializeObject<Snapshot>(snapshotRequestJson);
+            Assert.NotNull(actualSnapshot);
+            Assert.Equal(expectedSnapshot.ImageName, actualSnapshot!.ImageName);
 
-        _ec.Verify(ec => ec.Write(null, $"A snapshot request was created with parameters: {snapshotRequestJson}"), Times.Once);
-        _ec.Verify(ec => ec.Write(null, $"Request written to: {_snapshotRequestFilePath}"), Times.Once);
-        _ec.Verify(ec => ec.Write(null, "This request will be processed after the job completes. You will not receive any feedback on the snapshot process within the workflow logs of this job."), Times.Once);
-        _ec.Verify(ec => ec.Write(null, "If the snapshot process is successful, you should see a new image with the requested name in the list of available custom images when creating a new GitHub-hosted Runner."), Times.Once);
-        _ec.VerifyNoOtherCalls();
+            _ec.Verify(ec => ec.Write(null, $"A snapshot request was created with parameters: {snapshotRequestJson}"), Times.Once);
+            _ec.Verify(ec => ec.Write(null, $"Request written to: {_snapshotRequestFilePath}"), Times.Once);
+            _ec.Verify(ec => ec.Write(null, "This request will be processed after the job completes. You will not receive any feedback on the snapshot process within the workflow logs of this job."), Times.Once);
+            _ec.Verify(ec => ec.Write(null, "If the snapshot process is successful, you should see a new image with the requested name in the list of available custom images when creating a new GitHub-hosted Runner."), Times.Once);
+            _ec.VerifyNoOtherCalls();
+        }
     }
 
-    private void Setup(bool shouldSnapshotDirectoryAlreadyExist, [CallerMemberName] string testName = "")
+    private void Setup(IHostContext hostContext, bool shouldSnapshotDirectoryAlreadyExist)
     {
-        _hc = new TestHostContext(this, testName);
         _ec = new Mock<IExecutionContext>();
         _snapshotOperationProvider = new SnapshotOperationProvider();
-        _snapshotOperationProvider.Initialize(_hc);
-        _snapshotRequestFilePath = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Root), ".snapshot", "request.json");
+        _snapshotOperationProvider.Initialize(hostContext);
+        _snapshotRequestFilePath = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Root), ".snapshot", "request.json");
         _snapshotRequestDirectoryPath = Path.GetDirectoryName(_snapshotRequestFilePath);
 
         if (_snapshotRequestDirectoryPath != null)
@@ -68,5 +69,13 @@ public class SnapshotOperationProviderL0
                 Directory.CreateDirectory(_snapshotRequestDirectoryPath);
             }
         }
+    }
+
+    private TestHostContext CreateTestHostContext([CallerMemberName] string testName = "")
+    {
+        var testHostContext = new TestHostContext(this, testName);
+        _ec = new Mock<IExecutionContext>();
+        _ec.Object.Initialize(testHostContext);
+        return testHostContext;
     }
 }
