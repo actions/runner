@@ -780,6 +780,16 @@ namespace GitHub.Runner.Worker
                 Directory.CreateDirectory(destDirectory);
                 executionContext.Output($"Download action repository '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}' (SHA:{downloadInfo.ResolvedSha})");
             }
+            // TODO We will want to make sure to feature flag this. We have the execution context easy to do.
+            // See "DistributedTask.UseActionArchiveCache" for how we can do that in this same function, requires server side changes
+            // TODO figure out the exact refs and sha's we care about. 
+            // We can probably check if it starts with v1 or v2, and have an allowlist of a few shas.
+            if (downloadInfo.NameWithOwner == "actions/upload-artifact" && 
+                (downloadInfo.Ref.StartsWith("v1.") || (downloadInfo.Ref.StartsWith("v2.") // '.' is important to avoid v10 conflict
+                || downloadInfo.Ref == "v1" || downloadInfo.Ref == "v2")))
+            {
+                executionContext.Error($"'{downloadInfo.NameWithOwner}@{downloadInfo.Ref}' is deprecated and will be disabled on xyz. Please upgrade to 'v4'. For more information, see (blogpost here)");
+            }
 
             //download and extract action in a temp folder and rename it on success
             string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
