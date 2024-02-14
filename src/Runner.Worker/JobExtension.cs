@@ -392,18 +392,6 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // Register Job Completed hook if the variable is set
-                    var completedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED");
-                    if (!string.IsNullOrEmpty(completedHookPath))
-                    {
-                        var hookProvider = HostContext.GetService<IJobHookProvider>();
-                        var jobHookData = new JobHookData(ActionRunStage.Post, completedHookPath);
-                        jobContext.RegisterPostJobStep(new JobExtensionRunner(runAsync: hookProvider.RunHook,
-                                                                          condition: $"{PipelineTemplateConstants.Always}()",
-                                                                          displayName: Constants.Hooks.JobCompletedStepName,
-                                                                          data: (object)jobHookData));
-                    }
-
                     // Register custom image creation post-job step if the "snapshot" token is present in the message.
                     var snapshotRequest = templateEvaluator.EvaluateJobSnapshotRequest(message.Snapshot, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (snapshotRequest != null)
@@ -414,6 +402,18 @@ namespace GitHub.Runner.Worker
                             condition: $"{PipelineTemplateConstants.Success}()",
                             displayName: $"Create custom image",
                             data: null));
+                    }
+
+                    // Register Job Completed hook if the variable is set
+                    var completedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED");
+                    if (!string.IsNullOrEmpty(completedHookPath))
+                    {
+                        var hookProvider = HostContext.GetService<IJobHookProvider>();
+                        var jobHookData = new JobHookData(ActionRunStage.Post, completedHookPath);
+                        jobContext.RegisterPostJobStep(new JobExtensionRunner(runAsync: hookProvider.RunHook,
+                                                                          condition: $"{PipelineTemplateConstants.Always}()",
+                                                                          displayName: Constants.Hooks.JobCompletedStepName,
+                                                                          data: (object)jobHookData));
                     }
 
                     List<IStep> steps = new();
