@@ -6,7 +6,6 @@ using GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using Moq;
-using Newtonsoft.Json;
 using Xunit;
 
 namespace GitHub.Runner.Common.Tests.Worker;
