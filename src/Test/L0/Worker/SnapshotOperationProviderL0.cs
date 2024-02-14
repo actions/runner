@@ -35,7 +35,7 @@ public class SnapshotOperationProviderL0
             await _snapshotOperationProvider!.CreateSnapshotRequestAsync(_ec!.Object, expectedSnapshot);
 
             //Assert
-            var actualSnapshot = IOUtil.LoadObject<Snapshot>(_snapshotRequestFilePath); 
+            var actualSnapshot = IOUtil.LoadObject<Snapshot>(_snapshotRequestFilePath);
             Assert.NotNull(actualSnapshot);
             Assert.Equal(expectedSnapshot.ImageName, actualSnapshot!.ImageName);
             _ec.Verify(ec => ec.Write(null, $"Request written to: {_snapshotRequestFilePath}"), Times.Once);
