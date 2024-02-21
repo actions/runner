@@ -61,7 +61,7 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             var brokerSession = RetryRequest<TaskAgentMessage>(
-                async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken);
+                async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken, shouldRetry: ShouldRetryException);
 
             return brokerSession;
         }
@@ -80,6 +80,16 @@ namespace GitHub.Runner.Common
             }
 
             return Task.CompletedTask;
+        }
+
+        public bool ShouldRetryException(Exception ex)
+        {
+            if (ex is AccessDeniedException ade && ade.ErrorCode == 1)
+            {
+                return false;
+            }
+            
+           return true;
         }
     }
 }

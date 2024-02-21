@@ -114,7 +114,7 @@ namespace GitHub.Actions.RunService.WebApi
             // disable_update and is too old to poll
             if (result.StatusCode == HttpStatusCode.Forbidden)
             {
-                throw new AccessDeniedException(result.Error)
+                throw new AccessDeniedException($"{result.Error} Runner version v{runnerVersion} is deprecated and cannot receive messages.")
                 {
                     ErrorCode = 1
                 };
