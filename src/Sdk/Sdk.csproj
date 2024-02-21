@@ -17,11 +17,11 @@
         <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
         <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.7" />
-        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.17.0" />
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.3.1" />
         <PackageReference Include="System.Security.Cryptography.Cng" Version="5.0.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.*" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="6.0.0" />
-        <PackageReference Include="YamlDotNet" Version="11.2.1" />
+        <PackageReference Include="YamlDotNet" Version="15.1.1" />
     </ItemGroup>
 
     <ItemGroup>

@@ -14,7 +14,7 @@ namespace Runner.Server
     {
         public MemoryCacheOptions Value => new MemoryCacheOptions();
     }
-    public class Program
+    public partial class Program
     {
         public static void Main(string[] args)
         {

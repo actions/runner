@@ -92,6 +92,11 @@ jobs:
       run: |
         dotnet test src/Sdk.Tests/Sdk.Tests.csproj
 
+    - name: Unit Tests (Runner.Server.Tests)
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
+      run: |
+        dotnet test src/Runner.Server.Tests/Runner.Server.Tests.csproj
+
     - name: Setup
       if: 'false' # Disabled due to 403 of statuses api with this token and rate limit
       shell: pwsh

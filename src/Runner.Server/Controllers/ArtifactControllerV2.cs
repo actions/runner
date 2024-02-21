@@ -149,6 +149,29 @@ namespace Runner.Server.Controllers
             return new FileStreamResult(System.IO.File.OpenRead(Path.Combine(_targetFilePath, container.StoreName)), "application/octet-stream") { EnableRangeProcessing = true };
         }
 
+        [AllowAnonymous]
+        [HttpPost("DeleteArtifact")]
+        public async Task<IActionResult> DeleteArtifact([FromBody, Protobuf] Github.Actions.Results.Api.V1.DeleteArtifactRequest body) {
+            var attempt = long.Parse(User.FindFirst("attempt")?.Value ?? "-1");
+            var artifactsMinAttempt = long.Parse(User.FindFirst("artifactsMinAttempt")?.Value ?? "-1");
+            var runid = long.Parse(body.WorkflowRunBackendId);
+            var res = await (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == runid && fileContainer.Files.Count == 1 && fileContainer.Files.FirstOrDefault().FileName.ToLower() == $"{body.Name}.zip".ToLower() orderby fileContainer.Container.Attempt.Attempt descending select new { fileContainer, file = fileContainer.Files.FirstOrDefault(), fileContainer.Container }).FirstAsync();
+            if(res.file == null || res.fileContainer == null || res.Container == null) {
+                return NotFound();
+            }
+            _context.ArtifactRecords.Remove(res.file);
+            _context.ArtifactFileContainer.Remove(res.fileContainer);
+            var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
+            System.IO.File.Delete(Path.Combine(_targetFilePath, res.file.StoreName));
+            await _context.SaveChangesAsync();
+
+            var resp = new Github.Actions.Results.Api.V1.DeleteArtifactResponse {
+                Ok = true,
+                ArtifactId = res?.fileContainer?.Id ?? 0
+            };
+            return new OkObjectResult(formatter.Format(resp));
+        }
+
 
         public class ProtobufBinder : IModelBinder
         {

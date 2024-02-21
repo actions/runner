@@ -52,7 +52,11 @@ namespace Github.Actions.Results.Api.V1 {
             "TFJlcXVlc3QSHwoXd29ya2Zsb3dfcnVuX2JhY2tlbmRfaWQYASABKAkSIwob",
             "d29ya2Zsb3dfam9iX3J1bl9iYWNrZW5kX2lkGAIgASgJEgwKBG5hbWUYAyAB",
             "KAkiMgocR2V0U2lnbmVkQXJ0aWZhY3RVUkxSZXNwb25zZRISCgpzaWduZWRf",
-            "dXJsGAEgASgJYgZwcm90bzM="));
+            "dXJsGAEgASgJImsKFURlbGV0ZUFydGlmYWN0UmVxdWVzdBIfChd3b3JrZmxv",
+            "d19ydW5fYmFja2VuZF9pZBgBIAEoCRIjCht3b3JrZmxvd19qb2JfcnVuX2Jh",
+            "Y2tlbmRfaWQYAiABKAkSDAoEbmFtZRgDIAEoCSI5ChZEZWxldGVBcnRpZmFj",
+            "dFJlc3BvbnNlEgoKAm9rGAEgASgIEhMKC2FydGlmYWN0X2lkGAIgASgDYgZw",
+            "cm90bzM="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { global::Google.Protobuf.WellKnownTypes.TimestampReflection.Descriptor, global::Google.Protobuf.WellKnownTypes.WrappersReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
@@ -64,7 +68,9 @@ namespace Github.Actions.Results.Api.V1 {
             new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.ListArtifactsResponse), global::Github.Actions.Results.Api.V1.ListArtifactsResponse.Parser, new[]{ "Artifacts" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.ListArtifactsResponse_MonolithArtifact), global::Github.Actions.Results.Api.V1.ListArtifactsResponse_MonolithArtifact.Parser, new[]{ "WorkflowRunBackendId", "WorkflowJobRunBackendId", "DatabaseId", "Name", "Size", "CreatedAt" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.GetSignedArtifactURLRequest), global::Github.Actions.Results.Api.V1.GetSignedArtifactURLRequest.Parser, new[]{ "WorkflowRunBackendId", "WorkflowJobRunBackendId", "Name" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.GetSignedArtifactURLResponse), global::Github.Actions.Results.Api.V1.GetSignedArtifactURLResponse.Parser, new[]{ "SignedUrl" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.GetSignedArtifactURLResponse), global::Github.Actions.Results.Api.V1.GetSignedArtifactURLResponse.Parser, new[]{ "SignedUrl" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.DeleteArtifactRequest), global::Github.Actions.Results.Api.V1.DeleteArtifactRequest.Parser, new[]{ "WorkflowRunBackendId", "WorkflowJobRunBackendId", "Name" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Github.Actions.Results.Api.V1.DeleteArtifactResponse), global::Github.Actions.Results.Api.V1.DeleteArtifactResponse.Parser, new[]{ "Ok", "ArtifactId" }, null, null, null, null)
           }));
     }
     #endregion
@@ -2543,6 +2549,497 @@ namespace Github.Actions.Results.Api.V1 {
             break;
           case 10: {
             SignedUrl = input.ReadString();
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+  }
+
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class DeleteArtifactRequest : pb::IMessage<DeleteArtifactRequest>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<DeleteArtifactRequest> _parser = new pb::MessageParser<DeleteArtifactRequest>(() => new DeleteArtifactRequest());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<DeleteArtifactRequest> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Github.Actions.Results.Api.V1.ArtifactReflection.Descriptor.MessageTypes[9]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DeleteArtifactRequest() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DeleteArtifactRequest(DeleteArtifactRequest other) : this() {
+      workflowRunBackendId_ = other.workflowRunBackendId_;
+      workflowJobRunBackendId_ = other.workflowJobRunBackendId_;
+      name_ = other.name_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DeleteArtifactRequest Clone() {
+      return new DeleteArtifactRequest(this);
+    }
+
+    /// <summary>Field number for the "workflow_run_backend_id" field.</summary>
+    public const int WorkflowRunBackendIdFieldNumber = 1;
+    private string workflowRunBackendId_ = "";
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public string WorkflowRunBackendId {
+      get { return workflowRunBackendId_; }
+      set {
+        workflowRunBackendId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+
+    /// <summary>Field number for the "workflow_job_run_backend_id" field.</summary>
+    public const int WorkflowJobRunBackendIdFieldNumber = 2;
+    private string workflowJobRunBackendId_ = "";
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public string WorkflowJobRunBackendId {
+      get { return workflowJobRunBackendId_; }
+      set {
+        workflowJobRunBackendId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+
+    /// <summary>Field number for the "name" field.</summary>
+    public const int NameFieldNumber = 3;
+    private string name_ = "";
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public string Name {
+      get { return name_; }
+      set {
+        name_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as DeleteArtifactRequest);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(DeleteArtifactRequest other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (WorkflowRunBackendId != other.WorkflowRunBackendId) return false;
+      if (WorkflowJobRunBackendId != other.WorkflowJobRunBackendId) return false;
+      if (Name != other.Name) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (WorkflowRunBackendId.Length != 0) hash ^= WorkflowRunBackendId.GetHashCode();
+      if (WorkflowJobRunBackendId.Length != 0) hash ^= WorkflowJobRunBackendId.GetHashCode();
+      if (Name.Length != 0) hash ^= Name.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (WorkflowRunBackendId.Length != 0) {
+        output.WriteRawTag(10);
+        output.WriteString(WorkflowRunBackendId);
+      }
+      if (WorkflowJobRunBackendId.Length != 0) {
+        output.WriteRawTag(18);
+        output.WriteString(WorkflowJobRunBackendId);
+      }
+      if (Name.Length != 0) {
+        output.WriteRawTag(26);
+        output.WriteString(Name);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (WorkflowRunBackendId.Length != 0) {
+        output.WriteRawTag(10);
+        output.WriteString(WorkflowRunBackendId);
+      }
+      if (WorkflowJobRunBackendId.Length != 0) {
+        output.WriteRawTag(18);
+        output.WriteString(WorkflowJobRunBackendId);
+      }
+      if (Name.Length != 0) {
+        output.WriteRawTag(26);
+        output.WriteString(Name);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (WorkflowRunBackendId.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(WorkflowRunBackendId);
+      }
+      if (WorkflowJobRunBackendId.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(WorkflowJobRunBackendId);
+      }
+      if (Name.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(Name);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(DeleteArtifactRequest other) {
+      if (other == null) {
+        return;
+      }
+      if (other.WorkflowRunBackendId.Length != 0) {
+        WorkflowRunBackendId = other.WorkflowRunBackendId;
+      }
+      if (other.WorkflowJobRunBackendId.Length != 0) {
+        WorkflowJobRunBackendId = other.WorkflowJobRunBackendId;
+      }
+      if (other.Name.Length != 0) {
+        Name = other.Name;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            WorkflowRunBackendId = input.ReadString();
+            break;
+          }
+          case 18: {
+            WorkflowJobRunBackendId = input.ReadString();
+            break;
+          }
+          case 26: {
+            Name = input.ReadString();
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            WorkflowRunBackendId = input.ReadString();
+            break;
+          }
+          case 18: {
+            WorkflowJobRunBackendId = input.ReadString();
+            break;
+          }
+          case 26: {
+            Name = input.ReadString();
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+  }
+
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class DeleteArtifactResponse : pb::IMessage<DeleteArtifactResponse>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<DeleteArtifactResponse> _parser = new pb::MessageParser<DeleteArtifactResponse>(() => new DeleteArtifactResponse());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<DeleteArtifactResponse> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Github.Actions.Results.Api.V1.ArtifactReflection.Descriptor.MessageTypes[10]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DeleteArtifactResponse() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DeleteArtifactResponse(DeleteArtifactResponse other) : this() {
+      ok_ = other.ok_;
+      artifactId_ = other.artifactId_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public DeleteArtifactResponse Clone() {
+      return new DeleteArtifactResponse(this);
+    }
+
+    /// <summary>Field number for the "ok" field.</summary>
+    public const int OkFieldNumber = 1;
+    private bool ok_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Ok {
+      get { return ok_; }
+      set {
+        ok_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "artifact_id" field.</summary>
+    public const int ArtifactIdFieldNumber = 2;
+    private long artifactId_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public long ArtifactId {
+      get { return artifactId_; }
+      set {
+        artifactId_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as DeleteArtifactResponse);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(DeleteArtifactResponse other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (Ok != other.Ok) return false;
+      if (ArtifactId != other.ArtifactId) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (Ok != false) hash ^= Ok.GetHashCode();
+      if (ArtifactId != 0L) hash ^= ArtifactId.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (Ok != false) {
+        output.WriteRawTag(8);
+        output.WriteBool(Ok);
+      }
+      if (ArtifactId != 0L) {
+        output.WriteRawTag(16);
+        output.WriteInt64(ArtifactId);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (Ok != false) {
+        output.WriteRawTag(8);
+        output.WriteBool(Ok);
+      }
+      if (ArtifactId != 0L) {
+        output.WriteRawTag(16);
+        output.WriteInt64(ArtifactId);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (Ok != false) {
+        size += 1 + 1;
+      }
+      if (ArtifactId != 0L) {
+        size += 1 + pb::CodedOutputStream.ComputeInt64Size(ArtifactId);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(DeleteArtifactResponse other) {
+      if (other == null) {
+        return;
+      }
+      if (other.Ok != false) {
+        Ok = other.Ok;
+      }
+      if (other.ArtifactId != 0L) {
+        ArtifactId = other.ArtifactId;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 8: {
+            Ok = input.ReadBool();
+            break;
+          }
+          case 16: {
+            ArtifactId = input.ReadInt64();
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 8: {
+            Ok = input.ReadBool();
+            break;
+          }
+          case 16: {
+            ArtifactId = input.ReadInt64();
             break;
           }
         }
