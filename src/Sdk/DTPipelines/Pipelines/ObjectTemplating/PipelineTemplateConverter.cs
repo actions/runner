@@ -346,6 +346,39 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
+        internal static Snapshot ConvertToJobSnapshotRequest(TemplateContext context, TemplateToken token)
+        {
+            string imageName = null;
+            if (token is StringToken snapshotStringLiteral)
+            {
+                imageName = snapshotStringLiteral.Value;
+            }
+            else
+            {
+                var snapshotMapping = token.AssertMapping($"{PipelineTemplateConstants.Snapshot}");
+                foreach (var snapshotPropertyPair in snapshotMapping)
+                {
+                    var propertyName = snapshotPropertyPair.Key.AssertString($"{PipelineTemplateConstants.Snapshot} key");
+                    switch (propertyName.Value)
+                    {
+                        case PipelineTemplateConstants.ImageName:
+                            imageName = snapshotPropertyPair.Value.AssertString($"{PipelineTemplateConstants.Snapshot} {propertyName}").Value;
+                            break;
+                        default:
+                            propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Snapshot} key");
+                            break;
+                    }
+                }
+            }
+
+            if (String.IsNullOrEmpty(imageName))
+            {
+                return null;
+            }
+
+            return new Snapshot(imageName);
+        }
+
         private static ActionStep ConvertToStep(
             TemplateContext context,
             TemplateToken stepsItem,
