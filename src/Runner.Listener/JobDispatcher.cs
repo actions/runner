@@ -35,7 +35,7 @@ namespace GitHub.Runner.Listener
     // This implementation of IJobDispatcher is not thread safe.
     // It is based on the fact that the current design of the runner is a dequeue
     // and processes one message from the message queue at a time.
-    // In addition, it only executes one job every time, 
+    // In addition, it only executes one job every time,
     // and the server will not send another job while this one is still running.
     public sealed class JobDispatcher : RunnerService, IJobDispatcher
     {
@@ -658,7 +658,7 @@ namespace GitHub.Runner.Listener
                                 }
                             }
 
-                            // wait worker to exit 
+                            // wait worker to exit
                             // if worker doesn't exit within timeout, then kill worker.
                             completedTask = await Task.WhenAny(workerProcessTask, Task.Delay(-1, workerCancelTimeoutKillToken));
 
@@ -1155,7 +1155,7 @@ namespace GitHub.Runner.Listener
                 TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                 ArgUtil.NotNull(jobRecord, nameof(jobRecord));
 
-                
+
                 jobRecord.ErrorCount++;
                 jobRecord.Issues.Add(issue);
 
