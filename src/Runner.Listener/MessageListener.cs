@@ -109,7 +109,7 @@ namespace GitHub.Runner.Listener
                     if (_session.BrokerMigrationMessage != null)
                     {
                         Trace.Info("Runner session is in migration mode: Creating Broker session with BrokerBaseUrl: {0}", _session.BrokerMigrationMessage.BrokerBaseUrl);
-                        
+
                         await _brokerServer.UpdateConnectionIfNeeded(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
                         _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
                         _isBrokerSession = true;

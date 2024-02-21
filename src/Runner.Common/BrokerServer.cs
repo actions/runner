@@ -88,8 +88,8 @@ namespace GitHub.Runner.Common
             {
                 return false;
             }
-            
-           return true;
+
+            return true;
         }
     }
 }
