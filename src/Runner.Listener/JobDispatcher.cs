@@ -546,7 +546,10 @@ namespace GitHub.Runner.Listener
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
 
                                     var jobServer = await InitializeJobServerAsync(systemConnection);
-                                    await LogWorkerProcessUnhandledException(jobServer, message, detailInfo);
+                                    if (jobServer is IJobServer js)
+                                    {
+                                        await LogWorkerProcessUnhandledException(js, message, detailInfo);
+                                    }
 
                                     // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
                                     if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
@@ -1131,44 +1134,36 @@ namespace GitHub.Runner.Listener
         }
 
         // log an error issue to job level timeline record
-        private async Task LogWorkerProcessUnhandledException(IRunnerService server, Pipelines.AgentJobRequestMessage message, string detailInfo)
+        private async Task LogWorkerProcessUnhandledException(IJobServer jobServer, Pipelines.AgentJobRequestMessage message, string detailInfo)
         {
-            if (server is IJobServer jobServer)
+            try
             {
-                try
+                var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
+                ArgUtil.NotNull(timeline, nameof(timeline));
+
+                TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
+                ArgUtil.NotNull(jobRecord, nameof(jobRecord));
+
+                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
+                unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
+                jobRecord.ErrorCount++;
+                jobRecord.Issues.Add(unhandledExceptionIssue);
+
+                if (message.Variables.TryGetValue("DistributedTask.MarkJobAsFailedOnWorkerCrash", out var markJobAsFailedOnWorkerCrash) &&
+                    StringUtil.ConvertToBoolean(markJobAsFailedOnWorkerCrash?.Value))
                 {
-                    var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
-                    ArgUtil.NotNull(timeline, nameof(timeline));
-
-                    TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
-                    ArgUtil.NotNull(jobRecord, nameof(jobRecord));
-
-                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
-                    unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
-                    jobRecord.ErrorCount++;
-                    jobRecord.Issues.Add(unhandledExceptionIssue);
-
-                    if (message.Variables.TryGetValue("DistributedTask.MarkJobAsFailedOnWorkerCrash", out var markJobAsFailedOnWorkerCrash) &&
-                        StringUtil.ConvertToBoolean(markJobAsFailedOnWorkerCrash?.Value))
-                    {
-                        Trace.Info("Mark the job as failed since the worker crashed");
-                        jobRecord.Result = TaskResult.Failed;
-                        // mark the job as completed so service will pickup the result
-                        jobRecord.State = TimelineRecordState.Completed;
-                    }
-
-                    await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
+                    Trace.Info("Mark the job as failed since the worker crashed");
+                    jobRecord.Result = TaskResult.Failed;
+                    // mark the job as completed so service will pickup the result
+                    jobRecord.State = TimelineRecordState.Completed;
                 }
-                catch (Exception ex)
-                {
-                    Trace.Error("Fail to report unhandled exception from Runner.Worker process");
-                    Trace.Error(ex);
-                }
+
+                await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
             }
-            else
+            catch (Exception ex)
             {
-                Trace.Info("Job server does not support handling unhandled exception yet, error message: {0}", detailInfo);
-                return;
+                Trace.Error("Fail to report unhandled exception from Runner.Worker process");
+                Trace.Error(ex);
             }
         }
 
