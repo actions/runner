@@ -260,10 +260,10 @@ namespace GitHub.Runner.Listener
                         await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _creds);
                         message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
                                                                         runnerStatus,
-                                                                        "2.288.0",
+                                                                        BuildConstants.RunnerPackage.Version,
                                                                         VarUtil.OS,
                                                                         VarUtil.OSArchitecture,
-                                                                        true,
+                                                                        _settings.DisableUpdate,
                                                                         token);
                     }
 
