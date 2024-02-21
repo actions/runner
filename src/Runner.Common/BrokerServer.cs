@@ -21,6 +21,8 @@ namespace GitHub.Runner.Common
         Task DeleteSessionAsync(CancellationToken cancellationToken);
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
+
+        Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
@@ -59,7 +61,7 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             var brokerSession = RetryRequest<TaskAgentMessage>(
-                async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken);
+                async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken, shouldRetry: ShouldRetryException);
 
             return brokerSession;
         }
@@ -68,6 +70,26 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             await _brokerHttpClient.DeleteSessionAsync(cancellationToken);
+        }
+
+        public Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials)
+        {
+            if (_brokerUri != serverUri || !_hasConnection)
+            {
+                return ConnectAsync(serverUri, credentials);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public bool ShouldRetryException(Exception ex)
+        {
+            if (ex is AccessDeniedException ade && ade.ErrorCode == 1)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
