@@ -29,6 +29,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Id = "id";
         public const String If = "if";
         public const String Image = "image";
+        public const String ImageName = "image-name";
         public const String Include = "include";
         public const String Inputs = "inputs";
         public const String Job = "job";
@@ -60,6 +61,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Services = "services";
         public const String Shell = "shell";
         public const String Skipped = "skipped";
+        public const String Snapshot = "snapshot";
         public const String StepEnv = "step-env";
         public const String StepIfResult = "step-if-result";
         public const String StepWith = "step-with";
