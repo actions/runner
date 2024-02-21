@@ -546,16 +546,27 @@ namespace GitHub.Runner.Listener
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
 
                                     var jobServer = await InitializeJobServerAsync(systemConnection);
-                                    if (jobServer is IJobServer js)
+                                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
+                                    unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
+                                    switch (jobServer)
                                     {
-                                        await LogWorkerProcessUnhandledException(js, message, detailInfo);
-                                    }
+                                        case IJobServer js:
+                                        {
+                                            await LogWorkerProcessUnhandledException(js, message, unhandledExceptionIssue);
+                                            // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
+                                            if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                Trace.Info($"Finish job with result 'Failed' due to IOException.");
+                                                await ForceFailJob(js, message);
+                                            }
 
-                                    // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
-                                    if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        Trace.Info($"Finish job with result 'Failed' due to IOException.");
-                                        await ForceFailJob(jobServer, message, detailInfo);
+                                            break;
+                                        }
+                                        case IRunServer rs:
+                                            await ForceFailJob(rs, message, unhandledExceptionIssue);
+                                            break;
+                                        default:
+                                            throw new NotSupportedException($"JobServer type '{jobServer.GetType().Name}' is not supported.");
                                     }
                                 }
 
@@ -1134,7 +1145,7 @@ namespace GitHub.Runner.Listener
         }
 
         // log an error issue to job level timeline record
-        private async Task LogWorkerProcessUnhandledException(IJobServer jobServer, Pipelines.AgentJobRequestMessage message, string detailInfo)
+        private async Task LogWorkerProcessUnhandledException(IJobServer jobServer, Pipelines.AgentJobRequestMessage message, Issue issue)
         {
             try
             {
@@ -1144,10 +1155,9 @@ namespace GitHub.Runner.Listener
                 TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                 ArgUtil.NotNull(jobRecord, nameof(jobRecord));
 
-                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
-                unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
+                
                 jobRecord.ErrorCount++;
-                jobRecord.Issues.Add(unhandledExceptionIssue);
+                jobRecord.Issues.Add(issue);
 
                 if (message.Variables.TryGetValue("DistributedTask.MarkJobAsFailedOnWorkerCrash", out var markJobAsFailedOnWorkerCrash) &&
                     StringUtil.ConvertToBoolean(markJobAsFailedOnWorkerCrash?.Value))
@@ -1168,44 +1178,37 @@ namespace GitHub.Runner.Listener
         }
 
         // raise job completed event to fail the job.
-        private async Task ForceFailJob(IRunnerService server, Pipelines.AgentJobRequestMessage message, string detailInfo)
+        private async Task ForceFailJob(IJobServer jobServer, Pipelines.AgentJobRequestMessage message)
         {
-            if (server is IJobServer jobServer)
+            try
             {
-                try
-                {
-                    var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, TaskResult.Failed);
-                    await jobServer.RaisePlanEventAsync<JobCompletedEvent>(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error("Fail to raise JobCompletedEvent back to service.");
-                    Trace.Error(ex);
-                }
+                var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, TaskResult.Failed);
+                await jobServer.RaisePlanEventAsync<JobCompletedEvent>(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, CancellationToken.None);
             }
-            else if (server is IRunServer runServer)
+            catch (Exception ex)
             {
-                try
-                {
-                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
-                    var unhandledAnnotation = unhandledExceptionIssue.ToAnnotation();
-                    var jobAnnotations = new List<Annotation>();
-                    if (unhandledAnnotation.HasValue)
-                    {
-                        jobAnnotations.Add(unhandledAnnotation.Value);
-                    }
+                Trace.Error("Fail to raise JobCompletedEvent back to service.");
+                Trace.Error(ex);
+            }
+        }
 
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, environmentUrl: null, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error("Fail to raise job completion back to service.");
-                    Trace.Error(ex);
-                }
-            }
-            else
+        private async Task ForceFailJob(IRunServer runServer, Pipelines.AgentJobRequestMessage message, Issue issue)
+        {
+            try
             {
-                throw new NotSupportedException($"Server type {server.GetType().FullName} is not supported.");
+                var annotation = issue.ToAnnotation();
+                var jobAnnotations = new List<Annotation>();
+                if (annotation.HasValue)
+                {
+                    jobAnnotations.Add(annotation.Value);
+                }
+
+                await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, environmentUrl: null, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("Fail to raise job completion back to service.");
+                Trace.Error(ex);
             }
         }
 
