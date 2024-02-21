@@ -551,17 +551,17 @@ namespace GitHub.Runner.Listener
                                     switch (jobServer)
                                     {
                                         case IJobServer js:
-                                        {
-                                            await LogWorkerProcessUnhandledException(js, message, unhandledExceptionIssue);
-                                            // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
-                                            if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
                                             {
-                                                Trace.Info($"Finish job with result 'Failed' due to IOException.");
-                                                await ForceFailJob(js, message);
-                                            }
+                                                await LogWorkerProcessUnhandledException(js, message, unhandledExceptionIssue);
+                                                // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
+                                                if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    Trace.Info($"Finish job with result 'Failed' due to IOException.");
+                                                    await ForceFailJob(js, message);
+                                                }
 
-                                            break;
-                                        }
+                                                break;
+                                            }
                                         case IRunServer rs:
                                             await ForceFailJob(rs, message, unhandledExceptionIssue);
                                             break;
