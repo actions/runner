@@ -81,7 +81,7 @@ public class AzureDevops {
             }
             return seq;
         }
-        return null;
+        return TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", rawvars, 0, rawvars.FileId);
 
         static IEnumerable<KeyValuePair<ScalarToken, TemplateToken>> ProcessVariableMapping(IDictionary<string, VariableValue> vars, TemplateContext staticVarCtx, DictionaryContextData staticVars, MappingToken mvars)
         {

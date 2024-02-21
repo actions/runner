@@ -1,0 +1,10 @@
+parameters:
+- name: variables
+  type: object
+  default:
+  - name: x
+    value: e
+variables: ${{ parameters.variables }}
+steps:
+- script: ${{ format(not(False)) }}
+- script: ${{ not(true) }}
