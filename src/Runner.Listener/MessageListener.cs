@@ -109,7 +109,8 @@ namespace GitHub.Runner.Listener
                     if (_session.BrokerMigrationMessage != null)
                     {
                         Trace.Info("Runner session is in migration mode: Creating Broker session with BrokerBaseUrl: {0}", _session.BrokerMigrationMessage.BrokerBaseUrl);
-                        await _brokerServer.ConnectAsync(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
+                        
+                        await _brokerServer.UpdateConnectionIfNeeded(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
                         _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
                         _isBrokerSession = true;
                     }
@@ -256,13 +257,13 @@ namespace GitHub.Runner.Listener
 
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
 
-                        await _brokerServer.ConnectAsync(migrationMessage.BrokerBaseUrl, _creds);
+                        await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _creds);
                         message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
                                                                         runnerStatus,
-                                                                        BuildConstants.RunnerPackage.Version,
+                                                                        "2.288.0",
                                                                         VarUtil.OS,
                                                                         VarUtil.OSArchitecture,
-                                                                        _settings.DisableUpdate,
+                                                                        true,
                                                                         token);
                     }
 

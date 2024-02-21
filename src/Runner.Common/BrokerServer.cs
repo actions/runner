@@ -21,6 +21,8 @@ namespace GitHub.Runner.Common
         Task DeleteSessionAsync(CancellationToken cancellationToken);
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
+
+        Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
@@ -68,6 +70,16 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             await _brokerHttpClient.DeleteSessionAsync(cancellationToken);
+        }
+
+        public Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials)
+        {
+            if (_brokerUri != serverUri || !_hasConnection)
+            {
+                return ConnectAsync(serverUri, credentials);
+            }
+
+            return Task.CompletedTask;
         }
     }
 }

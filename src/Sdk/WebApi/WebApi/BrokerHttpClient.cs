@@ -110,9 +110,14 @@ namespace GitHub.Actions.RunService.WebApi
                 return result.Value;
             }
 
+            // the only time we throw a `Forbidden` exception from Listener /messages is when the runner is
+            // disable_update and is too old to poll
             if (result.StatusCode == HttpStatusCode.Forbidden)
             {
-                throw new AccessDeniedException(result.Error);
+                throw new AccessDeniedException(result.Error)
+                {
+                    ErrorCode = 1
+                };
             }
 
             throw new Exception($"Failed to get job message: {result.Error}");
