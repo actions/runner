@@ -66,12 +66,12 @@ function activate(context) {
 							var base = vscode.Uri.parse(handle.repositories[repositoryAndRef]);
 							uri = base.with({ path: joinPath(base.path, filename) });
 						} else {
-							var result = await vscode.window.showInputBox({
+							var result = handle.askForInput ? await vscode.window.showInputBox({
 								ignoreFocusOut: true,
 								placeHolder: "value",
 								prompt: `${repositoryAndRef} (${filename})`,
 								title: "Provide the uri to the required Repository"
-							})
+							}) : null;
 							if(result) {
 								handle.repositories ??= {};
 								handle.repositories[repositoryAndRef] = result;
@@ -146,7 +146,10 @@ function activate(context) {
 				}
 			},
 			requestRequiredParameter: async (handle, name) => {
-				return await vscode.window.showInputBox({
+				if(!handle.askForInput) {
+					return;
+				}
+				return handle.parameters[name] = await vscode.window.showInputBox({
 					ignoreFocusOut: true,
 					placeHolder: "value",
 					prompt: name,
@@ -164,7 +167,7 @@ function activate(context) {
 	});
 
 	var defcollection = vscode.languages.createDiagnosticCollection();
-	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state) => {
+	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state, skipAskForInput) => {
 		collection ??= defcollection;
 		var textEditor = vscode.window.activeTextEditor;
 		if(!textEditor && !fspathname) {
@@ -272,7 +275,7 @@ function activate(context) {
 			base ??= current.with({ path: current.path.substring(0, li)});
 			filename ??= current.path.substring(li + 1);
 		}
-		var handle = { hasErrors: false, base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, error: (async jsonex => {
+		var handle = { hasErrors: false, base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, parameters: parameters, error: (async jsonex => {
 			var items = [];
 			var pex = JSON.parse(jsonex);
 			for(var ex of pex.Errors) {
@@ -353,11 +356,26 @@ function activate(context) {
 				return;
 			}
 			return await error(pex.Message);
-		}), referencedFiles: [], refToUri: {}, task: task };
+		}), referencedFiles: [], refToUri: {}, task: task, askForInput: !skipAskForInput };
 		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true);
 
         if(state) {
             state.referencedFiles = handle.referencedFiles;
+			if(!skipAskForInput) {
+				state.repositories = handle.repositories;
+				var rawparams = {};
+				var binding = runtime.BINDING.bind_static_method("[ext-core] MyClass:YAMLToJson");
+				for(var name in handle.parameters) {
+					try {
+						var yml = handle.parameters[name];
+						var js = binding(yml);
+						rawparams[name] = JSON.parse(js);
+					} catch(ex) {
+						console.log(ex);
+					}
+				}
+				state.parameters = rawparams;
+			}
         }
 
 		if(result) {
@@ -455,7 +473,9 @@ function activate(context) {
 			virtualFiles: virtualFiles,
 			name: `azure-pipelines-preview-${z++}.yml`,
 			changed: arg => changeDoc.fire(arg),
-			disposables: []
+			disposables: [],
+			parameters: null,
+			repositories: null
 		};
 		self.collection = vscode.languages.createDiagnosticCollection(self.name);
 		self.disposables.push(self.collection);
@@ -535,7 +555,7 @@ function activate(context) {
 
 				var inProgress = false;
 				var waiting = false;
-				var run = async () => {
+				var run = async (askForInput) => {
 					if(inProgress) {
 						waiting = true;
 						return;
@@ -544,7 +564,7 @@ function activate(context) {
 					inProgress = true;
 					try {
 						var hasErrors = false;
-						await expandAzurePipeline(false, args.repositories, args.variables, args.parameters, async result => {
+						await expandAzurePipeline(false, self.repositories ?? args.repositories, args.variables, self.parameters ?? args.parameters, async result => {
 							task.info(result);
 							if(args.preview) {
 								await reopenPreviewIfNeeded();
@@ -563,7 +583,7 @@ function activate(context) {
 							} else {
 								vscode.window.showErrorMessage(errmsg);
 							}
-						}, task, self.collection, self);
+						}, task, self.collection, self, !askForInput);
 					} catch {
 
 					}
@@ -575,7 +595,7 @@ function activate(context) {
 						run();
 					}
 				};
-				run();
+				run(true);
 				if(def.watch) {
 					var isReferenced = uri => self.referencedFiles.find((u) => u.toString() === uri.toString());
 					// Reload yaml on file and textdocument changes

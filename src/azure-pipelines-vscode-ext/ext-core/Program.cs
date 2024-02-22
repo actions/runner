@@ -1,5 +1,6 @@
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using Runner.Server.Azure.Devops;
 using Newtonsoft.Json;
 using System;
@@ -122,4 +123,14 @@ public class MyClass {
             return yaml;
         }
     }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static string YAMLToJson(string content) {
+        try {
+            return AzurePipelinesUtils.YAMLToJson(content);
+        } catch {
+            return null;
+        }
+    }
+
 }

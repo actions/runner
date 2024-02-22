@@ -3,6 +3,7 @@ using System.IO;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace Runner.Server.Azure.Devops {
 
@@ -19,6 +20,9 @@ namespace Runner.Server.Azure.Devops {
                 templateContext.Errors.Check();
                 return ret;
             }
+        }
+        public static string YAMLToJson(string content) {
+            return Newtonsoft.Json.JsonConvert.SerializeObject(ConvertStringToTemplateToken(content).ToContextData().ToJToken());
         }
     }
 }

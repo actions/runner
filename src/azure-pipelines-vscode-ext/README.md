@@ -233,6 +233,11 @@ npm run build
 
 - Run vscode target "Run azure-pipelines-vscode-ext Extension" to test it
 
+### Nightly VSIX File
+- https://christopherhx.github.io/runner.server/azure-pipelines-vscode-ext/azure-pipelines-vscode-ext.vsix
+- https://christopherhx.github.io/runner.server/azure-pipelines-vscode-ext/azure-pipelines-vscode-ext-pre-release.vsix
+  - same as first one, but marked as pre-release if you install it
+
 ## Changelog
 
 ### v0.0.11
