@@ -1,0 +1,7 @@
+steps:
+- template: ./test.yml
+  parameters:
+    test:
+      script: echo Test
+    test2:
+      script: echo Test
