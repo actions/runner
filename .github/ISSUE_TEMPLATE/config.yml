@@ -7,7 +7,7 @@ contact_links:
     url: https://github.community/c/code-to-cloud/52
     about: If you have questions about GitHub Actions or need support writing workflows, please ask in the GitHub Community Support forum.
   - name: ✅ Feedback and suggestions for GitHub Actions
-    url: https://github.com/github/feedback/discussions/categories/actions-and-packages-feedback
+    url: https://github.com/github/feedback/discussions/categories/actions
     about: If you have feedback or suggestions about GitHub Actions, please open a discussion (or add to an existing one) in the GitHub Actions Feedback.  GitHub Actions Product Managers and Engineers monitor the feedback forum.
   - name: ‼️ GitHub Security Bug Bounty
     url: https://bounty.github.com/
