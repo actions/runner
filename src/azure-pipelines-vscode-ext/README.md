@@ -240,6 +240,24 @@ npm run build
 
 ## Changelog
 
+### v0.0.13
+- Only ask on the first run of a watch task for required inputs and repositories
+- Allow using / passing undeclared parameters using old template syntax
+- Resolve null error when assigning an expression to the variables key directly
+
+### v0.0.12 (Prerelease)
+- Update errors while typing (no longer required to save the change)
+- Improve error reporting
+- Validate syntax of runtime expressions before trying to run the final pipeline (`$[ ... ]`)
+- Validate dependency tree of jobs before trying to run the final pipeline
+- `stages.*.jobs.*.continueOnError` work with runtime expressions
+- Resolve Installing the Azure Pipelines Tools Extension in a clean Desktop Session requires restart
+  - by incuding a node version of the extension
+- Error Highlighting of yaml syntax errors with range information
+- Fire ondidclose for non watching tasks to make the task show as completed
+- invalid stage and job is not reported as error
+- Fix Azure Pipelines Tools won't work without open a folder
+
 ### v0.0.11
 
 - Lazy load .net wasm Dependencies as soon as you really use the extension by a command / task or debug adapter
