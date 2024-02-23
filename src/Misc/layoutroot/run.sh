@@ -14,7 +14,7 @@ run() {
     # run the helper process which keep the listener alive
     while :;
     do
-        cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
+        test -f "$DIR/run-helper.sh.template || cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
         "$DIR"/run-helper.sh $*
         returnCode=$?
         if [[ $returnCode -eq 2 ]]; then
@@ -35,7 +35,7 @@ runWithManualTrap() {
     # run the helper process which keep the listener alive
     while :;
     do
-        cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
+        test -f "$DIR"/run-helper.sh || cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
         "$DIR"/run-helper.sh $* &
         PID=$!
         wait -f $PID
