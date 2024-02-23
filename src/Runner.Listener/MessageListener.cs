@@ -385,6 +385,7 @@ namespace GitHub.Runner.Listener
         public async Task RefreshListenerTokenAsync(CancellationToken cancellationToken)
         {
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
+            await _brokerServer.ForceRefreshConnection(_creds);
         }
 
         private TaskAgentMessage DecryptMessage(TaskAgentMessage message)
