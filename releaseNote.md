@@ -8,6 +8,7 @@
 * Broker fixes for token refreshes and AccessDeniedException by @luketomlinson in https://github.com/actions/runner/pull/3161
 * Remove USE_BROKER_FLOW by @luketomlinson in https://github.com/actions/runner/pull/3162
 * Refresh Token for BrokerServer by @luketomlinson in https://github.com/actions/runner/pull/3167
+* Better step timeout message. by @TingluoHuang in https://github.com/actions/runner/pull/3166
 
 ## New Contributors
 * @davidomid made their first contribution in https://github.com/actions/runner/pull/3135
