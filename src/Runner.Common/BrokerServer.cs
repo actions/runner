@@ -23,6 +23,8 @@ namespace GitHub.Runner.Common
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
 
         Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials);
+
+        Task ForceRefreshConnection(VssCredentials credentials);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
@@ -81,6 +83,11 @@ namespace GitHub.Runner.Common
             }
 
             return Task.CompletedTask;
+        }
+
+        public Task ForceRefreshConnection(VssCredentials credentials)
+        {
+            return ConnectAsync(_brokerUri, credentials);
         }
 
         public bool ShouldRetryException(Exception ex)
