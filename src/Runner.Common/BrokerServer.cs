@@ -65,6 +65,7 @@ namespace GitHub.Runner.Common
             var brokerSession = RetryRequest<TaskAgentMessage>(
                 async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken, shouldRetry: ShouldRetryException);
 
+
             return brokerSession;
         }
 
