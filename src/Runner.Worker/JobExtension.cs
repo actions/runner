@@ -392,6 +392,18 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    // Register custom image creation post-job step if the "snapshot" token is present in the message.
+                    var snapshotRequest = templateEvaluator.EvaluateJobSnapshotRequest(message.Snapshot, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
+                    if (snapshotRequest != null)
+                    {
+                        var snapshotOperationProvider = HostContext.GetService<ISnapshotOperationProvider>();
+                        jobContext.RegisterPostJobStep(new JobExtensionRunner(
+                            runAsync: (executionContext, _) => snapshotOperationProvider.CreateSnapshotRequestAsync(executionContext, snapshotRequest),
+                            condition: $"{PipelineTemplateConstants.Success}()",
+                            displayName: $"Create custom image",
+                            data: null));
+                    }
+
                     // Register Job Completed hook if the variable is set
                     var completedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED");
                     if (!string.IsNullOrEmpty(completedHookPath))

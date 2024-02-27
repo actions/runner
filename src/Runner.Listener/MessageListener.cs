@@ -109,7 +109,8 @@ namespace GitHub.Runner.Listener
                     if (_session.BrokerMigrationMessage != null)
                     {
                         Trace.Info("Runner session is in migration mode: Creating Broker session with BrokerBaseUrl: {0}", _session.BrokerMigrationMessage.BrokerBaseUrl);
-                        await _brokerServer.ConnectAsync(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
+
+                        await _brokerServer.UpdateConnectionIfNeeded(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
                         _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
                         _isBrokerSession = true;
                     }
@@ -204,19 +205,17 @@ namespace GitHub.Runner.Listener
 
         public void OnJobStatus(object sender, JobStatusEventArgs e)
         {
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
+            Trace.Info("Received job status event. JobState: {0}", e.Status);
+            runnerStatus = e.Status;
+            try
             {
-                Trace.Info("Received job status event. JobState: {0}", e.Status);
-                runnerStatus = e.Status;
-                try
-                {
-                    _getMessagesTokenSource?.Cancel();
-                }
-                catch (ObjectDisposedException)
-                {
-                    Trace.Info("_getMessagesTokenSource is already disposed.");
-                }
+                _getMessagesTokenSource?.Cancel();
             }
+            catch (ObjectDisposedException)
+            {
+                Trace.Info("_getMessagesTokenSource is already disposed.");
+            }
+
         }
 
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
@@ -256,7 +255,7 @@ namespace GitHub.Runner.Listener
 
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
 
-                        await _brokerServer.ConnectAsync(migrationMessage.BrokerBaseUrl, _creds);
+                        await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _creds);
                         message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
                                                                         runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
@@ -384,6 +383,7 @@ namespace GitHub.Runner.Listener
         public async Task RefreshListenerTokenAsync(CancellationToken cancellationToken)
         {
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
+            await _brokerServer.ForceRefreshConnection(_creds);
         }
 
         private TaskAgentMessage DecryptMessage(TaskAgentMessage message)
