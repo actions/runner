@@ -88,7 +88,7 @@ runner_plat=linux
 [ ! -z "$(which sw_vers)" ] && runner_plat=osx;
 
 runner_arch=x64
-[ ! -z "$(arch | grep arm64)" ] && runner_arch=arm64
+[ ! -z "$(arch | grep -E 'arm64|aarch64')" ] && runner_arch=arm64
 
 function fatal()
 {
