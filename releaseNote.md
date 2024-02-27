@@ -9,10 +9,12 @@
 * Remove USE_BROKER_FLOW by @luketomlinson in https://github.com/actions/runner/pull/3162
 * Refresh Token for BrokerServer by @luketomlinson in https://github.com/actions/runner/pull/3167
 * Better step timeout message. by @TingluoHuang in https://github.com/actions/runner/pull/3166
+* Fix summaries for actions results by @SrRyan in https://github.com/actions/runner/pull/3174
 
 ## New Contributors
 * @davidomid made their first contribution in https://github.com/actions/runner/pull/3135
 * @enescakir made their first contribution in https://github.com/actions/runner/pull/3089
+* @SrRyan made their first contribution in https://github.com/actions/runner/pull/3174
 
 **Full Changelog**: https://github.com/actions/runner/compare/v2.313.0...v2.314.0
 
