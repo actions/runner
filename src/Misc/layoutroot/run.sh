@@ -38,7 +38,7 @@ runWithManualTrap() {
         cp -f "$DIR"/run-helper.sh.template "$DIR"/run-helper.sh
         "$DIR"/run-helper.sh $* &
         PID=$!
-        wait -f $PID
+        wait $PID
         returnCode=$?
         if [[ $returnCode -eq 2 ]]; then
             echo "Restarting runner..."
@@ -85,3 +85,4 @@ if [[ -z "$RUNNER_MANUALLY_TRAP_SIG" ]]; then
 else
     runWithManualTrap $*
 fi
+
