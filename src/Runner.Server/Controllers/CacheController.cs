@@ -74,7 +74,7 @@ namespace Runner.Server.Controllers {
                     }
                 }
                 CacheRecord partialMatch = null;
-                foreach (var item in a.Skip(1)) {
+                foreach (var item in a) {
                     var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower().StartsWith(item.ToLower()) && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null && (partialMatch == null || record.LastUpdated > partialMatch.LastUpdated)) {
                         partialMatch = record;
