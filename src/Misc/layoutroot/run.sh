@@ -85,4 +85,3 @@ if [[ -z "$RUNNER_MANUALLY_TRAP_SIG" ]]; then
 else
     runWithManualTrap $*
 fi
-
