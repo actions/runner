@@ -44,6 +44,7 @@ RUN apt-get update -y \
     jq \
     git \
     curl \
+    unzip \
     sudo \
     lsb-release \
     && rm -rf /var/lib/apt/lists/*
