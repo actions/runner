@@ -85,9 +85,11 @@ namespace GitHub.Runner.Worker.Handlers
                     nodeData.NodeVersion = "node16";
                 }
 
-                var manualForceActionsToNode20 = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.ManualForceActionsToNode20));
+                var localForceActionsToNode20 = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.ManualForceActionsToNode20));
+                executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Variables.Actions.ManualForceActionsToNode20, out var workflowForceActionsToNode20);
+                var isEnforceNode20Locally = !string.IsNullOrWhiteSpace(workflowForceActionsToNode20) ? StringUtil.ConvertToBoolean(workflowForceActionsToNode20) : localForceActionsToNode20;
                 if (string.Equals(nodeData.NodeVersion, "node16")
-                && ((executionContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode20") ?? false) || manualForceActionsToNode20))
+                && ((executionContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode20") ?? false) || isEnforceNode20Locally))
                 {
                     executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion, out var workflowOptOut);
                     var isWorkflowOptOutSet = !string.IsNullOrWhiteSpace(workflowOptOut);

@@ -254,6 +254,7 @@ namespace GitHub.Runner.Common
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
                 public static readonly string AllowActionsUseUnsecureNodeVersion = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
+                public static readonly string ManualForceActionsToNode20 = "FORCE_JAVASCRIPT_ACTIONS_TO_NODE20";
             }
 
             public static class Agent
