@@ -567,6 +567,11 @@ namespace GitHub.Runner.Listener
                                             Trace.Info("Job is already acquired, skip this message.");
                                             continue;
                                         }
+                                        catch (Exception ex)
+                                        {
+                                            Trace.Error($"Caught exception from acquiring job message: {ex}");
+                                            continue;
+                                        }
                                     }
 
                                     jobDispatcher.Run(jobRequestMessage, runOnce);
@@ -595,6 +600,11 @@ namespace GitHub.Runner.Listener
                                 skipSessionDeletion = true;
                                 Trace.Info($"Service requests the hosted runner to shutdown. Reason: '{HostedRunnerShutdownMessage.Reason}'.");
                                 return Constants.Runner.ReturnCode.Success;
+                            }
+                            else if (string.Equals(message.MessageType, TaskAgentMessageTypes.ForceTokenRefresh))
+                            {
+                                Trace.Info("Received ForceTokenRefreshMessage");
+                                await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
                             }
                             else
                             {
@@ -634,6 +644,7 @@ namespace GitHub.Runner.Listener
                     {
                         try
                         {
+                            Trace.Info("Deleting Runner Session...");
                             await _listener.DeleteSessionAsync();
                         }
                         catch (Exception ex) when (runOnce)

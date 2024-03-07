@@ -14,15 +14,10 @@ DEV_TARGET_RUNTIME=$3
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYOUT_DIR="$SCRIPT_DIR/../_layout"
-LAYOUT_TRIMS_DIR="$SCRIPT_DIR/../_layout_trims"
-LAYOUT_TRIM_EXTERNALS_DIR="$LAYOUT_TRIMS_DIR/trim_externals"
-LAYOUT_TRIM_RUNTIME_DIR="$LAYOUT_TRIMS_DIR/trim_runtime"
-LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR="$LAYOUT_TRIMS_DIR/trim_runtime_externals"
 DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
-PACKAGE_TRIMS_DIR="$SCRIPT_DIR/../_package_trims"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="6.0.415"
+DOTNETSDK_VERSION="6.0.419"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 RUNNER_VERSION=$(cat runnerversion)
 
@@ -148,48 +143,6 @@ function layout ()
 
     heading "Setup externals folder for $RUNTIME_ID runner's layout"
     bash ./Misc/externals.sh $RUNTIME_ID || checkRC externals.sh
-
-    heading "Create layout (Trimmed) ..."
-
-    rm -Rf "$LAYOUT_TRIMS_DIR"
-    mkdir -p "$LAYOUT_TRIMS_DIR"
-    mkdir -p "$LAYOUT_TRIMS_DIR/runtime"
-    cp -r "$LAYOUT_DIR/bin/." "$LAYOUT_TRIMS_DIR/runtime"
-    mkdir -p "$LAYOUT_TRIMS_DIR/externals"
-    cp -r "$LAYOUT_DIR/externals/." "$LAYOUT_TRIMS_DIR/externals"
-
-    pushd "$LAYOUT_TRIMS_DIR/runtime" > /dev/null
-    if [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        sed -i 's/\n$/\r\n/' "$SCRIPT_DIR/Misc/runnercoreassets"
-    fi
-
-    cat "$SCRIPT_DIR/Misc/runnercoreassets" | xargs rm -f
-    find . -empty -type d -delete
-    find . -type f > "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeassets"
-    popd > /dev/null
-
-    heading "Create layout with externals trimmed ..."
-    mkdir -p "$LAYOUT_TRIM_EXTERNALS_DIR"
-    cp -r "$LAYOUT_DIR/." "$LAYOUT_TRIM_EXTERNALS_DIR/"
-    rm -Rf "$LAYOUT_TRIM_EXTERNALS_DIR/externals"
-    echo "Created... $LAYOUT_TRIM_EXTERNALS_DIR"
-
-    heading "Create layout with dotnet runtime trimmed ..."
-    mkdir -p "$LAYOUT_TRIM_RUNTIME_DIR"
-    cp -r "$LAYOUT_DIR/." "$LAYOUT_TRIM_RUNTIME_DIR/"
-    pushd "$LAYOUT_TRIM_RUNTIME_DIR/bin" > /dev/null
-    cat "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeassets" | xargs rm -f
-    echo "Created... $LAYOUT_TRIM_RUNTIME_DIR"
-    popd > /dev/null
-
-    heading "Create layout with externals and dotnet runtime trimmed ..."
-    mkdir -p "$LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR"
-    cp -r "$LAYOUT_DIR/." "$LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR/"
-    rm -Rf "$LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR/externals"
-    pushd "$LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR/bin" > /dev/null
-    cat "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeassets" | xargs rm -f
-    echo "Created... $LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR"
-    popd > /dev/null
 }
 
 function runtest ()
@@ -226,9 +179,7 @@ function package ()
     find "${LAYOUT_DIR}/bin" -type f -name '*.pdb' -delete
 
     mkdir -p "$PACKAGE_DIR"
-    mkdir -p "$PACKAGE_TRIMS_DIR"
     rm -Rf "${PACKAGE_DIR:?}"/*
-    rm -Rf "${PACKAGE_TRIMS_DIR:?}"/*
 
     pushd "$PACKAGE_DIR" > /dev/null
 
@@ -245,66 +196,6 @@ function package ()
         $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
     fi
 
-    popd > /dev/null
-
-    runner_trim_externals_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noexternals"
-    heading "Packaging ${runner_trim_externals_pkg_name} (Trimmed)"
-
-    PACKAGE_TRIM_EXTERNALS_DIR="$PACKAGE_TRIMS_DIR/trim_externals"
-    mkdir -p "$PACKAGE_TRIM_EXTERNALS_DIR"
-    pushd "$PACKAGE_TRIM_EXTERNALS_DIR" > /dev/null
-    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
-        tar_name="${runner_trim_externals_pkg_name}.tar.gz"
-        echo "Creating $tar_name in ${LAYOUT_TRIM_EXTERNALS_DIR}"
-        tar -czf "${tar_name}" -C "${LAYOUT_TRIM_EXTERNALS_DIR}" .
-    elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        zip_name="${runner_trim_externals_pkg_name}.zip"
-        echo "Convert ${LAYOUT_TRIM_EXTERNALS_DIR} to Windows style path"
-        window_path=${LAYOUT_TRIM_EXTERNALS_DIR:1}
-        window_path=${window_path:0:1}:${window_path:1}
-        echo "Creating $zip_name in ${window_path}"
-        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
-    fi
-    popd > /dev/null
-
-    runner_trim_runtime_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noruntime"
-    heading "Packaging ${runner_trim_runtime_pkg_name} (Trimmed)"
-
-    PACKAGE_TRIM_RUNTIME_DIR="$PACKAGE_TRIMS_DIR/trim_runtime"
-    mkdir -p "$PACKAGE_TRIM_RUNTIME_DIR"
-    pushd "$PACKAGE_TRIM_RUNTIME_DIR" > /dev/null
-    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
-        tar_name="${runner_trim_runtime_pkg_name}.tar.gz"
-        echo "Creating $tar_name in ${LAYOUT_TRIM_RUNTIME_DIR}"
-        tar -czf "${tar_name}" -C "${LAYOUT_TRIM_RUNTIME_DIR}" .
-    elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        zip_name="${runner_trim_runtime_pkg_name}.zip"
-        echo "Convert ${LAYOUT_TRIM_RUNTIME_DIR} to Windows style path"
-        window_path=${LAYOUT_TRIM_RUNTIME_DIR:1}
-        window_path=${window_path:0:1}:${window_path:1}
-        echo "Creating $zip_name in ${window_path}"
-        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
-    fi
-    popd > /dev/null
-
-    runner_trim_runtime_externals_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-noruntime-noexternals"
-    heading "Packaging ${runner_trim_runtime_externals_pkg_name} (Trimmed)"
-
-    PACKAGE_TRIM_RUNTIME_EXTERNALS_DIR="$PACKAGE_TRIMS_DIR/trim_runtime_externals"
-    mkdir -p "$PACKAGE_TRIM_RUNTIME_EXTERNALS_DIR"
-    pushd "$PACKAGE_TRIM_RUNTIME_EXTERNALS_DIR" > /dev/null
-    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
-        tar_name="${runner_trim_runtime_externals_pkg_name}.tar.gz"
-        echo "Creating $tar_name in ${LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR}"
-        tar -czf "${tar_name}" -C "${LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR}" .
-    elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        zip_name="${runner_trim_runtime_externals_pkg_name}.zip"
-        echo "Convert ${LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR} to Windows style path"
-        window_path=${LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR:1}
-        window_path=${window_path:0:1}:${window_path:1}
-        echo "Creating $zip_name in ${window_path}"
-        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
-    fi
     popd > /dev/null
 }
 

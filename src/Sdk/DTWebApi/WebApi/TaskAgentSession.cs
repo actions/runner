@@ -75,5 +75,12 @@ namespace GitHub.DistributedTask.WebApi
             get;
             set;
         }
+
+        [DataMember(EmitDefaultValue = false, IsRequired = false)]
+        public BrokerMigrationMessage BrokerMigrationMessage
+        {
+            get;
+            set;
+        }
     }
 }

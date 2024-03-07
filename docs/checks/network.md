@@ -42,6 +42,7 @@ If you are having trouble connecting, try these steps:
       - https://api.github.com/
       - https://vstoken.actions.githubusercontent.com/_apis/health
       - https://pipelines.actions.githubusercontent.com/_apis/health
+      - https://results-receiver.actions.githubusercontent.com/health
     - For GHES/GHAE
       - https://myGHES.com/_services/vstoken/_apis/health
       - https://myGHES.com/_services/pipelines/_apis/health
