@@ -214,25 +214,7 @@ namespace GitHub.Services.Common
                     // ConfigureAwait(false) enables the continuation to be run outside any captured
                     // SyncronizationContext (such as ASP.NET's) which keeps things from deadlocking...
 
-                    var tmpResponse = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
-                    if (Settings.AllowAutoRedirectForBroker && tmpResponse.StatusCode == HttpStatusCode.Redirect)
-                    {
-                        //Dispose of the previous response
-                        tmpResponse?.Dispose();
-
-                        var location = tmpResponse.Headers.Location;
-                        request = new HttpRequestMessage(HttpMethod.Get, location);
-
-                        // Reapply the token to new redirected request
-                        ApplyToken(request, token, applyICredentialsToWebProxy: lastResponseDemandedProxyAuth);
-
-                        // Resend the request
-                        response = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        response = tmpResponse;
-                    }
+                    response = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
 
                     traceInfo?.TraceRequestSendTime();
 

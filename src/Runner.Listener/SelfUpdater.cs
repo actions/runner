@@ -34,6 +34,7 @@ namespace GitHub.Runner.Listener
         private IRunnerServer _runnerServer;
         private int _poolId;
         private ulong _agentId;
+        private const int _numberOfOldVersionsToKeep = 1;
         private readonly ConcurrentQueue<string> _updateTrace = new();
         public bool Busy { get; private set; }
 
@@ -509,9 +510,9 @@ namespace GitHub.Runner.Listener
 
             // delete old bin.2.99.0 folder, only leave the current version and the latest download version
             var allBinDirs = Directory.GetDirectories(HostContext.GetDirectory(WellKnownDirectory.Root), "bin.*");
-            if (allBinDirs.Length > 2)
+            if (allBinDirs.Length > _numberOfOldVersionsToKeep)
             {
-                // there are more than 2 bin.version folder.
+                // there are more than one bin.version folder.
                 // delete older bin.version folders.
                 foreach (var oldBinDir in allBinDirs)
                 {
@@ -538,9 +539,9 @@ namespace GitHub.Runner.Listener
 
             // delete old externals.2.99.0 folder, only leave the current version and the latest download version
             var allExternalsDirs = Directory.GetDirectories(HostContext.GetDirectory(WellKnownDirectory.Root), "externals.*");
-            if (allExternalsDirs.Length > 2)
+            if (allExternalsDirs.Length > _numberOfOldVersionsToKeep)
             {
-                // there are more than 2 externals.version folder.
+                // there are more than one externals.version folder.
                 // delete older externals.version folders.
                 foreach (var oldExternalDir in allExternalsDirs)
                 {
