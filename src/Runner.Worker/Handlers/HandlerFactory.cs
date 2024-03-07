@@ -116,7 +116,7 @@ namespace GitHub.Runner.Worker.Handlers
                             }
 
                             warningActions.Add(repoActionFullName);
-                            executionContext.Global.Variables.Set("Node16ForceActionsWarnings", StringUtil.ConvertToJson(warningActions));
+                            executionContext.Global.Variables.Set("Node20ForceActionsWarnings", StringUtil.ConvertToJson(warningActions));
                         }
                         nodeData.NodeVersion = "node20";
                     }
