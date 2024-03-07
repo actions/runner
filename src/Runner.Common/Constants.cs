@@ -180,6 +180,9 @@ namespace GitHub.Runner.Common
             public static readonly string DeprecatedNodeVersion = "node16";
             public static readonly string EnforcedNode12DetectedAfterEndOfLife = "The following actions uses node12 which is deprecated and will be forced to run on node16: {0}. For more info: https://github.blog/changelog/2023-06-13-github-actions-all-actions-will-run-on-node16-instead-of-node12-by-default/";
             public static readonly string EnforcedNode12DetectedAfterEndOfLifeEnvVariable = "Node16ForceActionsWarnings";
+            public static readonly string EnforcedNode16DetectedAfterEndOfLife = "The following actions uses Node.js version which is deprecated and will be forced to run on node20: {0}. For more info: https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/";
+            public static readonly string EnforcedNode16DetectedAfterEndOfLifeEnvVariable = "Node20ForceActionsWarnings";
+
         }
 
         public static class RunnerEvent
@@ -262,6 +265,7 @@ namespace GitHub.Runner.Common
                 public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
                 public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";
                 public static readonly string ActionArchiveCacheDirectory = "ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE";
+                public static readonly string ManualForceActionsToNode20 = "FORCE_JAVASCRIPT_ACTIONS_TO_NODE20";
             }
 
             public static class System
