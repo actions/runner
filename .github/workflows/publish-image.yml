@@ -8,7 +8,7 @@ on:
         description: Version of the runner being installed
 
 env:
-  REGISTRY: dockerhub.io
+  REGISTRY: dockerhub
   IMAGE_NAME: atom/actions-runner
 
 jobs:
@@ -56,8 +56,8 @@ jobs:
             linux/amd64
             linux/arm64
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
+            ${{ env.IMAGE_NAME }}:latest
           build-args: |
             DOCKER_HUB_PASSWORD=${{ secrets.DOCKER_HUB_PASSWORD }}
             DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
