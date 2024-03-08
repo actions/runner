@@ -39,6 +39,15 @@ ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=ubuntu22
 
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        git \
+        jq \
+        openssh-client \
+        lsb-release \
+        sudo
+
 RUN mkdir -p -m 755 /etc/apt/keyrings \
     && curl --silent https://cli.github.com/packages/githubcli-archive-keyring.gpg \
         | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
@@ -48,13 +57,7 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
-    curl \
-    gh \
-    git \
-    jq \
-    openssh-client \
-    lsb-release \
-    sudo \
+        gh \
     && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
