@@ -133,6 +133,8 @@ var runService = function () {
 
         if (!stopping) {
           setTimeout(runService, 5000);
+        } else {
+          process.exitCode = code;
         }
       });
     } catch (ex) {
