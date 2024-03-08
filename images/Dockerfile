@@ -44,7 +44,7 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
         | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
     && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-        | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+        | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
