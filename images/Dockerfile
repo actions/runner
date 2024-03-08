@@ -41,11 +41,12 @@ ENV ImageOS=ubuntu22
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
-    jq \
-    git \
     curl \
-    sudo \
+    git \
+    jq \
+    openssh-client \
     lsb-release \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
