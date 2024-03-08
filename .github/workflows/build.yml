@@ -18,8 +18,13 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
+        runtime: [ linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
         include:
+          # This doesn't seem to work
+          # - runtime: linux-x64
+          #   os: ubuntu-latest
+          #   devScript: ./dev.sh
+
         - runtime: linux-arm64
           os: ubuntu-latest
           devScript: ./dev.sh
