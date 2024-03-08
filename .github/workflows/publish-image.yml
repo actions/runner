@@ -8,8 +8,8 @@ on:
         description: Version of the runner being installed
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
+  REGISTRY: dockerhub.io
+  IMAGE_NAME: atom/actions-runner
 
 jobs:
   build:
@@ -44,9 +44,8 @@ jobs:
       - name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@v2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Build and push Docker image
         id: build-and-push
@@ -60,9 +59,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           build-args: |
+            DOCKER_HUB_PASSWORD=${{ secrets.DOCKER_HUB_PASSWORD }}
+            DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
             RUNNER_VERSION=${{ steps.image.outputs.version }}
           push: true
-          labels: |
-            org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
-            org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
-            org.opencontainers.image.licenses=MIT
