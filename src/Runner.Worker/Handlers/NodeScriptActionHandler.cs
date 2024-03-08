@@ -119,7 +119,7 @@ namespace GitHub.Runner.Worker.Handlers
                 Data.NodeVersion = "node16";
             }
 
-            if(forcedNodeVersion == "node20" && Data.NodeVersion != "node20")
+            if (forcedNodeVersion == "node20" && Data.NodeVersion != "node20")
             {
                 Data.NodeVersion = "node20";
             }
