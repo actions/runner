@@ -813,12 +813,6 @@ namespace GitHub.Runner.Worker
                 Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion, "node16");
             }
 
-            var forceActionsToNode20 = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.ManualForceActionsToNode20));
-            if ((Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode20") ?? false) || forceActionsToNode20)
-            {
-                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion, "node20");
-            }
-
             // Environment variables shared across all actions
             Global.EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 

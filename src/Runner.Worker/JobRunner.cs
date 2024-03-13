@@ -411,7 +411,7 @@ namespace GitHub.Runner.Worker
                 jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
             }
 
-            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings) && (jobContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode20") ?? false))
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings))
             {
                 var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node20ForceWarnings));
                 jobContext.Warning(string.Format(Constants.Runner.EnforcedNode16DetectedAfterEndOfLife, actions));
