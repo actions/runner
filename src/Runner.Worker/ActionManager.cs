@@ -703,7 +703,7 @@ namespace GitHub.Runner.Worker
                 catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is cancelled.
                 {
                     // UnresolvableActionDownloadInfoException is a 422 client error, don't retry
-                    // NonRetryableActionDownloadInfoException is a 400, don't retry, log as infra error
+                    // NonRetryableActionDownloadInfoException is an non-retryable exception from Actions
                     // Some possible cases are:
                     // * Repo is rate limited
                     // * Repo or tag doesn't exist, or isn't public
