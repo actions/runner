@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -14,10 +15,11 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(JobServerQueue))]
     public interface IJobServerQueue : IRunnerService, IThrottlingReporter
     {
+        IList<JobTelemetry> JobTelemetries { get; }
         TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(Pipelines.AgentJobRequestMessage jobRequest);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false, bool enableTelemetry = false);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines);
@@ -65,14 +67,21 @@ namespace GitHub.Runner.Common
 
         // common
         private IJobServer _jobServer;
+        private IResultsServer _resultsServer;
         private Task[] _allDequeueTasks;
         private readonly TaskCompletionSource<int> _jobCompletionSource = new();
         private readonly TaskCompletionSource<int> _jobRecordUpdated = new();
+        private readonly List<JobTelemetry> _jobTelemetries = new();
         private bool _queueInProcess = false;
+        private bool _resultsServiceOnly = false;
+        private Stopwatch _resultsUploadTimer = new();
+        private Stopwatch _actionsUploadTimer = new();
 
         public TaskCompletionSource<int> JobRecordUpdated => _jobRecordUpdated;
 
         public event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
+
+        public IList<JobTelemetry> JobTelemetries => _jobTelemetries;
 
         // Web console dequeue will start with process queue every 250ms for the first 60*4 times (~60 seconds).
         // Then the dequeue will happen every 500ms.
@@ -85,21 +94,28 @@ namespace GitHub.Runner.Common
         private bool _firstConsoleOutputs = true;
 
         private bool _resultsClientInitiated = false;
+        private bool _enableTelemetry = false;
         private delegate Task ResultsFileUploadHandler(ResultsUploadFileInfo file);
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _jobServer = hostContext.GetService<IJobServer>();
+            _resultsServer = hostContext.GetService<IResultsServer>();
         }
 
-        public void Start(Pipelines.AgentJobRequestMessage jobRequest)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false, bool enableTelemetry = false)
         {
             Trace.Entering();
+            _resultsServiceOnly = resultsServiceOnly;
+            _enableTelemetry = enableTelemetry;
 
             var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
-            _jobServer.InitializeWebsocketClient(serviceEndPoint);
+            if (!resultsServiceOnly)
+            {
+                _jobServer.InitializeWebsocketClient(serviceEndPoint);
+            }
 
             // This code is usually wrapped by an instance of IExecutionContext which isn't available here.
             jobRequest.Variables.TryGetValue("system.github.results_endpoint", out VariableValue resultsEndpointVariable);
@@ -110,8 +126,16 @@ namespace GitHub.Runner.Common
                 !string.IsNullOrEmpty(accessToken) &&
                 !string.IsNullOrEmpty(resultsReceiverEndpoint))
             {
+                string liveConsoleFeedUrl = null;
                 Trace.Info("Initializing results client");
-                _jobServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), accessToken);
+                if (resultsServiceOnly
+                    && serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl)
+                    && !string.IsNullOrEmpty(feedStreamUrl))
+                {
+                    liveConsoleFeedUrl = feedStreamUrl;
+                }
+                jobRequest.Variables.TryGetValue("system.github.results_upload_with_sdk", out VariableValue resultsUseSdkVariable);
+                _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken, StringUtil.ConvertToBoolean(resultsUseSdkVariable?.Value));
                 _resultsClientInitiated = true;
             }
 
@@ -192,7 +216,16 @@ namespace GitHub.Runner.Common
             Trace.Info($"Disposing job server ...");
             await _jobServer.DisposeAsync();
 
+            Trace.Info($"Disposing results server ...");
+            await _resultsServer.DisposeAsync();
+
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
+            if (_enableTelemetry)
+            {
+                var uploadTimeComparison = $"Actions upload time: {_actionsUploadTimer.ElapsedMilliseconds} ms, Result upload time: {_resultsUploadTimer.ElapsedMilliseconds} ms";
+                Trace.Info(uploadTimeComparison);
+                _jobTelemetries.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = uploadTimeComparison });
+            }
         }
 
         public void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber)
@@ -370,7 +403,14 @@ namespace GitHub.Runner.Common
                                 // Give at most 60s for each request.
                                 using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
                                 {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
+                                    if (_resultsServiceOnly)
+                                    {
+                                        await _resultsServer.AppendLiveConsoleFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
+                                    }
+                                    else
+                                    {
+                                        await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, timeoutTokenSource.Token);
+                                    }
                                 }
 
                                 if (_firstConsoleOutputs)
@@ -431,6 +471,10 @@ namespace GitHub.Runner.Common
                     {
                         try
                         {
+                            if (_enableTelemetry)
+                            {
+                                _actionsUploadTimer.Start();
+                            }
                             await UploadFile(file);
                         }
                         catch (Exception ex)
@@ -445,6 +489,13 @@ namespace GitHub.Runner.Common
                             //{
                             //    _fileUploadQueue.Enqueue(file);
                             //}
+                        }
+                        finally
+                        {
+                            if (_enableTelemetry)
+                            {
+                                _actionsUploadTimer.Stop();
+                            }
                         }
                     }
 
@@ -492,9 +543,17 @@ namespace GitHub.Runner.Common
                     {
                         try
                         {
+                            if (_enableTelemetry)
+                            {
+                                _resultsUploadTimer.Start();
+                            }
                             if (String.Equals(file.Type, ChecksAttachmentType.StepSummary, StringComparison.OrdinalIgnoreCase))
                             {
                                 await UploadSummaryFile(file);
+                            }
+                            if (string.Equals(file.Type, CoreAttachmentType.ResultsDiagnosticLog, StringComparison.OrdinalIgnoreCase))
+                            {
+                                await UploadResultsDiagnosticLogsFile(file);
                             }
                             else if (String.Equals(file.Type, CoreAttachmentType.ResultsLog, StringComparison.OrdinalIgnoreCase))
                             {
@@ -512,19 +571,23 @@ namespace GitHub.Runner.Common
                         }
                         catch (Exception ex)
                         {
-                            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception during file upload to results. {ex.Message}" };
-                            issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
-
-                            var telemetryRecord = new TimelineRecord()
-                            {
-                                Id = Constants.Runner.TelemetryRecordId,
-                            };
-                            telemetryRecord.Issues.Add(issue);
-                            QueueTimelineRecordUpdate(_jobTimelineId, telemetryRecord);
-
                             Trace.Info("Catch exception during file upload to results, keep going since the process is best effort.");
                             Trace.Error(ex);
                             errorCount++;
+
+                            // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results unless Results is serving logs
+                            if (!_resultsServiceOnly)
+                            {
+                                _resultsClientInitiated = false;
+                                SendResultsTelemetry(ex);
+                            }
+                        }
+                        finally
+                        {
+                            if (_enableTelemetry)
+                            {
+                                _resultsUploadTimer.Stop();
+                            }
                         }
                     }
 
@@ -540,6 +603,19 @@ namespace GitHub.Runner.Common
                     await Task.Delay(_delayForResultsUploadDequeue);
                 }
             }
+        }
+
+        private void SendResultsTelemetry(Exception ex)
+        {
+            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception with results. {ex.Message}" };
+            issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
+
+            var telemetryRecord = new TimelineRecord()
+            {
+                Id = Constants.Runner.TelemetryRecordId,
+            };
+            telemetryRecord.Issues.Add(issue);
+            QueueTimelineRecordUpdate(_jobTimelineId, telemetryRecord);
         }
 
         private async Task ProcessTimelinesUpdateQueueAsync(bool runOnce = false)
@@ -589,7 +665,7 @@ namespace GitHub.Runner.Common
 
                         foreach (var detailTimeline in update.PendingRecords.Where(r => r.Details != null))
                         {
-                            if (!_allTimelines.Contains(detailTimeline.Details.Id))
+                            if (!_resultsServiceOnly && !_allTimelines.Contains(detailTimeline.Details.Id))
                             {
                                 try
                                 {
@@ -611,7 +687,29 @@ namespace GitHub.Runner.Common
 
                         try
                         {
-                            await _jobServer.UpdateTimelineRecordsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
+                            if (!_resultsServiceOnly)
+                            {
+                                await _jobServer.UpdateTimelineRecordsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
+                            }
+
+                            try
+                            {
+                                if (_resultsClientInitiated)
+                                {
+                                    await _resultsServer.UpdateResultsWorkflowStepsAsync(_scopeIdentifier, _hubName, _planId, update.TimelineId, update.PendingRecords, default(CancellationToken));
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Trace.Info("Catch exception during update steps, skip update Results.");
+                                Trace.Error(e);
+                                if (!_resultsServiceOnly)
+                                {
+                                    _resultsClientInitiated = false;
+                                    SendResultsTelemetry(e);
+                                }
+                            }
+
                             if (_bufferedRetryRecords.Remove(update.TimelineId))
                             {
                                 Trace.Verbose("Cleanup buffered timeline record for timeline: {0}.", update.TimelineId);
@@ -703,17 +801,17 @@ namespace GitHub.Runner.Common
                     timelineRecord.State = rec.State ?? timelineRecord.State;
                     timelineRecord.WorkerName = rec.WorkerName ?? timelineRecord.WorkerName;
 
-                    if (rec.ErrorCount != null && rec.ErrorCount > 0)
+                    if (rec.ErrorCount > 0)
                     {
                         timelineRecord.ErrorCount = rec.ErrorCount;
                     }
 
-                    if (rec.WarningCount != null && rec.WarningCount > 0)
+                    if (rec.WarningCount > 0)
                     {
                         timelineRecord.WarningCount = rec.WarningCount;
                     }
 
-                    if (rec.NoticeCount != null && rec.NoticeCount > 0)
+                    if (rec.NoticeCount > 0)
                     {
                         timelineRecord.NoticeCount = rec.NoticeCount;
                     }
@@ -744,7 +842,7 @@ namespace GitHub.Runner.Common
             foreach (var record in mergedRecords)
             {
                 Trace.Verbose($"    Record: t={record.RecordType}, n={record.Name}, s={record.State}, st={record.StartTime}, {record.PercentComplete}%, ft={record.FinishTime}, r={record.Result}: {record.CurrentOperation}");
-                if (record.Issues != null && record.Issues.Count > 0)
+                if (record.Issues != null)
                 {
                     foreach (var issue in record.Issues)
                     {
@@ -754,7 +852,7 @@ namespace GitHub.Runner.Common
                     }
                 }
 
-                if (record.Variables != null && record.Variables.Count > 0)
+                if (record.Variables != null)
                 {
                     foreach (var variable in record.Variables)
                     {
@@ -771,27 +869,30 @@ namespace GitHub.Runner.Common
             bool uploadSucceed = false;
             try
             {
-                if (String.Equals(file.Type, CoreAttachmentType.Log, StringComparison.OrdinalIgnoreCase))
+                if (!_resultsServiceOnly)
                 {
-                    // Create the log
-                    var taskLog = await _jobServer.CreateLogAsync(_scopeIdentifier, _hubName, _planId, new TaskLog(String.Format(@"logs\{0:D}", file.TimelineRecordId)), default(CancellationToken));
-
-                    // Upload the contents
-                    using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    if (String.Equals(file.Type, CoreAttachmentType.Log, StringComparison.OrdinalIgnoreCase))
                     {
-                        var logUploaded = await _jobServer.AppendLogContentAsync(_scopeIdentifier, _hubName, _planId, taskLog.Id, fs, default(CancellationToken));
+                        // Create the log
+                        var taskLog = await _jobServer.CreateLogAsync(_scopeIdentifier, _hubName, _planId, new TaskLog(String.Format(@"logs\{0:D}", file.TimelineRecordId)), default(CancellationToken));
+
+                        // Upload the contents
+                        using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        {
+                            var logUploaded = await _jobServer.AppendLogContentAsync(_scopeIdentifier, _hubName, _planId, taskLog.Id, fs, default(CancellationToken));
+                        }
+
+                        // Create a new record and only set the Log field
+                        var attachmentUpdataRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
+                        QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdataRecord);
                     }
-
-                    // Create a new record and only set the Log field
-                    var attachmentUpdataRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
-                    QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdataRecord);
-                }
-                else
-                {
-                    // Create attachment
-                    using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    else
                     {
-                        var result = await _jobServer.CreateAttachmentAsync(_scopeIdentifier, _hubName, _planId, file.TimelineId, file.TimelineRecordId, file.Type, file.Name, fs, default(CancellationToken));
+                        // Create attachment
+                        using (FileStream fs = File.Open(file.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        {
+                            var result = await _jobServer.CreateAttachmentAsync(_scopeIdentifier, _hubName, _planId, file.TimelineId, file.TimelineRecordId, file.Type, file.Name, fs, default(CancellationToken));
+                        }
                     }
                 }
 
@@ -819,10 +920,21 @@ namespace GitHub.Runner.Common
             Trace.Info($"Starting to upload summary file to results service {file.Name}, {file.Path}");
             ResultsFileUploadHandler summaryHandler = async (file) =>
             {
-                await _jobServer.CreateStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, CancellationToken.None);
+                await _resultsServer.CreateResultsStepSummaryAsync(file.PlanId, file.JobId, file.RecordId, file.Path, CancellationToken.None);
             };
 
             await UploadResultsFile(file, summaryHandler);
+        }
+
+        private async Task UploadResultsDiagnosticLogsFile(ResultsUploadFileInfo file)
+        {
+            Trace.Info($"Starting to upload diagnostic logs file to results service {file.Name}, {file.Path}");
+            ResultsFileUploadHandler diagnosticLogsHandler = async (file) =>
+            {
+                await _resultsServer.CreateResultsDiagnosticLogsAsync(file.PlanId, file.JobId, file.Path, CancellationToken.None);
+            };
+
+            await UploadResultsFile(file, diagnosticLogsHandler);
         }
 
         private async Task UploadResultsStepLogFile(ResultsUploadFileInfo file)
@@ -830,7 +942,7 @@ namespace GitHub.Runner.Common
             Trace.Info($"Starting upload of step log file to results service {file.Name}, {file.Path}");
             ResultsFileUploadHandler stepLogHandler = async (file) =>
             {
-                await _jobServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
+                await _resultsServer.CreateResultsStepLogAsync(file.PlanId, file.JobId, file.RecordId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
             };
 
             await UploadResultsFile(file, stepLogHandler);
@@ -841,7 +953,7 @@ namespace GitHub.Runner.Common
             Trace.Info($"Starting upload of job log file to results service {file.Name}, {file.Path}");
             ResultsFileUploadHandler jobLogHandler = async (file) =>
             {
-                await _jobServer.CreateResultsJobLogAsync(file.PlanId, file.JobId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
+                await _resultsServer.CreateResultsJobLogAsync(file.PlanId, file.JobId, file.Path, file.Finalize, file.FirstBlock, file.TotalLines, CancellationToken.None);
             };
 
             await UploadResultsFile(file, jobLogHandler);
@@ -849,6 +961,11 @@ namespace GitHub.Runner.Common
 
         private async Task UploadResultsFile(ResultsUploadFileInfo file, ResultsFileUploadHandler uploadHandler)
         {
+            if (!_resultsClientInitiated)
+            {
+                return;
+            }
+
             bool uploadSucceed = false;
             try
             {
@@ -902,8 +1019,6 @@ namespace GitHub.Runner.Common
         public bool FirstBlock { get; set; }
         public long TotalLines { get; set; }
     }
-
-
 
     internal class ConsoleLineInfo
     {

@@ -83,19 +83,40 @@ namespace GitHub.Runner.Worker.Handlers
                 shellCommand = "pwsh";
                 if (validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                    if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                    {
+                        shellCommandPath = WhichUtil.Which2(shellCommand, require: false, Trace, prependPath);
+                    }
+                    else
+                    {
+                        shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                    }
                     if (string.IsNullOrEmpty(shellCommandPath))
                     {
                         shellCommand = "powershell";
                         Trace.Info($"Defaulting to {shellCommand}");
-                        shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                        if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                        {
+                            shellCommandPath = WhichUtil.Which2(shellCommand, require: true, Trace, prependPath);
+                        }
+                        else
+                        {
+                            shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                        }
                     }
                 }
 #else
                 shellCommand = "sh";
                 if (validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+                    if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                    {
+                        shellCommandPath = WhichUtil.Which2("bash", false, Trace, prependPath) ?? WhichUtil.Which2("sh", true, Trace, prependPath);
+                    }
+                    else
+                    {
+                        shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+                    }
                 }
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
@@ -106,7 +127,14 @@ namespace GitHub.Runner.Worker.Handlers
                 shellCommand = parsed.shellCommand;
                 if (validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace, prependPath);
+                    if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                    {
+                        shellCommandPath = WhichUtil.Which2(parsed.shellCommand, true, Trace, prependPath);
+                    }
+                    else
+                    {
+                        shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace, prependPath);
+                    }
                 }
 
                 argFormat = $"{parsed.shellArgs}".TrimStart();
@@ -188,17 +216,38 @@ namespace GitHub.Runner.Worker.Handlers
             {
 #if OS_WINDOWS
                 shellCommand = "pwsh";
-                commandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                {
+                    commandPath = WhichUtil.Which2(shellCommand, require: false, Trace, prependPath);
+                }
+                else
+                {
+                    commandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                }
                 if (string.IsNullOrEmpty(commandPath))
                 {
                     shellCommand = "powershell";
                     Trace.Info($"Defaulting to {shellCommand}");
-                    commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                    if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                    {
+                        commandPath = WhichUtil.Which2(shellCommand, require: true, Trace, prependPath);
+                    }
+                    else
+                    {
+                        commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                    }
                 }
                 ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
 #else
                 shellCommand = "sh";
-                commandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+                if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                {
+                    commandPath = WhichUtil.Which2("bash", false, Trace, prependPath) ?? WhichUtil.Which2("sh", true, Trace, prependPath);
+                }
+                else
+                {
+                    commandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+                }
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
@@ -209,7 +258,14 @@ namespace GitHub.Runner.Worker.Handlers
                 if (!IsActionStep && systemShells.Contains(shell))
                 {
                     shellCommand = shell;
-                    commandPath = WhichUtil.Which(shell, !isContainerStepHost, Trace, prependPath);
+                    if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                    {
+                        commandPath = WhichUtil.Which2(shell, !isContainerStepHost, Trace, prependPath);
+                    }
+                    else
+                    {
+                        commandPath = WhichUtil.Which(shell, !isContainerStepHost, Trace, prependPath);
+                    }
                     if (shell == "bash")
                     {
                         argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat("sh");
@@ -224,7 +280,14 @@ namespace GitHub.Runner.Worker.Handlers
                     var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
                     shellCommand = parsed.shellCommand;
                     // For non-ContainerStepHost, the command must be located on the host by Which
-                    commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
+                    if (ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseWhich2") == true)
+                    {
+                        commandPath = WhichUtil.Which2(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
+                    }
+                    else
+                    {
+                        commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
+                    }
                     argFormat = $"{parsed.shellArgs}".TrimStart();
                     if (string.IsNullOrEmpty(argFormat))
                     {

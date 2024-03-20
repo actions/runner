@@ -85,10 +85,10 @@ namespace GitHub.DistributedTask.Logging
         {
             // if the secret is passed to PS as a command and it causes an error, sections of it can be surrounded by color codes
             // or printed individually. 
-            
+
             // The secret secretpart1&secretpart2&secretpart3 would be split into 2 sections:
             // 'secretpart1&secretpart2&' and 'secretpart3'. This method masks for the first section.
-            
+
             // The secret secretpart1&+secretpart2&secretpart3 would be split into 2 sections:
             // 'secretpart1&+' and (no 's') 'ecretpart2&secretpart3'. This method masks for the first section.
 
@@ -123,8 +123,11 @@ namespace GitHub.DistributedTask.Logging
                 var secretSection = string.Empty;
                 if (value.Contains("&+"))
                 {
-                    // +1 to skip the letter that got colored
-                    secretSection = value.Substring(value.IndexOf("&+") + "&+".Length + 1);
+                    if (value.Length > value.IndexOf("&+") + "&+".Length + 1)
+                    {
+                        // +1 to skip the letter that got colored
+                        secretSection = value.Substring(value.IndexOf("&+") + "&+".Length + 1);
+                    }
                 }
                 else
                 {

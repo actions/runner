@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -36,7 +36,7 @@ namespace GitHub.Runner.Worker.Handlers
         protected IActionCommandManager ActionCommandManager { get; private set; }
 
         public Pipelines.ActionStepDefinitionReference Action { get; set; }
-        public bool IsActionStep => Action != null; 
+        public bool IsActionStep => Action != null;
         public Dictionary<string, string> Environment { get; set; }
         public Variables RuntimeVariables { get; set; }
         public IExecutionContext ExecutionContext { get; set; }

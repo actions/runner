@@ -5,9 +5,9 @@
 ## Supported Distributions and Versions
 
 x64
-  - Red Hat Enterprise Linux 7
-  - CentOS 7
-  - Oracle Linux 7
+  - Red Hat Enterprise Linux 7+
+  - CentOS 7+
+  - Oracle Linux 7+
   - Fedora 29+
   - Debian 9+
   - Ubuntu 16.04+

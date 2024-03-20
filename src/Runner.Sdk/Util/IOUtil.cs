@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -6,6 +6,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Sdk
 {
@@ -40,10 +42,19 @@ namespace GitHub.Runner.Sdk
             File.WriteAllText(path, StringUtil.ConvertToJson(obj), Encoding.UTF8);
         }
 
-        public static T LoadObject<T>(string path)
+        public static T LoadObject<T>(string path, bool required = false)
         {
             string json = File.ReadAllText(path, Encoding.UTF8);
-            return StringUtil.ConvertFromJson<T>(json);
+            if (required && string.IsNullOrEmpty(json))
+            {
+                throw new ArgumentNullException($"File {path} is empty");
+            }
+            T result = StringUtil.ConvertFromJson<T>(json);
+            if (required && result == null)
+            {
+                throw new ArgumentException("Converting json to object resulted in a null value");
+            }
+            return result;
         }
 
         public static string GetSha256Hash(string path)
@@ -60,6 +71,25 @@ namespace GitHub.Runner.Sdk
 
                 string hash = sBuilder.ToString();
                 return hash;
+            }
+        }
+
+        public static async Task<string> GetFileContentSha256HashAsync(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return string.Empty;
+            }
+
+            using (FileStream stream = File.OpenRead(path))
+            {
+                using (SHA256 sha256 = SHA256.Create())
+                {
+                    byte[] srcHashBytes = await sha256.ComputeHashAsync(stream);
+                    var hash = PrimitiveExtensions.ConvertToHexString(srcHashBytes);
+                    return hash;
+                }
+
             }
         }
 

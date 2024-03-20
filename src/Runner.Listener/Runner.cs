@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -210,10 +211,16 @@ namespace GitHub.Runner.Listener
                         foreach (var config in jitConfig)
                         {
                             var configFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), config.Key);
-                            var configContent = Encoding.UTF8.GetString(Convert.FromBase64String(config.Value));
-                            File.WriteAllText(configFile, configContent, Encoding.UTF8);
+                            var configContent = Convert.FromBase64String(config.Value);
+#if OS_WINDOWS
+                            if (configFile == HostContext.GetConfigFile(WellKnownConfigFile.RSACredentials))
+                            {
+                                configContent = ProtectedData.Protect(configContent, null, DataProtectionScope.LocalMachine);
+                            }
+#endif
+                            File.WriteAllBytes(configFile, configContent);
                             File.SetAttributes(configFile, File.GetAttributes(configFile) | FileAttributes.Hidden);
-                            Trace.Info($"Save {configContent.Length} chars to '{configFile}'.");
+                            Trace.Info($"Saved {configContent.Length} bytes to '{configFile}'.");
                         }
                     }
                     catch (Exception ex)
@@ -332,13 +339,26 @@ namespace GitHub.Runner.Listener
             }
         }
 
+        private IMessageListener GetMesageListener(RunnerSettings settings)
+        {
+            if (settings.UseV2Flow)
+            {
+                Trace.Info($"Using BrokerMessageListener");
+                var brokerListener = new BrokerMessageListener();
+                brokerListener.Initialize(HostContext);
+                return brokerListener;
+            }
+
+            return HostContext.GetService<IMessageListener>();
+        }
+
         //create worker manager, create message listener and start listening to the queue
         private async Task<int> RunAsync(RunnerSettings settings, bool runOnce = false)
         {
             try
             {
                 Trace.Info(nameof(RunAsync));
-                _listener = HostContext.GetService<IMessageListener>();
+                _listener = GetMesageListener(settings);
                 if (!await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken))
                 {
                     return Constants.Runner.ReturnCode.TerminatedError;
@@ -437,22 +457,13 @@ namespace GitHub.Runner.Listener
 
                             message = await getNextMessage; //get next message
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
-                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
-                                    AgentRefreshMessage runnerUpdateMessage = null;
-                                    if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
-                                    }
-                                    else
-                                    {
-                                        var brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
-                                        runnerUpdateMessage = new AgentRefreshMessage(brokerRunnerUpdateMessage.RunnerId, brokerRunnerUpdateMessage.TargetVersion, TimeSpan.FromSeconds(brokerRunnerUpdateMessage.TimeoutInSeconds));
-                                    }
+                                    AgentRefreshMessage runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+
 #if DEBUG
                                     // Can mock the update for testing
                                     if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
@@ -476,6 +487,22 @@ namespace GitHub.Runner.Listener
 #endif
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
                                     selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
+                                    Trace.Info("Refresh message received, kick-off selfupdate background process.");
+                                }
+                                else
+                                {
+                                    Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
+                                }
+                            }
+                            else if (string.Equals(message.MessageType, RunnerRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (autoUpdateInProgress == false)
+                                {
+                                    autoUpdateInProgress = true;
+                                    RunnerRefreshMessage brokerRunnerUpdateMessage = JsonUtility.FromString<RunnerRefreshMessage>(message.Body);
+
+                                    var selfUpdater = HostContext.GetService<ISelfUpdaterV2>();
+                                    selfUpdateTask = selfUpdater.SelfUpdate(brokerRunnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
@@ -529,7 +556,22 @@ namespace GitHub.Runner.Listener
                                     {
                                         var runServer = HostContext.CreateService<IRunServer>();
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
-                                        jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        try
+                                        {
+                                            jobRequestMessage =
+                                            await runServer.GetJobMessageAsync(messageRef.RunnerRequestId,
+                                            messageQueueLoopTokenSource.Token);
+                                        }
+                                        catch (TaskOrchestrationJobAlreadyAcquiredException)
+                                        {
+                                            Trace.Info("Job is already acquired, skip this message.");
+                                            continue;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Trace.Error($"Caught exception from acquiring job message: {ex}");
+                                            continue;
+                                        }
                                     }
 
                                     jobDispatcher.Run(jobRequestMessage, runOnce);
@@ -558,6 +600,11 @@ namespace GitHub.Runner.Listener
                                 skipSessionDeletion = true;
                                 Trace.Info($"Service requests the hosted runner to shutdown. Reason: '{HostedRunnerShutdownMessage.Reason}'.");
                                 return Constants.Runner.ReturnCode.Success;
+                            }
+                            else if (string.Equals(message.MessageType, TaskAgentMessageTypes.ForceTokenRefresh))
+                            {
+                                Trace.Info("Received ForceTokenRefreshMessage");
+                                await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
                             }
                             else
                             {
@@ -597,6 +644,7 @@ namespace GitHub.Runner.Listener
                     {
                         try
                         {
+                            Trace.Info("Deleting Runner Session...");
                             await _listener.DeleteSessionAsync();
                         }
                         catch (Exception ex) when (runOnce)
@@ -653,7 +701,8 @@ Config Options:
  --token string         Registration token. Required if unattended
  --name string          Name of the runner to configure (default {Environment.MachineName ?? "myrunner"})
  --runnergroup string   Name of the runner group to add this runner to (defaults to the default runner group)
- --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
+ --labels string        Custom labels that will be added to the runner. This option is mandatory if --no-default-labels is used.
+ --no-default-labels    Disables adding the default labels: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
  --local                Removes the runner config files from your local machine. Used as an option to the remove command
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)

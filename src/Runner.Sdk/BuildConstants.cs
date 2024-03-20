@@ -1,4 +1,4 @@
-namespace GitHub.Runner.Sdk
+﻿namespace GitHub.Runner.Sdk
 {
     /***
      * WARNING: This file is automatically regenerated on layout so the runner can provide version/commit info (do not manually edit it).

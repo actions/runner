@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using System.IO;
@@ -351,21 +351,39 @@ namespace GitHub.Runner.Listener.Check
         private readonly Dictionary<string, HashSet<string>> _ignoredEvent = new()
         {
             {
-                "Microsoft-System-Net-Http",
+                "System.Net.Http",
                 new HashSet<string>
                 {
                     "Info",
                     "Associate",
-                    "Enter",
-                    "Exit"
                 }
             },
             {
-                "Microsoft-System-Net-Security",
+                "System.Net.Security",
                 new HashSet<string>
                 {
-                    "Enter",
-                    "Exit",
+                    "Info",
+                    "DumpBuffer",
+                    "SslStreamCtor",
+                    "SecureChannelCtor",
+                    "NoDelegateNoClientCert",
+                    "CertsAfterFiltering",
+                    "UsingCachedCredential",
+                    "SspiSelectedCipherSuite"
+                }
+            },
+            {
+                "Private.InternalDiagnostics.System.Net.Http",
+                new HashSet<string>
+                {
+                    "Info",
+                    "Associate",
+                }
+            },
+            {
+                "Private.InternalDiagnostics.System.Net.Security",
+                new HashSet<string>
+                {
                     "Info",
                     "DumpBuffer",
                     "SslStreamCtor",
@@ -391,8 +409,8 @@ namespace GitHub.Runner.Listener.Check
         {
             base.OnEventSourceCreated(eventSource);
 
-            if (eventSource.Name == "Microsoft-System-Net-Http" ||
-                eventSource.Name == "Microsoft-System-Net-Security")
+            if (eventSource.Name.Contains("System.Net.Http") ||
+                eventSource.Name.Contains("System.Net.Security"))
             {
                 EnableEvents(eventSource, EventLevel.Verbose, EventKeywords.All);
             }

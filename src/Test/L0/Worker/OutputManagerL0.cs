@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -984,10 +984,15 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _onMatcherChanged = handler;
                 });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<string>()))
-                .Callback((DTWebApi.Issue issue, string logMessage) =>
+            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<ExecutionContextLogOptions>()))
+                .Callback((DTWebApi.Issue issue, ExecutionContextLogOptions logOptions) =>
                 {
-                    _issues.Add(new Tuple<DTWebApi.Issue, string>(issue, logMessage));
+                    var resolvedMessage = issue.Message;
+                    if (logOptions.WriteToLog && !string.IsNullOrEmpty(logOptions.LogMessageOverride))
+                    {
+                        resolvedMessage = logOptions.LogMessageOverride;
+                    }
+                    _issues.Add(new(issue, resolvedMessage));
                 });
             _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((string tag, string message) =>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
@@ -41,7 +41,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = null;
             Guid jobId = Guid.NewGuid();
-            var result = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "someJob", "someJob", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+            var result = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "someJob", "someJob", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
             result.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
             return result;
         }
@@ -806,7 +806,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 },
                 null,
                 new List<TemplateToken>(),
-                new ActionsEnvironmentReference("env")
+                new ActionsEnvironmentReference("env"),
+                null
             );
             return message;
         }
