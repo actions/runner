@@ -2499,6 +2499,25 @@ namespace GitHub.DistributedTask.WebApi
     }
 
     [Serializable]
+    public class NonRetryableActionDownloadInfoException : DistributedTaskException
+    {
+        public NonRetryableActionDownloadInfoException(String message)
+            : base(message)
+        {
+        }
+
+        public NonRetryableActionDownloadInfoException(String message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        protected NonRetryableActionDownloadInfoException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+    }
+
+    [Serializable]
     public sealed class FailedToResolveActionDownloadInfoException : DistributedTaskException
     {
         public FailedToResolveActionDownloadInfoException(String message)
