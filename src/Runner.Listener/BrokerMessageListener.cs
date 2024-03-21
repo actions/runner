@@ -141,7 +141,8 @@ namespace GitHub.Runner.Listener
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
                         _term.WriteError($"Failed to create session. {ex.Message}");
-                        if (ex is TaskAgentSessionConflictException) {
+                        if (ex is TaskAgentSessionConflictException)
+                        {
                             return Constants.Runner.ReturnCode.SessionConflict;
                         }
                         return Constants.Runner.ReturnCode.TerminatedError;
