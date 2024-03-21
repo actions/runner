@@ -21,7 +21,7 @@ namespace GitHub.Runner.Listener
     [ServiceLocator(Default = typeof(MessageListener))]
     public interface IMessageListener : IRunnerService
     {
-        Task<Boolean> CreateSessionAsync(CancellationToken token);
+        Task<int> CreateSessionAsync(CancellationToken token);
         Task DeleteSessionAsync();
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
@@ -59,7 +59,7 @@ namespace GitHub.Runner.Listener
             _brokerServer = hostContext.GetService<IBrokerServer>();
         }
 
-        public async Task<Boolean> CreateSessionAsync(CancellationToken token)
+        public async Task<int> CreateSessionAsync(CancellationToken token)
         {
             Trace.Entering();
 
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                     }
 
-                    return true;
+                    return Constants.Runner.ReturnCode.Success;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -147,7 +147,7 @@ namespace GitHub.Runner.Listener
                         if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
                             _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return false;
+                            return Constants.Runner.ReturnCode.TerminatedError;
                         }
 
                         // Check whether we get 401 because the runner registration already removed by the service.
@@ -158,14 +158,17 @@ namespace GitHub.Runner.Listener
                         if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
                             _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return false;
+                            return Constants.Runner.ReturnCode.TerminatedError;
                         }
                     }
 
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
                         _term.WriteError($"Failed to create session. {ex.Message}");
-                        return false;
+                        if (ex is TaskAgentSessionConflictException) {
+                            return Constants.Runner.ReturnCode.SessionConflict;
+                        }
+                        return Constants.Runner.ReturnCode.TerminatedError;
                     }
 
                     if (!encounteringError) //print the message only on the first error
@@ -303,7 +306,7 @@ namespace GitHub.Runner.Listener
                     Trace.Error(ex);
 
                     // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
-                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && await CreateSessionAsync(token))
+                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == Constants.Runner.ReturnCode.Success))
                     {
                         Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
                     }

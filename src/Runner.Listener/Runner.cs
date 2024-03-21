@@ -359,9 +359,10 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Info(nameof(RunAsync));
                 _listener = GetMesageListener(settings);
-                if (!await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken))
+                int returnCode = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
+                if (returnCode != Constants.Runner.ReturnCode.Success)
                 {
-                    return Constants.Runner.ReturnCode.TerminatedError;
+                    return returnCode;
                 }
 
                 HostContext.WritePerfCounter("SessionCreated");
