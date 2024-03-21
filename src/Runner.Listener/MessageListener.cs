@@ -188,12 +188,12 @@ namespace GitHub.Runner.Listener
                 {
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
+                        await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
+
                         if (_isBrokerSession)
                         {
                             await _brokerServer.DeleteSessionAsync(ts.Token);
-                            return;
                         }
-                        await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
                     }
                 }
                 else
