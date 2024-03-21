@@ -272,7 +272,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 //Assert
                 _runnerServer
                     .Verify(x => x.DeleteAgentSessionAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()), Times.Never());
+                        _settings.PoolId, expectedBrokerSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
                 _brokerServer
                     .Verify(x => x.DeleteSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
             }
