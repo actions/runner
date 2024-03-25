@@ -176,7 +176,7 @@ fi
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-x64.tar.gz" node16 fix_nested_dir
     acquireExternalTool "$NODE_ALPINE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-alpine-x64.tar.gz" node16_alpine
-    acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-x64.tar.gz" node20 fix_nested_dir
+    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-x64-glibc-217.tar.gz" node20 fix_nested_dir
     acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine
 fi
 
