@@ -80,14 +80,14 @@ function install()
 function start()
 {
     echo "starting ${SVC_NAME}"
-    launchctl load -w "${PLIST_PATH}" || failed "failed to load ${PLIST_PATH}"
+    launchctl load -w -S Background "${PLIST_PATH}" || failed "failed to load ${PLIST_PATH}"
     status
 }
 
 function stop()
 {
     echo "stopping ${SVC_NAME}"
-    launchctl unload "${PLIST_PATH}" || failed "failed to unload ${PLIST_PATH}"
+    launchctl unload -S Background  "${PLIST_PATH}" || failed "failed to unload ${PLIST_PATH}"
     status
 }
 
