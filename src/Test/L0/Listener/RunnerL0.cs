@@ -88,7 +88,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<int>(Constants.Runner.ReturnCode.Success));
+                    .Returns(Task.FromResult<Constants.Runner.CreateSessionResult>(Constants.Runner.CreateSessionResult.Success));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
@@ -184,7 +184,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(configureAsService);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<int>(Constants.Runner.ReturnCode.TerminatedError));
+                    .Returns(Task.FromResult<Constants.Runner.CreateSessionResult>(Constants.Runner.CreateSessionResult.Failure));
 
                 var runner = new Runner.Listener.Runner();
                 runner.Initialize(hc);
@@ -217,7 +217,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     .Returns(false);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<int>(Constants.Runner.ReturnCode.TerminatedError));
+                    .Returns(Task.FromResult<Constants.Runner.CreateSessionResult>(Constants.Runner.CreateSessionResult.Failure));
 
                 var runner = new Runner.Listener.Runner();
                 runner.Initialize(hc);
@@ -263,7 +263,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<int>(Constants.Runner.ReturnCode.Success));
+                    .Returns(Task.FromResult<Constants.Runner.CreateSessionResult>(Constants.Runner.CreateSessionResult.Success));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
@@ -363,7 +363,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<int>(Constants.Runner.ReturnCode.Success));
+                    .Returns(Task.FromResult<Constants.Runner.CreateSessionResult>(Constants.Runner.CreateSessionResult.Success));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
@@ -458,7 +458,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<int>(Constants.Runner.ReturnCode.Success));
+                    .Returns(Task.FromResult<Constants.Runner.CreateSessionResult>(Constants.Runner.CreateSessionResult.Success));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {

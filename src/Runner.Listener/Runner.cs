@@ -359,10 +359,14 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Info(nameof(RunAsync));
                 _listener = GetMesageListener(settings);
-                int returnCode = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
-                if (returnCode != Constants.Runner.ReturnCode.Success)
+                Constants.Runner.CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
+                if (createSessionResult == Constants.Runner.CreateSessionResult.SessionConflict)
                 {
-                    return returnCode;
+                    return Constants.Runner.ReturnCode.SessionConflict;
+                }
+                else if (createSessionResult == Constants.Runner.CreateSessionResult.Failure)
+                {
+                    return Constants.Runner.ReturnCode.TerminatedError;
                 }
 
                 HostContext.WritePerfCounter("SessionCreated");

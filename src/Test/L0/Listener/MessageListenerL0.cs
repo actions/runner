@@ -75,11 +75,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                int result = await listener.CreateSessionAsync(tokenSource.Token);
+                Constants.Runner.CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
                 // Assert.
-                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Assert.Equal(Constants.Runner.CreateSessionResult.Success, result);
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
@@ -135,11 +135,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                int result = await listener.CreateSessionAsync(tokenSource.Token);
+                Constants.Runner.CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
                 // Assert.
-                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Assert.Equal(Constants.Runner.CreateSessionResult.Success, result);
 
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
@@ -185,8 +185,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                int result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Constants.Runner.CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(Constants.Runner.CreateSessionResult.Success, result);
 
                 _runnerServer
                     .Setup(x => x.DeleteAgentSessionAsync(
@@ -245,10 +245,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                int result = await listener.CreateSessionAsync(tokenSource.Token);
+                Constants.Runner.CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
-                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Assert.Equal(Constants.Runner.CreateSessionResult.Success, result);
 
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
@@ -309,8 +309,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                int result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Constants.Runner.CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(Constants.Runner.CreateSessionResult.Success, result);
 
                 var arMessages = new TaskAgentMessage[]
                 {
@@ -390,8 +390,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                int result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Constants.Runner.CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(Constants.Runner.CreateSessionResult.Success, result);
 
                 var brokerMigrationMesage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
 
@@ -497,11 +497,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                int result = await listener.CreateSessionAsync(tokenSource.Token);
+                Constants.Runner.CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
                 // Assert.
-                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Assert.Equal(Constants.Runner.CreateSessionResult.Success, result);
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
@@ -541,8 +541,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                int result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Constants.Runner.CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(Constants.Runner.CreateSessionResult.Success, result);
 
                 _runnerServer
                     .Setup(x => x.GetAgentMessageAsync(

@@ -42,7 +42,7 @@ namespace GitHub.Runner.Listener
             _brokerServer = HostContext.GetService<IBrokerServer>();
         }
 
-        public async Task<int> CreateSessionAsync(CancellationToken token)
+        public async Task<Constants.Runner.CreateSessionResult> CreateSessionAsync(CancellationToken token)
         {
             Trace.Entering();
 
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                     }
 
-                    return Constants.Runner.ReturnCode.Success;
+                    return Constants.Runner.CreateSessionResult.Success;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Listener
                         if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
                             _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return Constants.Runner.ReturnCode.TerminatedError;
+                            return Constants.Runner.CreateSessionResult.Failure;
                         }
 
                         // Check whether we get 401 because the runner registration already removed by the service.
@@ -134,7 +134,7 @@ namespace GitHub.Runner.Listener
                         if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
                             _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return Constants.Runner.ReturnCode.TerminatedError;
+                            return Constants.Runner.CreateSessionResult.Failure;
                         }
                     }
 
@@ -143,9 +143,9 @@ namespace GitHub.Runner.Listener
                         _term.WriteError($"Failed to create session. {ex.Message}");
                         if (ex is TaskAgentSessionConflictException)
                         {
-                            return Constants.Runner.ReturnCode.SessionConflict;
+                            return Constants.Runner.CreateSessionResult.SessionConflict;
                         }
-                        return Constants.Runner.ReturnCode.TerminatedError;
+                        return Constants.Runner.CreateSessionResult.Failure;
                     }
 
                     if (!encounteringError) //print the message only on the first error
