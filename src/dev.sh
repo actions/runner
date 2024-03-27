@@ -147,6 +147,10 @@ function layout ()
 
 function runtest ()
 {
+    if [[ ! -d "$LAYOUT_DIR" ]]; then
+        echo "$LAYOUT_DIR doesn't exist. Generating it now ..."
+        layout
+    fi
     heading "Testing ..."
 
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
@@ -154,6 +158,13 @@ function runtest ()
     fi
 
     dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests"
+}
+
+function coverage ()
+{
+    heading "Coverage ..."
+    cd Test && dotnet test --collect:"XPlat Code Coverage;Format=json"
+    # reportgenerator -reports:"/workspaces/runner/src/Test/TestResults/ecf2bd75-83e9-489a-9339-d61293abf98b/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html
 }
 
 function format()
@@ -260,6 +271,7 @@ case $DEV_CMD in
     "p") package;;
     "format") format;;
     "f") format;;
+    "c") coverage;;
     *) echo "Invalid cmd.  Use build(b), test(t), layout(l), package(p), or format(f)";;
 esac
 
