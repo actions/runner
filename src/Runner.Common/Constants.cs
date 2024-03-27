@@ -146,13 +146,6 @@ namespace GitHub.Runner.Common
                 }
             }
 
-            public enum CreateSessionResult
-            {
-                Success,
-                Failure,
-                SessionConflict
-            }
-
             public static class ReturnCode
             {
                 public const int Success = 0;
