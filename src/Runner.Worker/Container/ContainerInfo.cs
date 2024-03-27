@@ -54,7 +54,12 @@ namespace GitHub.Runner.Worker.Container
             _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "/__e"));
             if (this.IsJobContainer)
             {
-                this.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
+                string socket = "/var/run/docker.sock";
+                if(System.Environment.GetEnvironmentVariable("DOCKER_HOST") != null){
+                    string tempEnv = System.Environment.GetEnvironmentVariable("DOCKER_HOST");
+                    socket = tempEnv.Split("unix://")[1];
+                }
+                this.MountVolumes.Add(new MountVolume(socket, "/var/run/docker.sock"));
             }
 #endif
             if (container.Ports?.Count > 0)
