@@ -44,6 +44,7 @@ RUN apt-get update -y \
         curl \
         git \
         jq \
+        make \
         openssh-client \
         lsb-release \
         sudo \
