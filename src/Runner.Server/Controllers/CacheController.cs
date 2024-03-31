@@ -68,20 +68,11 @@ namespace Runner.Server.Controllers {
             var repository = User.FindFirst("repository")?.Value ?? "Unknown/Unknown";
             foreach(var cref in reference != defaultRef ? new [] { reference, defaultRef } : new [] { reference }) {
                 foreach (var item in a) {
-                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower() == item.ToLower() && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
+                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower() == item.ToLower() && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault()
+                        ?? (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower().StartsWith(item.ToLower()) && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null) {
-                        return await Ok(new ArtifactCacheEntry{ cacheKey = item, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = new Uri(new Uri(ServerUrl), $"_apis/artifactcache/get/{record.Id}").ToString() });
+                        return await Ok(new ArtifactCacheEntry{ cacheKey = record.Key, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = new Uri(new Uri(ServerUrl), $"_apis/artifactcache/get/{record.Id}").ToString() });
                     }
-                }
-                CacheRecord partialMatch = null;
-                foreach (var item in a) {
-                    var record = (from rec in _context.Caches where rec.Repo.ToLower() == repository.ToLower() && rec.Ref == cref && rec.Key.ToLower().StartsWith(item.ToLower()) && (rec.Version == null || rec.Version == "" || rec.Version == version) orderby rec.LastUpdated descending select rec).FirstOrDefault();
-                    if(record != null && (partialMatch == null || record.LastUpdated > partialMatch.LastUpdated)) {
-                        partialMatch = record;
-                    }
-                }
-                if(partialMatch != null) {
-                    return await Ok(new ArtifactCacheEntry{ cacheKey = partialMatch.Key, scope = cref, creationTime = partialMatch.LastUpdated.ToLongDateString(), archiveLocation = new Uri(new Uri(ServerUrl), $"_apis/artifactcache/get/{partialMatch.Id}").ToString() });
                 }
             }
             return NoContent();

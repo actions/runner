@@ -1,0 +1,24 @@
+on:
+  push:
+jobs:
+  testa:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+    
+      - uses: actions/cache/save@v4
+        with:
+          path: .
+          key: ${{ runner.os }}-${{ github.run_id }}-3
+      - uses: actions/cache/save@v4
+        with:
+          path: .
+          key: ${{ runner.os }}-${{ github.run_id }}-3-1
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: .
+          key: ${{ runner.os }}-${{ github.run_id }}-3
+      - name: Assert that we got a cache hit
+        run: exit 1
+        if: steps.cache.outputs.cache-hit != 'true'
