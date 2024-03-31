@@ -3187,7 +3187,7 @@ namespace Runner.Server.Controllers
                         workflowParameters[kv.Key.ToString()] = kv.Value;
                     }
                 }
-                var evaluatedRoot = AzureDevops.ReadTemplate(context, fileRelativePath, workflowParameters).GetAwaiter().GetResult();
+                var evaluatedRoot = Runner.Server.Azure.Devops.AzureDevops.ReadTemplate(context, fileRelativePath, workflowParameters).GetAwaiter().GetResult();
                 bool forceTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.forceTaskCacheUpdate");
                 bool skipTaskCacheUpdate = workflowContext.HasFeature("system.runner.server.skipTaskCacheUpdate");
                 bool taskCacheUpdate = workflowContext.HasFeature("system.runner.server.taskCacheUpdate");
@@ -3664,7 +3664,7 @@ namespace Runner.Server.Controllers
                                     }
                                 }
                                 jobitem.EvaluateIf = (traceWriter) => {
-                                    var templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, flags, contextData);
+                                    var templateContext = Runner.Server.Azure.Devops.AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, flags, contextData);
                                     // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                     templateContext.ExpressionValues["dependencies"] = stageToStageDependencies;
                                     templateContext.ExpressionValues["variables"] = workflowVariables;
@@ -3687,7 +3687,7 @@ namespace Runner.Server.Controllers
                                     if(!PipelineTemplateConverter.ConvertToIfResult(templateContext, eval)) {
                                         return false;
                                     }
-                                    templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, flags, contextData);
+                                    templateContext = Runner.Server.Azure.Devops.AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, flags, contextData);
                                     // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                     templateContext.ExpressionValues["stageDependencies"] = stageDependencies;
                                     templateContext.ExpressionValues["dependencies"] = recursiveNeedsctx;
@@ -3794,7 +3794,7 @@ namespace Runner.Server.Controllers
                                             if(!(val.StartsWith("$[") && val.EndsWith("]"))) {
                                                 return val;
                                             }
-                                            var templateContext = AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, workflowContext.Flags, contextData);
+                                            var templateContext = Runner.Server.Azure.Devops.AzureDevops.CreateTemplateContext(traceWriter, workflowContext.FileTable, workflowContext.Flags, contextData);
                                             templateContext.ExpressionValues["pipeline"] = pipelinecontext;
                                             templateContext.ExpressionFunctions.Add(new FunctionInfo<CounterFunction>("counter", 0, 2));
                                             var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "variable-result", new BasicExpressionToken(null, null, null, val.Substring(2, val.Length - 3)), 0, null, true);
