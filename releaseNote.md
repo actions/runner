@@ -1,18 +1,21 @@
 ## What's Changed
-* Prepare v2.313.0 Release by @luketomlinson in https://github.com/actions/runner/pull/3137
-* Pass RunnerOS during job acquire. by @TingluoHuang in https://github.com/actions/runner/pull/3140
-* Process `snapshot` tokens by @davidomid in https://github.com/actions/runner/pull/3135
-* Update dotnet sdk to latest version @6.0.419 by @github-actions in https://github.com/actions/runner/pull/3158
-* handle broker run service exception handling by @yaananth in https://github.com/actions/runner/pull/3163
-* Add a retry logic to docker login operation by @enescakir in https://github.com/actions/runner/pull/3089
-* Broker fixes for token refreshes and AccessDeniedException by @luketomlinson in https://github.com/actions/runner/pull/3161
-* Remove USE_BROKER_FLOW by @luketomlinson in https://github.com/actions/runner/pull/3162
-* Refresh Token for BrokerServer by @luketomlinson in https://github.com/actions/runner/pull/3167
-* Better step timeout message. by @TingluoHuang in https://github.com/actions/runner/pull/3166
+* fix summaries for actions results by @SrRyan in https://github.com/actions/runner/pull/3174
+* Bump runner version to match the latest patch release by @TingluoHuang in https://github.com/actions/runner/pull/3175
+* don't crash listener on getting job exceptions for run-service by @yaananth in https://github.com/actions/runner/pull/3177
+* Remove -f flag in wait when manually trap signal by @nikola-jokic in https://github.com/actions/runner/pull/3182
+* consume new pipelines service url in handlers by @patrickcarnahan in https://github.com/actions/runner/pull/3185
+* Add ability to enforce actions to run on node20 by @takost in https://github.com/actions/runner/pull/3192
+* Bump hook version to 0.6.0 by @nikola-jokic in https://github.com/actions/runner/pull/3203
+* Update dotnet sdk to latest version @6.0.420 by @github-actions in https://github.com/actions/runner/pull/3211
+* Bump docker version and docker buildx version by @nikola-jokic in https://github.com/actions/runner/pull/3208
+* Handle new non-retryable exception type by @thyeggman in https://github.com/actions/runner/pull/3191
+* Always Delete Actions Service Session by @luketomlinson in https://github.com/actions/runner/pull/3214
 
 ## New Contributors
-* @davidomid made their first contribution in https://github.com/actions/runner/pull/3135
-* @enescakir made their first contribution in https://github.com/actions/runner/pull/3089
+* @SrRyan made their first contribution in https://github.com/actions/runner/pull/3174
+* @patrickcarnahan made their first contribution in https://github.com/actions/runner/pull/3185
+
+**Full Changelog**: https://github.com/actions/runner/compare/v2.314.1...v2.315.0
 
 **Full Changelog**: https://github.com/actions/runner/compare/v2.313.0...v2.314.0
 

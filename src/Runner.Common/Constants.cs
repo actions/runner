@@ -153,6 +153,7 @@ namespace GitHub.Runner.Common
                 public const int RetryableError = 2;
                 public const int RunnerUpdating = 3;
                 public const int RunOnceRunnerUpdating = 4;
+                public const int SessionConflict = 5;
             }
 
             public static class Features
