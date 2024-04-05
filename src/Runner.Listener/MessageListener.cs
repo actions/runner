@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -236,6 +236,7 @@ namespace GitHub.Runner.Listener
             ArgUtil.NotNull(_settings, nameof(_settings));
             bool encounteringError = false;
             int continuousError = 0;
+            int continuousEmptyMessage = 0;
             string errorMessage = string.Empty;
             Stopwatch heartbeat = new();
             heartbeat.Restart();
@@ -359,10 +360,21 @@ namespace GitHub.Runner.Listener
 
                 if (message == null)
                 {
+                    continuousEmptyMessage++;
+                    if (continuousEmptyMessage > 50)
+                    {
+                        // retried more than 50 times in less than 30mins and still getting empty message
+                        // something is not right on the service side, backoff for 15-30s before retry
+                        _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), _getNextMessageRetryInterval);
+                        Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
+                        await HostContext.Delay(_getNextMessageRetryInterval, token);
+                    }
+
                     if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
                     {
                         Trace.Info($"No message retrieved from session '{_session.SessionId}' within last 30 minutes.");
                         heartbeat.Restart();
+                        continuousEmptyMessage = 0;
                     }
                     else
                     {
