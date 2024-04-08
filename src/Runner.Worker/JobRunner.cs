@@ -42,6 +42,7 @@ namespace GitHub.Runner.Worker
             Trace.Info("Job ID {0}", message.JobId);
 
             DateTime jobStartTimeUtc = DateTime.UtcNow;
+            _runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
             IRunnerService server = null;
 
             // add orchestration id to useragent for better correlation.
@@ -164,8 +165,6 @@ namespace GitHub.Runner.Worker
 
                 jobContext.SetRunnerContext("os", VarUtil.OS);
                 jobContext.SetRunnerContext("arch", VarUtil.OSArchitecture);
-
-                _runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.SetRunnerContext("name", _runnerSettings.AgentName);
 
                 if (jobContext.Global.Variables.TryGetValue(WellKnownDistributedTaskVariables.RunnerEnvironment, out var runnerEnvironment))
@@ -298,6 +297,12 @@ namespace GitHub.Runner.Worker
                 jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
             }
 
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings) && (jobContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode20") ?? false))
+            {
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node20ForceWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode16DetectedAfterEndOfLife, actions));
+            }
+
             await ShutdownQueue(throwOnFailure: false);
 
             // Make sure to clean temp after file upload since they may be pending fileupload still use the TEMP dir.
@@ -403,6 +408,12 @@ namespace GitHub.Runner.Worker
             {
                 var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
                 jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
+            }
+
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings))
+            {
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node20ForceWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode16DetectedAfterEndOfLife, actions));
             }
 
             try

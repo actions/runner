@@ -75,11 +75,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
                 // Assert.
-                Assert.True(result);
+                Assert.Equal(CreateSessionResult.Success, result);
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
@@ -135,11 +135,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
                 // Assert.
-                Assert.True(result);
+                Assert.Equal(CreateSessionResult.Success, result);
 
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
@@ -185,8 +185,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.True(result);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(CreateSessionResult.Success, result);
 
                 _runnerServer
                     .Setup(x => x.DeleteAgentSessionAsync(
@@ -245,10 +245,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
-                Assert.True(result);
+                Assert.Equal(CreateSessionResult.Success, result);
 
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
@@ -272,7 +272,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 //Assert
                 _runnerServer
                     .Verify(x => x.DeleteAgentSessionAsync(
-                        _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()), Times.Never());
+                        _settings.PoolId, expectedBrokerSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
                 _brokerServer
                     .Verify(x => x.DeleteSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
             }
@@ -309,8 +309,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.True(result);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(CreateSessionResult.Success, result);
 
                 var arMessages = new TaskAgentMessage[]
                 {
@@ -390,8 +390,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.True(result);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(CreateSessionResult.Success, result);
 
                 var brokerMigrationMesage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
 
@@ -497,11 +497,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
                 // Assert.
-                Assert.True(result);
+                Assert.Equal(CreateSessionResult.Success, result);
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
@@ -541,8 +541,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 MessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
-                Assert.True(result);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(CreateSessionResult.Success, result);
 
                 _runnerServer
                     .Setup(x => x.GetAgentMessageAsync(

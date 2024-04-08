@@ -56,11 +56,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 BrokerMessageListener listener = new();
                 listener.Initialize(tc);
 
-                bool result = await listener.CreateSessionAsync(tokenSource.Token);
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 trace.Info("result: {0}", result);
 
                 // Assert.
-                Assert.True(result);
+                Assert.Equal(CreateSessionResult.Success, result);
                 _brokerServer
                    .Verify(x => x.CreateSessionAsync(
                        It.Is<TaskAgentSession>(y => y != null),

@@ -359,7 +359,12 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Info(nameof(RunAsync));
                 _listener = GetMesageListener(settings);
-                if (!await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken))
+                CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
+                if (createSessionResult == CreateSessionResult.SessionConflict)
+                {
+                    return Constants.Runner.ReturnCode.SessionConflict;
+                }
+                else if (createSessionResult == CreateSessionResult.Failure)
                 {
                     return Constants.Runner.ReturnCode.TerminatedError;
                 }
@@ -565,6 +570,11 @@ namespace GitHub.Runner.Listener
                                         catch (TaskOrchestrationJobAlreadyAcquiredException)
                                         {
                                             Trace.Info("Job is already acquired, skip this message.");
+                                            continue;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Trace.Error($"Caught exception from acquiring job message: {ex}");
                                             continue;
                                         }
                                     }
