@@ -371,7 +371,7 @@ namespace GitHub.Runner.Listener
                     {
                         Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
                     }
-                    
+
                     if (continuousEmptyMessage > 50)
                     {
                         // retried more than 50 times in less than 30mins and still getting empty message
