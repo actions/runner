@@ -111,9 +111,12 @@ namespace Runner.Server.Controllers
 
             public async Task Execute(IJobExecutionContext context)
             {
+                JobKey key = context.JobDetail.Key;
+                var cronGroup = key.Group;
+                var workflowFileFilter = cronGroup.Substring(cronGroup.LastIndexOf(controller.workflowRootFolder));
                 var payload = context.MergedJobDataMap.GetString("payload");
                 var jobj = JObject.Parse(payload);
-                await controller.ExecuteWebhook("schedule", new KeyValuePair<GiteaHook, JObject>(jobj.ToObject<GiteaHook>(), jobj));
+                await controller.ExecuteWebhook("schedule", new KeyValuePair<GiteaHook, JObject>(jobj.ToObject<GiteaHook>(), jobj), workflowFileFilter);
             }
         }
 
@@ -6773,7 +6776,7 @@ namespace Runner.Server.Controllers
             return await ExecuteWebhook(e, obj);
         }
 
-        private async Task<ActionResult> ExecuteWebhook(string e, KeyValuePair<GiteaHook, JObject> obj) {
+        private async Task<ActionResult> ExecuteWebhook(string e, KeyValuePair<GiteaHook, JObject> obj, string workflowFileFilter = null) {
             var hook = obj.Key;
             string githubAppToken = null;
             if(!string.IsNullOrEmpty(hook?.repository?.full_name)) {
@@ -6839,7 +6842,7 @@ namespace Runner.Server.Controllers
                             foreach (var item in workflowList)
                             {
                                 try {
-                                    if(item.path.EndsWith(".yml") || item.path.EndsWith(".yaml")) {
+                                    if((workflowFileFilter == null || workflowFileFilter == item.path) && (item.path.EndsWith(".yml") || item.path.EndsWith(".yaml"))) {
                                         var fileRes = await client.GetAsync(item.download_url);
                                         var filecontent = await fileRes.Content.ReadAsStringAsync();
                                         workflows.Add(new KeyValuePair<string, string>(item.path, filecontent));
