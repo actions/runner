@@ -55,13 +55,6 @@ namespace GitHub.Runner.Worker
                 VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
             }
 
-            var jobServerQueueTelemetry = false;
-            if (message.Variables.TryGetValue("DistributedTask.EnableJobServerQueueTelemetry", out VariableValue enableJobServerQueueTelemetry) &&
-                !string.IsNullOrEmpty(enableJobServerQueueTelemetry?.Value))
-            {
-                jobServerQueueTelemetry = StringUtil.ConvertToBoolean(enableJobServerQueueTelemetry.Value);
-            }
-
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (MessageUtil.IsRunServiceJob(message.MessageType))
             {
@@ -83,7 +76,7 @@ namespace GitHub.Runner.Worker
                     launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
                 }
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-                _jobServerQueue.Start(message, resultsServiceOnly: true, enableTelemetry: jobServerQueueTelemetry);
+                _jobServerQueue.Start(message, resultsServiceOnly: true);
             }
             else
             {
@@ -105,7 +98,7 @@ namespace GitHub.Runner.Worker
                 VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, delegatingHandlers);
                 await jobServer.ConnectAsync(jobConnection);
 
-                _jobServerQueue.Start(message, enableTelemetry: jobServerQueueTelemetry);
+                _jobServerQueue.Start(message);
                 server = jobServer;
             }
 

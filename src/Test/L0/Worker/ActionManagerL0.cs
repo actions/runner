@@ -382,8 +382,6 @@ runs:
                     }
                 };
 
-                _ec.Object.Global.Variables.Set("DistributedTask.UseActionArchiveCache", bool.TrueString);
-
                 //Act
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
