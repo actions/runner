@@ -19,7 +19,7 @@ namespace GitHub.Runner.Common
         TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false, bool enableTelemetry = false);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines);
@@ -104,11 +104,10 @@ namespace GitHub.Runner.Common
             _resultsServer = hostContext.GetService<IResultsServer>();
         }
 
-        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false, bool enableTelemetry = false)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false)
         {
             Trace.Entering();
             _resultsServiceOnly = resultsServiceOnly;
-            _enableTelemetry = enableTelemetry;
 
             var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
@@ -137,6 +136,12 @@ namespace GitHub.Runner.Common
                 jobRequest.Variables.TryGetValue("system.github.results_upload_with_sdk", out VariableValue resultsUseSdkVariable);
                 _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken, StringUtil.ConvertToBoolean(resultsUseSdkVariable?.Value));
                 _resultsClientInitiated = true;
+            }
+
+            // Enable telemetry if we have both results service and actions service
+            if (_resultsClientInitiated && !_resultsServiceOnly)
+            {
+                _enableTelemetry = true;
             }
 
             if (_queueInProcess)
