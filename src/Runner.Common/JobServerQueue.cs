@@ -74,6 +74,7 @@ namespace GitHub.Runner.Common
         private readonly List<JobTelemetry> _jobTelemetries = new();
         private bool _queueInProcess = false;
         private bool _resultsServiceOnly = false;
+        private int _resultsServiceExceptionsCount = 0;
         private Stopwatch _resultsUploadTimer = new();
         private Stopwatch _actionsUploadTimer = new();
 
@@ -579,9 +580,9 @@ namespace GitHub.Runner.Common
                             Trace.Info("Catch exception during file upload to results, keep going since the process is best effort.");
                             Trace.Error(ex);
                             errorCount++;
-
+                            _resultsServiceExceptionsCount++;
                             // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results unless Results is serving logs
-                            if (!_resultsServiceOnly)
+                            if (!_resultsServiceOnly && _resultsServiceExceptionsCount > 3)
                             {
                                 _resultsClientInitiated = false;
                                 SendResultsTelemetry(ex);
