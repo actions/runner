@@ -262,7 +262,7 @@ namespace GitHub.Runner.Common
             {
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
 
-                // Set this env var to "node12" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
+                // Set this env var to "node16" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
                 public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION";
                 public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
                 public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";
