@@ -2373,10 +2373,6 @@ runs:
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Root).Returns(new GitHub.Runner.Worker.ExecutionContext());
             var variables = new Dictionary<string, VariableValue>();
-            if (enableComposite)
-            {
-                variables["DistributedTask.EnableCompositeActions"] = "true";
-            }
             _ec.Object.Global.Variables = new Variables(_hc, variables);
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
