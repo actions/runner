@@ -460,6 +460,34 @@ namespace GitHub.Runner.Sdk
         }
 
         /// <summary>
+        /// Replaces invalid file name characters with '_'
+        /// </summary>
+        public static string ReplaceInvalidFileNameChars(string fileName)
+        {
+            var result = new StringBuilder();
+            var invalidChars = Path.GetInvalidFileNameChars();
+
+            var current = 0; // Current index
+            while (current < fileName?.Length)
+            {
+                var next = fileName.IndexOfAny(invalidChars, current);
+                if (next >= 0)
+                {
+                    result.Append(fileName.Substring(current, next - current));
+                    result.Append('_');
+                    current = next + 1;
+                }
+                else
+                {
+                    result.Append(fileName.Substring(current));
+                    break;
+                }
+            }
+
+            return result.ToString();
+        }
+
+        /// <summary>
         /// Recursively enumerates a directory without following directory reparse points.
         /// </summary>
         private static IEnumerable<FileSystemInfo> Enumerate(DirectoryInfo directory, CancellationTokenSource tokenSource)
