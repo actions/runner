@@ -807,7 +807,7 @@ namespace Runner.Client
                 var context = new Runner.Server.Azure.Devops.Context {
                     FileProvider = new MyFileProvider(handle),
                     TraceWriter = handle.Quiet ? new EmptyTraceWriter() : new TraceWriter(),
-                    Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
+                    Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives | GitHub.DistributedTask.Expressions2.ExpressionFlags.AllowAnyForInsert,
                     VariablesProvider = new VariablesProvider { Variables = vars }
                 };
                 Dictionary<string, TemplateToken> cparameters = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);

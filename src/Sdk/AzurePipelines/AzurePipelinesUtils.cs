@@ -12,7 +12,7 @@ namespace Runner.Server.Azure.Devops {
             if(res == null) {
                 return null;
             }
-            var templateContext = AzureDevops.CreateTemplateContext(new EmptyTraceWriter(), new List<string>(), GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives);
+            var templateContext = AzureDevops.CreateTemplateContext(new EmptyTraceWriter(), new List<string>(), GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives | GitHub.DistributedTask.Expressions2.ExpressionFlags.AllowAnyForInsert);
             using (var stringReader = new StringReader(res))
             {
                 var yamlObjectReader = new YamlObjectReader(null, stringReader, preserveString: true, forceAzurePipelines: true);

@@ -493,7 +493,7 @@ namespace Runner.Server.Azure.Devops
                 return;
             }
             try {
-                var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives };
+                var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert };
                 var node = parser.CreateTree(val.Substring(2, val.Length - 3), new EmptyTraceWriter().ToExpressionTraceWriter(),
                     new[] { "variables", "resources", "pipeline", "dependencies", "stageDependencies" }.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),
                     ExpressionConstants.AzureWellKnownFunctions.Where(kv => kv.Key != "split").Select(kv => kv.Value).Append(new FunctionInfo<NoOperation>("counter", 0, 2)));
@@ -523,7 +523,7 @@ namespace Runner.Server.Azure.Devops
             funcs.Add(new FunctionInfo<NoOperation>("Succeeded", 0, Int32.MaxValue));
             funcs.Add(new FunctionInfo<NoOperation>("SucceededOrFailed", 0, Int32.MaxValue));
             try {
-                var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives };
+                var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert };
                 var node = parser.CreateTree(val, new EmptyTraceWriter().ToExpressionTraceWriter(),
                     names.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),
                     ExpressionConstants.AzureWellKnownFunctions.Where(kv => kv.Key != "split").Select(kv => kv.Value).Concat(funcs));

@@ -96,7 +96,7 @@
             var context = new Runner.Server.Azure.Devops.Context {
                 FileProvider = new DefaultInMemoryFileProviderFileProvider(files.ToArray()),
                 TraceWriter = new GitHub.DistributedTask.ObjectTemplating.EmptyTraceWriter(),
-                Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives
+                Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives | GitHub.DistributedTask.Expressions2.ExpressionFlags.AllowAnyForInsert
             };
             var template = await AzureDevops.ReadTemplate(context, currentFileName);
             var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);

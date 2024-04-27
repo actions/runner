@@ -48,7 +48,7 @@ namespace Runner.Server.Azure.Devops
                 FileProvider = fileProvider,
                 VariablesProvider = variablesProvider,
                 TraceWriter = traceWriter ?? new EmptyTraceWriter(),
-                Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives
+                Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert
             };
         }
 
