@@ -1223,7 +1223,7 @@ namespace Runner.Client
                 if(parameters.Parallel > 0) {
                     var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
                     if(string.IsNullOrEmpty(parameters.RunnerVersion) && string.IsNullOrEmpty(parameters.RunnerPath) && azure) {
-                        parameters.RunnerVersion = "3.225.0";
+                        parameters.RunnerVersion = "3.225.3";
                     }
                     if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
                         parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
