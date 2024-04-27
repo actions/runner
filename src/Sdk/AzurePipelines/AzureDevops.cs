@@ -202,7 +202,7 @@ namespace Runner.Server.Azure.Devops {
                         }
                     }
                     // Skip expressions and template references if we parse static variables
-                    if (skip || staticVars != null && template != null)
+                    if (skip)
                     {
                         if (skip)
                         {
@@ -218,7 +218,6 @@ namespace Runner.Server.Azure.Devops {
                         }
                         continue;
                     }
-                    yield return rawdef;
                     if (group != null)
                     {
                         // Skip metainfo while preprocessing via staticVars != null
@@ -234,11 +233,26 @@ namespace Runner.Server.Azure.Devops {
                                 vars[v.Key] = new VariableValue(v.Value) { IsGroupMember = true };
                             }
                         }
+                        yield return rawdef;
                     }
                     else if (template != null)
                     {
                         var file = await ReadTemplate(context, template, parameters != null ? parameters.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
-                        await ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First());
+                        var res = await ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), staticVarCtx);
+                        if (res is SequenceToken sq) {
+                            await foreach(var x in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, sq)) {
+                                yield return x;
+                            }
+                        } else if (res is MappingToken mq) {
+                            foreach(var x in ProcessVariableMapping(vars, staticVarCtx, staticVars, mq)) {
+                                var mt = new MappingToken(x.Key.FileId, x.Key.Line, x.Key.Column)
+                                {
+                                    new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "name"), x.Key),
+                                    new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "value"), x.Value)
+                                };
+                                yield return mt;
+                            }
+                        }
                     }
                     else
                     {
@@ -246,6 +260,7 @@ namespace Runner.Server.Azure.Devops {
                         if(staticVars != null) {
                             staticVars[name] = new StringContextData(value);
                         }
+                        yield return rawdef;
                     }
                 }
             }
