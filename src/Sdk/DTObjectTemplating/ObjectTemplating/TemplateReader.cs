@@ -192,8 +192,19 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     if (definition.AllowedContext.Length > 0)
                     {
                         m_memory.AddBytes(nextKeyScalar);
+                        TemplateToken nextValue;
                         var anyDefinition = new DefinitionInfo(definition, TemplateConstants.Any);
-                        mapping.Add(nextKeyScalar, ReadValue(anyDefinition));
+                        if(nextKeyScalar is EachExpressionToken eachexp) {
+                            var def = new DefinitionInfo(definition, "any");
+                            def.AllowedContext = definition.AllowedContext.Append(eachexp.Variable).ToArray();
+                            nextValue = ReadValue(def);
+                        } else if(nextKeyScalar is ConditionalExpressionToken || nextKeyScalar is InsertExpressionToken && (m_context.Flags & Expressions2.ExpressionFlags.AllowAnyForInsert) != Expressions2.ExpressionFlags.None) {
+                            var def = new DefinitionInfo(definition, "any");
+                            nextValue = ReadValue(def);
+                        } else {
+                            nextValue = ReadValue(anyDefinition);
+                        }
+                        mapping.Add(nextKeyScalar, nextValue);
                     }
                     // Illegal
                     else
