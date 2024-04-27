@@ -34,6 +34,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sdk.Tests", "Sdk.Tests\Sdk.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Runner.Server.Tests", "Runner.Server.Tests\Runner.Server.Tests.csproj", "{62017FDC-D355-44D8-AE1C-DB69DFE5B1FD}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "azure-pipelines-vscode-ext", "azure-pipelines-vscode-ext", "{69C66F05-2A78-4BBC-9475-77D70F36DAFD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ext-core", "azure-pipelines-vscode-ext\ext-core\ext-core.csproj", "{0ACB0481-D24E-48A8-A072-A1A7AE99523A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -92,11 +96,18 @@ Global
 		{62017FDC-D355-44D8-AE1C-DB69DFE5B1FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62017FDC-D355-44D8-AE1C-DB69DFE5B1FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62017FDC-D355-44D8-AE1C-DB69DFE5B1FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0ACB0481-D24E-48A8-A072-A1A7AE99523A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0ACB0481-D24E-48A8-A072-A1A7AE99523A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0ACB0481-D24E-48A8-A072-A1A7AE99523A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0ACB0481-D24E-48A8-A072-A1A7AE99523A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4A831DDA-3860-45E5-930E-BB3A7833AE80}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0ACB0481-D24E-48A8-A072-A1A7AE99523A} = {69C66F05-2A78-4BBC-9475-77D70F36DAFD}
 	EndGlobalSection
 EndGlobal
