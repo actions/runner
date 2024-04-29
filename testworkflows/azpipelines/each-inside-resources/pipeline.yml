@@ -1,0 +1,19 @@
+parameters:
+- name: cons
+  type: object
+  default:
+    test-a:
+      image: a
+    test-b:
+      image: b
+    test-c:
+      image: c
+    test-d: {}
+resources:
+  containers:
+  - ${{ each c in parameters.cons }}:
+    - ${{ if c.value.image }}:
+      - container: ${{ c.key }}
+        image: ${{ c.value.image }}
+steps:
+- bash: echo ok

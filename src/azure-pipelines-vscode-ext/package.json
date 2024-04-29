@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.0.13",
+	"version": "0.0.14",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -22,6 +22,9 @@
 	],
 	"browser": "./dist/main.js",
 	"main": "./dist/main-node.js",
+	"sponsor": {
+		"url": "https://paypal.me/christopherhx"
+	},
 	"contributes": {
 		"commands": [
 			{

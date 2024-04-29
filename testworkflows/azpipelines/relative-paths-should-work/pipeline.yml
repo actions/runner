@@ -1,0 +1,5 @@
+stages:
+- stage:
+  jobs:
+  - template: /some/paths/behind/the/scene/jobs.yml
+- template: /some/paths/behind/the/scene/stages.yml

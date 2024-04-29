@@ -1,0 +1,11 @@
+stages:
+- stage:
+  variables:
+  - template: vars.yml
+  jobs:
+  - job:
+    steps:
+    - ${{ if eq(variables.I_MUST_EXIST, 'expected-value') }}:
+      - bash: echo Ok
+    - ${{ else }}:
+      - assert: This should not happen

@@ -658,6 +658,8 @@ namespace Runner.Server.Azure.Devops {
 
             var pipelineroot = token.AssertMapping("root");
 
+            var childContext = context.ChildContext(pipelineroot, filenameAndRef);
+
             TemplateToken parameters = null;
             TemplateToken rawStaticVariables = null;
             foreach (var kv in pipelineroot)
@@ -794,7 +796,7 @@ namespace Runner.Server.Azure.Devops {
                 // templateContext.Errors.Check();
 
                 IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                pipelineroot[pipelineroot.Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), await ParseVariables(context, pvars, rawStaticVariables, templateContext));
+                pipelineroot[pipelineroot.Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), await ParseVariables(childContext, pvars, rawStaticVariables, templateContext));
                 foreach (var v in pvars)
                 {
                     variablesData[v.Key] = new StringContextData(v.Value.Value);
@@ -834,7 +836,7 @@ namespace Runner.Server.Azure.Devops {
                                 templateContext.ExpressionValues["variables"] = vardata;
                             }
                             IDictionary<string, VariableValue> pjvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                            jvars = await ParseVariables(context, pjvars, jvars, templateContext);
+                            jvars = await ParseVariables(childContext, pjvars, jvars, templateContext);
                             var varjdata = (vardata ?? variablesData).Clone() as DictionaryContextData;
                             foreach (var v in pjvars)
                             {
@@ -870,7 +872,7 @@ namespace Runner.Server.Azure.Devops {
                                 templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
                             }
                             IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                            vars = await ParseVariables(context, pvars, vars, templateContext);
+                            vars = await ParseVariables(childContext, pvars, vars, templateContext);
                             var vardata = variablesData.Clone() as DictionaryContextData;
                             foreach (var v in pvars)
                             {
