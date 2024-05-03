@@ -9,6 +9,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
+using Newtonsoft.Json;
 using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi;
 
@@ -16,6 +17,15 @@ namespace GitHub.Actions.RunService.WebApi
 {
     public class RunServiceHttpClient : RawHttpClientBase
     {
+        private static readonly JsonSerializerSettings s_serializerSettings;
+
+        static RunServiceHttpClient()
+        {
+            s_serializerSettings = new VssJsonMediaTypeFormatter().SerializerSettings;
+            s_serializerSettings.DateParseHandling = DateParseHandling.None;
+            s_serializerSettings.FloatParseHandling = FloatParseHandling.Double;
+        }
+
         public RunServiceHttpClient(
             Uri baseUrl,
             VssOAuthCredential credentials)
@@ -173,6 +183,12 @@ namespace GitHub.Actions.RunService.WebApi
                 default:
                     throw new Exception($"Failed to renew job: {result.Error}");
             }
+        }
+
+        protected override async Task<T> ReadJsonContentAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return JsonConvert.DeserializeObject<T>(json, s_serializerSettings);
         }
     }
 }
