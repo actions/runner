@@ -1,0 +1,11 @@
+parameters:
+- name: templateName
+  default: ./vars.yml
+variables:
+  - template: ${{ parameters.templateName }}
+  - name: ncfg
+    value: TEST-${{ variables.buildConfig }}
+steps:
+- bash: ${{ variables.ncfg }}
+- ${{ if ne(variables.ncfg, 'TEST-Release') }}:
+  -  assert: this won't work
