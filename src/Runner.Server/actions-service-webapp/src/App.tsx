@@ -107,7 +107,10 @@ function List({ fullscreen } : { fullscreen?: boolean }) {
     {jobs.map(val => (
       <NavLink key={val.jobId} to={encodeURIComponent(val.jobId)} className={({isActive})=> isActive ? 'btn btn-outline-secondary w-100 text-start active' : 'btn btn-outline-secondary w-100 text-start'}><span style={{fontSize: 20}}>{val.name}</span><br/><span style={{fontSize: 12}}>{!params.runid ? (<>repo:&nbsp;{val.repo} workflow:&nbsp;{val.workflowname} runid:&nbsp;{val.runid} </>) : (<></>)}attempt:&nbsp;{val.attempt} result:&nbsp;<TimelineStatus status={val.result ?? "inprogress"}/></span></NavLink>
     ))}
-  { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
+  { loading ?
+    <div className="spinner-border" role="status">
+        <span className="visually-hidden">Loading...</span>
+    </div> : error ? <span>{error}</span> : <></> }
   </span>);
 };
 
@@ -215,7 +218,10 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
         {(param.actions && param.actions(val, params)) || ""}
       </div>
     ))}
-    { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
+    { loading ?
+        <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+        </div> : error ? <span>{error}</span> : <></> }
   </div>);
 };
 
@@ -716,7 +722,7 @@ function JobPage() {
     setSummaries([]);
     var signal = new AbortController();
     (async() => {
-      for(var summary of artifacts.filter(artifact => artifact.files !== undefined && /Attachment_[^_]+_[^_]+_Checks\.Step\.Summary/.test(artifact.name)).flatMap((container: ArtifactResponse) => (container.files || []).filter(f => f.itemType === "file").map(file => file.contentLocation))) {
+      for(var summary of artifacts.filter(artifact => artifact.files !== undefined && artifact.name.startsWith("Attachment_")).flatMap((container: ArtifactResponse) => (container.files || []).filter(f => f.itemType === "file" && f.path.includes("_Checks.Step.Summary_")).map(file => file.contentLocation))) {
         if(signal.signal.aborted) return;
         var resp = await fetch(summary, { signal: signal.signal })
         if(signal.signal.aborted) return;
@@ -828,7 +834,10 @@ function JobPage() {
       }
   })()
   }
-    { loading ? <span>Loading...</span> : error ? <span>{error}</span> : <></> }
+    { loading ? 
+        <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+        </div> : error ? <span>{error}</span> : <></> }
     {(() => {
       if((timeline?.length || 0) > 1) {
         return (<>{timeline?.map((timelineEntry, i) => (<Collapsible key={timelineEntry.id} timelineEntry={timelineEntry} registerLiveLog={(recordId, callback) => eventHandler.set(recordId, callback)} unregisterLiveLog={recordId => eventHandler.delete(recordId)}></Collapsible>))}</>);
