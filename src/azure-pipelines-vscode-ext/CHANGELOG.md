@@ -1,3 +1,7 @@
+### v0.0.15
+- fix variable templates using expressions in it's parameters
+- fix empty dependsOn e.g. empty string is not a missing dependency
+
 ### v0.0.14
 - Variables defined in referenced templates are now available for template expansion
 - Fixed each and if expressions broke resources.containers validation
