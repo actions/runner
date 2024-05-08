@@ -18,10 +18,17 @@ using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Listener
 {
+    public enum CreateSessionResult
+    {
+        Success,
+        Failure,
+        SessionConflict
+    }
+
     [ServiceLocator(Default = typeof(MessageListener))]
     public interface IMessageListener : IRunnerService
     {
-        Task<Boolean> CreateSessionAsync(CancellationToken token);
+        Task<CreateSessionResult> CreateSessionAsync(CancellationToken token);
         Task DeleteSessionAsync();
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
@@ -59,7 +66,7 @@ namespace GitHub.Runner.Listener
             _brokerServer = hostContext.GetService<IBrokerServer>();
         }
 
-        public async Task<Boolean> CreateSessionAsync(CancellationToken token)
+        public async Task<CreateSessionResult> CreateSessionAsync(CancellationToken token)
         {
             Trace.Entering();
 
@@ -123,7 +130,7 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                     }
 
-                    return true;
+                    return CreateSessionResult.Success;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -147,7 +154,7 @@ namespace GitHub.Runner.Listener
                         if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
                             _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return false;
+                            return CreateSessionResult.Failure;
                         }
 
                         // Check whether we get 401 because the runner registration already removed by the service.
@@ -158,14 +165,18 @@ namespace GitHub.Runner.Listener
                         if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
                             _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return false;
+                            return CreateSessionResult.Failure;
                         }
                     }
 
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
                         _term.WriteError($"Failed to create session. {ex.Message}");
-                        return false;
+                        if (ex is TaskAgentSessionConflictException)
+                        {
+                            return CreateSessionResult.SessionConflict;
+                        }
+                        return CreateSessionResult.Failure;
                     }
 
                     if (!encounteringError) //print the message only on the first error
@@ -188,12 +199,12 @@ namespace GitHub.Runner.Listener
                 {
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
+                        await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
+
                         if (_isBrokerSession)
                         {
                             await _brokerServer.DeleteSessionAsync(ts.Token);
-                            return;
                         }
-                        await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
                     }
                 }
                 else
@@ -225,6 +236,7 @@ namespace GitHub.Runner.Listener
             ArgUtil.NotNull(_settings, nameof(_settings));
             bool encounteringError = false;
             int continuousError = 0;
+            int continuousEmptyMessage = 0;
             string errorMessage = string.Empty;
             Stopwatch heartbeat = new();
             heartbeat.Restart();
@@ -303,7 +315,7 @@ namespace GitHub.Runner.Listener
                     Trace.Error(ex);
 
                     // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
-                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && await CreateSessionAsync(token))
+                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
                     {
                         Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
                     }
@@ -348,14 +360,25 @@ namespace GitHub.Runner.Listener
 
                 if (message == null)
                 {
+                    continuousEmptyMessage++;
                     if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
                     {
                         Trace.Info($"No message retrieved from session '{_session.SessionId}' within last 30 minutes.");
                         heartbeat.Restart();
+                        continuousEmptyMessage = 0;
                     }
                     else
                     {
                         Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
+                    }
+
+                    if (continuousEmptyMessage > 50)
+                    {
+                        // retried more than 50 times in less than 30mins and still getting empty message
+                        // something is not right on the service side, backoff for 15-30s before retry
+                        _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), _getNextMessageRetryInterval);
+                        Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
+                        await HostContext.Delay(_getNextMessageRetryInterval, token);
                     }
 
                     continue;

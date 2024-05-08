@@ -382,8 +382,6 @@ runs:
                     }
                 };
 
-                _ec.Object.Global.Variables.Set("DistributedTask.UseActionArchiveCache", bool.TrueString);
-
                 //Act
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
@@ -2375,10 +2373,6 @@ runs:
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Root).Returns(new GitHub.Runner.Worker.ExecutionContext());
             var variables = new Dictionary<string, VariableValue>();
-            if (enableComposite)
-            {
-                variables["DistributedTask.EnableCompositeActions"] = "true";
-            }
             _ec.Object.Global.Variables = new Variables(_hc, variables);
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
