@@ -2,6 +2,14 @@
   <img src="docs/res/github-graph.png">
 </p>
 
+# Github Actions Runner for DMG
+
+## Instructions
+
+Update the `images/Dockerfile` as you please. Then run the [publish image action](https://github.com/johngeorgewright/actions-runner/actions/workflows/publish-image.yml) with **no** arguments. This will override our ARC image, as the "latest", in dockerhub.
+
+---
+
 # GitHub Actions Runner
 
 [![Actions Status](https://github.com/actions/runner/workflows/Runner%20CI/badge.svg)](https://github.com/actions/runner/actions)
