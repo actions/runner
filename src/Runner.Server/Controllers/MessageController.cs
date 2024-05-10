@@ -5470,6 +5470,9 @@ namespace Runner.Server.Controllers
                 foreach (var step in steps)
                 {
                     step.Id = Guid.NewGuid();
+                    if(!string.IsNullOrEmpty((step as ActionStep)?.ContextName)) {
+                        step.Name = (step as ActionStep).ContextName;
+                    }
                 }
 
                 // Jobservicecontainer
