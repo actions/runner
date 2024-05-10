@@ -139,7 +139,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 val = true;
                 return true;
             }
-            if(string.Equals(literalString, "false", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "f", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "no", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "off", StringComparison.OrdinalIgnoreCase)) {
+            if(string.Equals(literalString, "false", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "n", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "no", StringComparison.OrdinalIgnoreCase) || string.Equals(literalString, "off", StringComparison.OrdinalIgnoreCase)) {
                 val = false;
                 return true;
             }
@@ -148,13 +148,15 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         }
 
         public static bool AssertAzurePipelinesBoolean(this TemplateToken value, string objectDescription) {
+            string unexpectedValue = $"type '{value?.GetType().Name}'";
             if(value is LiteralToken literalToken) {
                 var literalString = literalToken.ToString();
                 if(TryParseAzurePipelinesBoolean(literalString, out var ret)) {
                     return ret;
                 }
+                unexpectedValue = $"value '{unexpectedValue}'";
             }
-            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with value true | y | yes | on | false | n | no | off was expected.");
+            throw new ArgumentException($"{GetAssertPrefix(value)}Unexpected {unexpectedValue} encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' with value true | y | yes | on | false | n | no | off was expected.");
         }
 
         public static int AssertAzurePipelinesInt32(this TemplateToken value, string objectDescription) {

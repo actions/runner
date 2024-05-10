@@ -1,0 +1,6 @@
+jobs:
+- ${{ each x in split('yes,no,n,y,true,false,TRUE,False,On,Off', ',') }}:
+  - job:
+    steps:
+    - script: echo test
+      continueOnError: ${{ x }}
