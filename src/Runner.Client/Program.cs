@@ -1242,7 +1242,9 @@ namespace Runner.Client
                             }
                         } else {
                             Console.WriteLine("Starting Server...");
+                            string listeningAddr = parameters.Server;
                             if(parameters.Server == null) {
+                                listeningAddr = "http://*:0";
                                 try {
                                     // From https://stackoverflow.com/a/27376368
                                     using (System.Net.Sockets.Socket socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Dgram, 0))
@@ -1301,7 +1303,7 @@ namespace Runner.Client
                             connectionopts["sqlite"] = "";
                             serverconfig["ConnectionStrings"] = connectionopts;
                             
-                            serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.Server } } });
+                            serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = listeningAddr } } });
                             var rsconfig = new { 
                                 GitServerUrl = parameters.GitServerUrl,
                                 GitApiServerUrl = parameters.GitApiServerUrl,
@@ -1373,8 +1375,11 @@ namespace Runner.Client
                                         {
                                             var line = rd.ReadLine();
                                             timer.Change(-1, -1);
-                                            parameters.Server = line;
-                                            Console.WriteLine($"The server is listening on {line}");
+                                            var uri = new Uri(parameters.Server);
+                                            var caddr = new UriBuilder(line);
+                                            caddr.Host = uri.Host;
+                                            parameters.Server = caddr.Uri.ToString().Trim('/');
+                                            Console.WriteLine($"The server is listening on {line} / {parameters.Server}");
                                         }
                                     });
                                     if(await Task.WhenAny(serveriptask, servertask) == servertask) {
