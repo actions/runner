@@ -868,11 +868,16 @@ namespace GitHub.Runner.Worker
             var base64EncodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
             HostContext.SecretMasker.AddValue(base64EncodedToken);
             var githubJob = Global.Variables.Get("system.github.job");
+            var githubJobName = Global.Variables.Get("system.jobDisplayName");
             var githubContext = new GitHubContext();
             githubContext["token"] = githubAccessToken;
             if (!string.IsNullOrEmpty(githubJob))
             {
                 githubContext["job"] = new StringContextData(githubJob);
+            }
+            if (!string.IsNullOrEmpty(githubJobName))
+            {
+                githubContext["job_name"] = new StringContextData(githubJobName);
             }
             var githubDictionary = ExpressionValues["github"].AssertDictionary("github");
             foreach (var pair in githubDictionary)
