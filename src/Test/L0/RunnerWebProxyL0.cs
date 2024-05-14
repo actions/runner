@@ -65,9 +65,12 @@ namespace GitHub.Runner.Common.Tests
                 }
             }
 
-            if (badCode.Count > 0) {
+            if (badCode.Count > 0)
+            {
                 Assert.Fail($"The following code is using Raw HttpClientHandler() which will not follow the proxy setting agent have. Please use HostContext.CreateHttpClientHandler() instead.\n {string.Join("\n", badCode)}");
-            } else {
+            }
+            else
+            {
                 Assert.True(true);
             }
         }
@@ -118,7 +121,9 @@ namespace GitHub.Runner.Common.Tests
 
             if (badCode.Count > 0) {
                 Assert.Fail($"The following code is using Raw HttpClient() which will not follow the proxy setting agent have. Please use New HttpClient(HostContext.CreateHttpClientHandler()) instead.\n {string.Join("\n", badCode)}");
-            } else {
+            }
+            else
+            {
                 Assert.True(true);
             }
         }
