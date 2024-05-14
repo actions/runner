@@ -126,7 +126,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 //wait for the runner to run one job
                 if (!await signalWorkerComplete.WaitAsync(2000))
                 {
-                    Assert.True(false, $"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked.");
+                    Assert.Fail($"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked.");
                 }
                 else
                 {
@@ -305,8 +305,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 await Task.WhenAny(runnerTask, Task.Delay(30000));
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
-                Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                Assert.True(runnerTask.Result == Constants.Runner.ReturnCode.Success);
+                Assert.False(runnerTask.IsFaulted, runnerTask.Exception?.ToString());
+                if (runnerTask.IsCompleted) {
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
+                }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
                      $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
@@ -406,7 +408,9 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                Assert.True(runnerTask.Result == Constants.Runner.ReturnCode.Success);
+                if (runnerTask.IsCompleted) {
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
+                }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
                      $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
@@ -492,7 +496,9 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                Assert.True(runnerTask.Result == Constants.Runner.ReturnCode.RunOnceRunnerUpdating);
+                if (runnerTask.IsCompleted) {
+                    Assert.Equal(Constants.Runner.ReturnCode.RunOnceRunnerUpdating, await runnerTask);
+                }
 
                 _updater.Verify(x => x.SelfUpdate(It.IsAny<AgentRefreshMessage>(), It.IsAny<IJobDispatcher>(), false, It.IsAny<CancellationToken>()), Times.Once);
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Never());

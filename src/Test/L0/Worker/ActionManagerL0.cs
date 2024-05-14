@@ -460,7 +460,7 @@ runs:
                 //Act
                 var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
 
-                Assert.True(steps.Count == 0);
+                Assert.Equal(0, steps.Count);
             }
             finally
             {
@@ -915,7 +915,7 @@ runs:
                 var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
 
                 // node.js based action doesn't need any extra steps to build/pull containers.
-                Assert.True(steps.Count == 0);
+                Assert.Equal(0, steps.Count);
             }
             finally
             {
@@ -1051,7 +1051,7 @@ runs:
                 var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
 
                 // node.js based action doesn't need any extra steps to build/pull containers.
-                Assert.True(steps.Count == 0);
+                Assert.Equal(0, steps.Count);
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang/runner_L0", "CompositeBasic.completed");
                 Assert.True(File.Exists(watermarkFile));
                 // Comes from the composite action
@@ -1245,7 +1245,7 @@ runs:
                 // Assert.
                 Assert.NotNull(definition);
                 Assert.NotNull(definition.Data);
-                Assert.True(definition.Data.Execution.ExecutionType == ActionExecutionType.Script);
+                Assert.Equal(ActionExecutionType.Script, definition.Data.Execution.ExecutionType);
             }
             finally
             {
