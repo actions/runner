@@ -498,7 +498,8 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                if (runnerTask.IsCompleted) {
+                if (runnerTask.IsCompleted)
+                {
                     Assert.Equal(Constants.Runner.ReturnCode.RunOnceRunnerUpdating, await runnerTask);
                 }
 
