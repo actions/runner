@@ -5,10 +5,11 @@ PRECACHE=$2
 NODE_URL=https://nodejs.org/dist
 UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
 NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
+# When you update Node versions you must also create a new release of alpine_nodejs at that updated version.
+# Follow the instructions here: https://github.com/actions/alpine_nodejs?tab=readme-ov-file#getting-started
 NODE16_VERSION="16.20.2"
-NODE20_VERSION="20.8.1"
-# used only for win-arm64, remove node16 unofficial version when official version is available
-NODE16_UNOFFICIAL_VERSION="16.20.0"
+NODE20_VERSION="20.13.1"
+NODE16_UNOFFICIAL_VERSION="16.20.0" # used only for win-arm64, remove node16 unofficial version when official version is available
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args

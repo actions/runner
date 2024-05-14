@@ -20,12 +20,12 @@ namespace GitHub.Runner.Common
     {
         private bool _hasConnection;
         private VssConnection _connection;
-        private TaskAgentHttpClient _taskAgentClient;
+        private ActionsRunServerHttpClient _actionsRunServerClient;
 
         public async Task ConnectAsync(Uri serverUrl, VssCredentials credentials)
         {
             _connection = await EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(100));
-            _taskAgentClient = _connection.GetClient<TaskAgentHttpClient>();
+            _actionsRunServerClient = _connection.GetClient<ActionsRunServerHttpClient>();
             _hasConnection = true;
         }
 
@@ -42,7 +42,7 @@ namespace GitHub.Runner.Common
             CheckConnection();
             var jobMessage = RetryRequest<AgentJobRequestMessage>(async () =>
                                                     {
-                                                        return await _taskAgentClient.GetJobMessageAsync(id, cancellationToken);
+                                                        return await _actionsRunServerClient.GetJobMessageAsync(id, cancellationToken);
                                                     }, cancellationToken);
 
             return jobMessage;
