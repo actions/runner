@@ -3,8 +3,10 @@ using GitHub.Runner.Sdk;
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 
@@ -156,6 +158,15 @@ namespace GitHub.Runner.Listener
         {
             var binDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var rootDir = new DirectoryInfo(binDir).Parent.FullName;
+
+            //Since the static env file is static, load it first
+            LoadStaticEnvFile(rootDir);
+            //Then load the parsed env file, so that static env values can be used.
+            LoadParsedEnvFile(rootDir);
+        }
+
+        private static void LoadStaticEnvFile(string rootDir)
+        {
             string envFile = Path.Combine(rootDir, ".env");
             if (File.Exists(envFile))
             {
@@ -174,6 +185,43 @@ namespace GitHub.Runner.Listener
                                 envValue = env.Substring(separatorIndex + 1);
                             }
 
+                            Environment.SetEnvironmentVariable(envKey, envValue);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static void LoadParsedEnvFile(string rootDir)
+        {
+            string parsedEnvFile = Path.Combine(rootDir, ".env_parsed");
+            if (File.Exists(parsedEnvFile))
+            {
+                var envVarSubstitutionRegex = new Regex(@"\$\{([A-Z_][A-Z_0-9]*)\}");
+                var envContents = File.ReadAllLines(parsedEnvFile);
+                foreach (var env in envContents)
+                {
+                    if (!string.IsNullOrEmpty(env))
+                    {
+                        var separatorIndex = env.IndexOf("=");
+                        if (separatorIndex > 0)
+                        {
+                            string envKey = env.Substring(0, separatorIndex);
+                            string envValue = null;
+                            if (env.Length > separatorIndex + 1)
+                            {
+                                envValue = env.Substring(separatorIndex + 1);
+                            }
+                            var matches = envVarSubstitutionRegex.Matches(envValue);
+                            //Replace them end to start, so the index of earlier matches aren't affected by replacements
+                            foreach (var match in matches.OrderByDescending(m => m.Index))
+                            {
+                                envValue =
+                                    envValue.Substring(0, match.Index)
+                                    + Environment.GetEnvironmentVariable(match.Groups[1].Value)
+                                    + envValue.Substring(match.Index + match.Length);
+                            }
+                            //By setting each one as we go, later lines can utilize the results of previous ones.
                             Environment.SetEnvironmentVariable(envKey, envValue);
                         }
                     }
