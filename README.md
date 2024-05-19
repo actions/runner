@@ -356,6 +356,43 @@ Add `<url of Runner.Server>/signin-oidc` (https://localhost:5001/signin-oidc) as
 }
 ```
 
+### OpenId Auth AWS
+**Requires** v3.11.14 or later
+
+What you will need
+- domain with a pem certificate pair
+- free 443 port on the domain
+- port forward 443 of the domain to your device e.g. 5001 (can be changed)
+
+```
+env "RUNNER_SERVER_Runner.Server__ServerUrl=https://<mydomain>" RUNNER_SERVER_Kestrel__Endpoints__HttpsFromPem__Url=https://*:5001 RUNNER_SERVER_Kestrel__Endpoints__HttpsFromPem__Certificate__Path=$PWD/cert.pem RUNNER_SERVER_Kestrel__Endpoints__HttpsFromPem__Certificate__KeyPath=$PWD/privkey.pem gharun --interactive
+```
+
+- Open AWS Console
+- Select iam
+- Select Idendity Provider
+- Create One
+- Select OpenId Connect
+- Enter your domain **without leading /, otherwise the aws action would fail abnormally**
+- Enter the audience field of the aws action as client id (e.g. sts.amazonaws.com)
+- Press Assign Role
+- Press Create Role
+- Change trust Policy like you want
+- copy the aws arn id from the previously created role
+
+Now test it locally
+```yaml
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      id: myaws-id
+      with:
+        aws-region: us-east-1         # Change to your aws region
+        role-to-assume: <role arn id> # Open the role detail page and copy the arn number
+        audience: sts.amazonaws.com   # Adjust as needed
+```
+
+VSCode port forwarding is not usable for aws trust
+
 ### Dynamic GITHUB_TOKEN with specified permissions ( GitHub App )
 
 Create a new github app with the following permissions
