@@ -75,6 +75,10 @@ namespace Runner.Server.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var payloadUrl = new Uri(payload.Url);
             var components = payloadUrl.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            // Always use the Host from the Host header here
+            // Otherwise actions/runner throws
+            // GitHub Actions is not properly configured in GHES. GHES url: <proto>://<ip>:<port>/runner/server, Actions url: <ServerUrl>/runner/server.
+            ServerUrl = null;
             return await Ok(new GitHubAuthResult() {
                 TenantUrl = new Uri(new Uri(ServerUrl), components.Length == 0 ? "runner/server" : components.Length > 1 ?  $"{components[0]}/{components[1]}" : $"{components[0]}/server").ToString(),
                 Token = tokenHandler.WriteToken(token),
