@@ -39,11 +39,14 @@ ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=ubuntu22
 
-RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends \
-    sudo \
-    lsb-release \
+# 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
+RUN apt update -y \
+    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
+RUN add-apt-repository ppa:git-core/ppa \
+    && apt update -y
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
