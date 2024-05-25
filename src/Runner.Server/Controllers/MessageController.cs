@@ -7610,12 +7610,12 @@ namespace Runner.Server.Controllers
                         }
                     };
                     Action<string, string, WorkflowRun> runh = (cowner, crepo, crun) => {
-                        if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) || (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
+                        if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) && (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("workflowrun", crun));
                         }
                     };
                     Action<string, string, WorkflowRun> runupdateh = (cowner, crepo, crun) => {
-                        if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) || (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
+                        if((string.IsNullOrEmpty(repo) || repo.ToLower() == crepo.ToLower()) && (string.IsNullOrEmpty(owner) || owner.ToLower() == cowner.ToLower()) && runid == null) {
                             chwriter.WriteAsync(new KeyValuePair<string, object>("workflowrunupdate", crun));
                         }
                     };
