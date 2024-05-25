@@ -448,22 +448,33 @@ namespace Runner.Server.Azure.Devops
             });
         }
 
+        private enum Level {
+            Stage,
+            Job,
+            Step
+        }
+
         private void CheckRuntimeExpressionSyntax(TemplateValidationErrors errors)
         {
             CheckVariableExpressions(errors, Variables);
             if(Stages != null) {
                 foreach(var stage in Stages) {
                     CheckVariableExpressions(errors, stage.Variables);
-                    CheckConditionalExpressions(errors, stage.Condition);
+                    CheckConditionalExpressions(errors, stage.Condition, Level.Stage);
                     if(stage.Jobs != null) {
                         foreach(var job in stage.Jobs) {
                             CheckVariableExpressions(errors, job.Variables);
-                            CheckConditionalExpressions(errors, job.Condition, true);
+                            CheckConditionalExpressions(errors, job.Condition, Level.Job);
                             CheckSingleRuntimeExpression(errors, job.ContinueOnError);
                             CheckSingleRuntimeExpression(errors, job.Strategy?.MatrixExpression);
                             CheckSingleRuntimeExpression(errors, job.Strategy?.MaxParallel);
                             CheckSingleRuntimeExpression(errors, job.Strategy?.Parallel);
                             CheckSingleRuntimeExpression(errors, job.Container?.Alias ?? job.Container?.Image);
+                            if(job.Steps != null) {
+                                foreach(var step in job.Steps) {
+                                    CheckConditionalExpressions(errors, step.Condition, Level.Step);
+                                }
+                            }
                         }
                     }
                 }
@@ -502,19 +513,22 @@ namespace Runner.Server.Azure.Devops
             }
         }
 
-        private static void CheckConditionalExpressions(TemplateValidationErrors errors, string condition, bool isJob = false)
+        private static void CheckConditionalExpressions(TemplateValidationErrors errors, string condition, Level level)
         {
             if(condition == null) {
                 return;
             }
             var val = condition;
-            if (val.StartsWith("$[") && val.EndsWith("]"))
-            {
-                val = val.Substring(2, val.Length - 3);
-            }
-            IEnumerable<string> names = new[] {"variables", "resources", "pipeline", "dependencies" };
-            if(isJob) {
-                names = names.Append("stageDependencies");
+            IEnumerable<string> names = new[] {"variables"};
+            switch(level) {
+            case Level.Stage:
+                names = names.Concat(new[] {"pipeline", "dependencies"});
+                break;
+            case Level.Job:
+                names = names.Concat(new[] {"pipeline", "dependencies", "stageDependencies"});
+                break;
+            default:
+                break;
             }
             var funcs = new List<IFunctionInfo>();
             funcs.Add(new FunctionInfo<NoOperation>(PipelineTemplateConstants.Always, 0, 0));

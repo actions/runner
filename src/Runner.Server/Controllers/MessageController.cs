@@ -3625,7 +3625,6 @@ namespace Runner.Server.Controllers
                                 new TimelineController(_context, Configuration).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
                                 jobTraceWriter.Info("{0}", $"Evaluate if");
                                 var ifexpr = job.Condition;
-                                ifexpr = (!string.IsNullOrEmpty(ifexpr) && ifexpr.StartsWith("$[") && ifexpr.EndsWith("]")) ? ifexpr.Substring(2, ifexpr.Length - 3) : ifexpr;
                                 var condition = new BasicExpressionToken(null, null, null, string.IsNullOrEmpty(ifexpr) ? "succeeded()" : ifexpr);
                                 var recursiveNeedsctx = needsctx;
                                 if(!NoRecursiveNeedsCtx) {
@@ -3684,7 +3683,7 @@ namespace Runner.Server.Controllers
                                     templateContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>("Failed", 0, Int32.MaxValue));
                                     templateContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>("Succeeded", 0, Int32.MaxValue));
                                     templateContext.ExpressionFunctions.Add(new FunctionInfo<SucceededOrFailedFunction>("SucceededOrFailed", 0, Int32.MaxValue));
-                                    var stageCondition = (!string.IsNullOrEmpty(stage.Condition) && stage.Condition.StartsWith("$[") && stage.Condition.EndsWith("]")) ? stage.Condition.Substring(2, stage.Condition.Length - 3) : stage.Condition;
+                                    var stageCondition = stage.Condition;
                                     var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "stage-if-result", new BasicExpressionToken(null, null, null, string.IsNullOrEmpty(stageCondition) ? "succeeded()" : stageCondition), 0, null, true);
                                     templateContext.Errors.Check();
                                     if(!PipelineTemplateConverter.ConvertToIfResult(templateContext, eval)) {
