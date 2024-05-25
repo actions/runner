@@ -3162,7 +3162,7 @@ namespace Runner.Server.Controllers
                 workflowContext.Flags = flags;
                 List<JobItem> jobgroup = new List<JobItem>();
                 List<JobItem> dependentjobgroup = new List<JobItem>();
-                var fileProvider = new DefaultInMemoryFileProviderFileProvider(workflows, (a, b) => {
+                var fileProvider = new Azure.Devops.DefaultInMemoryFileProviderFileProvider(workflows, (a, b) => {
                     return TryGetFile(runid, a, out var content, b) ? content : null;
                 });
                 var rootVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
