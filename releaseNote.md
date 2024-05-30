@@ -1,8 +1,12 @@
 ## What's Changed
 
-- Preserve dates when deserializing job message from Run Service by @ericsciple in https://github.com/actions/runner/pull/3269
+- Do not give up when uploading steps metadata by @yacaovsnc in https://github.com/actions/runner/pull/3280
+- Upgrade node20 to 20.13.1 by @pje in https://github.com/actions/runner/pull/3284
+- Delete all the contentHash files by @pje in https://github.com/actions/runner/pull/3285
+- Make it easy to install `git` on an Action Runner Image by @jww3 in https://github.com/actions/runner/pull/3273
+- Install `gpg-agent` during actions/runner container image build by @jww3 in https://github.com/actions/runner/pull/3294
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.316.0...v2.316.1
+**Full Changelog**: https://github.com/actions/runner/compare/v2.316.1...v2.317.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
