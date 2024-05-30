@@ -190,11 +190,11 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 trace.Info("Configured, verifying all the parameter value");
                 var s = configManager.LoadSettings();
                 Assert.NotNull(s);
-                Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
-                Assert.True(s.AgentName.Equals(_expectedAgentName));
-                Assert.True(s.PoolId.Equals(_secondRunnerGroupId));
-                Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
-                Assert.True(s.Ephemeral.Equals(true));
+                Assert.Equal(_expectedServerUrl, s.ServerUrl);
+                Assert.Equal(_expectedAgentName, s.AgentName);
+                Assert.Equal(_secondRunnerGroupId, s.PoolId);
+                Assert.Equal(_expectedWorkFolder, s.WorkFolder);
+                Assert.True(s.Ephemeral);
 
                 // validate GetAgentPoolsAsync gets called twice with automation pool type
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(2));
@@ -292,11 +292,11 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 trace.Info("Configured, verifying all the parameter value");
                 var s = configManager.LoadSettings();
                 Assert.NotNull(s);
-                Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
-                Assert.True(s.AgentName.Equals(_expectedAgentName));
-                Assert.True(s.PoolId.Equals(_secondRunnerGroupId));
-                Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
-                Assert.True(s.Ephemeral.Equals(true));
+                Assert.Equal(_expectedServerUrl, s.ServerUrl);
+                Assert.Equal(_expectedAgentName, s.AgentName);
+                Assert.Equal(_secondRunnerGroupId, s.PoolId);
+                Assert.Equal(_expectedWorkFolder, s.WorkFolder);
+                Assert.True(s.Ephemeral);
 
                 // validate GetAgentPoolsAsync gets called twice with automation pool type
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(2));

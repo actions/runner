@@ -4,9 +4,9 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy as build
 ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.5.1
-ARG DOCKER_VERSION=25.0.2
-ARG BUILDX_VERSION=0.12.1
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.0
+ARG DOCKER_VERSION=25.0.4
+ARG BUILDX_VERSION=0.13.1
 
 RUN apt update -y && apt install curl unzip -y
 
@@ -39,15 +39,15 @@ ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=ubuntu22
 
-RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends \
-    jq \
-    git \
-    curl \
-    unzip \
-    sudo \
-    lsb-release \
+# 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
+RUN apt update -y \
+    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
+RUN add-apt-repository ppa:git-core/ppa \
+    && apt update -y \
+    && apt-get install -y --no-install-recommends git
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
