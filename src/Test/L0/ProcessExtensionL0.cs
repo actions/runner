@@ -58,7 +58,7 @@ namespace GitHub.Runner.Common.Tests
                         trace.Error(ex);
                     }
 
-                    Assert.True(false, "Fail to retrive process environment variable.");
+                    Assert.Fail("Failed to retrieve process environment variable.");
                 }
                 finally
                 {

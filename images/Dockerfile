@@ -5,8 +5,8 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
 ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.0
-ARG DOCKER_VERSION=25.0.4
-ARG BUILDX_VERSION=0.13.1
+ARG DOCKER_VERSION=25.0.5
+ARG BUILDX_VERSION=0.13.2
 
 RUN apt update -y && apt install curl unzip -y
 
@@ -47,10 +47,12 @@ RUN apt-get update -y \
         gcc \
         git \
         gnupg \
+        gpg-agent \
         jq \
         make \
         openssh-client \
         lsb-release \
+        software-properties-common \
         sudo \
 
         # Chrome
@@ -112,6 +114,10 @@ RUN apt-get update -y \
         gh \
         kubectl \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
+RUN add-apt-repository ppa:git-core/ppa \
+    && apt update -y
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
