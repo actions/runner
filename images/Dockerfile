@@ -41,10 +41,12 @@ ENV ImageOS=ubuntu22
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
+        apt-transport-https \
         curl \
         g++ \
         gcc \
         git \
+        gnupg \
         jq \
         make \
         openssh-client \
@@ -89,6 +91,7 @@ RUN apt-get update -y \
         wget \
         xdg-utils
 
+# github cli repo
 RUN mkdir -p -m 755 /etc/apt/keyrings \
     && curl --silent https://cli.github.com/packages/githubcli-archive-keyring.gpg \
         | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
@@ -96,9 +99,18 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
         | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
 
+# kubernetes repo
+RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key \
+        | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+    && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' \
+        | tee /etc/apt/sources.list.d/kubernetes.list \
+    && chmod 644 /etc/apt/sources.list.d/kubernetes.list
+
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
         gh \
+        kubectl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
