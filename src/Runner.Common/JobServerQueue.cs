@@ -613,7 +613,7 @@ namespace GitHub.Runner.Common
 
         private void SendResultsTelemetry(Exception ex)
         {
-            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception with results. {ex.Message}" };
+            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception with results. {HostContext.SecretMasker.MaskSecrets(ex.Message)}" };
             issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
 
             var telemetryRecord = new TimelineRecord()
