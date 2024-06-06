@@ -279,7 +279,7 @@ namespace GitHub.Runner.Common
 
                 case WellKnownDirectory.Actions:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Work),
+                        GetDirectory(WellKnownDirectory.Tools),
                         Constants.Path.ActionsDirectory);
                     break;
 
