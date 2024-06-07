@@ -314,7 +314,30 @@ namespace GitHub.Runner.Listener
 
         public async Task DeleteMessageAsync(TaskAgentMessage message)
         {
-            await Task.CompletedTask;
+            Trace.Entering();
+            ArgUtil.NotNull(_session, nameof(_session));
+
+            if (message == null || _session.SessionId == Guid.Empty)
+            {
+                return;
+            }
+
+            var jobMessageKey = "";
+            if (MessageUtil.IsRunServiceJob(message.MessageType))
+            {
+                var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
+                jobMessageKey = messageRef.RunnerRequestId;
+            }
+            else
+            {
+                // Broker currently doesn't support delete for other message types
+                return;
+            }
+
+            using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+            {
+                await _brokerServer.DeleteRunnerMessageAsync(_session.SessionId, jobMessageKey, cs.Token);
+            }
         }
 
         private bool IsGetNextMessageExceptionRetriable(Exception ex)

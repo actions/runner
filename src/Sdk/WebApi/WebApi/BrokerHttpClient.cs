@@ -63,8 +63,7 @@ namespace GitHub.Actions.RunService.WebApi
             string os = null,
             string architecture = null,
             bool? disableUpdate = null,
-            CancellationToken cancellationToken = default
-        )
+            CancellationToken cancellationToken = default)
         {
             var requestUri = new Uri(Client.BaseAddress, "message");
 
@@ -123,8 +122,40 @@ namespace GitHub.Actions.RunService.WebApi
             throw new Exception($"Failed to get job message: {result.Error}");
         }
 
-        public async Task<TaskAgentSession> CreateSessionAsync(
+        public async Task<TaskAgentMessage> GetRunnerMessageAsync(
+            Guid? sessionId,
+            string jobMessageKey,
+            CancellationToken cancellationToken = default)
+        {
+            var requestUri = new Uri(Client.BaseAddress, "message");
 
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+
+            if (sessionId != null)
+            {
+                queryParams.Add("sessionId", sessionId.Value.ToString());
+            }
+
+            if (!string.IsNullOrEmpty(jobMessageKey))
+            {
+                queryParams.Add("jobMessageKey", jobMessageKey);
+            }
+
+            var result = await SendAsync<TaskAgentMessage>(
+                new HttpMethod("DELETE"),
+                requestUri: requestUri,
+                queryParameters: queryParams,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                return result.Value;
+            }
+
+            throw new Exception($"Failed to get job message: StatusCode={result.StatusCode} Error={result.Error}");
+        }
+
+        public async Task<TaskAgentSession> CreateSessionAsync(
            TaskAgentSession session,
            CancellationToken cancellationToken = default)
         {

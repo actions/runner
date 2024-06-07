@@ -75,6 +75,12 @@ namespace GitHub.Runner.Common
             await _brokerHttpClient.DeleteSessionAsync(cancellationToken);
         }
 
+        public async Task DeleteRunnerMessageAsync(Guid sessionId, string jobMessageKey, CancellationToken cancellationToken)
+        {
+            CheckConnection();
+            await _brokerHttpClient.DeleteRunnerMessageAsync(sessionId, jobMessageKey, cancellationToken);
+        }
+
         public Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials)
         {
             if (_brokerUri != serverUri || !_hasConnection)
