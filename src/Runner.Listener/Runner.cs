@@ -723,7 +723,7 @@ Config Options:
             _term.WriteLine($@"
 Examples:
  Check GitHub server network connectivity:
-  .{separator}run.{ext} --check --url <url> --pat <pat>
+  .{separator}config.{ext} --check --url <url> --pat <pat>
  Configure a runner non-interactively:
   .{separator}config.{ext} --unattended --url <url> --token <token>
  Configure a runner non-interactively, replacing any existing runner with the same name:
