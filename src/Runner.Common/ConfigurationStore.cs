@@ -62,7 +62,16 @@ namespace GitHub.Runner.Common
             get
             {
                 // Old runners do not have this property. Hosted runners likely don't have this property either.
-                return _isHostedServer ?? true;
+                if (_isHostedServer != null) {
+                    return (bool)_isHostedServer;
+                }
+
+                // GHES JIT config API does not set this property either, so we need to auto-detect it.
+                if (GitHubUrl != null) {
+                    return UrlUtil.IsHostedServer(new UriBuilder(GitHubUrl));
+                }
+
+                return true;
             }
 
             set
