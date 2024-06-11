@@ -5,15 +5,15 @@
 ## Supported Distributions and Versions
 
 x64
-  - Red Hat Enterprise Linux 7+
-  - CentOS 7+
-  - Oracle Linux 7+
+  - Red Hat Enterprise Linux 8+
+  - CentOS 8+
+  - Oracle Linux 8+
   - Fedora 29+
-  - Debian 9+
-  - Ubuntu 16.04+
-  - Linux Mint 18+
-  - openSUSE 15+
-  - SUSE Enterprise Linux (SLES) 12 SP2+
+  - Debian 10+
+  - Ubuntu 20.04+
+  - Linux Mint 20+
+  - openSUSE 15.2+
+  - SUSE Enterprise Linux (SLES) 15 SP2+
 
 ## Install .Net Core 3.x Linux Dependencies
 
