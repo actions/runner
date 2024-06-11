@@ -86,6 +86,7 @@ namespace GitHub.Actions.RunService.WebApi
                 httpMethod,
                 requestUri: requestUri,
                 content: requestContent,
+                readErrorContent: true,
                 cancellationToken: cancellationToken);
 
             if (result.IsSuccess)
@@ -93,14 +94,35 @@ namespace GitHub.Actions.RunService.WebApi
                 return result.Value;
             }
 
+            if (TryParseErrorContent(result.ErrorContent, out RunServiceError error))
+            {
+                switch ((HttpStatusCode)error.StatusCode)
+                {
+                    case HttpStatusCode.NotFound:
+                        throw new TaskOrchestrationJobNotFoundException($"Job message not found '{messageId}'. {error.ErrorMessage}");
+                    case HttpStatusCode.Conflict:
+                        throw new TaskOrchestrationJobAlreadyAcquiredException($"Job message already acquired '{messageId}'. {error.ErrorMessage}");
+                    case HttpStatusCode.UnprocessableEntity:
+                        throw new TaskOrchestrationJobUnprocessableException($"Unprocessable job '{messageId}'. {error.ErrorMessage}");
+                }
+            }
+
+            // Temporary back compat
             switch (result.StatusCode)
             {
                 case HttpStatusCode.NotFound:
                     throw new TaskOrchestrationJobNotFoundException($"Job message not found: {messageId}");
                 case HttpStatusCode.Conflict:
                     throw new TaskOrchestrationJobAlreadyAcquiredException($"Job message already acquired: {messageId}");
-                default:
-                    throw new Exception($"Failed to get job message: {result.Error}");
+            }
+
+            if (!string.IsNullOrEmpty(result.ErrorContent))
+            {
+                throw new Exception($"Failed to get job message: {result.Error}. {result.ErrorContent}");
+            }
+            else
+            {
+                throw new Exception($"Failed to get job message: {result.Error}");
             }
         }
 
@@ -189,6 +211,27 @@ namespace GitHub.Actions.RunService.WebApi
         {
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             return JsonConvert.DeserializeObject<T>(json, s_serializerSettings);
+        }
+
+        private static bool TryParseErrorContent(string errorContent, out RunServiceError error)
+        {
+            if (!string.IsNullOrEmpty(errorContent))
+            {
+                try
+                {
+                    error = JsonUtility.FromString<RunServiceError>(errorContent);
+                    if (error?.Source == "actions-run-service")
+                    {
+                        return true;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            error = null;
+            return false;
         }
     }
 }

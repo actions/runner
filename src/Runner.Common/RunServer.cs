@@ -62,7 +62,9 @@ namespace GitHub.Runner.Common
             CheckConnection();
             return RetryRequest<AgentJobRequestMessage>(
                 async () => await _runServiceHttpClient.GetJobMessageAsync(requestUri, id, VarUtil.OS, cancellationToken), cancellationToken,
-                shouldRetry: ex => ex is not TaskOrchestrationJobAlreadyAcquiredException);
+                shouldRetry: ex => ex is not TaskOrchestrationJobNotFoundException &&
+                    ex is not TaskOrchestrationJobAlreadyAcquiredException &&
+                    ex is not TaskOrchestrationJobUnprocessableException);
         }
 
         public Task CompleteJobAsync(

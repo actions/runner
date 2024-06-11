@@ -22,6 +22,8 @@ namespace GitHub.Runner.Common
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
 
+        Task DeleteRunnerMessageAsync(Guid sessionId, string jobMessageKey, CancellationToken cancellationToken);
+
         Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials);
 
         Task ForceRefreshConnection(VssCredentials credentials);

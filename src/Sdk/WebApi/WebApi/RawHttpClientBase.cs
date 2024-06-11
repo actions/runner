@@ -106,10 +106,11 @@ namespace Sdk.WebApi.WebApi
             Uri requestUri,
             HttpContent content = null,
             IEnumerable<KeyValuePair<String, String>> queryParameters = null,
+            Boolean readErrorContent = false,
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return SendAsync<T>(method, null, requestUri, content, queryParameters, userState, cancellationToken);
+            return SendAsync<T>(method, null, requestUri, content, queryParameters, readErrorContent, userState, cancellationToken);
         }
 
         protected async Task<RawHttpClientResult<T>> SendAsync<T>(
@@ -118,18 +119,20 @@ namespace Sdk.WebApi.WebApi
             Uri requestUri,
             HttpContent content = null,
             IEnumerable<KeyValuePair<String, String>> queryParameters = null,
+            Boolean readErrorContent = false,
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = CreateRequestMessage(method, additionalHeaders, requestUri, content, queryParameters))
             {
-                return await SendAsync<T>(requestMessage, userState, cancellationToken).ConfigureAwait(false);
+                return await SendAsync<T>(requestMessage, readErrorContent, userState, cancellationToken).ConfigureAwait(false);
             }
         }
 
         protected async Task<RawHttpClientResult<T>> SendAsync<T>(
             HttpRequestMessage message,
+            Boolean readErrorContent = false,
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -145,8 +148,14 @@ namespace Sdk.WebApi.WebApi
                 }
                 else
                 {
+                    var errorContent = default(string);
+                    if (readErrorContent)
+                    {
+                        errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    }
+
                     string errorMessage = $"Error: {response.ReasonPhrase}";
-                    return RawHttpClientResult<T>.Fail(errorMessage, response.StatusCode);
+                    return RawHttpClientResult<T>.Fail(errorMessage, response.StatusCode, errorContent);
                 }
             }
         }

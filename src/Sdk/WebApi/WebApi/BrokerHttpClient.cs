@@ -122,7 +122,7 @@ namespace GitHub.Actions.RunService.WebApi
             throw new Exception($"Failed to get job message: {result.Error}");
         }
 
-        public async Task<TaskAgentMessage> GetRunnerMessageAsync(
+        public async Task DeleteRunnerMessageAsync(
             Guid? sessionId,
             string jobMessageKey,
             CancellationToken cancellationToken = default)
@@ -141,7 +141,7 @@ namespace GitHub.Actions.RunService.WebApi
                 queryParams.Add("jobMessageKey", jobMessageKey);
             }
 
-            var result = await SendAsync<TaskAgentMessage>(
+            var result = await SendAsync<object>(
                 new HttpMethod("DELETE"),
                 requestUri: requestUri,
                 queryParameters: queryParams,
@@ -149,7 +149,7 @@ namespace GitHub.Actions.RunService.WebApi
 
             if (result.IsSuccess)
             {
-                return result.Value;
+                return;
             }
 
             throw new Exception($"Failed to get job message: StatusCode={result.StatusCode} Error={result.Error}");

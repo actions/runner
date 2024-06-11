@@ -544,6 +544,8 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
+                                    skipMessageDeletion = true;
+
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
                                     Pipelines.AgentJobRequestMessage jobRequestMessage = null;
 
@@ -565,9 +567,13 @@ namespace GitHub.Runner.Listener
                                         {
                                             jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
                                         }
-                                        catch (TaskOrchestrationJobAlreadyAcquiredException)
+                                        catch (Exception ex) when (
+                                            ex is TaskOrchestrationJobNotFoundException ||
+                                            ex is TaskOrchestrationJobAlreadyAcquiredException ||
+                                            ex is TaskOrchestrationJobUnprocessableException)
                                         {
-                                            Trace.Info("Job is already acquired, skip this message.");
+                                            Trace.Error($"Skipping job: {ex.Message}");
+                                            skipMessageDeletion = false;
                                             continue;
                                         }
                                         catch (Exception ex)
