@@ -1443,7 +1443,7 @@ namespace Runner.Client
                                 parameters.Matrix = null;
                                 Console.Write("gharun> ");
                                 try {
-                                    command = await Console.In.ReadLineAsync().WithCancellation(source.Token);
+                                    command = await Task.Run(() => Console.In.ReadLineAsync()).WithCancellation(source.Token);
                                 } catch {
                                     command = "";
                                 }
@@ -2673,7 +2673,7 @@ namespace Runner.Client
                     string varval = subopt.Length == 2 ? subopt[1] : null;
                     if(varval == null) {
                         await Console.Out.WriteAsync($"{varname}=");
-                        varval = await Console.In.ReadLineAsync();
+                        varval = await Task.Run(() => Console.In.ReadLineAsync());
                         parameters.Vars[i] = $"{varname}={varval}";
                     }
                     var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
