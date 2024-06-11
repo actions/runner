@@ -27,6 +27,9 @@ namespace Runner.Server.Models
 
         public CancellationToken JobRunningToken { get => source.Token; }
         public Job Job { get => job; set {
+                if(value == job) {
+                    return;
+                }
                 if(job != null) {
                     job.SessionId = Guid.Empty;
                     try {
@@ -50,6 +53,8 @@ namespace Runner.Server.Models
             }
         }
         public DateTime? DoNotCancelBefore {get; set;}
+
+        public bool JobAccepted {get; set;}
 
         public System.Timers.Timer Timer {get; set;}
         public System.Timers.Timer JobTimer {get; set;}
