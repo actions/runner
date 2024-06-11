@@ -118,7 +118,7 @@ namespace Runner.Server
     {
         public async Task BindModelAsync(ModelBindingContext bindingContext)
         {
-            if (!bindingContext.HttpContext.Request.HasJsonContentType())
+            if (bindingContext.HttpContext.Request.ContentType != null && !bindingContext.HttpContext.Request.HasJsonContentType())
             {
                 throw new BadHttpRequestException(
                     "Request content type was not a recognized JSON content type.",
