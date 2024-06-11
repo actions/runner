@@ -362,6 +362,7 @@
       "mapping": {
         "properties": {
           "actions": "non-empty-string",
+          "attestations": "non-empty-string",
           "checks": "non-empty-string",
           "contents": "non-empty-string",
           "deployments": "non-empty-string",
