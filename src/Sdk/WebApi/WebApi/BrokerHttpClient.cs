@@ -141,6 +141,8 @@ namespace GitHub.Actions.RunService.WebApi
                 queryParams.Add("jobMessageKey", jobMessageKey);
             }
 
+            queryParams.Add("status", TaskAgentStatus.Online.ToString());
+
             var result = await SendAsync<object>(
                 new HttpMethod("DELETE"),
                 requestUri: requestUri,

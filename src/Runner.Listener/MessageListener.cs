@@ -398,7 +398,15 @@ namespace GitHub.Runner.Listener
             {
                 using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                 {
-                    await _runnerServer.DeleteAgentMessageAsync(_settings.PoolId, message.MessageId, _session.SessionId, cs.Token);
+                    if (MessageUtil.IsRunServiceJob(message.MessageType))
+                    {
+                        var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
+                        await _brokerServer.DeleteRunnerMessageAsync(_session.SessionId, messageRef.RunnerRequestId, cs.Token);
+                    }
+                    else
+                    {
+                        await _runnerServer.DeleteAgentMessageAsync(_settings.PoolId, message.MessageId, _session.SessionId, cs.Token);
+                    }
                 }
             }
         }
