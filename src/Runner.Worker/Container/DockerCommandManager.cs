@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker.Container
         {
             base.Initialize(hostContext);
             DockerPath = WhichUtil.Which("docker", true, Trace);
-            string path = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), ".runner");
+            string path = HostContext.GetConfigFile(WellKnownConfigFile.Runner);
             string json = File.ReadAllText(path, Encoding.UTF8);
             DockerInstanceLabel = IOUtil.GetSha256Hash(json).Substring(0, 6);
         }
