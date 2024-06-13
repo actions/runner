@@ -113,6 +113,9 @@ namespace GitHub.Runner.Worker.Container
             // OPTIONS
             dockerOptions.Add($"--name {container.ContainerDisplayName}");
             dockerOptions.Add($"--label {DockerInstanceLabel}");
+            // TODO: pull opts from env
+            dockerOptions.Add("--privileged");
+            dockerOptions.Add("--cgroupns host");
             if (!string.IsNullOrEmpty(container.ContainerWorkDirectory))
             {
                 dockerOptions.Add($"--workdir {container.ContainerWorkDirectory}");
@@ -286,7 +289,8 @@ namespace GitHub.Runner.Worker.Container
 #if OS_WINDOWS
             return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat", context.CancellationToken);
 #else
-            return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network}", context.CancellationToken);
+            // TODO: make conditional
+            //return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network}", context.CancellationToken);
 #endif
         }
 
