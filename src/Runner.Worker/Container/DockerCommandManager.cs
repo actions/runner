@@ -289,8 +289,7 @@ namespace GitHub.Runner.Worker.Container
 #if OS_WINDOWS
             return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat", context.CancellationToken);
 #else
-            // TODO: make conditional
-            //return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network}", context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network}", context.CancellationToken);
 #endif
         }
 
