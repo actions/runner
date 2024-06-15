@@ -1,3 +1,11 @@
+### v0.0.16
+- fix steps.*.continueOnError / allowed boolean values 
+- make condition stricter
+  - no longer accept `$[ ]` for conditions
+  - check step conditions
+- fix invalid parameter passing to legacy templates using a parameter mapping or omit it
+  - all scalars should be strings like for job/stage templateContext
+
 ### v0.0.15
 - fix variable templates using expressions in it's parameters
 - fix empty dependsOn e.g. empty string is not a missing dependency

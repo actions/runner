@@ -1,0 +1,9 @@
+parameters:
+# 1es specific parameters
+  is1ESPipeline: ''
+
+jobs:
+- job:
+  steps:
+  - ${{ if eq(parameters.is1ESPipeline, '') }}:
+    - 'Illegal entry point, is1ESPipeline is not defined. Repository yaml should not directly reference templates in core-templates folder.': error

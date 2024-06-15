@@ -706,11 +706,11 @@ namespace Runner.Server.Azure.Devops {
                     var paramname = (kv.Key as StringToken)?.Value;
                     if (cparameters?.TryGetValue(paramname, out var value) == true)
                     {
-                        parametersData[paramname] = value.ToContextData();
+                        parametersData[paramname] = ConvertAllScalarsToString(value).ToContextData();
                     }
                     else
                     {
-                        parametersData[paramname] = kv.Value.ToContextData();
+                        parametersData[paramname] = ConvertAllScalarsToString(kv.Value).ToContextData();
                     }
                 }
             }
@@ -776,7 +776,7 @@ namespace Runner.Server.Azure.Devops {
             templateContext.Errors.Check();
             if(!strictParametersCheck && cparameters != null) {
                 foreach(var param in cparameters) {
-                    parametersData[param.Key] = param.Value.ToContextData();
+                    parametersData[param.Key] = ConvertAllScalarsToString(param.Value).ToContextData();
                 }
             }
 
