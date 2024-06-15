@@ -50,7 +50,7 @@ public class TaskMetaData {
         using(var textreader = new StreamReader(stream)) {
             var metaData = JsonConvert.DeserializeObject<TaskMetaData>(textreader.ReadToEnd());
             metaData.ArchivePath = filePath;
-            if(!tasksByNameAndVersion.TryGetValue($"{metaData.Id}@{metaData.Version.Major}", out var ometaData) || ometaData.Version.Minor <= metaData.Version.Minor) {
+            if(!tasksByNameAndVersion.TryGetValue($"{metaData.Id}@{metaData.Version.Major}", out var ometaData) || ometaData.Version.Minor < metaData.Version.Minor || ometaData.Version.Minor == metaData.Version.Minor && ometaData.Version.Patch < metaData.Version.Patch) {
                 tasksByNameAndVersion[$"{metaData.Name}@{metaData.Version.Major}"] = metaData;
                 tasksByNameAndVersion[$"{metaData.Id}@{metaData.Version.Major}"] = metaData;
             }
