@@ -213,10 +213,12 @@ namespace GitHub.Runner.Listener
                             var configFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), config.Key);
                             var configContent = Convert.FromBase64String(config.Value);
 #if OS_WINDOWS
+#pragma warning disable CA1416
                             if (configFile == HostContext.GetConfigFile(WellKnownConfigFile.RSACredentials))
                             {
                                 configContent = ProtectedData.Protect(configContent, null, DataProtectionScope.LocalMachine);
                             }
+#pragma warning restore CA1416
 #endif
                             File.WriteAllBytes(configFile, configContent);
                             File.SetAttributes(configFile, File.GetAttributes(configFile) | FileAttributes.Hidden);
