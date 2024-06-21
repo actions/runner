@@ -29,6 +29,7 @@ namespace GitHub.Runner.Listener
     {
         private IMessageListener _listener;
         private ITerminal _term;
+        private IErrorThrottler _runServiceThrottler;
         private bool _inConfigStage;
         private ManualResetEvent _completedCommand = new(false);
 
@@ -36,6 +37,7 @@ namespace GitHub.Runner.Listener
         {
             base.Initialize(hostContext);
             _term = HostContext.GetService<ITerminal>();
+            _runServiceThrottler = HostContext.CreateService<IErrorThrottler>();
         }
 
         public async Task<int> ExecuteCommand(CommandSettings command)
@@ -565,13 +567,16 @@ namespace GitHub.Runner.Listener
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
                                         try
                                         {
-                                            jobRequestMessage =
-                                            await runServer.GetJobMessageAsync(messageRef.RunnerRequestId,
-                                            messageQueueLoopTokenSource.Token);
+                                            jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                            _runServiceThrottler.Reset();
                                         }
-                                        catch (TaskOrchestrationJobAlreadyAcquiredException)
+                                        catch (Exception ex) when (
+                                            ex is TaskOrchestrationJobNotFoundException ||          // HTTP status 404
+                                            ex is TaskOrchestrationJobAlreadyAcquiredException ||   // HTTP status 409
+                                            ex is TaskOrchestrationJobUnprocessableException)       // HTTP status 422
                                         {
-                                            Trace.Info("Job is already acquired, skip this message.");
+                                            Trace.Info($"Skipping message Job. {ex.Message}");
+                                            await _runServiceThrottler.IncrementAndWaitAsync(messageQueueLoopTokenSource.Token);
                                             continue;
                                         }
                                         catch (Exception ex)
