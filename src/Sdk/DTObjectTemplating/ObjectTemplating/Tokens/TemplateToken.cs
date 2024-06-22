@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.Serialization;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk;
@@ -244,11 +245,11 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                     break;
 
                 case ValueKind.Boolean:
-                    literal = new BooleanToken(FileId, Line, Column, (Boolean)result.Value);
+                    literal = new BooleanToken(FileId, Line, Column, (Boolean)result.Value, context.Flags.HasFlag(ExpressionFlags.DTExpressionsV1) ? String.Format(CultureInfo.InvariantCulture, "{0}", result.Value) : null);
                     break;
 
                 case ValueKind.Number:
-                    literal = new NumberToken(FileId, Line, Column, (Double)result.Value);
+                    literal = new NumberToken(FileId, Line, Column, (Double)result.Value, context.Flags.HasFlag(ExpressionFlags.DTExpressionsV1) ? ((Double)result.Value).ToString(Expressions2.Sdk.Functions.v1.Legacy.ExpressionConstants.NumberFormat, CultureInfo.InvariantCulture) : null);
                     break;
 
                 case ValueKind.String:

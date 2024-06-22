@@ -1,0 +1,18 @@
+variables:
+  BOOL_RAW: ${{ True }}
+  BOOL_EXPECTED: ${{ format(True) }}
+  NUM_RAW: ${{ 45700000000000000000000000000 }}
+  NUM_EXPECTED: ${{ format(45700000000000000000000000000) }}
+  VER_RAW: ${{ 1.2.4.05 }}
+  VER_EXPECTED: ${{ format(1.2.4.05) }}
+
+steps:
+
+- ${{ if ne(variables.BOOL_RAW, variables.BOOL_EXPECTED) }}:
+  - Numer Format should be expected: error
+
+- ${{ if ne(variables.NUM_RAW, variables.NUM_EXPECTED) }}:
+  - Numer Format should be expected: error
+
+- ${{ if ne(variables.VER_RAW, variables.VER_EXPECTED) }}:
+  - Ver Format should be expected: error

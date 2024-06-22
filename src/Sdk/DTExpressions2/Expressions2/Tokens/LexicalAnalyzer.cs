@@ -143,15 +143,28 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
 
             var length = m_index - startIndex;
             var str = m_expression.Substring(startIndex, length);
-            // Azure Pipelines supports version literals
-            if(periods >= 2 && (Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.DTExpressionsV1) {
-                Version version;
-                if (Version.TryParse(str, out version))
-                {
-                    return new Token(TokenKind.String, str, startIndex, new Runner.Server.Azure.Devops.VersionWrapper { Version = version });
+            if((Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.DTExpressionsV1)
+            {
+                // Azure Pipelines supports version literals
+                if(periods >= 2) {
+                    Version version;
+                    if (Version.TryParse(str, out version))
+                    {
+                        return new Token(TokenKind.String, str, startIndex, new Runner.Server.Azure.Devops.VersionWrapper { Version = version });
+                    }
                 }
-            }
 
+                Decimal dec;
+                if (Decimal.TryParse(
+                        str,
+                        NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
+                        CultureInfo.InvariantCulture,
+                        out dec))
+                {
+                    return CreateToken(TokenKind.Number, str, startIndex, (double)dec);
+                }
+                return CreateToken(TokenKind.Unexpected, str, startIndex);
+            }
             var d = ExpressionUtility.ParseNumber(str);
 
             if (Double.IsNaN(d))
