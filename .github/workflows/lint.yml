@@ -1,4 +1,4 @@
-name: Lint
+"name: Lint"
 
 on:
   pull_request:
@@ -20,5 +20,29 @@ jobs:
           DEFAULT_BRANCH: ${{ github.base_ref }}
           EDITORCONFIG_FILE_NAME: .editorconfig
           LINTER_RULES_PATH: /src/
-          VALIDATE_ALL_CODEBASE: false
-          VALIDATE_CSHARP: true
+          VALIDATE_ALL_CODEBASE: "true"
+          VALIDATE_CSHARP: "true"
+            - nombre: Configurar el entorno Node.js
+  usos: acciones/setup-node@v4.0.2
+  con:
+    # Establecer autenticación siempre en npmrc.
+    autenticación siempre: # opcional, el valor predeterminado es falso
+    # Versión Especificación de la versión a utilizar. Ejemplos: 12.x, 10.15.1, >=10.15.0.
+    versión-nodo: # opcional
+    # Archivo que contiene la versión Spec de la versión a utilizar. Ejemplos: paquete.json, .nvmrc, .node-version, .tool-versions.
+    archivo-versión-nodo: # opcional
+    # Arquitectura de destino para que la utilice Node. Ejemplos: x86, x64. Utilizará la arquitectura del sistema de forma predeterminada.
+    arquitectura: # opcional
+    # Configure esta opción si desea que la acción busque la última versión disponible que satisfaga la especificación de versión.
+    comprobar lo último: # opcional
+    # Registro opcional para configurar para la autenticación. Configurará el registro en un archivo .npmrc y .yarnrc a nivel de proyecto, y configurará la autenticación para leer desde env.NODE_AUTH_TOKEN.
+    URL de registro: # opcional
+    # Alcance opcional para la autenticación en registros con alcance. Recurrirá al propietario del repositorio cuando se utilice el registro de paquetes de GitHub (https://npm.pkg.github.com/).
+    alcance: # opcional
+    # Se utiliza para extraer distribuciones de nodos de versiones de nodos. Dado que existe un valor predeterminado, normalmente el usuario no lo proporciona. Al ejecutar esta acción en github.com, el valor predeterminado es suficiente. Cuando se ejecuta en GHES, puede pasar un token de acceso personal para github.com si experimenta una limitación de velocidad.
+    token: # opcional, el valor predeterminado es ${{ github.server_url == 'https://github.com' && github.token || '' }}
+    # Se utiliza para especificar un administrador de paquetes para el almacenamiento en caché en el directorio predeterminado. Valores admitidos: npm, hilo, pnpm.
+    caché: # opcional
+    # Se utiliza para especificar la ruta a un archivo de dependencia: package-lock.json, Yarn.lock, etc. Admite comodines o una lista de nombres de archivos para almacenar en caché múltiples dependencias.
+    ruta-dependencia-caché: # opcional
+          
