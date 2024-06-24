@@ -1,0 +1,13 @@
+parameters:
+- name: name
+  type: string
+  default: "My Pipeline Name"
+
+name: $(Date:yyyyMMdd).$(Rev:r)-${{ parameters.name }}
+
+stages:
+- stage:
+  jobs:
+  - job:
+    steps:
+    - bash: exit 0
