@@ -160,6 +160,27 @@ then
                 exit 1
             fi
         fi
+    elif [ -e /etc/amazon-linux-release ]
+    then
+        echo "The current OS is Fedora based"
+        cat /etc/amazon-linux-release
+        echo "------------------------------"
+
+        command -v dnf
+        if [ $? -eq 0 ]
+        then
+            dnf install -y lttng-ust openssl-libs krb5-libs zlib libicu
+            if [ $? -ne 0 ]
+            then
+                echo "'dnf' failed with exit code '$?'"
+                print_errormessage
+                exit 1
+            fi
+        else
+            echo "Can not find 'dnf'"
+            print_errormessage
+            exit 1
+        fi
     else
         # we might on OpenSUSE
         OSTYPE=$(grep ID_LIKE /etc/os-release | cut -f2 -d=)
