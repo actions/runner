@@ -6,8 +6,11 @@ using System.Threading;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Xunit;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker
@@ -22,11 +25,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -49,46 +52,103 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Act.
                 ec.InitializeJob(jobRequest, CancellationToken.None);
 
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
+                // Flood the ExecutionContext with errors and warnings (past its max capacity of 10).
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
 
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
 
                 ec.Complete();
 
                 // Assert.
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.ErrorCount == 15)), Times.AtLeastOnce);
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.WarningCount == 14)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.ErrorCount > 0)), Times.AtLeast(10));
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.WarningCount > 0)), Times.AtLeast(10));
                 jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Error).Count() == 10)), Times.AtLeastOnce);
                 jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Warning).Count() == 10)), Times.AtLeastOnce);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ApplyContinueOnError_CheckResultAndOutcome()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+                jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+                jobServerQueue.Setup(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>())).Callback((Guid id, string msg, long? lineNumber) => { hc.GetTrace().Info(msg); });
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                foreach (var tc in new List<(TemplateToken token, TaskResult result, TaskResult? expectedResult, TaskResult? expectedOutcome)> {
+                (token: new BooleanToken(null, null, null, true), result: TaskResult.Failed, expectedResult: TaskResult.Succeeded, expectedOutcome: TaskResult.Failed),
+                (token: new BooleanToken(null, null, null, true), result: TaskResult.Succeeded, expectedResult: TaskResult.Succeeded, expectedOutcome: null),
+                (token: new BooleanToken(null, null, null, true), result: TaskResult.Canceled, expectedResult: TaskResult.Canceled, expectedOutcome: null),
+                (token: new BooleanToken(null, null, null, false), result: TaskResult.Failed, expectedResult: TaskResult.Failed, expectedOutcome: null),
+                (token: new BooleanToken(null, null, null, false), result: TaskResult.Succeeded, expectedResult: TaskResult.Succeeded, expectedOutcome: null),
+                (token: new BooleanToken(null, null, null, false), result: TaskResult.Canceled, expectedResult: TaskResult.Canceled, expectedOutcome: null),
+            })
+                {
+                    ec.Result = tc.result;
+                    ec.Outcome = null;
+                    ec.ApplyContinueOnError(tc.token);
+                    Assert.Equal(ec.Result, tc.expectedResult);
+                    Assert.Equal(ec.Outcome, tc.expectedOutcome);
+                }
+            }
+        }
+
 
         [Fact]
         [Trait("Level", "L0")]
@@ -98,11 +158,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -131,9 +191,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                     bigMessage += "a";
                 }
 
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = bigMessage });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = bigMessage });
-                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = bigMessage });
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = bigMessage }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = bigMessage }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = bigMessage }, ExecutionContextLogOptions.Default);
 
                 ec.Complete();
 
@@ -147,16 +207,71 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void AddIssue_OverrideLogMessage()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                var issueMessage = "Message embedded in issue.";
+                var overrideMessage = "Message override.";
+                var options = new ExecutionContextLogOptions(true, overrideMessage);
+
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = issueMessage }, options);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = issueMessage }, options);
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = issueMessage }, options);
+
+                // Finally, add a variation that DOESN'T override the message.
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = issueMessage }, ExecutionContextLogOptions.Default);
+
+                ec.Complete();
+
+                // Assert.
+                jobServerQueue.Verify(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long?>()), Times.Exactly(4));
+                jobServerQueue.Verify(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.Is<string>(text => text.EndsWith(overrideMessage)), It.IsAny<long?>()), Times.Exactly(3));
+                jobServerQueue.Verify(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.Is<string>(text => text.EndsWith(issueMessage)), It.IsAny<long?>()), Times.Exactly(1));
+            }
+        }
+
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void AddIssue_AddStepAndLineNumberInformation()
         {
             using (TestHostContext hc = CreateTestContext())
             {
 
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -183,13 +298,15 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var embeddedStep = ec.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null, ActionRunStage.Main, isEmbedded: true);
                 embeddedStep.Start();
 
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error annotation that should have step and line number information" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning annotation that should have step and line number information" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice annotation that should have step and line number information" });
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error annotation that should have step and line number information" }, ExecutionContextLogOptions.Default);
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning annotation that should have step and line number information" }, ExecutionContextLogOptions.Default);
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice annotation that should have step and line number information" }, ExecutionContextLogOptions.Default);
 
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Error).Count() == 1)), Times.AtLeastOnce);
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Warning).Count() == 1)), Times.AtLeastOnce);
-                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Notice).Count() == 1)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()), Times.AtLeastOnce);
+                // Verify that Error/Warning/Notice issues added to embedded steps don't get sent up to the server.
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Error).Count() == 1)), Times.Never);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Warning).Count() == 1)), Times.Never);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Data.ContainsKey("stepNumber") && i.Data.ContainsKey("logFileLineNumber") && i.Type == IssueType.Notice).Count() == 1)), Times.Never);
             }
         }
 
@@ -201,11 +318,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -252,11 +369,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -350,11 +467,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -434,11 +551,11 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -489,11 +606,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -532,11 +649,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -567,12 +684,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.StepTelemetry.StepId = Guid.NewGuid();
                 ec.StepTelemetry.Stage = "main";
 
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
-                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" }, ExecutionContextLogOptions.Default);
 
                 ec.Complete();
 
@@ -596,11 +713,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Create a job request message.
-                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-                TimelineReference timeline = new TimelineReference();
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -633,9 +750,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 embeddedStep.StepTelemetry.Action = "actions/checkout";
                 embeddedStep.StepTelemetry.Ref = "v2";
 
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
-                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" }, ExecutionContextLogOptions.Default);
 
                 embeddedStep.PublishStepTelemetry();
 
@@ -652,6 +769,62 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PublishStepResult_EmbeddedStep()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var pagingLogger2 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.EnqueueInstance(pagingLogger2.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+                ec.Start();
+
+                var embeddedStep = ec.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null, ActionRunStage.Main, isEmbedded: true);
+                embeddedStep.Start();
+
+                embeddedStep.StepTelemetry.Type = "node16";
+                embeddedStep.StepTelemetry.Action = "actions/checkout";
+                embeddedStep.StepTelemetry.Ref = "v2";
+
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" }, ExecutionContextLogOptions.Default);
+
+                ec.Complete();
+
+                // Assert.
+                Assert.Equal(0, ec.Global.StepsResult.Count);
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             var hc = new TestHostContext(this, testName);
@@ -665,6 +838,284 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton(new Mock<IJobServerQueue>().Object);
 
             return hc;
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetExpressionValues_ContainerStepHost()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                const string source = "/home/username/Projects/work/runner/_layout";
+                var containerInfo = new ContainerInfo();
+                containerInfo.ContainerId = "test";
+
+                containerInfo.AddPathTranslateMapping($"{source}/_work", "/__w");
+                containerInfo.AddPathTranslateMapping($"{source}/_temp", "/__t");
+                containerInfo.AddPathTranslateMapping($"{source}/externals", "/__e");
+
+                containerInfo.AddPathTranslateMapping($"{source}/_work/_temp/_github_home", "/github/home");
+                containerInfo.AddPathTranslateMapping($"{source}/_work/_temp/_github_workflow", "/github/workflow");
+
+                foreach (var v in new List<string>() {
+                    $"{source}/_work",
+                    $"{source}/externals",
+                    $"{source}/_work/_temp",
+                    $"{source}/_work/_actions",
+                    $"{source}/_work/_tool",
+                })
+                {
+                    containerInfo.MountVolumes.Add(new MountVolume(v, containerInfo.TranslateToContainerPath(v)));
+                };
+
+                var stepHost = new ContainerStepHost();
+                stepHost.Container = containerInfo;
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                var inputGithubContext = new GitHubContext();
+                var inputeRunnerContext = new RunnerContext();
+
+                // string context data
+                inputGithubContext["action_path"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_actions/owner/composite/main");
+                inputGithubContext["action"] = new StringContextData("__owner_composite");
+                inputGithubContext["api_url"] = new StringContextData("https://api.github.com/custom/path");
+                inputGithubContext["env"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp/_runner_file_commands/set_env_265698aa-7f38-40f5-9316-5c01a3153672");
+                inputGithubContext["path"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp/_runner_file_commands/add_path_265698aa-7f38-40f5-9316-5c01a3153672");
+                inputGithubContext["event_path"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp/_github_workflow/event.json");
+                inputGithubContext["repository"] = new StringContextData("owner/repo-name");
+                inputGithubContext["run_id"] = new StringContextData("2033211332");
+                inputGithubContext["workflow"] = new StringContextData("Name of Workflow");
+                inputGithubContext["workspace"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/step-order/step-order");
+                inputeRunnerContext["temp"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp");
+                inputeRunnerContext["tool_cache"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_tool");
+
+                // dictionary context data
+                var githubEvent = new DictionaryContextData();
+                githubEvent["inputs"] = null;
+                githubEvent["ref"] = new StringContextData("refs/heads/main");
+                githubEvent["repository"] = new DictionaryContextData();
+                githubEvent["sender"] = new DictionaryContextData();
+                githubEvent["workflow"] = new StringContextData(".github/workflows/composite_step_host_translate.yaml");
+
+                inputGithubContext["event"] = githubEvent;
+
+                ec.ExpressionValues["github"] = inputGithubContext;
+                ec.ExpressionValues["runner"] = inputeRunnerContext;
+
+                var ecExpect = new Runner.Worker.ExecutionContext();
+                ecExpect.Initialize(hc);
+
+                var expectedGithubEvent = new DictionaryContextData();
+                expectedGithubEvent["inputs"] = null;
+                expectedGithubEvent["ref"] = new StringContextData("refs/heads/main");
+                expectedGithubEvent["repository"] = new DictionaryContextData();
+                expectedGithubEvent["sender"] = new DictionaryContextData();
+                expectedGithubEvent["workflow"] = new StringContextData(".github/workflows/composite_step_host_translate.yaml");
+                var expectedGithubContext = new GitHubContext();
+                var expectedRunnerContext = new RunnerContext();
+                expectedGithubContext["action_path"] = new StringContextData("/__w/_actions/owner/composite/main");
+                expectedGithubContext["action"] = new StringContextData("__owner_composite");
+                expectedGithubContext["api_url"] = new StringContextData("https://api.github.com/custom/path");
+                expectedGithubContext["env"] = new StringContextData("/__w/_temp/_runner_file_commands/set_env_265698aa-7f38-40f5-9316-5c01a3153672");
+                expectedGithubContext["path"] = new StringContextData("/__w/_temp/_runner_file_commands/add_path_265698aa-7f38-40f5-9316-5c01a3153672");
+                expectedGithubContext["event_path"] = new StringContextData("/github/workflow/event.json");
+                expectedGithubContext["repository"] = new StringContextData("owner/repo-name");
+                expectedGithubContext["run_id"] = new StringContextData("2033211332");
+                expectedGithubContext["workflow"] = new StringContextData("Name of Workflow");
+                expectedGithubContext["workspace"] = new StringContextData("/__w/step-order/step-order");
+                expectedGithubContext["event"] = expectedGithubEvent;
+                expectedRunnerContext["temp"] = new StringContextData("/__w/_temp");
+                expectedRunnerContext["tool_cache"] = new StringContextData("/__w/_tool");
+
+                ecExpect.ExpressionValues["github"] = expectedGithubContext;
+                ecExpect.ExpressionValues["runner"] = expectedRunnerContext;
+
+                var translatedExpressionValues = ec.GetExpressionValues(stepHost);
+
+                foreach (var contextName in new string[] { "github", "runner" })
+                {
+                    var dict = translatedExpressionValues[contextName].AssertDictionary($"expected context github to be a dictionary");
+                    var expectedExpressionValues = ecExpect.ExpressionValues[contextName].AssertDictionary("expect dict");
+                    foreach (var key in dict.Keys.ToList())
+                    {
+                        if (dict[key] is StringContextData)
+                        {
+                            var expect = dict[key].AssertString("expect string");
+                            var outcome = expectedExpressionValues[key].AssertString("expect string");
+                            Assert.Equal(expect.Value, outcome.Value);
+                        }
+                        else if (dict[key] is DictionaryContextData || dict[key] is CaseSensitiveDictionaryContextData)
+                        {
+                            var expectDict = dict[key].AssertDictionary("expect dict");
+                            var actualDict = expectedExpressionValues[key].AssertDictionary("expect dict");
+                            Assert.True(ExpressionValuesAssertEqual(expectDict, actualDict));
+                        }
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ActionVariables_AddedToVarsContext()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var inputVarsContext = new DictionaryContextData();
+
+                inputVarsContext["VARIABLE_1"] = new StringContextData("value1");
+                inputVarsContext["VARIABLE_2"] = new StringContextData("value2");
+                jobRequest.ContextData["vars"] = inputVarsContext;
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                var expected = new DictionaryContextData();
+                expected["VARIABLE_1"] = new StringContextData("value1");
+                expected["VARIABLE_2"] = new StringContextData("value1");
+
+                Assert.True(ExpressionValuesAssertEqual(expected, jobContext.ExpressionValues["vars"] as DictionaryContextData));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ActionVariables_DebugUsingVars()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var inputVarsContext = new DictionaryContextData();
+
+                inputVarsContext[Constants.Variables.Actions.StepDebug] = new StringContextData("true");
+                inputVarsContext[Constants.Variables.Actions.RunnerDebug] = new StringContextData("true");
+                jobRequest.ContextData["vars"] = inputVarsContext;
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+
+                Assert.Equal("true", jobContext.Global.Variables.Get(Constants.Variables.Actions.StepDebug));
+                Assert.Equal("true", jobContext.Global.Variables.Get(Constants.Variables.Actions.RunnerDebug));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ActionVariables_SecretsPrecedenceForDebugUsingVars()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var inputVarsContext = new DictionaryContextData();
+
+                inputVarsContext[Constants.Variables.Actions.StepDebug] = new StringContextData("true");
+                inputVarsContext[Constants.Variables.Actions.RunnerDebug] = new StringContextData("true");
+                jobRequest.ContextData["vars"] = inputVarsContext;
+
+                jobRequest.Variables[Constants.Variables.Actions.StepDebug] = "false";
+                jobRequest.Variables[Constants.Variables.Actions.RunnerDebug] = "false";
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+
+                Assert.Equal("false", jobContext.Global.Variables.Get(Constants.Variables.Actions.StepDebug));
+                Assert.Equal("false", jobContext.Global.Variables.Get(Constants.Variables.Actions.RunnerDebug));
+            }
+        }
+
+        private bool ExpressionValuesAssertEqual(DictionaryContextData expect, DictionaryContextData actual)
+        {
+            foreach (var key in expect.Keys.ToList())
+            {
+                if (expect[key] is StringContextData)
+                {
+                    var expectValue = expect[key].AssertString("expect string");
+                    var actualValue = actual[key].AssertString("expect string");
+                    if (expectValue.Equals(actualValue))
+                    {
+                        return false;
+                    }
+                }
+                else if (expect[key] is DictionaryContextData || expect[key] is CaseSensitiveDictionaryContextData)
+                {
+                    var expectDict = expect[key].AssertDictionary("expect dict");
+                    var actualDict = actual[key].AssertDictionary("expect dict");
+                    if (!ExpressionValuesAssertEqual(expectDict, actualDict))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
     }
 }

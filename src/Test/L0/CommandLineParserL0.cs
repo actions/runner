@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common.Tests
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
+                CommandLineParser clp = new(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed");
 
                 Assert.NotNull(clp);
@@ -30,7 +30,7 @@ namespace GitHub.Runner.Common.Tests
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
-                CommandLineParser clp = new CommandLineParser(
+                CommandLineParser clp = new(
                     hc,
                     secretArgNames: new[] { "SecretArg1", "SecretArg2" });
 
@@ -61,14 +61,14 @@ namespace GitHub.Runner.Common.Tests
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
+                CommandLineParser clp = new(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[] { "cmd1", "cmd2", "--arg1", "arg1val", "badcmd" });
                 trace.Info("Parsed");
 
                 trace.Info("Commands: {0}", clp.Commands.Count);
-                Assert.True(clp.Commands.Count == 2);
+                Assert.Equal(2, clp.Commands.Count);
             }
         }
 
@@ -81,14 +81,14 @@ namespace GitHub.Runner.Common.Tests
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
+                CommandLineParser clp = new(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[] { "cmd1", "--arg1", "arg1val", "--arg2", "arg2val" });
                 trace.Info("Parsed");
 
                 trace.Info("Args: {0}", clp.Args.Count);
-                Assert.True(clp.Args.Count == 2);
+                Assert.Equal(2, clp.Args.Count);
                 Assert.True(clp.Args.ContainsKey("arg1"));
                 Assert.Equal("arg1val", clp.Args["arg1"]);
                 Assert.True(clp.Args.ContainsKey("arg2"));
@@ -105,14 +105,14 @@ namespace GitHub.Runner.Common.Tests
             {
                 Tracing trace = hc.GetTrace();
 
-                CommandLineParser clp = new CommandLineParser(hc, secretArgNames: new string[0]);
+                CommandLineParser clp = new(hc, secretArgNames: new string[0]);
                 trace.Info("Constructed.");
 
                 clp.Parse(new string[] { "cmd1", "--flag1", "--arg1", "arg1val", "--flag2" });
                 trace.Info("Parsed");
 
                 trace.Info("Args: {0}", clp.Flags.Count);
-                Assert.True(clp.Flags.Count == 2);
+                Assert.Equal(2, clp.Flags.Count);
                 Assert.Contains("flag1", clp.Flags);
                 Assert.Contains("flag2", clp.Flags);
             }
@@ -120,7 +120,7 @@ namespace GitHub.Runner.Common.Tests
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
-            TestHostContext hc = new TestHostContext(this, testName);
+            TestHostContext hc = new(this, testName);
             return hc;
         }
     }

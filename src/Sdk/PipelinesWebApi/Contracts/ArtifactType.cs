@@ -11,4 +11,4 @@ namespace GitHub.Actions.Pipelines.WebApi
         Unknown = 0,
         Actions_Storage = 1
     }
-} 
+}

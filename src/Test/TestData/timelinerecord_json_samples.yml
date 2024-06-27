@@ -1,0 +1,70 @@
+minimal: |
+  { "Name": "minimal" }
+invalid-attempt-value: |
+  {
+    "Name": "invalid-attempt-value",
+    "Attempt": -99
+  }
+zero-attempt-value: |
+  {
+    "Name": "zero-attempt-value",
+    "Attempt": 0
+  }
+legacy-nulls: |
+  {
+    "Name": "legacy-nulls",
+    "ErrorCount": null,
+    "WarningCount": null,
+    "NoticeCount": null
+  }
+missing-counts: |
+  {
+    "Name": "missing-counts"
+  }
+non-zero-counts: |
+  {
+    "Name": "non-zero-counts",
+    "ErrorCount": 10,
+    "WarningCount": 20,
+    "NoticeCount": 30
+  }
+explicit-null-collections: |
+  {
+    "Name": "explicit-null-collections",
+    "Issues": null,
+    "PreviousAttempts": null,
+    "Variables": null
+  }
+lean: |
+  {
+      "Id": "00000000-0000-0000-0000-000000000000",
+      "Name": "lean",
+      "LastModified": "\/Date(1679073003252+0000)\/",
+      "Issues": [
+          {
+              "Type": 0,
+              "Category": null,
+              "Message": null,
+              "IsInfrastructureIssue": null
+          }
+      ],
+      "Variables": [
+          { "Key": "x", "Value": { "Value": "1" } },
+          { "Key": "y", "Value": { "Value": "2" } },
+          { "Key": "z", "Value": { "Value": "3" } }
+      ],
+      "Attempt": 4,
+      "PreviousAttempts": [
+          { "Attempt": 1 },
+          { "Attempt": 2 },
+          { "Attempt": 3 }
+      ]
+  }
+duplicate-variable-keys: |
+  {
+      "Name": "duplicate-variable-keys",
+      "Variables": [
+          { "Key": "aaa", "Value": { "Value": "a.1" } },
+          { "Key": "AAA", "Value": { "Value": "a.2" } }
+      ]
+  }

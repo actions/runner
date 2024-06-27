@@ -316,7 +316,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             if (String.IsNullOrEmpty(result.Image))
             {
-                context.Error(value, "Container image cannot be empty");
+                return null;
             }
 
             return result;
@@ -344,6 +344,39 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
 
             return result;
+        }
+
+        internal static Snapshot ConvertToJobSnapshotRequest(TemplateContext context, TemplateToken token)
+        {
+            string imageName = null;
+            if (token is StringToken snapshotStringLiteral)
+            {
+                imageName = snapshotStringLiteral.Value;
+            }
+            else
+            {
+                var snapshotMapping = token.AssertMapping($"{PipelineTemplateConstants.Snapshot}");
+                foreach (var snapshotPropertyPair in snapshotMapping)
+                {
+                    var propertyName = snapshotPropertyPair.Key.AssertString($"{PipelineTemplateConstants.Snapshot} key");
+                    switch (propertyName.Value)
+                    {
+                        case PipelineTemplateConstants.ImageName:
+                            imageName = snapshotPropertyPair.Value.AssertString($"{PipelineTemplateConstants.Snapshot} {propertyName}").Value;
+                            break;
+                        default:
+                            propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Snapshot} key");
+                            break;
+                    }
+                }
+            }
+
+            if (String.IsNullOrEmpty(imageName))
+            {
+                return null;
+            }
+
+            return new Snapshot(imageName);
         }
 
         private static ActionStep ConvertToStep(
@@ -631,6 +664,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Vars),
         };
         private static readonly INamedValueInfo[] s_stepNamedValues = new INamedValueInfo[]
         {
@@ -643,6 +677,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Env),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Vars),
         };
         private static readonly IFunctionInfo[] s_stepConditionFunctions = new IFunctionInfo[]
         {

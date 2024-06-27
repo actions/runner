@@ -1,6 +1,4 @@
 ﻿using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,7 +14,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void Constructor_AppliesMaskHints()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var copy = new Dictionary<string, VariableValue>
@@ -38,7 +36,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void Constructor_HandlesNullValue()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var copy = new Dictionary<string, VariableValue>
@@ -61,7 +59,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void Constructor_SetsNullAsEmpty()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var copy = new Dictionary<string, VariableValue>
@@ -82,7 +80,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void Constructor_SetsOrdinalIgnoreCaseComparer()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 CultureInfo currentCulture = CultureInfo.CurrentCulture;
@@ -117,7 +115,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void Constructor_SkipVariableWithEmptyName()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var copy = new Dictionary<string, VariableValue>
@@ -141,7 +139,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void Get_ReturnsNullIfNotFound()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var variables = new Variables(hc, new Dictionary<string, VariableValue>());
@@ -159,7 +157,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void GetBoolean_DoesNotThrowWhenNull()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var variables = new Variables(hc, new Dictionary<string, VariableValue>());
@@ -177,7 +175,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void GetEnum_DoesNotThrowWhenNull()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 // Arrange.
                 var variables = new Variables(hc, new Dictionary<string, VariableValue>());

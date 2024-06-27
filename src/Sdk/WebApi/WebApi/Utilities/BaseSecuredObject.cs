@@ -19,7 +19,7 @@ namespace GitHub.Services.WebApi
                 this.m_token = securedObject.GetToken();
             }
         }
-        
+
         Guid ISecuredObject.NamespaceId
         {
             get

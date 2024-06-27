@@ -1,8 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
@@ -13,7 +11,8 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -86,7 +85,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
-                
+
                 ExecutionContext.StepTelemetry.HasRunsStep = hasRunsStep;
                 ExecutionContext.StepTelemetry.HasUsesStep = hasUsesStep;
                 ExecutionContext.StepTelemetry.StepCount = steps.Count;
@@ -240,7 +239,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Set action_status to the success of the current composite action
                 var actionResult = ExecutionContext.Result?.ToActionResult() ?? ActionResult.Success;
-                step.ExecutionContext.SetGitHubContext("action_status", actionResult.ToString());
+                step.ExecutionContext.SetGitHubContext("action_status", actionResult.ToString().ToLowerInvariant());
 
                 // Initialize env context
                 Trace.Info("Initialize Env context for embedded step");
@@ -267,7 +266,11 @@ namespace GitHub.Runner.Worker.Handlers
 #endif
                     foreach (var pair in dict)
                     {
-                        envContext[pair.Key] = pair.Value;
+                        // Skip global env, otherwise we merge an outdated global env
+                        if (ExecutionContext.StepEnvironmentOverrides.Contains(pair.Key))
+                        {
+                            envContext[pair.Key] = pair.Value;
+                        }
                     }
                 }
 
@@ -276,11 +279,13 @@ namespace GitHub.Runner.Worker.Handlers
                     if (step is IActionRunner actionStep)
                     {
                         // Evaluate and merge embedded-step env
+                        step.ExecutionContext.StepEnvironmentOverrides.AddRange(ExecutionContext.StepEnvironmentOverrides);
                         var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
                         var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var env in actionEnvironment)
                         {
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                            step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
                         }
                     }
                 }
@@ -289,7 +294,7 @@ namespace GitHub.Runner.Worker.Handlers
                     // Evaluation error
                     Trace.Info("Caught exception from expression for embedded step.env");
                     step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Complete(TaskResult.Failed);
+                    SetStepConclusion(step, TaskResult.Failed);
                 }
 
                 // Register Callback
@@ -305,6 +310,7 @@ namespace GitHub.Runner.Worker.Handlers
                             // Mark job as cancelled
                             ExecutionContext.Root.Result = TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                            step.ExecutionContext.SetGitHubContext("action_status", (ExecutionContext.Root.Result?.ToActionResult() ?? ActionResult.Cancelled).ToString().ToLowerInvariant());
 
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                             var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
@@ -407,7 +413,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 // Update context
-                SetStepsContext(step);
+                step.ExecutionContext.UpdateGlobalStepsContext();
             }
         }
 
@@ -452,6 +458,8 @@ namespace GitHub.Runner.Worker.Handlers
                 SetStepConclusion(step, Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value));
             }
 
+            step.ExecutionContext.ApplyContinueOnError(step.ContinueOnError);
+
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
             step.ExecutionContext.Debug($"Finished: {step.DisplayName}");
             step.ExecutionContext.PublishStepTelemetry();
@@ -460,16 +468,7 @@ namespace GitHub.Runner.Worker.Handlers
         private void SetStepConclusion(IStep step, TaskResult result)
         {
             step.ExecutionContext.Result = result;
-            SetStepsContext(step);
-        }
-        private void SetStepsContext(IStep step)
-        {
-            if (!string.IsNullOrEmpty(step.ExecutionContext.ContextName) && !step.ExecutionContext.ContextName.StartsWith("__", StringComparison.Ordinal))
-            {
-                // TODO: when we support continue on error, we may need to do logic here to change conclusion based on the continue on error result
-                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
-                step.ExecutionContext.Global.StepsContext.SetConclusion(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
-            }
+            step.ExecutionContext.UpdateGlobalStepsContext();
         }
     }
 }

@@ -21,9 +21,9 @@ namespace GitHub.Runner.Worker
     public sealed class ActionCommandManager : RunnerService, IActionCommandManager
     {
         private const string _stopCommand = "stop-commands";
-        private readonly Dictionary<string, IActionCommandExtension> _commandExtensions = new Dictionary<string, IActionCommandExtension>(StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<string> _registeredCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private readonly object _commandSerializeLock = new object();
+        private readonly Dictionary<string, IActionCommandExtension> _commandExtensions = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _registeredCommands = new(StringComparer.OrdinalIgnoreCase);
+        private readonly object _commandSerializeLock = new();
         private bool _stopProcessCommand = false;
         private string _stopToken = null;
 
@@ -276,7 +276,7 @@ namespace GitHub.Runner.Worker
                         Message = $"Can't update {blocked} environment variable using ::set-env:: command."
                     };
                     issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{envName}";
-                    context.AddIssue(issue);
+                    context.AddIssue(issue, ExecutionContextLogOptions.Default);
 
                     return;
                 }
@@ -307,6 +307,17 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
+            if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateStepOutputCommands") ?? false)
+            {
+                var issue = new Issue()
+                {
+                    Type = IssueType.Warning,
+                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
+                };
+                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
+                context.AddIssue(issue, ExecutionContextLogOptions.Default);
+            }
+
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
                 throw new Exception("Required field 'name' is missing in ##[set-output] command.");
@@ -331,6 +342,17 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
+            if (context.Global.Variables.GetBoolean("DistributedTask.DeprecateStepOutputCommands") ?? false)
+            {
+                var issue = new Issue()
+                {
+                    Type = IssueType.Warning,
+                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
+                };
+                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
+                context.AddIssue(issue, ExecutionContextLogOptions.Default);
+            }
+
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
             {
                 throw new Exception("Required field 'name' is missing in ##[save-state] command.");
@@ -585,6 +607,8 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, ContainerInfo container)
         {
+            ValidateLinesAndColumns(command, context);
+
             command.Properties.TryGetValue(IssueCommandProperties.File, out string file);
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
@@ -594,7 +618,7 @@ namespace GitHub.Runner.Worker
                 context.Debug("Enhanced Annotations not enabled on the server. The 'title', 'end_line', and 'end_column' fields are unsupported.");
             }
 
-            Issue issue = new Issue()
+            Issue issue = new()
             {
                 Category = "General",
                 Type = this.Type,
@@ -642,7 +666,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            context.AddIssue(issue);
+            context.AddIssue(issue, ExecutionContextLogOptions.Default);
         }
 
         public static void ValidateLinesAndColumns(ActionCommand command, IExecutionContext context)

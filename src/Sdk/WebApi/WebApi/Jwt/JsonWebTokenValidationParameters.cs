@@ -85,8 +85,8 @@ namespace GitHub.Services.WebApi.Jwt
 
         public string IdentityNameClaimType
         {
-            get; 
-            set; 
+            get;
+            set;
         }
     }
 }

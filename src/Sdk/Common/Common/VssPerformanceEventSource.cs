@@ -79,7 +79,7 @@ namespace GitHub.Services.Common
                 fixed (char* pcSt = st)
                 {
                     dataDesc[1].DataPointer = (IntPtr)(pcSt);
-                
+
                     WriteEventCore(eventId, parameters, dataDesc);
                 }
             }
@@ -224,7 +224,7 @@ namespace GitHub.Services.Common
                 fixed (char* pcst1 = st1, pcst2 = st2, pcst3 = st3)
                 {
                     dataDesc[1].DataPointer = (IntPtr)(pcst1);
-                    dataDesc[2].DataPointer = (IntPtr)(pcst2);   
+                    dataDesc[2].DataPointer = (IntPtr)(pcst2);
                     dataDesc[3].DataPointer = (IntPtr)(pcst3);
 
                     WriteEventCore(eventId, parameters, dataDesc);
@@ -312,10 +312,10 @@ namespace GitHub.Services.Common
                 dataDesc[3].Size = sizeof(long);
 
                 fixed (char* pcst1 = st1, pcst2 = st2)
-                {    
+                {
                     dataDesc[1].DataPointer = (IntPtr)(pcst1);
                     dataDesc[2].DataPointer = (IntPtr)(pcst2);
- 
+
                     WriteEventCore(eventId, parameters, dataDesc);
                 }
             }

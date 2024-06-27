@@ -16,7 +16,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task SuccessReadProcessEnv()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -27,9 +27,9 @@ namespace GitHub.Runner.Common.Tests
                 try
                 {
 #if OS_WINDOWS
-                    string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node12\bin\node");
+                    string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node16\bin\node");
 #else
-                    string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node12/bin/node");
+                    string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node16/bin/node");
                     hc.EnqueueInstance<IProcessInvoker>(new ProcessInvokerWrapper());
 #endif
                     var startInfo = new ProcessStartInfo(node, "-e \"setTimeout(function(){{}}, 15 * 1000);\"");
@@ -58,7 +58,7 @@ namespace GitHub.Runner.Common.Tests
                         trace.Error(ex);
                     }
 
-                    Assert.True(false, "Fail to retrive process environment variable.");
+                    Assert.Fail("Failed to retrieve process environment variable.");
                 }
                 finally
                 {

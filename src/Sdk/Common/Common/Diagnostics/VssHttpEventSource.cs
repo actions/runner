@@ -352,6 +352,18 @@ namespace GitHub.Services.Common.Diagnostics
         }
 
         [NonEvent]
+        public void AuthenticationFailedOnFirstRequest(
+            VssTraceActivity activity,
+            HttpResponseMessage response)
+        {
+            if (IsEnabled())
+            {
+                SetActivityId(activity);
+                WriteMessageEvent((Int32)response.StatusCode, response.Headers.ToString(), this.AuthenticationFailedOnFirstRequest);
+            }
+        }
+
+        [NonEvent]
         public void IssuedTokenProviderCreated(
             VssTraceActivity activity,
             IssuedTokenProvider provider)
@@ -451,7 +463,7 @@ namespace GitHub.Services.Common.Diagnostics
         [NonEvent]
         public void IssuedTokenInvalidated(
             VssTraceActivity activity,
-            IssuedTokenProvider provider, 
+            IssuedTokenProvider provider,
             IssuedToken token)
         {
             if (IsEnabled())
@@ -813,7 +825,7 @@ namespace GitHub.Services.Common.Diagnostics
         [Event(31, Keywords = Keywords.Authentication, Level = EventLevel.Warning, Task = Tasks.Authentication, Opcode = EventOpcode.Info, Message = "Retrieving an AAD auth token took a long time ({0} seconds)")]
         public void AuthorizationDelayed(string timespan)
         {
-            if(IsEnabled(EventLevel.Warning, Keywords.Authentication))
+            if (IsEnabled(EventLevel.Warning, Keywords.Authentication))
             {
                 WriteEvent(31, timespan);
             }
@@ -825,6 +837,17 @@ namespace GitHub.Services.Common.Diagnostics
             if (IsEnabled(EventLevel.Informational, Keywords.Authentication))
             {
                 WriteEvent(32, aadCorrelationId);
+            }
+        }
+
+        [Event(33, Keywords = Keywords.Authentication, Level = EventLevel.Verbose, Task = Tasks.HttpRequest, Message = "Authentication failed on first request with status code {0}.%n{1}")]
+        private void AuthenticationFailedOnFirstRequest(
+            Int32 statusCode,
+            String headers)
+        {
+            if (IsEnabled(EventLevel.Verbose, Keywords.Authentication))
+            {
+                WriteEvent(33, statusCode, headers);
             }
         }
 

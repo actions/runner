@@ -10,7 +10,7 @@ on:
     - '**.md'
   pull_request:
     branches:
-    - '*'
+    - '**'
     paths-ignore:
     - '**.md'
 
@@ -18,7 +18,7 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -36,13 +36,21 @@ jobs:
           os: macOS-latest
           devScript: ./dev.sh
 
+        - runtime: osx-arm64
+          os: macOS-latest
+          devScript: ./dev.sh
+
         - runtime: win-x64
           os: windows-2019
           devScript: ./dev
 
+        - runtime: win-arm64
+          os: windows-latest
+          devScript: ./dev
+
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     # Build runner layout
     - name: Build & Layout Release
@@ -50,35 +58,12 @@ jobs:
         ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
       working-directory: src
 
-    # Check runtime/externals hash
-    - name: Compute/Compare runtime and externals Hash
-      shell: bash
-      run: |
-        echo "Current dotnet runtime hash result: $DOTNET_RUNTIME_HASH"
-        echo "Current Externals hash result: $EXTERNALS_HASH"
-
-        NeedUpdate=0
-        if [ "$EXTERNALS_HASH" != "$(cat ./src/Misc/contentHash/externals/${{ matrix.runtime }})" ] ;then
-          echo Hash mismatch, Update ./src/Misc/contentHash/externals/${{ matrix.runtime }} to $EXTERNALS_HASH
-          NeedUpdate=1
-        fi
-
-        if [ "$DOTNET_RUNTIME_HASH" != "$(cat ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }})" ] ;then
-          echo Hash mismatch, Update ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }} to $DOTNET_RUNTIME_HASH
-          NeedUpdate=1
-        fi
-
-        exit $NeedUpdate
-      env:
-        DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
-        EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
-
     # Run tests
     - name: L0
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64'
 
     # Create runner package tar.gz/zip
     - name: Package Release
@@ -93,8 +78,5 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: runner-package-${{ matrix.runtime }}
-        path: | 
+        path: |
           _package
-          _package_trims/trim_externals
-          _package_trims/trim_runtime
-          _package_trims/trim_runtime_externals

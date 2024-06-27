@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -180,6 +180,47 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("=abc", _executionContext.Object.Global.EnvironmentVariables["MY_ENV"]);
                 Assert.Equal("def=ghi", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_2"]);
                 Assert.Equal("jkl=", _executionContext.Object.Global.EnvironmentVariables["MY_ENV_3"]);
+            }
+        }
+
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_BlockListItemsFiltered()
+        {
+            using (var hostContext = Setup())
+            {
+                var stateFile = Path.Combine(_rootDirectory, "simple");
+                var content = new List<string>
+                {
+                    "NODE_OPTIONS=asdf",
+                };
+                WriteContent(stateFile, content);
+                _setEnvFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                Assert.Equal(1, _issues.Count);
+                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_BlockListItemsFiltered_Heredoc()
+        {
+            using (var hostContext = Setup())
+            {
+                var stateFile = Path.Combine(_rootDirectory, "simple");
+                var content = new List<string>
+                {
+                    "NODE_OPTIONS<<EOF",
+                    "asdf",
+                    "EOF",
+                };
+                WriteContent(stateFile, content);
+                _setEnvFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                Assert.Equal(1, _issues.Count);
+                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
             }
         }
 
@@ -411,12 +452,16 @@ namespace GitHub.Runner.Common.Tests.Worker
                     EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
                     WriteDebug = true,
                 });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<string>()))
-                .Callback((DTWebApi.Issue issue, string logMessage) =>
+            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<ExecutionContextLogOptions>()))
+                .Callback((DTWebApi.Issue issue, ExecutionContextLogOptions logOptions) =>
                 {
-                    _issues.Add(new Tuple<DTWebApi.Issue, string>(issue, logMessage));
-                    var message = !string.IsNullOrEmpty(logMessage) ? logMessage : issue.Message;
-                    _trace.Info($"Issue '{issue.Type}': {message}");
+                    var resolvedMessage = issue.Message;
+                    if (logOptions.WriteToLog && !string.IsNullOrEmpty(logOptions.LogMessageOverride))
+                    {
+                        resolvedMessage = logOptions.LogMessageOverride;
+                    }
+                    _issues.Add(new(issue, resolvedMessage));
+                    _trace.Info($"Issue '{issue.Type}': {resolvedMessage}");
                 });
             _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((string tag, string message) =>

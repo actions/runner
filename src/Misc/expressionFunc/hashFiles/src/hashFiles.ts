@@ -1,9 +1,9 @@
-import * as glob from '@actions/glob'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
+import * as glob from '@actions/glob'
+import * as path from 'path'
 import * as stream from 'stream'
 import * as util from 'util'
-import * as path from 'path'
 
 async function run(): Promise<void> {
   // arg0 -> node
@@ -52,12 +52,13 @@ async function run(): Promise<void> {
   }
 }
 
-run()
-  .then(out => {
+;(async () => {
+  try {
+    const out = await run()
     console.log(out)
     process.exit(0)
-  })
-  .catch(err => {
+  } catch (err) {
     console.error(err)
     process.exit(1)
-  })
+  }
+})()

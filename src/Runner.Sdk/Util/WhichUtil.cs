@@ -1,7 +1,6 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
-using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Sdk
 {
@@ -10,7 +9,7 @@ namespace GitHub.Runner.Sdk
         public static string Which(string command, bool require = false, ITraceWriter trace = null, string prependPath = null)
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
-            trace?.Info($"Which: '{command}'");
+            trace?.Info($"Which2: '{command}'");
             if (Path.IsPathFullyQualified(command) && File.Exists(command))
             {
                 trace?.Info($"Fully qualified path: '{command}'");
@@ -37,7 +36,6 @@ namespace GitHub.Runner.Sdk
             {
                 if (!string.IsNullOrEmpty(pathSegment) && Directory.Exists(pathSegment))
                 {
-                    string[] matches = null;
 #if OS_WINDOWS
                     string pathExt = Environment.GetEnvironmentVariable("PATHEXT");
                     if (string.IsNullOrEmpty(pathExt))
@@ -53,18 +51,19 @@ namespace GitHub.Runner.Sdk
                     {
                         try
                         {
-                            matches = Directory.GetFiles(pathSegment, command);
+                            foreach (var file in Directory.EnumerateFiles(pathSegment, command))
+                            {
+                                if (IsPathValid(file, trace))
+                                {
+                                    trace?.Info($"Location: '{file}'");
+                                    return file;
+                                }
+                            }
                         }
                         catch (UnauthorizedAccessException ex)
                         {
                             trace?.Info("Ignore UnauthorizedAccess exception during Which.");
                             trace?.Verbose(ex.ToString());
-                        }
-
-                        if (matches != null && matches.Length > 0)
-                        {
-                            trace?.Info($"Location: '{matches.First()}'");
-                            return matches.First();
                         }
                     }
                     else
@@ -73,43 +72,42 @@ namespace GitHub.Runner.Sdk
                         searchPattern = StringUtil.Format($"{command}.*");
                         try
                         {
-                            matches = Directory.GetFiles(pathSegment, searchPattern);
+                            foreach (var file in Directory.EnumerateFiles(pathSegment, searchPattern))
+                            {
+                                // add extension.
+                                for (int i = 0; i < pathExtSegments.Length; i++)
+                                {
+                                    string fullPath = Path.Combine(pathSegment, $"{command}{pathExtSegments[i]}");
+                                    if (string.Equals(file, fullPath, StringComparison.OrdinalIgnoreCase) && IsPathValid(fullPath, trace))
+                                    {
+                                        trace?.Info($"Location: '{fullPath}'");
+                                        return fullPath;
+                                    }
+                                }
+                            }
                         }
                         catch (UnauthorizedAccessException ex)
                         {
                             trace?.Info("Ignore UnauthorizedAccess exception during Which.");
                             trace?.Verbose(ex.ToString());
                         }
-
-                        if (matches != null && matches.Length > 0)
-                        {
-                            // add extension.
-                            for (int i = 0; i < pathExtSegments.Length; i++)
-                            {
-                                string fullPath = Path.Combine(pathSegment, $"{command}{pathExtSegments[i]}");
-                                if (matches.Any(p => p.Equals(fullPath, StringComparison.OrdinalIgnoreCase)))
-                                {
-                                    trace?.Info($"Location: '{fullPath}'");
-                                    return fullPath;
-                                }
-                            }
-                        }
                     }
 #else
                     try
                     {
-                        matches = Directory.GetFiles(pathSegment, command);
+                        foreach (var file in Directory.EnumerateFiles(pathSegment, command))
+                        {
+                            if (IsPathValid(file, trace))
+                            {
+                                trace?.Info($"Location: '{file}'");
+                                return file;
+                            }
+                        }
                     }
                     catch (UnauthorizedAccessException ex)
                     {
                         trace?.Info("Ignore UnauthorizedAccess exception during Which.");
                         trace?.Verbose(ex.ToString());
-                    }
-
-                    if (matches != null && matches.Length > 0)
-                    {
-                        trace?.Info($"Location: '{matches.First()}'");
-                        return matches.First();
                     }
 #endif
                 }
@@ -128,6 +126,21 @@ namespace GitHub.Runner.Sdk
             }
 
             return null;
+        }
+
+        // checks if the file is a symlink and if the symlink`s target exists.
+        private static bool IsPathValid(string path, ITraceWriter trace = null)
+        {
+            var fileInfo = new FileInfo(path);
+            var linkTargetFullPath = fileInfo.Directory?.FullName + Path.DirectorySeparatorChar + fileInfo.LinkTarget;
+            if (fileInfo.LinkTarget == null ||
+                File.Exists(linkTargetFullPath) ||
+                File.Exists(fileInfo.LinkTarget))
+            {
+                return true;
+            }
+            trace?.Info($"the target '{fileInfo.LinkTarget}' of the symbolic link '{path}', does not exist");
+            return false;
         }
     }
 }

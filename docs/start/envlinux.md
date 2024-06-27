@@ -5,9 +5,9 @@
 ## Supported Distributions and Versions
 
 x64
-  - Red Hat Enterprise Linux 7
-  - CentOS 7
-  - Oracle Linux 7
+  - Red Hat Enterprise Linux 7+
+  - CentOS 7+
+  - Oracle Linux 7+
   - Fedora 29+
   - Debian 9+
   - Ubuntu 16.04+
@@ -34,7 +34,7 @@ The `installdependencies.sh` script should install all required dependencies on 
 
 Debian based OS (Debian, Ubuntu, Linux Mint)
 
-- liblttng-ust0
+- liblttng-ust1 or liblttng-ust0
 - libkrb5-3
 - zlib1g
 - libssl1.1, libssl1.0.2 or libssl1.0.0

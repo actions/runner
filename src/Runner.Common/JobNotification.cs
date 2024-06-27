@@ -1,10 +1,7 @@
 ﻿using System;
-using System.IO;
-using System.IO.Pipes;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace GitHub.Runner.Common
@@ -40,10 +37,10 @@ namespace GitHub.Runner.Common
         {
             ConnectMonitor(monitorSocketAddress);
         }
-        
+
         private void StartMonitor(Guid jobId, string accessToken, Uri serverUri)
         {
-            if(String.IsNullOrEmpty(accessToken)) 
+            if (String.IsNullOrEmpty(accessToken))
             {
                 Trace.Info("No access token could be retrieved to start the monitor.");
                 return;
@@ -85,7 +82,7 @@ namespace GitHub.Runner.Common
                     _monitorSocket.Send(Encoding.UTF8.GetBytes(message));
                     Trace.Info("Finished EndMonitor writing to socket");
 
-                    await Task.Delay(TimeSpan.FromSeconds(2));                    
+                    await Task.Delay(TimeSpan.FromSeconds(2));
                 }
             }
             catch (SocketException e)

@@ -18,10 +18,10 @@ namespace GitHub.Runner.Listener.Configuration
 
     public class CredentialManager : RunnerService, ICredentialManager
     {
-        public static readonly Dictionary<string, Type> CredentialTypes = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase)
+        public static readonly Dictionary<string, Type> CredentialTypes = new(StringComparer.OrdinalIgnoreCase)
         {
-            { Constants.Configuration.OAuth, typeof(OAuthCredential)},
-            { Constants.Configuration.OAuthAccessToken, typeof(OAuthAccessTokenCredential)},
+            { Constants.Configuration.OAuth, typeof(OAuthCredential) },
+            { Constants.Configuration.OAuthAccessToken, typeof(OAuthAccessTokenCredential) },
         };
 
         public ICredentialProvider GetCredentialProvider(string credType)
@@ -46,7 +46,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             if (!store.HasCredentials())
             {
-                throw new InvalidOperationException("Credentials not stored.  Must reconfigure.");
+                throw new InvalidOperationException("Credentials not stored. Must reconfigure.");
             }
 
             CredentialData credData = store.GetCredentials();
@@ -92,6 +92,9 @@ namespace GitHub.Runner.Listener.Configuration
 
         [DataMember(Name = "token")]
         public string Token { get; set; }
+
+        [DataMember(Name = "use_v2_flow")]
+        public bool UseV2Flow { get; set; }
 
         public VssCredentials ToVssCredentials()
         {

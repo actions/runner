@@ -2,9 +2,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using GitHub.DistributedTask.WebApi;
 using GitHub.DistributedTask.Logging;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
@@ -14,9 +14,9 @@ namespace GitHub.Runner.Worker
     public sealed class Variables
     {
         private readonly IHostContext _hostContext;
-        private readonly ConcurrentDictionary<string, Variable> _variables = new ConcurrentDictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, Variable> _variables = new(StringComparer.OrdinalIgnoreCase);
         private readonly ISecretMasker _secretMasker;
-        private readonly object _setLock = new object();
+        private readonly object _setLock = new();
         private readonly Tracing _trace;
 
         public IEnumerable<Variable> AllVariables
@@ -43,7 +43,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Initialize the variable dictionary.
-            List<Variable> variables = new List<Variable>();
+            List<Variable> variables = new();
             foreach (var variable in copy)
             {
                 if (!string.IsNullOrWhiteSpace(variable.Key))
@@ -134,6 +134,12 @@ namespace GitHub.Runner.Worker
             }
 
             return null;
+        }
+
+        public void Set(string name, string val)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            _variables[name] = new Variable(name, val, false);
         }
 
         public bool TryGetValue(string name, out string val)

@@ -1,10 +1,9 @@
-using GitHub.Runner.Listener.Configuration;
+﻿using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -12,48 +11,66 @@ namespace GitHub.Runner.Listener
 {
     public sealed class CommandSettings
     {
-        private readonly Dictionary<string, string> _envArgs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _envArgs = new(StringComparer.OrdinalIgnoreCase);
         private readonly CommandLineParser _parser;
         private readonly IPromptManager _promptManager;
         private readonly Tracing _trace;
 
-        private readonly string[] validCommands =
+        // Valid flags for all commands
+        private readonly string[] genericOptions =
         {
-            Constants.Runner.CommandLine.Commands.Configure,
-            Constants.Runner.CommandLine.Commands.Remove,
-            Constants.Runner.CommandLine.Commands.Run,
-            Constants.Runner.CommandLine.Commands.Warmup,
-        };
-
-        private readonly string[] validFlags =
-        {
-            Constants.Runner.CommandLine.Flags.Check,
-            Constants.Runner.CommandLine.Flags.Commit,
-            Constants.Runner.CommandLine.Flags.DisableUpdate,
-            Constants.Runner.CommandLine.Flags.Ephemeral,
             Constants.Runner.CommandLine.Flags.Help,
-            Constants.Runner.CommandLine.Flags.Once,
-            Constants.Runner.CommandLine.Flags.Replace,
-            Constants.Runner.CommandLine.Flags.RunAsService,
-            Constants.Runner.CommandLine.Flags.Unattended,
-            Constants.Runner.CommandLine.Flags.Version
+            Constants.Runner.CommandLine.Flags.Version,
+            Constants.Runner.CommandLine.Flags.Commit,
+            Constants.Runner.CommandLine.Flags.Check
         };
 
-        private readonly string[] validArgs =
+        // Valid flags and args for specific command - key: command, value: array of valid flags and args
+        private readonly Dictionary<string, string[]> validOptions = new()
         {
-            Constants.Runner.CommandLine.Args.Auth,
-            Constants.Runner.CommandLine.Args.Labels,
-            Constants.Runner.CommandLine.Args.MonitorSocketAddress,
-            Constants.Runner.CommandLine.Args.Name,
-            Constants.Runner.CommandLine.Args.PAT,
-            Constants.Runner.CommandLine.Args.RunnerGroup,
-            Constants.Runner.CommandLine.Args.StartupType,
-            Constants.Runner.CommandLine.Args.Token,
-            Constants.Runner.CommandLine.Args.Url,
-            Constants.Runner.CommandLine.Args.UserName,
-            Constants.Runner.CommandLine.Args.WindowsLogonAccount,
-            Constants.Runner.CommandLine.Args.WindowsLogonPassword,
-            Constants.Runner.CommandLine.Args.Work
+            // Valid configure flags and args
+            [Constants.Runner.CommandLine.Commands.Configure] =
+                new string[]
+                {
+                    Constants.Runner.CommandLine.Flags.DisableUpdate,
+                    Constants.Runner.CommandLine.Flags.Ephemeral,
+                    Constants.Runner.CommandLine.Flags.GenerateServiceConfig,
+                    Constants.Runner.CommandLine.Flags.Replace,
+                    Constants.Runner.CommandLine.Flags.RunAsService,
+                    Constants.Runner.CommandLine.Flags.Unattended,
+                    Constants.Runner.CommandLine.Flags.NoDefaultLabels,
+                    Constants.Runner.CommandLine.Args.Auth,
+                    Constants.Runner.CommandLine.Args.Labels,
+                    Constants.Runner.CommandLine.Args.MonitorSocketAddress,
+                    Constants.Runner.CommandLine.Args.Name,
+                    Constants.Runner.CommandLine.Args.PAT,
+                    Constants.Runner.CommandLine.Args.RunnerGroup,
+                    Constants.Runner.CommandLine.Args.Token,
+                    Constants.Runner.CommandLine.Args.Url,
+                    Constants.Runner.CommandLine.Args.UserName,
+                    Constants.Runner.CommandLine.Args.WindowsLogonAccount,
+                    Constants.Runner.CommandLine.Args.WindowsLogonPassword,
+                    Constants.Runner.CommandLine.Args.Work
+                },
+            // Valid remove flags and args
+            [Constants.Runner.CommandLine.Commands.Remove] =
+                new string[]
+                {
+                    Constants.Runner.CommandLine.Args.Token,
+                    Constants.Runner.CommandLine.Args.PAT,
+                    Constants.Runner.CommandLine.Flags.Local
+                },
+            // Valid run flags and args
+            [Constants.Runner.CommandLine.Commands.Run] =
+                new string[]
+                {
+                    Constants.Runner.CommandLine.Flags.Once,
+                    Constants.Runner.CommandLine.Args.JitConfig,
+                    Constants.Runner.CommandLine.Args.StartupType
+                },
+            // valid warmup flags and args
+            [Constants.Runner.CommandLine.Commands.Warmup] =
+                new string[] { }
         };
 
         // Commands.
@@ -65,11 +82,14 @@ namespace GitHub.Runner.Listener
         // Flags.
         public bool Check => TestFlag(Constants.Runner.CommandLine.Flags.Check);
         public bool Commit => TestFlag(Constants.Runner.CommandLine.Flags.Commit);
+        public bool DisableUpdate => TestFlag(Constants.Runner.CommandLine.Flags.DisableUpdate);
+        public bool Ephemeral => TestFlag(Constants.Runner.CommandLine.Flags.Ephemeral);
+        public bool GenerateServiceConfig => TestFlag(Constants.Runner.CommandLine.Flags.GenerateServiceConfig);
         public bool Help => TestFlag(Constants.Runner.CommandLine.Flags.Help);
+        public bool NoDefaultLabels => TestFlag(Constants.Runner.CommandLine.Flags.NoDefaultLabels);
         public bool Unattended => TestFlag(Constants.Runner.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
-        public bool Ephemeral => TestFlag(Constants.Runner.CommandLine.Flags.Ephemeral);
-        public bool DisableUpdate => TestFlag(Constants.Runner.CommandLine.Flags.DisableUpdate);
+        public bool RemoveLocalConfig => TestFlag(Constants.Runner.CommandLine.Flags.Local);
 
         // Keep this around since customers still relies on it
         public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
@@ -123,18 +143,49 @@ namespace GitHub.Runner.Listener
         // Validate commandline parser result
         public List<string> Validate()
         {
-            List<string> unknowns = new List<string>();
+            List<string> unknowns = new();
 
             // detect unknown commands
-            unknowns.AddRange(_parser.Commands.Where(x => !validCommands.Contains(x, StringComparer.OrdinalIgnoreCase)));
+            unknowns.AddRange(_parser.Commands.Where(x => !validOptions.Keys.Contains(x, StringComparer.OrdinalIgnoreCase)));
 
-            // detect unknown flags
-            unknowns.AddRange(_parser.Flags.Where(x => !validFlags.Contains(x, StringComparer.OrdinalIgnoreCase)));
-
-            // detect unknown args
-            unknowns.AddRange(_parser.Args.Keys.Where(x => !validArgs.Contains(x, StringComparer.OrdinalIgnoreCase)));
+            if (unknowns.Count == 0)
+            {
+                // detect unknown flags and args for valid commands
+                foreach (var command in _parser.Commands)
+                {
+                    if (validOptions.TryGetValue(command, out string[] options))
+                    {
+                        unknowns.AddRange(_parser.Flags.Where(x => !options.Contains(x, StringComparer.OrdinalIgnoreCase) && !genericOptions.Contains(x, StringComparer.OrdinalIgnoreCase)));
+                        unknowns.AddRange(_parser.Args.Keys.Where(x => !options.Contains(x, StringComparer.OrdinalIgnoreCase)));
+                    }
+                }
+            }
 
             return unknowns;
+        }
+
+        public string GetCommandName()
+        {
+            string command = string.Empty;
+
+            if (Configure)
+            {
+                command = Constants.Runner.CommandLine.Commands.Configure;
+            }
+            else if (Remove)
+            {
+                command = Constants.Runner.CommandLine.Commands.Remove;
+            }
+            else if (Run)
+            {
+                command = Constants.Runner.CommandLine.Commands.Run;
+            }
+            else if (Warmup)
+            {
+                command = Constants.Runner.CommandLine.Commands.Warmup;
+            }
+
+            return command;
         }
 
         //
@@ -166,6 +217,12 @@ namespace GitHub.Runner.Listener
                 description: "How would you like to authenticate?",
                 defaultValue: defaultValue,
                 validator: Validators.AuthSchemeValidator);
+        }
+
+        public string GetJitConfig()
+        {
+            return GetArg(
+                name: Constants.Runner.CommandLine.Args.JitConfig);
         }
 
         public string GetRunnerName()

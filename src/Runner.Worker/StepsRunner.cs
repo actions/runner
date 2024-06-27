@@ -1,11 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
@@ -13,8 +11,6 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Expressions;
-using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
-using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -25,6 +21,8 @@ namespace GitHub.Runner.Worker
         string DisplayName { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         TemplateToken Timeout { get; }
+        bool TryUpdateDisplayName(out bool updated);
+        bool EvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context, out bool updated);
         Task RunAsync();
     }
 
@@ -111,6 +109,7 @@ namespace GitHub.Runner.Worker
                         foreach (var env in actionEnvironment)
                         {
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                            step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
                         }
                     }
                     catch (Exception ex)
@@ -133,8 +132,10 @@ namespace GitHub.Runner.Worker
                             // Test the condition again. The job was cancelled after the condition was originally evaluated.
                             jobCancelRegister = jobContext.CancellationToken.Register(() =>
                             {
-                                // Mark job as cancelled
-                                jobContext.Result = TaskResult.Canceled;
+                                // Mark job as Cancelled or Failed depending on HostContext shutdown token's cancellation
+                                jobContext.Result = HostContext.RunnerShutdownToken.IsCancellationRequested
+                                                    ? TaskResult.Failed
+                                                    : TaskResult.Canceled;
                                 jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
 
                                 step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
@@ -172,8 +173,10 @@ namespace GitHub.Runner.Worker
                         {
                             if (jobContext.Result != TaskResult.Canceled)
                             {
-                                // Mark job as cancelled
-                                jobContext.Result = TaskResult.Canceled;
+                                // Mark job as Cancelled or Failed depending on HostContext shutdown token's cancellation
+                                jobContext.Result = HostContext.RunnerShutdownToken.IsCancellationRequested
+                                    ? TaskResult.Failed
+                                    : TaskResult.Canceled;
                                 jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
                             }
                         }
@@ -189,6 +192,12 @@ namespace GitHub.Runner.Worker
                         }
                         else
                         {
+                            // This is our last, best chance to expand the display name.  (At this point, all the requirements for successful expansion should be met.)
+                            // That being said, evaluating the display name should still be considered as a "best effort" exercise.  (It's not critical or paramount.)
+                            // For that reason, we call a safe "Try..." wrapper method to ensure that any potential problems we encounter in evaluating the display name
+                            // don't interfere with our ultimate goal within this code block:  evaluation of the condition.
+                            step.TryUpdateDisplayName(out _);
+
                             try
                             {
                                 var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
@@ -250,14 +259,6 @@ namespace GitHub.Runner.Worker
 
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)
         {
-            // Check to see if we can expand the display name
-            if (step is IActionRunner actionRunner &&
-                actionRunner.Stage == ActionRunStage.Main &&
-                actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
-            {
-                step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
-            }
-
             // Start the step
             Trace.Info("Starting the step.");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
@@ -294,7 +295,7 @@ namespace GitHub.Runner.Worker
                     !jobCancellationToken.IsCancellationRequested)
                 {
                     Trace.Error($"Caught timeout exception from step: {ex.Message}");
-                    step.ExecutionContext.Error("The action has timed out.");
+                    step.ExecutionContext.Error($"The action '{step.DisplayName}' has timed out after {timeoutMinutes} minutes.");
                     step.ExecutionContext.Result = TaskResult.Failed;
                 }
                 else
@@ -319,29 +320,8 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.Result = TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value);
             }
 
-            // Fixup the step result if ContinueOnError
-            if (step.ExecutionContext.Result == TaskResult.Failed)
-            {
-                var continueOnError = false;
-                try
-                {
-                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(step.ContinueOnError, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Info("The step failed and an error occurred when attempting to determine whether to continue on error.");
-                    Trace.Error(ex);
-                    step.ExecutionContext.Error("The step failed and an error occurred when attempting to determine whether to continue on error.");
-                    step.ExecutionContext.Error(ex);
-                }
+            step.ExecutionContext.ApplyContinueOnError(step.ContinueOnError);
 
-                if (continueOnError)
-                {
-                    step.ExecutionContext.Outcome = step.ExecutionContext.Result;
-                    step.ExecutionContext.Result = TaskResult.Succeeded;
-                    Trace.Info($"Updated step result (continue on error)");
-                }
-            }
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
 
             // Complete the step context
