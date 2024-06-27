@@ -595,6 +595,7 @@ namespace GitHub.Runner.Listener
                                         catch (Exception ex)
                                         {
                                             Trace.Error($"Caught exception from acquiring job message: {ex}");
+                                            await _acquireJobThrottler.IncrementAndWaitAsync(messageQueueLoopTokenSource.Token);
                                             continue;
                                         }
                                     }
