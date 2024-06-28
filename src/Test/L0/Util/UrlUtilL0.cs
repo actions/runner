@@ -60,5 +60,61 @@ namespace GitHub.Runner.Common.Tests.Util
             // Actual
             Assert.Equal("https://user%20123:password%20123@github.com/actions/runner.git", result.AbsoluteUri);
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void GetAbsoluteUrlWithPort_WithUriPort80OutputContainsPort80()
+        {
+            UriBuilder uriBuilder = new UriBuilder
+            {
+                Port = 80,
+                Host = "my.proxy.com",
+                Scheme = "http"
+            };
+
+            string result = UrlUtil.GetAbsoluteUrlWithPort(uriBuilder.Uri);
+
+            Assert.Equal("http://my.proxy.com:80/", result);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void GetAbsoluteUrlWithPort_WithUriPort443OutputContainsPort443()
+        {
+            UriBuilder uriBuilder = new UriBuilder
+            {
+                Port = 443,
+                Host = "my.proxy.com",
+                Scheme = "https"
+            };
+
+            string result = UrlUtil.GetAbsoluteUrlWithPort(uriBuilder.Uri);
+
+            Assert.Equal("https://my.proxy.com:443/", result);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void GetAbsoluteUrlWithPort_WithCredentialsAndPort80OutputContainsPort80()
+        {
+            Uri result = new Uri("https://$user123:$pass123@my.proxy.com:80");
+            string resultWithPort = UrlUtil.GetAbsoluteUrlWithPort(result);
+
+            Assert.Equal("https://%24user123:%24pass123@my.proxy.com:80/", resultWithPort);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void GetAbsoluteUrlWithPort_WithCredentialsAndPort443OutputContainsPort443()
+        {
+            Uri result = new Uri("https://$user123:$pass123@my.proxy.com:443");
+            string resultWithPort = UrlUtil.GetAbsoluteUrlWithPort(result);
+
+            Assert.Equal("https://%24user123:%24pass123@my.proxy.com:443/", resultWithPort);
+        }
     }
 }
