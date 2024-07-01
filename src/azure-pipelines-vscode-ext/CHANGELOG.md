@@ -1,3 +1,7 @@
+### v0.0.17
+- Update Schema (#361)
+- add correct string representation of expr results (#359)
+
 ### v0.0.16
 - fix steps.*.continueOnError / allowed boolean values 
 - make condition stricter
