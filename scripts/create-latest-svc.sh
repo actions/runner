@@ -92,8 +92,7 @@ runner_plat=linux
 runner_arch=x64
 [ ! -z "$(arch | grep arm64)" ] && runner_arch=arm64
 
-fatal ()
-{
+fatal () {
     echo "error: $1" >&2
     exit 1
 }
