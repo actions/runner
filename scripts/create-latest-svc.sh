@@ -130,7 +130,7 @@ if [[ "$runner_scope" =~ / ]]; then
     orgs_or_repos="repos"
 fi
 
-export RUNNER_TOKEN=$(curl -s -X POST ${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
+export RUNNER_TOKEN=$(curl -fsSL -X POST ${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
 
 if [ "null" = "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi
 
@@ -141,7 +141,7 @@ echo
 echo "Downloading latest runner ..."
 
 # For the GHES Alpha, download the runner from github.com
-latest_version_label=$(curl -s -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
+latest_version_label=$(curl -fsSL -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
 latest_version=$(echo ${latest_version_label:1})
 runner_file="actions-runner-${runner_plat}-${runner_arch}-${latest_version}.tar.gz"
 
@@ -153,7 +153,7 @@ else
     echo "Downloading ${latest_version_label} for ${runner_plat} ..."
     echo $runner_url
     
-    curl -O -L ${runner_url}
+    curl -O -fsSL ${runner_url}
 fi
 
 ls -la *.tar.gz
