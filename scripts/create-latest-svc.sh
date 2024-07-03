@@ -59,8 +59,8 @@ Usage:
     -u          optional  user svc will run as, defaults to current
     -l          optional  list of labels (split by comma) applied on the runner
     -d          optional  allow runner to remain on the current version for one month after the release of a newer version
-            -f          optional  replace any existing runner with the same name"
-            exit 0
+    -f          optional  replace any existing runner with the same name"
+        exit 0
         ;;
     esac
 done
