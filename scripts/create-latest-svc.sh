@@ -17,7 +17,7 @@ flags_found=false
 
 while getopts 's:g:n:r:u:l:df' opt; do
     flags_found=true
-    
+
     case $opt in
         s)
             runner_scope=$OPTARG
@@ -149,10 +149,10 @@ if [ -f "${runner_file}" ]; then
     echo "${runner_file} exists. skipping download."
 else
     runner_url="https://github.com/actions/runner/releases/download/${latest_version_label}/${runner_file}"
-    
+
     echo "Downloading ${latest_version_label} for ${runner_plat} ..."
     echo $runner_url
-    
+
     curl -O -fsSL ${runner_url}
 fi
 
