@@ -273,10 +273,11 @@ namespace GitHub.Runner.Worker
 
                 if (container.IsJobContainer)
                 {
+                    var containerDaemonSocket = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_DAEMON_SOCKET");
                     if(container.Os == "windows") {
-                        container.MountVolumes.Add(new MountVolume(@"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
+                        container.MountVolumes.Add(new MountVolume(containerDaemonSocket ?? @"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
                     } else {
-                        container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
+                        container.MountVolumes.Add(new MountVolume(containerDaemonSocket ?? "/var/run/docker.sock", "/var/run/docker.sock"));
                     }
                 }
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));

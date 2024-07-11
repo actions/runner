@@ -125,6 +125,7 @@ namespace Runner.Client
             public bool Quiet { get; set; }
             public bool Privileged { get; set; }
             public string Userns { get; set; }
+            public string ContainerDaemonSocket { get; set; }
             public string ContainerPlatform { get; set; }
             public string DefaultBranch { get; set; }
             public string Directory { get; set; }
@@ -295,6 +296,9 @@ namespace Runner.Client
                         runnerEnv["GHARUN_CHANGE_PROCESS_GROUP"] = "1";
                         if(!parameters.NoSharedToolcache && Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") == null) {
                             runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "tool_cache");
+                        }
+                        if(parameters.ContainerDaemonSocket != null) {
+                            runnerEnv["RUNNER_CONTAINER_DAEMON_SOCKET"] = parameters.ContainerDaemonSocket;
                         }
                         if(parameters.ContainerPlatform != null) {
                             runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.ContainerPlatform;
@@ -980,6 +984,9 @@ namespace Runner.Client
             var usernsOpt = new Option<string>(
                 "--userns",
                 "Change the docker container linux user namespace, only applies to container jobs using this Runner fork");
+            var containerDaemonSocketOpt = new Option<string>(
+                new [] { "--container-daemon-socket" },
+                "Change the docker container socket location that is mounted, only applies to container jobs using this Runner fork");
             var containerPlatformOpt = new Option<string>(
                 new [] { "--container-architecture", "--container-platform" },
                 "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork");
@@ -1098,6 +1105,7 @@ namespace Runner.Client
                 quietOpt,
                 privilegedOpt,
                 usernsOpt,
+                containerDaemonSocketOpt,
                 containerPlatformOpt,
                 keepContainerOpt,
                 DirectoryOpt,
@@ -2476,6 +2484,7 @@ namespace Runner.Client
                 parameters.Quiet = bindingContext.ParseResult.GetValueForOption(quietOpt);
                 parameters.Privileged = bindingContext.ParseResult.GetValueForOption(privilegedOpt);
                 parameters.Userns = bindingContext.ParseResult.GetValueForOption(usernsOpt);
+                parameters.ContainerDaemonSocket = bindingContext.ParseResult.GetValueForOption(containerDaemonSocketOpt);
                 parameters.ContainerPlatform = bindingContext.ParseResult.GetValueForOption(containerPlatformOpt);
                 parameters.KeepContainer = bindingContext.ParseResult.GetValueForOption(keepContainerOpt);
                 parameters.Directory = bindingContext.ParseResult.GetValueForOption(DirectoryOpt);

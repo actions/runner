@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -207,13 +207,14 @@ namespace GitHub.Runner.Worker.Handlers
             var tempWorkflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
             ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));
 
+            var containerDaemonSocket = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_DAEMON_SOCKET");
             Func<string, string> mountPath;
             if(container.Os == "windows") {
                 mountPath = s => ("C:" + s).Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
-                container.MountVolumes.Add(new MountVolume(@"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
+                container.MountVolumes.Add(new MountVolume(containerDaemonSocket ?? @"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
             } else {
                 mountPath = s => s;
-                container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
+                container.MountVolumes.Add(new MountVolume(containerDaemonSocket ?? "/var/run/docker.sock", "/var/run/docker.sock"));
             }
             container.MountVolumes.Add(new MountVolume(tempHomeDirectory, mountPath("/github/home")));
             container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, mountPath("/github/workflow")));
