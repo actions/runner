@@ -61,7 +61,9 @@ COPY --from=build --chown=root:root --chmod=0755 /docker/plugins/* /usr/local/li
 
 # Install a sane set of base utilities
 RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release \
+    && apt install -y --no-install-recommends \
+         sudo lsb-release \
+         curl git jq unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Create the actions runner user and home directory
