@@ -1,33 +1,24 @@
 ## What's Changed
-* fix summaries for actions results by @SrRyan in https://github.com/actions/runner/pull/3174
-* Bump runner version to match the latest patch release by @TingluoHuang in https://github.com/actions/runner/pull/3175
-* don't crash listener on getting job exceptions for run-service by @yaananth in https://github.com/actions/runner/pull/3177
-* Remove -f flag in wait when manually trap signal by @nikola-jokic in https://github.com/actions/runner/pull/3182
-* consume new pipelines service url in handlers by @patrickcarnahan in https://github.com/actions/runner/pull/3185
-* Add ability to enforce actions to run on node20 by @takost in https://github.com/actions/runner/pull/3192
-* Bump hook version to 0.6.0 by @nikola-jokic in https://github.com/actions/runner/pull/3203
-* Update dotnet sdk to latest version @6.0.420 by @github-actions in https://github.com/actions/runner/pull/3211
-* Bump docker version and docker buildx version by @nikola-jokic in https://github.com/actions/runner/pull/3208
-* Handle new non-retryable exception type by @thyeggman in https://github.com/actions/runner/pull/3191
-* Always Delete Actions Service Session by @luketomlinson in https://github.com/actions/runner/pull/3214
 
-## New Contributors
-* @SrRyan made their first contribution in https://github.com/actions/runner/pull/3174
-* @patrickcarnahan made their first contribution in https://github.com/actions/runner/pull/3185
+- Do not give up when uploading steps metadata by @yacaovsnc in https://github.com/actions/runner/pull/3280
+- Upgrade node20 to 20.13.1 by @pje in https://github.com/actions/runner/pull/3284
+- Delete all the contentHash files by @pje in https://github.com/actions/runner/pull/3285
+- Make it easy to install `git` on an Action Runner Image by @jww3 in https://github.com/actions/runner/pull/3273
+- Install `gpg-agent` during actions/runner container image build by @jww3 in https://github.com/actions/runner/pull/3294
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.314.1...v2.315.0
-
-**Full Changelog**: https://github.com/actions/runner/compare/v2.313.0...v2.314.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.316.1...v2.317.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
 See https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/adding-self-hosted-runners_
 
 ## Windows x64
+
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 
 The following snipped needs to be run on `powershell`:
-``` powershell
+
+```powershell
 # Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
@@ -38,12 +29,14 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 ```
 
 ## [Pre-release] Windows arm64
+
 **Warning:** Windows arm64 runners are currently in preview status and use [unofficial versions of nodejs](https://unofficial-builds.nodejs.org/). They are not intended for production workflows.
 
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 
 The following snipped needs to be run on `powershell`:
-``` powershell
+
+```powershell
 # Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
@@ -55,7 +48,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 
 ## OSX x64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -66,7 +59,7 @@ tar xzf ./actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
 
 ## OSX arm64 (Apple silicon)
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -77,7 +70,7 @@ tar xzf ./actions-runner-osx-arm64-<RUNNER_VERSION>.tar.gz
 
 ## Linux x64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -88,7 +81,7 @@ tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 
 ## Linux arm64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -99,7 +92,7 @@ tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 
 ## Linux arm
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -109,6 +102,7 @@ tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 ```
 
 ## Using your self hosted runner
+
 For additional details about configuring, running, or shutting down the runner please check out our [product docs.](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners)
 
 ## SHA-256 Checksums
