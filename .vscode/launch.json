@@ -59,6 +59,7 @@
             "debugWebWorkerHost": true,
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
+            "cwd": "${workspaceFolder}/src/azure-pipelines-vscode-ext",
 			"args": ["--extensionDevelopmentPath=${workspaceFolder}/src/azure-pipelines-vscode-ext"]
 		}
     ],
