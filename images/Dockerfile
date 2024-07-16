@@ -8,9 +8,10 @@ ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.0
 ARG DOCKER_VERSION=25.0.5
 ARG BUILDX_VERSION=0.13.2
 
-RUN apt update -y && apt install curl unzip -y
-
 WORKDIR /actions-runner
+
+RUN apt update -y && apt install -y --no-install-recommends curl unzip
+
 RUN export RUNNER_ARCH=${TARGETARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export RUNNER_ARCH=x64 ; fi \
     && curl -f -L -o runner.tar.gz https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-${TARGETOS}-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz \
@@ -21,6 +22,7 @@ RUN curl -f -L -o runner-container-hooks.zip https://github.com/actions/runner-c
     && unzip ./runner-container-hooks.zip -d ./k8s \
     && rm runner-container-hooks.zip
 
+WORKDIR /actions-docker
 RUN export RUNNER_ARCH=${TARGETARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
@@ -32,6 +34,15 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
+# Configure git-core/ppa based on guidance here: https://git-scm.com/download/linux
+# The second `apt update` isn't strictly necessary, but let's leave it here to force the
+# image build to break if the ppa is suddenly unavailable.
+WORKDIR /ppa
+RUN apt update -y \
+    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common \
+    && add-apt-repository ppa:git-core/ppa \
+    && apt update -y
+
 FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -39,16 +50,21 @@ ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=ubuntu22
 
-# 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
+# Copy PPAs from build stage
+COPY --from=build /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/
+COPY --from=build /etc/apt/trusted.gpg.d/*.gpg /etc/apt/trusted.gpg.d/
+
+# Copy Docker files from build stage
+COPY --from=build --chown=root:root --chmod=0755 /actions-docker/docker/* /usr/bin/
+COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+
+# Install a sane set of base utilities
 RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common \
+    && apt install -y --no-install-recommends sudo lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
-RUN add-apt-repository ppa:git-core/ppa \
-    && apt update -y
-
-RUN adduser --disabled-password --gecos "" --uid 1001 runner \
+# Create the actions runner user and home directory
+RUN adduser --home /home/runner --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
     && usermod -aG sudo runner \
     && usermod -aG docker runner \
@@ -57,9 +73,7 @@ RUN adduser --disabled-password --gecos "" --uid 1001 runner \
 
 WORKDIR /home/runner
 
+# Copy everything from /actions-runner in the build stage as our runner home
 COPY --chown=runner:docker --from=build /actions-runner .
-COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
-
-RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
 
 USER runner
