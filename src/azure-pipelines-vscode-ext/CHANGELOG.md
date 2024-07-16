@@ -1,3 +1,6 @@
+### v0.0.19 (Preview)
+- Fix problem that caused the webworker to crash while using validate Syntax without having errors
+
 ### v0.0.18 (Preview)
 - Fix problem loading the Extension in VSCode Web Editor due to blocked `.dat` extension
 - Provide a Standalone Syntax Checker Mode, that does not depend on variables / parameters

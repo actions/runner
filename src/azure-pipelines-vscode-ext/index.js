@@ -593,23 +593,27 @@ function activate(context) {
 					try {
 						var hasErrors = false;
 						await expandAzurePipeline(false, self.repositories ?? args.repositories, args.variables, self.parameters ?? args.parameters, async result => {
-							task.info(result);
-							if(args.preview) {
-								await reopenPreviewIfNeeded();
-								self.virtualFiles[self.name] = result;
-								self.changed(uri);
-							} else if(!hasErrors) {
-								vscode.window.showInformationMessage("No Issues found");
+							if(!args.syntaxOnly) {
+								task.info(result);
+								if(args.preview) {
+									await reopenPreviewIfNeeded();
+									self.virtualFiles[self.name] = result;
+									self.changed(uri);
+								} else if(!hasErrors) {
+									vscode.window.showInformationMessage("No Issues found");
+								}
 							}
 						}, args.program, async errmsg => {
 							hasErrors = true;
 							task.error(errmsg);
-							if(args.preview) {
-								await reopenPreviewIfNeeded();
-								self.virtualFiles[self.name] = errmsg;
-								self.changed(uri);
-							} else {
-								vscode.window.showErrorMessage(errmsg);
+							if(!args.syntaxOnly) {
+								if(args.preview) {
+									await reopenPreviewIfNeeded();
+									self.virtualFiles[self.name] = errmsg;
+									self.changed(uri);
+								} else {
+									vscode.window.showErrorMessage(errmsg);
+								}
 							}
 						}, task, self.collection, self, !askForInput, args.syntaxOnly);
 					} catch {
