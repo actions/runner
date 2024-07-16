@@ -28,6 +28,10 @@
 	"contributes": {
 		"commands": [
 			{
+				"command": "azure-pipelines-vscode-ext.checkSyntaxAzurePipeline",
+				"title": "Check Syntax Azure Pipeline"
+			},
+			{
 				"command": "azure-pipelines-vscode-ext.validateAzurePipeline",
 				"title": "Validate Azure Pipeline"
 			},
@@ -39,15 +43,28 @@
 		"menus": {
 			"editor/context": [
 				{
-					"command": "azure-pipelines-vscode-ext.validateAzurePipeline",
+					"submenu": "azure-pipelines-vscode-ext/context",
 					"when": "editorLangId == yaml || editorLangId == azure-pipelines"
+				}
+			],
+			"azure-pipelines-vscode-ext/context": [
+				{
+					"command": "azure-pipelines-vscode-ext.checkSyntaxAzurePipeline"
 				},
 				{
-					"command": "azure-pipelines-vscode-ext.expandAzurePipeline",
-					"when": "editorLangId == yaml || editorLangId == azure-pipelines"
+					"command": "azure-pipelines-vscode-ext.validateAzurePipeline"
+				},
+				{
+					"command": "azure-pipelines-vscode-ext.expandAzurePipeline"
 				}
 			]
 		},
+		"submenus": [
+			{
+				"id": "azure-pipelines-vscode-ext/context",
+				"label": "Azure Pipelines Tools"
+			}
+		],
 		"configuration": [
 			{
 				"title": "Azure Pipelines Tools",
@@ -217,6 +234,11 @@
 						"type": "boolean",
 						"description": "Opens a live Preview side by side to your current code editor, if disabled you will only see a message with the conclusion",
 						"default": true
+					},
+					"syntaxOnly": {
+						"type": "boolean",
+						"description": "Only Check Syntax (Faster less features)",
+						"default": false
 					},
 					"autoClosePreview": {
 						"type": "boolean",

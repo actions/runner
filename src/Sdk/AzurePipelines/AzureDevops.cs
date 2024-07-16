@@ -620,9 +620,9 @@ namespace Runner.Server.Azure.Devops {
             return string.Join('/', path.ToArray());
         }
 
-        public static async Task<MappingToken> ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null)
+        
+        public static async Task<(string, TemplateToken)> ParseTemplate(Context context, string filenameAndRef, string schemaName = null)
         {
-            var variables = context.VariablesProvider?.GetVariablesForEnvironment("");
             var afilenameAndRef = filenameAndRef.Split("@", 2);
             var filename = afilenameAndRef[0];
             // Read the file
@@ -656,6 +656,15 @@ namespace Runner.Server.Azure.Devops {
             }
 
             templateContext.Errors.Check();
+
+            return (errorTemplateFileName, token);
+        }
+
+        
+        public static async Task<MappingToken> ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null)
+        {
+            var variables = context.VariablesProvider?.GetVariablesForEnvironment("");
+            var (errorTemplateFileName, token) = await ParseTemplate(context, filenameAndRef, schemaName);
 
             var pipelineroot = token.AssertMapping("root");
 
@@ -693,6 +702,9 @@ namespace Runner.Server.Azure.Devops {
                 }
             }
 
+
+            var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags, contextData);
+            var fileId = templateContext.GetFileId(errorTemplateFileName);
 
             var strictParametersCheck = false;
             if (parameters?.Type == TokenType.Mapping)

@@ -174,7 +174,7 @@ function activate(context) {
 	});
 
 	var defcollection = vscode.languages.createDiagnosticCollection();
-	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state, skipAskForInput) => {
+	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state, skipAskForInput, syntaxOnly) => {
 		collection ??= defcollection;
 		var textEditor = vscode.window.activeTextEditor;
 		if(!textEditor && !fspathname) {
@@ -364,7 +364,9 @@ function activate(context) {
 			}
 			return await error(pex.Message);
 		}), referencedFiles: [], refToUri: {}, task: task, askForInput: !skipAskForInput };
-		var result = await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true);
+		var result = syntaxOnly
+		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename)
+						: await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true)
 
         if(state) {
             state.referencedFiles = handle.referencedFiles;
@@ -385,7 +387,7 @@ function activate(context) {
 			}
         }
 
-		if(result) {
+		if(result || syntaxOnly) {
 			logchannel.debug(result);
 			if(!handle.hasErrors) {
 				var items = [];
@@ -440,9 +442,28 @@ function activate(context) {
 		);
 	}
 
+	var checkSyntaxAzurePipelineCommand = () => {
+		vscode.tasks.executeTask(
+			new vscode.Task({
+					type: "azure-pipelines-vscode-ext",
+					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
+					syntaxOnly: true,
+					watch: true,
+				},
+				vscode.TaskScope.Workspace,
+				"Azure Pipeline Syntax Check (watch)",
+				"azure-pipelines",
+				executor,
+				null
+			)
+		);
+	}
+
 	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.expandAzurePipeline', () => expandAzurePipelineCommand()));
 
 	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.validateAzurePipeline', () => validateAzurePipelineCommand()));
+	
+	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.checkSyntaxAzurePipeline', () => checkSyntaxAzurePipelineCommand()));
 
 	context.subscriptions.push(vscode.commands.registerCommand('extension.expandAzurePipeline', () => expandAzurePipelineCommand()));
 
@@ -590,7 +611,7 @@ function activate(context) {
 							} else {
 								vscode.window.showErrorMessage(errmsg);
 							}
-						}, task, self.collection, self, !askForInput);
+						}, task, self.collection, self, !askForInput, args.syntaxOnly);
 					} catch {
 
 					}

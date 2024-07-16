@@ -125,6 +125,38 @@ public class MyClass {
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName) {
+        var context = new Context {
+            FileProvider = new MyFileProvider(handle),
+            TraceWriter = new TraceWriter(handle),
+            Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
+            RequiredParametersProvider = new RequiredParametersProvider(handle),
+            VariablesProvider = new VariablesProvider { Variables = new Dictionary<string, string>() }
+        };
+        try {
+            var (name, template) = await AzureDevops.ParseTemplate(context, currentFileName);
+            Interop.Log(handle, 0, "Done: " + template.ToString());
+        } catch(TemplateValidationException ex) {
+            var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
+            var allErrors = new List<string>();
+            foreach(var error in ex.Errors) {
+                var errorContent = fileIdReplacer.Replace(error.Message, match => {
+                    return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
+                });
+                allErrors.Add(errorContent);
+            }
+            await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = allErrors }));
+        } catch(Exception ex) {
+            var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
+            var errorContent = fileIdReplacer.Replace(ex.Message, match => {
+                return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
+            });
+            await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = new List<string> { errorContent } }));
+        }
+    }
+
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static string YAMLToJson(string content) {
         try {
             return AzurePipelinesUtils.YAMLToJson(content);

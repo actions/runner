@@ -1,5 +1,6 @@
 ### v0.0.18 (Preview)
 - Fix problem loading the Extension in VSCode Web Editor due to blocked `.dat` extension
+- Provide a Standalone Syntax Checker Mode, that does not depend on variables / parameters
 
 ### v0.0.17
 - Update Schema (#361)
