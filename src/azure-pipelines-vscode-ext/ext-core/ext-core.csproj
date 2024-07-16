@@ -13,4 +13,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Sdk\Sdk.csproj" />
   </ItemGroup>
+
+  <Target Name="RenameIcuForVsMarketplace" AfterTargets="WasmBuildApp;WasmNestedPublishApp">
+    <ItemGroup>
+      <IcuFiles Include="$(WasmAppDir)\**\icu*.dat"/>
+    </ItemGroup>
+    <Move SourceFiles="@(IcuFiles)" OverwriteReadOnlyFiles="true" DestinationFiles="%(RelativeDir)%(Filename).icu"/>
+  </Target>
 </Project>

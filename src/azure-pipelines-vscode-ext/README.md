@@ -200,24 +200,29 @@ stages:
           }'
 ```
 
-## Pros
+## Pro
 - Make changes in multiple dependent template files and show a live preview on save
-- Everything is done locally
-- You can run template files with the same template engine locally using the Runner.Client tool using the official Azure Pipelines Agent
+- Everything is done locally and works offline
+- You can run template files with the same template engine locally via the [Runner.Client and Server tool](https://github.com/ChristopherHX/runner.server) using the official Azure Pipelines Agent
+  - `Runner.Client azexpand` works like Valdate Azure Pipeline by only checking the return value to be zero
+  - `Runner.Client azexpand -q > final.yml` works like Expand Azure Pipeline, but directly writes the expanded file to disk
 - Fast feedback
+- Fast to install
 - Less trial and error commits
 - You can help by reporting bugs
 - It's fully Open Source under the MIT license
+- Works side by side with the official Azure Pipelines VSCode extension
 
-## Cons
+## Contra
 - May contain different bugs than the Azure Pipelines Service
-- You could self-host Azure Devops Server and commit your changes to your local system, may have license implications with more accurate results of the template engine
+- You could self-host Azure Devops Server and commit your changes to your local system with more accurate results of the template engine
 - May not have feature parity with Azure Pipelines
 - Missing predefined Variables, feel free to add them manually as needed
 
-## Available in the VSCode Marketplace
+## Available in both VSCode Marketplace and Open VSX Registry
 
-[Azure Pipelines Tools](https://marketplace.visualstudio.com/items?itemName=christopherhx.azure-pipelines-vscode-ext)
+[Azure Pipelines Tools (VSCode Marketplace)](https://marketplace.visualstudio.com/items?itemName=christopherhx.azure-pipelines-vscode-ext)
+[Azure Pipelines Tools (Open VSX Registry)](https://open-vsx.org/extension/christopherhx/azure-pipelines-vscode-ext)
 
 ## Contributing
 

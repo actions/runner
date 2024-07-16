@@ -1,3 +1,6 @@
+### v0.0.18 (Preview)
+- Fix problem loading the Extension in VSCode Web Editor due to blocked `.dat` extension
+
 ### v0.0.17
 - Update Schema (#361)
 - add correct string representation of expr results (#359)

@@ -47,11 +47,14 @@ function activate(context) {
 				return defaultUri;
 			}
 			return (async () => {
+				if(token.isCancellationRequested) {
+					throw new Error("loading Runtime aborted, reload the window to use this extension");
+				}
 				if(type === "assembly") {
-					if(token.isCancellationRequested) {
-						throw new Error("loading Runtime aborted, reload the window to use this extension");
-					}
 					await progress.report({ message: name, increment: citem++ / items });
+				}
+				if(name.endsWith(".dat")) {
+					name = name.substring(0, name.length - 3) + "icu";
 				}
 				var content = await vscode.workspace.fs.readFile(context.extensionUri.with({ path: context.extensionUri.path + "/build/AppBundle/_framework/" + name }));
 				return new Response(content, { status: 200 });
@@ -164,6 +167,10 @@ function activate(context) {
 		runtime.runMainAndExit("ext-core", []);
 		logchannel.appendLine("Runtime is now ready");
 		return runtime;
+	}).catch(async ex => {
+		// Failed to load, allow retry
+		loadingPromise = null;
+		await vscode.window.showErrorMessage("Failed to load .net: " + ex.toString());
 	});
 
 	var defcollection = vscode.languages.createDiagnosticCollection();

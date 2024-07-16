@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.0.17",
+	"version": "0.0.18",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
