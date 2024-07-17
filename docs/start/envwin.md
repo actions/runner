@@ -2,11 +2,6 @@
 
 ## Supported Versions
 
- - Windows 7 64-bit
- - Windows 8.1 64-bit
- - Windows 10 64-bit
- - Windows Server 2012 R2 64-bit
- - Windows Server 2016 64-bit
- - Windows Server 2019 64-bit
+Please see "[Supported architectures and operating systems for self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#supported-architectures-and-operating-systems-for-self-hosted-runners)."
 
 ## [More .NET Core Prerequisites Information](https://docs.microsoft.com/en-us/dotnet/core/windows-prerequisites?tabs=netcore30)
