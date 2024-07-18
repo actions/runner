@@ -1,788 +1,5356 @@
-﻿{
-  "version": "pipelines-v1.0",
-
-  "definitions": {
-
-    "workflow-root": {
-      "description": "Workflow file",
-      "mapping": {
-        "loose-key-type": "workflow-key",
-        "loose-value-type": "workflow-value",
-        "properties": {
-          "parameters": "any"
-        }
-      }
-    },
-
-    "workflow-key": {
-      "context": [
-        "parameters",
-        "variables"
-      ],
-      "string": {}
-    },
-
-    "workflow-value": {
-      "context": [
-        "parameters",
-        "variables"
-      ],
-      "one-of": [
-        "boolean", "mapping", "null", "number", "sequence", "string"
-      ]
-    },
-
-    "workflow-value-no-expand": {
-      "context": [
-        "no-expand"
-      ],
-      "one-of": [
-        "boolean", "mapping", "null", "number", "sequence", "string"
-      ]
-    },
-
-    "single-layer-workflow-mapping": {
-      "context": [
-        "parameters",
-        "variables"
-      ],
-      "mapping": {
-        "loose-key-type": "workflow-key",
-        "loose-value-type": "workflow-value-no-expand"
-      }
-    },
-
-    "single-layer-workflow-sequence": {
-      "context": [
-        "parameters",
-        "variables"
-      ],
-      "sequence": {
-        "item-type": "workflow-value-no-expand"
-      }
-    },
-
-    "pipeline-container": {
-      "description": "Pipeline container as of https://learn.microsoft.com/en-us/azure/devops/release-notes/2022/pipelines/sprint-212-update",
-      "mapping": {
-        "properties": {
-          "container": {
-            "type": "referenceName",
-            "first-property": true,
-            "required": true
-          },
-          "image": {
-            "type": "string",
-            "required": true
-          },
-          "type": "string",
-          "trigger": "container-trigger",
-          "endpoint": "workflow-value",
-          "env": "mapping",
-          "mapDockerSocket": "pipeline-boolean",
-          "options": "workflow-value",
-          "ports": "workflow-value",
-          "volumes": "workflow-value",
-          "mountReadOnly": "any",
-          "azureSubscription": "string",
-          "resourceGroup": "string",
-          "registry": "string",
-          "repository": "string"
+{
+    "version": "pipelines-v1.0",
+    "definitions": {
+        "workflow-key": {
+            "context": [
+                "parameters",
+                "variables"
+            ],
+            "string": {}
         },
-        "loose-key-type": "workflow-key",
-        "loose-value-type": "workflow-value"
-      }
-    },
-
-    "includeExcludeStringFilters-object": {
-      "mapping": {
-        "properties": {
-          "include": "sequenceOfNonEmptyString",
-          "exclude": "sequenceOfNonEmptyString"
-        }
-      }
-    },
-
-    "includeExcludeStringFilters": {
-      "one-of": [
-        "sequenceOfNonEmptyString",
-        "includeExcludeStringFilters-object"
-      ]
-    },
-
-    "containerResourceTrigger-object": {
-      "mapping": {
-        "properties": {
-          "enabled": {
-            "type": "pipeline-boolean"
-          },
-          "tags": {
-            "type": "includeExcludeStringFilters"
-          }
-        }
-      }
-    },
-
-    "container-trigger": {
-      "one-of": [
-        "pipelineResourceTrigger-none",
-        "pipelineResourceTrigger-true",
-        "containerResourceTrigger-object"
-      ]
-    },
-
-    "pipeline-containers": {
-      "context": [
-        "parameters",
-        "variables"
-      ],
-      "sequence": {
-        "item-type": "pipeline-container"
-      }
-    },
-
-    "pipeline-boolean-true": {
-      "string": {
-        "ignore-case": true,
-        "pattern": "^true$"
-      }
-    },
-    "pipeline-boolean-y": {
-      "string": {
-        "ignore-case": true,
-        "pattern": "^y$"
-      }
-    },
-    "pipeline-boolean-yes": {
-      "string": {
-        "ignore-case": true,
-        "pattern": "^yes$"
-      }
-    },
-    "pipeline-boolean-on": {
-      "string": {
-        "ignore-case": true,
-        "pattern": "^on$"
-      }
-    },
-    "pipeline-boolean-false": {
-      "string": {
-        "ignore-case": true,
-        "pattern": "^false$"
-      }
-    },
-    "pipeline-boolean-n": {
-      "string": {
-        "ignore-case": true,
-        "pattern": "^n$"
-      }
-    },
-    "pipeline-boolean-no": {
-      "string": {
-        "ignore-case": true,
-        "pattern": "^no$"
-      }
-    },
-    "pipeline-boolean-off": {
-      "string": {
-        "ignore-case": true,
-        "pattern": "^off$"
-      }
-    },
-
-    "pipeline-boolean": {
-      "one-of": [
-        "pipeline-boolean-true",
-        "pipeline-boolean-y",
-        "pipeline-boolean-yes",
-        "pipeline-boolean-on",
-        "pipeline-boolean-false",
-        "pipeline-boolean-n",
-        "pipeline-boolean-no",
-        "pipeline-boolean-off"
-      ]
-    },
-
-    "pipeline-repository": {
-      "description": "Pipeline repository as of https://learn.microsoft.com/en-us/azure/devops/release-notes/2022/pipelines/sprint-212-update",
-      "mapping": {
-        "properties": {
-          "repository": {
-            "type": "string",
-            "required": true,
-            "first-property": true
-          },
-          "name": "string",
-          "type": "string",
-          "endpoint": "string",
-          "ref": "workflow-value",
-          "trigger": "pipeline-trigger"
+        "workflow-value": {
+            "context": [
+                "parameters",
+                "variables"
+            ],
+            "one-of": [
+                "boolean",
+                "mapping",
+                "null",
+                "number",
+                "sequence",
+                "string"
+            ]
         },
-        "loose-key-type": "workflow-key",
-        "loose-value-type": "workflow-value"
-      }
-    },
-
-    "pipeline-repositories": {
-      "sequence": {
-        "item-type": "pipeline-repository"
-      }
-    },
-
-    "pipeline-builds": {
-      "sequence": {
-        "item-type": "pipeline-build"
-      }
-    },
-
-    "pipeline-build": {
-      "mapping": {
-        "properties": {
-          "build": {
-            "description": "Alias or name of build artifact",
-            "type": "referenceName",
-            "first-property": true,
-            "required": true
-          },
-          "type": {
-            "description": "Name of the artifact type",
-            "type": "nonEmptyString",
-            "required": true
-          },
-          "connection": {
-            "description": "Name of the connection. This connection will be used for all the communication related to this artifact.",
-            "type": "nonEmptyString",
-            "required": true
-          },
-          "source": {
-            "description": "Name of the source definition/build/job",
-            "type": "nonEmptyString",
-            "required": true
-          },
-          "version": {
-            "type": "string_allowExpressions"
-          },
-          "branch": {
-            "type": "string_allowExpressions"
-          },
-          "trigger": {
-            "description": "When the artifact mentioned in this build resource completes a build, its allowed to trigger this pipeline.",
-            "type": "buildResourceTrigger"
-          }
+        "workflow-value-no-expand": {
+            "context": [
+                "no-expand"
+            ],
+            "one-of": [
+                "boolean",
+                "mapping",
+                "null",
+                "number",
+                "sequence",
+                "string"
+            ]
+        },
+        "single-layer-workflow-mapping": {
+            "context": [
+                "parameters",
+                "variables"
+            ],
+            "mapping": {
+                "loose-key-type": "workflow-key",
+                "loose-value-type": "workflow-value-no-expand"
+            }
+        },
+        "single-layer-workflow-sequence": {
+            "context": [
+                "parameters",
+                "variables"
+            ],
+            "sequence": {
+                "item-type": "workflow-value-no-expand"
+            }
+        },
+        "variable-result": {
+            "context": [
+                "variables",
+                "dependencies",
+                "stageDependencies",
+                "pipeline",
+                "resources",
+                "Counter(0,2)"
+            ],
+            "string": {}
+        },
+        "job-if-result": {
+            "context": [
+                "variables",
+                "dependencies",
+                "stageDependencies",
+                "Always(0,0)",
+                "Canceled(0,0)",
+                "Succeeded(0,MAX)",
+                "SucceededOrFailed(0,MAX)",
+                "Failed(0,MAX)"
+            ],
+            "boolean": {}
+        },
+        "stage-if-result": {
+            "context": [
+                "variables",
+                "dependencies",
+                "Always(0,0)",
+                "Canceled(0,0)",
+                "Succeeded(0,MAX)",
+                "SucceededOrFailed(0,MAX)",
+                "Failed(0,MAX)"
+            ],
+            "boolean": {}
+        },
+        "azp-string": {
+            "string": {}
+        },
+        "azp-sequence": {
+            "sequence": {
+                "item-type": "azp-any"
+            }
+        },
+        "azp-mapping": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "any-0": {
+            "string": {}
+        },
+        "any-1": {
+            "sequence": {
+                "item-type": "azp-any"
+            }
+        },
+        "any-2": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "azp-any": {
+            "one-of": [
+                "any-0",
+                "any-1",
+                "any-2",
+                "boolean",
+                "null",
+                "number"
+            ]
+        },
+        "pipeline-0": {
+            "mapping": {
+                "properties": {
+                    "stages": {
+                        "type": "stages",
+                        "required": true
+                    },
+                    "pool": {
+                        "type": "pool"
+                    },
+                    "name": {
+                        "type": "string_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "azp-boolean"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipeline-1": {
+            "mapping": {
+                "properties": {
+                    "extends": {
+                        "type": "extends",
+                        "required": true
+                    },
+                    "pool": {
+                        "type": "pool"
+                    },
+                    "name": {
+                        "type": "string_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "azp-boolean"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipeline-2": {
+            "mapping": {
+                "properties": {
+                    "jobs": {
+                        "type": "jobs",
+                        "required": true
+                    },
+                    "pool": {
+                        "type": "pool"
+                    },
+                    "name": {
+                        "type": "string_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "azp-boolean"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipeline-3": {
+            "mapping": {
+                "properties": {
+                    "phases": {
+                        "type": "phases",
+                        "required": true
+                    },
+                    "name": {
+                        "type": "string_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "azp-boolean"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipeline-4": {
+            "mapping": {
+                "properties": {
+                    "strategy": {
+                        "type": "jobStrategy"
+                    },
+                    "continueOnError": {
+                        "type": "jobContinueOnError"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    },
+                    "container": {
+                        "type": "jobContainer"
+                    },
+                    "services": {
+                        "type": "jobServices"
+                    },
+                    "workspace": {
+                        "type": "jobWorkspace"
+                    },
+                    "steps": {
+                        "type": "steps",
+                        "required": true
+                    },
+                    "name": {
+                        "type": "string_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "azp-boolean"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipeline-5": {
+            "mapping": {
+                "properties": {
+                    "continueOnError": {
+                        "type": "jobContinueOnError"
+                    },
+                    "queue": {
+                        "type": "phaseQueueTarget"
+                    },
+                    "steps": {
+                        "type": "steps",
+                        "required": true
+                    },
+                    "name": {
+                        "type": "string_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "azp-boolean"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipeline-6": {
+            "mapping": {
+                "properties": {
+                    "continueOnError": {
+                        "type": "jobContinueOnError"
+                    },
+                    "server": {
+                        "type": "phaseServerTarget"
+                    },
+                    "steps": {
+                        "type": "steps",
+                        "required": true
+                    },
+                    "name": {
+                        "type": "string_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "azp-boolean"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipeline": {
+            "one-of": [
+                "pipeline-0",
+                "pipeline-1",
+                "pipeline-2",
+                "pipeline-4"
+            ]
+        },
+        "pipelineBase": {
+            "mapping": {
+                "properties": {
+                    "name": {
+                        "type": "string_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "azp-boolean"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipelineTrigger": {
+            "mapping": {
+                "properties": {
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "name": {
+                        "type": "any_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "any_allowExpressions"
+                    },
+                    "parameters": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pr": {
+                        "type": "any_allowExpressions"
+                    },
+                    "schedules": {
+                        "type": "any_allowExpressions"
+                    },
+                    "resources": {
+                        "type": "any_allowExpressions"
+                    },
+                    "variables": {
+                        "type": "any_allowExpressions"
+                    },
+                    "stages": {
+                        "type": "any_allowExpressions"
+                    },
+                    "jobs": {
+                        "type": "any_allowExpressions"
+                    },
+                    "extends": {
+                        "type": "any_allowExpressions"
+                    },
+                    "phases": {
+                        "type": "any_allowExpressions"
+                    },
+                    "strategy": {
+                        "type": "any_allowExpressions"
+                    },
+                    "continueOnError": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pool": {
+                        "type": "any_allowExpressions"
+                    },
+                    "container": {
+                        "type": "any_allowExpressions"
+                    },
+                    "services": {
+                        "type": "any_allowExpressions"
+                    },
+                    "workspace": {
+                        "type": "any_allowExpressions"
+                    },
+                    "steps": {
+                        "type": "any_allowExpressions"
+                    },
+                    "queue": {
+                        "type": "any_allowExpressions"
+                    },
+                    "server": {
+                        "type": "any_allowExpressions"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipelineParameters": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "pipelineTemplateParameters"
+                    },
+                    "name": {
+                        "type": "any_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "any_allowExpressions"
+                    },
+                    "trigger": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pr": {
+                        "type": "any_allowExpressions"
+                    },
+                    "schedules": {
+                        "type": "any_allowExpressions"
+                    },
+                    "resources": {
+                        "type": "any_allowExpressions"
+                    },
+                    "variables": {
+                        "type": "any_allowExpressions"
+                    },
+                    "stages": {
+                        "type": "any_allowExpressions"
+                    },
+                    "jobs": {
+                        "type": "any_allowExpressions"
+                    },
+                    "extends": {
+                        "type": "any_allowExpressions"
+                    },
+                    "phases": {
+                        "type": "any_allowExpressions"
+                    },
+                    "strategy": {
+                        "type": "any_allowExpressions"
+                    },
+                    "continueOnError": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pool": {
+                        "type": "any_allowExpressions"
+                    },
+                    "container": {
+                        "type": "any_allowExpressions"
+                    },
+                    "services": {
+                        "type": "any_allowExpressions"
+                    },
+                    "workspace": {
+                        "type": "any_allowExpressions"
+                    },
+                    "steps": {
+                        "type": "any_allowExpressions"
+                    },
+                    "queue": {
+                        "type": "any_allowExpressions"
+                    },
+                    "server": {
+                        "type": "any_allowExpressions"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipelinePR": {
+            "mapping": {
+                "properties": {
+                    "pr": {
+                        "type": "pr"
+                    },
+                    "name": {
+                        "type": "any_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "any_allowExpressions"
+                    },
+                    "trigger": {
+                        "type": "any_allowExpressions"
+                    },
+                    "parameters": {
+                        "type": "any_allowExpressions"
+                    },
+                    "schedules": {
+                        "type": "any_allowExpressions"
+                    },
+                    "resources": {
+                        "type": "any_allowExpressions"
+                    },
+                    "variables": {
+                        "type": "any_allowExpressions"
+                    },
+                    "stages": {
+                        "type": "any_allowExpressions"
+                    },
+                    "jobs": {
+                        "type": "any_allowExpressions"
+                    },
+                    "extends": {
+                        "type": "any_allowExpressions"
+                    },
+                    "phases": {
+                        "type": "any_allowExpressions"
+                    },
+                    "strategy": {
+                        "type": "any_allowExpressions"
+                    },
+                    "continueOnError": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pool": {
+                        "type": "any_allowExpressions"
+                    },
+                    "container": {
+                        "type": "any_allowExpressions"
+                    },
+                    "services": {
+                        "type": "any_allowExpressions"
+                    },
+                    "workspace": {
+                        "type": "any_allowExpressions"
+                    },
+                    "steps": {
+                        "type": "any_allowExpressions"
+                    },
+                    "queue": {
+                        "type": "any_allowExpressions"
+                    },
+                    "server": {
+                        "type": "any_allowExpressions"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipelineSchedules": {
+            "mapping": {
+                "properties": {
+                    "schedules": {
+                        "type": "schedules"
+                    },
+                    "name": {
+                        "type": "any_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "any_allowExpressions"
+                    },
+                    "trigger": {
+                        "type": "any_allowExpressions"
+                    },
+                    "parameters": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pr": {
+                        "type": "any_allowExpressions"
+                    },
+                    "resources": {
+                        "type": "any_allowExpressions"
+                    },
+                    "variables": {
+                        "type": "any_allowExpressions"
+                    },
+                    "stages": {
+                        "type": "any_allowExpressions"
+                    },
+                    "jobs": {
+                        "type": "any_allowExpressions"
+                    },
+                    "extends": {
+                        "type": "any_allowExpressions"
+                    },
+                    "phases": {
+                        "type": "any_allowExpressions"
+                    },
+                    "strategy": {
+                        "type": "any_allowExpressions"
+                    },
+                    "continueOnError": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pool": {
+                        "type": "any_allowExpressions"
+                    },
+                    "container": {
+                        "type": "any_allowExpressions"
+                    },
+                    "services": {
+                        "type": "any_allowExpressions"
+                    },
+                    "workspace": {
+                        "type": "any_allowExpressions"
+                    },
+                    "steps": {
+                        "type": "any_allowExpressions"
+                    },
+                    "queue": {
+                        "type": "any_allowExpressions"
+                    },
+                    "server": {
+                        "type": "any_allowExpressions"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pipelineAnyBase": {
+            "mapping": {
+                "properties": {
+                    "name": {
+                        "type": "any_allowExpressions"
+                    },
+                    "appendCommitMessageToRunName": {
+                        "type": "any_allowExpressions"
+                    },
+                    "trigger": {
+                        "type": "any_allowExpressions"
+                    },
+                    "parameters": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pr": {
+                        "type": "any_allowExpressions"
+                    },
+                    "schedules": {
+                        "type": "any_allowExpressions"
+                    },
+                    "resources": {
+                        "type": "any_allowExpressions"
+                    },
+                    "variables": {
+                        "type": "any_allowExpressions"
+                    },
+                    "stages": {
+                        "type": "any_allowExpressions"
+                    },
+                    "jobs": {
+                        "type": "any_allowExpressions"
+                    },
+                    "extends": {
+                        "type": "any_allowExpressions"
+                    },
+                    "phases": {
+                        "type": "any_allowExpressions"
+                    },
+                    "strategy": {
+                        "type": "any_allowExpressions"
+                    },
+                    "continueOnError": {
+                        "type": "any_allowExpressions"
+                    },
+                    "pool": {
+                        "type": "any_allowExpressions"
+                    },
+                    "container": {
+                        "type": "any_allowExpressions"
+                    },
+                    "services": {
+                        "type": "any_allowExpressions"
+                    },
+                    "workspace": {
+                        "type": "any_allowExpressions"
+                    },
+                    "steps": {
+                        "type": "any_allowExpressions"
+                    },
+                    "queue": {
+                        "type": "any_allowExpressions"
+                    },
+                    "server": {
+                        "type": "any_allowExpressions"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    }
+                }
+            }
+        },
+        "pr-0": {
+            "string": {
+                "pattern": "^none$"
+            }
+        },
+        "pr-1": {
+            "sequence": {
+                "item-type": "branchFilter"
+            }
+        },
+        "pr-2": {
+            "mapping": {
+                "properties": {
+                    "autoCancel": {
+                        "type": "azp-boolean"
+                    },
+                    "branches": {
+                        "type": "includeExcludeFilters"
+                    },
+                    "paths": {
+                        "type": "includeExcludeFilters"
+                    },
+                    "drafts": {
+                        "type": "azp-boolean"
+                    }
+                }
+            }
+        },
+        "pr": {
+            "one-of": [
+                "pr-0",
+                "pr-1",
+                "pr-2"
+            ]
+        },
+        "trigger-0": {
+            "string": {
+                "pattern": "^none$"
+            }
+        },
+        "trigger-1": {
+            "sequence": {
+                "item-type": "branchFilter"
+            }
+        },
+        "trigger-2": {
+            "mapping": {
+                "properties": {
+                    "batch": {
+                        "type": "azp-boolean"
+                    },
+                    "branches": {
+                        "type": "includeExcludeFilters"
+                    },
+                    "paths": {
+                        "type": "includeExcludeFilters"
+                    },
+                    "tags": {
+                        "type": "includeExcludeFilters"
+                    }
+                }
+            }
+        },
+        "trigger": {
+            "one-of": [
+                "trigger-0",
+                "trigger-1",
+                "trigger-2"
+            ]
+        },
+        "includeExcludeFilters": {
+            "mapping": {
+                "properties": {
+                    "include": {
+                        "type": "branchFilterArray"
+                    },
+                    "exclude": {
+                        "type": "branchFilterArray"
+                    }
+                }
+            }
+        },
+        "includeExcludeStringFilters-0": {
+            "sequence": {
+                "item-type": "nonEmptyString"
+            }
+        },
+        "includeExcludeStringFilters-1": {
+            "mapping": {
+                "properties": {
+                    "include": {
+                        "type": "sequenceOfNonEmptyString"
+                    },
+                    "exclude": {
+                        "type": "sequenceOfNonEmptyString"
+                    }
+                }
+            }
+        },
+        "includeExcludeStringFilters": {
+            "one-of": [
+                "includeExcludeStringFilters-0",
+                "includeExcludeStringFilters-1"
+            ]
+        },
+        "branchFilterArray": {
+            "sequence": {
+                "item-type": "branchFilter"
+            }
+        },
+        "branchFilter": {
+            "string": {
+                "pattern": "^[^\\/~\\^\\: \\[\\]\\\\]+(\\/[^\\/~\\^\\: \\[\\]\\\\]+)*$"
+            }
+        },
+        "templateParameters-0": {
+            "sequence": {
+                "item-type": "templateParameter"
+            }
+        },
+        "templateParameters-1": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "templateParameters": {
+            "one-of": [
+                "templateParameters-0",
+                "templateParameters-1"
+            ]
+        },
+        "templateParameter": {
+            "mapping": {
+                "properties": {
+                    "name": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "type": {
+                        "type": "templateParameterType"
+                    },
+                    "default": {
+                        "type": "azp-any"
+                    },
+                    "values": {
+                        "type": "sequenceOfNonEmptyString"
+                    }
+                }
+            }
+        },
+        "templateParameterType-0": {
+            "string": {
+                "pattern": "^boolean$"
+            }
+        },
+        "templateParameterType-1": {
+            "string": {
+                "pattern": "^container$"
+            }
+        },
+        "templateParameterType-2": {
+            "string": {
+                "pattern": "^containerList$"
+            }
+        },
+        "templateParameterType-3": {
+            "string": {
+                "pattern": "^deployment$"
+            }
+        },
+        "templateParameterType-4": {
+            "string": {
+                "pattern": "^deploymentList$"
+            }
+        },
+        "templateParameterType-5": {
+            "string": {
+                "pattern": "^job$"
+            }
+        },
+        "templateParameterType-6": {
+            "string": {
+                "pattern": "^jobList$"
+            }
+        },
+        "templateParameterType-7": {
+            "string": {
+                "pattern": "^legacyObject$"
+            }
+        },
+        "templateParameterType-8": {
+            "string": {
+                "pattern": "^number$"
+            }
+        },
+        "templateParameterType-9": {
+            "string": {
+                "pattern": "^object$"
+            }
+        },
+        "templateParameterType-10": {
+            "string": {
+                "pattern": "^stage$"
+            }
+        },
+        "templateParameterType-11": {
+            "string": {
+                "pattern": "^stageList$"
+            }
+        },
+        "templateParameterType-12": {
+            "string": {
+                "pattern": "^step$"
+            }
+        },
+        "templateParameterType-13": {
+            "string": {
+                "pattern": "^stepList$"
+            }
+        },
+        "templateParameterType-14": {
+            "string": {
+                "pattern": "^string$"
+            }
+        },
+        "templateParameterType": {
+            "one-of": [
+                "templateParameterType-0",
+                "templateParameterType-1",
+                "templateParameterType-2",
+                "templateParameterType-3",
+                "templateParameterType-4",
+                "templateParameterType-5",
+                "templateParameterType-6",
+                "templateParameterType-7",
+                "templateParameterType-8",
+                "templateParameterType-9",
+                "templateParameterType-10",
+                "templateParameterType-11",
+                "templateParameterType-12",
+                "templateParameterType-13",
+                "templateParameterType-14"
+            ]
+        },
+        "pipelineTemplateParameters": {
+            "sequence": {
+                "item-type": "pipelineTemplateParameter"
+            }
+        },
+        "pipelineTemplateParameter": {
+            "mapping": {
+                "properties": {
+                    "name": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "type": {
+                        "type": "pipelineTemplateParameterType"
+                    },
+                    "default": {
+                        "type": "azp-any"
+                    },
+                    "values": {
+                        "type": "sequenceOfNonEmptyString"
+                    }
+                }
+            }
+        },
+        "pipelineTemplateParameterType-0": {
+            "string": {
+                "pattern": "^boolean$"
+            }
+        },
+        "pipelineTemplateParameterType-1": {
+            "string": {
+                "pattern": "^container$"
+            }
+        },
+        "pipelineTemplateParameterType-2": {
+            "string": {
+                "pattern": "^containerList$"
+            }
+        },
+        "pipelineTemplateParameterType-3": {
+            "string": {
+                "pattern": "^deployment$"
+            }
+        },
+        "pipelineTemplateParameterType-4": {
+            "string": {
+                "pattern": "^deploymentList$"
+            }
+        },
+        "pipelineTemplateParameterType-5": {
+            "string": {
+                "pattern": "^environment$"
+            }
+        },
+        "pipelineTemplateParameterType-6": {
+            "string": {
+                "pattern": "^filePath$"
+            }
+        },
+        "pipelineTemplateParameterType-7": {
+            "string": {
+                "pattern": "^job$"
+            }
+        },
+        "pipelineTemplateParameterType-8": {
+            "string": {
+                "pattern": "^jobList$"
+            }
+        },
+        "pipelineTemplateParameterType-9": {
+            "string": {
+                "pattern": "^number$"
+            }
+        },
+        "pipelineTemplateParameterType-10": {
+            "string": {
+                "pattern": "^object$"
+            }
+        },
+        "pipelineTemplateParameterType-11": {
+            "string": {
+                "pattern": "^pool$"
+            }
+        },
+        "pipelineTemplateParameterType-12": {
+            "string": {
+                "pattern": "^secureFile$"
+            }
+        },
+        "pipelineTemplateParameterType-13": {
+            "string": {
+                "pattern": "^serviceConnection$"
+            }
+        },
+        "pipelineTemplateParameterType-14": {
+            "string": {
+                "pattern": "^stage$"
+            }
+        },
+        "pipelineTemplateParameterType-15": {
+            "string": {
+                "pattern": "^stageList$"
+            }
+        },
+        "pipelineTemplateParameterType-16": {
+            "string": {
+                "pattern": "^step$"
+            }
+        },
+        "pipelineTemplateParameterType-17": {
+            "string": {
+                "pattern": "^stepList$"
+            }
+        },
+        "pipelineTemplateParameterType-18": {
+            "string": {
+                "pattern": "^string$"
+            }
+        },
+        "pipelineTemplateParameterType": {
+            "one-of": [
+                "pipelineTemplateParameterType-0",
+                "pipelineTemplateParameterType-1",
+                "pipelineTemplateParameterType-2",
+                "pipelineTemplateParameterType-3",
+                "pipelineTemplateParameterType-4",
+                "pipelineTemplateParameterType-5",
+                "pipelineTemplateParameterType-6",
+                "pipelineTemplateParameterType-7",
+                "pipelineTemplateParameterType-8",
+                "pipelineTemplateParameterType-9",
+                "pipelineTemplateParameterType-10",
+                "pipelineTemplateParameterType-11",
+                "pipelineTemplateParameterType-12",
+                "pipelineTemplateParameterType-13",
+                "pipelineTemplateParameterType-14",
+                "pipelineTemplateParameterType-15",
+                "pipelineTemplateParameterType-16",
+                "pipelineTemplateParameterType-17",
+                "pipelineTemplateParameterType-18"
+            ]
+        },
+        "schedules": {
+            "sequence": {
+                "item-type": "schedule"
+            }
+        },
+        "schedule": {
+            "mapping": {
+                "properties": {
+                    "cron": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "branches": {
+                        "type": "includeExcludeFilters"
+                    },
+                    "batch": {
+                        "type": "azp-boolean"
+                    },
+                    "always": {
+                        "type": "azp-boolean"
+                    }
+                }
+            }
+        },
+        "resources-0": {
+            "mapping": {
+                "properties": {
+                    "builds": {
+                        "type": "buildResources"
+                    },
+                    "containers": {
+                        "type": "containerResources"
+                    },
+                    "pipelines": {
+                        "type": "pipelineResources"
+                    },
+                    "repositories": {
+                        "type": "repositoryResources"
+                    },
+                    "webhooks": {
+                        "type": "webhookResources"
+                    },
+                    "packages": {
+                        "type": "packageResources"
+                    }
+                }
+            }
+        },
+        "resources-1": {
+            "sequence": {
+                "item-type": "legacyResource"
+            }
+        },
+        "resources": {
+            "one-of": [
+                "resources-0",
+                "resources-1"
+            ]
+        },
+        "buildResources": {
+            "sequence": {
+                "item-type": "buildResource"
+            }
+        },
+        "buildResource": {
+            "mapping": {
+                "properties": {
+                    "build": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "type": {
+                        "type": "nonEmptyString",
+                        "required": true
+                    },
+                    "connection": {
+                        "type": "nonEmptyString",
+                        "required": true
+                    },
+                    "source": {
+                        "type": "nonEmptyString",
+                        "required": true
+                    },
+                    "version": {
+                        "type": "string_allowExpressions"
+                    },
+                    "branch": {
+                        "type": "string_allowExpressions"
+                    },
+                    "trigger": {
+                        "type": "buildResourceTrigger"
+                    }
+                }
+            }
+        },
+        "buildResourceTrigger-0": {
+            "string": {
+                "pattern": "^none$"
+            }
+        },
+        "buildResourceTrigger-1": {
+            "string": {
+                "pattern": "^true$"
+            }
+        },
+        "buildResourceTrigger": {
+            "one-of": [
+                "buildResourceTrigger-0",
+                "buildResourceTrigger-1"
+            ]
+        },
+        "packageResources": {
+            "sequence": {
+                "item-type": "packageResource"
+            }
+        },
+        "packageResource": {
+            "mapping": {
+                "properties": {
+                    "package": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "type": {
+                        "type": "nonEmptyString",
+                        "required": true
+                    },
+                    "connection": {
+                        "type": "nonEmptyString",
+                        "required": true
+                    },
+                    "name": {
+                        "type": "nonEmptyString",
+                        "required": true
+                    },
+                    "version": {
+                        "type": "string_allowExpressions"
+                    },
+                    "tag": {
+                        "type": "string_allowExpressions"
+                    },
+                    "trigger": {
+                        "type": "packageResourceTrigger"
+                    }
+                }
+            }
+        },
+        "packageResourceTrigger-0": {
+            "string": {
+                "pattern": "^none$"
+            }
+        },
+        "packageResourceTrigger-1": {
+            "string": {
+                "pattern": "^true$"
+            }
+        },
+        "packageResourceTrigger": {
+            "one-of": [
+                "packageResourceTrigger-0",
+                "packageResourceTrigger-1"
+            ]
+        },
+        "containerResources": {
+            "sequence": {
+                "item-type": "containerResource"
+            },
+            "context": [
+                "parameters",
+                "variables"
+            ]
+        },
+        "containerResource": {
+            "mapping": {
+                "properties": {
+                    "container": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "type": {
+                        "type": "containerArtifactType"
+                    },
+                    "trigger": {
+                        "type": "containerResourceTrigger"
+                    },
+                    "endpoint": {
+                        "type": "string_allowExpressions"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "image": {
+                        "type": "azp-string",
+                        "required": true
+                    },
+                    "mapDockerSocket": {
+                        "type": "azp-boolean"
+                    },
+                    "options": {
+                        "type": "string_allowExpressions"
+                    },
+                    "ports": {
+                        "type": "sequenceOfString_allowExpressions"
+                    },
+                    "volumes": {
+                        "type": "sequenceOfString_allowExpressions"
+                    },
+                    "mountReadOnly": {
+                        "type": "readOnlyMounts"
+                    }
+                },
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "containerArtifactType-0": {
+            "string": {
+                "pattern": "^ACR$",
+                "ignore-case": true
+            }
+        },
+        "containerArtifactType-1": {
+            "string": {}
+        },
+        "containerArtifactType": {
+            "one-of": [
+                "containerArtifactType-1"
+            ]
+        },
+        "containerResourceTrigger-0": {
+            "string": {
+                "pattern": "^none$"
+            }
+        },
+        "containerResourceTrigger-1": {
+            "string": {
+                "pattern": "^true$"
+            }
+        },
+        "containerResourceTrigger-2": {
+            "mapping": {
+                "properties": {
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "tags": {
+                        "type": "includeExcludeStringFilters"
+                    }
+                }
+            }
+        },
+        "containerResourceTrigger": {
+            "one-of": [
+                "containerResourceTrigger-0",
+                "containerResourceTrigger-1",
+                "containerResourceTrigger-2"
+            ]
+        },
+        "pipelineResources": {
+            "sequence": {
+                "item-type": "pipelineResource"
+            }
+        },
+        "pipelineResource": {
+            "mapping": {
+                "properties": {
+                    "pipeline": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "project": {
+                        "type": "nonEmptyString"
+                    },
+                    "source": {
+                        "type": "nonEmptyString"
+                    },
+                    "version": {
+                        "type": "string_allowExpressions"
+                    },
+                    "branch": {
+                        "type": "string_allowExpressions"
+                    },
+                    "tags": {
+                        "type": "sequenceOfNonEmptyString"
+                    },
+                    "trigger": {
+                        "type": "pipelineResourceTrigger"
+                    }
+                }
+            }
+        },
+        "pipelineResourceTrigger-0": {
+            "string": {
+                "pattern": "^none$"
+            }
+        },
+        "pipelineResourceTrigger-1": {
+            "string": {
+                "pattern": "^true$"
+            }
+        },
+        "pipelineResourceTrigger-2": {
+            "mapping": {
+                "properties": {
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "branches": {
+                        "type": "triggerBranchFilter"
+                    },
+                    "stages": {
+                        "type": "sequenceOfNonEmptyString"
+                    },
+                    "tags": {
+                        "type": "sequenceOfNonEmptyString"
+                    }
+                }
+            }
+        },
+        "pipelineResourceTrigger": {
+            "one-of": [
+                "pipelineResourceTrigger-0",
+                "pipelineResourceTrigger-1",
+                "pipelineResourceTrigger-2"
+            ]
+        },
+        "triggerBranchFilter-0": {
+            "mapping": {
+                "properties": {
+                    "include": {
+                        "type": "branchFilterArray"
+                    },
+                    "exclude": {
+                        "type": "branchFilterArray"
+                    }
+                }
+            }
+        },
+        "triggerBranchFilter-1": {
+            "sequence": {
+                "item-type": "branchFilter"
+            }
+        },
+        "triggerBranchFilter": {
+            "one-of": [
+                "triggerBranchFilter-0",
+                "triggerBranchFilter-1"
+            ]
+        },
+        "repositoryResources": {
+            "sequence": {
+                "item-type": "repositoryResource"
+            }
+        },
+        "repositoryResource": {
+            "mapping": {
+                "properties": {
+                    "repository": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "endpoint": {
+                        "type": "nonEmptyString"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "checkoutOptions": {
+                        "type": "repositoryCheckoutOptions"
+                    },
+                    "ref": {
+                        "type": "string_allowExpressions"
+                    }
+                },
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "repositoryCheckoutOptions": {
+            "mapping": {
+                "properties": {
+                    "clean": {
+                        "type": "azp-string"
+                    },
+                    "fetchDepth": {
+                        "type": "azp-string"
+                    },
+                    "fetchTags": {
+                        "type": "azp-string"
+                    },
+                    "lfs": {
+                        "type": "azp-string"
+                    },
+                    "submodules": {
+                        "type": "azp-string"
+                    },
+                    "persistCredentials": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "legacyResource": {
+            "mapping": {
+                "properties": {
+                    "repo": {
+                        "type": "legacyRepoResourceAlias",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "clean": {
+                        "type": "azp-string"
+                    },
+                    "fetchDepth": {
+                        "type": "azp-string"
+                    },
+                    "lfs": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "legacyRepoResourceAlias": {
+            "string": {
+                "pattern": "^self$"
+            }
+        },
+        "webhookResources": {
+            "sequence": {
+                "item-type": "webhookResource"
+            }
+        },
+        "webhookResource": {
+            "mapping": {
+                "properties": {
+                    "webhook": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "connection": {
+                        "type": "nonEmptyString",
+                        "required": true
+                    },
+                    "type": {
+                        "type": "nonEmptyString"
+                    },
+                    "filters": {
+                        "type": "webhookFilters"
+                    }
+                }
+            }
+        },
+        "webhookFilters": {
+            "sequence": {
+                "item-type": "webhookFilter"
+            }
+        },
+        "webhookFilter": {
+            "mapping": {
+                "properties": {
+                    "path": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "value": {
+                        "type": "nonEmptyString",
+                        "required": true
+                    }
+                }
+            }
+        },
+        "variablesTemplate": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    }
+                }
+            }
+        },
+        "variables-0": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "variables-1": {
+            "sequence": {
+                "item-type": "variable"
+            }
+        },
+        "variables": {
+            "one-of": [
+                "variables-0",
+                "variables-1"
+            ],
+            "context": [
+                "parameters",
+                "variables"
+            ]
+        },
+        "variable-0": {
+            "mapping": {
+                "properties": {
+                    "name": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "value": {
+                        "type": "azp-string"
+                    },
+                    "readonly": {
+                        "type": "azp-boolean"
+                    }
+                }
+            }
+        },
+        "variable-1": {
+            "mapping": {
+                "properties": {
+                    "group": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    }
+                }
+            }
+        },
+        "variable-2": {
+            "mapping": {
+                "properties": {
+                    "template": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "parameters": {
+                        "type": "azp-mapping"
+                    }
+                }
+            }
+        },
+        "variable": {
+            "one-of": [
+                "variable-0",
+                "variable-1",
+                "variable-2"
+            ]
+        },
+        "stagesTemplate": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "stages": {
+                        "type": "stages"
+                    }
+                }
+            }
+        },
+        "stages": {
+            "sequence": {
+                "item-type": "stage"
+            },
+            "context": [
+                "parameters",
+                "variables"
+            ]
+        },
+        "stage-0": {
+            "mapping": {
+                "properties": {
+                    "stage": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    },
+                    "dependsOn": {
+                        "type": "jobDependsOn"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "jobs": {
+                        "type": "jobs"
+                    },
+                    "lockBehavior": {
+                        "type": "lockBehavior"
+                    },
+                    "trigger": {
+                        "type": "stageTrigger"
+                    },
+                    "isSkippable": {
+                        "type": "azp-boolean"
+                    },
+                    "templateContext": {
+                        "type": "templateContext"
+                    }
+                }
+            }
+        },
+        "stage-1": {
+            "mapping": {
+                "properties": {
+                    "template": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "parameters": {
+                        "type": "azp-mapping"
+                    }
+                }
+            }
+        },
+        "stage": {
+            "one-of": [
+                "stage-0",
+                "stage-1"
+            ]
+        },
+        "lockBehavior-0": {
+            "string": {
+                "pattern": "^sequential$"
+            }
+        },
+        "lockBehavior-1": {
+            "string": {
+                "pattern": "^runLatest$"
+            }
+        },
+        "lockBehavior": {
+            "one-of": [
+                "lockBehavior-0",
+                "lockBehavior-1"
+            ]
+        },
+        "stageTrigger-0": {
+            "string": {
+                "pattern": "^manual$"
+            }
+        },
+        "stageTrigger-1": {
+            "string": {
+                "pattern": "^automatic$"
+            }
+        },
+        "stageTrigger": {
+            "one-of": [
+                "stageTrigger-0",
+                "stageTrigger-1"
+            ]
+        },
+        "extendsParameters": {
+            "sequence": {
+                "item-type": "templateParameter"
+            }
+        },
+        "extendsTemplate-0": {
+            "mapping": {
+                "properties": {
+                    "stages": {
+                        "type": "stages"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "parameters": {
+                        "type": "extendsParameters"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    }
+                }
+            }
+        },
+        "extendsTemplate-1": {
+            "mapping": {
+                "properties": {
+                    "jobs": {
+                        "type": "jobs"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "parameters": {
+                        "type": "extendsParameters"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    }
+                }
+            }
+        },
+        "extendsTemplate-2": {
+            "mapping": {
+                "properties": {
+                    "steps": {
+                        "type": "steps"
+                    },
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "parameters": {
+                        "type": "extendsParameters"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    }
+                }
+            }
+        },
+        "extendsTemplate-3": {
+            "mapping": {
+                "properties": {
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "parameters": {
+                        "type": "extendsParameters"
+                    },
+                    "extends": {
+                        "type": "extends"
+                    }
+                }
+            }
+        },
+        "extendsTemplate": {
+            "one-of": [
+                "extendsTemplate-0",
+                "extendsTemplate-1",
+                "extendsTemplate-2",
+                "extendsTemplate-3"
+            ]
+        },
+        "extendsTemplateBase": {
+            "mapping": {
+                "properties": {
+                    "trigger": {
+                        "type": "trigger"
+                    },
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "parameters": {
+                        "type": "extendsParameters"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    }
+                }
+            }
+        },
+        "parametersTemplate-0": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "steps": {
+                        "type": "steps",
+                        "required": true
+                    }
+                }
+            }
+        },
+        "parametersTemplate-1": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "jobs": {
+                        "type": "jobs"
+                    }
+                }
+            }
+        },
+        "parametersTemplate-2": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "stages": {
+                        "type": "stages"
+                    }
+                }
+            }
+        },
+        "parametersTemplate-3": {
+            "mapping": {
+                "properties": {
+                    "resources": {
+                        "type": "resources"
+                    },
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "extends": {
+                        "type": "extends",
+                        "required": true
+                    }
+                }
+            }
+        },
+        "parametersTemplate": {
+            "one-of": [
+                "parametersTemplate-0",
+                "parametersTemplate-1",
+                "parametersTemplate-2",
+                "parametersTemplate-3"
+            ]
+        },
+        "extends": {
+            "mapping": {
+                "properties": {
+                    "template": {
+                        "type": "nonEmptyString"
+                    },
+                    "parameters": {
+                        "type": "azp-mapping"
+                    }
+                }
+            }
+        },
+        "jobsTemplate-0": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "jobs": {
+                        "type": "jobs"
+                    }
+                }
+            }
+        },
+        "jobsTemplate-1": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "phases": {
+                        "type": "phases"
+                    }
+                }
+            }
+        },
+        "jobsTemplate": {
+            "one-of": [
+                "jobsTemplate-0"
+            ]
+        },
+        "jobs": {
+            "sequence": {
+                "item-type": "job"
+            },
+            "context": [
+                "parameters",
+                "variables"
+            ]
+        },
+        "job-0": {
+            "mapping": {
+                "properties": {
+                    "job": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "dependsOn": {
+                        "type": "jobDependsOn"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "jobContinueOnError"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "cancelTimeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "strategy": {
+                        "type": "jobStrategy"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    },
+                    "container": {
+                        "type": "jobContainer"
+                    },
+                    "services": {
+                        "type": "jobServices"
+                    },
+                    "workspace": {
+                        "type": "jobWorkspace"
+                    },
+                    "uses": {
+                        "type": "explicitResources"
+                    },
+                    "steps": {
+                        "type": "steps"
+                    },
+                    "templateContext": {
+                        "type": "templateContext"
+                    }
+                }
+            }
+        },
+        "job-1": {
+            "mapping": {
+                "properties": {
+                    "deployment": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "dependsOn": {
+                        "type": "jobDependsOn"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "jobContinueOnError"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "cancelTimeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    },
+                    "environment": {
+                        "type": "deploymentEnvironment"
+                    },
+                    "strategy": {
+                        "type": "deploymentStrategy"
+                    },
+                    "workspace": {
+                        "type": "jobWorkspace"
+                    },
+                    "uses": {
+                        "type": "explicitResources"
+                    },
+                    "container": {
+                        "type": "jobContainer"
+                    },
+                    "services": {
+                        "type": "jobServices"
+                    },
+                    "templateContext": {
+                        "type": "templateContext"
+                    }
+                }
+            }
+        },
+        "job-2": {
+            "mapping": {
+                "properties": {
+                    "template": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "parameters": {
+                        "type": "azp-mapping"
+                    }
+                }
+            }
+        },
+        "job": {
+            "one-of": [
+                "job-0",
+                "job-1",
+                "job-2"
+            ]
+        },
+        "explicitResources": {
+            "mapping": {
+                "properties": {
+                    "repositories": {
+                        "type": "sequenceOfNonEmptyString"
+                    },
+                    "pools": {
+                        "type": "sequenceOfNonEmptyString"
+                    }
+                }
+            }
+        },
+        "pool-0": {
+            "string": {}
+        },
+        "pool-1": {
+            "mapping": {
+                "properties": {
+                    "name": {
+                        "type": "nonEmptyString"
+                    },
+                    "demands": {
+                        "type": "poolDemands"
+                    }
+                },
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "pool": {
+            "one-of": [
+                "pool-0",
+                "pool-1"
+            ]
+        },
+        "poolDemands-0": {
+            "string": {}
+        },
+        "poolDemands-1": {
+            "sequence": {
+                "item-type": "nonEmptyString"
+            }
+        },
+        "poolDemands": {
+            "one-of": [
+                "poolDemands-0",
+                "poolDemands-1"
+            ]
+        },
+        "jobContainer-0": {
+            "string": {}
+        },
+        "jobContainer-1": {
+            "mapping": {
+                "properties": {
+                    "alias": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "jobContainer-2": {
+            "mapping": {
+                "properties": {
+                    "endpoint": {
+                        "type": "string_allowExpressions"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "image": {
+                        "type": "azp-string",
+                        "required": true
+                    },
+                    "mapDockerSocket": {
+                        "type": "azp-boolean"
+                    },
+                    "options": {
+                        "type": "string_allowExpressions"
+                    },
+                    "ports": {
+                        "type": "sequenceOfString_allowExpressions"
+                    },
+                    "volumes": {
+                        "type": "sequenceOfString_allowExpressions"
+                    },
+                    "mountReadOnly": {
+                        "type": "readOnlyMounts"
+                    }
+                }
+            }
+        },
+        "jobContainer": {
+            "one-of": [
+                "jobContainer-0",
+                "jobContainer-1",
+                "jobContainer-2"
+            ]
+        },
+        "containerBase": {
+            "mapping": {
+                "properties": {
+                    "endpoint": {
+                        "type": "string_allowExpressions"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "image": {
+                        "type": "azp-string",
+                        "required": true
+                    },
+                    "mapDockerSocket": {
+                        "type": "azp-boolean"
+                    },
+                    "options": {
+                        "type": "string_allowExpressions"
+                    },
+                    "ports": {
+                        "type": "sequenceOfString_allowExpressions"
+                    },
+                    "volumes": {
+                        "type": "sequenceOfString_allowExpressions"
+                    },
+                    "mountReadOnly": {
+                        "type": "readOnlyMounts"
+                    }
+                }
+            }
+        },
+        "readOnlyMounts": {
+            "mapping": {
+                "properties": {
+                    "work": {
+                        "type": "azp-boolean"
+                    },
+                    "externals": {
+                        "type": "azp-boolean"
+                    },
+                    "tools": {
+                        "type": "azp-boolean"
+                    },
+                    "tasks": {
+                        "type": "azp-boolean"
+                    }
+                }
+            }
+        },
+        "jobServices": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "jobWorkspace": {
+            "mapping": {
+                "properties": {
+                    "clean": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "jobStrategy-0": {
+            "mapping": {
+                "properties": {
+                    "matrix": {
+                        "type": "jobMatrix"
+                    },
+                    "maxParallel": {
+                        "type": "nonEmptyString"
+                    }
+                }
+            }
+        },
+        "jobStrategy-1": {
+            "mapping": {
+                "properties": {
+                    "parallel": {
+                        "type": "nonEmptyString"
+                    }
+                }
+            }
+        },
+        "jobStrategy": {
+            "one-of": [
+                "jobStrategy-0",
+                "jobStrategy-1"
+            ]
+        },
+        "jobMatrix-0": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "jobMatrix-1": {
+            "string": {}
+        },
+        "jobMatrix": {
+            "one-of": [
+                "jobMatrix-0",
+                "jobMatrix-1"
+            ]
+        },
+        "matrixProperties": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "deploymentEnvironment-0": {
+            "string": {}
+        },
+        "deploymentEnvironment-1": {
+            "mapping": {
+                "properties": {
+                    "name": {
+                        "type": "nonEmptyString"
+                    },
+                    "resourceName": {
+                        "type": "nonEmptyString"
+                    },
+                    "resourceId": {
+                        "type": "nonEmptyString"
+                    },
+                    "resourceType": {
+                        "type": "nonEmptyString"
+                    },
+                    "tags": {
+                        "type": "nonEmptyString"
+                    }
+                }
+            }
+        },
+        "deploymentEnvironment": {
+            "one-of": [
+                "deploymentEnvironment-0",
+                "deploymentEnvironment-1"
+            ]
+        },
+        "deploymentStrategy-0": {
+            "mapping": {
+                "properties": {
+                    "runOnce": {
+                        "type": "runOnceDeploymentStrategy"
+                    }
+                }
+            }
+        },
+        "deploymentStrategy-1": {
+            "mapping": {
+                "properties": {
+                    "rolling": {
+                        "type": "rollingDeploymentStrategy"
+                    }
+                }
+            }
+        },
+        "deploymentStrategy-2": {
+            "mapping": {
+                "properties": {
+                    "canary": {
+                        "type": "canaryDeploymentStrategy"
+                    }
+                }
+            }
+        },
+        "deploymentStrategy": {
+            "one-of": [
+                "deploymentStrategy-0",
+                "deploymentStrategy-1",
+                "deploymentStrategy-2"
+            ]
+        },
+        "preDeployHook": {
+            "mapping": {
+                "properties": {
+                    "steps": {
+                        "type": "steps"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    }
+                }
+            }
+        },
+        "deployHook": {
+            "mapping": {
+                "properties": {
+                    "steps": {
+                        "type": "steps"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    }
+                }
+            }
+        },
+        "routeTrafficHook": {
+            "mapping": {
+                "properties": {
+                    "steps": {
+                        "type": "steps"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    }
+                }
+            }
+        },
+        "postRouteTrafficHook": {
+            "mapping": {
+                "properties": {
+                    "steps": {
+                        "type": "steps"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    }
+                }
+            }
+        },
+        "onSuccessOrFailureHook": {
+            "mapping": {
+                "properties": {
+                    "failure": {
+                        "type": "onFailureHook"
+                    },
+                    "success": {
+                        "type": "onSuccessHook"
+                    }
+                }
+            }
+        },
+        "onFailureHook": {
+            "mapping": {
+                "properties": {
+                    "steps": {
+                        "type": "steps"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    }
+                }
+            }
+        },
+        "onSuccessHook": {
+            "mapping": {
+                "properties": {
+                    "steps": {
+                        "type": "steps"
+                    },
+                    "pool": {
+                        "type": "pool"
+                    }
+                }
+            }
+        },
+        "runOnceDeploymentStrategy": {
+            "mapping": {
+                "properties": {
+                    "preDeploy": {
+                        "type": "preDeployHook"
+                    },
+                    "deploy": {
+                        "type": "deployHook"
+                    },
+                    "routeTraffic": {
+                        "type": "routeTrafficHook"
+                    },
+                    "postRouteTraffic": {
+                        "type": "postRouteTrafficHook"
+                    },
+                    "on": {
+                        "type": "onSuccessOrFailureHook"
+                    }
+                }
+            }
+        },
+        "rollingDeploymentStrategy": {
+            "mapping": {
+                "properties": {
+                    "maxParallel": {
+                        "type": "nonEmptyString"
+                    },
+                    "preDeploy": {
+                        "type": "preDeployHook"
+                    },
+                    "deploy": {
+                        "type": "deployHook"
+                    },
+                    "routeTraffic": {
+                        "type": "routeTrafficHook"
+                    },
+                    "postRouteTraffic": {
+                        "type": "postRouteTrafficHook"
+                    },
+                    "on": {
+                        "type": "onSuccessOrFailureHook"
+                    }
+                }
+            }
+        },
+        "canaryDeploymentStrategy": {
+            "mapping": {
+                "properties": {
+                    "increments": {
+                        "type": "canaryDeploymentIncrements"
+                    },
+                    "preDeploy": {
+                        "type": "preDeployHook"
+                    },
+                    "deploy": {
+                        "type": "deployHook"
+                    },
+                    "routeTraffic": {
+                        "type": "routeTrafficHook"
+                    },
+                    "postRouteTraffic": {
+                        "type": "postRouteTrafficHook"
+                    },
+                    "on": {
+                        "type": "onSuccessOrFailureHook"
+                    }
+                }
+            }
+        },
+        "canaryDeploymentIncrements": {
+            "sequence": {
+                "item-type": "nonEmptyString"
+            }
+        },
+        "phases": {
+            "sequence": {
+                "item-type": "phase"
+            }
+        },
+        "phase-0": {
+            "mapping": {
+                "properties": {
+                    "phase": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "dependsOn": {
+                        "type": "jobDependsOn"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "jobContinueOnError"
+                    },
+                    "queue": {
+                        "type": "phaseQueueTarget"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "steps": {
+                        "type": "steps"
+                    }
+                }
+            }
+        },
+        "phase-1": {
+            "mapping": {
+                "properties": {
+                    "phase": {
+                        "type": "referenceName",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "dependsOn": {
+                        "type": "jobDependsOn"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "jobContinueOnError"
+                    },
+                    "server": {
+                        "type": "phaseServerTarget"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    },
+                    "steps": {
+                        "type": "steps"
+                    }
+                }
+            }
+        },
+        "phase-2": {
+            "mapping": {
+                "properties": {
+                    "template": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "parameters": {
+                        "type": "azp-mapping"
+                    }
+                }
+            }
+        },
+        "phase": {
+            "one-of": [
+                "phase-2"
+            ]
+        },
+        "phaseQueueTarget-0": {
+            "string": {}
+        },
+        "phaseQueueTarget-1": {
+            "mapping": {
+                "properties": {
+                    "cancelTimeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "container": {
+                        "type": "nonEmptyString"
+                    },
+                    "demands": {
+                        "type": "phaseTargetDemands"
+                    },
+                    "matrix": {
+                        "type": "phaseTargetMatrix"
+                    },
+                    "name": {
+                        "type": "azp-string"
+                    },
+                    "parallel": {
+                        "type": "nonEmptyString"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "workspace": {
+                        "type": "phaseTargetWorkspace"
+                    }
+                }
+            }
+        },
+        "phaseQueueTarget": {
+            "one-of": [
+                "phaseQueueTarget-0",
+                "phaseQueueTarget-1"
+            ]
+        },
+        "phaseServerTarget-0": {
+            "string": {}
+        },
+        "phaseServerTarget-1": {
+            "mapping": {
+                "properties": {
+                    "cancelTimeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "matrix": {
+                        "type": "phaseTargetMatrix"
+                    },
+                    "parallel": {
+                        "type": "nonEmptyString"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    }
+                }
+            }
+        },
+        "phaseServerTarget": {
+            "one-of": [
+                "phaseServerTarget-0",
+                "phaseServerTarget-1"
+            ]
+        },
+        "phaseTargetDemands-0": {
+            "string": {}
+        },
+        "phaseTargetDemands-1": {
+            "sequence": {
+                "item-type": "nonEmptyString"
+            }
+        },
+        "phaseTargetDemands": {
+            "one-of": [
+                "phaseTargetDemands-0",
+                "phaseTargetDemands-1"
+            ]
+        },
+        "phaseTargetWorkspace": {
+            "mapping": {
+                "properties": {
+                    "clean": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "phaseTargetMatrix-0": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "phaseTargetMatrix-1": {
+            "string": {}
+        },
+        "phaseTargetMatrix": {
+            "one-of": [
+                "phaseTargetMatrix-0",
+                "phaseTargetMatrix-1"
+            ]
+        },
+        "stepsTemplate": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "steps": {
+                        "type": "steps"
+                    }
+                }
+            }
+        },
+        "steps": {
+            "sequence": {
+                "item-type": "step"
+            },
+            "context": [
+                "parameters",
+                "variables"
+            ]
+        },
+        "step-1": {
+            "mapping": {
+                "properties": {
+                    "script": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "failOnStderr": {
+                        "type": "azp-string"
+                    },
+                    "workingDirectory": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-2": {
+            "mapping": {
+                "properties": {
+                    "powershell": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "errorActionPreference": {
+                        "type": "azp-string"
+                    },
+                    "failOnStderr": {
+                        "type": "azp-string"
+                    },
+                    "ignoreLASTEXITCODE": {
+                        "type": "azp-string"
+                    },
+                    "workingDirectory": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-3": {
+            "mapping": {
+                "properties": {
+                    "pwsh": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "errorActionPreference": {
+                        "type": "azp-string"
+                    },
+                    "failOnStderr": {
+                        "type": "azp-string"
+                    },
+                    "ignoreLASTEXITCODE": {
+                        "type": "azp-string"
+                    },
+                    "workingDirectory": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-4": {
+            "mapping": {
+                "properties": {
+                    "bash": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "failOnStderr": {
+                        "type": "azp-string"
+                    },
+                    "workingDirectory": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-5": {
+            "mapping": {
+                "properties": {
+                    "checkout": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "clean": {
+                        "type": "azp-string"
+                    },
+                    "fetchDepth": {
+                        "type": "azp-string"
+                    },
+                    "fetchFilter": {
+                        "type": "azp-string"
+                    },
+                    "fetchTags": {
+                        "type": "azp-string"
+                    },
+                    "lfs": {
+                        "type": "azp-string"
+                    },
+                    "persistCredentials": {
+                        "type": "azp-string"
+                    },
+                    "submodules": {
+                        "type": "azp-string"
+                    },
+                    "path": {
+                        "type": "azp-string"
+                    },
+                    "workspaceRepo": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-6": {
+            "mapping": {
+                "properties": {
+                    "download": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "artifact": {
+                        "type": "nonEmptyString"
+                    },
+                    "patterns": {
+                        "type": "nonEmptyString"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-7": {
+            "mapping": {
+                "properties": {
+                    "downloadBuild": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "artifact": {
+                        "type": "azp-string"
+                    },
+                    "path": {
+                        "type": "azp-string"
+                    },
+                    "patterns": {
+                        "type": "azp-string"
+                    },
+                    "inputs": {
+                        "type": "mappingOfStringString"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-8": {
+            "mapping": {
+                "properties": {
+                    "getPackage": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "path": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-9": {
+            "mapping": {
+                "properties": {
+                    "upload": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "artifact": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-10": {
+            "mapping": {
+                "properties": {
+                    "publish": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "artifact": {
+                        "type": "azp-string"
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step-11": {
+            "mapping": {
+                "properties": {
+                    "template": {
+                        "type": "nonEmptyString",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "parameters": {
+                        "type": "azp-mapping"
+                    }
+                }
+            }
+        },
+        "step-12": {
+            "mapping": {
+                "properties": {
+                    "reviewApp": {
+                        "type": "azp-string",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "step": {
+            "one-of": [
+                "task",
+                "step-1",
+                "step-2",
+                "step-3",
+                "step-4",
+                "step-5",
+                "step-6",
+                "step-7",
+                "step-8",
+                "step-10",
+                "step-11",
+                "step-12"
+            ]
+        },
+        "stepTarget-0": {
+            "string": {}
+        },
+        "stepTarget-1": {
+            "mapping": {
+                "properties": {
+                    "container": {
+                        "type": "nonEmptyString"
+                    },
+                    "commands": {
+                        "type": "azp-string"
+                    },
+                    "settableVariables": {
+                        "type": "variableRestrictions"
+                    }
+                }
+            }
+        },
+        "stepTarget": {
+            "one-of": [
+                "stepTarget-0",
+                "stepTarget-1"
+            ]
+        },
+        "variableRestrictions-0": {
+            "string": {
+                "pattern": "^none$",
+                "ignore-case": true
+            }
+        },
+        "variableRestrictions-1": {
+            "sequence": {
+                "item-type": "nonEmptyString"
+            }
+        },
+        "variableRestrictions": {
+            "one-of": [
+                "variableRestrictions-0",
+                "variableRestrictions-1"
+            ]
+        },
+        "jobDecoratorSteps": {
+            "mapping": {
+                "properties": {
+                    "steps": {
+                        "type": "tasks"
+                    }
+                }
+            }
+        },
+        "tasks": {
+            "sequence": {
+                "item-type": "task"
+            }
+        },
+        "taskBase": {
+            "mapping": {
+                "properties": {
+                    "condition": {
+                        "type": "azp-string"
+                    },
+                    "continueOnError": {
+                        "type": "azp-boolean"
+                    },
+                    "displayName": {
+                        "type": "azp-string"
+                    },
+                    "target": {
+                        "type": "stepTarget"
+                    },
+                    "enabled": {
+                        "type": "azp-boolean"
+                    },
+                    "env": {
+                        "type": "mappingOfStringString"
+                    },
+                    "name": {
+                        "type": "referenceName"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "nonEmptyString"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "azp-string"
+                    }
+                }
+            }
+        },
+        "jobContinueOnError": {
+            "string": {}
+        },
+        "jobDependsOn-0": {
+            "string": {}
+        },
+        "jobDependsOn-1": {
+            "sequence": {
+                "item-type": "azp-string"
+            }
+        },
+        "jobDependsOn": {
+            "one-of": [
+                "jobDependsOn-0",
+                "jobDependsOn-1"
+            ]
+        },
+        "referenceName": {
+            "string": {
+                "pattern": "^[-_A-Za-z0-9]*$"
+            }
+        },
+        "templateContext": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "boolean-0": {
+            "string": {
+                "pattern": "^true$",
+                "ignore-case": true
+            }
+        },
+        "boolean-1": {
+            "string": {
+                "pattern": "^y$",
+                "ignore-case": true
+            }
+        },
+        "boolean-2": {
+            "string": {
+                "pattern": "^yes$",
+                "ignore-case": true
+            }
+        },
+        "boolean-3": {
+            "string": {
+                "pattern": "^on$",
+                "ignore-case": true
+            }
+        },
+        "boolean-4": {
+            "string": {
+                "pattern": "^false$",
+                "ignore-case": true
+            }
+        },
+        "boolean-5": {
+            "string": {
+                "pattern": "^n$",
+                "ignore-case": true
+            }
+        },
+        "boolean-6": {
+            "string": {
+                "pattern": "^no$",
+                "ignore-case": true
+            }
+        },
+        "boolean-7": {
+            "string": {
+                "pattern": "^off$",
+                "ignore-case": true
+            }
+        },
+        "azp-boolean": {
+            "one-of": [
+                "boolean-0",
+                "boolean-1",
+                "boolean-2",
+                "boolean-3",
+                "boolean-4",
+                "boolean-5",
+                "boolean-6",
+                "boolean-7"
+            ]
+        },
+        "string_allowExpressions": {
+            "string": {},
+            "context": [
+                "parameters",
+                "variables"
+            ]
+        },
+        "nonEmptyString": {
+            "string": {
+                "require-non-empty": true
+            }
+        },
+        "sequenceOfNonEmptyString": {
+            "sequence": {
+                "item-type": "nonEmptyString"
+            }
+        },
+        "sequenceOfString_allowExpressions": {
+            "sequence": {
+                "item-type": "string_allowExpressions"
+            },
+            "context": [
+                "parameters",
+                "variables"
+            ]
+        },
+        "mappingOfStringString": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "any_allowExpressions-0": {
+            "string": {}
+        },
+        "any_allowExpressions-1": {
+            "sequence": {
+                "item-type": "azp-any"
+            }
+        },
+        "any_allowExpressions-2": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "any_allowExpressions": {
+            "one-of": [
+                "any_allowExpressions-0",
+                "any_allowExpressions-1",
+                "any_allowExpressions-2",
+                "boolean",
+                "null",
+                "number"
+            ],
+            "context": [
+                "parameters",
+                "variables"
+            ]
+        },
+        "task-task-0": {
+            "string": {
+                "constant": "PowerShell@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-1": {
+            "string": {
+                "constant": "PowerShell@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-2": {
+            "string": {
+                "constant": "AzurePowerShell@4",
+                "ignore-case": true
+            }
+        },
+        "task-task-3": {
+            "string": {
+                "constant": "AzurePowerShell@5",
+                "ignore-case": true
+            }
+        },
+        "task-task-4": {
+            "string": {
+                "constant": "AzurePowerShell@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-5": {
+            "string": {
+                "constant": "AzurePowerShell@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-6": {
+            "string": {
+                "constant": "AzurePowerShell@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-7": {
+            "string": {
+                "constant": "MysqlDeploymentOnMachineGroup@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-8": {
+            "string": {
+                "constant": "PipAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-9": {
+            "string": {
+                "constant": "PipAuthenticate@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-10": {
+            "string": {
+                "constant": "Maven@4",
+                "ignore-case": true
+            }
+        },
+        "task-task-11": {
+            "string": {
+                "constant": "Maven@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-12": {
+            "string": {
+                "constant": "Maven@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-13": {
+            "string": {
+                "constant": "Maven@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-14": {
+            "string": {
+                "constant": "DotNetCoreCLI@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-15": {
+            "string": {
+                "constant": "DotNetCoreCLI@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-16": {
+            "string": {
+                "constant": "DotNetCoreCLI@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-17": {
+            "string": {
+                "constant": "XamarinComponentRestore@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-18": {
+            "string": {
+                "constant": "AzureRmWebAppDeployment@4",
+                "ignore-case": true
+            }
+        },
+        "task-task-19": {
+            "string": {
+                "constant": "AzureRmWebAppDeployment@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-20": {
+            "string": {
+                "constant": "AzureRMWebAppDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-21": {
+            "string": {
+                "constant": "AzureRmWebAppDeployment@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-22": {
+            "string": {
+                "constant": "PowerShellOnTargetMachines@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-23": {
+            "string": {
+                "constant": "PowerShellOnTargetMachines@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-24": {
+            "string": {
+                "constant": "PowerShellOnTargetMachines@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-25": {
+            "string": {
+                "constant": "PublishCodeCoverageResults@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-26": {
+            "string": {
+                "constant": "PublishCodeCoverageResults@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-27": {
+            "string": {
+                "constant": "RunVisualStudioTestsusingTestAgent@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-28": {
+            "string": {
+                "constant": "ManualIntervention@6",
+                "ignore-case": true
+            }
+        },
+        "task-task-29": {
+            "string": {
+                "constant": "ManualIntervention@7",
+                "ignore-case": true
+            }
+        },
+        "task-task-30": {
+            "string": {
+                "constant": "ManualIntervention@8",
+                "ignore-case": true
+            }
+        },
+        "task-task-31": {
+            "string": {
+                "constant": "InstallAppleProvisioningProfile@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-32": {
+            "string": {
+                "constant": "InstallAppleProvisioningProfile@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-33": {
+            "string": {
+                "constant": "SonarQubePostTest@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-34": {
+            "string": {
+                "constant": "PyPIPublisher@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-35": {
+            "string": {
+                "constant": "ChefKnife@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-36": {
+            "string": {
+                "constant": "GoTool@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-37": {
+            "string": {
+                "constant": "XcodePackageiOS@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-38": {
+            "string": {
+                "constant": "Go@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-39": {
+            "string": {
+                "constant": "PublishPipelineMetadata@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-40": {
+            "string": {
+                "constant": "Docker@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-41": {
+            "string": {
+                "constant": "Docker@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-42": {
+            "string": {
+                "constant": "Docker@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-43": {
+            "string": {
+                "constant": "JenkinsQueueJob@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-44": {
+            "string": {
+                "constant": "JenkinsQueueJob@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-45": {
+            "string": {
+                "constant": "FtpUpload@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-46": {
+            "string": {
+                "constant": "FtpUpload@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-47": {
+            "string": {
+                "constant": "WindowsMachineFileCopy@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-48": {
+            "string": {
+                "constant": "WindowsMachineFileCopy@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-49": {
+            "string": {
+                "constant": "AndroidBuild@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-50": {
+            "string": {
+                "constant": "TwineAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-51": {
+            "string": {
+                "constant": "TwineAuthenticate@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-52": {
+            "string": {
+                "constant": "IISWebAppDeploymentOnMachineGroup@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-53": {
+            "string": {
+                "constant": "PythonScript@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-54": {
+            "string": {
+                "constant": "HelmInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-55": {
+            "string": {
+                "constant": "HelmInstaller@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-56": {
+            "string": {
+                "constant": "NodeTaskRunnerInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-57": {
+            "string": {
+                "constant": "XamarinLicense@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-58": {
+            "string": {
+                "constant": "NuGetAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-59": {
+            "string": {
+                "constant": "NuGetAuthenticate@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-60": {
+            "string": {
+                "constant": "DownloadGitHubNugetPackage@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-61": {
+            "string": {
+                "constant": "MavenAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-62": {
+            "string": {
+                "constant": "ReviewApp@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-63": {
+            "string": {
+                "constant": "JavaToolInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-64": {
+            "string": {
+                "constant": "Chef@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-65": {
+            "string": {
+                "constant": "AzureFunctionApp@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-66": {
+            "string": {
+                "constant": "AzureFunctionApp@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-67": {
+            "string": {
+                "constant": "npmAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-68": {
+            "string": {
+                "constant": "MSBuild@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-69": {
+            "string": {
+                "constant": "PackerBuild@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-70": {
+            "string": {
+                "constant": "PackerBuild@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-71": {
+            "string": {
+                "constant": "NuGetPackager@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-72": {
+            "string": {
+                "constant": "DuffleInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-73": {
+            "string": {
+                "constant": "ServiceFabricUpdateAppVersions@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-74": {
+            "string": {
+                "constant": "ServiceFabricUpdateManifests@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-75": {
+            "string": {
+                "constant": "AzureMonitor@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-76": {
+            "string": {
+                "constant": "AzureMonitor@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-77": {
+            "string": {
+                "constant": "Notation@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-78": {
+            "string": {
+                "constant": "AzureNLBManagement@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-79": {
+            "string": {
+                "constant": "ApacheJMeterLoadTest@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-80": {
+            "string": {
+                "constant": "DockerCompose@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-81": {
+            "string": {
+                "constant": "DockerCompose@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-82": {
+            "string": {
+                "constant": "AzureMonitorAlerts@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-83": {
+            "string": {
+                "constant": "XamarinTestCloud@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-84": {
+            "string": {
+                "constant": "ServiceFabricDeploy@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-85": {
+            "string": {
+                "constant": "Xcode@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-86": {
+            "string": {
+                "constant": "Xcode@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-87": {
+            "string": {
+                "constant": "Xcode@5",
+                "ignore-case": true
+            }
+        },
+        "task-task-88": {
+            "string": {
+                "constant": "Xcode@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-89": {
+            "string": {
+                "constant": "Xcode@4",
+                "ignore-case": true
+            }
+        },
+        "task-task-90": {
+            "string": {
+                "constant": "NuGetPublisher@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-91": {
+            "string": {
+                "constant": "queryWorkItems@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-92": {
+            "string": {
+                "constant": "AzureWebAppContainer@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-93": {
+            "string": {
+                "constant": "SqlDacpacDeploymentOnMachineGroup@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-94": {
+            "string": {
+                "constant": "CacheBeta@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-95": {
+            "string": {
+                "constant": "Cache@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-96": {
+            "string": {
+                "constant": "CacheBeta@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-97": {
+            "string": {
+                "constant": "CMake@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-98": {
+            "string": {
+                "constant": "VSMobileCenterTest@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-99": {
+            "string": {
+                "constant": "AppCenterTest@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-100": {
+            "string": {
+                "constant": "DownloadSecureFile@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-101": {
+            "string": {
+                "constant": "AzureContainerApps@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-102": {
+            "string": {
+                "constant": "AzureContainerApps@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-103": {
+            "string": {
+                "constant": "UseRubyVersion@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-104": {
+            "string": {
+                "constant": "Grunt@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-105": {
+            "string": {
+                "constant": "SqlAzureDacpacDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-106": {
+            "string": {
+                "constant": "ContainerStructureTest@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-107": {
+            "string": {
+                "constant": "IISWebAppDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-108": {
+            "string": {
+                "constant": "CloudLoadTest@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-109": {
+            "string": {
+                "constant": "KubectlInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-110": {
+            "string": {
+                "constant": "CmdLine@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-111": {
+            "string": {
+                "constant": "CmdLine@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-112": {
+            "string": {
+                "constant": "NuGet@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-113": {
+            "string": {
+                "constant": "ContainerBuild@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-114": {
+            "string": {
+                "constant": "NuGetCommand@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-115": {
+            "string": {
+                "constant": "NuGetInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-116": {
+            "string": {
+                "constant": "NuGetRestore@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-117": {
+            "string": {
+                "constant": "Delay@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-118": {
+            "string": {
+                "constant": "XamariniOS@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-119": {
+            "string": {
+                "constant": "XamariniOS@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-120": {
+            "string": {
+                "constant": "PublishTestResults@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-121": {
+            "string": {
+                "constant": "PublishTestResults@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-122": {
+            "string": {
+                "constant": "AzureFileCopy@4",
+                "ignore-case": true
+            }
+        },
+        "task-task-123": {
+            "string": {
+                "constant": "AzureFileCopy@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-124": {
+            "string": {
+                "constant": "AzureFileCopy@5",
+                "ignore-case": true
+            }
+        },
+        "task-task-125": {
+            "string": {
+                "constant": "AzureFileCopy@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-126": {
+            "string": {
+                "constant": "AzureFileCopy@6",
+                "ignore-case": true
+            }
+        },
+        "task-task-127": {
+            "string": {
+                "constant": "AzureFileCopy@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-128": {
+            "string": {
+                "constant": "PublishSymbols@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-129": {
+            "string": {
+                "constant": "PublishSymbols@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-130": {
+            "string": {
+                "constant": "CopyFilesOverSSH@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-131": {
+            "string": {
+                "constant": "Gradle@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-132": {
+            "string": {
+                "constant": "Gradle@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-133": {
+            "string": {
+                "constant": "Gradle@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-134": {
+            "string": {
+                "constant": "Gradle@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-135": {
+            "string": {
+                "constant": "AppCenterDistribute@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-136": {
+            "string": {
+                "constant": "AppCenterDistribute@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-137": {
+            "string": {
+                "constant": "AppCenterDistribute@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-138": {
+            "string": {
+                "constant": "AppCenterDistribute@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-139": {
+            "string": {
+                "constant": "NuGetToolInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-140": {
+            "string": {
+                "constant": "NuGetToolInstaller@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-141": {
+            "string": {
+                "constant": "JenkinsDownloadArtifacts@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-142": {
+            "string": {
+                "constant": "AzureFunctionAppContainer@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-143": {
+            "string": {
+                "constant": "DecryptFile@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-144": {
+            "string": {
+                "constant": "HelmDeploy@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-145": {
+            "string": {
+                "constant": "HelmDeploy@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-146": {
+            "string": {
+                "constant": "InstallAppleCertificate@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-147": {
+            "string": {
+                "constant": "InstallAppleCertificate@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-148": {
+            "string": {
+                "constant": "InstallAppleCertificate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-149": {
+            "string": {
+                "constant": "AzureFunction@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-150": {
+            "string": {
+                "constant": "AzureFunction@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-151": {
+            "string": {
+                "constant": "OpenPolicyAgentInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-152": {
+            "string": {
+                "constant": "DownloadGitHubRelease@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-153": {
+            "string": {
+                "constant": "SSH@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-154": {
+            "string": {
+                "constant": "PublishPipelineArtifact@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-155": {
+            "string": {
+                "constant": "PublishPipelineArtifact@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-156": {
+            "string": {
+                "constant": "SonarQubePreBuild@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-157": {
+            "string": {
+                "constant": "DownloadFileshareArtifacts@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-158": {
+            "string": {
+                "constant": "Kubernetes@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-159": {
+            "string": {
+                "constant": "Kubernetes@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-160": {
+            "string": {
+                "constant": "AzureIoTEdge@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-161": {
+            "string": {
+                "constant": "ServiceFabricComposeDeploy@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-162": {
+            "string": {
+                "constant": "AndroidSigning@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-163": {
+            "string": {
+                "constant": "AndroidSigning@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-164": {
+            "string": {
+                "constant": "AndroidSigning@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-165": {
+            "string": {
+                "constant": "DownloadPipelineArtifact@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-166": {
+            "string": {
+                "constant": "DownloadPipelineArtifact@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-167": {
+            "string": {
+                "constant": "DownloadPipelineArtifact@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-168": {
+            "string": {
+                "constant": "UsePythonVersion@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-169": {
+            "string": {
+                "constant": "ServiceFabricPowerShell@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-170": {
+            "string": {
+                "constant": "VSTest@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-171": {
+            "string": {
+                "constant": "VSTest@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-172": {
+            "string": {
+                "constant": "VSTest@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-173": {
+            "string": {
+                "constant": "ManualValidation@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-174": {
+            "string": {
+                "constant": "ManualValidation@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-175": {
+            "string": {
+                "constant": "Ant@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-176": {
+            "string": {
+                "constant": "DeployVisualStudioTestAgent@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-177": {
+            "string": {
+                "constant": "DeployVisualStudioTestAgent@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-178": {
+            "string": {
+                "constant": "CondaEnvironment@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-179": {
+            "string": {
+                "constant": "CondaEnvironment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-180": {
+            "string": {
+                "constant": "BatchScript@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-181": {
+            "string": {
+                "constant": "DownloadGithubNpmPackage@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-182": {
+            "string": {
+                "constant": "VSBuild@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-183": {
+            "string": {
+                "constant": "AzureKeyVault@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-184": {
+            "string": {
+                "constant": "AzureKeyVault@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-185": {
+            "string": {
+                "constant": "DotNetCoreInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-186": {
+            "string": {
+                "constant": "UseDotNet@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-187": {
+            "string": {
+                "constant": "DotNetCoreInstaller@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-188": {
+            "string": {
+                "constant": "AzureAppServiceManage@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-189": {
+            "string": {
+                "constant": "KubeloginInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-190": {
+            "string": {
+                "constant": "FuncToolsInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-191": {
+            "string": {
+                "constant": "FileTransform@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-192": {
+            "string": {
+                "constant": "FileTransform@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-193": {
+            "string": {
+                "constant": "ExtractFiles@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-194": {
+            "string": {
+                "constant": "XamarinAndroid@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-195": {
+            "string": {
+                "constant": "PublishBuildArtifacts@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-196": {
+            "string": {
+                "constant": "CopyPublishBuildArtifacts@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-197": {
+            "string": {
+                "constant": "DownloadPackage@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-198": {
+            "string": {
+                "constant": "DownloadPackage@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-199": {
+            "string": {
+                "constant": "AzureResourceGroupDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-200": {
+            "string": {
+                "constant": "AzureResourceGroupDeployment@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-201": {
+            "string": {
+                "constant": "AzureResourceManagerTemplateDeployment@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-202": {
+            "string": {
+                "constant": "InvokeRESTAPI@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-203": {
+            "string": {
+                "constant": "InvokeRESTAPI@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-204": {
+            "string": {
+                "constant": "ArchiveFiles@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-205": {
+            "string": {
+                "constant": "ArchiveFiles@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-206": {
+            "string": {
+                "constant": "GitHubComment@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-207": {
+            "string": {
+                "constant": "CopyFiles@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-208": {
+            "string": {
+                "constant": "CopyFiles@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-209": {
+            "string": {
+                "constant": "AzureMysqlDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-210": {
+            "string": {
+                "constant": "Npm@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-211": {
+            "string": {
+                "constant": "Npm@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-212": {
+            "string": {
+                "constant": "AzureStaticWebApp@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-213": {
+            "string": {
+                "constant": "NodeTool@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-214": {
+            "string": {
+                "constant": "UseNode@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-215": {
+            "string": {
+                "constant": "SqlServerDacpacDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-216": {
+            "string": {
+                "constant": "VisualStudioTestPlatformInstaller@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-217": {
+            "string": {
+                "constant": "PublishToAzureServiceBus@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-218": {
+            "string": {
+                "constant": "PublishToAzureServiceBus@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-219": {
+            "string": {
+                "constant": "PublishToAzureServiceBus@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-220": {
+            "string": {
+                "constant": "KubernetesManifest@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-221": {
+            "string": {
+                "constant": "KubernetesManifest@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-222": {
+            "string": {
+                "constant": "DownloadBuildArtifacts@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-223": {
+            "string": {
+                "constant": "DownloadBuildArtifacts@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-224": {
+            "string": {
+                "constant": "CocoaPods@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-225": {
+            "string": {
+                "constant": "AzureSpringCloud@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-226": {
+            "string": {
+                "constant": "AzureWebApp@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-227": {
+            "string": {
+                "constant": "AzureCLI@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-228": {
+            "string": {
+                "constant": "AzureCLI@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-229": {
+            "string": {
+                "constant": "AzureCLI@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-230": {
+            "string": {
+                "constant": "GitHubRelease@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-231": {
+            "string": {
+                "constant": "GitHubRelease@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-232": {
+            "string": {
+                "constant": "cURLUploader@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-233": {
+            "string": {
+                "constant": "cURLUploader@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-234": {
+            "string": {
+                "constant": "AzureAppServiceSettings@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-235": {
+            "string": {
+                "constant": "UniversalPackages@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-236": {
+            "string": {
+                "constant": "AzurePolicyCheckGate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-237": {
+            "string": {
+                "constant": "AzureFunctionOnKubernetes@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-238": {
+            "string": {
+                "constant": "AzureFunctionOnKubernetes@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-239": {
+            "string": {
+                "constant": "ShellScript@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-240": {
+            "string": {
+                "constant": "Bash@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-241": {
+            "string": {
+                "constant": "ShellScript@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-242": {
+            "string": {
+                "constant": "PublishBuildArtifacts@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-243": {
+            "string": {
+                "constant": "InstallSSHKey@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-244": {
+            "string": {
+                "constant": "AzureVmssDeployment@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-245": {
+            "string": {
+                "constant": "AzureWebPowerShellDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-246": {
+            "string": {
+                "constant": "CondaAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-247": {
+            "string": {
+                "constant": "AzureCloudPowerShellDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-248": {
+            "string": {
+                "constant": "AzureCloudPowerShellDeployment@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-249": {
+            "string": {
+                "constant": "CargoAuthenticate@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-250": {
+            "string": {
+                "constant": "DeleteFiles@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-251": {
+            "string": {
+                "constant": "gulp@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-252": {
+            "string": {
+                "constant": "gulp@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-253": {
+            "string": {
+                "constant": "QuickPerfTest@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-254": {
+            "string": {
+                "constant": "IISWebAppManagementOnMachineGroup@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-255": {
+            "string": {
+                "constant": "DockerInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task": {
+            "string": {
+                "require-non-empty": true
+            }
+        },
+        "task-displayName": {
+            "string": {}
+        },
+        "task-name": {
+            "string": {
+                "pattern": "^[_A-Za-z0-9]*$"
+            }
+        },
+        "task-condition": {
+            "string": {}
+        },
+        "task-continueOnError": {
+            "boolean": {}
+        },
+        "task-enabled": {
+            "string": {}
+        },
+        "task-retryCountOnTaskFailure": {
+            "number": {}
+        },
+        "task-timeoutInMinutes": {
+            "number": {}
+        },
+        "task-inputs": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "task-env": {
+            "mapping": {
+                "properties": {},
+                "loose-key-type": "string",
+                "loose-value-type": "any"
+            }
+        },
+        "task": {
+            "mapping": {
+                "properties": {
+                    "task": {
+                        "type": "task-task",
+                        "first-property": true,
+                        "required": true
+                    },
+                    "displayName": {
+                        "type": "task-displayName"
+                    },
+                    "name": {
+                        "type": "task-name"
+                    },
+                    "condition": {
+                        "type": "task-condition"
+                    },
+                    "continueOnError": {
+                        "type": "task-continueOnError"
+                    },
+                    "enabled": {
+                        "type": "task-enabled"
+                    },
+                    "retryCountOnTaskFailure": {
+                        "type": "task-retryCountOnTaskFailure"
+                    },
+                    "timeoutInMinutes": {
+                        "type": "task-timeoutInMinutes"
+                    },
+                    "inputs": {
+                        "type": "task-inputs"
+                    },
+                    "env": {
+                        "type": "task-env"
+                    }
+                }
+            }
+        },
+        "pipeline-root": {
+            "one-of": [
+                "pipeline-0",
+                "pipeline-1",
+                "pipeline-2",
+                "pipeline-4"
+            ]
+        },
+        "variable-template-root": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "variables": {
+                        "type": "variables"
+                    }
+                }
+            }
+        },
+        "step-template-root": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "steps": {
+                        "type": "steps"
+                    }
+                }
+            }
+        },
+        "job-template-root": {
+            "one-of": [
+                "jobsTemplate-0"
+            ]
+        },
+        "stage-template-root": {
+            "mapping": {
+                "properties": {
+                    "parameters": {
+                        "type": "templateParameters"
+                    },
+                    "stages": {
+                        "type": "stages"
+                    }
+                }
+            }
         }
-      }
-    },
-    "buildResourceTrigger": {
-      "allowed-values": [
-        "none", "true"
-      ]
-    },
-
-    "pipeline-pipelines": {
-      "sequence": {
-        "item-type": "pipeline-pipeline"
-      }
-    },
-
-    "pipeline-pipeline": {
-      "mapping": {
-        "properties": {
-          "pipeline": {
-            "description": "ID of the pipeline resource",
-            "type": "referenceName",
-            "first-property": true,
-            "required": true
-          },
-          "project": {
-            "type": "nonEmptyString"
-          },
-          "source": {
-            "type": "nonEmptyString"
-          },
-          "version": {
-            "type": "string_allowExpressions"
-          },
-          "branch": {
-            "type": "string_allowExpressions"
-          },
-          "tags": {
-            "type": "sequenceOfNonEmptyString"
-          },
-          "trigger": {
-            "type": "pipelineResourceTrigger"
-          }
-        }
-      }
-    },
-    "pipelineResourceTrigger-none": {
-      "string": {
-        "constant": "none"
-      }
-    },
-    "pipelineResourceTrigger-true": {
-      "string": {
-        "constant": "true"
-      }
-    },
-    "triggerBranchFilter": {
-      "one-of": [
-        "branchFilterArray",
-        "includeExcludeFilters"
-      ]
-    },
-    "pipelineResourceTrigger-object": {
-      "mapping": {
-        "properties": {
-          "enabled": {
-            "type": "pipeline-boolean"
-          },
-          "branches": {
-            "type": "triggerBranchFilter"
-          },
-          "stages": {
-            "type": "sequenceOfNonEmptyString"
-          },
-          "tags": {
-            "type": "sequenceOfNonEmptyString"
-          }
-        }
-      }
-    },
-    "pipelineResourceTrigger": {
-      "one-of": [
-        "pipelineResourceTrigger-none",
-        "pipelineResourceTrigger-true",
-        "pipelineResourceTrigger-object"
-      ]
-    },
-
-    "pipeline-webhooks": {
-      "sequence": {
-        "item-type": "pipeline-webhook"
-      }
-    },
-
-    "pipeline-packages": {
-      "sequence": {
-        "item-type": "pipeline-package"
-      }
-    },
-
-    "referenceName": {
-      "string": {
-        "pattern": "^[-_A-Za-z0-9]*$"
-      }
-    },
-
-    "pipeline-webhook": {
-      "mapping": {
-        "properties": {
-          "webhook": {
-            "description": "Name of the webhook",
-            "type": "referenceName",
-            "first-property": true,
-            "required": true
-          },
-          "connection": {
-            "description": "Name of the connection. In case of offline webhook this will be the type of Incoming Webhook otherwise it will be the type of the webhook extension.",
-            "type": "nonEmptyString",
-            "required": true
-          },
-          "type": {
-            "description": "Name of the webhook extension. leave this empty if its offline webhook.",
-            "type": "nonEmptyString"
-          },
-          "filters": {
-            "description": "List of trigger filters.",
-            "type": "webhookFilters"
-          }
-        }
-      }
-    },
-    "webhookFilters": {
-      "sequence": {
-        "item-type": "webhookFilter"
-      }
-    },
-    "webhookFilter": {
-      "mapping": {
-        "properties": {
-          "path": {
-            "description": "json path to select data from event payload",
-            "type": "nonEmptyString",
-            "first-property": true,
-            "required": true
-          },
-          "value": {
-            "description": "Expected value for the filter to match",
-            "type": "nonEmptyString",
-            "required": true
-          }
-        }
-      }
-    },
-
-    "string_allowExpressions": {
-      "context": [
-        "parameters",
-        "variables"
-      ],
-      "string": {}
-    },
-
-    "pipeline-package": {
-      "mapping": {
-        "properties": {
-          "package": {
-            "description": "Alias of package artifact",
-            "type": "referenceName",
-            "first-property": true,
-            "required": true
-          },
-          "type": {
-            "description": "Type of the package. Ex - NuGet, NPM etc.",
-            "type": "nonEmptyString",
-            "required": true
-          },
-          "connection": {
-            "description": "Name of the connection. This connection will be used for all the communication related to this artifact.",
-            "type": "nonEmptyString",
-            "required": true
-          },
-          "name": {
-            "description": "Name of the package",
-            "type": "nonEmptyString",
-            "required": true
-          },
-          "version": {
-            "type": "string_allowExpressions"
-          },
-          "tag": {
-            "type": "string_allowExpressions"
-          },
-          "trigger": {
-            "description": "Trigger a new pipeline run when a new version of this package is available.",
-            "type": "packageResourceTrigger"
-          }
-        }
-      }
-    },
-    "packageResourceTrigger": {
-      "allowed-values": [
-        "none", "true"
-      ]
-    },
-
-    "pipeline-resources": {
-      "description": "Pipeline resources",
-      "mapping": {
-        "properties": {
-          "builds": "pipeline-builds",
-          "containers": "pipeline-containers",
-          "pipelines": "pipeline-pipelines",
-          "repositories": "pipeline-repositories",
-          "webhooks": "pipeline-webhooks",
-          "packages": "pipeline-packages"
-        }
-      }
-    },
-
-    "pipeline-trigger": {
-      "description": "Pipeline Trigger",
-      "one-of": [
-        "trigger-none",
-        "branchFilterArray",
-        "trigger-object"
-      ]
-    },
-
-    "trigger-none": {
-      "description": "None Trigger",
-      "string": {
-        "constant": "none"
-      }
-    },
-
-    "branchFilterArray": {
-      "sequence": {
-        "item-type": "branchFilter"
-      }
-    },
-
-    "branchFilter": {
-      "description": "branch name or prefix filter",
-      "string": {
-        "pattern": "^[^\\/~\\^\\: \\[\\]\\\\]+(\\/[^\\/~\\^\\: \\[\\]\\\\]+)*$"
-      }
-    },
-
-    "includeExcludeFilters": {
-      "mapping": {
-        "properties": {
-          "include": "branchFilterArray",
-          "exclude": "branchFilterArray"
-        }
-      }
-    },
-
-    "trigger-object": {
-      "description": "Object Trigger",
-      "mapping": {
-        "properties": {
-          "batch": "pipeline-boolean",
-          "branches": "includeExcludeFilters",
-          "paths": "includeExcludeFilters",
-          "tags": "includeExcludeFilters"
-        }
-      }
-    },
-
-    "pipeline-pr": {
-      "description": "Pipeline Pr",
-      "one-of": [
-        "trigger-none",
-        "branchFilterArray",
-        "pr-object"
-      ]
-    },
-
-    "pr-object": {
-      "description": "Object Pr",
-      "mapping": {
-        "properties": {
-          "autoCancel": "pipeline-boolean",
-          "branches": "includeExcludeFilters",
-          "paths": "includeExcludeFilters",
-          "drafts": "pipeline-boolean"
-        }
-      }
-    },
-
-    "pipeline-schedules": {
-      "sequence": {
-        "item-type": "schedule"
-      }
-    },
-
-    "nonEmptyString": {
-      "string": {
-          "require-non-empty": true
-      }
-    },
-
-    "sequenceOfNonEmptyString": {
-      "sequence": {
-        "item-type": "nonEmptyString"
-      }
-    },
-
-    "schedule": {
-      "mapping": {
-        "properties": {
-          "cron": {
-            "type": "nonEmptyString",
-            "first-property": true,
-            "required": true
-          },
-          "displayName": "string",
-          "branches": "includeExcludeFilters",
-          "batch": "pipeline-boolean",
-          "always": "pipeline-boolean"
-        }
-      }
-    },
-
-    "pipeline-root": {
-      "description": "Pipeline file",
-      "one-of": [
-        "extends-pipeline-root",
-        "stage-pipeline-root",
-        "job-pipeline-root",
-        "steps-pipeline-root"
-      ]
-    },
-
-    "extends-pipeline-root": {
-      "description": "Extends Pipeline file",
-      "mapping": {
-        "properties": {
-          "trigger": "pipeline-trigger",
-          "pr": "pipeline-pr",
-          "schedules": "pipeline-schedules",
-          "name": "string_allowExpressions",
-          "appendCommitMessageToRunName": "pipeline-boolean",
-          "resources": "pipeline-resources",
-          "pool": "any",
-          "lockBehavior": "any",
-          "variables": "workflow-value",
-          "parameters": "any",
-          "extends": {
-            "type": "workflow-value",
-            "required": true
-          }
-        }
-      }
-    },
-
-    "stage-pipeline-root": {
-      "description": "Stage Pipeline file",
-      "mapping": {
-        "properties": {
-          "trigger": "pipeline-trigger",
-          "pr": "pipeline-pr",
-          "schedules": "pipeline-schedules",
-          "name": "string_allowExpressions",
-          "appendCommitMessageToRunName": "pipeline-boolean",
-          "resources": "pipeline-resources",
-          "pool": "any",
-          "lockBehavior": "any",
-          "variables": "workflow-value",
-          "parameters": "any",
-          "stages": {
-            "type": "workflow-value",
-            "required": true
-          }
-        }
-      }
-    },
-
-    "job-pipeline-root": {
-      "description": "Job Pipeline file",
-      "mapping": {
-        "properties": {
-          "trigger": "pipeline-trigger",
-          "pr": "pipeline-pr",
-          "schedules": "pipeline-schedules",
-          "name": "string_allowExpressions",
-          "appendCommitMessageToRunName": "pipeline-boolean",
-          "resources": "pipeline-resources",
-          "pool": "any",
-          "lockBehavior": "any",
-          "variables": "workflow-value",
-          "parameters": "any",
-          "jobs": {
-            "type": "workflow-value",
-            "required": true
-          }
-        }
-      }
-    },
-
-    "steps-pipeline-root": {
-      "description": "Steps Pipeline file",
-      "mapping": {
-        "properties": {
-          "trigger": "pipeline-trigger",
-          "pr": "pipeline-pr",
-          "schedules": "pipeline-schedules",
-          "name": "string_allowExpressions",
-          "appendCommitMessageToRunName": "pipeline-boolean",
-          "resources": "pipeline-resources",
-          "pool": "any",
-          "lockBehavior": "any",
-          "variables": "workflow-value",
-          "parameters": "any",
-          "steps": {
-            "type": "workflow-value",
-            "required": true
-          },
-          "workspace": "any",
-          "services": "any",
-          "container": "any",
-          "continueOnError": "any",
-          "strategy": "any"
-        }
-      }
-    },
-
-    "stage-template-root": {
-      "description": "Stage Template file",
-      "mapping": {
-        "properties": {
-          "parameters": "any",
-          "stages": {
-            "type": "workflow-value",
-            "required": true
-          }
-        }
-      }
-    },
-
-    "job-template-root": {
-      "description": "Job Template file",
-      "mapping": {
-        "properties": {
-          "parameters": "any",
-          "jobs": {
-            "type": "workflow-value",
-            "required": true
-          }
-        }
-      }
-    },
-
-    "step-template-root": {
-      "description": "Step Template file",
-      "mapping": {
-        "properties": {
-          "parameters": "any",
-          "steps": {
-            "type": "workflow-value",
-            "required": true
-          }
-        }
-      }
-    },
-
-    "variable-template-root": {
-      "description": "Variable Template file",
-      "mapping": {
-        "properties": {
-          "parameters": "any",
-          "variables": {
-            "type": "workflow-value",
-            "required": true
-          }
-        }
-      }
-    },
-
-    "variable-result": {
-      "context": [
-        "variables",
-        "dependencies",
-        "stageDependencies",
-        "pipeline",
-        "resources",
-        "Counter(0,2)"
-      ],
-      "string": {}
-    },
-
-    "job-if-result": {
-      "context": [
-        "variables",
-        "dependencies",
-        "stageDependencies",
-        "Always(0,0)",
-        "Canceled(0,0)",
-        "Succeeded(0,MAX)",
-        "SucceededOrFailed(0,MAX)",
-        "Failed(0,MAX)"
-      ],
-      "boolean": {}
-    },
-    "stage-if-result": {
-      "context": [
-        "variables",
-        "dependencies",
-        "Always(0,0)",
-        "Canceled(0,0)",
-        "Succeeded(0,MAX)",
-        "SucceededOrFailed(0,MAX)",
-        "Failed(0,MAX)"
-      ],
-      "boolean": {}
     }
-  }
 }

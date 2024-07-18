@@ -1,3 +1,6 @@
+### v0.0.20 (Preview)
+- Use a full azure pipelines schema generated from the official extension / yamlschema service
+
 ### v0.0.19 (Preview)
 - Fix problem that caused the webworker to crash while using validate Syntax without having errors
 

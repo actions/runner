@@ -117,7 +117,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                                     // Create a new string definition for each StringToken in the sequence
                                                     foreach(var activity in seq) {
                                                         var stringToken = activity.AssertString(definitionsKey.Value);
-                                                        var allowedValuesKey = definitionsKey.Value + "-" + stringToken.Value;
+                                                        var allowedValuesKey = definitionsKey.Value + "-" + stringToken.Value.Replace("@", "__");
                                                         var allowedValuesDef = new StringDefinition();
                                                         allowedValuesDef.Constant = stringToken.ToDisplayString();
                                                         Definitions.Add(allowedValuesKey, allowedValuesDef);

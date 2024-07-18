@@ -262,7 +262,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
 
             // Only one
-            if (mappingDefinitions.Count > 1)
+            if (mappingDefinitions.Count > 1 && !hasExpressionKey)
             {
                 var hitCount = new Dictionary<String, Int32>();
                 foreach (MappingDefinition mapdef in mappingDefinitions)

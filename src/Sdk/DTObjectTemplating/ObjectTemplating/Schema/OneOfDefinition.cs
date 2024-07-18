@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.ObjectTemplating.Schema
@@ -165,6 +167,10 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                 foreach (var mappingDefinition in mappingDefinitions)
                 {
+                    // Azure Pipelines FirstProperty requirement avoid the collision at runtime
+                    if(mappingDefinition.Properties.Any(p => p.Value?.FirstProperty == true)) {
+                        continue;
+                    }
                     foreach (var newProperty in GetMergedProperties(schema, mappingDefinition))
                     {
                         // Already seen

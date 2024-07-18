@@ -1,5 +1,5 @@
 # ExpectedException: TemplateValidationException
-# ExpectedErrorMessage: true | y | yes | on | false | n | no | off was expected
+# ExpectedErrorMessage: Unexpected value '#'
 jobs:
 - ${{ each x in split('yes,no,n,y,true,false,TRUE,False,On,Off,#', ',') }}:
   - job:
