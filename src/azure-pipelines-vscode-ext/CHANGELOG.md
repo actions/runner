@@ -1,3 +1,6 @@
+### v0.0.21 (Preview)
+- Add lost context access for pipeline.extends of v0.0.20
+
 ### v0.0.20 (Preview)
 - Use a full azure pipelines schema generated from the official extension / yamlschema service
 

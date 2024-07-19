@@ -2087,7 +2087,11 @@
                         "type": "azp-mapping"
                     }
                 }
-            }
+            },
+            "context": [
+                "parameters",
+                "variables"
+            ]
         },
         "jobsTemplate-0": {
             "mapping": {

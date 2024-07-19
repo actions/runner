@@ -216,11 +216,12 @@ for(var id in schema.definitions) {
 }
 
 var pathsWithExpressions = [
-    [ "pipeline", "variables" ],
-    [ "pipeline", "stages" ],
-    [ "pipeline", "jobs" ],
-    [ "pipeline", "steps" ],
-    [ "resources", "containers" ],
+    [ ["pipeline", "variablesTemplate"], "variables" ],
+    [ ["pipeline", "stagesTemplate"], "stages" ],
+    [ ["pipeline", "jobsTemplate" ], "jobs" ],
+    [ ["pipeline", "stepsTemplate"], "steps" ],
+    [ "pipeline", "extends" ],
+    [ "pipeline", "resources", "containers" ],
     [ "any_allowExpressions" ],
     [ "string_allowExpressions" ],
     [ "sequenceOfString_allowExpressions" ],
@@ -228,6 +229,15 @@ var pathsWithExpressions = [
 
 function * traverse(path) {
     var comp = path[0];
+    if(comp instanceof Array) {
+      for(var sk of comp) {
+        var subPath = [...path]
+        subPath[0] = sk
+        for(var r of traverse(subPath)) {
+          yield r;
+        }
+      }
+    }
     var schema = targetSchema.definitions[comp];
     if(!schema) {
         return;
@@ -287,5 +297,10 @@ targetSchema.definitions["nonEmptyString"] = {
 },
 
 targetSchema.definitions["task-task"] = targetSchema.definitions["nonEmptyString"]
+
+// delete targetSchema.definitions["any"]
+
+targetSchema.definitions["azp-any"]["one-of"].push("boolean", "null", "number")
+targetSchema.definitions["any_allowExpressions"]["one-of"].push("boolean", "null", "number")
 
 console.log(JSON.stringify(targetSchema, null, 4))
