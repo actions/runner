@@ -1,3 +1,6 @@
+### v0.0.22 (Preview)
+- add lost string value support for task steps like continueOnError, retryCount and timeoutInMinutes
+
 ### v0.0.21 (Preview)
 - Add lost context access for pipeline.extends of v0.0.20
 

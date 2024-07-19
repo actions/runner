@@ -90,6 +90,9 @@
             ],
             "boolean": {}
         },
+        "azp-number": {
+            "string": {}
+        },
         "azp-string": {
             "string": {}
         },
@@ -5244,16 +5247,25 @@
             "string": {}
         },
         "task-continueOnError": {
-            "boolean": {}
+            "one-of": [
+                "azp-boolean",
+                "boolean"
+            ]
         },
         "task-enabled": {
             "string": {}
         },
         "task-retryCountOnTaskFailure": {
-            "number": {}
+            "one-of": [
+                "azp-number",
+                "number"
+            ]
         },
         "task-timeoutInMinutes": {
-            "number": {}
+            "one-of": [
+                "azp-number",
+                "number"
+            ]
         },
         "task-inputs": {
             "mapping": {

@@ -87,7 +87,9 @@ targetSchema.definitions = {
       ],
       "boolean": {}
     },
-
+    "azp-number": {
+      "string": {}
+    },
 }
 var stripDoNotSuggest = true
 var defprefix = "#/definitions/";
@@ -202,10 +204,10 @@ var addDefinition = function(id) {
         }
         targetSchema.definitions[getId(id)] = target
     } else if(d.type === "boolean") {
-        target["boolean"] = {}
+        target["one-of"] = [ getId("boolean"), "boolean" ]
         targetSchema.definitions[getId(id)] = target
     } else if(d.type === "integer") {
-        target["number"] = {}
+        target["one-of"] = [ getId("number"), "number" ]
         targetSchema.definitions[getId(id)] = target
     }
     return !deprecated
