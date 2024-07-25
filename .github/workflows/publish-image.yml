@@ -6,10 +6,13 @@ on:
       runnerVersion:
         type: string
         description: Version of the runner being installed
+      imageName:
+        type: string
+        description: The name of the image
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
+  IMAGE_NAME: github-action-runners/${{ github.event.inputs.imageName }}
 
 jobs:
   build:
@@ -47,8 +50,8 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Build and push Docker image
         id: build-and-push
