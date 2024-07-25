@@ -11,7 +11,6 @@ on:
         description: The name of the image
 
 env:
-  REGISTRY: ghcr.io
   IMAGE_NAME: github-action-runners/${{ github.event.inputs.imageName }}
 
 jobs:
