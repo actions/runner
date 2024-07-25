@@ -57,7 +57,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./images
-          file: Dockerfile.${{ github.event.inputs.imageName }}
+          file: ./images/Dockerfile.${{ github.event.inputs.imageName }}
           platforms: |
             linux/amd64
             linux/arm64
