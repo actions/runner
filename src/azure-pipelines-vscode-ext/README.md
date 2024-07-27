@@ -13,13 +13,17 @@ The `azure-pipelines-vscode-ext.repositories` settings maps the external Reposit
 
 Syntax `[<owner>/]<repo>@<ref>=<uri>` per line. `<uri>` can be formed like `file:///<folder>` (raw file paths are not supported (yet?)), `vscode-vfs://github/<owner>/<repository>` and `vscode-vfs://azurerepos/<owner>/<project>/<repository>`
 
+### Check Syntax Azure Pipeline
+
+`> Check Syntax Azure Pipeline`
+
+This command explicitly checks for syntax errors in the yaml structure and expression syntaxes. These are necessary but not sufficient checks for a successful Validation of the Azure Pipeline File.
+
 ### Validate Azure Pipeline
 
 `> Validate Azure Pipeline`
 
 This command tries to evaluate your current open Azure Pipeline including templates and notifies you about the result.
-
-_Once this extension has been activated by any command, you can validate your pipeline via a statusbar button with the same name on all yaml or azure-pipelines documents_
 
 ### Expand Azure Pipeline
 

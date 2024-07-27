@@ -1,3 +1,9 @@
+### v0.0.23 (Preview)
+- check for syntax errors by default as soon as the current file is detected as a pipeline
+  - file type azure-pipelines is always checked
+  - file type yaml once it is valid yaml syntax and contains some azure pipelines structure
+  - can be disabled in settings
+
 ### v0.0.22 (Preview)
 - add lost string value support for task steps like continueOnError, retryCount and timeoutInMinutes
 

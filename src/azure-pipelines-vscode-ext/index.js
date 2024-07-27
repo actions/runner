@@ -2,6 +2,7 @@ const vscode = require('vscode');
 import { basePaths, customImports } from "./config.js"
 import { AzurePipelinesDebugSession } from "./azure-pipelines-debug";
 import { integer } from "vscode-languageclient";
+import jsYaml from "js-yaml";
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -463,22 +464,72 @@ function activate(context) {
 
 	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.validateAzurePipeline', () => validateAzurePipelineCommand()));
 	
-	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.checkSyntaxAzurePipeline', () => checkSyntaxAzurePipelineCommand()));
-
 	context.subscriptions.push(vscode.commands.registerCommand('extension.expandAzurePipeline', () => expandAzurePipelineCommand()));
 
 	context.subscriptions.push(vscode.commands.registerCommand('extension.validateAzurePipeline', () => validateAzurePipelineCommand()));
 
 	var statusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+	context.subscriptions.push(statusbar);
+	statusbar.tooltip = "Configure this Icon in Settings";
 
-	statusbar.text = "Validate Azure Pipeline";
+	var update = function(status) {
+		statusbar.text = `$(${status}) Azure Pipelines Tools`;
+	}
+	update("pass");
+	var syntaxChecks = vscode.languages.createDiagnosticCollection("Syntax Checks");
+	statusbar.command = {
+		command: 'azure-pipelines-vscode-ext.checkSyntaxAzurePipeline',
+		arguments: [null, syntaxChecks]
+	};
 
-	statusbar.command = 'azure-pipelines-vscode-ext.validateAzurePipeline';
+	context.subscriptions.push(syntaxChecks);
+	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, (file, collection) => {
+		if(collection) {
+			var hasError = false;
+			update("sync~spin");
+			expandAzurePipeline(false, null, null, null, () => {
+				if(!hasError) {
+					update("pass");
+				}
+			}, null, () => {
+				hasError = true;
+				update("error");
+			}, null, collection, null, true, true);
+		} else {
+			checkSyntaxAzurePipelineCommand();
+		}
+ 	}));
+
+	var checkIsPipeline = () => {
+		try {
+			var obj = jsYaml.load(vscode.window.activeTextEditor.document.getText());
+			return ((obj.trigger || obj.pr || obj.resources && (obj.resources.builds instanceof Array || obj.resources.containers instanceof Array || obj.resources.pipelines instanceof Array || obj.resources.repositories instanceof Array || obj.resources.webhooks instanceof Array || obj.resources.packages instanceof Array) || obj.schedules instanceof Array || obj.lockBehavior instanceof String || obj.variables instanceof Object || obj.variables instanceof Array || obj.parameters instanceof Object || obj.parameters instanceof Array) && (obj.extends && obj.extends.template || obj.stages instanceof Array || obj.jobs instanceof Array || obj.steps instanceof Array)
+				|| obj.steps instanceof Array && obj.steps.find(x => x.task || x.script !== undefined || x.bash !== undefined || x.pwsh !== undefined || x.powershell !== undefined || x.template !== undefined)
+				|| obj.jobs.find(x => x.job !== undefined || x.deployment !== undefined || x.template !== undefined)
+				|| obj.stages.find(x => x.stage !== undefined || x.template !== undefined)
+			);
+		} catch {
+
+		}
+		return false;
+	}
 
 	var onLanguageChanged = languageId => {
-		if(languageId === "azure-pipelines" || languageId === "yaml") {
-			statusbar.show();
+		var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
+		if(languageId === "azure-pipelines" || languageId === "yaml" && checkIsPipeline()) {
+			 
+			if(conf.get("disable-status-bar")) {
+				statusbar.hide();
+			} else {
+				statusbar.show();
+			}
+			if(!conf.get("disable-auto-syntax-check")) {
+				vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks);
+			}
 		} else {
+			if(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
+				syntaxChecks.set(vscode.window.activeTextEditor.document.uri, []);
+			}
 			statusbar.hide();
 		}
 	};
@@ -490,9 +541,22 @@ function activate(context) {
 	});
 
 	var onTextEditChanged = texteditor => onLanguageChanged(texteditor && texteditor.document && texteditor.document.languageId ? texteditor.document.languageId : null);
-	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(onTextEditChanged))
-	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => onLanguageChanged(document && document.languageId ? document.languageId : null)));
-	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => onLanguageChanged(document && document.languageId ? document.languageId : null)));
+	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(onTextEditChanged));
+	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(ev => {
+		if(vscode.window.activeTextEditor.document === ev.document) {
+			onLanguageChanged(ev.document && ev.document.languageId ? ev.document.languageId : null);
+		}
+	}));
+	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => {
+		if(vscode.window.activeTextEditor.document === document) {
+			onLanguageChanged(null);
+		}
+	}));
+	context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
+		if(vscode.window.activeTextEditor.document === document) {
+			onLanguageChanged(document && document.languageId ? document.languageId : null);
+		}
+	}));
 	onTextEditChanged(vscode.window.activeTextEditor);
 	var executor = new vscode.CustomExecution(async def => {
 		const writeEmitter = new vscode.EventEmitter();

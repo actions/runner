@@ -278,6 +278,53 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         /// <summary>
         /// Returns all tokens (depth first)
         /// </summary>
+        public static IEnumerable<TemplateToken> TraverseByPattern(
+            this TemplateToken token,
+            string[] pattern)
+        {
+            int level = 0;
+            if (token != null)
+            {
+                if (token is SequenceToken && pattern[level] == "*" || token is MappingToken)
+                {
+                    var state = new TraversalState(null, token);
+                    while (state != null)
+                    {
+                        if (state.MoveNext(false))
+                        {
+                            token = state.Current;
+                            bool skip = false;
+                            if (state.IsMapping && pattern[level] != "" && !(token is ExpressionToken) && token.AssertLiteralString("") != pattern[level]) {
+                                skip = true;
+                            }
+                            if(state.IsMapping) {
+                                state.MoveNext(false);
+                                token = state.Current;
+
+                                if(!skip && level + 1 == pattern.Length) {
+                                    yield return token;
+                                }
+                            }
+
+                            if (!skip && level + 1 < pattern.Length && (token is SequenceToken && pattern[level + 1] == "*" || token is MappingToken))
+                            {
+                                state = new TraversalState(state, token);
+                                level++;
+                            }
+                        }
+                        else
+                        {
+                            state = state.Parent;
+                            level--;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns all tokens (depth first)
+        /// </summary>
         public static IEnumerable<TemplateToken> Traverse(this TemplateToken token)
         {
             return Traverse(token, omitKeys: false);
@@ -327,6 +374,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                 Parent = parent;
                 m_token = token;
             }
+
+            public bool IsMapping { get => m_token.Type == TokenType.Mapping; }
 
             public bool MoveNext(bool omitKeys)
             {

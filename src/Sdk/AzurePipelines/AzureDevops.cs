@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
+using GitHub.DistributedTask.Expressions2.Sdk.Functions;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -655,11 +657,117 @@ namespace Runner.Server.Azure.Devops {
                 token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
             }
 
+            foreach(var stepCond in token.TraverseByPattern(new [] { "steps", "*", "condition" })
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "steps", "*", "condition" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "steps", "*", "condition" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*", "condition" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }))
+                ) {
+                CheckConditionalExpressions(templateContext.Errors, stepCond, Level.Step);
+            }
+            foreach(var jobCond in token.TraverseByPattern(new [] { "jobs", "*", "condition" })
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "condition" }))
+                ) {
+                CheckConditionalExpressions(templateContext.Errors, jobCond, Level.Job);
+            }
+            foreach(var stageCond in token.TraverseByPattern(new [] { "stages", "*", "condition" })
+                ) {
+                CheckConditionalExpressions(templateContext.Errors, stageCond, Level.Stage);
+            }
+            foreach(var runtimeExpr in token.TraverseByPattern(new [] { "variables", "*", "value" })
+                                .Concat(token.TraverseByPattern(new [] { "variables", "" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "variables", "*", "value" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "variables", "" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "variables", "*", "value" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "variables", "" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "continueOnError" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "timeoutInMinutes" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "cancelTimeoutInMinutes" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container", "alias" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container", "image" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "matrix" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "maxParallel" }))
+                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "parallel" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "variables", "*", "value" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "variables", "" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "continueOnError" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "timeoutInMinutes" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "cancelTimeoutInMinutes" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container", "alias" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container", "image" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "matrix" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "maxParallel" }))
+                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "parallel" }))
+                ) {
+                CheckSingleRuntimeExpression(templateContext.Errors, runtimeExpr);
+            }
+
             templateContext.Errors.Check();
 
             return (errorTemplateFileName, token);
         }
 
+        private static void CheckSingleRuntimeExpression(TemplateValidationErrors errors, TemplateToken rawVal)
+        {
+            if(rawVal == null || rawVal.Type == TokenType.Null || !(rawVal is LiteralToken) || rawVal.Type == TokenType.BasicExpression) {
+                return;
+            }
+            var val = rawVal.AssertLiteralString("runtime expression");
+            if (val == null || !(val.StartsWith("$[") && val.EndsWith("]")))
+            {
+                return;
+            }
+            try {
+                var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert };
+                var node = parser.CreateTree(val.Substring(2, val.Length - 3), new EmptyTraceWriter().ToExpressionTraceWriter(),
+                    new[] { "variables", "resources", "pipeline", "dependencies", "stageDependencies" }.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),
+                    ExpressionConstants.AzureWellKnownFunctions.Where(kv => kv.Key != "split").Select(kv => kv.Value).Append(new FunctionInfo<NoOperation>("counter", 0, 2)));
+            } catch (Exception ex) {
+                errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rawVal)}{ex.Message}");
+            }
+        }
+
+        private enum Level {
+            Stage,
+            Job,
+            Step
+        }
+
+        private static void CheckConditionalExpressions(TemplateValidationErrors errors, TemplateToken rawCondition, Level level)
+        {
+
+            if(rawCondition == null || rawCondition.Type == TokenType.Null || !(rawCondition is LiteralToken) || rawCondition.Type == TokenType.BasicExpression) {
+                return;
+            }
+            var val = rawCondition.AssertLiteralString("condition");
+            IEnumerable<string> names = new[] {"variables"};
+            switch(level) {
+            case Level.Stage:
+                names = names.Concat(new[] {"pipeline", "dependencies"});
+                break;
+            case Level.Job:
+                names = names.Concat(new[] {"pipeline", "dependencies", "stageDependencies"});
+                break;
+            default:
+                break;
+            }
+            var funcs = new List<IFunctionInfo>();
+            funcs.Add(new FunctionInfo<NoOperation>(PipelineTemplateConstants.Always, 0, 0));
+            funcs.Add(new FunctionInfo<NoOperation>("Canceled", 0, 0));
+            funcs.Add(new FunctionInfo<NoOperation>("Failed", 0, Int32.MaxValue));
+            funcs.Add(new FunctionInfo<NoOperation>("Succeeded", 0, Int32.MaxValue));
+            funcs.Add(new FunctionInfo<NoOperation>("SucceededOrFailed", 0, Int32.MaxValue));
+            try {
+                var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert };
+                var node = parser.CreateTree(val, new EmptyTraceWriter().ToExpressionTraceWriter(),
+                    names.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),
+                    ExpressionConstants.AzureWellKnownFunctions.Where(kv => kv.Key != "split").Select(kv => kv.Value).Concat(funcs));
+            } catch (Exception ex) {
+                errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rawCondition)}{ex.Message}");
+            }
+        }
         
         public static async Task<MappingToken> ReadTemplate(Runner.Server.Azure.Devops.Context context, string filenameAndRef, Dictionary<string, TemplateToken> cparameters = null, string schemaName = null)
         {

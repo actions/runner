@@ -702,7 +702,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "if", 1, out parameters, out ex))
+            else if (extendedDirectives && MatchesDirective(trimmed, "if", 1, out parameters, out ex) && ExpressionToken.IsValidExpression(parameters[0], allowedContext, out ex, m_context.Flags))
             {
                 return new IfExpressionToken(m_fileId, line, column, parameters[0]);
             }
@@ -710,7 +710,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex))
+            else if (extendedDirectives && MatchesDirective(trimmed, "elseif", 1, out parameters, out ex) && ExpressionToken.IsValidExpression(parameters[0], allowedContext, out ex, m_context.Flags))
             {
                 return new ElseIfExpressionToken(m_fileId, line, column, parameters[0]);
             }
@@ -726,7 +726,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 return null;
             }
-            else if (extendedDirectives && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1] == "in")
+            else if (extendedDirectives && MatchesDirective(trimmed, "each", 3, out parameters, out ex) && parameters[1] == "in" && ExpressionToken.IsValidExpression(parameters[2], allowedContext, out ex, m_context.Flags))
             {
                 return new EachExpressionToken(m_fileId, line, column, parameters[0], parameters[2]);
             }

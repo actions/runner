@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.0.22",
+	"version": "0.0.23",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -29,22 +29,33 @@
 		"commands": [
 			{
 				"command": "azure-pipelines-vscode-ext.checkSyntaxAzurePipeline",
-				"title": "Check Syntax Azure Pipeline"
+				"title": "Check Syntax Azure Pipeline",
+				"shortTitle": "Check Syntax"
 			},
 			{
 				"command": "azure-pipelines-vscode-ext.validateAzurePipeline",
-				"title": "Validate Azure Pipeline"
+				"title": "Validate Azure Pipeline",
+				"shortTitle": "Validate"
 			},
 			{
 				"command": "azure-pipelines-vscode-ext.expandAzurePipeline",
-				"title": "Expand Azure Pipeline"
+				"title": "Expand Azure Pipeline",
+				"shortTitle": "Expand"
 			}
 		],
 		"menus": {
 			"editor/context": [
 				{
 					"submenu": "azure-pipelines-vscode-ext/context",
-					"when": "editorLangId == yaml || editorLangId == azure-pipelines"
+					"when": "(editorLangId == yaml || editorLangId == azure-pipelines) && config.azure-pipelines-vscode-ext.new-menu && !config.azure-pipelines-vscode-ext.disable-menu"
+				},
+				{
+					"command": "azure-pipelines-vscode-ext.validateAzurePipeline",
+					"when": "(editorLangId == yaml || editorLangId == azure-pipelines) && !config.azure-pipelines-vscode-ext.new-menu && !config.azure-pipelines-vscode-ext.disable-menu"
+				},
+				{
+					"command": "azure-pipelines-vscode-ext.expandAzurePipeline",
+					"when": "(editorLangId == yaml || editorLangId == azure-pipelines) && !config.azure-pipelines-vscode-ext.new-menu && !config.azure-pipelines-vscode-ext.disable-menu"
 				}
 			],
 			"azure-pipelines-vscode-ext/context": [
@@ -95,6 +106,30 @@
 						"default": [],
 						"scope": "resource",
 						"description": "Syntax <name>=<yaml value>"
+					},
+					"azure-pipelines-vscode-ext.disable-menu": {
+						"type": "boolean",
+						"default": false,
+						"scope": "window",
+						"description": "Hide all menu entries"
+					},
+					"azure-pipelines-vscode-ext.new-menu": {
+						"type": "boolean",
+						"default": true,
+						"scope": "window",
+						"description": "Use the new submenu style"
+					},
+					"azure-pipelines-vscode-ext.disable-auto-syntax-check": {
+						"type": "boolean",
+						"default": false,
+						"scope": "window",
+						"description": "Stop automatically checking Azure Pipelines Syntax"
+					},
+					"azure-pipelines-vscode-ext.disable-status-bar": {
+						"type": "boolean",
+						"default": false,
+						"scope": "window",
+						"description": "Hide all status bar entries"
 					}
 				}
 			}
@@ -280,6 +315,7 @@
 	"dependencies": {
 		"@vscode/debugadapter": "^1.64.0",
 		"@vscode/debugprotocol": "^1.64.0",
+		"js-yaml": "^4.1.0",
 		"ts-loader": "^9.5.0",
 		"url": "^0.11.3",
 		"vscode-languageclient": "^9.0.1"
