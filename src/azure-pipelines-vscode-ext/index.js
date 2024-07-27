@@ -175,7 +175,7 @@ function activate(context) {
 	});
 
 	var defcollection = vscode.languages.createDiagnosticCollection();
-	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state, skipAskForInput, syntaxOnly) => {
+	var expandAzurePipeline = async (validate, repos, vars, params, callback, fspathname, error, task, collection, state, skipAskForInput, syntaxOnly, schema) => {
 		collection ??= defcollection;
 		var textEditor = vscode.window.activeTextEditor;
 		if(!textEditor && !fspathname) {
@@ -366,7 +366,7 @@ function activate(context) {
 			return await error(pex.Message);
 		}), referencedFiles: [], refToUri: {}, task: task, askForInput: !skipAskForInput };
 		var result = syntaxOnly
-		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename)
+		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename, schema)
 						: await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true)
 
         if(state) {
@@ -443,13 +443,14 @@ function activate(context) {
 		);
 	}
 
-	var checkSyntaxAzurePipelineCommand = () => {
+	var checkSyntaxAzurePipelineCommand = schema => {
 		vscode.tasks.executeTask(
 			new vscode.Task({
 					type: "azure-pipelines-vscode-ext",
 					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
 					syntaxOnly: true,
 					watch: true,
+					schema: schema,
 				},
 				vscode.TaskScope.Workspace,
 				"Azure Pipeline Syntax Check (watch)",
@@ -479,11 +480,31 @@ function activate(context) {
 	var syntaxChecks = vscode.languages.createDiagnosticCollection("Syntax Checks");
 	statusbar.command = {
 		command: 'azure-pipelines-vscode-ext.checkSyntaxAzurePipeline',
-		arguments: [null, syntaxChecks]
+		arguments: [null, syntaxChecks, null]
 	};
 
 	context.subscriptions.push(syntaxChecks);
-	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, (file, collection) => {
+	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, (file, collection, obj) => {
+		try {
+			obj ??= jsYaml.load(vscode.window.activeTextEditor.document.getText());
+		} catch {
+			obj = {};
+		}
+		var varTempl = obj.variables;
+		var stageTempl = obj.stages instanceof Array;
+		var jobsTempl = obj.jobs instanceof Array;
+		var stepsTempl = obj.steps instanceof Array;
+		var mustBeTempl = obj.parameters && !(obj.parameters instanceof Array)
+		var schema = null;
+		if((mustBeTempl || !obj.extends) && (varTempl && !stageTempl && !jobsTempl && !stepsTempl)) {
+			schema = "variable-template-root"
+		} else if(mustBeTempl && (!varTempl && stageTempl && !jobsTempl && !stepsTempl)) {
+			schema = "stage-template-root"
+		} else if(mustBeTempl && (!varTempl && !stageTempl && jobsTempl && !stepsTempl)) {
+			schema = "job-template-root"
+		} else if(mustBeTempl && (!varTempl && !stageTempl && !jobsTempl && stepsTempl)) {
+			schema = "step-template-root"
+		}
 		if(collection) {
 			var hasError = false;
 			update("sync~spin");
@@ -494,37 +515,48 @@ function activate(context) {
 			}, null, () => {
 				hasError = true;
 				update("error");
-			}, null, collection, null, true, true);
+			}, null, collection, null, true, true, schema);
 		} else {
-			checkSyntaxAzurePipelineCommand();
+			checkSyntaxAzurePipelineCommand(schema);
 		}
  	}));
+
+	var checkAllIsIn = (obj, allowed) => {
+		for(var k in obj) {
+			if(allowed.indexOf(k) === -1) {
+				return false;
+			}
+		}
+		return true;
+	}
 
 	var checkIsPipeline = () => {
 		try {
 			var obj = jsYaml.load(vscode.window.activeTextEditor.document.getText());
 			return ((obj.trigger || obj.pr || obj.resources && (obj.resources.builds instanceof Array || obj.resources.containers instanceof Array || obj.resources.pipelines instanceof Array || obj.resources.repositories instanceof Array || obj.resources.webhooks instanceof Array || obj.resources.packages instanceof Array) || obj.schedules instanceof Array || obj.lockBehavior instanceof String || obj.variables instanceof Object || obj.variables instanceof Array || obj.parameters instanceof Object || obj.parameters instanceof Array) && (obj.extends && obj.extends.template || obj.stages instanceof Array || obj.jobs instanceof Array || obj.steps instanceof Array)
 				|| obj.steps instanceof Array && obj.steps.find(x => x.task || x.script !== undefined || x.bash !== undefined || x.pwsh !== undefined || x.powershell !== undefined || x.template !== undefined)
-				|| obj.jobs.find(x => x.job !== undefined || x.deployment !== undefined || x.template !== undefined)
-				|| obj.stages.find(x => x.stage !== undefined || x.template !== undefined)
-			);
+				|| obj.jobs instanceof Array && obj.jobs.find(x => x.job !== undefined || x.deployment !== undefined || x.template !== undefined)
+				|| obj.stages instanceof Array && obj.stages.find(x => x.stage !== undefined || x.template !== undefined)
+				|| obj.variables instanceof Array && obj.variables.find(x => x.name !== undefined && x.value !== undefined || x.group !== undefined || x.template !== undefined)
+				|| obj.variables && checkAllIsIn(obj, [ "parameters", "variables" ])
+			) ? obj : null;
 		} catch {
 
 		}
-		return false;
+		return null;
 	}
 
 	var onLanguageChanged = languageId => {
 		var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
-		if(languageId === "azure-pipelines" || languageId === "yaml" && checkIsPipeline()) {
-			 
+		var obj = null;
+		if(languageId === "azure-pipelines" || languageId === "yaml" && (obj = checkIsPipeline())) {
 			if(conf.get("disable-status-bar")) {
 				statusbar.hide();
 			} else {
 				statusbar.show();
 			}
 			if(!conf.get("disable-auto-syntax-check")) {
-				vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks);
+				vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj);
 			}
 		} else {
 			if(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
@@ -679,7 +711,7 @@ function activate(context) {
 									vscode.window.showErrorMessage(errmsg);
 								}
 							}
-						}, task, self.collection, self, !askForInput, args.syntaxOnly);
+						}, task, self.collection, self, !askForInput, args.syntaxOnly, args.schema);
 					} catch {
 
 					}

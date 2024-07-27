@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.0.23",
+	"version": "0.1.0",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -274,6 +274,11 @@
 						"type": "boolean",
 						"description": "Only Check Syntax (Faster less features)",
 						"default": false
+					},
+					"schema": {
+						"type": "string",
+						"description": "The internal schema name to use for validation",
+						"default": null
 					},
 					"autoClosePreview": {
 						"type": "boolean",

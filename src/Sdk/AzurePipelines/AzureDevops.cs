@@ -676,6 +676,10 @@ namespace Runner.Server.Azure.Devops {
             }
             foreach(var runtimeExpr in token.TraverseByPattern(new [] { "variables", "*", "value" })
                                 .Concat(token.TraverseByPattern(new [] { "variables", "" }))
+                                .Concat(token.TraverseByPattern(new [] { "continueOnError" }))
+                                .Concat(token.TraverseByPattern(new [] { "container" }))
+                                .Concat(token.TraverseByPattern(new [] { "container", "alias" }))
+                                .Concat(token.TraverseByPattern(new [] { "container", "image" }))
                                 .Concat(token.TraverseByPattern(new [] { "stages", "*", "variables", "*", "value" }))
                                 .Concat(token.TraverseByPattern(new [] { "stages", "*", "variables", "" }))
                                 .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "variables", "*", "value" }))
@@ -702,6 +706,11 @@ namespace Runner.Server.Azure.Devops {
                                 .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "parallel" }))
                 ) {
                 CheckSingleRuntimeExpression(templateContext.Errors, runtimeExpr);
+            }
+            foreach(var el in token.Traverse(false)) {
+                if(el is ConditionalExpressionToken cond) {
+                    var c = cond.Condition;
+                }
             }
 
             templateContext.Errors.Check();

@@ -1,3 +1,8 @@
+### v0.1.0
+- validate steps pipeline runtime expressions of container and continueOnError
+- support subtemplate syntax checks
+- see preview changelog for details, a lot has changed since v0.0.17
+
 ### v0.0.23 (Preview)
 - check for syntax errors by default as soon as the current file is detected as a pipeline
   - file type azure-pipelines is always checked

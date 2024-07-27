@@ -125,7 +125,7 @@ public class MyClass {
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName) {
+    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName, string schemaName) {
         var context = new Context {
             FileProvider = new MyFileProvider(handle),
             TraceWriter = new TraceWriter(handle),
@@ -134,7 +134,7 @@ public class MyClass {
             VariablesProvider = new VariablesProvider { Variables = new Dictionary<string, string>() }
         };
         try {
-            var (name, template) = await AzureDevops.ParseTemplate(context, currentFileName);
+            var (name, template) = await AzureDevops.ParseTemplate(context, currentFileName, schemaName);
             Interop.Log(handle, 0, "Done: " + template.ToString());
         } catch(TemplateValidationException ex) {
             var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
