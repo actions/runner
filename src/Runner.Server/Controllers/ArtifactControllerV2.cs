@@ -96,7 +96,7 @@ namespace Runner.Server.Controllers
             var artifactsMinAttempt = long.Parse(User.FindFirst("artifactsMinAttempt")?.Value ?? "-1");
             var runid = long.Parse(body.WorkflowRunBackendId);
 
-            var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == runid && fileContainer.Files.Count == 1 && !fileContainer.Files.FirstOrDefault().FileName.Contains('/') && fileContainer.Files.FirstOrDefault().FileName.EndsWith(".zip") && body.Name.ToLower() == fileContainer.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).First();
+            var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt >= artifactsMinAttempt || artifactsMinAttempt == -1) && (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == runid && fileContainer.Files.Count == 1  && body.Name.ToLower() == fileContainer.Name.ToLower() orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).First();
             container.Size = body.Size;
             var resp = new Github.Actions.Results.Api.V1.FinalizeArtifactResponse
             {
