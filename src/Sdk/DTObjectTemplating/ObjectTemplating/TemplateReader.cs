@@ -586,7 +586,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 return new StringToken(m_fileId, token.Line, token.Column, str);
             }
 
-            // Check if only ony segment
+            // Check if only one segment
             if (segments.Count == 1)
             {
                 return segments[0];
