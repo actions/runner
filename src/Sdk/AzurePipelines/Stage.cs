@@ -21,6 +21,7 @@ namespace Runner.Server.Azure.Devops
         public Dictionary<string, Azure.Devops.Stage> Dependencies { get; set; }
         public Pool Pool { get; set; }
         public String LockBehavior { get; set; }
+        public bool? IsSkippable { get; set; }
 
         public async Task<Stage> Parse(Context context, TemplateToken source, bool skipRootCheck = false) {
             var jobToken = source.AssertMapping("job-root");
@@ -60,6 +61,9 @@ namespace Runner.Server.Azure.Devops
                     break;
                     case "lockBehavior":
                         LockBehavior = kv.Value.AssertLiteralString("lockBehavior have to be of type string");
+                    break;
+                    case "isSkippable":
+                        IsSkippable = kv.Value.AssertAzurePipelinesBoolean("isSkippable have to be of type boolean");
                     break;
                     default:
                         errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(kv.Key)}Unexpected Key {kv.Key}"));
@@ -119,6 +123,9 @@ namespace Runner.Server.Azure.Devops
             stage["stage"] = new StringContextData(Name);
             if(DisplayName?.Length > 0) {
                 stage["displayName"] = new StringContextData(DisplayName);
+            }
+            if(IsSkippable != null) {
+                stage["isSkippable"] = new StringContextData(IsSkippable.ToString());
             }
             if(Condition?.Length > 0) {
                 stage["condition"] = new StringContextData(Condition);

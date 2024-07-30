@@ -1,0 +1,16 @@
+parameters:
+- name: p
+  type: stage
+  default:
+    stage:
+    isSkippable: true
+- name: p2
+  type: stage
+  default:
+    stage:
+    isSkippable: false
+steps:
+- bash: |
+    ${{ converttojson(parameters.p)}}
+    ${{ converttojson(parameters.p2)}}
+  condition: false
