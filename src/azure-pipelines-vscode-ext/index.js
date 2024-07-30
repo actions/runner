@@ -82,13 +82,6 @@ function activate(context) {
 							}
 						}
 					} else {
-						// Get current textEditor content for the entrypoint
-						// var doc = handle.textEditor ? handle.textEditor.document : null;
-						// if(handle.filename === filename && doc && !handle.skipCurrentEditor) {
-						// 	handle.referencedFiles.push(handle.textEditor.document.uri);
-						// 	handle.refToUri[`(${repositoryAndRef ?? "self"})/${filename}`] = handle.textEditor.document.uri;
-						// 	return doc.getText();
-						// }
 						uri = handle.base.with({ path: joinPath(handle.base.path, filename) });
 					}
 					handle.referencedFiles.push(uri);
@@ -578,43 +571,43 @@ function activate(context) {
 	var lastLanguageChange = undefined;
 
 	var onLanguageChanged = (languageId, reset) => {
-		var obj = null;
-		if(!inProgress || reset) {
-			lastLanguageChange = undefined;
-			inProgress = true;
-			var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
-			if(languageId === "azure-pipelines" || languageId === "yaml" && (obj = checkIsPipeline())) {
-				if(conf.get("disable-status-bar")) {
-					statusbar.hide();
-				} else {
-					statusbar.show();
-				}
-				if(!conf.get("disable-auto-syntax-check")) {
-					var _finally = () => {
-						// Reduce CPU load
-						setTimeout(() => {
+		// Reduce CPU load
+		setTimeout(() => {
+			var obj = null;
+			if(!inProgress || reset) {
+				lastLanguageChange = undefined;
+				inProgress = true;
+				var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
+				if(languageId === "azure-pipelines" || languageId === "yaml" && (obj = checkIsPipeline())) {
+					if(conf.get("disable-status-bar")) {
+						statusbar.hide();
+					} else {
+						statusbar.show();
+					}
+					if(!conf.get("disable-auto-syntax-check")) {
+						var _finally = () => {
 							var queue = lastLanguageChange;
 							if(queue !== undefined) {
 								onLanguageChanged(queue, true);
 							} else {
 								inProgress = false;
 							}
-						}, 1);
-					};
-					vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj).then(_finally, (err) => {
-						_finally();
-					});
+						};
+						vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj).then(_finally, (err) => {
+							_finally();
+						});
+					}
+				} else {
+					if(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
+						syntaxChecks.set(vscode.window.activeTextEditor.document.uri, []);
+					}
+					statusbar.hide();
+					inProgress = false;
 				}
 			} else {
-				if(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
-					syntaxChecks.set(vscode.window.activeTextEditor.document.uri, []);
-				}
-				statusbar.hide();
-				inProgress = false;
+				lastLanguageChange = languageId;
 			}
-		} else {
-			lastLanguageChange = languageId;
-		}
+		}, 1);
 	};
 	var z = 0;
 	vscode.debug.registerDebugAdapterDescriptorFactory("azure-pipelines-vscode-ext", {
