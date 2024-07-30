@@ -557,7 +557,6 @@ namespace Runner.Server.Azure.Devops {
                     return null;
                 }
                 var djob = await new Job().Parse(context, val);
-                if(!djob.DeploymentJob) throw new Exception("Only Deployment Jobs are valid");
                 return djob.ToContextData();
                 case "deploymentList":
                 if(val == null) {
@@ -566,7 +565,6 @@ namespace Runner.Server.Azure.Devops {
                 await Job.ParseJobs(context, jobs, val.AssertSequence(""));
                 var djobList = new ArrayContextData();
                 foreach(var job in jobs) {
-                    if(!job.DeploymentJob) throw new Exception("Only Deployment Jobs are valid");
                     djobList.Add(job.ToContextData());
                 }
                 return djobList;
