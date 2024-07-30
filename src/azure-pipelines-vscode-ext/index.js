@@ -9,7 +9,6 @@ import jsYaml from "js-yaml";
  */
 function activate(context) {
 	basePaths.basedir = context.extensionUri.with({ path: context.extensionUri.path + "/build/AppBundle/_framework/blazor.boot.json" }).toString();
-	// var dotnet = null;
 	var { dotnet } = require("./build/AppBundle/_framework/dotnet.js");
 	customImports["dotnet.runtime.js"] = require("./build/AppBundle/_framework/dotnet.runtime.js");
 	customImports["dotnet.native.js"] = require("./build/AppBundle/_framework/dotnet.native.js");
@@ -33,10 +32,6 @@ function activate(context) {
 		cancellable: true
 	}, async (progress, token) => {
 		logchannel.appendLine("Updating Runtime");
-		// var res = await import("./build/AppBundle/_framework/dotnet.js");
-		// dotnet = res.dotnet;
-		// customImports["dotnet.runtime.js"] = await import("./build/AppBundle/_framework/dotnet.runtime.js");
-		// customImports["dotnet.native.js"] = await import("./build/AppBundle/_framework/dotnet.native.js");
 		var items = 1;
 		var citem = 0;
 		var runtime = await dotnet.withOnConfigLoaded(async config => {
@@ -113,21 +108,22 @@ function activate(context) {
 					return null;
 				}
 			},
-			message: async (handle, type, content) => {
+			message: (handle, type, content) => {
 				switch(type) {
 					case 0:
 						((handle.task && handle.task.info) ?? logchannel.info)(content);
-						await vscode.window.showInformationMessage(content);
+						vscode.window.showInformationMessage(content);
 						break;
 					case 1:
 						((handle.task && handle.task.warn) ?? logchannel.warn)(content);
-						await vscode.window.showWarningMessage(content);
+						vscode.window.showWarningMessage(content);
 						break;
 					case 2:
 						((handle.task && handle.task.error) ?? logchannel.error)(content);
-						await vscode.window.showErrorMessage(content);
+						vscode.window.showErrorMessage(content);
 						break;
 				}
+				return Promise.resolve();
 			},
 			sleep: time => new Promise((resolve, reject) => setTimeout(resolve), time),
 			log: (handle, type, message) => {
@@ -365,9 +361,31 @@ function activate(context) {
 			}
 			return await error(pex.Message);
 		}), referencedFiles: [], refToUri: {}, task: task, askForInput: !skipAskForInput };
+		if(!syntaxOnly && !schema) {
+			var uri = handle.base.with({ path: joinPath(handle.base.path, filename) });
+			var scontent = null;
+			var textDocument = vscode.workspace.textDocuments.find(t => t.uri.toString() === uri.toString());
+			if(textDocument) {
+				scontent = textDocument.getText();
+			} else {
+				// Read template references via filesystem api
+				var content = await vscode.workspace.fs.readFile(uri);
+				scontent = new TextDecoder().decode(content);
+			}
+			var obj = null;
+			try {
+				obj ??= jsYaml.load(scontent);
+			} catch {
+				obj = {};
+			}
+			schema = extractSchema(obj)
+			if(schema != null) {
+				vscode.window.showWarningMessage("Please run this command on your root pipeline and not on a nested template detected as: " + schema);
+			}
+		}
 		var result = syntaxOnly
 		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename, schema)
-						: await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true)
+						: await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true, schema)
 
         if(state) {
             state.referencedFiles = handle.referencedFiles;
@@ -410,7 +428,7 @@ function activate(context) {
 	};
 
 	var expandAzurePipelineCommand = () => {
-		vscode.tasks.executeTask(
+		return vscode.tasks.executeTask(
 			new vscode.Task({
 					type: "azure-pipelines-vscode-ext",
 					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
@@ -428,7 +446,7 @@ function activate(context) {
 	}
 
 	var validateAzurePipelineCommand = () => {
-		vscode.tasks.executeTask(
+		return vscode.tasks.executeTask(
 			new vscode.Task({
 					type: "azure-pipelines-vscode-ext",
 					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
@@ -444,7 +462,7 @@ function activate(context) {
 	}
 
 	var checkSyntaxAzurePipelineCommand = schema => {
-		vscode.tasks.executeTask(
+		return vscode.tasks.executeTask(
 			new vscode.Task({
 					type: "azure-pipelines-vscode-ext",
 					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
@@ -484,31 +502,40 @@ function activate(context) {
 	};
 
 	context.subscriptions.push(syntaxChecks);
-	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, (file, collection, obj) => {
-		try {
-			obj ??= jsYaml.load(vscode.window.activeTextEditor.document.getText());
-		} catch {
-			obj = {};
-		}
+
+	var extractSchema = obj => {
 		var varTempl = obj.variables;
 		var stageTempl = obj.stages instanceof Array;
 		var jobsTempl = obj.jobs instanceof Array;
 		var stepsTempl = obj.steps instanceof Array;
-		var mustBeTempl = obj.parameters && !(obj.parameters instanceof Array)
+		var isTypedTemplate = false;
+		var mustBeTempl = obj.parameters && (!(isTypedTemplate = obj.parameters instanceof Array) || obj.parameters.find(x => x && x.type === "legacyObject"))
 		var schema = null;
-		if((mustBeTempl || !obj.extends) && (varTempl && !stageTempl && !jobsTempl && !stepsTempl)) {
-			schema = "variable-template-root"
+		if(mustBeTempl && isTypedTemplate && obj.extends) {
+			schema = "extend-template-root"
 		} else if(mustBeTempl && (!varTempl && stageTempl && !jobsTempl && !stepsTempl)) {
 			schema = "stage-template-root"
 		} else if(mustBeTempl && (!varTempl && !stageTempl && jobsTempl && !stepsTempl)) {
 			schema = "job-template-root"
 		} else if(mustBeTempl && (!varTempl && !stageTempl && !jobsTempl && stepsTempl)) {
 			schema = "step-template-root"
+		} else if((mustBeTempl || !obj.extends) && (varTempl && !stageTempl && !jobsTempl && !stepsTempl)) {
+			schema = "variable-template-root"
 		}
+		return schema;
+	}
+
+	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, (file, collection, obj) => {
+		try {
+			obj ??= jsYaml.load(vscode.window.activeTextEditor.document.getText());
+		} catch {
+			obj = {};
+		}
+		var schema = extractSchema(obj);
 		if(collection) {
 			var hasError = false;
 			update("sync~spin");
-			expandAzurePipeline(false, null, null, null, () => {
+			return expandAzurePipeline(false, null, null, null, () => {
 				if(!hasError) {
 					update("pass");
 				}
@@ -517,7 +544,7 @@ function activate(context) {
 				update("error");
 			}, null, collection, null, true, true, schema);
 		} else {
-			checkSyntaxAzurePipelineCommand(schema);
+			return checkSyntaxAzurePipelineCommand(schema);
 		}
  	}));
 
@@ -533,11 +560,12 @@ function activate(context) {
 	var checkIsPipeline = () => {
 		try {
 			var obj = jsYaml.load(vscode.window.activeTextEditor.document.getText());
-			return ((obj.trigger || obj.pr || obj.resources && (obj.resources.builds instanceof Array || obj.resources.containers instanceof Array || obj.resources.pipelines instanceof Array || obj.resources.repositories instanceof Array || obj.resources.webhooks instanceof Array || obj.resources.packages instanceof Array) || obj.schedules instanceof Array || obj.lockBehavior instanceof String || obj.variables instanceof Object || obj.variables instanceof Array || obj.parameters instanceof Object || obj.parameters instanceof Array) && (obj.extends && obj.extends.template || obj.stages instanceof Array || obj.jobs instanceof Array || obj.steps instanceof Array)
-				|| obj.steps instanceof Array && obj.steps.find(x => x.task || x.script !== undefined || x.bash !== undefined || x.pwsh !== undefined || x.powershell !== undefined || x.template !== undefined)
-				|| obj.jobs instanceof Array && obj.jobs.find(x => x.job !== undefined || x.deployment !== undefined || x.template !== undefined)
-				|| obj.stages instanceof Array && obj.stages.find(x => x.stage !== undefined || x.template !== undefined)
-				|| obj.variables instanceof Array && obj.variables.find(x => x.name !== undefined && x.value !== undefined || x.group !== undefined || x.template !== undefined)
+			return ((obj.trigger || obj.pr || obj.resources && (obj.resources.builds instanceof Array || obj.resources.containers instanceof Array || obj.resources.pipelines instanceof Array || obj.resources.repositories instanceof Array || obj.resources.webhooks instanceof Array || obj.resources.packages instanceof Array) || obj.schedules instanceof Array || obj.lockBehavior instanceof String || obj.variables instanceof Object || obj.variables instanceof Array || obj.parameters instanceof Object || obj.parameters instanceof Array) && (obj.stages instanceof Array || obj.jobs instanceof Array || obj.steps instanceof Array)
+				|| obj.extends && obj.extends.template	
+				|| obj.steps instanceof Array && obj.steps.find(x => x && (x.task || x.script !== undefined || x.bash !== undefined || x.pwsh !== undefined || x.powershell !== undefined || x.template !== undefined))
+				|| obj.jobs instanceof Array && obj.jobs.find(x => x && (x.job !== undefined || x.deployment !== undefined || x.template !== undefined))
+				|| obj.stages instanceof Array && obj.stages.find(x => x && (x.stage !== undefined || x.template !== undefined))
+				|| obj.variables instanceof Array && obj.variables.find(x => x && (x.name !== undefined && x.value !== undefined || x.group !== undefined || x.template !== undefined))
 				|| obj.variables && checkAllIsIn(obj, [ "parameters", "variables" ])
 			) ? obj : null;
 		} catch {
@@ -546,23 +574,43 @@ function activate(context) {
 		return null;
 	}
 
-	var onLanguageChanged = languageId => {
-		var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
+	var inProgress = false;
+	var lastLanguageChange = undefined;
+
+	var onLanguageChanged = (languageId, reset) => {
 		var obj = null;
-		if(languageId === "azure-pipelines" || languageId === "yaml" && (obj = checkIsPipeline())) {
-			if(conf.get("disable-status-bar")) {
-				statusbar.hide();
+		if(!inProgress || reset) {
+			lastLanguageChange = undefined;
+			inProgress = true;
+			var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
+			if(languageId === "azure-pipelines" || languageId === "yaml" && (obj = checkIsPipeline())) {
+				if(conf.get("disable-status-bar")) {
+					statusbar.hide();
+				} else {
+					statusbar.show();
+				}
+				if(!conf.get("disable-auto-syntax-check")) {
+					var _finally = () => {
+						var queue = lastLanguageChange;
+						if(queue !== undefined) {
+							onLanguageChanged(queue, true);
+						} else {
+							inProgress = false;
+						}
+					};
+					vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj).then(_finally, (err) => {
+						_finally();
+					});
+				}
 			} else {
-				statusbar.show();
-			}
-			if(!conf.get("disable-auto-syntax-check")) {
-				vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj);
+				if(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
+					syntaxChecks.set(vscode.window.activeTextEditor.document.uri, []);
+				}
+				statusbar.hide();
+				inProgress = false;
 			}
 		} else {
-			if(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
-				syntaxChecks.set(vscode.window.activeTextEditor.document.uri, []);
-			}
-			statusbar.hide();
+			lastLanguageChange = languageId;
 		}
 	};
 	var z = 0;

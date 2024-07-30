@@ -1,0 +1,6 @@
+parameters:
+- name: stages
+  type: legacyObject
+  default: []
+stages:
+  - ${{ parameters.stages }}

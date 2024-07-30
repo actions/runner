@@ -245,7 +245,7 @@ function * traverse(path) {
         return;
     }
     if(path.length === 1) {
-        yield schema;
+        yield [schema];
         return;
     }
 
@@ -255,7 +255,7 @@ function * traverse(path) {
             var subPath = [...path]
             subPath[0] = entry
             for(var r of traverse(subPath)) {
-                yield r;
+                yield [schema, ...r];
             }
         }
     }
@@ -264,10 +264,10 @@ function * traverse(path) {
         for(var entry in mapping.properties) {
             var subPath = [...path]
             subPath.shift()
-            if(entry === subPath[0]) {
+            if(entry === subPath[0] || subPath[0] instanceof Array && subPath[0].findIndex(e => entry == e) !== -1) {
                 subPath[0] = mapping.properties[entry].type
                 for(var r of traverse(subPath)) {
-                    yield r;
+                    yield [schema, mapping.properties[entry], ...r];
                 }
             }
         }
@@ -276,15 +276,27 @@ function * traverse(path) {
 
 for(var path of pathsWithExpressions) {
     for(var def of traverse(path)) {
-        def.context = [ "parameters", "variables" ]
+      def[def.length - 1].context = [ "parameters", "variables" ]
     }
 }
+
+var fixUpExtends = [
+  [ "extendsTemplate", [ "extends", "stages", "jobs", "steps" ] ],
+]
+
+for(var path of fixUpExtends) {
+  for(var def of traverse(path)) {
+      def[def.length - 2].required = true;
+  }
+}
+
 
 targetSchema.definitions["pipeline-root"] = targetSchema.definitions["pipeline"]
 targetSchema.definitions["variable-template-root"] = targetSchema.definitions["variablesTemplate"]
 targetSchema.definitions["step-template-root"] = targetSchema.definitions["stepsTemplate"]
 targetSchema.definitions["job-template-root"] = targetSchema.definitions["jobsTemplate"]
 targetSchema.definitions["stage-template-root"] = targetSchema.definitions["stagesTemplate"]
+targetSchema.definitions["extend-template-root"] = targetSchema.definitions["extendsTemplate"]
 
 targetSchema.definitions["containerArtifactType"] = {
     "one-of": [
@@ -298,11 +310,17 @@ targetSchema.definitions["nonEmptyString"] = {
   }
 },
 
+targetSchema.definitions["branchFilter"] = {
+  "string": {
+  }
+},
+
 targetSchema.definitions["task-task"] = targetSchema.definitions["nonEmptyString"]
 
 // delete targetSchema.definitions["any"]
 
 targetSchema.definitions["azp-any"]["one-of"].push("boolean", "null", "number")
 targetSchema.definitions["any_allowExpressions"]["one-of"].push("boolean", "null", "number")
+
 
 console.log(JSON.stringify(targetSchema, null, 4))

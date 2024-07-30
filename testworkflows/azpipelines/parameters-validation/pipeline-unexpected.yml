@@ -1,5 +1,5 @@
 # ExpectedException: TemplateValidationException
-# ExpectedErrorMessage: pipeline-unexpected.yml (Line: 9, Col: 17): Unexpected parameter 'unexpected'
+# ExpectedErrorMessage: Unexpected parameter 'unexpected'
 trigger: none
 
 steps:

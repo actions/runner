@@ -285,6 +285,10 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             int level = 0;
             if (token != null)
             {
+                if(pattern.Length == 0) {
+                    yield return token;
+                    yield break;
+                }
                 if (token is SequenceToken && pattern[level] == "*" || token is MappingToken)
                 {
                     var state = new TraversalState(null, token);
@@ -293,17 +297,13 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         if (state.MoveNext(false))
                         {
                             token = state.Current;
-                            bool skip = false;
-                            if (state.IsMapping && pattern[level] != "" && !(token is ExpressionToken) && token.AssertLiteralString("") != pattern[level]) {
-                                skip = true;
-                            }
+                            bool skip = state.IsMapping && pattern[level] != "" && (token is ExpressionToken || token.AssertLiteralString("") != pattern[level]);
                             if(state.IsMapping) {
                                 state.MoveNext(false);
                                 token = state.Current;
-
-                                if(!skip && level + 1 == pattern.Length) {
-                                    yield return token;
-                                }
+                            }
+                            if(!skip && level + 1 == pattern.Length) {
+                                yield return token;
                             }
 
                             if (!skip && level + 1 < pattern.Length && (token is SequenceToken && pattern[level + 1] == "*" || token is MappingToken))

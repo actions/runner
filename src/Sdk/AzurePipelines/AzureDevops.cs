@@ -499,7 +499,15 @@ namespace Runner.Server.Azure.Devops {
             };
             switch(type.Value) {
                 case "object":
+                // Now some unsupported types handle them as object
+                case "environment":
+                case "filePath":
+                case "pool":
+                case "secureFile":
+                case "serviceConnection":
                 return val == null ? null : val.ToContextData();
+                case "legacyObject":
+                return val == null ? null : ConvertAllScalarsToString(val).ToContextData();
                 case "boolean":
                     if(val == null || string.Equals(val.AssertLiteralString("boolean"), "false", StringComparison.OrdinalIgnoreCase)) {
                         return new BooleanContextData(false);
@@ -623,7 +631,7 @@ namespace Runner.Server.Azure.Devops {
         }
 
         
-        public static async Task<(string, TemplateToken)> ParseTemplate(Context context, string filenameAndRef, string schemaName = null)
+        public static async Task<(string, TemplateToken)> ParseTemplate(Context context, string filenameAndRef, string schemaName = null, bool checks = true)
         {
             var afilenameAndRef = filenameAndRef.Split("@", 2);
             var filename = afilenameAndRef[0];
@@ -657,65 +665,213 @@ namespace Runner.Server.Azure.Devops {
                 token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
             }
 
-            foreach(var stepCond in token.TraverseByPattern(new [] { "steps", "*", "condition" })
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "steps", "*", "condition" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "steps", "*", "condition" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*", "condition" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }))
-                ) {
-                CheckConditionalExpressions(templateContext.Errors, stepCond, Level.Step);
-            }
-            foreach(var jobCond in token.TraverseByPattern(new [] { "jobs", "*", "condition" })
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "condition" }))
-                ) {
-                CheckConditionalExpressions(templateContext.Errors, jobCond, Level.Job);
-            }
-            foreach(var stageCond in token.TraverseByPattern(new [] { "stages", "*", "condition" })
-                ) {
-                CheckConditionalExpressions(templateContext.Errors, stageCond, Level.Stage);
-            }
-            foreach(var runtimeExpr in token.TraverseByPattern(new [] { "variables", "*", "value" })
-                                .Concat(token.TraverseByPattern(new [] { "variables", "" }))
-                                .Concat(token.TraverseByPattern(new [] { "continueOnError" }))
-                                .Concat(token.TraverseByPattern(new [] { "container" }))
-                                .Concat(token.TraverseByPattern(new [] { "container", "alias" }))
-                                .Concat(token.TraverseByPattern(new [] { "container", "image" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "variables", "*", "value" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "variables", "" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "variables", "*", "value" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "variables", "" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "continueOnError" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "timeoutInMinutes" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "cancelTimeoutInMinutes" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container", "alias" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container", "image" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "matrix" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "maxParallel" }))
-                                .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "parallel" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "variables", "*", "value" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "variables", "" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "continueOnError" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "timeoutInMinutes" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "cancelTimeoutInMinutes" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container", "alias" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container", "image" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "matrix" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "maxParallel" }))
-                                .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "parallel" }))
-                ) {
-                CheckSingleRuntimeExpression(templateContext.Errors, runtimeExpr);
-            }
-            foreach(var el in token.Traverse(false)) {
-                if(el is ConditionalExpressionToken cond) {
-                    var c = cond.Condition;
+            if(checks) {
+
+                foreach(var stepCond in token.TraverseByPattern(new [] { "steps", "*", "condition" })
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "steps", "*", "condition" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "steps", "*", "condition" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "", "steps", "*", "condition" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*", "condition" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }))
+                    ) {
+                    CheckConditionalExpressions(templateContext.Errors, stepCond, Level.Step);
+                }
+                foreach(var jobCond in token.TraverseByPattern(new [] { "jobs", "*", "condition" })
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "condition" }))
+                    ) {
+                    CheckConditionalExpressions(templateContext.Errors, jobCond, Level.Job);
+                }
+                foreach(var stageCond in token.TraverseByPattern(new [] { "stages", "*", "condition" })
+                    ) {
+                    CheckConditionalExpressions(templateContext.Errors, stageCond, Level.Stage);
+                }
+                foreach(var runtimeExpr in token.TraverseByPattern(new [] { "variables", "*", "value" })
+                                    .Concat(token.TraverseByPattern(new [] { "variables", "" }))
+                                    .Concat(token.TraverseByPattern(new [] { "continueOnError" }))
+                                    .Concat(token.TraverseByPattern(new [] { "container" }))
+                                    .Concat(token.TraverseByPattern(new [] { "container", "alias" }))
+                                    .Concat(token.TraverseByPattern(new [] { "container", "image" }))
+                                    .Concat(token.TraverseByPattern(new [] { "strategy", "matrix" }))
+                                    .Concat(token.TraverseByPattern(new [] { "strategy", "maxParallel" }))
+                                    .Concat(token.TraverseByPattern(new [] { "strategy", "parallel" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "variables", "*", "value" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "variables", "" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "variables", "*", "value" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "variables", "" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "continueOnError" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "timeoutInMinutes" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "cancelTimeoutInMinutes" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container", "alias" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "container", "image" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "matrix" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "maxParallel" }))
+                                    .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "parallel" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "variables", "*", "value" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "variables", "" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "continueOnError" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "timeoutInMinutes" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "cancelTimeoutInMinutes" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container", "alias" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "container", "image" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "matrix" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "maxParallel" }))
+                                    .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "parallel" }))
+                    ) {
+                    CheckSingleRuntimeExpression(templateContext.Errors, runtimeExpr);
+                }
+    
+                try {
+                    var cCtx = context.ChildContext(token as MappingToken, finalFileName);
+                    foreach(var (extends, schema) in token.TraverseByPattern(new [] { "extends" }).Select(e => (e, "extend-template-root"))
+                        .Concat(token.TraverseByPattern(new [] { "stages", "*" }).Select(e => (e, "stage-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "jobs", "*" }).Select(e => (e, "job-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*" }).Select(e => (e, "job-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "steps", "*" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "jobs", "*", "steps", "*" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "", "steps", "*", "condition" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "steps", "*" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*", "condition" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }).Select(e => (e, "step-template-root")))
+                    )
+                    {
+                        await processTemplates(templateContext, fileId, cCtx, extends, schema);
+                    }
+                } catch {
+
                 }
             }
 
             templateContext.Errors.Check();
 
             return (errorTemplateFileName, token);
+
+            static async Task processTemplates(TemplateContext templateContext, int fileId, Context cCtx, TemplateToken extends, string schema)
+            {
+                var template = extends.TraverseByPattern(new[] { "template" }).FirstOrDefault();
+                var parameters = extends.TraverseByPattern(new[] { "parameters" }).FirstOrDefault() as MappingToken;
+
+                if (template is StringToken stringToken && parameters != null)
+                {
+                    var (name, subtmpl) = await ParseTemplate(cCtx, stringToken.ToString(), schema, false);
+                    if (subtmpl.TraverseByPattern(new[] { "parameters" }).FirstOrDefault() is SequenceToken)
+                    {
+                        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var paramdef in subtmpl.TraverseByPattern(new[] { "parameters", "*" }))
+                        {
+                            var namedef = paramdef.TraverseByPattern(new[] { "name" }).FirstOrDefault()?.ToString();
+                            var typedef = paramdef.TraverseByPattern(new[] { "type" }).FirstOrDefault()?.ToString() ?? "string";
+                            dict[namedef] = typedef;
+                            var val = parameters.TraverseByPattern(new[] { namedef }).FirstOrDefault();
+                            string fdef = null;
+                            int? start = null;
+                            switch (typedef)
+                            {
+                                case "pool":
+                                    fdef = typedef;
+                                    break;
+                                case "stageList":
+                                    fdef = "stages";
+                                    start = 1;
+                                    break;
+                                case "step":
+                                    fdef = "step";
+                                    start = 6;
+                                    break;
+                                case "stage":
+                                    fdef = "stage";
+                                    start = 2;
+                                    break;
+                                case "job":
+                                case "deployment":
+                                    fdef = "job";
+                                    start = 4;
+                                    break;
+                                case "jobList":
+                                case "deploymentList":
+                                    fdef = "jobs";
+                                    start = 3;
+                                    break;
+                                case "stepList":
+                                    fdef = "steps";
+                                    start = 5;
+                                    break;
+                                case "container":
+                                    fdef = "containerResource";
+                                    break;
+                                case "containerList":
+                                    fdef = "containerResources";
+                                    break;
+                                case "number":
+                                    fdef = "string";
+                                    break;
+                                case "boolean":
+                                    fdef = "string";
+                                    break;
+                                case "string":
+                                    fdef = "string";
+                                    break;
+                            }
+                            if (fdef != null && val != null)
+                            {
+                                TemplateEvaluator.Evaluate(templateContext, fdef, val, 0, fileId);
+                                if(start != null) {
+                                    Func<int, IEnumerable<(TemplateToken, string)>> jobDeps = (s) => {
+                                        var ret = Array.Empty<(TemplateToken, string)>().AsEnumerable();
+                                        if(s > 6) {
+                                            return ret;
+                                        }
+                                        for(int t = 6; t > s; t -= 2) {
+                                            string sch = null;
+                                            switch(t) {
+                                                case 6:
+                                                    sch = "step-template-root";
+                                                    break;
+                                                case 4:
+                                                    sch = "job-template-root";
+                                                    break;
+                                                case 2:
+                                                    sch = "stage-template-root";
+                                                    break;
+                                            }
+                                            if(sch == null) {
+                                                continue;
+                                            }
+                                            ret = ret
+                                                .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "steps", "*" }.Take(t).Skip(s).ToArray()).Select(e => (e, sch)));                                        }
+                                        if(s > 4) {
+                                            return ret;
+                                        }
+                                        return ret
+                                            .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*", "condition" }.Skip(s).ToArray()).Select(e => (e, "step-template-root")))
+                                            .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }.Skip(s).ToArray()).Select(e => (e, "step-template-root")));
+                                    };
+
+                                    foreach(var (tkn, sh) in jobDeps(start.Value))
+                                    {
+                                        await processTemplates(templateContext, fileId, cCtx, tkn, sh);
+                                    }
+                                }
+                            }
+                        }
+
+                        for (int i = 0; i < parameters.Count; i++)
+                        {
+                            if (!(parameters[i].Key is ExpressionToken))
+                            {
+                                var skey = parameters[i].Key.ToString();
+                                if (!dict.ContainsKey(skey))
+                                {
+                                    templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(parameters[i].Key)}Unexpected parameter '{skey}'");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private static void CheckSingleRuntimeExpression(TemplateValidationErrors errors, TemplateToken rawVal)

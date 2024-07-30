@@ -79,7 +79,7 @@ public class MyClass {
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent) {
+    public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent, string schema) {
         var context = new Runner.Server.Azure.Devops.Context {
             FileProvider = new MyFileProvider(handle),
             TraceWriter = new TraceWriter(handle),
@@ -93,7 +93,7 @@ public class MyClass {
             foreach(var kv in JsonConvert.DeserializeObject<Dictionary<string, string>>(parameters)) {
                 cparameters[kv.Key] = AzurePipelinesUtils.ConvertStringToTemplateToken(kv.Value);
             }
-            var template = await AzureDevops.ReadTemplate(context, currentFileName, cparameters);
+            var template = await AzureDevops.ReadTemplate(context, currentFileName, cparameters, schema);
             var pipeline = await new Runner.Server.Azure.Devops.Pipeline().Parse(context.ChildContext(template, currentFileName), template);
             yaml = pipeline.ToYaml();
             // The errors generated here shouldn't prevent the preview to show the result

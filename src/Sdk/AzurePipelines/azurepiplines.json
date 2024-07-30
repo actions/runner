@@ -943,9 +943,7 @@
             }
         },
         "branchFilter": {
-            "string": {
-                "pattern": "^[^\\/~\\^\\: \\[\\]\\\\]+(\\/[^\\/~\\^\\: \\[\\]\\\\]+)*$"
-            }
+            "string": {}
         },
         "templateParameters-0": {
             "sequence": {
@@ -1916,7 +1914,8 @@
             "mapping": {
                 "properties": {
                     "stages": {
-                        "type": "stages"
+                        "type": "stages",
+                        "required": true
                     },
                     "trigger": {
                         "type": "trigger"
@@ -1937,7 +1936,8 @@
             "mapping": {
                 "properties": {
                     "jobs": {
-                        "type": "jobs"
+                        "type": "jobs",
+                        "required": true
                     },
                     "trigger": {
                         "type": "trigger"
@@ -1958,7 +1958,8 @@
             "mapping": {
                 "properties": {
                     "steps": {
-                        "type": "steps"
+                        "type": "steps",
+                        "required": true
                     },
                     "trigger": {
                         "type": "trigger"
@@ -1988,7 +1989,8 @@
                         "type": "extendsParameters"
                     },
                     "extends": {
-                        "type": "extends"
+                        "type": "extends",
+                        "required": true
                     }
                 }
             }
@@ -5367,6 +5369,14 @@
                     }
                 }
             }
+        },
+        "extend-template-root": {
+            "one-of": [
+                "extendsTemplate-0",
+                "extendsTemplate-1",
+                "extendsTemplate-2",
+                "extendsTemplate-3"
+            ]
         }
     }
 }

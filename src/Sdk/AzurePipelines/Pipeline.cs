@@ -71,7 +71,7 @@ namespace Runner.Server.Azure.Devops
                             }
                         }
                         try {
-                            var templ = await AzureDevops.ReadTemplate(context, template, parameters);
+                            var templ = await AzureDevops.ReadTemplate(context, template, parameters, "extend-template-root");
                             parent = await new Pipeline().Parse(context.ChildContext(templ, template), templ);
                         } catch(TemplateValidationException ex) {
                             throw new TemplateValidationException(ex.Errors.Prepend(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(ext)}Found Errors inside Template Reference: {ex.Message}")));
