@@ -768,9 +768,6 @@ namespace Runner.Server.Azure.Devops {
                             int? start = null;
                             switch (typedef)
                             {
-                                case "pool":
-                                    fdef = typedef;
-                                    break;
                                 case "stageList":
                                     fdef = "stages";
                                     start = 1;
