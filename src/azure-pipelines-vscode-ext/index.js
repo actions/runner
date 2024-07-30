@@ -591,12 +591,15 @@ function activate(context) {
 				}
 				if(!conf.get("disable-auto-syntax-check")) {
 					var _finally = () => {
-						var queue = lastLanguageChange;
-						if(queue !== undefined) {
-							onLanguageChanged(queue, true);
-						} else {
-							inProgress = false;
-						}
+						// Reduce CPU load
+						setTimeout(() => {
+							var queue = lastLanguageChange;
+							if(queue !== undefined) {
+								onLanguageChanged(queue, true);
+							} else {
+								inProgress = false;
+							}
+						}, 1);
 					};
 					vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj).then(_finally, (err) => {
 						_finally();
