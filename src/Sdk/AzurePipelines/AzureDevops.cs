@@ -729,11 +729,11 @@ namespace Runner.Server.Azure.Devops {
                         .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*" }).Select(e => (e, "job-template-root")))
                         .Concat(token.TraverseByPattern(new [] { "steps", "*" }).Select(e => (e, "step-template-root")))
                         .Concat(token.TraverseByPattern(new [] { "jobs", "*", "steps", "*" }).Select(e => (e, "step-template-root")))
-                        .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "", "steps", "*", "condition" }).Select(e => (e, "step-template-root")))
-                        .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "", "steps", "*"}).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "jobs", "*", "strategy", "on", "", "steps", "*" }).Select(e => (e, "step-template-root")))
                         .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "steps", "*" }).Select(e => (e, "step-template-root")))
-                        .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*", "condition" }).Select(e => (e, "step-template-root")))
-                        .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*" }).Select(e => (e, "step-template-root")))
+                        .Concat(token.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*" }).Select(e => (e, "step-template-root")))
                     )
                     {
                         await processTemplates(templateContext, fileId, cCtx, extends, schema);
@@ -841,8 +841,8 @@ namespace Runner.Server.Azure.Devops {
                                             return ret;
                                         }
                                         return ret
-                                            .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*", "condition" }.Skip(s).ToArray()).Select(e => (e, "step-template-root")))
-                                            .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }.Skip(s).ToArray()).Select(e => (e, "step-template-root")));
+                                            .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*" }.Skip(s).ToArray()).Select(e => (e, "step-template-root")))
+                                            .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*" }.Skip(s).ToArray()).Select(e => (e, "step-template-root")));
                                     };
 
                                     foreach(var (tkn, sh) in jobDeps(start.Value))
