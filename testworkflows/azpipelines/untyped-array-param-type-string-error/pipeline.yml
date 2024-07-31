@@ -1,4 +1,5 @@
-# ExpectedException: ArgumentException
+# ExpectedException: TemplateValidationException
+# ExpectedMessage: A sequence was not expected
 
 parameters:
 - name: str1

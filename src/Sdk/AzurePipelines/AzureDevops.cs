@@ -728,6 +728,7 @@ namespace Runner.Server.Azure.Devops {
                 try
                 {
                     var cCtx = context.ChildContext(token as MappingToken, finalFileName);
+                    await processParams(templateContext, fileId, cCtx, token, "");
                     foreach (var (extends, schema) in token.TraverseByPattern(new[] { "extends" }).Select(e => (e, "extend-template-root"))
                         .Concat(token.TraverseByPattern(new[] { "stages", "*" }).Select(e => (e, "stage-template-root")))
                         .Concat(token.TraverseByPattern(new[] { "jobs", "*" }).Select(e => (e, "job-template-root")))
@@ -887,6 +888,126 @@ namespace Runner.Server.Azure.Devops {
                                 if (!dict.ContainsKey(skey))
                                 {
                                     templateContext.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(parameters[i].Key)}Unexpected parameter '{skey}'");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            static async Task processParams(TemplateContext templateContext, int fileId, Context cCtx, TemplateToken subtmpl, string schema)
+            {
+
+                if (subtmpl.TraverseByPattern(new[] { "parameters" }).FirstOrDefault() is SequenceToken)
+                {
+                    foreach (var paramdef in subtmpl.TraverseByPattern(new[] { "parameters", "*" }))
+                    {
+                        var namedef = paramdef.TraverseByPattern(new[] { "name" }).FirstOrDefault()?.ToString();
+                        var typedef = paramdef.TraverseByPattern(new[] { "type" }).FirstOrDefault()?.ToString() ?? "string";
+                        var val = paramdef.TraverseByPattern(new[] { "default" }).FirstOrDefault();
+                        string fdef = null;
+                        int? start = null;
+                        switch (typedef)
+                        {
+                            case "stageList":
+                                fdef = "stages";
+                                start = 1;
+                                break;
+                            case "step":
+                                fdef = "step";
+                                start = 6;
+                                break;
+                            case "stage":
+                                fdef = "stage";
+                                start = 2;
+                                break;
+                            case "job":
+                            case "deployment":
+                                fdef = "job";
+                                start = 4;
+                                break;
+                            case "jobList":
+                            case "deploymentList":
+                                fdef = "jobs";
+                                start = 3;
+                                break;
+                            case "stepList":
+                                fdef = "steps";
+                                start = 5;
+                                break;
+                            case "container":
+                                fdef = "containerResource";
+                                break;
+                            case "containerList":
+                                fdef = "containerResources";
+                                break;
+                            case "number":
+                                fdef = "string";
+                                break;
+                            case "boolean":
+                                fdef = "string";
+                                break;
+                            case "string":
+                                fdef = "string";
+                                break;
+                        }
+                        if (fdef != null && val != null)
+                        {
+                            TemplateEvaluator.Evaluate(templateContext, fdef, val, 0, fileId);
+                            if(start != null) {
+                                foreach(var (tkn, sh) in GetPatterns(start.Value)
+                                    .SelectMany(v => val.TraverseByPattern(v.Item1).Select(t => (t, v.Item2))))
+                                {
+                                    switch(sh) {
+                                        case 0:
+                                            CheckConditionalExpressions(templateContext.Errors, tkn, Level.Step);
+                                        break;
+                                        case 1:
+                                            CheckConditionalExpressions(templateContext.Errors, tkn, Level.Job);
+                                        break;
+                                        case 2:
+                                            CheckConditionalExpressions(templateContext.Errors, tkn, Level.Stage);
+                                        break;
+                                        case 3:
+                                            CheckSingleRuntimeExpression(templateContext.Errors, tkn);
+                                        break;
+                                    }
+                                }
+
+                                Func<int, IEnumerable<(TemplateToken, string)>> jobDeps = (s) => {
+                                    var ret = Array.Empty<(TemplateToken, string)>().AsEnumerable();
+                                    if(s > 6) {
+                                        return ret;
+                                    }
+                                    for(int t = 6; t > s; t -= 2) {
+                                        string sch = null;
+                                        switch(t) {
+                                            case 6:
+                                                sch = "step-template-root";
+                                                break;
+                                            case 4:
+                                                sch = "job-template-root";
+                                                break;
+                                            case 2:
+                                                sch = "stage-template-root";
+                                                break;
+                                        }
+                                        if(sch == null) {
+                                            continue;
+                                        }
+                                        ret = ret
+                                            .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "steps", "*" }.Take(t).Skip(s).ToArray()).Select(e => (e, sch)));                                        }
+                                    if(s > 4) {
+                                        return ret;
+                                    }
+                                    return ret
+                                        .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "", "steps", "*" }.Skip(s).ToArray()).Select(e => (e, "step-template-root")))
+                                        .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*" }.Skip(s).ToArray()).Select(e => (e, "step-template-root")));
+                                };
+
+                                foreach(var (tkn, sh) in jobDeps(start.Value))
+                                {
+                                    await processTemplates(templateContext, fileId, cCtx, tkn, sh);
                                 }
                             }
                         }
