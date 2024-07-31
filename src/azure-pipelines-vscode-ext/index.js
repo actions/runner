@@ -518,26 +518,34 @@ function activate(context) {
 		return schema;
 	}
 
-	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, (file, collection, obj) => {
-		try {
-			obj ??= jsYaml.load(vscode.window.activeTextEditor.document.getText());
-		} catch {
-			obj = {};
-		}
-		var schema = extractSchema(obj);
+	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, async (file, collection, obj) => {
+		var getSchema = () => {
+            try {
+				obj ??= jsYaml.load(vscode.window.activeTextEditor.document.getText());
+            } catch {
+                obj = {};
+            }
+            return extractSchema(obj);
+        }
 		if(collection) {
 			var hasError = false;
 			update("sync~spin");
-			return expandAzurePipeline(false, null, null, null, () => {
+			await new Promise((resolve) => {
+                setTimeout(resolve, 1);
+            });
+			await expandAzurePipeline(false, null, null, null, () => {
 				if(!hasError) {
 					update("pass");
 				}
 			}, null, () => {
 				hasError = true;
 				update("error");
-			}, null, collection, null, true, true, schema);
+			}, null, collection, null, true, true, getSchema());
+			await new Promise((resolve) => {
+                setTimeout(resolve, 1);
+            });
 		} else {
-			return checkSyntaxAzurePipelineCommand(schema);
+			await checkSyntaxAzurePipelineCommand(getSchema());
 		}
  	}));
 
@@ -586,12 +594,14 @@ function activate(context) {
 					}
 					if(!conf.get("disable-auto-syntax-check")) {
 						var _finally = () => {
-							var queue = lastLanguageChange;
-							if(queue !== undefined) {
-								onLanguageChanged(queue, true);
-							} else {
-								inProgress = false;
-							}
+                            setTimeout(() => {
+								var queue = lastLanguageChange;
+								if(queue !== undefined) {
+									onLanguageChanged(queue, true);
+								} else {
+									inProgress = false;
+								}
+                            }, 1);
 						};
 						vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj).then(_finally, (err) => {
 							_finally();
