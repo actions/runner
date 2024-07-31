@@ -742,6 +742,9 @@ function activate(context) {
 					inProgress = true;
 					try {
 						var hasErrors = false;
+						await new Promise((resolve) => {
+                            setTimeout(resolve, 1);
+                        });
 						await expandAzurePipeline(false, self.repositories ?? args.repositories, args.variables, self.parameters ?? args.parameters, async result => {
 							if(!args.syntaxOnly) {
 								task.info(result);
@@ -766,9 +769,12 @@ function activate(context) {
 								}
 							}
 						}, task, self.collection, self, !askForInput, args.syntaxOnly, args.schema);
-					} catch {
-
+					} catch(err) {
+                        task.error(err?.toString() ?? "Unknown Error");
 					}
+					await new Promise((resolve) => {
+                        setTimeout(resolve, 1);
+                    });
 					inProgress = false;
 					if(!args.watch) {
 						close();

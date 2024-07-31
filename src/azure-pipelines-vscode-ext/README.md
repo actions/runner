@@ -1,9 +1,12 @@
-# Azure Pipelines Tools VSCode Extension
+# Azure Pipelines Tools for VSCode
 
-This is a minimal Azure Pipelines Extension, the first vscode Extension which can Validate and Expand Azure Pipeline YAML files locally without any REST service.
+The first VSCode Extension which can Validate and Expand Azure Pipeline YAML files locally without any REST service.
 
-![Validate Azure Pipelines via ContextMenu](https://raw.githubusercontent.com/ChristopherHX/runner.server/main/docs/azure-pipelines/images/validate-azure-pipeline-via-contextmenu.gif)
-![Expand Azure Pipelines via ContextMenu](https://raw.githubusercontent.com/ChristopherHX/runner.server/main/docs/azure-pipelines/images/expand-azure-pipeline-via-contextmenu.gif)
+#### Live syntax checking for pipelines
+![Live syntax checking for pipelines](https://raw.githubusercontent.com/wiki/ChristopherHX/runner.server/live-syntax-check.gif)
+
+#### Live preview of the extended / rendered pipeline
+![Live preview of the extended / rendered pipeline](https://raw.githubusercontent.com/wiki/ChristopherHX/runner.server/live-preview.gif)
 
 ## Features
 
@@ -17,17 +20,25 @@ Syntax `[<owner>/]<repo>@<ref>=<uri>` per line. `<uri>` can be formed like `file
 
 `> Check Syntax Azure Pipeline`
 
-This command explicitly checks for syntax errors in the yaml structure and expression syntaxes. These are necessary but not sufficient checks for a successful Validation of the Azure Pipeline File.
+This command explicitly checks for syntax errors in the yaml structure and expression syntaxes.
+
+Referenced templates are read to apply the correct schema for their parameters, if this fails this check is disabled.
+
+These are necessary but not sufficient checks for a successful Validation of the Azure Pipeline File.
 
 ### Validate Azure Pipeline
 
 `> Validate Azure Pipeline`
+
+**Use this command on your entrypoint Pipeline, otherwise parameters may be missing**
 
 This command tries to evaluate your current open Azure Pipeline including templates and notifies you about the result.
 
 ### Expand Azure Pipeline
 
 `> Expand Azure Pipeline`
+
+**Use this command on your entrypoint Pipeline, otherwise parameters may be missing**
 
 This command tries to evaluate your current open Azure Pipeline including templates and show the result in a new document, which you can save or validate via the official api.
 
@@ -104,74 +115,26 @@ You can configure parameters, variables, repositories per task. You can define m
     ]   
 }
 ```
-Sample Pipeline which dumps the parameters object (legacy parameters syntax)
+Sample Pipeline which dumps the parameters objec
 ```yaml
 parameters:
-  booleanparam:
-  numberparam:
-  stringparam:
-  objectparam:
-  arrayparam:
+- name: booleanparam
+  type: boolean
+- name: numberparam
+  type: number
+- name: stringparam
+  type: string
+- name: objectparam
+  type: object
+- name: arrayparam
+  type: object
 steps:
 - script: echo '${{ converttojson(parameters) }}'
 - script: echo '${{ converttojson(variables) }}'
 ```
 
-### Azure Pipelines Debug Adapter
+Sample output for task with label test
 
-![Demo](https://raw.githubusercontent.com/ChristopherHX/runner.server/main/docs/azure-pipelines/images/demo.gif)
-
-Sample Debugging configuration
-`.vscode/launch.json`
-```jsonc
-{
-    "type": "azure-pipelines-vscode-ext",
-    "request": "launch",
-    "name": "Test Pipeline (watch)",
-    "program": "${workspaceFolder}/azure-pipeline.yml",
-    "repositories": {
-        "myrepo@windows": "file:///C:/AzurePipelines/myrepo",
-        "myrepo@unix": "file:///AzurePipelines/myrepo",
-        "myrepo@github": "vscode-vfs://github/AzurePipelines/myrepo", // Only default branch, url doesn't accept readable ref
-        "myrepo@azure": "vscode-vfs://azurerepos/AzurePipelines/myrepo/myrepo" // Only default branch, url doesn't accept readable ref
-    },
-    "parameters": {
-        "booleanparam": true,
-        "numberparam": 12,
-        "stringparam": "Hello World",
-        "objectparam": {
-            "booleanparam": true,
-            "numberparam": 12,
-            "stringparam": "Hello World",
-        },
-        "arrayparam": [
-            true,
-            12,
-            "Hello World"
-        ]
-    },
-    "variables": {
-        "system.debug": "true"
-    },
-    "watch": true,
-    "preview": true
-}
-```
-
-Sample Pipeline which dumps the parameters object (legacy parameters syntax)
-```yaml
-parameters:
-  booleanparam:
-  numberparam:
-  stringparam:
-  objectparam:
-  arrayparam:
-steps:
-- script: echo '${{ converttojson(parameters) }}'
-- script: echo '${{ converttojson(variables) }}'
-```
-
-Output of the Sample Pipeline
 ```yaml
 stages:
 - stage: 
@@ -200,6 +163,7 @@ stages:
       inputs:
         script: |-
           echo '{
+            "myvar": "testx",
             "system.debug": "true"
           }'
 ```
@@ -210,23 +174,18 @@ stages:
 - You can run template files with the same template engine locally via the [Runner.Client and Server tool](https://github.com/ChristopherHX/runner.server) using the official Azure Pipelines Agent
   - `Runner.Client azexpand` works like Valdate Azure Pipeline by only checking the return value to be zero
   - `Runner.Client azexpand -q > final.yml` works like Expand Azure Pipeline, but directly writes the expanded file to disk
-- Fast feedback
-- Fast to install
 - Less trial and error commits
-- You can help by reporting bugs
-- It's fully Open Source under the MIT license
 - Works side by side with the official Azure Pipelines VSCode extension
 
 ## Contra
 - May contain different bugs than the Azure Pipelines Service
-- You could self-host Azure Devops Server and commit your changes to your local system with more accurate results of the template engine
-- May not have feature parity with Azure Pipelines
+- You can self-host Azure Devops Server and commit your changes to your local system with more accurate results of the template engine
 - Missing predefined Variables, feel free to add them manually as needed
 
 ## Available in both VSCode Marketplace and Open VSX Registry
 
-[Azure Pipelines Tools (VSCode Marketplace)](https://marketplace.visualstudio.com/items?itemName=christopherhx.azure-pipelines-vscode-ext)
-[Azure Pipelines Tools (Open VSX Registry)](https://open-vsx.org/extension/christopherhx/azure-pipelines-vscode-ext)
+- [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=christopherhx.azure-pipelines-vscode-ext)
+- [Open VSX Registry](https://open-vsx.org/extension/christopherhx/azure-pipelines-vscode-ext)
 
 ## Contributing
 
