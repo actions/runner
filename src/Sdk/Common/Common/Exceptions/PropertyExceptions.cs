@@ -34,7 +34,6 @@ namespace GitHub.Services.Common
 
         public String PropertyName { get; set; }
 
-        [Obsolete]
         [SecurityCritical]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
