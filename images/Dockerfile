@@ -47,7 +47,7 @@ RUN apt update -y \
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
 RUN add-apt-repository ppa:git-core/ppa \
     && apt update -y \
-    && apt-get install -y --no-install-recommends git
+    && apt install -y --no-install-recommends git
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
