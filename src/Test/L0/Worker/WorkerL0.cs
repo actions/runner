@@ -67,7 +67,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     new Pipelines.ContextData.DictionaryContextData()
                 },
             };
-            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, new StringToken(null, null, null, "ubuntu"), sidecarContainers, null, variables, new List<MaskHint>(), resources, context, null, actions, null, null, null, null, null);
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, new StringToken(null, null, null, "ubuntu"), sidecarContainers, null, variables, new List<MaskHint>(), resources, context, null, actions, null, null, null, null, null, null);
             return jobRequest;
         }
 
