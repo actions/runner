@@ -1,4 +1,4 @@
-name: Publish Runner Image
+name: Publish Windows Runner Image
 
 on:
   workflow_dispatch:
