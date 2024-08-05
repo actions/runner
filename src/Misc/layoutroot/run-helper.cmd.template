@@ -49,5 +49,10 @@ if %ERRORLEVEL% EQU 4 (
   exit /b 1
 )
 
+if %ERRORLEVEL% EQU 5 (
+  echo "Runner listener exit with Session Conflict error, stop the service, no retry needed."
+  exit /b 0
+)
+
 echo "Exiting after unknown error code: %ERRORLEVEL%"
 exit /b 0

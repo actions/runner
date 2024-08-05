@@ -23,6 +23,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<ITerminal> _term;
         private Mock<IConfigurationStore> _configStore;
         private Mock<ISelfUpdater> _updater;
+        private Mock<IErrorThrottler> _acquireJobThrottler;
 
         public RunnerL0()
         {
@@ -35,6 +36,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             _term = new Mock<ITerminal>();
             _configStore = new Mock<IConfigurationStore>();
             _updater = new Mock<ISelfUpdater>();
+            _acquireJobThrottler = new Mock<IErrorThrottler>();
         }
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
@@ -42,7 +44,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = null;
             Guid jobId = Guid.NewGuid();
-            return new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+            return new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null, null);
         }
 
         private JobCancelMessage CreateJobCancelMessage()
@@ -67,6 +69,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
@@ -88,7 +91,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<bool>(true));
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
@@ -126,7 +129,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 //wait for the runner to run one job
                 if (!await signalWorkerComplete.WaitAsync(2000))
                 {
-                    Assert.True(false, $"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked.");
+                    Assert.Fail($"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked.");
                 }
                 else
                 {
@@ -174,6 +177,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, args);
 
@@ -184,7 +188,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(configureAsService);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult(false));
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Failure));
 
                 var runner = new Runner.Listener.Runner();
                 runner.Initialize(hc);
@@ -205,6 +209,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, new[] { "run" });
 
@@ -217,7 +222,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     .Returns(false);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult(false));
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Failure));
 
                 var runner = new Runner.Listener.Runner();
                 runner.Initialize(hc);
@@ -242,6 +247,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
@@ -263,7 +269,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<bool>(true));
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
@@ -305,8 +311,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 await Task.WhenAny(runnerTask, Task.Delay(30000));
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
-                Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                Assert.True(runnerTask.Result == Constants.Runner.ReturnCode.Success);
+                Assert.False(runnerTask.IsFaulted, runnerTask.Exception?.ToString());
+                if (runnerTask.IsCompleted)
+                {
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
+                }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
                      $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
@@ -335,6 +344,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
@@ -363,7 +373,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<bool>(true));
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
@@ -406,7 +416,10 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                Assert.True(runnerTask.Result == Constants.Runner.ReturnCode.Success);
+                if (runnerTask.IsCompleted)
+                {
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
+                }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
                      $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
@@ -433,6 +446,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<ISelfUpdater>(_updater.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
@@ -458,7 +472,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _configurationManager.Setup(x => x.IsConfigured())
                     .Returns(true);
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<bool>(true));
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
                 _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
                     .Returns(async () =>
                         {
@@ -492,7 +506,10 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                Assert.True(runnerTask.Result == Constants.Runner.ReturnCode.RunOnceRunnerUpdating);
+                if (runnerTask.IsCompleted)
+                {
+                    Assert.Equal(Constants.Runner.ReturnCode.RunOnceRunnerUpdating, await runnerTask);
+                }
 
                 _updater.Verify(x => x.SelfUpdate(It.IsAny<AgentRefreshMessage>(), It.IsAny<IJobDispatcher>(), false, It.IsAny<CancellationToken>()), Times.Once);
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Never());
@@ -513,6 +530,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, new[] { "remove", "--local" });
 

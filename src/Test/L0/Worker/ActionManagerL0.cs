@@ -382,8 +382,6 @@ runs:
                     }
                 };
 
-                _ec.Object.Global.Variables.Set("DistributedTask.UseActionArchiveCache", bool.TrueString);
-
                 //Act
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
@@ -462,7 +460,7 @@ runs:
                 //Act
                 var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
 
-                Assert.True(steps.Count == 0);
+                Assert.Equal(0, steps.Count);
             }
             finally
             {
@@ -917,7 +915,7 @@ runs:
                 var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
 
                 // node.js based action doesn't need any extra steps to build/pull containers.
-                Assert.True(steps.Count == 0);
+                Assert.Equal(0, steps.Count);
             }
             finally
             {
@@ -1053,7 +1051,7 @@ runs:
                 var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
 
                 // node.js based action doesn't need any extra steps to build/pull containers.
-                Assert.True(steps.Count == 0);
+                Assert.Equal(0, steps.Count);
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang/runner_L0", "CompositeBasic.completed");
                 Assert.True(File.Exists(watermarkFile));
                 // Comes from the composite action
@@ -1247,7 +1245,7 @@ runs:
                 // Assert.
                 Assert.NotNull(definition);
                 Assert.NotNull(definition.Data);
-                Assert.True(definition.Data.Execution.ExecutionType == ActionExecutionType.Script);
+                Assert.Equal(ActionExecutionType.Script, definition.Data.Execution.ExecutionType);
             }
             finally
             {
@@ -2375,10 +2373,6 @@ runs:
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Root).Returns(new GitHub.Runner.Worker.ExecutionContext());
             var variables = new Dictionary<string, VariableValue>();
-            if (enableComposite)
-            {
-                variables["DistributedTask.EnableCompositeActions"] = "true";
-            }
             _ec.Object.Global.Variables = new Variables(_hc, variables);
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());

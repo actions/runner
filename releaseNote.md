@@ -1,30 +1,30 @@
 ## What's Changed
-* Prepare v2.313.0 Release by @luketomlinson in https://github.com/actions/runner/pull/3137
-* Pass RunnerOS during job acquire. by @TingluoHuang in https://github.com/actions/runner/pull/3140
-* Process `snapshot` tokens by @davidomid in https://github.com/actions/runner/pull/3135
-* Update dotnet sdk to latest version @6.0.419 by @github-actions in https://github.com/actions/runner/pull/3158
-* handle broker run service exception handling by @yaananth in https://github.com/actions/runner/pull/3163
-* Add a retry logic to docker login operation by @enescakir in https://github.com/actions/runner/pull/3089
-* Broker fixes for token refreshes and AccessDeniedException by @luketomlinson in https://github.com/actions/runner/pull/3161
-* Remove USE_BROKER_FLOW by @luketomlinson in https://github.com/actions/runner/pull/3162
-* Refresh Token for BrokerServer by @luketomlinson in https://github.com/actions/runner/pull/3167
-* Better step timeout message. by @TingluoHuang in https://github.com/actions/runner/pull/3166
 
-## New Contributors
-* @davidomid made their first contribution in https://github.com/actions/runner/pull/3135
-* @enescakir made their first contribution in https://github.com/actions/runner/pull/3089
+- Update Docker to v27.1.1 by @TingluoHuang in https://github.com/actions/runner/pull/3401
+- Upgrade dotnet sdk to v8.0.303 in https://github.com/actions/runner/pull/3388
+- Rephrase node20 warning by @rentziass in https://github.com/actions/runner/pull/3376
+- Bump hook version to 0.6.1 by @nikola-jokic in https://github.com/actions/runner/pull/3350
+- Backoff to avoid excessive retries to Run Service in a duration by @ericsciple in https://github.com/actions/runner/pull/3354
+- Bump System.Security.Cryptography.Pkcs from 5.0.0 to 8.0.0 in /src in https://github.com/actions/runner/pull/3347
+- Upgrade dotnet sdk to v8.0.302 in https://github.com/actions/runner/pull/3346
+- Bump runner to dotnet 8 by @TingluoHuang in https://github.com/actions/runner/pull/3345
+- Pass runner version as environment variable in workflow by @joshmgross in https://github.com/actions/runner/pull/3318
+- Make sure we mask secrets when reporting telemetry by @TingluoHuang in https://github.com/actions/runner/pull/3315
+- Bump docker version and docker buildx version by @int128 in https://github.com/actions/runner/pull/3277
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.313.0...v2.314.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.317.0...v2.318.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
 See https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/adding-self-hosted-runners_
 
 ## Windows x64
+
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 
 The following snipped needs to be run on `powershell`:
-``` powershell
+
+```powershell
 # Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
@@ -35,12 +35,14 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 ```
 
 ## [Pre-release] Windows arm64
+
 **Warning:** Windows arm64 runners are currently in preview status and use [unofficial versions of nodejs](https://unofficial-builds.nodejs.org/). They are not intended for production workflows.
 
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 
 The following snipped needs to be run on `powershell`:
-``` powershell
+
+```powershell
 # Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
@@ -52,7 +54,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 
 ## OSX x64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -63,7 +65,7 @@ tar xzf ./actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
 
 ## OSX arm64 (Apple silicon)
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -74,7 +76,7 @@ tar xzf ./actions-runner-osx-arm64-<RUNNER_VERSION>.tar.gz
 
 ## Linux x64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -85,7 +87,7 @@ tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 
 ## Linux arm64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -96,7 +98,7 @@ tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 
 ## Linux arm
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -106,6 +108,7 @@ tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 ```
 
 ## Using your self hosted runner
+
 For additional details about configuring, running, or shutting down the runner please check out our [product docs.](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners)
 
 ## SHA-256 Checksums

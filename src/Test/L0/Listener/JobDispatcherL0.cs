@@ -41,7 +41,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = null;
             Guid jobId = Guid.NewGuid();
-            var result = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "someJob", "someJob", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+            var result = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "someJob", "someJob", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null, null);
             result.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
             return result;
         }
@@ -734,7 +734,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 await jobDispatcher.WaitAsync(CancellationToken.None);
 
                 Assert.True(jobDispatcher.RunOnceJobCompleted.Task.IsCompleted, "JobDispatcher should set task complete token for one time agent.");
-                Assert.True(jobDispatcher.RunOnceJobCompleted.Task.Result, "JobDispatcher should set task complete token to 'TRUE' for one time agent.");
+                if (jobDispatcher.RunOnceJobCompleted.Task.IsCompleted)
+                {
+                    Assert.True(await jobDispatcher.RunOnceJobCompleted.Task, "JobDispatcher should set task complete token to 'TRUE' for one time agent.");
+                }
             }
         }
 
@@ -807,6 +810,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 null,
                 new List<TemplateToken>(),
                 new ActionsEnvironmentReference("env"),
+                null,
                 null
             );
             return message;

@@ -153,6 +153,7 @@ namespace GitHub.Runner.Common
                 public const int RetryableError = 2;
                 public const int RunnerUpdating = 3;
                 public const int RunOnceRunnerUpdating = 4;
+                public const int SessionConflict = 5;
             }
 
             public static class Features
@@ -180,7 +181,7 @@ namespace GitHub.Runner.Common
             public static readonly string DeprecatedNodeVersion = "node16";
             public static readonly string EnforcedNode12DetectedAfterEndOfLife = "The following actions uses node12 which is deprecated and will be forced to run on node16: {0}. For more info: https://github.blog/changelog/2023-06-13-github-actions-all-actions-will-run-on-node16-instead-of-node12-by-default/";
             public static readonly string EnforcedNode12DetectedAfterEndOfLifeEnvVariable = "Node16ForceActionsWarnings";
-            public static readonly string EnforcedNode16DetectedAfterEndOfLife = "The following actions uses Node.js version which is deprecated and will be forced to run on node20: {0}. For more info: https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/";
+            public static readonly string EnforcedNode16DetectedAfterEndOfLife = "The following actions use a deprecated Node.js version and will be forced to run on node20: {0}. For more info: https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/";
             public static readonly string EnforcedNode16DetectedAfterEndOfLifeEnvVariable = "Node20ForceActionsWarnings";
 
         }

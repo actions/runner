@@ -19,7 +19,7 @@ namespace GitHub.Runner.Common
         TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false, bool enableTelemetry = false);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueResultsUpload(Guid timelineRecordId, string name, string path, string type, bool deleteSource, bool finalize, bool firstBlock, long totalLines);
@@ -74,6 +74,7 @@ namespace GitHub.Runner.Common
         private readonly List<JobTelemetry> _jobTelemetries = new();
         private bool _queueInProcess = false;
         private bool _resultsServiceOnly = false;
+        private int _resultsServiceExceptionsCount = 0;
         private Stopwatch _resultsUploadTimer = new();
         private Stopwatch _actionsUploadTimer = new();
 
@@ -104,11 +105,10 @@ namespace GitHub.Runner.Common
             _resultsServer = hostContext.GetService<IResultsServer>();
         }
 
-        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false, bool enableTelemetry = false)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest, bool resultsServiceOnly = false)
         {
             Trace.Entering();
             _resultsServiceOnly = resultsServiceOnly;
-            _enableTelemetry = enableTelemetry;
 
             var serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
@@ -137,6 +137,12 @@ namespace GitHub.Runner.Common
                 jobRequest.Variables.TryGetValue("system.github.results_upload_with_sdk", out VariableValue resultsUseSdkVariable);
                 _resultsServer.InitializeResultsClient(new Uri(resultsReceiverEndpoint), liveConsoleFeedUrl, accessToken, StringUtil.ConvertToBoolean(resultsUseSdkVariable?.Value));
                 _resultsClientInitiated = true;
+            }
+
+            // Enable telemetry if we have both results service and actions service
+            if (_resultsClientInitiated && !_resultsServiceOnly)
+            {
+                _enableTelemetry = true;
             }
 
             if (_queueInProcess)
@@ -574,9 +580,9 @@ namespace GitHub.Runner.Common
                             Trace.Info("Catch exception during file upload to results, keep going since the process is best effort.");
                             Trace.Error(ex);
                             errorCount++;
-
+                            _resultsServiceExceptionsCount++;
                             // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results unless Results is serving logs
-                            if (!_resultsServiceOnly)
+                            if (!_resultsServiceOnly && _resultsServiceExceptionsCount > 3)
                             {
                                 _resultsClientInitiated = false;
                                 SendResultsTelemetry(ex);
@@ -607,7 +613,7 @@ namespace GitHub.Runner.Common
 
         private void SendResultsTelemetry(Exception ex)
         {
-            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception with results. {ex.Message}" };
+            var issue = new Issue() { Type = IssueType.Warning, Message = $"Caught exception with results. {HostContext.SecretMasker.MaskSecrets(ex.Message)}" };
             issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.ResultsUploadFailure;
 
             var telemetryRecord = new TimelineRecord()
@@ -703,7 +709,9 @@ namespace GitHub.Runner.Common
                             {
                                 Trace.Info("Catch exception during update steps, skip update Results.");
                                 Trace.Error(e);
-                                if (!_resultsServiceOnly)
+                                _resultsServiceExceptionsCount++;
+                                // If we hit any exceptions uploading to Results, let's skip any additional uploads to Results unless Results is serving logs
+                                if (!_resultsServiceOnly && _resultsServiceExceptionsCount > 3)
                                 {
                                     _resultsClientInitiated = false;
                                     SendResultsTelemetry(e);

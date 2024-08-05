@@ -483,10 +483,6 @@ namespace GitHub.Runner.Worker
                             {
                                 // Load stored Ids for later load actions
                                 compositeAction.Steps[i].Id = _cachedEmbeddedStepIds[action.Id][i];
-                                if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && compositeAction.Steps[i].Reference.Type != Pipelines.ActionSourceType.Script)
-                                {
-                                    throw new Exception("`uses:` keyword is not currently supported.");
-                                }
                             }
                         }
                         else
@@ -703,11 +699,12 @@ namespace GitHub.Runner.Worker
                 catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is cancelled.
                 {
                     // UnresolvableActionDownloadInfoException is a 422 client error, don't retry
+                    // NonRetryableActionDownloadInfoException is an non-retryable exception from Actions
                     // Some possible cases are:
                     // * Repo is rate limited
                     // * Repo or tag doesn't exist, or isn't public
                     // * Policy validation failed
-                    if (attempt < 3 && !(ex is WebApi.UnresolvableActionDownloadInfoException))
+                    if (attempt < 3 && !(ex is WebApi.UnresolvableActionDownloadInfoException) && !(ex is WebApi.NonRetryableActionDownloadInfoException))
                     {
                         executionContext.Output($"Failed to resolve action download info. Error: {ex.Message}");
                         executionContext.Debug(ex.ToString());
@@ -796,42 +793,39 @@ namespace GitHub.Runner.Worker
             try
             {
                 var useActionArchiveCache = false;
-                if (executionContext.Global.Variables.GetBoolean("DistributedTask.UseActionArchiveCache") == true)
+                var hasActionArchiveCache = false;
+                var actionArchiveCacheDir = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory);
+                if (!string.IsNullOrEmpty(actionArchiveCacheDir) &&
+                    Directory.Exists(actionArchiveCacheDir))
                 {
-                    var hasActionArchiveCache = false;
-                    var actionArchiveCacheDir = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory);
-                    if (!string.IsNullOrEmpty(actionArchiveCacheDir) &&
-                        Directory.Exists(actionArchiveCacheDir))
-                    {
-                        hasActionArchiveCache = true;
-                        Trace.Info($"Check if action archive '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}' already exists in cache directory '{actionArchiveCacheDir}'");
+                    hasActionArchiveCache = true;
+                    Trace.Info($"Check if action archive '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}' already exists in cache directory '{actionArchiveCacheDir}'");
 #if OS_WINDOWS
-                        var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.zip");
+                    var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.zip");
 #else
-                        var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.tar.gz");
+                    var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.tar.gz");
 #endif
-                        if (File.Exists(cacheArchiveFile))
+                    if (File.Exists(cacheArchiveFile))
+                    {
+                        try
                         {
-                            try
-                            {
-                                Trace.Info($"Found action archive '{cacheArchiveFile}' in cache directory '{actionArchiveCacheDir}'");
-                                File.Copy(cacheArchiveFile, archiveFile);
-                                useActionArchiveCache = true;
-                                executionContext.Debug($"Copied action archive '{cacheArchiveFile}' to '{archiveFile}'");
-                            }
-                            catch (Exception ex)
-                            {
-                                Trace.Error($"Failed to copy action archive '{cacheArchiveFile}' to '{archiveFile}'. Error: {ex}");
-                            }
+                            Trace.Info($"Found action archive '{cacheArchiveFile}' in cache directory '{actionArchiveCacheDir}'");
+                            File.Copy(cacheArchiveFile, archiveFile);
+                            useActionArchiveCache = true;
+                            executionContext.Debug($"Copied action archive '{cacheArchiveFile}' to '{archiveFile}'");
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Failed to copy action archive '{cacheArchiveFile}' to '{archiveFile}'. Error: {ex}");
                         }
                     }
-
-                    executionContext.Global.JobTelemetry.Add(new JobTelemetry()
-                    {
-                        Type = JobTelemetryType.General,
-                        Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache}"
-                    });
                 }
+
+                executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                {
+                    Type = JobTelemetryType.General,
+                    Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache}"
+                });
 
                 if (!useActionArchiveCache)
                 {
@@ -878,16 +872,9 @@ namespace GitHub.Runner.Worker
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
-                        if (executionContext.Global.Variables.GetBoolean("DistributedTask.DetailUntarFailure") == true)
-                        {
-                            var fileInfo = new FileInfo(archiveFile);
-                            var sha256hash = await IOUtil.GetFileContentSha256HashAsync(archiveFile);
-                            throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile} (SHA256 '{sha256hash}', size '{fileInfo.Length}' bytes, tar outputs '{string.Join(' ', tarOutputs)}'). Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
-                        }
-                        else
-                        {
-                            throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
-                        }
+                        var fileInfo = new FileInfo(archiveFile);
+                        var sha256hash = await IOUtil.GetFileContentSha256HashAsync(archiveFile);
+                        throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile} (SHA256 '{sha256hash}', size '{fileInfo.Length}' bytes, tar outputs '{string.Join(' ', tarOutputs)}'). Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
                     }
                 }
 #endif
@@ -1031,13 +1018,6 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    foreach (var step in compositeAction.Steps)
-                    {
-                        if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && step.Reference.Type != Pipelines.ActionSourceType.Script)
-                        {
-                            throw new Exception("`uses:` keyword is not currently supported.");
-                        }
-                    }
                     return setupInfo;
                 }
                 else

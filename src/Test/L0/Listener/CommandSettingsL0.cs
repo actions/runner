@@ -806,7 +806,7 @@ namespace GitHub.Runner.Common.Tests
                         "test runner" });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 
@@ -844,7 +844,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{flag}" });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 
@@ -874,7 +874,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{arg}", argValue });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 
