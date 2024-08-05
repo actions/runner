@@ -11,6 +11,7 @@ LABEL name=arc-runner-windows
 # In this we can share the build scripts between X64 and ARM64.
 ARG RUNNER_VERSION=2.311.0
 ENV RUNNER_VERSION=$RUNNER_VERSION
+ENV chocolateyVersion=1.4.0
 
 WORKDIR /actions-runner
 
