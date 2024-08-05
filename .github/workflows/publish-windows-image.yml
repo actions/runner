@@ -49,4 +49,11 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Build image
-        run: docker build -t ${{ vars.REGISTRY }}:${{ env.IMAGE_NAME }} -f images Dockerfile.windows images
+        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} -f images Dockerfile.windows images
+      - name: Add Tag
+        run: docker tag ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      - name: Push image
+        run: |
+          docker push ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
+    
