@@ -13,7 +13,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.21.1" />
         <PackageReference Include="Microsoft.Win32.Registry" Version="4.4.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.9" />
