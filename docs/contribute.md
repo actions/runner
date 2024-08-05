@@ -157,7 +157,7 @@ cat (Runner/Worker)_TIMESTAMP.log # view your log file
 ## Styling
 
 We use the .NET Foundation and CoreCLR style guidelines [located here](
-https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)
+https://github.com/dotnet/runtime/blob/main/docs/coding-guidelines/coding-style.md)
 
 ### Format C# Code
 

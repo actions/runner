@@ -30,7 +30,7 @@ namespace GitHub.Services.Common
         {
             Debug.Assert(a1 != null, "a1 was null");
             Debug.Assert(a2 != null, "a2 was null");
-            
+
             // Check if the lengths are the same.
             if (a1.Length != a2.Length)
             {
@@ -91,7 +91,7 @@ namespace GitHub.Services.Common
                     int i;
                     for (i = length >> 2; i > 0; --i)
                     {
-                        if (*((int*) q1) != *((int*) q2))
+                        if (*((int*)q1) != *((int*)q2))
                         {
                             return false;
                         }
@@ -114,7 +114,7 @@ namespace GitHub.Services.Common
             }
             return true;
         }
-        
+
         //****************************************************************************************
         /// <summary>
         /// Convert the byte array to a lower case hex string.

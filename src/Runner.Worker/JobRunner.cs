@@ -1,11 +1,13 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
@@ -40,7 +42,18 @@ namespace GitHub.Runner.Worker
             Trace.Info("Job ID {0}", message.JobId);
 
             DateTime jobStartTimeUtc = DateTime.UtcNow;
+            _runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
             IRunnerService server = null;
+
+            // add orchestration id to useragent for better correlation.
+            if (message.Variables.TryGetValue(Constants.Variables.System.OrchestrationId, out VariableValue orchestrationId) &&
+                !string.IsNullOrEmpty(orchestrationId.Value))
+            {
+                HostContext.UserAgents.Add(new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
+
+                // make sure orchestration id is in the user-agent header.
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
+            }
 
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             if (MessageUtil.IsRunServiceJob(message.MessageType))
@@ -49,6 +62,21 @@ namespace GitHub.Runner.Worker
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 await runServer.ConnectAsync(systemConnection.Url, jobServerCredential);
                 server = runServer;
+
+                message.Variables.TryGetValue("system.github.launch_endpoint", out VariableValue launchEndpointVariable);
+                var launchReceiverEndpoint = launchEndpointVariable?.Value;
+
+                if (systemConnection?.Authorization != null &&
+                    systemConnection.Authorization.Parameters.TryGetValue("AccessToken", out var accessToken) &&
+                    !string.IsNullOrEmpty(accessToken) &&
+                    !string.IsNullOrEmpty(launchReceiverEndpoint))
+                {
+                    Trace.Info("Initializing launch client");
+                    var launchServer = HostContext.GetService<ILaunchServer>();
+                    launchServer.InitializeLaunchClient(new Uri(launchReceiverEndpoint), accessToken);
+                }
+                _jobServerQueue = HostContext.GetService<IJobServerQueue>();
+                _jobServerQueue.Start(message, resultsServiceOnly: true);
             }
             else
             {
@@ -60,7 +88,14 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Creating job server with URL: {jobServerUrl}");
                 // jobServerQueue is the throttling reporter.
                 _jobServerQueue = HostContext.GetService<IJobServerQueue>();
-                VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
+                var delegatingHandlers = new List<DelegatingHandler>() { new ThrottlingReportHandler(_jobServerQueue) };
+                message.Variables.TryGetValue("Actions.EnableHttpRedirects", out VariableValue enableHttpRedirects);
+                if (StringUtil.ConvertToBoolean(enableHttpRedirects?.Value) &&
+                    !StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_NO_HTTP_REDIRECTS")))
+                {
+                    delegatingHandlers.Add(new RedirectMessageHandler(Trace));
+                }
+                VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, delegatingHandlers);
                 await jobServer.ConnectAsync(jobConnection);
 
                 _jobServerQueue.Start(message);
@@ -97,7 +132,8 @@ namespace GitHub.Runner.Worker
                         default:
                             throw new ArgumentException(HostContext.RunnerShutdownReason.ToString(), nameof(HostContext.RunnerShutdownReason));
                     }
-                    jobContext.AddIssue(new Issue() { Type = IssueType.Error, Message = errorMessage });
+                    var issue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                    jobContext.AddIssue(issue, ExecutionContextLogOptions.Default);
                 });
 
                 // Validate directory permissions.
@@ -122,9 +158,12 @@ namespace GitHub.Runner.Worker
 
                 jobContext.SetRunnerContext("os", VarUtil.OS);
                 jobContext.SetRunnerContext("arch", VarUtil.OSArchitecture);
-
-                _runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.SetRunnerContext("name", _runnerSettings.AgentName);
+
+                if (jobContext.Global.Variables.TryGetValue(WellKnownDistributedTaskVariables.RunnerEnvironment, out var runnerEnvironment))
+                {
+                    jobContext.SetRunnerContext("environment", runnerEnvironment);
+                }
 
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
@@ -199,7 +238,7 @@ namespace GitHub.Runner.Worker
                 finally
                 {
                     Trace.Info("Finalize job.");
-                    jobExtension.FinalizeJob(jobContext, message, jobStartTimeUtc);
+                    await jobExtension.FinalizeJob(jobContext, message, jobStartTimeUtc);
                 }
 
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");
@@ -239,11 +278,25 @@ namespace GitHub.Runner.Worker
         {
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
-            if (jobContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
             {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings));
-                jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.DetectedNodeAfterEndOfLifeMessage, actions));
             }
+
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
+            {
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
+            }
+
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings) && (jobContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode20") ?? false))
+            {
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node20ForceWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode16DetectedAfterEndOfLife, actions));
+            }
+
+            await ShutdownQueue(throwOnFailure: false);
 
             // Make sure to clean temp after file upload since they may be pending fileupload still use the TEMP dir.
             _tempDirectoryManager?.CleanupTempDirectory();
@@ -254,6 +307,13 @@ namespace GitHub.Runner.Worker
             // Make sure we don't submit secrets as telemetry
             MaskTelemetrySecrets(jobContext.Global.JobTelemetry);
 
+            // Get environment url
+            string environmentUrl = null;
+            if (jobContext.ActionsEnvironment?.Url is StringToken urlStringToken)
+            {
+                environmentUrl = urlStringToken.Value;
+            }
+
             Trace.Info($"Raising job completed against run service");
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
@@ -261,7 +321,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, default);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, default);
                     return result;
                 }
                 catch (Exception ex)
@@ -331,15 +391,32 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            if (jobContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
             {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings));
-                jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.DetectedNodeAfterEndOfLifeMessage, actions));
+            }
+
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
+            {
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
+            }
+
+            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings))
+            {
+                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node20ForceWarnings));
+                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode16DetectedAfterEndOfLife, actions));
             }
 
             try
             {
-                await ShutdownQueue(throwOnFailure: true);
+                var jobQueueTelemetry = await ShutdownQueue(throwOnFailure: true);
+                // include any job telemetry from the background upload process.
+                if (jobQueueTelemetry.Count > 0)
+                {
+                    jobContext.Global.JobTelemetry.AddRange(jobQueueTelemetry);
+                }
             }
             catch (Exception ex)
             {
@@ -441,7 +518,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task ShutdownQueue(bool throwOnFailure)
+        private async Task<IList<JobTelemetry>> ShutdownQueue(bool throwOnFailure)
         {
             if (_jobServerQueue != null)
             {
@@ -449,6 +526,7 @@ namespace GitHub.Runner.Worker
                 {
                     Trace.Info("Shutting down the job server queue.");
                     await _jobServerQueue.ShutdownAsync();
+                    return _jobServerQueue.JobTelemetries;
                 }
                 catch (Exception ex) when (!throwOnFailure)
                 {
@@ -460,6 +538,8 @@ namespace GitHub.Runner.Worker
                     _jobServerQueue = null; // Prevent multiple attempts.
                 }
             }
+
+            return Array.Empty<JobTelemetry>();
         }
     }
 }

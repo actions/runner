@@ -200,10 +200,14 @@ namespace GitHub.Runner.Common
             {
                 _trace.Info($"No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)");
             }
+            else
+            {
+                _userAgents.Add(new ProductInfoHeaderValue("HttpProxyConfigured", bool.TrueString));
+            }
 
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
             {
-                _trace.Warning($"Runner is running under insecure mode: HTTPS server certifcate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
+                _trace.Warning($"Runner is running under insecure mode: HTTPS server certificate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
             }
 
             var credFile = GetConfigFile(WellKnownConfigFile.Credentials);
@@ -220,7 +224,7 @@ namespace GitHub.Runner.Common
             var runnerFile = GetConfigFile(WellKnownConfigFile.Runner);
             if (File.Exists(runnerFile))
             {
-                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile);
+                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile, true);
                 _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
                 _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
             }

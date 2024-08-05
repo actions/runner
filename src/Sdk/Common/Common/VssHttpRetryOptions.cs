@@ -15,7 +15,7 @@ namespace GitHub.Services.Common
     public class VssHttpRetryOptions
     {
         public VssHttpRetryOptions()
-            : this (new VssHttpRetryableStatusCodeFilter[] { s_hostShutdownFilter } )
+            : this(new VssHttpRetryableStatusCodeFilter[] { s_hostShutdownFilter })
         {
         }
 

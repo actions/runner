@@ -21,4 +21,5 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                 return token.ToPipelineContextData();
             }
         }
-    }}
+    }
+}

@@ -1,4 +1,4 @@
-using GitHub.Runner.Common;
+﻿using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System;
 using System.Globalization;
@@ -138,7 +138,7 @@ namespace GitHub.Runner.Listener
                 }
 
             }
-            catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
+            catch (AccessDeniedException e) when (e.ErrorCode == 1)
             {
                 terminal.WriteError($"An error occured: {e.Message}");
                 trace.Error(e);

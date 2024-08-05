@@ -97,7 +97,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         public virtual async Task DeleteAgentAsync(
             int poolId,
-            int agentId,
+            ulong agentId,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -243,7 +243,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         public virtual Task<TaskAgent> ReplaceAgentAsync(
             int poolId,
-            int agentId,
+            ulong agentId,
             TaskAgent agent,
             object userState = null,
             CancellationToken cancellationToken = default)
@@ -461,6 +461,9 @@ namespace GitHub.DistributedTask.WebApi
             long? lastMessageId = null,
             TaskAgentStatus? status = null,
             string runnerVersion = null,
+            string os = null,
+            string architecture = null,
+            bool? disableUpdate = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -481,6 +484,21 @@ namespace GitHub.DistributedTask.WebApi
             if (runnerVersion != null)
             {
                 queryParams.Add("runnerVersion", runnerVersion);
+            }
+
+            if (os != null)
+            {
+                queryParams.Add("os", os);
+            }
+
+            if (architecture != null)
+            {
+                queryParams.Add("architecture", architecture);
+            }
+
+            if (disableUpdate != null)
+            {
+                queryParams.Add("disableUpdate", disableUpdate.Value.ToString().ToLower());
             }
 
             return SendAsync<TaskAgentMessage>(
@@ -786,7 +804,7 @@ namespace GitHub.DistributedTask.WebApi
         [EditorBrowsable(EditorBrowsableState.Never)]
         public virtual Task<TaskAgent> UpdateAgentUpdateStateAsync(
             int poolId,
-            int agentId,
+            ulong agentId,
             string currentState,
             string updateTrace,
             object userState = null,

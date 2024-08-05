@@ -43,6 +43,8 @@ namespace GitHub.DistributedTask.Pipelines
             TemplateToken jobOutputs,
             IList<TemplateToken> defaults,
             ActionsEnvironmentReference actionsEnvironment,
+            TemplateToken snapshot,
+            IList<OSWarning> osWarnings,
             String messageType = JobRequestMessageTypes.PipelineAgentJobRequest)
         {
             this.MessageType = messageType;
@@ -57,6 +59,7 @@ namespace GitHub.DistributedTask.Pipelines
             this.Workspace = workspaceOptions;
             this.JobOutputs = jobOutputs;
             this.ActionsEnvironment = actionsEnvironment;
+            this.Snapshot = snapshot;
             m_variables = new Dictionary<String, VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
             m_maskHints = new List<MaskHint>(maskHints);
             m_steps = new List<JobStep>(steps);
@@ -69,6 +72,11 @@ namespace GitHub.DistributedTask.Pipelines
             if (defaults?.Count > 0)
             {
                 m_defaults = new List<TemplateToken>(defaults);
+            }
+
+            if (osWarnings?.Count > 0)
+            {
+                m_osWarnings = new List<OSWarning>(osWarnings);
             }
 
             this.ContextData = new Dictionary<String, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
@@ -237,6 +245,13 @@ namespace GitHub.DistributedTask.Pipelines
             set;
         }
 
+        [DataMember(EmitDefaultValue = false)]
+        public TemplateToken Snapshot
+        {
+            get;
+            set;
+        }
+
         /// <summary>
         /// Gets the collection of variables associated with the current context.
         /// </summary>
@@ -276,6 +291,18 @@ namespace GitHub.DistributedTask.Pipelines
                     m_fileTable = new List<String>();
                 }
                 return m_fileTable;
+            }
+        }
+
+        public IList<OSWarning> OSWarnings
+        {
+            get
+            {
+                if (m_osWarnings == null)
+                {
+                    m_osWarnings = new List<OSWarning>();
+                }
+                return m_osWarnings;
             }
         }
 
@@ -416,6 +443,11 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 JobContainer = new StringToken(null, null, null, m_jobContainerResourceAlias);
             }
+
+            if (m_osWarnings?.Count == 0)
+            {
+                m_osWarnings = null;
+            }
         }
 
         [DataMember(Name = "EnvironmentVariables", EmitDefaultValue = false)]
@@ -439,6 +471,9 @@ namespace GitHub.DistributedTask.Pipelines
         // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
         [DataMember(Name = "JobSidecarContainers", EmitDefaultValue = false)]
         private IDictionary<String, String> m_jobSidecarContainers;
+
+        [DataMember(Name = "OSWarnings", EmitDefaultValue = false)]
+        private List<OSWarning> m_osWarnings;
 
         // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
         [IgnoreDataMember]

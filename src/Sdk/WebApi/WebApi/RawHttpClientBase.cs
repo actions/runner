@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -21,7 +21,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Sdk.WebApi.WebApi
 {
-    public class RawHttpClientBase: IDisposable
+    public class RawHttpClientBase : IDisposable
     {
         protected RawHttpClientBase(
             Uri baseUrl,
@@ -101,7 +101,7 @@ namespace Sdk.WebApi.WebApi
             }
         }
 
-        protected Task<T> SendAsync<T>(
+        protected async Task<RawHttpClientResult> Send2Async(
             HttpMethod method,
             Uri requestUri,
             HttpContent content = null,
@@ -109,27 +109,69 @@ namespace Sdk.WebApi.WebApi
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return SendAsync<T>(method, null, requestUri, content, queryParameters, userState, cancellationToken);
+            using (var response = await SendAsync(method, requestUri, content, queryParameters, userState, cancellationToken).ConfigureAwait(false))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    return new RawHttpClientResult(
+                        isSuccess: true,
+                        error: string.Empty,
+                        statusCode: response.StatusCode);
+                }
+                else
+                {
+                    var errorBody = default(string);
+                    try
+                    {
+                        errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        errorBody = $"Error reading HTTP response body: {ex.Message}";
+                    }
+
+                    string errorMessage = $"Error: {response.ReasonPhrase}";
+                    return new RawHttpClientResult(
+                        isSuccess: false,
+                        error: errorMessage,
+                        statusCode: response.StatusCode,
+                        errorBody: errorBody);
+                }
+            }
         }
 
-        protected async Task<T> SendAsync<T>(
+        protected Task<RawHttpClientResult<T>> SendAsync<T>(
+            HttpMethod method,
+            Uri requestUri,
+            HttpContent content = null,
+            IEnumerable<KeyValuePair<String, String>> queryParameters = null,
+            Boolean readErrorBody = false,
+            Object userState = null,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return SendAsync<T>(method, null, requestUri, content, queryParameters, readErrorBody, userState, cancellationToken);
+        }
+
+        protected async Task<RawHttpClientResult<T>> SendAsync<T>(
             HttpMethod method,
             IEnumerable<KeyValuePair<String, String>> additionalHeaders,
             Uri requestUri,
             HttpContent content = null,
             IEnumerable<KeyValuePair<String, String>> queryParameters = null,
+            Boolean readErrorBody = false,
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             using (VssTraceActivity.GetOrCreate().EnterCorrelationScope())
             using (HttpRequestMessage requestMessage = CreateRequestMessage(method, additionalHeaders, requestUri, content, queryParameters))
             {
-                return await SendAsync<T>(requestMessage, userState, cancellationToken).ConfigureAwait(false);
+                return await SendAsync<T>(requestMessage, readErrorBody, userState, cancellationToken).ConfigureAwait(false);
             }
         }
 
-        protected async Task<T> SendAsync<T>(
+        protected async Task<RawHttpClientResult<T>> SendAsync<T>(
             HttpRequestMessage message,
+            Boolean readErrorBody = false,
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -138,7 +180,29 @@ namespace Sdk.WebApi.WebApi
             //from deadlocking...
             using (HttpResponseMessage response = await this.SendAsync(message, userState, cancellationToken).ConfigureAwait(false))
             {
-                return await ReadContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    T data = await ReadContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
+                    return RawHttpClientResult<T>.Ok(data);
+                }
+                else
+                {
+                    var errorBody = default(string);
+                    if (readErrorBody)
+                    {
+                        try
+                        {
+                            errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            errorBody = $"Error reading HTTP response body: {ex.Message}";
+                        }
+                    }
+
+                    string errorMessage = $"Error: {response.ReasonPhrase}";
+                    return RawHttpClientResult<T>.Fail(errorMessage, response.StatusCode, errorBody);
+                }
             }
         }
 

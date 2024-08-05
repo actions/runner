@@ -19,11 +19,12 @@ namespace GitHub.Services.WebApi
         }
 
         protected VssServiceResponseException(SerializationInfo info, StreamingContext context)
-            : base(info, context) 
+            : base(info, context)
         {
             HttpStatusCode = (HttpStatusCode)info.GetInt32("HttpStatusCode");
         }
 
+        [Obsolete]
         [SecurityCritical]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {

@@ -1,27 +1,31 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <OutputType>Library</OutputType>
         <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
+        <!-- <SelfContained>true</SelfContained> -->
         <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
-        <NoWarn>NU1701;NU1603</NoWarn>
+        <NoWarn>NU1701;NU1603;SYSLIB0050;SYSLIB0051</NoWarn>
         <Version>$(Version)</Version>
         <DefineConstants>TRACE</DefineConstants>
-        <LangVersion>7.3</LangVersion>
+        <LangVersion>8.0</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Win32.Registry" Version="4.4.0" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-        <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.4" />
-        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.2.1" />
-        <PackageReference Include="System.Security.Cryptography.Cng" Version="4.4.0" />
-        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="4.4.0" />
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
+        <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0" />
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1" />
+        <PackageReference Include="System.Security.Cryptography.Cng" Version="5.0.0" />
+        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
         <PackageReference Include="Minimatch" Version="2.0.0" />
         <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
+        <PackageReference Include="System.Net.Http" Version="4.3.4" />
+        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
     </ItemGroup>
 
     <ItemGroup>

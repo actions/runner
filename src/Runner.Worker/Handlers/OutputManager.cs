@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -143,7 +143,8 @@ namespace GitHub.Runner.Worker.Handlers
                         if (issue != null)
                         {
                             // Log issue
-                            _executionContext.AddIssue(issue, stripped);
+                            var logOptions = new ExecutionContextLogOptions(true, stripped);
+                            _executionContext.AddIssue(issue, logOptions);
 
                             return;
                         }

@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -27,8 +27,8 @@ namespace GitHub.Runner.Common
 
         // Configuration
         Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent);
-        Task DeleteAgentAsync(int agentPoolId, int agentId);
-        Task DeleteAgentAsync(int agentId);
+        Task DeleteAgentAsync(int agentPoolId, ulong agentId);
+        Task DeleteAgentAsync(ulong agentId);
         Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName = null, TaskAgentPoolType poolType = TaskAgentPoolType.Automation);
         Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null);
         Task<List<TaskAgent>> GetAgentsAsync(string agentName);
@@ -38,7 +38,7 @@ namespace GitHub.Runner.Common
         Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken);
         Task DeleteAgentMessageAsync(Int32 poolId, Int64 messageId, Guid sessionId, CancellationToken cancellationToken);
         Task DeleteAgentSessionAsync(Int32 poolId, Guid sessionId, CancellationToken cancellationToken);
-        Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, CancellationToken cancellationToken);
+        Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken);
 
         // job request
         Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken);
@@ -50,7 +50,7 @@ namespace GitHub.Runner.Common
         Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, bool includeToken, CancellationToken cancellationToken);
 
         // agent update
-        Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState, string trace);
+        Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace);
     }
 
     public sealed class RunnerServer : RunnerService, IRunnerServer
@@ -239,13 +239,13 @@ namespace GitHub.Runner.Common
             return _genericTaskAgentClient.ReplaceAgentAsync(agentPoolId, agent);
         }
 
-        public Task DeleteAgentAsync(int agentPoolId, int agentId)
+        public Task DeleteAgentAsync(int agentPoolId, ulong agentId)
         {
             CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.DeleteAgentAsync(agentPoolId, agentId);
         }
 
-        public Task DeleteAgentAsync(int agentId)
+        public Task DeleteAgentAsync(ulong agentId)
         {
             return DeleteAgentAsync(0, agentId); // agentPool is ignored server side
         }
@@ -272,10 +272,10 @@ namespace GitHub.Runner.Common
             return _messageTaskAgentClient.DeleteAgentSessionAsync(poolId, sessionId, cancellationToken: cancellationToken);
         }
 
-        public Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, CancellationToken cancellationToken)
+        public Task<TaskAgentMessage> GetAgentMessageAsync(Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken)
         {
             CheckConnection(RunnerConnectionType.MessageQueue);
-            return _messageTaskAgentClient.GetMessageAsync(poolId, sessionId, lastMessageId, status, runnerVersion, cancellationToken: cancellationToken);
+            return _messageTaskAgentClient.GetMessageAsync(poolId, sessionId, lastMessageId, status, runnerVersion, os, architecture, disableUpdate, cancellationToken: cancellationToken);
         }
 
         //-----------------------------------------------------------------
@@ -315,7 +315,7 @@ namespace GitHub.Runner.Common
             return _genericTaskAgentClient.GetPackageAsync(packageType, platform, version, includeToken, cancellationToken: cancellationToken);
         }
 
-        public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState, string trace)
+        public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace)
         {
             CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState, trace);

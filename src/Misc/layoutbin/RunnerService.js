@@ -114,6 +114,11 @@ var runService = function () {
             );
             stopping = true;
           }
+        } else if (code === 5) {
+          console.log(
+            "Runner listener exit with Session Conflict error, stop the service, no retry needed."
+          );
+          stopping = true;
         } else {
           var messagePrefix = "Runner listener exit with undefined return code";
           unknownFailureRetryCount++;

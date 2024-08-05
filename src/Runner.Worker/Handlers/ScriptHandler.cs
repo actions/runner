@@ -87,7 +87,7 @@ namespace GitHub.Runner.Worker.Handlers
                     if (string.IsNullOrEmpty(shellCommandPath))
                     {
                         shellCommand = "powershell";
-                        Trace.Info($"Defaulting to {shellCommand}");
+                        Trace.Info($"Defaulting to {shellCommand}");                        
                         shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                     }
                 }

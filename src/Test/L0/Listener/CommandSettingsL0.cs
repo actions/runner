@@ -1,4 +1,4 @@
-using GitHub.Runner.Listener;
+﻿using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
@@ -721,11 +721,11 @@ namespace GitHub.Runner.Common.Tests
         [InlineData("run", "replace")]
         [InlineData("run", "runasservice")]
         [InlineData("run", "unattended")]
-        [InlineData("warmup", "disableupdate")]      
-        [InlineData("warmup", "ephemeral")]     
-        [InlineData("warmup", "once")]   
-        [InlineData("warmup", "replace")]      
-        [InlineData("warmup", "runasservice")]   
+        [InlineData("warmup", "disableupdate")]
+        [InlineData("warmup", "ephemeral")]
+        [InlineData("warmup", "once")]
+        [InlineData("warmup", "replace")]
+        [InlineData("warmup", "runasservice")]
         [InlineData("warmup", "unattended")]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
@@ -806,7 +806,7 @@ namespace GitHub.Runner.Common.Tests
                         "test runner" });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 
@@ -844,7 +844,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{flag}" });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 
@@ -874,7 +874,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{arg}", argValue });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 

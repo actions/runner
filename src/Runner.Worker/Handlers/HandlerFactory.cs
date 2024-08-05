@@ -58,17 +58,69 @@ namespace GitHub.Runner.Worker.Handlers
                 var nodeData = data as NodeJSActionExecutionData;
 
                 // With node12 EoL in 04/2022, we want to be able to uniformly upgrade all JS actions to node16 from the server
-                if (string.Equals(nodeData.NodeVersion, "node12", StringComparison.InvariantCultureIgnoreCase) &&
-                    (executionContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode16") ?? false))
+                if (string.Equals(nodeData.NodeVersion, "node12", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    // The user can opt out of this behaviour by setting this variable to true, either setting 'env' in their workflow or as an environment variable on their machine
+                    var repoAction = action as Pipelines.RepositoryPathReference;
+                    if (repoAction != null)
+                    {
+                        var warningActions = new HashSet<string>();
+                        if (executionContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
+                        {
+                            warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings);
+                        }
+
+                        string repoActionFullName;
+                        if (string.IsNullOrEmpty(repoAction.Name))
+                        {
+                            repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
+                        }
+                        else
+                        {
+                            repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}";
+                        }
+
+                        warningActions.Add(repoActionFullName);
+                        executionContext.Global.Variables.Set("Node16ForceActionsWarnings", StringUtil.ConvertToJson(warningActions));
+                    }
+                    nodeData.NodeVersion = "node16";
+                }
+
+                var localForceActionsToNode20 = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.ManualForceActionsToNode20));
+                executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Variables.Actions.ManualForceActionsToNode20, out var workflowForceActionsToNode20);
+                var enforceNode20Locally = !string.IsNullOrWhiteSpace(workflowForceActionsToNode20) ? StringUtil.ConvertToBoolean(workflowForceActionsToNode20) : localForceActionsToNode20;
+                if (string.Equals(nodeData.NodeVersion, "node16")
+                && ((executionContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode20") ?? false) || enforceNode20Locally))
+                {
                     executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion, out var workflowOptOut);
-                    var isWorkflowOptOutSet = !string.IsNullOrEmpty(workflowOptOut);
+                    var isWorkflowOptOutSet = !string.IsNullOrWhiteSpace(workflowOptOut);
                     var isLocalOptOut = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion));
                     bool isOptOut = isWorkflowOptOutSet ? StringUtil.ConvertToBoolean(workflowOptOut) : isLocalOptOut;
+
                     if (!isOptOut)
                     {
-                        nodeData.NodeVersion = "node16";
+                        var repoAction = action as Pipelines.RepositoryPathReference;
+                        if (repoAction != null)
+                        {
+                            var warningActions = new HashSet<string>();
+                            if (executionContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings))
+                            {
+                                warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node20ForceWarnings);
+                            }
+
+                            string repoActionFullName;
+                            if (string.IsNullOrEmpty(repoAction.Name))
+                            {
+                                repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
+                            }
+                            else
+                            {
+                                repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}";
+                            }
+
+                            warningActions.Add(repoActionFullName);
+                            executionContext.Global.Variables.Set(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, StringUtil.ConvertToJson(warningActions));
+                        }
+                        nodeData.NodeVersion = "node20";
                     }
                 }
                 (handler as INodeScriptActionHandler).Data = nodeData;

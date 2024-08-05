@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -58,10 +58,18 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Environment["ACTIONS_CACHE_URL"] = cacheUrl;
             }
+            if (systemConnection.Data.TryGetValue("PipelinesServiceUrl", out var pipelinesServiceUrl) && !string.IsNullOrEmpty(pipelinesServiceUrl))
+            {
+                Environment["ACTIONS_RUNTIME_URL"] = pipelinesServiceUrl;
+            }
             if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) && !string.IsNullOrEmpty(generateIdTokenUrl))
             {
                 Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
                 Environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
+            }
+            if (systemConnection.Data.TryGetValue("ResultsServiceUrl", out var resultsUrl) && !string.IsNullOrEmpty(resultsUrl))
+            {
+                Environment["ACTIONS_RESULTS_URL"] = resultsUrl;
             }
 
             // Resolve the target script.
@@ -98,23 +106,22 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-#if OS_OSX || OS_WINDOWS
             if (string.Equals(Data.NodeVersion, "node12", StringComparison.OrdinalIgnoreCase) &&
                 Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
             {
-#if OS_OSX
-                ExecutionContext.Output($"The node12 is not supported on macOS ARM64 platform. Use node16 instead.");
-#elif OS_WINDOWS
-                ExecutionContext.Output($"The node12 is not supported on windows ARM64 platform. Use node16 instead.");
-#endif
+                ExecutionContext.Output($"The node12 is not supported. Use node16 instead.");
                 Data.NodeVersion = "node16";
             }
-#endif
-            string forcedNodeVersion = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
 
+            string forcedNodeVersion = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
             if (forcedNodeVersion == "node16" && Data.NodeVersion != "node16")
             {
                 Data.NodeVersion = "node16";
+            }
+
+            if (forcedNodeVersion == "node20" && Data.NodeVersion != "node20")
+            {
+                Data.NodeVersion = "node20";
             }
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
@@ -136,27 +143,26 @@ namespace GitHub.Runner.Worker.Handlers
             // Remove environment variable that may cause conflicts with the node within the runner.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
 
-            if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node12Warning) ?? false))
+            if (string.Equals(Data.NodeVersion, Constants.Runner.DeprecatedNodeVersion, StringComparison.OrdinalIgnoreCase) && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node16Warning) ?? false))
             {
                 var repoAction = Action as RepositoryPathReference;
                 var warningActions = new HashSet<string>();
-                if (ExecutionContext.Global.Variables.TryGetValue("Node12ActionsWarnings", out var node12Warnings))
+                if (ExecutionContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
                 {
-                    warningActions = StringUtil.ConvertFromJson<HashSet<string>>(node12Warnings);
+                    warningActions = StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings);
                 }
 
-                var repoActionFullName = "";
                 if (string.IsNullOrEmpty(repoAction.Name))
                 {
-                    repoActionFullName = repoAction.Path; // local actions don't have a 'Name'
+                    // local actions don't have a 'Name'
+                    warningActions.Add(repoAction.Path);
                 }
                 else
                 {
-                    repoActionFullName = $"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}";
+                    warningActions.Add($"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}");
                 }
 
-                warningActions.Add(repoActionFullName);
-                ExecutionContext.Global.Variables.Set("Node12ActionsWarnings", StringUtil.ConvertToJson(warningActions));
+                ExecutionContext.Global.Variables.Set(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, StringUtil.ConvertToJson(warningActions));
             }
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))

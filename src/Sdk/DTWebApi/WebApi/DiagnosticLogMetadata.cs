@@ -5,7 +5,7 @@ namespace GitHub.DistributedTask.WebApi
     [DataContract]
     public sealed class DiagnosticLogMetadata
     {
-        public DiagnosticLogMetadata(string agentName, int agentId, int poolId, string phaseName, string fileName, string phaseResult)
+        public DiagnosticLogMetadata(string agentName, ulong agentId, int poolId, string phaseName, string fileName, string phaseResult)
         {
             AgentName = agentName;
             AgentId = agentId;
@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.WebApi
         public string AgentName { get; set; }
 
         [DataMember]
-        public int AgentId { get; set; }
+        public ulong AgentId { get; set; }
 
         [DataMember]
         public int PoolId { get; set; }

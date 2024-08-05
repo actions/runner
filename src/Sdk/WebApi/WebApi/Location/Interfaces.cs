@@ -253,7 +253,7 @@ namespace GitHub.Services.WebApi.Location
         /// </returns>
         String LocationForCurrentConnection(
             String serviceType,
-            Guid serviceIdentifier);        
+            Guid serviceIdentifier);
 
         /// <summary>
         /// Returns the location for the ServiceDefintion that should be used based on
@@ -276,7 +276,7 @@ namespace GitHub.Services.WebApi.Location
         ///     used based on the current connection.
         /// </returns>
         String LocationForCurrentConnection(
-            ServiceDefinition serviceDefinition);        
+            ServiceDefinition serviceDefinition);
 
         /// <summary>
         /// Returns the location for the ServiceDefinition that has the specified
@@ -299,7 +299,7 @@ namespace GitHub.Services.WebApi.Location
         String LocationForAccessMapping(
             String serviceType,
             Guid serviceIdentifier,
-            AccessMapping accessMapping);        
+            AccessMapping accessMapping);
 
         /// <summary>
         /// Returns the location for the ServiceDefinition for the provided 
@@ -374,7 +374,7 @@ namespace GitHub.Services.WebApi.Location
         ///     The AccessMapping with the supplied moniker or null if one does not exist.
         /// </returns>
         AccessMapping GetAccessMapping(
-            String moniker);        
+            String moniker);
 
         // <summary>
         // Removes an AccessMapping and all of the locations that are mapped

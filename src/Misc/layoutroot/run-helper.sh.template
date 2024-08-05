@@ -70,6 +70,9 @@ elif [[ $returnCode == 4 ]]; then
         "$DIR"/safe_sleep.sh 1
     done
     exit 2
+elif [[ $returnCode == 5 ]]; then
+    echo "Runner listener exit with Session Conflict error, stop the service, no retry needed."
+    exit 0
 else
     echo "Exiting with unknown error code: ${returnCode}"
     exit 0
