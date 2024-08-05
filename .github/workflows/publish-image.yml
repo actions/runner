@@ -9,13 +9,16 @@ on:
       imageName:
         type: string
         description: The name of the image
+      runOn:
+        type: string
+        default: ubuntu-latest
 
 env:
   IMAGE_NAME: github-action-runners/${{ github.event.inputs.imageName }}
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.imageName }}
     permissions:
       contents: read
       packages: write
