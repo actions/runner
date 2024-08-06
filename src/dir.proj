@@ -1,52 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build"
     xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <Target Name="GenerateConstant">
-        <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true">
-            <Output TaskParameter="ConsoleOutput" PropertyName="GitInfoCommitHash" />
-        </Exec>
-        <Message Text="Building $(Product): $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
-
-        <ItemGroup>
-            <BuildConstants Include="namespace GitHub.Runner.Sdk"/>
-            <BuildConstants Include="{"/>
-            <BuildConstants Include="%20%20%20%20public static class BuildConstants"/>
-            <BuildConstants Include="%20%20%20%20{"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20public static class Source"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string CommitHash = %22$(GitInfoCommitHash)%22%3B"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20}%0A"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20public static class RunnerPackage"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string PackageName = %22$(PackageRuntime)%22%3B"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Version = %22$(RunnerVersion)%22%3B"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20}"/>
-            <BuildConstants Include="%20%20%20%20}"/>
-            <BuildConstants Include="}"/>
-        </ItemGroup>
-
-        <WriteLinesToFile File="Runner.Sdk/BuildConstants.cs" Lines="@(BuildConstants)" Overwrite="true" />
-
-        <Exec Command="git update-index --assume-unchanged ./Runner.Sdk/BuildConstants.cs" ConsoleToMSBuild="true" />
-    </Target>
-
     <ItemGroup>
-        <ProjectFiles Include="Sdk/Sdk.csproj" />
-        <ProjectFiles Include="Runner.Common/Runner.Common.csproj" />
-        <ProjectFiles Include="Runner.Listener/Runner.Listener.csproj" />
-        <ProjectFiles Include="Runner.Worker/Runner.Worker.csproj" />
-        <ProjectFiles Include="Runner.PluginHost/Runner.PluginHost.csproj" />
-        <ProjectFiles Include="Runner.Sdk/Runner.Sdk.csproj" />
-        <ProjectFiles Include="Runner.Plugins/Runner.Plugins.csproj" />
+        <ProjectFiles Include="TestDotNet8/TestDotNet8.csproj" />
     </ItemGroup>
 
-    <Target Name="Build" DependsOnTargets="GenerateConstant">
+    <Target Name="Build">
         <MSBuild Targets="Restore" Projects="@(ProjectFiles)" StopOnFirstFailure="true" />
         <MSBuild Targets="Publish" Projects="@(ProjectFiles)" BuildInParallel="false" StopOnFirstFailure="true" Properties="Configuration=$(BUILDCONFIG);PackageRuntime=$(PackageRuntime);Version=$(RunnerVersion);RuntimeIdentifier=$(PackageRuntime);PublishDir=$(MSBuildProjectDirectory)/../_layout/bin" />
         <Exec Command="%22$(DesktopMSBuild)%22 Runner.Service/Windows/RunnerService.csproj /p:Configuration=$(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86' Or '$(PackageRuntime)' == 'win-arm64'" />
     </Target>
 
-    <Target Name="Test" DependsOnTargets="GenerateConstant">
+    <Target Name="Test">
         <Exec Command="dotnet build Test/Test.csproj -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
         <Exec Command="dotnet test Test/Test.csproj -c $(BUILDCONFIG) --no-build --logger:trx" ConsoleToMSBuild="true" />
     </Target>
