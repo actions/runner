@@ -129,7 +129,7 @@ namespace GitHub.Runner.Worker
 
                     // Check OS warning
                     var osWarningChecker = HostContext.GetService<IOSWarningChecker>();
-                    await osWarningChecker.CheckOSAsync(context, message.OSWarnings);
+                    await osWarningChecker.CheckOSAsync(context);
 
                     try
                     {

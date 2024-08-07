@@ -280,6 +280,8 @@ namespace GitHub.Runner.Common
                 public static readonly string PhaseDisplayName = "system.phaseDisplayName";
                 public static readonly string JobRequestType = "system.jobRequestType";
                 public static readonly string OrchestrationId = "system.orchestrationId";
+                public static readonly string TestDotNet8Compatibility = "system.testDotNet8Compatibility";
+                public static readonly string DotNet8CompatibilityWarning = "system.dotNet8CompatibilityWarning";
             }
         }
 
