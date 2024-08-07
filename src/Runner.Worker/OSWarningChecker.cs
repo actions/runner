@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 using GitHub.DistributedTask.WebApi;
-using GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -13,75 +12,85 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(OSWarningChecker))]
     public interface IOSWarningChecker : IRunnerService
     {
-        Task CheckOSAsync(IExecutionContext context, IList<OSWarning> osWarnings);
+        Task CheckOSAsync(IExecutionContext context);
     }
 
-#if OS_WINDOWS || OS_OSX
     public sealed class OSWarningChecker : RunnerService, IOSWarningChecker
     {
-        public Task CheckOSAsync(IExecutionContext context, IList<OSWarning> osWarnings)
+        public async Task CheckOSAsync(IExecutionContext context)
         {
             ArgUtil.NotNull(context, nameof(context));
-            ArgUtil.NotNull(osWarnings, nameof(osWarnings));
-            return Task.CompletedTask;
-        }
-    }
-#else
-    public sealed class OSWarningChecker : RunnerService, IOSWarningChecker
-    {
-        private static readonly TimeSpan s_matchTimeout = TimeSpan.FromMilliseconds(100);
-        private static readonly RegexOptions s_regexOptions = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
-
-        public async Task CheckOSAsync(IExecutionContext context, IList<OSWarning> osWarnings)
-        {
-            ArgUtil.NotNull(context, nameof(context));
-            ArgUtil.NotNull(osWarnings, nameof(osWarnings));
-            foreach (var osWarning in osWarnings)
+            if (!context.Global.Variables.System_TestDotNet8Compatibility)
             {
-                if (string.IsNullOrEmpty(osWarning.FilePath))
-                {
-                    Trace.Error("The file path is not specified in the OS warning check.");
-                    continue;
-                }
+                return;
+            }
 
-                if (string.IsNullOrEmpty(osWarning.RegularExpression))
+            context.Output("Testing runner upgrade compatibility");
+            List<string> output = new();
+            object outputLock = new();
+            try
+            {
+                using (var process = HostContext.CreateService<IProcessInvoker>())
                 {
-                    Trace.Error("The regular expression is not specified in the OS warning check.");
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(osWarning.Warning))
-                {
-                    Trace.Error("The warning message is not specified in the OS warning check.");
-                    continue;
-                }
-
-                try
-                {
-                    if (File.Exists(osWarning.FilePath))
+                    process.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
                     {
-                        var lines = await File.ReadAllLinesAsync(osWarning.FilePath, context.CancellationToken);
-                        var regex = new Regex(osWarning.RegularExpression, s_regexOptions, s_matchTimeout);
-                        foreach (var line in lines)
+                        if (!string.IsNullOrEmpty(stdout.Data))
                         {
-                            if (regex.IsMatch(line))
+                            lock (outputLock)
                             {
-                                context.Warning(osWarning.Warning);
-                                context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = $"OS warning: {osWarning.Warning}" });
-                                return;
+                                output.Add(stdout.Data);
+                                Trace.Info(stdout.Data);
                             }
+                        }
+                    };
+
+                    process.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
+                    {
+                        if (!string.IsNullOrEmpty(stderr.Data))
+                        {
+                            lock (outputLock)
+                            {
+                                output.Add(stderr.Data);
+                                Trace.Error(stderr.Data);
+                            }
+                        }
+                    };
+
+                    using (var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+                    {
+                        int exitCode = await process.ExecuteAsync(
+                            workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
+                            fileName: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "testDotNet8Compatibility", $"TestDotNet8Compatibility{IOUtil.ExeExtension}"),
+                            arguments: string.Empty,
+                            environment: null,
+                            cancellationToken: cancellationTokenSource.Token);
+
+                        var outputStr = string.Join("\n", output).Trim();
+                        if (exitCode != 0 || !string.Equals(outputStr, "Hello from .NET 8!", StringComparison.Ordinal))
+                        {
+                            var warningMessage = context.Global.Variables.System_DotNet8CompatibilityWarning;
+                            if (!string.IsNullOrEmpty(warningMessage))
+                            {
+                                context.Warning(warningMessage);
+                            }
+
+                            context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = $".NET 8 OS compatibility test failed with exit code '{exitCode}' and output: {GetShortOutput(output)}" });
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    Trace.Error("An error occurred while checking OS warnings for file '{0}' and regex '{1}'.", osWarning.FilePath, osWarning.RegularExpression);
-                    Trace.Error(ex);
-                    context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = $"An error occurred while checking OS warnings for file '{osWarning.FilePath}' and regex '{osWarning.RegularExpression}': {ex.Message}" });
-                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("An error occurred while testing .NET 8 compatibility'");
+                Trace.Error(ex);
+                context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = $".NET 8 OS compatibility test encountered exception type '{ex.GetType().FullName}', message: '{ex.Message}', process output: '{GetShortOutput(output)}'" });
             }
         }
-    }
-#endif
-}
 
+        private static string GetShortOutput(List<string> output)
+        {
+            var outputStr = string.Join("\n", output).Trim();
+            return outputStr.Length > 200 ? string.Concat(outputStr.Substring(0, 200), "[...]") : outputStr;
+        }
+    }
+}
