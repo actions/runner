@@ -1,6 +1,8 @@
-#/bin/bash
+#!/usr/bin/env bash
+set -Eeo pipefail
 
-set -e
+is_user_root () { [ "${EUID:-$(id -u)}" -eq 0 ]; }
+if is_user_root;then echo -e "Please do not run as root or with sudo";exit 1;fi
 
 # Notes:
 # PATS over envvars are more secure
@@ -17,32 +19,32 @@ while getopts 's:g:n:r:u:l:df' opt; do
     flags_found=true
 
     case $opt in
-    s)
-        runner_scope=$OPTARG
+        s)
+            runner_scope=$OPTARG
         ;;
-    g)
-        ghe_hostname=$OPTARG
+        g)
+            ghe_hostname=$OPTARG
         ;;
-    n)
-        runner_name=$OPTARG
+        n)
+            runner_name=$OPTARG
         ;;
-    r)
-        runner_group=$OPTARG
+        r)
+            runner_group=$OPTARG
         ;;
-    u)
-        svc_user=$OPTARG
+        u)
+            svc_user=$OPTARG
         ;;
-    l)
-        labels=$OPTARG
+        l)
+            labels=$OPTARG
         ;;
-    f)
-        replace='true'
+        f)
+            replace='true'
         ;;
-    d)
-        disableupdate='true'
+        d)
+            disableupdate='true'
         ;;
-    *)
-        echo "
+        *)
+            echo "
 Runner Service Installer
 Examples:
 RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
@@ -90,10 +92,9 @@ runner_plat=linux
 runner_arch=x64
 [ ! -z "$(arch | grep arm64)" ] && runner_arch=arm64
 
-function fatal()
-{
-   echo "error: $1" >&2
-   exit 1
+fatal () {
+    echo "error: $1" >&2
+    exit 1
 }
 
 if [ -z "${runner_scope}" ]; then fatal "supply scope as argument 1"; fi
@@ -125,13 +126,13 @@ fi
 
 # if the scope has a slash, it's a repo runner
 orgs_or_repos="orgs"
-if [[ "$runner_scope" == *\/* ]]; then
+if [[ "$runner_scope" =~ / ]]; then
     orgs_or_repos="repos"
 fi
 
-export RUNNER_TOKEN=$(curl -s -X POST ${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
+export RUNNER_TOKEN=$(curl -fsSL -X POST ${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
 
-if [ "null" == "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi
+if [ "null" = "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi
 
 #---------------------------------------
 # Download latest released and extract
@@ -140,7 +141,7 @@ echo
 echo "Downloading latest runner ..."
 
 # For the GHES Alpha, download the runner from github.com
-latest_version_label=$(curl -s -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
+latest_version_label=$(curl -fsSL -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
 latest_version=$(echo ${latest_version_label:1})
 runner_file="actions-runner-${runner_plat}-${runner_arch}-${latest_version}.tar.gz"
 
@@ -152,7 +153,7 @@ else
     echo "Downloading ${latest_version_label} for ${runner_plat} ..."
     echo $runner_url
 
-    curl -O -L ${runner_url}
+    curl -O -fsSL ${runner_url}
 fi
 
 ls -la *.tar.gz
