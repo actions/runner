@@ -127,7 +127,6 @@ namespace GitHub.Services.Common
             EventId = (int)info.GetValue("m_eventId", typeof(int));
         }
 
-        [Obsolete]
         [SecurityCritical]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
