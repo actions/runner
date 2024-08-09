@@ -49,7 +49,7 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Build image
-        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} -f images/Dockerfile.windows images
+        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} -f images/Dockerfile.windows --build-arg ${{ github.event.inputs.imageName }} images
       - name: Add Tag
         run: docker tag ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
       - name: Push image
