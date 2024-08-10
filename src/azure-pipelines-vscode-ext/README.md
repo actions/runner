@@ -5,8 +5,8 @@ The first VSCode Extension which can Validate and Expand Azure Pipeline YAML fil
 #### Live syntax checking for pipelines
 ![Live syntax checking for pipelines](https://raw.githubusercontent.com/wiki/ChristopherHX/runner.server/live-syntax-check.gif)
 
-#### Live preview of the extended / rendered pipeline
-![Live preview of the extended / rendered pipeline](https://raw.githubusercontent.com/wiki/ChristopherHX/runner.server/live-preview.gif)
+#### Live preview of the expanded / rendered pipeline
+![Live preview of the expanded / rendered pipeline](https://raw.githubusercontent.com/wiki/ChristopherHX/runner.server/live-preview.gif)
 
 ## Features
 
@@ -24,7 +24,7 @@ This command explicitly checks for syntax errors in the yaml structure and expre
 
 Referenced templates are read to apply the correct schema for their parameters, if this fails this check is disabled.
 
-These are necessary but not sufficient checks for a successful Validation of the Azure Pipeline File.
+These are necessary but not sufficient checks for a successful Validation of an Azure Pipeline.
 
 ### Validate Azure Pipeline
 
@@ -115,7 +115,7 @@ You can configure parameters, variables, repositories per task. You can define m
     ]   
 }
 ```
-Sample Pipeline which dumps the parameters objec
+Sample Pipeline which dumps the parameters object
 ```yaml
 parameters:
 - name: booleanparam
@@ -172,7 +172,7 @@ stages:
 - Make changes in multiple dependent template files and show a live preview on save
 - Everything is done locally and works offline
 - You can run template files with the same template engine locally via the [Runner.Client and Server tool](https://github.com/ChristopherHX/runner.server) using the official Azure Pipelines Agent
-  - `Runner.Client azexpand` works like Valdate Azure Pipeline by only checking the return value to be zero
+  - `Runner.Client azexpand` works like Validate Azure Pipeline by only checking the return value to be zero
   - `Runner.Client azexpand -q > final.yml` works like Expand Azure Pipeline, but directly writes the expanded file to disk
 - Less trial and error commits
 - Works side by side with the official Azure Pipelines VSCode extension
