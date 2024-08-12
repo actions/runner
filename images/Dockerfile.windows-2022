@@ -1,0 +1,32 @@
+# This is the docker file for building our GHA runner with servercore.
+# Current size about 5.1GB
+#
+# The final RUN/CMD/ENTRYPOINT is called by k8s.
+
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+LABEL name=arc-runner-windows
+
+# The "PLATFORM" argument is created to allow injecting it into the
+# build environment.
+# In this we can share the build scripts between X64 and ARM64.
+ARG RUNNER_VERSION=2.319.0
+ENV RUNNER_VERSION=$RUNNER_VERSION
+ENV chocolateyVersion=1.4.0
+
+WORKDIR /actions-runner
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';$ProgressPreference='silentlyContinue';"]
+
+# Get Action runner.
+RUN \
+    Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v${env:RUNNER_VERSION}/actions-runner-win-x64-${env:RUNNER_VERSION}.zip -OutFile actions-runner-win.zip ; \
+    Add-Type -AssemblyName System.IO.Compression.FileSystem ; \
+    [System.IO.Compression.ZipFile]::ExtractToDirectory('actions-runner-win.zip', $PWD) ;\
+    rm actions-runner-win.zip
+
+# Get Git and Linux tools
+RUN powershell Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+RUN powershell choco install git.install --params "'/GitAndUnixToolsOnPath'" -y
+
+RUN powershell choco feature enable -n allowGlobalConfirmation
