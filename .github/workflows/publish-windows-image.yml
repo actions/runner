@@ -9,13 +9,17 @@ on:
       imageName:
         type: string
         description: The name of the image
+      runsOn:
+        type: string
+        description: The environment that this job runs on, such windows-2022
+        default: windows-2019
 
 env:
   IMAGE_NAME: github-action-runners/${{ github.event.inputs.imageName }}
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: ${{ github.event.inputs.runsOn }}
     permissions:
       contents: read
       packages: write
@@ -49,7 +53,7 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Build image
-        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} -f images/Dockerfile.windows --build-arg ${{ github.event.inputs.imageName }} images
+        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} -f images/Dockerfile.${{ github.event.inputs.imageName }} --build-arg ${{ github.event.inputs.imageName }} images
       - name: Add Tag
         run: docker tag ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
       - name: Push image
