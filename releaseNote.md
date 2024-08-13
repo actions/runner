@@ -1,10 +1,8 @@
 ## What's Changed
 
-- .NET 8 OS compatibility test https://github.com/actions/runner/pull/3422
-- Ignore ssl cert on websocket client https://github.com/actions/runner/pull/3423
-- Revert "Bump runner to dotnet 8" https://github.com/actions/runner/pull/3412
+- .NET 8 compat test adjustments: 1) do not trim SDK, 2) support pattern to match output, 3) modify output truncation length https://github.com/actions/runner/pull/3427
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.318.0...v2.319.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.319.0...v2.319.1
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
