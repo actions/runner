@@ -67,4 +67,4 @@ RUN git config --system core.longpaths true
 # Disable path limit
 RUN powershell Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Type DWord -Value 1
 
-WORKDIR $env:RUNNER_HOME
+WORKDIR C:\Users\ContainerAdministrator\runner
