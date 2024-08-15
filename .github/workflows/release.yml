@@ -8,7 +8,7 @@ on:
 
 jobs:
   check:
-    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dind-network-host-patch'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
