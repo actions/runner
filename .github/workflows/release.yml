@@ -2,13 +2,13 @@ name: Runner CD
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     paths:
     - releaseVersion
 
 jobs:
   check:
-    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dind-network-host-patch'
+    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
