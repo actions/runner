@@ -169,11 +169,13 @@ stages:
 ```
 
 ## Pro
-- Make changes in multiple dependent template files and show a live preview on save
+- Make changes in multiple dependent template files and show a live preview
 - Everything is done locally and works offline
 - You can run template files with the same template engine locally via the [Runner.Client and Server tool](https://github.com/ChristopherHX/runner.server) using the official Azure Pipelines Agent
-  - `Runner.Client azexpand` works like Validate Azure Pipeline by only checking the return value to be zero
-  - `Runner.Client azexpand -q > final.yml` works like Expand Azure Pipeline, but directly writes the expanded file to disk
+  - `Runner.Client azexpand -W azure-pipeline.yml` works like Validate Azure Pipeline by only checking the return value to be zero
+  - `Runner.Client azexpand -q -W azure-pipeline.yml > final.yml` works like Expand Azure Pipeline, but directly writes the expanded file to disk
+  - `Runner.Client azpipelines -W azure-pipeline.yml` to test Azure Pipelines locally via the official agent
+    - `--interactive` and `--watch` allow to iterate even faster by keeping the local server and agent running
 - Less trial and error commits
 - Works side by side with the official Azure Pipelines VSCode extension
 

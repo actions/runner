@@ -868,9 +868,9 @@ namespace Runner.Server.Azure.Devops {
                                             }
                                             ret = ret
                                                 .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*", "steps", "*" }.Take(t).Skip(s).ToArray()).Select(e => (e, sch)));
-                                            if(s <= 4) {
+                                            if(s <= 4 && (t - 2) >= s) {
                                                 ret = ret
-                                                    .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*" }.Take(t).Skip(s).Concat(new [] { "variables", "*" }).ToArray()).Select(e => (e, "variable-template-root")));
+                                                    .Concat(val.TraverseByPattern(new [] { "stages", "*", "jobs", "*" }.Take(t - 2).Skip(s).Concat(new [] { "variables", "*" }).ToArray()).Select(e => (e, "variable-template-root")));
                                             }
                                         }
                                         if(s > 4) {

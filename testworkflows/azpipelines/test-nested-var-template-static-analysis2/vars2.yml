@@ -1,0 +1,6 @@
+parameters:
+- name: y
+  type: stepList
+variables:
+- name: Hello World
+  value: ${{ converttojson(parameters.y) }}

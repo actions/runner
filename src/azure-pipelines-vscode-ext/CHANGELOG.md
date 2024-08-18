@@ -1,4 +1,7 @@
 ### v0.1.1
+- syntax check template parameter types for variable templates as well
+
+### v0.1.1
 - use proper schema for extendsTemplates
 - allow validate/extend azure pipelines to pass with a warning on nested templates (regression v0.1.0)
 - throttle parallel syntax check tasks while typing

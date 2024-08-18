@@ -1,0 +1,20 @@
+# ExpectedException: TemplateValidationException
+# ExpectedMessage: A mapping was not expected
+
+variables:
+- name: Hello World
+  value: ${{ converttojson(parameters.y) }}
+- template: vars3.yml
+  parameters:
+    y:
+      stage: meh
+      jobs:
+      - job:
+        variables:
+        - template: vars2.yml
+          parameters:
+            y:
+              stage: meh
+              condition: fake
+steps:
+- bash: echo Test
