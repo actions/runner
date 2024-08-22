@@ -4,9 +4,9 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy as build
 ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.0
-ARG DOCKER_VERSION=25.0.5
-ARG BUILDX_VERSION=0.14.1
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
+ARG DOCKER_VERSION=27.1.1
+ARG BUILDX_VERSION=0.16.2
 
 RUN apt update -y && apt install curl unzip -y
 
@@ -116,7 +116,8 @@ RUN apt-get update -y \
 
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
 RUN add-apt-repository ppa:git-core/ppa \
-    && apt update -y
+    && apt update -y \
+    && apt install -y --no-install-recommends git
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \

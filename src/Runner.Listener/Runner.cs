@@ -32,10 +32,25 @@ namespace GitHub.Runner.Listener
         private bool _inConfigStage;
         private ManualResetEvent _completedCommand = new(false);
 
+        // <summary>
+        // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
+        // Normally we rely on the HTTP clients to back off between retry attempts. However, acquiring a job
+        // involves calls to both Run Serivce and Broker. And Run Service and Broker communicate with each other
+        // in an async fashion.
+        //
+        // When Run Service encounters a non-retriable error, it sends an async message to Broker. The runner will,
+        // however, immediately call Broker to get the next message. If the async event from Run Service to Broker
+        // has not yet been processed, the next message from Broker may be the same job message.
+        //
+        // The error throttler helps us back off when encountering successive, non-retriable errors from /acquirejob.
+        // </summary>
+        private IErrorThrottler _acquireJobThrottler;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _term = HostContext.GetService<ITerminal>();
+            _acquireJobThrottler = HostContext.CreateService<IErrorThrottler>();
         }
 
         public async Task<int> ExecuteCommand(CommandSettings command)
@@ -563,13 +578,16 @@ namespace GitHub.Runner.Listener
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
                                         try
                                         {
-                                            jobRequestMessage =
-                                            await runServer.GetJobMessageAsync(messageRef.RunnerRequestId,
-                                            messageQueueLoopTokenSource.Token);
+                                            jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                            _acquireJobThrottler.Reset();
                                         }
-                                        catch (TaskOrchestrationJobAlreadyAcquiredException)
+                                        catch (Exception ex) when (
+                                            ex is TaskOrchestrationJobNotFoundException ||          // HTTP status 404
+                                            ex is TaskOrchestrationJobAlreadyAcquiredException ||   // HTTP status 409
+                                            ex is TaskOrchestrationJobUnprocessableException)       // HTTP status 422
                                         {
-                                            Trace.Info("Job is already acquired, skip this message.");
+                                            Trace.Info($"Skipping message Job. {ex.Message}");
+                                            await _acquireJobThrottler.IncrementAndWaitAsync(messageQueueLoopTokenSource.Token);
                                             continue;
                                         }
                                         catch (Exception ex)

@@ -25,10 +25,12 @@ jobs:
       - name: Compute image version
         id: image
         uses: actions/github-script@v6
+        env:
+          RUNNER_VERSION: ${{ github.event.inputs.runnerVersion }}
         with:
           script: |
             const fs = require('fs');
-            const inputRunnerVersion = "${{ github.event.inputs.runnerVersion }}"
+            const inputRunnerVersion = process.env.RUNNER_VERSION;
             if (inputRunnerVersion) {
               console.log(`Using input runner version ${inputRunnerVersion}`)
               core.setOutput('version', inputRunnerVersion);

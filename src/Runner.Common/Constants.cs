@@ -181,7 +181,7 @@ namespace GitHub.Runner.Common
             public static readonly string DeprecatedNodeVersion = "node16";
             public static readonly string EnforcedNode12DetectedAfterEndOfLife = "The following actions uses node12 which is deprecated and will be forced to run on node16: {0}. For more info: https://github.blog/changelog/2023-06-13-github-actions-all-actions-will-run-on-node16-instead-of-node12-by-default/";
             public static readonly string EnforcedNode12DetectedAfterEndOfLifeEnvVariable = "Node16ForceActionsWarnings";
-            public static readonly string EnforcedNode16DetectedAfterEndOfLife = "The following actions uses Node.js version which is deprecated and will be forced to run on node20: {0}. For more info: https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/";
+            public static readonly string EnforcedNode16DetectedAfterEndOfLife = "The following actions use a deprecated Node.js version and will be forced to run on node20: {0}. For more info: https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/";
             public static readonly string EnforcedNode16DetectedAfterEndOfLifeEnvVariable = "Node20ForceActionsWarnings";
 
         }
@@ -280,6 +280,10 @@ namespace GitHub.Runner.Common
                 public static readonly string PhaseDisplayName = "system.phaseDisplayName";
                 public static readonly string JobRequestType = "system.jobRequestType";
                 public static readonly string OrchestrationId = "system.orchestrationId";
+                public static readonly string TestDotNet8Compatibility = "system.testDotNet8Compatibility";
+                public static readonly string DotNet8CompatibilityOutputLength = "system.dotNet8CompatibilityOutputLength";
+                public static readonly string DotNet8CompatibilityOutputPattern = "system.dotNet8CompatibilityOutputPattern";
+                public static readonly string DotNet8CompatibilityWarning = "system.dotNet8CompatibilityWarning";
             }
         }
 

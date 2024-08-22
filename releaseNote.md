@@ -1,12 +1,10 @@
 ## What's Changed
 
-- Do not give up when uploading steps metadata by @yacaovsnc in https://github.com/actions/runner/pull/3280
-- Upgrade node20 to 20.13.1 by @pje in https://github.com/actions/runner/pull/3284
-- Delete all the contentHash files by @pje in https://github.com/actions/runner/pull/3285
-- Make it easy to install `git` on an Action Runner Image by @jww3 in https://github.com/actions/runner/pull/3273
-- Install `gpg-agent` during actions/runner container image build by @jww3 in https://github.com/actions/runner/pull/3294
+- .NET 8 OS compatibility test https://github.com/actions/runner/pull/3422
+- Ignore ssl cert on websocket client https://github.com/actions/runner/pull/3423
+- Revert "Bump runner to dotnet 8" https://github.com/actions/runner/pull/3412
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.316.1...v2.317.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.318.0...v2.319.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
