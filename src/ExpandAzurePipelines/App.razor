@@ -28,6 +28,7 @@
 </div>
 
 @inject Blazored.LocalStorage.ILocalStorageService localStorage;
+@inject IJSRuntime jsRuntime;
 
 @code {
     private StandaloneCodeEditor _editor = null!;
@@ -56,7 +57,7 @@
                 }
                 fileName = key.Substring(prefix.Length);
             }
-            var content = await localStorage.GetItemAsStringAsync(key);
+            var content = await localStorage.GetItemAsStringAsync(key) ?? "";
             files[fileName] = content;
             if(i == 0) {
                 fileNameInput = fileName;
@@ -80,7 +81,7 @@
     private async Task ChangeTheme(ChangeEventArgs e)
     {
         Console.WriteLine($"setting theme to: {e.Value?.ToString()}");
-        await Global.SetTheme(e.Value?.ToString());
+        await Global.SetTheme(jsRuntime, e.Value?.ToString());
     }
 
     private async Task Layout()
