@@ -1,0 +1,25 @@
+stages:
+- stage: stage_WUS1
+  displayName: Deploy WUS1
+  trigger: manual
+  jobs:
+  - job: DeployJob
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'AzureWIF'
+        scriptType: 'ps'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'Write-host ''hello, world'''
+- stage: stage_WUS2
+  displayName: Deploy WUS2
+  trigger: manual
+  jobs:
+  - job: DeployJob
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'AzureWIF'
+        scriptType: 'ps'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'Write-host ''hello, world'''

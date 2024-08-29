@@ -1,0 +1,21 @@
+parameters:
+- name: stage
+  type: stage
+  default:
+    stage: stage_WUS1
+    displayName: Deploy WUS1
+    trigger: manual
+    jobs:
+    - job: DeployJob
+      steps:
+      - task: AzureCLI@2
+        inputs:
+          azureSubscription: 'AzureWIF'
+          scriptType: 'ps'
+          scriptLocation: 'inlineScript'
+          inlineScript: 'Write-host ''hello, world'''
+steps:
+- ${{ if eq(parameters.stage.trigger, 'manual') }}:
+  - script: echo ok
+- ${{ else }}:
+  - ${{ converttojson(parameters) }}: error

@@ -22,6 +22,7 @@ namespace Runner.Server.Azure.Devops
         public Pool Pool { get; set; }
         public String LockBehavior { get; set; }
         public bool? IsSkippable { get; set; }
+        public TemplateToken Trigger { get; set; }
 
         public async Task<Stage> Parse(Context context, TemplateToken source, bool skipRootCheck = false) {
             var jobToken = source.AssertMapping("job-root");
@@ -64,6 +65,9 @@ namespace Runner.Server.Azure.Devops
                     break;
                     case "isSkippable":
                         IsSkippable = kv.Value.AssertAzurePipelinesBoolean("isSkippable have to be of type boolean");
+                    break;
+                    case "trigger":
+                        Trigger = kv.Value;
                     break;
                     default:
                         errors.Add(new TemplateValidationError($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(kv.Key)}Unexpected Key {kv.Key}"));
@@ -170,6 +174,9 @@ namespace Runner.Server.Azure.Devops
             }
             if(LockBehavior != null) {
                 stage["lockBehavior"] = new StringContextData(LockBehavior);
+            }
+            if(Trigger != null) {
+                stage["trigger"] = Trigger.ToContextData();
             }
             return stage;
         }
