@@ -68,7 +68,7 @@ namespace GitHub.Runner.Common.Tests
                 trace.Info("Parsed");
 
                 trace.Info("Commands: {0}", clp.Commands.Count);
-                Assert.True(clp.Commands.Count == 2);
+                Assert.Equal(2, clp.Commands.Count);
             }
         }
 
@@ -88,7 +88,7 @@ namespace GitHub.Runner.Common.Tests
                 trace.Info("Parsed");
 
                 trace.Info("Args: {0}", clp.Args.Count);
-                Assert.True(clp.Args.Count == 2);
+                Assert.Equal(2, clp.Args.Count);
                 Assert.True(clp.Args.ContainsKey("arg1"));
                 Assert.Equal("arg1val", clp.Args["arg1"]);
                 Assert.True(clp.Args.ContainsKey("arg2"));
@@ -112,7 +112,7 @@ namespace GitHub.Runner.Common.Tests
                 trace.Info("Parsed");
 
                 trace.Info("Args: {0}", clp.Flags.Count);
-                Assert.True(clp.Flags.Count == 2);
+                Assert.Equal(2, clp.Flags.Count);
                 Assert.Contains("flag1", clp.Flags);
                 Assert.Contains("flag2", clp.Flags);
             }

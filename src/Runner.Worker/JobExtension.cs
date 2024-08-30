@@ -127,6 +127,10 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    // Check OS warning
+                    var osWarningChecker = HostContext.GetService<IOSWarningChecker>();
+                    await osWarningChecker.CheckOSAsync(context);
+
                     try
                     {
                         var tokenPermissions = jobContext.Global.Variables.Get("system.github.token.permissions") ?? "";
@@ -390,6 +394,18 @@ namespace GitHub.Runner.Worker
                             intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
                             actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, null, actionStep.Action.ContextName, ActionRunStage.Main, intraActionState);
                         }
+                    }
+
+                    // Register custom image creation post-job step if the "snapshot" token is present in the message.
+                    var snapshotRequest = templateEvaluator.EvaluateJobSnapshotRequest(message.Snapshot, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
+                    if (snapshotRequest != null)
+                    {
+                        var snapshotOperationProvider = HostContext.GetService<ISnapshotOperationProvider>();
+                        jobContext.RegisterPostJobStep(new JobExtensionRunner(
+                            runAsync: (executionContext, _) => snapshotOperationProvider.CreateSnapshotRequestAsync(executionContext, snapshotRequest),
+                            condition: $"{PipelineTemplateConstants.Success}()",
+                            displayName: $"Create custom image",
+                            data: null));
                     }
 
                     // Register Job Completed hook if the variable is set

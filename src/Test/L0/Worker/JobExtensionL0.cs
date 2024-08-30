@@ -4,6 +4,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using Moq;
@@ -25,6 +27,9 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IContainerOperationProvider> _containerProvider;
         private Mock<IDiagnosticLogManager> _diagnosticLogManager;
         private Mock<IJobHookProvider> _jobHookProvider;
+        private Mock<ISnapshotOperationProvider> _snapshotOperationProvider;
+
+        private Pipelines.Snapshot _requestedSnapshot;
 
         private CancellationTokenSource _tokenSource;
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -41,7 +46,16 @@ namespace GitHub.Runner.Common.Tests.Worker
             _directoryManager.Setup(x => x.PrepareDirectory(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.WorkspaceOptions>()))
                              .Returns(new TrackingConfig() { PipelineDirectory = "runner", WorkspaceDirectory = "runner/runner" });
             _jobHookProvider = new Mock<IJobHookProvider>();
+            _snapshotOperationProvider = new Mock<ISnapshotOperationProvider>();
 
+            _requestedSnapshot = null;
+            _snapshotOperationProvider
+                .Setup(p => p.CreateSnapshotRequestAsync(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.Snapshot>()))
+                .Returns((IExecutionContext _, object data) =>
+                {
+                    _requestedSnapshot = data as Pipelines.Snapshot;
+                    return Task.CompletedTask;
+                });
             IActionRunner step1 = new ActionRunner();
             IActionRunner step2 = new ActionRunner();
             IActionRunner step3 = new ActionRunner();
@@ -100,7 +114,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             };
 
             Guid jobId = Guid.NewGuid();
-            _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), steps, null, null, null, null);
+            _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), steps, null, null, null, null, null);
             GitHubContext github = new();
             github["repository"] = new Pipelines.ContextData.StringContextData("actions/runner");
             github["secret_source"] = new Pipelines.ContextData.StringContextData("Actions");
@@ -125,6 +139,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton(_directoryManager.Object);
             hc.SetSingleton(_diagnosticLogManager.Object);
             hc.SetSingleton(_jobHookProvider.Object);
+            hc.SetSingleton(_snapshotOperationProvider.Object);
+            hc.SetSingleton(new Mock<IOSWarningChecker>().Object);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // JobExecutionContext
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // job start hook
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // Initial Job
@@ -441,6 +457,81 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
                 Assert.Equal(0, _jobEc.PostJobSteps.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task EnsureNoSnapshotPostJobStep()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                    .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                _message.Snapshot = null;
+                await jobExtension.InitializeJob(_jobEc, _message);
+
+                var postJobSteps = _jobEc.PostJobSteps;
+                Assert.Equal(0, postJobSteps.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public Task EnsureSnapshotPostJobStepForStringToken()
+        {
+            var snapshot = new Pipelines.Snapshot("TestImageNameFromStringToken");
+            var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+            return EnsureSnapshotPostJobStepForToken(imageNameValueStringToken, snapshot);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public Task EnsureSnapshotPostJobStepForMappingToken()
+        {
+            var snapshot = new Pipelines.Snapshot("TestImageNameFromMappingToken");
+            var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+            var mappingToken = new MappingToken(null, null, null)
+            {
+                { new StringToken(null,null,null, PipelineTemplateConstants.ImageName), imageNameValueStringToken }
+            };
+
+            return EnsureSnapshotPostJobStepForToken(mappingToken, snapshot);
+        }
+
+        private async Task EnsureSnapshotPostJobStepForToken(TemplateToken snapshotToken, Pipelines.Snapshot expectedSnapshot)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                    .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                _message.Snapshot = snapshotToken;
+
+                await jobExtension.InitializeJob(_jobEc, _message);
+
+                var postJobSteps = _jobEc.PostJobSteps;
+
+                Assert.Equal(1, postJobSteps.Count);
+                var snapshotStep = postJobSteps.First();
+                Assert.Equal("Create custom image", snapshotStep.DisplayName);
+                Assert.Equal($"{PipelineTemplateConstants.Success}()", snapshotStep.Condition);
+
+                // Run the mock snapshot step, so we can verify it was executed with the expected snapshot object.
+                await snapshotStep.RunAsync();
+
+                Assert.NotNull(_requestedSnapshot);
+                Assert.Equal(expectedSnapshot.ImageName, _requestedSnapshot.ImageName);
             }
         }
     }

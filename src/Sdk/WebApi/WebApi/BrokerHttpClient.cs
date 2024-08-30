@@ -57,6 +57,7 @@ namespace GitHub.Actions.RunService.WebApi
         }
 
         public async Task<TaskAgentMessage> GetRunnerMessageAsync(
+            Guid? sessionId,
             string runnerVersion,
             TaskAgentStatus? status,
             string os = null,
@@ -68,6 +69,11 @@ namespace GitHub.Actions.RunService.WebApi
             var requestUri = new Uri(Client.BaseAddress, "message");
 
             List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+
+            if (sessionId != null)
+            {
+                queryParams.Add("sessionId", sessionId.Value.ToString());
+            }
 
             if (status != null)
             {
@@ -104,12 +110,67 @@ namespace GitHub.Actions.RunService.WebApi
                 return result.Value;
             }
 
+            // the only time we throw a `Forbidden` exception from Listener /messages is when the runner is
+            // disable_update and is too old to poll
+            if (result.StatusCode == HttpStatusCode.Forbidden)
+            {
+                throw new AccessDeniedException($"{result.Error} Runner version v{runnerVersion} is deprecated and cannot receive messages.")
+                {
+                    ErrorCode = 1
+                };
+            }
+
+            throw new Exception($"Failed to get job message: {result.Error}");
+        }
+
+        public async Task<TaskAgentSession> CreateSessionAsync(
+
+           TaskAgentSession session,
+           CancellationToken cancellationToken = default)
+        {
+            var requestUri = new Uri(Client.BaseAddress, "session");
+            var requestContent = new ObjectContent<TaskAgentSession>(session, new VssJsonMediaTypeFormatter(true));
+
+            var result = await SendAsync<TaskAgentSession>(
+                new HttpMethod("POST"),
+                requestUri: requestUri,
+                content: requestContent,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                return result.Value;
+            }
+
             if (result.StatusCode == HttpStatusCode.Forbidden)
             {
                 throw new AccessDeniedException(result.Error);
             }
 
-            throw new Exception($"Failed to get job message: {result.Error}");
+            if (result.StatusCode == HttpStatusCode.Conflict)
+            {
+                throw new TaskAgentSessionConflictException(result.Error);
+            }
+
+            throw new Exception($"Failed to create broker session: {result.Error}");
+        }
+
+        public async Task DeleteSessionAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var requestUri = new Uri(Client.BaseAddress, $"session");
+
+            var result = await SendAsync<object>(
+                new HttpMethod("DELETE"),
+                requestUri: requestUri,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                return;
+            }
+
+            throw new Exception($"Failed to delete broker session: {result.Error}");
         }
     }
 }

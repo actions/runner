@@ -5,10 +5,11 @@ PRECACHE=$2
 NODE_URL=https://nodejs.org/dist
 UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
 NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
+# When you update Node versions you must also create a new release of alpine_nodejs at that updated version.
+# Follow the instructions here: https://github.com/actions/alpine_nodejs?tab=readme-ov-file#getting-started
 NODE16_VERSION="16.20.2"
-NODE20_VERSION="20.8.1"
-# used only for win-arm64, remove node16 unofficial version when official version is available
-NODE16_UNOFFICIAL_VERSION="16.20.0"
+NODE20_VERSION="20.13.1"
+NODE16_UNOFFICIAL_VERSION="16.20.0" # used only for win-arm64, remove node16 unofficial version when official version is available
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -63,17 +64,16 @@ function acquireExternalTool() {
             echo "Curl version: $CURL_VERSION"
 
             # curl -f Fail silently (no output at all) on HTTP errors (H)
-            #      -k Allow connections to SSL sites without certs (H)
             #      -S Show error. With -s, make curl show errors when they occur
             #      -L Follow redirects (H)
             #      -o FILE    Write to FILE instead of stdout
             #      --retry 3   Retries transient errors 3 times (timeouts, 5xx)
             if [[ "$(printf '%s\n' "7.71.0" "$CURL_VERSION" | sort -V | head -n1)" != "7.71.0" ]]; then
                 # Curl version is less than or equal to 7.71.0, skipping retry-all-errors flag
-                 curl -fkSL --retry 3 -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
+                 curl -fSL --retry 3 -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
             else
                 # Curl version is greater than 7.71.0, running curl with --retry-all-errors flag
-                 curl -fkSL --retry 3 --retry-all-errors -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
+                 curl -fSL --retry 3 --retry-all-errors -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
             fi
 
             # Move the partial file to the download target.

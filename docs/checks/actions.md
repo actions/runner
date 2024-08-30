@@ -10,6 +10,7 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
   - The runner needs to access `https://codeload.github.com` for downloading actions tar.gz/zip.
   - The runner needs to access `https://vstoken.actions.githubusercontent.com/_apis/.../` for requesting an access token.
   - The runner needs to access `https://pipelines.actions.githubusercontent.com/_apis/.../` for receiving workflow jobs.
+  - The runner needs to access `https://results-receiver.actions.githubusercontent.com/.../` for reporting progress and uploading logs during a workflow job execution.
   ---
   **NOTE:** for the full list of domains that are required to be in the firewall allow list refer to the [GitHub self-hosted runners requirements documentation](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-between-self-hosted-runners-and-github).
 
@@ -20,6 +21,7 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
     curl -v https://codeload.github.com/_ping
     curl -v https://vstoken.actions.githubusercontent.com/_apis/health
     curl -v https://pipelines.actions.githubusercontent.com/_apis/health
+    curl -v https://results-receiver.actions.githubusercontent.com/health
     ```
 
 - For GitHub Enterprise Server
@@ -60,6 +62,10 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
 - Ping pipelines.actions.githubusercontent.com using dotnet
 - Make HTTP GET to https://pipelines.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/pipelines/_apis/health using dotnet, check response headers contains `x-vss-e2eid`
 - Make HTTP POST to https://pipelines.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/pipelines/_apis/health using dotnet, check response headers contains `x-vss-e2eid`
+---
+- DNS lookup for results-receiver.actions.githubusercontent.com using dotnet
+- Ping results-receiver.actions.githubusercontent.com using dotnet
+- Make HTTP GET to https://results-receiver.actions.githubusercontent.com/health using dotnet, check response headers contains `X-GitHub-Request-Id`
 
 ## How to fix the issue?
 

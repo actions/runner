@@ -91,13 +91,13 @@ namespace GitHub.Runner.Worker
             string phaseName = executionContext.Global.Variables.System_PhaseDisplayName ?? "UnknownPhaseName";
 
             // zip the files
-            string diagnosticsZipFileName = $"{buildName}-{phaseName}.zip";
+            string diagnosticsZipFileName = $"{buildName}-{IOUtil.ReplaceInvalidFileNameChars(phaseName)}.zip";
             string diagnosticsZipFilePath = Path.Combine(supportRootFolder, diagnosticsZipFileName);
             ZipFile.CreateFromDirectory(supportFilesFolder, diagnosticsZipFilePath);
 
             // upload the json metadata file
             executionContext.Debug("Uploading diagnostic metadata file.");
-            string metadataFileName = $"diagnostics-{buildName}-{phaseName}.json";
+            string metadataFileName = $"diagnostics-{buildName}-{IOUtil.ReplaceInvalidFileNameChars(phaseName)}.json";
             string metadataFilePath = Path.Combine(supportFilesFolder, metadataFileName);
             string phaseResult = GetTaskResultAsString(executionContext.Result);
 
@@ -107,6 +107,8 @@ namespace GitHub.Runner.Worker
             parentContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: metadataFileName, filePath: metadataFilePath);
 
             parentContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
+
+            parentContext.QueueDiagnosticLogFile(name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
 
             executionContext.Debug("Diagnostic file upload complete.");
         }

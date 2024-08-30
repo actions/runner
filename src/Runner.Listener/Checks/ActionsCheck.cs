@@ -39,6 +39,7 @@ namespace GitHub.Runner.Listener.Check
             string githubApiUrl = null;
             string actionsTokenServiceUrl = null;
             string actionsPipelinesServiceUrl = null;
+            string resultsReceiverServiceUrl = null;
             var urlBuilder = new UriBuilder(url);
             if (UrlUtil.IsHostedServer(urlBuilder))
             {
@@ -47,6 +48,7 @@ namespace GitHub.Runner.Listener.Check
                 githubApiUrl = urlBuilder.Uri.AbsoluteUri;
                 actionsTokenServiceUrl = "https://vstoken.actions.githubusercontent.com/_apis/health";
                 actionsPipelinesServiceUrl = "https://pipelines.actions.githubusercontent.com/_apis/health";
+                resultsReceiverServiceUrl = "https://results-receiver.actions.githubusercontent.com/health";
             }
             else
             {
@@ -56,6 +58,7 @@ namespace GitHub.Runner.Listener.Check
                 actionsTokenServiceUrl = urlBuilder.Uri.AbsoluteUri;
                 urlBuilder.Path = "_services/pipelines/_apis/health";
                 actionsPipelinesServiceUrl = urlBuilder.Uri.AbsoluteUri;
+                resultsReceiverServiceUrl = string.Empty; // we don't have Results service in GHES yet.
             }
 
             var codeLoadUrlBuilder = new UriBuilder(url);
@@ -71,6 +74,14 @@ namespace GitHub.Runner.Listener.Check
             checkTasks.Add(CheckUtil.CheckDns(codeLoadUrlBuilder.Uri.AbsoluteUri));
             checkTasks.Add(CheckUtil.CheckPing(codeLoadUrlBuilder.Uri.AbsoluteUri));
             checkTasks.Add(HostContext.CheckHttpsGetRequests(codeLoadUrlBuilder.Uri.AbsoluteUri, pat, expectedHeader: "X-GitHub-Request-Id"));
+
+            // check results-receiver service
+            if (!string.IsNullOrEmpty(resultsReceiverServiceUrl))
+            {
+                checkTasks.Add(CheckUtil.CheckDns(resultsReceiverServiceUrl));
+                checkTasks.Add(CheckUtil.CheckPing(resultsReceiverServiceUrl));
+                checkTasks.Add(HostContext.CheckHttpsGetRequests(resultsReceiverServiceUrl, pat, expectedHeader: "X-GitHub-Request-Id"));
+            }
 
             // check actions token service
             checkTasks.Add(CheckUtil.CheckDns(actionsTokenServiceUrl));
