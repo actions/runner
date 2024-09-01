@@ -112,19 +112,19 @@ namespace Runner.Server.Controllers
                     var islocalcheckout = string.Equals(item.NameWithOwner, localcheckout, StringComparison.OrdinalIgnoreCase);
                     var name = $"{item.NameWithOwner}@{item.Ref}";
                     if(islocalcheckout && (item.Ref == BuildConstants.Source.CommitHash || !item.Ref.StartsWith(BuildConstants.Source.CommitHash)) ) {
-                        actions[name] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.tar.gz" : $"_apis/v1/ActionDownloadInfo/localcheckout?format=tarball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.zip"  : $"_apis/v1/ActionDownloadInfo/localcheckout?format=zipball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };                    
+                        actions[name] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, ResolvedNameWithOwner = item.NameWithOwner, TarballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.tar.gz" : $"_apis/v1/ActionDownloadInfo/localcheckout?format=tarball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.zip"  : $"_apis/v1/ActionDownloadInfo/localcheckout?format=zipball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };                    
                     } else {
                         if(!string.IsNullOrEmpty(localcheckout) && !string.IsNullOrEmpty(runid) && long.TryParse(runid, out var _runid)) {
                             var handler = new MessageController(Configuration, this._cache, null);
                             if(await handler.RepoExists(_runid, name)) {
-                                actions[name] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), $"_apis/v1/Message/tardown/{_runid}?repositoryAndRef={Uri.EscapeDataString(name)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), $"_apis/v1/Message/zipdown/{_runid}?repositoryAndRef={Uri.EscapeDataString(name)}").ToString(), ResolvedSha = "Local-Repository" };
+                                actions[name] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, ResolvedNameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), $"_apis/v1/Message/tardown/{_runid}?repositoryAndRef={Uri.EscapeDataString(name)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), $"_apis/v1/Message/zipdown/{_runid}?repositoryAndRef={Uri.EscapeDataString(name)}").ToString(), ResolvedSha = "Local-Repository" };
                                 continue;
                             }
                         }
                         ActionDownloadInfo defDownloadInfo = null;
                         foreach(var downloadUrl in downloadUrls) {
                             try {
-                                var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref };
+                                var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, ResolvedNameWithOwner = item.NameWithOwner, ResolvedSha = item.Ref };
                                 // Allow access to the original action
                                 if(islocalcheckout && item.NameWithOwner == localcheckout && item.Ref.StartsWith(BuildConstants.Source.CommitHash)) {
                                     item.Ref = item.Ref.Substring(BuildConstants.Source.CommitHash.Length);

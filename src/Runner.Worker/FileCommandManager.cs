@@ -1,9 +1,7 @@
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -68,7 +66,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    fileCommand.ProcessCommand(context, Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + _fileSuffix),container);
+                    fileCommand.ProcessCommand(context, Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + _fileSuffix), container);
                 }
                 catch (Exception ex)
                 {
@@ -118,7 +116,7 @@ namespace GitHub.Runner.Worker
             if (File.Exists(filePath))
             {
                 var lines = File.ReadAllLines(filePath, Encoding.UTF8);
-                foreach(var line in lines)
+                foreach (var line in lines)
                 {
                     if (line == string.Empty)
                     {
@@ -143,6 +141,28 @@ namespace GitHub.Runner.Worker
             var pairs = new EnvFileKeyValuePairs(context, filePath);
             foreach (var pair in pairs)
             {
+                var isBlocked = false;
+                foreach (var blocked in _setEnvBlockList)
+                {
+                    if (string.Equals(blocked, pair.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Log Telemetry and let user know they shouldn't do this
+                        var issue = new Issue()
+                        {
+                            Type = IssueType.Error,
+                            Message = $"Can't store {blocked} output parameter using '$GITHUB_ENV' command."
+                        };
+                        issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{pair.Key}";
+                        context.AddIssue(issue, ExecutionContextLogOptions.Default);
+
+                        isBlocked = true;
+                        break;
+                    }
+                }
+                if (isBlocked)
+                {
+                    continue;
+                }
                 SetEnvironmentVariable(context, pair.Key, pair.Value);
             }
         }
@@ -156,6 +176,11 @@ namespace GitHub.Runner.Worker
             context.SetEnvContext(name, value);
             context.Debug($"{name}='{value}'");
         }
+
+        private string[] _setEnvBlockList =
+        {
+            "NODE_OPTIONS"
+        };
     }
 
     public sealed class CreateStepSummaryCommand : RunnerService, IFileCommandExtension
@@ -169,12 +194,6 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            if (!context.Global.Variables.GetBoolean("DistributedTask.UploadStepSummary") ?? true)
-            {
-                Trace.Info("Step Summary is disabled; skipping attachment upload");
-                return;
-            }
-
             if (String.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
                 Trace.Info($"Step Summary file ({filePath}) does not exist; skipping attachment upload");
@@ -212,11 +231,23 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                var attachmentName = context.Id.ToString();
+                var attachmentName = !context.IsEmbedded
+                    ? context.Id.ToString()
+                    : context.EmbeddedId.ToString();
 
                 Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
                 // Attachments must be added to the parent context (job), not the current context (step)
                 context.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
+
+                // Dual upload the same files to Results Service
+                context.Global.Variables.TryGetValue("system.github.results_endpoint", out string resultsReceiverEndpoint);
+                if (resultsReceiverEndpoint != null)
+                {
+                    Trace.Info($"Queueing results file ({filePath}) for attachment upload ({attachmentName})");
+                    var stepId = context.IsEmbedded ? context.EmbeddedId : context.Id;
+                    // Attachments must be added to the parent context (job), not the current context (step)
+                    context.Root.QueueSummaryFile(attachmentName, scrubbedFilePath, stepId);
+                }
             }
             catch (Exception e)
             {
@@ -277,7 +308,7 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class EnvFileKeyValuePairs: IEnumerable<KeyValuePair<string, string>>
+    public sealed class EnvFileKeyValuePairs : IEnumerable<KeyValuePair<string, string>>
     {
         private IExecutionContext _context;
         private string _filePath;

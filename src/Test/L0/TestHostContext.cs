@@ -17,12 +17,12 @@ namespace GitHub.Runner.Common.Tests
 {
     public sealed class TestHostContext : IHostContext, IDisposable
     {
-        private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new ConcurrentDictionary<Type, ConcurrentQueue<object>>();
-        private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new ConcurrentDictionary<Type, object>();
+        private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new();
+        private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new();
         private readonly ITraceManager _traceManager;
         private readonly Terminal _term;
         private readonly SecretMasker _secretMasker;
-        private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _runnerShutdownTokenSource = new();
         private string _suiteName;
         private string _testName;
         private Tracing _trace;
@@ -30,9 +30,11 @@ namespace GitHub.Runner.Common.Tests
         private string _tempDirectoryRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("D"));
         private StartupType _startupType;
         public event EventHandler Unloading;
+        public event EventHandler<DelayEventArgs> Delaying;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
         public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
+
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
         {
             ArgUtil.NotNull(testClass, nameof(testClass));
@@ -59,7 +61,7 @@ namespace GitHub.Runner.Common.Tests
             _secretMasker = new SecretMasker();
             _secretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
             _secretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
-            _traceManager = new TraceManager(traceListener, _secretMasker);
+            _traceManager = new TraceManager(traceListener, null, _secretMasker);
             _trace = GetTrace(nameof(TestHostContext));
 
             // inject a terminal in silent mode so all console output
@@ -86,12 +88,20 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
-        public List<ProductInfoHeaderValue> UserAgents => new List<ProductInfoHeaderValue>() { new ProductInfoHeaderValue("L0Test", "0.0") };
+        public List<ProductInfoHeaderValue> UserAgents => new() { new ProductInfoHeaderValue("L0Test", "0.0") };
 
-        public RunnerWebProxy WebProxy => new RunnerWebProxy();
+        public RunnerWebProxy WebProxy => new();
 
         public async Task Delay(TimeSpan delay, CancellationToken token)
         {
+            // Event callback
+            EventHandler<DelayEventArgs> handler = Delaying;
+            if (handler != null)
+            {
+                handler(this, new DelayEventArgs(delay, token));
+            }
+
+            // Delay zero
             await Task.Delay(TimeSpan.Zero);
         }
 
@@ -360,5 +370,20 @@ namespace GitHub.Runner.Common.Tests
                 Unloading(this, null);
             }
         }
+    }
+
+    public class DelayEventArgs : EventArgs
+    {
+        public DelayEventArgs(
+            TimeSpan delay,
+            CancellationToken token)
+        {
+            Delay = delay;
+            Token = token;
+        }
+
+        public TimeSpan Delay { get; }
+
+        public CancellationToken Token { get; }
     }
 }

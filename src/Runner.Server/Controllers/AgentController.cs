@@ -54,14 +54,14 @@ namespace Runner.Server.Controllers
 
         [HttpGet("{poolId}/{agentId}")]
         [SwaggerResponse(200, type: typeof(TaskAgent))]
-        public async Task<ActionResult> Get(int poolId, int agentId)
+        public async Task<ActionResult> Get(int poolId, ulong agentId)
         {
             return await Ok(Agent.GetAgent(_cache, _context, poolId, agentId).TaskAgent);
         }
 
         [HttpDelete("{poolId}/{agentId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
-        public IActionResult Delete(int poolId, int agentId)
+        public IActionResult Delete(int poolId, ulong agentId)
         {
             var agent = Agent.GetAgent(_cache, _context, poolId, agentId);
             lock(lok) {
@@ -73,7 +73,7 @@ namespace Runner.Server.Controllers
 
         [HttpPut("{poolId}/{agentId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
-        public async Task<ActionResult> Replace(int poolId, int agentId, [FromBody, Vss] TaskAgent tagent)
+        public async Task<ActionResult> Replace(int poolId, ulong agentId, [FromBody, Vss] TaskAgent tagent)
         {
             lock(lok) {
                 var agent = Agent.GetAgent(_cache, _context, poolId, agentId);

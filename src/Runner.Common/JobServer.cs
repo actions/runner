@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Security;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -11,9 +12,10 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using GitHub.Services.OAuth;
+using GitHub.Services.Results.Client;
 using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Utilities.Internal;
-using Newtonsoft.Json;
 
 namespace GitHub.Runner.Common
 {
@@ -178,6 +180,10 @@ namespace GitHub.Runner.Common
                     userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
                     userAgentValues.AddRange(HostContext.UserAgents);
                     this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+                    {
+                        this._websocketClient.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                    }
 
                     this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
                 }
@@ -198,13 +204,15 @@ namespace GitHub.Runner.Common
             {
                 Trace.Info($"Attempting to start websocket client with delay {delay}.");
                 await Task.Delay(delay);
-                await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), default(CancellationToken));
+                using var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
                 Trace.Info($"Successfully started websocket client.");
             }
             catch (Exception ex)
             {
                 Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now instead of websocket.");
                 Trace.Error(ex);
+                this._websocketClient = null;
             }
         }
 
@@ -251,7 +259,7 @@ namespace GitHub.Runner.Common
                 {
                     failedAttemptsToPostBatchedLinesByWebsocket++;
                     Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
-                    Trace.Error(ex);
+                    Trace.Verbose(ex.ToString());
                     if (totalBatchedLinesAttemptedByWebsocket > _minWebsocketBatchedLinesCountToConsider)
                     {
                         // let's consider failure percentage
@@ -305,6 +313,7 @@ namespace GitHub.Runner.Common
             CheckConnection();
             return _taskClient.CreateAttachmentAsync(scopeIdentifier, hubName, planId, timelineId, timelineRecordId, type, name, uploadStream, cancellationToken: cancellationToken);
         }
+
 
         public Task<TaskLog> CreateLogAsync(Guid scopeIdentifier, string hubName, Guid planId, TaskLog log, CancellationToken cancellationToken)
         {

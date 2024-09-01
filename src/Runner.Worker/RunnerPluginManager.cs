@@ -26,7 +26,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class RunnerPluginManager : RunnerService, IRunnerPluginManager
     {
-        private readonly Dictionary<string, RunnerPluginActionInfo> _actionPlugins = new Dictionary<string, RunnerPluginActionInfo>(StringComparer.OrdinalIgnoreCase)
+        private readonly Dictionary<string, RunnerPluginActionInfo> _actionPlugins = new(StringComparer.OrdinalIgnoreCase)
         {
             {
                 "checkout",
@@ -107,7 +107,7 @@ namespace GitHub.Runner.Worker
             file = dotnet;
 #endif
             // construct plugin context
-            RunnerActionPluginExecutionContext pluginContext = new RunnerActionPluginExecutionContext
+            RunnerActionPluginExecutionContext pluginContext = new()
             {
                 Inputs = inputs,
                 Endpoints = context.Global.Endpoints,

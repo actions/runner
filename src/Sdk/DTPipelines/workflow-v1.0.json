@@ -45,9 +45,8 @@
     "workflow-env": {
       "context": [
         "github",
-        "vars",
-        "inputs",
-        "secrets"
+        "secrets",
+        "vars"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -94,7 +93,8 @@
           "steps": {
             "type": "steps",
             "required": true
-          }
+          },
+          "snapshot": "snapshot"
         }
       }
     },
@@ -181,6 +181,7 @@
         "vars",
         "inputs",
         "needs",
+        "vars",
         "always(0,0)",
         "failure(0,MAX)",
         "cancelled(0,0)",
@@ -196,6 +197,7 @@
         "vars",
         "inputs",
         "needs",
+        "vars",
         "always(0,0)",
         "failure(0,MAX)",
         "cancelled(0,0)",
@@ -214,9 +216,8 @@
     "strategy": {
       "context": [
         "github",
-        "vars",
-        "inputs",
-        "needs"
+        "needs",
+        "vars"
       ],
       "mapping": {
         "properties": {
@@ -251,6 +252,24 @@
       }
     },
 
+    "snapshot": {
+      "one-of": [
+        "non-empty-string",
+        "snapshot-mapping"
+      ]
+    },
+
+    "snapshot-mapping": {
+      "mapping": {
+        "properties": {
+          "image-name": {
+            "type": "non-empty-string",
+            "required": true
+          }
+        }
+      }
+    },
+
     "runs-on": {
       "context": [
         "github",
@@ -258,7 +277,8 @@
         "inputs",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "vars"
       ],
       "one-of": [
         "non-empty-string",
@@ -291,7 +311,8 @@
         "needs",
         "strategy",
         "matrix",
-        "secrets"
+        "secrets",
+        "vars"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -315,7 +336,8 @@
         "strategy",
         "matrix",
         "needs",
-        "env"
+        "env",
+        "vars"
       ],
       "mapping": {
         "properties": {
@@ -469,6 +491,7 @@
         "job",
         "runner",
         "env",
+        "vars",
         "always(0,0)",
         "failure(0,0)",
         "cancelled(0,0)",
@@ -490,6 +513,7 @@
         "job",
         "runner",
         "env",
+        "vars",
         "always(0,0)",
         "failure(0,0)",
         "cancelled(0,0)",
@@ -519,6 +543,7 @@
         "job",
         "runner",
         "env",
+        "vars",
         "hashFiles(1,255)"
       ],
       "mapping": {
@@ -540,6 +565,7 @@
         "job",
         "runner",
         "env",
+        "vars",
         "hashFiles(1,255)"
       ],
       "mapping": {
@@ -555,7 +581,8 @@
         "inputs",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "vars"
       ],
       "one-of": [
         "string",
@@ -583,7 +610,8 @@
         "inputs",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "vars"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -598,7 +626,8 @@
         "inputs",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "vars"
       ],
       "one-of": [
         "string",
@@ -611,8 +640,7 @@
         "secrets",
         "env",
         "github",
-        "vars",
-        "inputs"
+        "vars"
       ],
       "mapping": {
         "properties": {
@@ -648,7 +676,8 @@
         "inputs",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "vars"
       ],
       "boolean": {}
     },
@@ -660,7 +689,8 @@
         "inputs",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "vars"
       ],
       "number": {}
     },
@@ -672,7 +702,8 @@
         "inputs",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "vars"
       ],
       "string": {}
     },
@@ -690,6 +721,7 @@
         "job",
         "runner",
         "env",
+        "vars",
         "hashFiles(1,255)"
       ],
       "boolean": {}
@@ -708,6 +740,7 @@
         "job",
         "runner",
         "env",
+        "vars",
         "hashFiles(1,255)"
       ],
       "number": {}
@@ -725,7 +758,8 @@
         "steps",
         "job",
         "runner",
-        "env"
+        "env",
+        "vars"
       ],
       "string": {}
     },
@@ -741,7 +775,8 @@
         "steps",
         "job",
         "runner",
-        "env"
+        "env",
+        "vars"
       ],
       "string": {}
     },
@@ -759,6 +794,7 @@
         "job",
         "runner",
         "env",
+        "vars",
         "hashFiles(1,255)"
       ],
       "string": {}

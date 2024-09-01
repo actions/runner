@@ -11,7 +11,7 @@ on:
     - '**.md'
   pull_request:
     branches:
-    - '*'
+    - '**'
     paths-ignore:
     - '**.md'
 
@@ -19,13 +19,14 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64, osx-arm64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
           devScript: ./dev.sh
           scriptSuffix: .sh
           elevate: "sudo "
+          run-test: true
 
         - runtime: linux-arm64
           os: ubuntu-latest
@@ -44,6 +45,7 @@ jobs:
           devScript: ./dev.sh
           scriptSuffix: .sh
           elevate: "sudo "
+          run-test: true
 
         - runtime: osx-arm64
           os: macOS-latest
@@ -54,6 +56,11 @@ jobs:
           devScript: ./dev
           exeSuffix: .exe
           scriptSuffix: .cmd
+          run-test: true
+
+        - runtime: win-arm64
+          os: windows-latest
+          devScript: ./dev
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -78,22 +85,22 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: runner-package-${{ matrix.runtime }}
-        path: | 
+        path: |
           _package
 
     - name: Unit Tests (actions/runner)
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
+      if: matrix.run-test
     
     - name: Unit Tests (Sdk.Tests)
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
+      if: matrix.run-test
       run: |
         dotnet test src/Sdk.Tests/Sdk.Tests.csproj
 
     - name: Unit Tests (Runner.Server.Tests)
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
+      if: matrix.run-test
       run: |
         dotnet test src/Runner.Server.Tests/Runner.Server.Tests.csproj
 
@@ -108,7 +115,7 @@ jobs:
         $obj | ConvertTo-Json -Depth 20 | Set-Content  "_layout/bin/appsettings.json"
     - name: Test
       shell: bash
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
+      if: matrix.run-test
       run: |
         pushd _layout/bin
         ./Runner.Server${{ matrix.exeSuffix }} --urls http://localhost:5000 &
@@ -148,7 +155,7 @@ jobs:
         kill $serverpid
         popd
     - name: Test cache
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64'
+      if: matrix.run-test
       shell: bash
       run: |
         pushd _layout/bin

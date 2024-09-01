@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -11,6 +11,8 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -284,7 +286,7 @@ namespace GitHub.Runner.Worker.Handlers
                     // Evaluation error
                     Trace.Info("Caught exception from expression for embedded step.env");
                     step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Complete(TaskResult.Failed);
+                    SetStepConclusion(step, TaskResult.Failed);
                 }
 
                 // Register Callback
@@ -300,6 +302,7 @@ namespace GitHub.Runner.Worker.Handlers
                             // Mark job as cancelled
                             ExecutionContext.Root.Result = TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                            step.ExecutionContext.SetGitHubContext("action_status", (ExecutionContext.Root.Result?.ToActionResult() ?? ActionResult.Cancelled).ToString().ToLowerInvariant());
 
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                             var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only

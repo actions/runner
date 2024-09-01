@@ -15,7 +15,7 @@ namespace GitHub.Runner.Worker.Container
         private IDictionary<string, string> _userPortMappings;
         private List<PortMapping> _portMappings;
         private IDictionary<string, string> _environmentVariables;
-        private List<PathMapping> _pathMappings = new List<PathMapping>();
+        private List<PathMapping> _pathMappings = new();
         private Dictionary<string, List<PathMapping>> _osPathMappings = new Dictionary<string, List<PathMapping>>{ { "linux", new List<PathMapping>() }, { "windows", new List<PathMapping>() } };
 
         public ContainerInfo()
@@ -85,6 +85,7 @@ namespace GitHub.Runner.Worker.Container
         public string RegistryAuthUsername { get; set; }
         public string RegistryAuthPassword { get; set; }
         public bool IsJobContainer { get; set; }
+        public bool IsAlpine { get; set; }
 
         public bool FailedInitialization { get; set; }
 
@@ -235,6 +236,14 @@ namespace GitHub.Runner.Worker.Container
             }
         }
 
+        public void AddPortMappings(IDictionary<string, string> portMappings)
+        {
+            foreach (var pair in portMappings)
+            {
+                PortMappings.Add(new PortMapping(pair.Key, pair.Value));
+            }
+        }
+
         public void AddPathTranslateMapping(string hostCommonPath, string containerCommonPath)
         {
             _pathMappings.Insert(0, new PathMapping(hostCommonPath, containerCommonPath));
@@ -325,6 +334,12 @@ namespace GitHub.Runner.Worker.Container
 
     public class PortMapping
     {
+        public PortMapping(string hostPort, string containerPort)
+        {
+            this.HostPort = hostPort;
+            this.ContainerPort = containerPort;
+        }
+
         public PortMapping(string hostPort, string containerPort, string protocol)
         {
             this.HostPort = hostPort;

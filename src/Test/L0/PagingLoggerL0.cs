@@ -1,5 +1,4 @@
-﻿using GitHub.Runner.Common.Util;
-using Moq;
+﻿using Moq;
 using System;
 using System.IO;
 using Xunit;
@@ -20,7 +19,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         private void CleanLogFolder()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 //clean test data if any old test forgot
                 string pagesFolder = Path.Combine(hc.GetDirectory(WellKnownDirectory.Diag), PagingLogger.PagingFolder);
@@ -118,7 +117,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     pagingLogger.End();
 
                     //Assert
-                    _jobServerQueue.Verify(x => x.QueueFileUpload(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true), Times.Exactly(0));                    
+                    _jobServerQueue.Verify(x => x.QueueFileUpload(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true), Times.Exactly(0));
                 }
             }
             finally

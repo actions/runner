@@ -10,5 +10,4 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.Compatibility" Version="6.0.*" />
   </ItemGroup>
-
 </Project>

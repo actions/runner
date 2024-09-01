@@ -26,5 +26,52 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             return hostContext;
         }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData("node12", "node16")]
+        [InlineData("node16", "node16")]
+        [InlineData("node20", "node20")]
+        public void IsNodeVersionUpgraded(string inputVersion, string expectedVersion)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                // Server Feature Flag
+                var variables = new Dictionary<string, VariableValue>();
+                Variables serverVariables = new(hc, variables);
+
+                // Workflow opt-out
+                var workflowVariables = new Dictionary<string, string>();
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = workflowVariables
+                });
+
+
+                // Act.
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = inputVersion;
+                var handler = hf.Create(
+                    _ec.Object,
+                    new ScriptReference(),
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()), "", new List<JobExtensionRunner>()
+                ) as INodeScriptActionHandler;
+
+                // Assert.
+                Assert.Equal(expectedVersion, handler.Data.NodeVersion);
+                Environment.SetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion, null);
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -28,13 +28,20 @@ namespace GitHub.Runner.Worker.Expressions
             ArgUtil.NotNull(githubContextData, nameof(githubContextData));
             var githubContext = githubContextData as DictionaryContextData;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
-            githubContext.TryGetValue(PipelineTemplateConstants.Workspace, out var workspace);
+
+            if (!githubContext.TryGetValue(PipelineTemplateConstants.HostWorkspace, out var workspace))
+            {
+                githubContext.TryGetValue(PipelineTemplateConstants.Workspace, out workspace);
+            }
+            ArgUtil.NotNull(workspace, nameof(workspace));
+
             var workspaceData = workspace as StringContextData;
             ArgUtil.NotNull(workspaceData, nameof(workspaceData));
 
             string githubWorkspace = workspaceData.Value;
+
             bool followSymlink = false;
-            List<string> patterns = new List<string>();
+            List<string> patterns = new();
             var firstParameter = true;
             foreach (var parameter in Parameters)
             {

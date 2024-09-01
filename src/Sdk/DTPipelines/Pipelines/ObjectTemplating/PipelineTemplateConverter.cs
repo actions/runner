@@ -348,6 +348,39 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
+        internal static Snapshot ConvertToJobSnapshotRequest(TemplateContext context, TemplateToken token)
+        {
+            string imageName = null;
+            if (token is StringToken snapshotStringLiteral)
+            {
+                imageName = snapshotStringLiteral.Value;
+            }
+            else
+            {
+                var snapshotMapping = token.AssertMapping($"{PipelineTemplateConstants.Snapshot}");
+                foreach (var snapshotPropertyPair in snapshotMapping)
+                {
+                    var propertyName = snapshotPropertyPair.Key.AssertString($"{PipelineTemplateConstants.Snapshot} key");
+                    switch (propertyName.Value)
+                    {
+                        case PipelineTemplateConstants.ImageName:
+                            imageName = snapshotPropertyPair.Value.AssertString($"{PipelineTemplateConstants.Snapshot} {propertyName}").Value;
+                            break;
+                        default:
+                            propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Snapshot} key");
+                            break;
+                    }
+                }
+            }
+
+            if (String.IsNullOrEmpty(imageName))
+            {
+                return null;
+            }
+
+            return new Snapshot(imageName);
+        }
+
         private static ActionStep ConvertToStep(
             TemplateContext context,
             TemplateToken stepsItem,
@@ -618,5 +651,32 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         }
 
         private static readonly Regex s_function = new Regex(@"^([a-zA-Z0-9_]+)\(([0-9]+),([0-9]+|MAX)\)$", RegexOptions.Compiled);
+        private static readonly INamedValueInfo[] s_jobIfNamedValues = new INamedValueInfo[]
+        {
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Vars),
+        };
+        private static readonly INamedValueInfo[] s_stepNamedValues = new INamedValueInfo[]
+        {
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Strategy),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Matrix),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Steps),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Inputs),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Env),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Vars),
+        };
+        private static readonly IFunctionInfo[] s_stepConditionFunctions = new IFunctionInfo[]
+        {
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Always, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Cancelled, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Failure, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Success, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.HashFiles, 1, Byte.MaxValue),
+        };
     }
 }

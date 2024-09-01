@@ -10,9 +10,6 @@ using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using YamlDotNet.Core;
-using YamlDotNet.Core.Events;
-using System.Globalization;
 using System.Linq;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Expressions2;
@@ -57,7 +54,7 @@ namespace GitHub.Runner.Worker
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
             var templateContext = CreateTemplateContext(executionContext);
-            ActionDefinitionData actionDefinition = new ActionDefinitionData();
+            ActionDefinitionData actionDefinition = new();
 
             // Clean up file name real quick
             // Instead of using Regex which can be computationally expensive, 
@@ -148,7 +145,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Error(error.Message);
                 }
 
-                throw new ArgumentException($"Fail to load {fileRelativePath}");
+                throw new ArgumentException($"Failed to load {fileRelativePath}");
             }
 
             if (actionDefinition.Execution == null)

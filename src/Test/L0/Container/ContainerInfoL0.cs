@@ -12,10 +12,10 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         public void MountVolumeConstructorParsesStringInput()
         {
             // Arrange
-            MountVolume target = new MountVolume("/dst/dir"); // Maps anonymous Docker volume into target dir
-            MountVolume source_target = new MountVolume("/src/dir:/dst/dir"); // Maps source to target dir
-            MountVolume target_ro = new MountVolume("/dst/dir:ro");
-            MountVolume source_target_ro = new MountVolume("/src/dir:/dst/dir:ro");
+            MountVolume target = new("/dst/dir"); // Maps anonymous Docker volume into target dir
+            MountVolume source_target = new("/src/dir:/dst/dir"); // Maps source to target dir
+            MountVolume target_ro = new("/dst/dir:ro");
+            MountVolume source_target_ro = new("/src/dir:/dst/dir:ro");
 
             // Assert
             Assert.Null(target.SourceVolumePath);

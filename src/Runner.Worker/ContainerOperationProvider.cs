@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Threading;
@@ -10,8 +9,9 @@ using GitHub.Services.Common;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using Microsoft.Win32;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.Runner.Worker.Container.ContainerHooks;
+using System.ServiceProcess;
 
 namespace GitHub.Runner.Worker
 {
@@ -25,11 +25,19 @@ namespace GitHub.Runner.Worker
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
         private IDockerCommandManager _dockerManager;
+        private IContainerHookManager _containerHookManager;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            _dockerManager = HostContext.GetService<IDockerCommandManager>();
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)))
+            {
+                _dockerManager = HostContext.GetService<IDockerCommandManager>();
+            }
+            else
+            {
+                _containerHookManager = HostContext.GetService<IContainerHookManager>();
+            }
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
@@ -47,50 +55,15 @@ namespace GitHub.Runner.Worker
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
 
-            // Check whether we are inside a container.
-            // Our container feature requires to map working directory from host to the container.
-            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
-            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                // service CExecSvc is Container Execution Agent.
-                ServiceController[] scServices = ServiceController.GetServices();
-                if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
-                {
-                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-                }
-            } else {
-                IEnumerable<string> initProcessCgroup = null;
-                try
-                {
-                    initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-                }
-                catch
-                {
-                    // This fails on macOS
-                }
-                if (initProcessCgroup != null && initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
-                {
-                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-                }
-            }
-
-            // Check docker client/server version
-            executionContext.Output("##[group]Checking docker version");
-            DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
-            executionContext.Output("##[endgroup]");
-
-            ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
-            ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
-
-            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
-
-            if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
+            if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
-                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
+                // Initialize the containers
+                containers.ForEach(container => UpdateRegistryAuthForGitHubToken(executionContext, container));
+                containers.Where(container => container.IsJobContainer).ForEach(container => MountWellKnownDirectories(executionContext, container));
+                await _containerHookManager.PrepareJobAsync(executionContext, containers);
+                return;
             }
-            if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
-            }
+            await AssertCompatibleOS(executionContext);
 
             // Clean up containers left by previous runs
             executionContext.Output("##[group]Clean up resources from previous jobs");
@@ -126,7 +99,7 @@ namespace GitHub.Runner.Worker
         }
 
         public async Task RunContainersHealthcheck(IExecutionContext executionContext, List<ContainerInfo> containers)
-        {
+        {            
             executionContext.Output("##[group]Waiting for all services to be ready");
 
             var unhealthyContainers = new List<ContainerInfo>();
@@ -167,6 +140,11 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
 
+            if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
+            {
+                await _containerHookManager.CleanupJobAsync(executionContext, containers);
+                return;
+            }
             var keepContainer = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_KEEP");
             if(keepContainer == null || keepContainer != "true" && keepContainer != "1") {
                 foreach (var container in containers)
@@ -265,56 +243,7 @@ namespace GitHub.Runner.Worker
 
             if (container.IsJobContainer)
             {
-                // Configure job container - Mount workspace and tools, set up environment, and start long running process
-                var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
-                ArgUtil.NotNull(githubContext, nameof(githubContext));
-                var workingDirectory = githubContext["workspace"] as StringContextData;
-                ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
-
-                if (container.IsJobContainer)
-                {
-                    var containerDaemonSocket = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_DAEMON_SOCKET");
-                    if(container.Os == "windows") {
-                        container.MountVolumes.Add(new MountVolume(containerDaemonSocket ?? @"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
-                    } else {
-                        container.MountVolumes.Add(new MountVolume(containerDaemonSocket ?? "/var/run/docker.sock", "/var/run/docker.sock"));
-                    }
-                }
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
-                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath((HostContext.GetDirectory(WellKnownDirectory.Externals)))));
-                } else {
-                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
-                }
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
-                Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
-                Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Tools));
-                container.MountVolumes.Add(new MountVolume(Path.GetDirectoryName(HostContext.GetDirectory(WellKnownDirectory.Tools)), container.TranslateToContainerPath(Path.GetDirectoryName(HostContext.GetDirectory(WellKnownDirectory.Tools)))));
-
-                var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
-                Directory.CreateDirectory(tempHomeDirectory);
-                string prefix = "";
-                if(container.Os == "windows") {
-                    prefix = "c:";
-                }
-                container.MountVolumes.Add(new MountVolume(tempHomeDirectory, prefix + "/github/home"));
-                container.AddPathTranslateMapping(tempHomeDirectory, prefix + "/github/home");
-                container.ContainerEnvironmentVariables["HOME"] = container.TranslateToContainerPath(tempHomeDirectory);
-
-                var tempWorkflowDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_workflow");
-                Directory.CreateDirectory(tempWorkflowDirectory);
-                container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, prefix + "/github/workflow"));
-                container.AddPathTranslateMapping(tempWorkflowDirectory, prefix + "/github/workflow");
-
-                container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
-                if(container.Os != "windows") {
-                    container.ContainerEntryPoint = "tail";
-                    container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
-                } else {
-                    container.ContainerEntryPoint = "ping";
-                    container.ContainerEntryPointArgs = "\"-t\" \"localhost\"";
-                }
+                MountWellKnownDirectories(executionContext, container);
             }
 
             container.ContainerId = await _dockerManager.DockerCreate(executionContext, container);
@@ -384,6 +313,63 @@ namespace GitHub.Runner.Worker
             executionContext.Output("##[endgroup]");
         }
 
+        private void MountWellKnownDirectories(IExecutionContext executionContext, ContainerInfo container)
+        {
+            // Configure job container - Mount workspace and tools, set up environment, and start long running process
+            var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
+            ArgUtil.NotNull(githubContext, nameof(githubContext));
+            var workingDirectory = githubContext["workspace"] as StringContextData;
+            ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
+
+            if (container.IsJobContainer)
+            {
+                var containerDaemonSocket = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_DAEMON_SOCKET");
+                if(container.Os == "windows") {
+                    container.MountVolumes.Add(new MountVolume(containerDaemonSocket ?? @"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
+                } else {
+                    container.MountVolumes.Add(new MountVolume(containerDaemonSocket ?? "/var/run/docker.sock", "/var/run/docker.sock"));
+                }
+            }
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath((HostContext.GetDirectory(WellKnownDirectory.Externals)))));
+            } else {
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+            }
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
+            Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
+            Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Tools));
+            container.MountVolumes.Add(new MountVolume(Path.GetDirectoryName(HostContext.GetDirectory(WellKnownDirectory.Tools)), container.TranslateToContainerPath(Path.GetDirectoryName(HostContext.GetDirectory(WellKnownDirectory.Tools)))));
+
+            var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
+            Directory.CreateDirectory(tempHomeDirectory);
+            string prefix = "";
+            if(container.Os == "windows") {
+                prefix = "c:";
+            }
+            container.MountVolumes.Add(new MountVolume(tempHomeDirectory, prefix + "/github/home"));
+            container.AddPathTranslateMapping(tempHomeDirectory, prefix + "/github/home");
+            container.ContainerEnvironmentVariables["HOME"] = container.TranslateToContainerPath(tempHomeDirectory);
+
+            var tempWorkflowDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_workflow");
+            Directory.CreateDirectory(tempWorkflowDirectory);
+            container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, prefix + "/github/workflow"));
+            container.AddPathTranslateMapping(tempWorkflowDirectory, prefix + "/github/workflow");
+
+            container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
+            if (!FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
+            {
+                if(container.Os != "windows") {
+                    container.ContainerEntryPoint = "tail";
+                    container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+                } else {
+                    container.ContainerEntryPoint = "ping";
+                    container.ContainerEntryPointArgs = "\"-t\" \"localhost\"";
+                }
+            }
+        }
+
         private async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
         {
             Trace.Entering();
@@ -395,7 +381,7 @@ namespace GitHub.Runner.Worker
                 if (!container.IsJobContainer && !container.FailedInitialization)
                 {
                     executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
-                    
+
                     int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
                     if (logsExitCode != 0)
                     {
@@ -417,8 +403,8 @@ namespace GitHub.Runner.Worker
         {
             context.Command($"{command} {arg}");
 
-            List<string> outputs = new List<string>();
-            object outputLock = new object();
+            List<string> outputs = new();
+            object outputLock = new();
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
             processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
@@ -522,17 +508,39 @@ namespace GitHub.Runner.Worker
             {
                 throw new InvalidOperationException($"Failed to create directory to store registry client credentials: {e.Message}");
             }
-            var loginExitCode = await _dockerManager.DockerLogin(
-                executionContext,
-                configLocation,
-                container.RegistryServer,
-                container.RegistryAuthUsername,
-                container.RegistryAuthPassword);
 
-            if (loginExitCode != 0)
+            // Login docker with retry up to 3 times
+            int retryCount = 0;
+            int loginExitCode = 0;
+            while (retryCount < 3)
+            {
+                loginExitCode = await _dockerManager.DockerLogin(
+                    executionContext,
+                    configLocation,
+                    container.RegistryServer,
+                    container.RegistryAuthUsername,
+                    container.RegistryAuthPassword);
+                if (loginExitCode == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    retryCount++;
+                    if (retryCount < 3)
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                        executionContext.Warning($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
+                }
+            }
+
+            if (retryCount == 3 && loginExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
             }
+
             return configLocation;
         }
 
@@ -565,6 +573,54 @@ namespace GitHub.Runner.Worker
             {
                 container.RegistryAuthUsername = executionContext.GetGitHubContext("actor");
                 container.RegistryAuthPassword = executionContext.GetGitHubContext("token");
+            }
+        }
+
+        private async Task AssertCompatibleOS(IExecutionContext executionContext)
+        {
+            // Check whether we are inside a container.
+            // Our container feature requires to map working directory from host to the container.
+            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                // service CExecSvc is Container Execution Agent.
+                ServiceController[] scServices = ServiceController.GetServices();
+                if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
+                {
+                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                }
+            } else {
+                IEnumerable<string> initProcessCgroup = null;
+                try
+                {
+                    initProcessCgroup = File.ReadLines("/proc/1/cgroup");
+                }
+                catch
+                {
+                    // This fails on macOS
+                }
+                if (initProcessCgroup != null && initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                }
+            }
+
+            // Check docker client/server version
+            executionContext.Output("##[group]Checking docker version");
+            DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
+            executionContext.Output("##[endgroup]");
+
+            ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
+            ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
+
+            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
+
+            if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
+            {
+                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
+            }
+            if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
+            {
+                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
             }
         }
     }

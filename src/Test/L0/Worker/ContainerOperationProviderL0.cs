@@ -1,7 +1,8 @@
-using GitHub.Runner.Worker;
+﻿using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
 using Xunit;
 using Moq;
+using GitHub.Runner.Worker.Container.ContainerHooks;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -17,15 +18,16 @@ namespace GitHub.Runner.Common.Tests.Worker
         private TestHostContext _hc;
         private Mock<IExecutionContext> _ec;
         private Mock<IDockerCommandManager> _dockerManager;
+        private Mock<IContainerHookManager> _containerHookManager;
         private ContainerOperationProvider containerOperationProvider;
         private Mock<IJobServerQueue> serverQueue;
         private Mock<IPagingLogger> pagingLogger;
-        private List<string> healthyDockerStatus = new List<string> { "healthy" };
-        private List<string> emptyDockerStatus = new List<string> { string.Empty };
-        private List<string> unhealthyDockerStatus = new List<string> { "unhealthy" };
-        private List<string> dockerLogs = new List<string> { "log1", "log2", "log3" };
+        private List<string> healthyDockerStatus = new() { "healthy" };
+        private List<string> emptyDockerStatus = new() { string.Empty };
+        private List<string> unhealthyDockerStatus = new() { "unhealthy" };
+        private List<string> dockerLogs = new() { "log1", "log2", "log3" };
 
-        List<ContainerInfo> containers = new List<ContainerInfo>();
+        List<ContainerInfo> containers = new();
 
         [Fact]
         [Trait("Level", "L0")]
@@ -97,6 +99,46 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeWithCorrectManager()
+        {
+            containers.Add(new ContainerInfo() { ContainerImage = "ubuntu:16.04" });
+            _hc = new TestHostContext(this, "Test");
+            _ec = new Mock<IExecutionContext>();
+            serverQueue = new Mock<IJobServerQueue>();
+            pagingLogger = new Mock<IPagingLogger>();
+
+            containerOperationProvider = new ContainerOperationProvider();
+
+            _hc.SetSingleton<IJobServerQueue>(serverQueue.Object);
+            _hc.SetSingleton<IPagingLogger>(pagingLogger.Object);
+
+
+            _ec.Setup(x => x.Global).Returns(new GlobalContext());
+
+            Environment.SetEnvironmentVariable(Constants.Hooks.ContainerHooksPath, "/tmp/k8s/index.js");
+            _dockerManager = new Mock<IDockerCommandManager>();
+            _dockerManager.Setup(x => x.Initialize(_hc)).Throws(new Exception("Docker manager's Initialize should not be called"));
+
+            _containerHookManager = new Mock<IContainerHookManager>();
+            _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
+            _hc.SetSingleton<IContainerHookManager>(_containerHookManager.Object);
+
+            containerOperationProvider.Initialize(_hc);
+
+            Environment.SetEnvironmentVariable(Constants.Hooks.ContainerHooksPath, null);
+            _containerHookManager = new Mock<IContainerHookManager>();
+            _containerHookManager.Setup(x => x.Initialize(_hc)).Throws(new Exception("Container hook manager's Initialize should not be called"));
+
+            _dockerManager = new Mock<IDockerCommandManager>();
+            _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
+            _hc.SetSingleton<IContainerHookManager>(_containerHookManager.Object);
+
+            containerOperationProvider.Initialize(_hc);
+        }
+
         private void Setup([CallerMemberName] string testName = "")
         {
             containers.Add(new ContainerInfo() { ContainerImage = "ubuntu:16.04" });
@@ -106,13 +148,14 @@ namespace GitHub.Runner.Common.Tests.Worker
             pagingLogger = new Mock<IPagingLogger>();
 
             _dockerManager = new Mock<IDockerCommandManager>();
+            _containerHookManager = new Mock<IContainerHookManager>();
             containerOperationProvider = new ContainerOperationProvider();
 
-            _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
             _hc.SetSingleton<IJobServerQueue>(serverQueue.Object);
             _hc.SetSingleton<IPagingLogger>(pagingLogger.Object);
 
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
+            _hc.SetSingleton<IContainerHookManager>(_containerHookManager.Object);
 
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
 

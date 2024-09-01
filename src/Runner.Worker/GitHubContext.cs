@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.Pipelines.ContextData;
+﻿using GitHub.DistributedTask.Pipelines.ContextData;
 using System;
 using System.Collections.Generic;
 
@@ -6,7 +6,7 @@ namespace GitHub.Runner.Worker
 {
     public sealed class GitHubContext : DictionaryContextData, IEnvironmentContextData
     {
-        private readonly HashSet<string> _contextEnvAllowlist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        private readonly HashSet<string> _contextEnvAllowlist = new(StringComparer.OrdinalIgnoreCase)
         {
             "action_path",
             "action_ref",

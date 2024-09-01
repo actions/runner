@@ -296,7 +296,7 @@ namespace GitHub.Runner.Common
         public static string GetEnvironmentVariable(Process process, IHostContext hostContext, string variable)
         {
             var trace = hostContext.GetTrace(nameof(LinuxProcessExtensions));
-            Dictionary<string, string> env = new Dictionary<string, string>();
+            Dictionary<string, string> env = new();
 
             if (Directory.Exists("/proc"))
             {
@@ -327,8 +327,8 @@ namespace GitHub.Runner.Common
                 // It doesn't escape '=' or ' ', so we can't parse the output into a dictionary of all envs.
                 // So we only look for the env you request, in the format of variable=value. (it won't work if you variable contains = or space)
                 trace.Info($"Read env from output of `ps e -p {process.Id} -o command`");
-                List<string> psOut = new List<string>();
-                object outputLock = new object();
+                List<string> psOut = new();
+                object outputLock = new();
                 using (var p = hostContext.CreateService<IProcessInvoker>())
                 {
                     p.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)

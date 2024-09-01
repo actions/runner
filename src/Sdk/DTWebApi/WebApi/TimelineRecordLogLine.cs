@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Runtime.Serialization;
 
 namespace GitHub.DistributedTask.WebApi
@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-        [DataMember (EmitDefaultValue = false)]
+        [DataMember(EmitDefaultValue = false)]
         public long? LineNumber
         {
             get;

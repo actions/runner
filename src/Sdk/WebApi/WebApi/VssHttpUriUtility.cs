@@ -26,7 +26,7 @@ namespace GitHub.Services.WebApi
             routeReplacementOptions |= requireExplicitRouteParams ? RouteReplacementOptions.RequireExplicitRouteParams : 0;
 
             return ReplaceRouteValues(
-                routeTemplate, 
+                routeTemplate,
                 routeValues,
                 routeReplacementOptions);
         }

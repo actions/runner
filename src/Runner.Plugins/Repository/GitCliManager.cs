@@ -1,6 +1,5 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -9,7 +8,6 @@ using System.Threading.Tasks;
 using System.IO;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
-using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Plugins.Repository
 {
@@ -17,7 +15,7 @@ namespace GitHub.Runner.Plugins.Repository
     {
         private static readonly Encoding s_encoding = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? Encoding.UTF8 : null;
 
-        private readonly Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        private readonly Dictionary<string, string> gitEnv = new(StringComparer.OrdinalIgnoreCase)
         {
             { "GIT_TERMINAL_PROMPT", "0" },
         };
@@ -91,11 +89,11 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             // required 2.0, all git operation commandline args need min git version 2.0
-            Version minRequiredGitVersion = new Version(2, 0);
+            Version minRequiredGitVersion = new(2, 0);
             EnsureGitVersion(minRequiredGitVersion, throwOnNotMatch: true);
 
             // suggest user upgrade to 2.9 for better git experience
-            Version recommendGitVersion = new Version(2, 9);
+            Version recommendGitVersion = new(2, 9);
             if (!EnsureGitVersion(recommendGitVersion, throwOnNotMatch: false))
             {
                 context.Output($"To get a better Git experience, upgrade your Git to at least version '{recommendGitVersion}'. Your current Git version is '{gitVersion}'.");
@@ -429,7 +427,7 @@ namespace GitHub.Runner.Plugins.Repository
             context.Debug($"Inspect remote.origin.url for repository under {repositoryPath}");
             Uri fetchUrl = null;
 
-            List<string> outputStrings = new List<string>();
+            List<string> outputStrings = new();
             int exitCode = await ExecuteGitCommandAsync(context, repositoryPath, "config", "--get remote.origin.url", outputStrings);
 
             if (exitCode != 0)
@@ -476,7 +474,7 @@ namespace GitHub.Runner.Plugins.Repository
             context.Debug($"Checking git config {configKey} exist or not");
 
             // ignore any outputs by redirect them into a string list, since the output might contains secrets.
-            List<string> outputStrings = new List<string>();
+            List<string> outputStrings = new();
             int exitcode = await ExecuteGitCommandAsync(context, repositoryPath, "config", StringUtil.Format($"--get-all {configKey}"), outputStrings);
 
             return exitcode == 0;
@@ -538,7 +536,7 @@ namespace GitHub.Runner.Plugins.Repository
             string runnerWorkspace = context.GetRunnerContext("workspace");
             ArgUtil.Directory(runnerWorkspace, "runnerWorkspace");
             Version version = null;
-            List<string> outputStrings = new List<string>();
+            List<string> outputStrings = new();
             int exitCode = await ExecuteGitCommandAsync(context, runnerWorkspace, "version", null, outputStrings);
             context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
@@ -549,7 +547,7 @@ namespace GitHub.Runner.Plugins.Repository
                 {
                     string verString = outputStrings.First();
                     // we interested about major.minor.patch version
-                    Regex verRegex = new Regex("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
+                    Regex verRegex = new("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
                     var matchResult = verRegex.Match(verString);
                     if (matchResult.Success && !string.IsNullOrEmpty(matchResult.Value))
                     {
@@ -571,7 +569,7 @@ namespace GitHub.Runner.Plugins.Repository
             string runnerWorkspace = context.GetRunnerContext("workspace");
             ArgUtil.Directory(runnerWorkspace, "runnerWorkspace");
             Version version = null;
-            List<string> outputStrings = new List<string>();
+            List<string> outputStrings = new();
             int exitCode = await ExecuteGitCommandAsync(context, runnerWorkspace, "lfs version", null, outputStrings);
             context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
@@ -582,7 +580,7 @@ namespace GitHub.Runner.Plugins.Repository
                 {
                     string verString = outputStrings.First();
                     // we interested about major.minor.patch version
-                    Regex verRegex = new Regex("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
+                    Regex verRegex = new("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
                     var matchResult = verRegex.Match(verString);
                     if (matchResult.Success && !string.IsNullOrEmpty(matchResult.Value))
                     {

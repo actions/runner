@@ -17,7 +17,7 @@ namespace GitHub.Actions.Pipelines.WebApi
                 writer.WriteValue("actions_storage");
             }
             else
-            { 
+            {
                 base.WriteJson(writer, enumValue, serializer);
             }
         }

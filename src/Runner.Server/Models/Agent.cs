@@ -12,8 +12,8 @@ namespace Runner.Server.Models
     public class Agent {
 
         [IgnoreDataMember]
-        private int? _id;
-        public int Id { get => TaskAgent?.Id ?? _id ?? 0; set {
+        private ulong? _id;
+        public ulong Id { get => TaskAgent?.Id ?? _id ?? 0; set {
             _id = value;
             if(TaskAgent != null) {
                 TaskAgent.Id = value;
@@ -33,7 +33,7 @@ namespace Runner.Server.Models
         public byte[] Modulus { get; set; }
         public IList<Capability> Capabilities { get; set; } = new List<Capability>();
 
-        public static Agent GetAgent(IMemoryCache cache, SqLiteDb db, int poolId, int id)
+        public static Agent GetAgent(IMemoryCache cache, SqLiteDb db, int poolId, ulong id)
         {
             var ret = db.Agents.Include(a => a.TaskAgent).Include(a => a.TaskAgent.Labels).Include(a => a.Capabilities).Include(a => a.Pool).Where(a => a.Id == id).FirstOrDefault();
             if(ret?.TaskAgent != null) {

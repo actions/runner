@@ -1,4 +1,4 @@
-using Pipelines = GitHub.DistributedTask.Pipelines;
+﻿using Pipelines = GitHub.DistributedTask.Pipelines;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -6,11 +6,9 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
-using System.Diagnostics;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Plugins.Repository.v1_0
 {
@@ -23,13 +21,13 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
         private const string _remotePullRefsPrefix = "refs/remotes/pull/";
 
         // min git version that support add extra auth header.
-        private Version _minGitVersionSupportAuthHeader = new Version(2, 9);
+        private Version _minGitVersionSupportAuthHeader = new(2, 9);
 
         // min git version that support override sslBackend setting.
         private Version _minGitVersionSupportSSLBackendOverride = new Version(2, 14, 2);
 
         // min git-lfs version that support add extra auth header.
-        private Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
+        private Version _minGitLfsVersionSupportAuthHeader = new(2, 1);
 
         private void RequirementCheck(RunnerActionPluginExecutionContext executionContext, GitCliManager gitCommandManager, bool checkGitLfs)
         {
@@ -83,7 +81,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
             var githubUrl = executionContext.GetGitHubContext("server_url");
             var githubUri = new Uri(!string.IsNullOrEmpty(githubUrl) ? githubUrl : "https://github.com");
             var portInfo = githubUri.IsDefaultPort ? string.Empty : $":{githubUri.Port}";
-            Uri repositoryUrl = new Uri($"{githubUri.Scheme}://{githubUri.Host}{portInfo}/{repoFullName}");
+            Uri repositoryUrl = new($"{githubUri.Scheme}://{githubUri.Host}{portInfo}/{repoFullName}");
             if (!repositoryUrl.IsAbsoluteUri)
             {
                 throw new InvalidOperationException("Repository url need to be an absolute uri.");
@@ -121,7 +119,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
             executionContext.Debug($"gitLfsSupport={gitLfsSupport}");
 
             // Initialize git command manager with additional environment variables.
-            Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> gitEnv = new(StringComparer.OrdinalIgnoreCase);
 
             // Disable prompting for git credential manager
             gitEnv["GCM_INTERACTIVE"] = "Never";
@@ -141,7 +139,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
                 gitEnv[formattedKey] = variable.Value?.Value ?? string.Empty;
             }
 
-            GitCliManager gitCommandManager = new GitCliManager(gitEnv);
+            GitCliManager gitCommandManager = new(gitEnv);
             await gitCommandManager.LoadGitExecutionInfo(executionContext);
 
             // Make sure the build machine met all requirements for the git repository
@@ -293,8 +291,8 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
                 await RemoveGitConfig(executionContext, gitCommandManager, targetPath, $"http.{repositoryUrl.AbsoluteUri}.extraheader", string.Empty);
             }
 
-            List<string> additionalFetchArgs = new List<string>();
-            List<string> additionalLfsFetchArgs = new List<string>();
+            List<string> additionalFetchArgs = new();
+            List<string> additionalLfsFetchArgs = new();
 
             // add accessToken as basic auth header to handle auth challenge. 
             if (!string.IsNullOrEmpty(accessToken))
@@ -320,7 +318,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
                 }
             }
 
-            List<string> additionalFetchSpecs = new List<string>();
+            List<string> additionalFetchSpecs = new();
             additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
 
             if (IsPullRequest(sourceBranch))
@@ -395,7 +393,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
                     throw new InvalidOperationException($"Git submodule sync failed with exit code: {exitCode_submoduleSync}");
                 }
 
-                List<string> additionalSubmoduleUpdateArgs = new List<string>();
+                List<string> additionalSubmoduleUpdateArgs = new();
 
                 if (!string.IsNullOrEmpty(accessToken))
                 {

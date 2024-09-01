@@ -5,7 +5,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using GitHub.Runner.Common.Util;
 using System.Threading.Channels;
 using GitHub.Runner.Sdk;
 using System.Linq;
@@ -64,7 +63,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task SuccessExitsWithCodeZero()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
 
@@ -87,7 +86,7 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task SetCIEnv()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 var existingCI = Environment.GetEnvironmentVariable("CI");
                 try
@@ -129,13 +128,82 @@ namespace GitHub.Runner.Common.Tests
                 }
             }
         }
+#if OS_WINDOWS
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task SetTestEnvWithNullInKey()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                Tracing trace = hc.GetTrace();
 
+                Int32 exitCode = -1;
+                var processInvoker = new ProcessInvokerWrapper();
+                processInvoker.Initialize(hc);
+                var stdout = new List<string>();
+                var stderr = new List<string>();
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    trace.Info(e.Data);
+                    stdout.Add(e.Data);
+                };
+                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    trace.Info(e.Data);
+                    stderr.Add(e.Data);
+                };
+
+                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TEST\0second", "first" } }, CancellationToken.None);
+
+
+                trace.Info("Exit Code: {0}", exitCode);
+                Assert.Equal(0, exitCode);
+                Assert.Equal("first", stdout.First(x => !string.IsNullOrWhiteSpace(x)));
+
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task SetTestEnvWithNullInValue()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                Int32 exitCode = -1;
+                var processInvoker = new ProcessInvokerWrapper();
+                processInvoker.Initialize(hc);
+                var stdout = new List<string>();
+                var stderr = new List<string>();
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    trace.Info(e.Data);
+                    stdout.Add(e.Data);
+                };
+                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    trace.Info(e.Data);
+                    stderr.Add(e.Data);
+                };
+
+                exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %TEST%\"",  new Dictionary<string, string>() { { "TEST", "first\0second" } }, CancellationToken.None);
+
+                trace.Info("Exit Code: {0}", exitCode);
+                Assert.Equal(0, exitCode);
+                Assert.Equal("first", stdout.First(x => !string.IsNullOrWhiteSpace(x)));
+
+            }
+        }
+#endif
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
         public async Task KeepExistingCIEnv()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 var existingCI = Environment.GetEnvironmentVariable("CI");
                 try
@@ -186,7 +254,7 @@ namespace GitHub.Runner.Common.Tests
         public async Task TestCancel()
         {
             const int SecondsToRun = 20;
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             using (var tokenSource = new CancellationTokenSource())
             {
                 Tracing trace = hc.GetTrace();
@@ -235,13 +303,13 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RedirectSTDINCloseStream()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                CancellationTokenSource cancellationTokenSource = new();
                 Int32 exitCode = -1;
                 Channel<string> redirectSTDIN = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                List<string> stdout = new List<string>();
+                List<string> stdout = new();
                 redirectSTDIN.Writer.TryWrite("Single line of STDIN");
 
                 var processInvoker = new ProcessInvokerWrapper();
@@ -285,13 +353,13 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public async Task RedirectSTDINKeepStreamOpen()
         {
-            using (TestHostContext hc = new TestHostContext(this))
+            using (TestHostContext hc = new(this))
             {
                 Tracing trace = hc.GetTrace();
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                CancellationTokenSource cancellationTokenSource = new();
                 Int32 exitCode = -1;
                 Channel<string> redirectSTDIN = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                List<string> stdout = new List<string>();
+                List<string> stdout = new();
                 redirectSTDIN.Writer.TryWrite("Single line of STDIN");
 
                 var processInvoker = new ProcessInvokerWrapper();
@@ -340,7 +408,7 @@ namespace GitHub.Runner.Common.Tests
             string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
             if (File.Exists(testProcPath))
             {
-                using (TestHostContext hc = new TestHostContext(this))
+                using (TestHostContext hc = new(this))
                 using (var tokenSource = new CancellationTokenSource())
                 {
                     Tracing trace = hc.GetTrace();
@@ -376,7 +444,7 @@ namespace GitHub.Runner.Common.Tests
             string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
             if (File.Exists(testProcPath))
             {
-                using (TestHostContext hc = new TestHostContext(this))
+                using (TestHostContext hc = new(this))
                 using (var tokenSource = new CancellationTokenSource())
                 {
                     Tracing trace = hc.GetTrace();
@@ -391,7 +459,7 @@ namespace GitHub.Runner.Common.Tests
                     try
                     {
                         var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"",
-                                                                new Dictionary<string, string> { {"PIPELINE_JOB_OOMSCOREADJ", "1234"} },
+                                                                new Dictionary<string, string> { { "PIPELINE_JOB_OOMSCOREADJ", "1234" } },
                                                                 false, null, false, null, false, false,
                                                                 highPriorityProcess: false,
                                                                 cancellationToken: tokenSource.Token);
@@ -416,7 +484,7 @@ namespace GitHub.Runner.Common.Tests
             {
                 int testProcOomScoreAdj = 123;
                 File.WriteAllText(testProcPath, testProcOomScoreAdj.ToString());
-                using (TestHostContext hc = new TestHostContext(this))
+                using (TestHostContext hc = new(this))
                 using (var tokenSource = new CancellationTokenSource())
                 {
                     Tracing trace = hc.GetTrace();

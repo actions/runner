@@ -1,4 +1,4 @@
-using GitHub.Runner.Listener;
+﻿using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
@@ -9,7 +9,7 @@ namespace GitHub.Runner.Common.Tests
 {
     public sealed class CommandSettingsL0
     {
-        private readonly Mock<IPromptManager> _promptManager = new Mock<IPromptManager>();
+        private readonly Mock<IPromptManager> _promptManager = new();
 
         // It is sufficient to test one arg only. All individual args are tested by the PromptsFor___ methods.
         // The PromptsFor___ methods suffice to cover the interesting differences between each of the args.
@@ -720,11 +720,11 @@ namespace GitHub.Runner.Common.Tests
         [InlineData("run", "replace")]
         [InlineData("run", "runasservice")]
         [InlineData("run", "unattended")]
-        [InlineData("warmup", "disableupdate")]      
-        [InlineData("warmup", "ephemeral")]     
-        [InlineData("warmup", "once")]   
-        [InlineData("warmup", "replace")]      
-        [InlineData("warmup", "runasservice")]   
+        [InlineData("warmup", "disableupdate")]
+        [InlineData("warmup", "ephemeral")]
+        [InlineData("warmup", "once")]
+        [InlineData("warmup", "replace")]
+        [InlineData("warmup", "runasservice")]
         [InlineData("warmup", "unattended")]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
@@ -805,7 +805,7 @@ namespace GitHub.Runner.Common.Tests
                         "test runner" });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 
@@ -823,6 +823,7 @@ namespace GitHub.Runner.Common.Tests
         [InlineData("remove", "version")]
         [InlineData("remove", "commit")]
         [InlineData("remove", "check")]
+        [InlineData("remove", "local")]
         [InlineData("run", "help")]
         [InlineData("run", "version")]
         [InlineData("run", "commit")]
@@ -842,7 +843,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{flag}" });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 
@@ -872,13 +873,13 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { validCommand, $"--{arg}", argValue });
 
                 // Assert.
-                Assert.True(command.Validate().Count == 0);
+                Assert.Equal(0, command.Validate().Count);
             }
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
-            TestHostContext hc = new TestHostContext(this, testName);
+            TestHostContext hc = new(this, testName);
             hc.SetSingleton<IPromptManager>(_promptManager.Object);
             return hc;
         }

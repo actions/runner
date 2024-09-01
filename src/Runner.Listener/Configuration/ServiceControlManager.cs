@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using GitHub.Runner.Common;
@@ -35,7 +35,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // For the service name, replace any characters outside of the alpha-numeric set and ".", "_", "-" with "-"
-            Regex regex = new Regex(@"[^0-9a-zA-Z._\-]");
+            Regex regex = new(@"[^0-9a-zA-Z._\-]");
             string repoOrOrgName = regex.Replace(settings.RepoOrOrgName, "-");
 
             serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgName, settings.AgentName);
@@ -59,7 +59,7 @@ namespace GitHub.Runner.Listener.Configuration
                 // Lets add a suffix with a random number to reduce the chance of collisions between runner names once we truncate
                 var random = new Random();
                 var num = random.Next(1000, 9999).ToString();
-                runnerNameSubstring +=$"-{num}";
+                runnerNameSubstring += $"-{num}";
                 serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
             }
 

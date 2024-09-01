@@ -28,7 +28,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-           return omitSource ? new NumberToken(null, null, null, m_value, m_raw_value) : new NumberToken(FileId, Line, Column, m_value, m_raw_value);
+            return omitSource ? new NumberToken(null, null, null, m_value, m_raw_value) : new NumberToken(FileId, Line, Column, m_value, m_raw_value);
         }
 
         public override String ToString()

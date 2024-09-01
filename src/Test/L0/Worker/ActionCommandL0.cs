@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 string message;
                 ActionCommand test;
                 ActionCommand verify;
-                HashSet<string> commands = new HashSet<string>() { "do-something" };
+                HashSet<string> commands = new() { "do-something" };
                 //##[do-something k1=v1;]msg
                 message = "##[do-something k1=v1;]msg";
                 test = new ActionCommand("do-something")
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 string message;
                 ActionCommand test;
                 ActionCommand verify;
-                HashSet<string> commands = new HashSet<string>() { "do-something" };
+                HashSet<string> commands = new() { "do-something" };
                 //::do-something k1=v1;]msg
                 message = "::do-something k1=v1,::msg";
                 test = new ActionCommand("do-something")

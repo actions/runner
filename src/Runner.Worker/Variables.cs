@@ -14,9 +14,9 @@ namespace GitHub.Runner.Worker
     public sealed class Variables
     {
         private readonly IHostContext _hostContext;
-        private readonly ConcurrentDictionary<string, Variable> _variables = new ConcurrentDictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, Variable> _variables = new(StringComparer.OrdinalIgnoreCase);
         private readonly ISecretMasker _secretMasker;
-        private readonly object _setLock = new object();
+        private readonly object _setLock = new();
         private readonly Tracing _trace;
 
         public IEnumerable<Variable> AllVariables
@@ -43,7 +43,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Initialize the variable dictionary.
-            List<Variable> variables = new List<Variable>();
+            List<Variable> variables = new();
             foreach (var variable in copy)
             {
                 if (!string.IsNullOrWhiteSpace(variable.Key))
@@ -68,7 +68,15 @@ namespace GitHub.Runner.Worker
 
         public bool? Step_Debug => GetBoolean(Constants.Variables.Actions.StepDebug);
 
+        public string System_DotNet8CompatibilityWarning => Get(Constants.Variables.System.DotNet8CompatibilityWarning);
+
+        public string System_DotNet8CompatibilityOutputPattern => Get(Constants.Variables.System.DotNet8CompatibilityOutputPattern);
+
+        public int? System_DotNet8CompatibilityOutputLength => GetInt(Constants.Variables.System.DotNet8CompatibilityOutputLength);
+
         public string System_PhaseDisplayName => Get(Constants.Variables.System.PhaseDisplayName);
+
+        public bool System_TestDotNet8Compatibility => GetBoolean(Constants.Variables.System.TestDotNet8Compatibility) ?? false;
 
         public string Get(string name)
         {

@@ -23,12 +23,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-           return omitSource ? new NullToken(null, null, null, m_raw_value) : new NullToken(FileId, Line, Column, m_raw_value);
+            return omitSource ? new NullToken(null, null, null, m_raw_value) : new NullToken(FileId, Line, Column, m_raw_value);
         }
 
         public override String ToString()
         {
-           return m_raw_value ?? String.Empty;
+            return m_raw_value ?? String.Empty;
         }
 
         [IgnoreDataMember]

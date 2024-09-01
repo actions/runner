@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -24,23 +24,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         private string _rootDirectory;
         private CreateStepSummaryCommand _createStepCommand;
         private ITraceWriter _trace;
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void CreateStepSummaryCommand_FeatureDisabled()
-        {
-            using (var hostContext = Setup(featureFlagState: "false"))
-            {
-                var stepSummaryFile = Path.Combine(_rootDirectory, "feature-off");
-
-                _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
-                _jobExecutionContext.Complete();
-
-                _jobServerQueue.Verify(x => x.QueueFileUpload(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
-                Assert.Equal(0, _issues.Count);
-            }
-        }
 
         [Fact]
         [Trait("Level", "L0")]
@@ -199,18 +182,18 @@ namespace GitHub.Runner.Common.Tests.Worker
             File.WriteAllText(path, contentStr, encoding);
         }
 
-        private TestHostContext Setup([CallerMemberName] string name = "", string featureFlagState = "true")
+        private TestHostContext Setup([CallerMemberName] string name = "")
         {
             var hostContext = new TestHostContext(this, name);
 
             _issues = new List<Tuple<DTWebApi.Issue, string>>();
 
             // Setup a job request
-            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-            TimelineReference timeline = new TimelineReference();
+            TaskOrchestrationPlanReference plan = new();
+            TimelineReference timeline = new();
             Guid jobId = Guid.NewGuid();
             string jobName = "Summary Job";
-            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
             jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
             {
                 Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -241,7 +224,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             _variables = new Variables(hostContext, new Dictionary<string, VariableValue>
                 {
                     { "MySecretName", new VariableValue("My secret value", true) },
-                    { "DistributedTask.UploadStepSummary", featureFlagState },
                 });
 
             // Directory for test data
@@ -265,12 +247,16 @@ namespace GitHub.Runner.Common.Tests.Worker
                     WriteDebug = true,
                     Variables = _variables,
                 });
-            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<string>()))
-                .Callback((DTWebApi.Issue issue, string logMessage) =>
+            _executionContext.Setup(x => x.AddIssue(It.IsAny<DTWebApi.Issue>(), It.IsAny<ExecutionContextLogOptions>()))
+                .Callback((DTWebApi.Issue issue, ExecutionContextLogOptions logOptions) =>
                 {
-                    _issues.Add(new Tuple<DTWebApi.Issue, string>(issue, logMessage));
-                    var message = !string.IsNullOrEmpty(logMessage) ? logMessage : issue.Message;
-                    _trace.Info($"Issue '{issue.Type}': {message}");
+                    var resolvedMessage = issue.Message;
+                    if (logOptions.WriteToLog && !string.IsNullOrEmpty(logOptions.LogMessageOverride))
+                    {
+                        resolvedMessage = logOptions.LogMessageOverride;
+                    }
+                    _issues.Add(new(issue, resolvedMessage));
+                    _trace.Info($"Issue '{issue.Type}': {resolvedMessage}");
                 });
             _executionContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((string tag, string message) =>

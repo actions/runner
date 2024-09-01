@@ -1,6 +1,4 @@
-using System;
-
-namespace GitHub.Runner.Common
+﻿namespace GitHub.Runner.Common
 {
     public enum ActionResult
     {

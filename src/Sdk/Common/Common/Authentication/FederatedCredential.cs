@@ -13,7 +13,7 @@ namespace GitHub.Services.Common
     {
         protected FederatedCredential(IssuedToken initialToken)
             : base(initialToken)
-        { 
+        {
         }
 
         public override bool IsAuthenticationChallenge(IHttpResponse webResponse)

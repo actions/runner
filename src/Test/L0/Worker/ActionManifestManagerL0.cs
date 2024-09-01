@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.Expressions2;
+﻿using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
@@ -713,7 +713,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Teardown();
             }
-        }        
+        }
 
         [Fact]
         [Trait("Level", "L0")]
@@ -734,6 +734,31 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Assert
                 Assert.Equal("Conditional Composite", result.Name);
                 Assert.Equal(ActionExecutionType.Composite, result.Execution.ExecutionType);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Load_CompositeActionNoUsing()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+                var action_path = Path.Combine(TestUtil.GetTestDataPath(), "composite_action_without_using_token.yml");
+
+                //Assert
+                var err = Assert.Throws<ArgumentException>(() => actionManifest.Load(_ec.Object, action_path));
+                Assert.Contains($"Failed to load {action_path}", err.Message);
+                _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12', 'node16' or 'node20'.")), It.IsAny<ExecutionContextLogOptions>()), Times.Once);
             }
             finally
             {
@@ -878,7 +903,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
-            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
+            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>())).Callback((Issue issue, ExecutionContextLogOptions logOptions) => { _hc.GetTrace().Info($"[{issue.Type}]{logOptions.LogMessageOverride ?? issue.Message}"); });
         }
 
         private void Teardown()

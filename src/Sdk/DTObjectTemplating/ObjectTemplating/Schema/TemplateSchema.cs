@@ -404,7 +404,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     // string-definition-properties
                     mappingDefinition = new MappingDefinition();
                     mappingDefinition.Properties.Add(TemplateConstants.Constant, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
-                    mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(new StringToken(null, null, null,TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.RequireNonEmpty, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.IsExpression, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     mappingDefinition.Properties.Add(TemplateConstants.Pattern, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));

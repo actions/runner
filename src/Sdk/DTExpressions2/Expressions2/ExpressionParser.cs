@@ -334,7 +334,7 @@ namespace GitHub.DistributedTask.Expressions2
                     context.Operators.Pop();
                 }
                 var functionOperands = PopOperands(context, parameterCount);
-                
+
                 // Node already exists on the operand stack
                 function = (Function)context.Operands.Peek();
 

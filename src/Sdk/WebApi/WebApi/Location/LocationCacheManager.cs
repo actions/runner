@@ -25,7 +25,7 @@ namespace GitHub.Services.WebApi.Location
         public LocationCacheManager(Guid serverGuid, Guid serviceOwner, Uri connectionBaseUrl)
         {
             m_cacheAvailable = (serverGuid.Equals(Guid.Empty)) ? false : true;
-            
+
             m_lastChangeId = -1;
             m_cacheExpirationDate = DateTime.MinValue;
 
@@ -387,7 +387,7 @@ namespace GitHub.Services.WebApi.Location
                         {
                             String absoluteUriTrimmed = accessMapping.AccessPoint.TrimEnd('/');
                             String relativeDirectoryTrimmed = WebApplicationRelativeDirectory.TrimEnd('/');
-                            
+
                             if (VssStringComparer.ServerUrl.EndsWith(absoluteUriTrimmed, relativeDirectoryTrimmed))
                             {
                                 accessMapping.AccessPoint = absoluteUriTrimmed.Substring(0, absoluteUriTrimmed.Length - relativeDirectoryTrimmed.Length);
@@ -437,7 +437,7 @@ namespace GitHub.Services.WebApi.Location
             finally
             {
                 Debug.Assert(m_lastChangeId == -1 || m_services.Count > 0);
-                
+
                 m_accessLock.ExitWriteLock();
             }
         }

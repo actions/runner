@@ -42,5 +42,5 @@ namespace GitHub.Actions.Pipelines.WebApi
             get;
             set;
         }
-     }
+    }
 }

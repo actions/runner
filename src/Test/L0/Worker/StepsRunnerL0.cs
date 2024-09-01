@@ -28,7 +28,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             var hc = new TestHostContext(this, testName);
-            Dictionary<string, VariableValue> variablesToCopy = new Dictionary<string, VariableValue>();
+            Dictionary<string, VariableValue> variablesToCopy = new();
             _variables = new Variables(
                 hostContext: hc,
                 copy: variablesToCopy);
@@ -349,7 +349,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
 
-                    // Assert.                    
+                    // Assert.
                     Assert.Equal(2, variableSet.Step.Length);
                     variableSet.Step[0].Verify(x => x.RunAsync());
                     variableSet.Step[1].Verify(x => x.RunAsync(), variableSet.Expected ? Times.Once() : Times.Never());
@@ -602,7 +602,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             step.Setup(x => x.Condition).Returns(condition);
             step.Setup(x => x.ContinueOnError).Returns(new BooleanToken(null, null, null, continueOnError));
             step.Setup(x => x.Action)
-                .Returns(new DistributedTask.Pipelines.ActionStep()
+                .Returns(new GitHub.DistributedTask.Pipelines.ActionStep()
                 {
                     Name = name,
                     Id = Guid.NewGuid(),
@@ -634,6 +634,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _stepContext.SetOutcome("", stepContext.Object.ContextName, (stepContext.Object.Outcome ?? stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
                     _stepContext.SetConclusion("", stepContext.Object.ContextName, (stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
                 });
+            stepContext.Setup(x => x.StepEnvironmentOverrides).Returns(new List<string>());
 
             stepContext.Setup(x => x.UpdateGlobalStepsContext()).Callback(() =>
             {

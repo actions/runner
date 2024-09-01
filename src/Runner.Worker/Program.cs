@@ -11,7 +11,7 @@ namespace GitHub.Runner.Worker
     {
         public static int Main(string[] args)
         {
-            using (HostContext context = new HostContext("Worker"))
+            using (HostContext context = new("Worker"))
             {
                 // Delete the environment variable, otherwise it is defined inside the job
                 Environment.SetEnvironmentVariable("RUNNER_SERVER_CONFIG_ROOT", null);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Channels;
@@ -50,7 +51,9 @@ namespace GitHub.Runner.Worker.Container
         {
             base.Initialize(hostContext);
             DockerPath = WhichUtil.Which("docker", true, Trace);
-            DockerInstanceLabel = IOUtil.GetSha256Hash(hostContext.GetDirectory(WellKnownDirectory.ConfigRoot)).Substring(0, 6);
+            string path = HostContext.GetConfigFile(WellKnownConfigFile.Runner);
+            string json = File.ReadAllText(path, Encoding.UTF8);
+            DockerInstanceLabel = IOUtil.GetSha256Hash(json).Substring(0, 6);
         }
 
         public async Task<DockerVersion> DockerVersion(IExecutionContext context)
@@ -64,7 +67,7 @@ namespace GitHub.Runner.Worker.Container
             context.Output($"Docker client API version: {clientVersionStr}");
 
             // we interested about major.minor.patch version
-            Regex verRegex = new Regex("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
+            Regex verRegex = new("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
 
             Version serverVersion = null;
             var serverVersionMatchResult = verRegex.Match(serverVersionStr);
@@ -383,7 +386,7 @@ namespace GitHub.Runner.Worker.Container
             string arg = $"exec {options} {containerId} {command}".Trim();
             context.Command($"{DockerPath} {arg}");
 
-            object outputLock = new object();
+            object outputLock = new();
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
             processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {
@@ -509,7 +512,7 @@ namespace GitHub.Runner.Worker.Container
             string arg = $"{command} {options}".Trim();
             context.Command($"{DockerPath} {arg}");
 
-            List<string> output = new List<string>();
+            List<string> output = new();
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
             processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
             {

@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
 
@@ -15,7 +12,7 @@ namespace GitHub.Runner.PluginHost
 {
     public static class Program
     {
-        private static CancellationTokenSource tokenSource = new CancellationTokenSource();
+        private static CancellationTokenSource tokenSource = new();
         private static string executingAssemblyLocation = string.Empty;
 
         public static int Main(string[] args)

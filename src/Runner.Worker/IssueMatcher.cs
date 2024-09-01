@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -29,7 +29,7 @@ namespace GitHub.Runner.Worker
         {
             _owner = config.Owner;
             _defaultSeverity = config.Severity;
-            _patterns = config.Patterns.Select(x => new IssuePattern(x , timeout)).ToArray();
+            _patterns = config.Patterns.Select(x => new IssuePattern(x, timeout)).ToArray();
             Reset();
         }
 
@@ -455,7 +455,7 @@ namespace GitHub.Runner.Worker
             if (Loop && Message == null)
             {
                 throw new ArgumentException($"The {_loopPropertyName} pattern must set '{_messagePropertyName}'");
-            }   
+            }
 
             var regex = new Regex(Pattern ?? string.Empty, RegexOptions);
             var groupCount = regex.GetGroupNumbers().Length;

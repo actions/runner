@@ -12,10 +12,11 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Runner")]
         public void BuildConstantGenerateSucceed()
         {
-            List<string> validPackageNames = new List<string>()
+            List<string> validPackageNames = new()
             {
                 "win-x64",
                 "win-x86",
+                "win-arm64",
                 "linux-x64",
                 "linux-arm",
                 "linux-arm64",
@@ -24,7 +25,7 @@ namespace GitHub.Runner.Common.Tests
                 ""
             };
 
-            Assert.True(BuildConstants.Source.CommitHash.Length == 40, $"CommitHash should be SHA-1 hash {BuildConstants.Source.CommitHash}");
+            Assert.Equal(40, BuildConstants.Source.CommitHash.Length);
             Assert.True(validPackageNames.Contains(BuildConstants.RunnerPackage.PackageName), $"PackageName should be one of the following '{string.Join(", ", validPackageNames)}', current PackageName is '{BuildConstants.RunnerPackage.PackageName}'");
         }
     }

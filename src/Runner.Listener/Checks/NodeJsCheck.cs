@@ -1,8 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
@@ -87,7 +86,7 @@ namespace GitHub.Runner.Listener.Check
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
 
                 // Request to github.com or ghes server
-                Uri requestUrl = new Uri(url);
+                Uri requestUrl = new(url);
                 var env = new Dictionary<string, string>()
                 {
                     { "HOSTNAME", requestUrl.Host },

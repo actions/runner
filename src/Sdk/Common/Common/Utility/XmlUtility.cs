@@ -63,7 +63,7 @@ namespace GitHub.Services.Common.Internal
                     }
 
                     file = new FileStream(path, fileMode, fileAccess, sharing);
-                    
+
                     if (loadAsXmlDocument)
                     {
                         XmlReaderSettings settings = new XmlReaderSettings()

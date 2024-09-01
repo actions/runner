@@ -1,3 +1,4 @@
+#pragma warning disable CA1416
 using System;
 using System.IO;
 using System.Linq;

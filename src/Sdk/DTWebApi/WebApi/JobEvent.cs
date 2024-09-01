@@ -153,8 +153,8 @@ namespace GitHub.DistributedTask.WebApi
         {
             this.ActionsEnvironment = actionsEnvironment;
             this.ActionsStepsTelemetry = actionsStepsTelemetry;
-        }        
-        
+        }
+
         public JobCompletedEvent(
             Int64 requestId,
             Guid jobId,
