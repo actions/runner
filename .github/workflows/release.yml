@@ -135,7 +135,7 @@ jobs:
 
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v4.1.7
       with:
         name: runner-packages
         path: ./
