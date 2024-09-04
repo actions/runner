@@ -77,6 +77,7 @@ namespace GitHub.Runner.Common
         private int _resultsServiceExceptionsCount = 0;
         private Stopwatch _resultsUploadTimer = new();
         private Stopwatch _actionsUploadTimer = new();
+        private Stopwatch _jobRecordUpdatedTimer = new();
 
         public TaskCompletionSource<int> JobRecordUpdated => _jobRecordUpdated;
 
@@ -96,6 +97,8 @@ namespace GitHub.Runner.Common
 
         private bool _resultsClientInitiated = false;
         private bool _enableTelemetry = false;
+        private bool _enableJobRecordUpdatedTelemetry = false;
+        private bool _enableAutoRetry = false;
         private delegate Task ResultsFileUploadHandler(ResultsUploadFileInfo file);
 
         public override void Initialize(IHostContext hostContext)
@@ -180,6 +183,23 @@ namespace GitHub.Runner.Common
 
             _allDequeueTasks = new Task[] { _webConsoleLineDequeueTask, _fileUploadDequeueTask, _timelineUpdateDequeueTask, _resultsUploadDequeueTask };
             _queueInProcess = true;
+
+
+            if (jobRequest.Variables.TryGetValue("DistributedTask.EnableJobRecordUpdatedTelemetry", out VariableValue enableTelemetry))
+            {
+                _enableJobRecordUpdatedTelemetry = StringUtil.ConvertToBoolean(enableTelemetry?.Value);
+                if (_enableJobRecordUpdatedTelemetry)
+                {
+                    Trace.Info("Enable telemetry for first job record update.");
+                    _jobRecordUpdatedTimer.Start();
+                }
+            }
+
+            if (jobRequest.Variables.TryGetValue("DistributedTask.EnableRecordUpdateAutoRetry", out VariableValue enableAutoRetry))
+            {
+                Trace.Info("Enable auto retry for timeline record update.");
+                _enableAutoRetry = StringUtil.ConvertToBoolean(enableAutoRetry?.Value);
+            }
         }
 
         // WebConsoleLine queue and FileUpload queue are always best effort
@@ -231,6 +251,11 @@ namespace GitHub.Runner.Common
                 var uploadTimeComparison = $"Actions upload time: {_actionsUploadTimer.ElapsedMilliseconds} ms, Result upload time: {_resultsUploadTimer.ElapsedMilliseconds} ms";
                 Trace.Info(uploadTimeComparison);
                 _jobTelemetries.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = uploadTimeComparison });
+            }
+
+            if (_enableJobRecordUpdatedTelemetry)
+            {
+                _jobTelemetries.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = $"First job record updated time after: {_jobRecordUpdatedTimer.ElapsedMilliseconds} ms" });
             }
         }
 
@@ -729,6 +754,11 @@ namespace GitHub.Runner.Common
                                 // We have changed the state of the job
                                 Trace.Info("Job timeline record has been updated for the first time.");
                                 _jobRecordUpdated.TrySetResult(0);
+
+                                if (_enableJobRecordUpdatedTelemetry)
+                                {
+                                    _jobRecordUpdatedTimer.Stop();
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -739,6 +769,15 @@ namespace GitHub.Runner.Common
                             if (update.TimelineId == _jobTimelineId)
                             {
                                 mainTimelineRecordsUpdateErrors.Add(ex);
+                            }
+
+                            if (!runOnce && _enableAutoRetry)
+                            {
+                                foreach (var retryRecordId in update.PendingRecords.DistinctBy(x => x.Id).Select(r => r.Id))
+                                {
+                                    Trace.Verbose("Enqueue timeline record {0} update for retry.", retryRecordId);
+                                    _timelineUpdateQueue[update.TimelineId].Enqueue(new TimelineRecord() { Id = retryRecordId });
+                                }
                             }
                         }
                     }
