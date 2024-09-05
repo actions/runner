@@ -103,6 +103,7 @@ namespace GitHub.Actions.RunService.WebApi
                 new HttpMethod("GET"),
                 requestUri: requestUri,
                 queryParameters: queryParams,
+                readErrorBody: true,
                 cancellationToken: cancellationToken);
 
             if (result.IsSuccess)
@@ -110,17 +111,23 @@ namespace GitHub.Actions.RunService.WebApi
                 return result.Value;
             }
 
-            // the only time we throw a `Forbidden` exception from Listener /messages is when the runner is
-            // disable_update and is too old to poll
-            if (result.StatusCode == HttpStatusCode.Forbidden)
+            if (TryParseErrorBody(result.ErrorBody, out BrokerError brokerError))
             {
-                throw new AccessDeniedException($"{result.Error} Runner version v{runnerVersion} is deprecated and cannot receive messages.")
+                if (result.StatusCode == HttpStatusCode.Forbidden && brokerError.Code == 1)
                 {
-                    ErrorCode = 1
-                };
+                    throw new AccessDeniedException($"{result.Error} Runner version v{runnerVersion} is deprecated and cannot receive messages.")
+                    {
+                        ErrorCode = 1
+                    };
+                }
             }
 
-            throw new Exception($"Failed to get job message: {result.Error}");
+            if (result.StatusCode == HttpStatusCode.Forbidden)
+            {
+                throw new AccessDeniedException($"Request to {requestUri} failed with status code {result.StatusCode} and error message: {result.ErrorBody}");
+            }
+
+            throw new Exception($"Request to {requestUri} failed with status code {result.StatusCode} and error message {result.Error}");
         }
 
         public async Task<TaskAgentSession> CreateSessionAsync(
@@ -171,6 +178,12 @@ namespace GitHub.Actions.RunService.WebApi
             }
 
             throw new Exception($"Failed to delete broker session: {result.Error}");
+        }
+
+        protected static bool TryParseErrorBody(string errorBody, out BrokerError error)
+        {
+            var validator = new Func<BrokerError, bool>(e => e.Source != null && e.Source == "actions-broker-listener");
+            return RawHttpClientBase.TryParseErrorBody(errorBody, validator, out error);
         }
     }
 }
