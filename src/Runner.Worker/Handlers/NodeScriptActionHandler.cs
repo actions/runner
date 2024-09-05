@@ -93,7 +93,6 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
             }
-            ExecutionContext.StepTelemetry.Type = Data.NodeVersion;
 
             ArgUtil.NotNullOrEmpty(target, nameof(target));
             target = Path.Combine(ActionDirectory, target);
@@ -124,6 +123,7 @@ namespace GitHub.Runner.Worker.Handlers
                 Data.NodeVersion = "node20";
             }
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
+            ExecutionContext.StepTelemetry.Type = nodeRuntimeVersion;
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 
             // Format the arguments passed to node.
