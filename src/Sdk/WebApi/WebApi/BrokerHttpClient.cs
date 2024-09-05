@@ -113,9 +113,9 @@ namespace GitHub.Actions.RunService.WebApi
 
             if (TryParseErrorBody(result.ErrorBody, out BrokerError brokerError))
             {
-                switch (brokerError.Type)
+                switch (brokerError.ErrorKind)
                 {
-                    case BrokerErrorType.RunnerVersionTooOld:
+                    case BrokerErrorKind.RunnerVersionTooOld:
                         throw new AccessDeniedException(brokerError.Message)
                         {
                             ErrorCode = 1
