@@ -179,7 +179,8 @@ namespace GitHub.Runner.Worker
 
         private string[] _setEnvBlockList =
         {
-            "NODE_OPTIONS"
+            "NODE_OPTIONS",
+            "BASH_ENV"
         };
     }
 
