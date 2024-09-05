@@ -326,30 +326,6 @@ namespace Sdk.WebApi.WebApi
             return requestMessage;
         }
 
-        protected static bool TryParseErrorBody<T>(string errorBody, Func<T, bool> validate, out T error)
-        {
-            if (!string.IsNullOrEmpty(errorBody))
-            {
-                try
-                {
-                    error = JsonUtility.FromString<T>(errorBody);
-
-                    if (error == null)
-                    {
-                        return false;
-                    }
-
-                    return validate(error);
-                }
-                catch (Exception)
-                {
-                }
-            }
-
-            error = default(T);
-            return false;
-        }
-
         /// <summary>
         /// The inner client.
         /// </summary>
