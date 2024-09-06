@@ -248,6 +248,7 @@ namespace GitHub.Runner.Common
             var currentProcess = Process.GetCurrentProcess();
             _userAgents.Add(new ProductInfoHeaderValue("Pid", currentProcess.Id.ToString()));
             _userAgents.Add(new ProductInfoHeaderValue("CreationTime", Uri.EscapeDataString(DateTime.UtcNow.ToString("O"))));
+            _userAgents.Add(new ProductInfoHeaderValue($"({hostType})"));
         }
 
         public string GetDirectory(WellKnownDirectory directory)
