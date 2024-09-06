@@ -1,0 +1,64 @@
+# escape=`
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+USER ContainerAdministrator
+
+SHELL ["powershell.exe"]
+
+ENV RUSTUP_HOME='C:\Users\ContainerAdministrator\.rustup' `
+    CARGO_HOME='C:\Users\ContainerAdministrator\.cargo' `
+    GIT_HOME='C:\Users\ContainerAdministrator\Git' `
+    RUNNER_HOME='C:\Users\ContainerAdministrator\runner' `
+    RUSTUP_VERSION='1.26.0' `
+    RUST_VERSION='1.75.0' `
+    RUST_ARCH='x86_64-pc-windows-msvc' `
+    RUNNER_ALLOW_RUNASROOT=1 `
+    PNPM_CACHE='C:\Users\ContainerAdministrator\.pnpm' `
+    ACTIONS_RUNNER_HOOK_JOB_STARTED='C:\Users\ContainerAdministrator\cleanup_script.ps1'
+
+COPY cleanup_script.ps1 bootstrap.ps1 C:\Users\ContainerAdministrator\
+
+# Download vs
+RUN Invoke-WebRequest -UseBasicParsing https://aka.ms/vs/17/release/vs_buildtools.exe -o C:\vs_buildtools.exe; `
+    # Install Build Tools with the Microsoft.VisualStudio.Workload.AzureBuildTools workload, excluding workloads and components with known issues.
+    C:\vs_buildtools.exe --quiet --wait --norestart --nocache `
+        --add Microsoft.VisualStudio.Workload.VCTools `
+        --add Microsoft.VisualStudio.Component.VC.ATL `
+        --add Microsoft.VisualStudio.Component.VC.ATL.ARM64 `
+        --add Microsoft.VisualStudio.Component.VC.ATL.ARM `
+        --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+        --add Microsoft.VisualStudio.Component.VC.Tools.ARM `
+        --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
+        --add Microsoft.VisualStudio.Component.Windows11SDK.22621 `
+        --add Microsoft.VisualStudio.Workload.AzureBuildTools `
+        --remove Microsoft.VisualStudio.Component.Windows10SDK.10240 `
+        --remove Microsoft.VisualStudio.Component.Windows10SDK.10586 `
+        --remove Microsoft.VisualStudio.Component.Windows10SDK.14393 `
+        --remove Microsoft.VisualStudio.Component.Windows81SDK | Out-Null; `
+    # Cleanup
+    del C:\vs_buildtools.exe; `
+    # Download rust
+    Invoke-WebRequest -UseBasicParsing https://win.rustup.rs/x86_64 -o C:\rustup-init.exe; `
+    C:\rustup-init.exe -y | Out-Null; `
+    del C:\rustup-init.exe; `
+    # Download 7-zip
+    Invoke-WebRequest -UseBasicParsing https://www.7-zip.org/a/7z2301-x64.exe -o C:\7zip.exe; `
+    C:\7zip.exe /S /D="C:\Users\ContainerAdministrator\7-Zip" | Out-Null; `
+    del C:\7zip.exe; `
+    # Download git
+    Invoke-WebRequest -UseBasicParsing https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/Git-2.44.0-64-bit.tar.bz2 -o C:\Git.tar.bz2; `
+    C:\Users\ContainerAdministrator\7-Zip\7z.exe x C:\Git.tar.bz2 | Out-Null; `
+    C:\Users\ContainerAdministrator\7-Zip\7z.exe x C:\Git.tar -o"""$env:GIT_HOME""" | Out-Null; `
+    $path=$env:GIT_HOME + '\cmd;' + $env:GIT_HOME + '\bin;' + $env:GIT_HOME + '\usr\bin;' + $env:path; `
+    Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment\' -Name Path -Value $path; `
+    del C:\Git.tar; `
+    del C:\Git.tar.bz2; `
+    # install github runner
+    Invoke-WebRequest -UseBasicParsing https://github.com/actions/runner/releases/download/v2.319.1/actions-runner-win-x64-2.319.1.zip -o C:\actions-runner.zip; `
+    Expand-Archive C:\actions-runner.zip -DestinationPath $env:RUNNER_HOME; `
+    del C:\actions-runner.zip; `
+    # npm
+    mkdir -p $env:USERPROFILE/AppData/Local/pnpm/config; `
+    echo "store-dir=${env:PNPM_CACHE}" | Out-File $env:USERPROFILE/AppData/Local/pnpm/config/rc -Encoding "UTF8";
+
+CMD C:\Users\ContainerAdministrator\bootstrap.ps1
