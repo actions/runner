@@ -399,10 +399,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var versionSegments = versionString.Split(".");
 
-            if (versionSegments.Length != 2 || 
-                !versionSegments[1].Equals("*") ||
-                !Int32.TryParse(versionSegments[0], result: out int parsedMajor) ||
-                parsedMajor <= 0)
+            if (versionSegments.Length != 2 || !versionSegments[1].Equals("*") || !Int32.TryParse(versionSegments[0], result: out int parsedMajor) || parsedMajor <= 0)
             {
                 return false;
             }

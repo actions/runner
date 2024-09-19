@@ -506,12 +506,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             return EnsureSnapshotPostJobStepForToken(mappingToken, snapshot);
         }
 
-                [Fact]
+        [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         public Task EnsureSnapshotPostJobStepForMappingToken_1()
         {
-            var snapshot = new Pipelines.Snapshot("TestImageNameFromMappingToken"){
+            var snapshot = new Pipelines.Snapshot("TestImageNameFromMappingToken") {
                 Condition = $"{PipelineTemplateConstants.Success}() && 1==0",
                 Version = "2.*"
             };
@@ -552,7 +552,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var _stepsRunner = new StepsRunner();
                 _stepsRunner.Initialize(hc);
                 await _stepsRunner.RunAsync(_jobEc);
-                
+
                 Assert.Equal("Create custom image", snapshotStep.DisplayName);
                 Assert.Equal(expectedSnapshot.Condition ?? $"{PipelineTemplateConstants.Success}()", snapshotStep.Condition);
 
