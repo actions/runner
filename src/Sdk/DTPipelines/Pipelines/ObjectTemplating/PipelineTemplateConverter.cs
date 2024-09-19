@@ -349,6 +349,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal static Snapshot ConvertToJobSnapshotRequest(TemplateContext context, TemplateToken token)
         {
             string imageName = null;
+            string version = "1.*";
+            string versionString = string.Empty;
+            var condition = $"{PipelineTemplateConstants.Success}()";
+
             if (token is StringToken snapshotStringLiteral)
             {
                 imageName = snapshotStringLiteral.Value;
@@ -359,10 +363,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 foreach (var snapshotPropertyPair in snapshotMapping)
                 {
                     var propertyName = snapshotPropertyPair.Key.AssertString($"{PipelineTemplateConstants.Snapshot} key");
+                    var propertyValue = snapshotPropertyPair.Value;
                     switch (propertyName.Value)
                     {
                         case PipelineTemplateConstants.ImageName:
                             imageName = snapshotPropertyPair.Value.AssertString($"{PipelineTemplateConstants.Snapshot} {propertyName}").Value;
+                            break;
+                        case PipelineTemplateConstants.If:
+                            condition = ConvertToIfCondition(context, propertyValue, false);
+                            break;
+                        case PipelineTemplateConstants.CustomImageVersion:
+                            versionString = propertyValue.AssertString($"job {PipelineTemplateConstants.Snapshot} {PipelineTemplateConstants.CustomImageVersion}").Value;
+                            version = IsSnapshotImageVersionValid(versionString) ? versionString : null;
                             break;
                         default:
                             propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Snapshot} key");
@@ -376,7 +388,26 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return null;
             }
 
-            return new Snapshot(imageName);
+            return new Snapshot(imageName)
+            {
+                Condition = condition,
+                Version = version
+            };
+        }
+
+        private static bool IsSnapshotImageVersionValid(string versionString)
+        {
+            var versionSegments = versionString.Split(".");
+
+            if (versionSegments.Length != 2 || 
+                !versionSegments[1].Equals("*") ||
+                !Int32.TryParse(versionSegments[0], result: out int parsedMajor) ||
+                parsedMajor <= 0)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private static ActionStep ConvertToStep(

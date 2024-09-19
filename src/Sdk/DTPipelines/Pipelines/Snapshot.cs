@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.Pipelines
 {
@@ -13,5 +14,15 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public String ImageName { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public String Condition
+        {
+            get;
+            set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public String Version  { get; set; }
     }
 }

@@ -162,16 +162,33 @@
         "snapshot-mapping"
       ]
     },
-
+    
     "snapshot-mapping": {
       "mapping": {
         "properties": {
           "image-name": {
             "type": "non-empty-string",
             "required": true
+          },
+          "if": "snapshot-if",
+          "version": {
+            "type": "non-empty-string",
+            "required": false
           }
         }
       }
+    },
+
+    "snapshot-if": {
+      "context": [
+        "github",
+        "inputs",
+        "vars",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "string": {}
     },
 
     "runs-on": {
