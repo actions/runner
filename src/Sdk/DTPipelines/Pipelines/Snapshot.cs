@@ -16,13 +16,9 @@ namespace GitHub.DistributedTask.Pipelines
         public String ImageName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public String Condition
-        {
-            get;
-            set;
-        }
+        public String Condition { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public String Version  { get; set; }
+        public String Version { get; set; }
     }
 }

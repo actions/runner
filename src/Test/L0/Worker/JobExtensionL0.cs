@@ -511,7 +511,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public Task EnsureSnapshotPostJobStepForMappingToken_1()
         {
-            var snapshot = new Pipelines.Snapshot("TestImageNameFromMappingToken") {
+            var snapshot = new Pipelines.Snapshot("TestImageNameFromMappingToken"){
                 Condition = $"{PipelineTemplateConstants.Success}() && 1==0",
                 Version = "2.*"
             };
