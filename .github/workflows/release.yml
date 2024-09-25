@@ -120,7 +120,7 @@ jobs:
     # Since each package name is unique, so we don't need to put ${{matrix}} info into artifact name
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: runner-packages
         path: |
@@ -135,7 +135,7 @@ jobs:
 
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v4
       with:
         name: runner-packages
         path: ./
