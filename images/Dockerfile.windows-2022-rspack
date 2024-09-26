@@ -5,7 +5,7 @@ USER ContainerAdministrator
 
 SHELL ["powershell.exe"]
 
-ARG RUNNER_VERSION=2.319.0
+ARG RUNNER_VERSION=2.319.1
 ENV RUNNER_VERSION=$RUNNER_VERSION
 
 ENV RUSTUP_HOME='C:\Users\ContainerAdministrator\.rustup' `
