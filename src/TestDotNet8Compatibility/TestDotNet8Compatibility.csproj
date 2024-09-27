@@ -1,18 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
+    <SelfContained>true</SelfContained>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
-    <NoWarn>NU1701;NU1603</NoWarn>
     <Version>$(Version)</Version>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Sdk\Sdk.csproj" />
-    <ProjectReference Include="..\Runner.Sdk\Runner.Sdk.csproj" />
-  </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>portable</DebugType>

@@ -1,18 +1,10 @@
 ## What's Changed
 
-- Update Docker to v27.1.1 by @TingluoHuang in https://github.com/actions/runner/pull/3401
-- Upgrade dotnet sdk to v8.0.303 in https://github.com/actions/runner/pull/3388
-- Rephrase node20 warning by @rentziass in https://github.com/actions/runner/pull/3376
-- Bump hook version to 0.6.1 by @nikola-jokic in https://github.com/actions/runner/pull/3350
-- Backoff to avoid excessive retries to Run Service in a duration by @ericsciple in https://github.com/actions/runner/pull/3354
-- Bump System.Security.Cryptography.Pkcs from 5.0.0 to 8.0.0 in /src in https://github.com/actions/runner/pull/3347
-- Upgrade dotnet sdk to v8.0.302 in https://github.com/actions/runner/pull/3346
-- Bump runner to dotnet 8 by @TingluoHuang in https://github.com/actions/runner/pull/3345
-- Pass runner version as environment variable in workflow by @joshmgross in https://github.com/actions/runner/pull/3318
-- Make sure we mask secrets when reporting telemetry by @TingluoHuang in https://github.com/actions/runner/pull/3315
-- Bump docker version and docker buildx version by @int128 in https://github.com/actions/runner/pull/3277
+- .NET 8 OS compatibility test https://github.com/actions/runner/pull/3422
+- Ignore ssl cert on websocket client https://github.com/actions/runner/pull/3423
+- Revert "Bump runner to dotnet 8" https://github.com/actions/runner/pull/3412
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.317.0...v2.318.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.318.0...v2.319.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.

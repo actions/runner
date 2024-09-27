@@ -140,6 +140,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton(_diagnosticLogManager.Object);
             hc.SetSingleton(_jobHookProvider.Object);
             hc.SetSingleton(_snapshotOperationProvider.Object);
+            hc.SetSingleton(new Mock<IOSWarningChecker>().Object);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // JobExecutionContext
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // job start hook
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // Initial Job
