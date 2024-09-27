@@ -63,6 +63,7 @@ RUN Invoke-WebRequest -UseBasicParsing https://aka.ms/vs/17/release/vs_buildtool
 
 RUN git config --system core.compression 0  
 RUN git config --system core.longpaths true
+RUN git config --global http.sslBackend openssl
 
 # Disable path limit
 RUN powershell Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Type DWord -Value 1
