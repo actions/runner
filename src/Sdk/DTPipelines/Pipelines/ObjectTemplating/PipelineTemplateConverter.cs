@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk;
@@ -399,7 +400,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var versionSegments = versionString.Split(".");
 
-            if (versionSegments.Length != 2 || !versionSegments[1].Equals("*") || !Int32.TryParse(versionSegments[0], result: out int parsedMajor) || parsedMajor <= 0)
+            if (versionSegments.Length != 2 || 
+                !versionSegments[1].Equals("*") || 
+                !Int32.TryParse(versionSegments[0], NumberStyles.None, CultureInfo.InvariantCulture, result: out int parsedMajor) || 
+                parsedMajor < 0)
             {
                 return false;
             }
