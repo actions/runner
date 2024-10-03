@@ -165,12 +165,10 @@ ls -la /tmp/${runner_file}
 echo
 echo "Extracting ${runner_file} to ${svc_user_home}/runner"
 
-sudo tar xzf "./${runner_file}" -C ${svc_user_home}/runner
+sudo tar xzf "/tmp/${runner_file}" -C ${svc_user_home}/runner
 
 # export of pass
 sudo chown -R ${svc_user}:${svc_user} ${svc_user_home}/runner
-
-# pushd ./runner
 
 #---------------------------------------
 # Unattended config
@@ -182,8 +180,8 @@ fi
 
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "sudo -E -u ${svc_user} -D ${svc_user_home}/runner ./config.sh --unattended --url $runner_url --token *** --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup \"$runner_group\"} ${disableupdate:+--disableupdate}"
-sudo -E -u ${svc_user} -D ${svc_user_home}/runner ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}
+echo "sudo RUNNER_TOKEN=\${RUNNER_TOKEN} -i -u ${svc_user} bash -c \"cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token \$RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}\""
+sudo RUNNER_TOKEN=${RUNNER_TOKEN} -i -u ${svc_user} bash -c "cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}"
 
 #---------------------------------------
 # Configuring as a service
@@ -192,8 +190,8 @@ echo
 echo "Configuring as a service ..."
 prefix=""
 if [ "${runner_plat}" == "linux" ]; then
-    prefix="sudo -E -u ${svc_user} -D ${svc_user_home}/runner "
+    sudo RUNNER_TOKEN=${RUNNER_TOKEN} -i -u ${svc_user} bash -c "cd ${svc_user_home}/runner && ./svc.sh install ${svc_user};./svc.sh start"
+else
+    ./svc.sh install ${svc_user}
+    ./svc.sh start
 fi
-
-${prefix}./svc.sh install ${svc_user}
-${prefix}./svc.sh start
