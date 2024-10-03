@@ -117,12 +117,11 @@ jobs:
       working-directory: _package
 
     # Upload runner package tar.gz/zip as artifact.
-    # Since each package name is unique, so we don't need to put ${{matrix}} info into artifact name
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
       uses: actions/upload-artifact@v4
       with:
-        name: runner-packages
+        name: runner-packages-${{ matrix.runtime }}
         path: |
           _package
 
@@ -134,10 +133,40 @@ jobs:
     - uses: actions/checkout@v3
 
     # Download runner package tar.gz/zip produced by 'build' job
-    - name: Download Artifact
+    - name: Download Artifact (win-x64)
       uses: actions/download-artifact@v4
       with:
-        name: runner-packages
+        name: runner-packages-win-x64
+        path: ./
+    - name: Download Artifact (win-arm64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-win-arm64
+        path: ./
+    - name: Download Artifact (osx-x64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-osx-x64
+        path: ./
+    - name: Download Artifact (osx-arm64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-osx-arm64
+        path: ./
+    - name: Download Artifact (linux-x64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-linux-x64
+        path: ./
+    - name: Download Artifact (linux-arm)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-linux-arm
+        path: ./
+    - name: Download Artifact (linux-arm64)
+      uses: actions/download-artifact@v4
+      with:
+        name: runner-packages-linux-arm64
         path: ./
 
     # Create ReleaseNote file
