@@ -180,8 +180,8 @@ fi
 
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "sudo RUNNER_TOKEN=\${RUNNER_TOKEN} -i -u ${svc_user} bash -c \"cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token \$RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}\""
-sudo RUNNER_TOKEN=${RUNNER_TOKEN} -i -u ${svc_user} bash -c "cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}"
+echo "sudo RUNNER_TOKEN=\${RUNNER_TOKEN} -i -u ${svc_user} bash -c \"cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token \${RUNNER_TOKEN} ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}\""
+sudo RUNNER_TOKEN=${RUNNER_TOKEN} -i -u ${svc_user} bash -c "cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token ${RUNNER_TOKEN} ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}"
 
 #---------------------------------------
 # Configuring as a service
