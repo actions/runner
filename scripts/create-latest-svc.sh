@@ -104,13 +104,12 @@ which curl || fatal "curl required.  Please install in PATH with apt-get, brew, 
 which jq || fatal "jq required.  Please install in PATH with apt-get, brew, etc"
 
 svc_user_home="$(awk -v usr=${svc_user} -F ':' '$1 == usr {print $6}' /etc/passwd)"
-pushd ${svc_user_home}
 # bail early if there's already a runner there. also sudo early
-if [ -d ./runner ]; then
-    fatal "Runner already exists.  Use a different directory or delete ./runner"
+if sudo test -d ${svc_user_home}/runner; then
+    fatal "Runner already exists.  Use a different directory or delete ${svc_user_home}/runner"
 fi
 
-sudo -u ${svc_user} mkdir runner
+sudo -u ${svc_user} mkdir ${svc_user_home}/runner
 
 # TODO: validate not in a container
 # TODO: validate systemd or osx svc installer
@@ -147,34 +146,34 @@ latest_version_label=$(curl -fsSL -X GET 'https://api.github.com/repos/actions/r
 latest_version=$(echo ${latest_version_label:1})
 runner_file="actions-runner-${runner_plat}-${runner_arch}-${latest_version}.tar.gz"
 
-if [ -f "${runner_file}" ]; then
-    echo "${runner_file} exists. skipping download."
+if [ -f "/tmp/${runner_file}" ]; then
+    echo "/tmp/${runner_file} exists. skipping download."
 else
     runner_url="https://github.com/actions/runner/releases/download/${latest_version_label}/${runner_file}"
 
     echo "Downloading ${latest_version_label} for ${runner_plat} ..."
     echo $runner_url
 
-    curl -O -fsSL ${runner_url}
+    curl -o /tmp/${runner_file} -fsSL ${runner_url}
 fi
 
-ls -la *.tar.gz
+ls -la /tmp/${runner_file}
 
 #---------------------------------------------------
 # extract to runner directory in this directory
 #---------------------------------------------------
 echo
-echo "Extracting ${runner_file} to ./runner"
+echo "Extracting ${runner_file} to ${svc_user_home}/runner"
 
-tar xzf "./${runner_file}" -C runner
+sudo tar xzf "./${runner_file}" -C ${svc_user_home}/runner
 
 # export of pass
-sudo chown -R $svc_user ./runner
+sudo chown -R ${svc_user}:${svc_user} ${svc_user_home}/runner
 
-pushd ./runner
+# pushd ./runner
 
 #---------------------------------------
-# Unattend config
+# Unattended config
 #---------------------------------------
 runner_url="https://github.com/${runner_scope}"
 if [ -n "${ghe_hostname}" ]; then
@@ -183,8 +182,8 @@ fi
 
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup \"$runner_group\"} ${disableupdate:+--disableupdate}"
-sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}
+echo "sudo -E -u ${svc_user} -D ${svc_user_home}/runner ./config.sh --unattended --url $runner_url --token *** --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup \"$runner_group\"} ${disableupdate:+--disableupdate}"
+sudo -E -u ${svc_user} -D ${svc_user_home}/runner ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}
 
 #---------------------------------------
 # Configuring as a service
@@ -193,7 +192,7 @@ echo
 echo "Configuring as a service ..."
 prefix=""
 if [ "${runner_plat}" == "linux" ]; then
-    prefix="sudo "
+    prefix="sudo -E -u ${svc_user} -D ${svc_user_home}/runner "
 fi
 
 ${prefix}./svc.sh install ${svc_user}
