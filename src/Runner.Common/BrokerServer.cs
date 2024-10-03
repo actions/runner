@@ -92,7 +92,7 @@ namespace GitHub.Runner.Common
 
         public bool ShouldRetryException(Exception ex)
         {
-            if (ex is AccessDeniedException ade && ade.ErrorCode == 1)
+            if (ex is AccessDeniedException ade)
             {
                 return false;
             }

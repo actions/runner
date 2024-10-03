@@ -114,7 +114,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             };
 
             Guid jobId = Guid.NewGuid();
-            _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), steps, null, null, null, null, null, null);
+            _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), steps, null, null, null, null, null);
             GitHubContext github = new();
             github["repository"] = new Pipelines.ContextData.StringContextData("actions/runner");
             github["secret_source"] = new Pipelines.ContextData.StringContextData("Actions");
@@ -506,7 +506,27 @@ namespace GitHub.Runner.Common.Tests.Worker
             return EnsureSnapshotPostJobStepForToken(mappingToken, snapshot);
         }
 
-        private async Task EnsureSnapshotPostJobStepForToken(TemplateToken snapshotToken, Pipelines.Snapshot expectedSnapshot)
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public Task EnsureSnapshotPostJobStepForMappingToken_WithIf_Is_False()
+        {
+            var snapshot = new Pipelines.Snapshot("TestImageNameFromMappingToken", condition: $"{PipelineTemplateConstants.Success}() && 1==0", version: "2.*");
+            var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+            var condition = new StringToken(null, null, null, snapshot.Condition);
+            var version = new StringToken(null, null, null, snapshot.Version);
+
+            var mappingToken = new MappingToken(null, null, null)
+            {
+                { new StringToken(null,null,null, PipelineTemplateConstants.ImageName), imageNameValueStringToken },
+                { new StringToken(null,null,null, PipelineTemplateConstants.If), condition },
+                { new StringToken(null,null,null, PipelineTemplateConstants.CustomImageVersion), version }
+            };
+
+            return EnsureSnapshotPostJobStepForToken(mappingToken, snapshot, skipSnapshotStep: true);
+        }
+
+        private async Task EnsureSnapshotPostJobStepForToken(TemplateToken snapshotToken, Pipelines.Snapshot expectedSnapshot, bool skipSnapshotStep = false)
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -524,14 +544,28 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(1, postJobSteps.Count);
                 var snapshotStep = postJobSteps.First();
+                _jobEc.JobSteps.Enqueue(snapshotStep);
+
+                var _stepsRunner = new StepsRunner();
+                _stepsRunner.Initialize(hc);
+                await _stepsRunner.RunAsync(_jobEc);
+
                 Assert.Equal("Create custom image", snapshotStep.DisplayName);
-                Assert.Equal($"{PipelineTemplateConstants.Success}()", snapshotStep.Condition);
+                Assert.Equal(expectedSnapshot.Condition ?? $"{PipelineTemplateConstants.Success}()", snapshotStep.Condition);
 
                 // Run the mock snapshot step, so we can verify it was executed with the expected snapshot object.
-                await snapshotStep.RunAsync();
-
-                Assert.NotNull(_requestedSnapshot);
-                Assert.Equal(expectedSnapshot.ImageName, _requestedSnapshot.ImageName);
+                // await snapshotStep.RunAsync();
+                if (skipSnapshotStep)
+                {
+                    Assert.Null(_requestedSnapshot);
+                }
+                else
+                {
+                    Assert.NotNull(_requestedSnapshot);
+                    Assert.Equal(expectedSnapshot.ImageName, _requestedSnapshot.ImageName);
+                    Assert.Equal(expectedSnapshot.Condition ?? $"{PipelineTemplateConstants.Success}()", _requestedSnapshot.Condition);
+                    Assert.Equal(expectedSnapshot.Version ?? "1.*", _requestedSnapshot.Version);
+                }
             }
         }
     }
