@@ -190,8 +190,8 @@ echo
 echo "Configuring as a service ..."
 prefix=""
 if [ "${runner_plat}" == "linux" ]; then
-    sudo -i -u ${svc_user} bash -c "cd ${svc_user_home}/runner && ./svc.sh install ${svc_user}"
-    sudo ${svc_user_home}/runner/svc.sh start
+    sudo bash -c "cd ${svc_user_home}/runner && ./svc.sh install ${svc_user}"
+    sudo bash -c "cd ${svc_user_home}/runner && ./svc.sh start"
 else
     ./svc.sh install ${svc_user}
     ./svc.sh start
