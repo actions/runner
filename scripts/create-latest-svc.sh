@@ -103,6 +103,8 @@ if [ -z "${RUNNER_CFG_PAT}" ]; then fatal "RUNNER_CFG_PAT must be set before cal
 which curl || fatal "curl required.  Please install in PATH with apt-get, brew, etc"
 which jq || fatal "jq required.  Please install in PATH with apt-get, brew, etc"
 
+svc_user_home="$(awk -v usr=${svc_user} -F ':' '$1 == usr {print $6}' /etc/passwd)"
+pushd ${svc_user_home}
 # bail early if there's already a runner there. also sudo early
 if [ -d ./runner ]; then
     fatal "Runner already exists.  Use a different directory or delete ./runner"
