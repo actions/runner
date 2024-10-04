@@ -2,7 +2,7 @@
 set -Eeo pipefail
 
 is_user_root () { [ "${EUID:-$(id -u)}" -eq 0 ]; }
-if is_user_root;then echo -e "Please do not run as root or with sudo";exit 1;fi
+if is_user_root;then echo "Please do not run as root or with sudo";exit 1;fi
 
 # Notes:
 # PATS over envvars are more secure
@@ -76,7 +76,7 @@ if ! "$flags_found"; then
     runner_group=${6}
 fi
 
-# apply defaults
+# Apply defaults
 runner_name=${runner_name:-$(hostname)}
 svc_user=${svc_user:-$USER}
 
@@ -103,10 +103,16 @@ if [ -z "${RUNNER_CFG_PAT}" ]; then fatal "RUNNER_CFG_PAT must be set before cal
 which curl || fatal "curl required.  Please install in PATH with apt-get, brew, etc"
 which jq || fatal "jq required.  Please install in PATH with apt-get, brew, etc"
 
-svc_user_home="$(awk -v usr=${svc_user} -F ':' '$1 == usr {print $6}' /etc/passwd)"
-# bail early if there's already a runner there. also sudo early
+# Get target user's home and group
+if [[ "${runner_plat}" == "linux" ]];then
+    svc_user_home="$(awk -v usr=${svc_user} -F ':' '$1 == usr {print $6;exit;}' /etc/passwd)"
+else
+    svc_user_home="$(dscl . -read /Users/${svc_user} NFSHomeDirectory | awk '{print $2}')"
+fi
+svc_user_group="$(id -ng ${svc_user})"
+# Bail early if there's already a runner there. also sudo early
 if sudo test -d ${svc_user_home}/runner; then
-    fatal "Runner already exists.  Use a different directory or delete ${svc_user_home}/runner"
+    fatal "Runner already exists. Use a different directory or delete ${svc_user_home}/runner"
 fi
 
 sudo -u ${svc_user} mkdir ${svc_user_home}/runner
@@ -125,7 +131,7 @@ if [ -n "${ghe_hostname}" ]; then
     base_api_url="https://${ghe_hostname}/api/v3"
 fi
 
-# if the scope has a slash, it's a repo runner
+# If the scope has a slash, it's a repo runner
 orgs_or_repos="orgs"
 if [[ "$runner_scope" =~ / ]]; then
     orgs_or_repos="repos"
@@ -142,33 +148,34 @@ echo
 echo "Downloading latest runner ..."
 
 # For the GHES Alpha, download the runner from github.com
+if [[ "${runner_plat}" == "linux" ]];then TMPDIR="/tmp";fi
 latest_version_label=$(curl -fsSL -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
 latest_version=$(echo ${latest_version_label:1})
 runner_file="actions-runner-${runner_plat}-${runner_arch}-${latest_version}.tar.gz"
 
-if [ -f "/tmp/${runner_file}" ]; then
-    echo "/tmp/${runner_file} exists. skipping download."
+if [ -f "${TMPDIR}/${runner_file}" ]; then
+    echo "${TMPDIR}/${runner_file} exists. skipping download."
 else
     runner_url="https://github.com/actions/runner/releases/download/${latest_version_label}/${runner_file}"
 
     echo "Downloading ${latest_version_label} for ${runner_plat} ..."
     echo $runner_url
 
-    curl -o /tmp/${runner_file} -fsSL ${runner_url}
+    curl -o ${TMPDIR}/${runner_file} -fsSL ${runner_url}
 fi
 
-ls -la /tmp/${runner_file}
+ls -la ${TMPDIR}/${runner_file}
 
 #---------------------------------------------------
-# extract to runner directory in this directory
+# Extract to runner directory in this directory
 #---------------------------------------------------
 echo
 echo "Extracting ${runner_file} to ${svc_user_home}/runner"
 
-sudo tar xzf "/tmp/${runner_file}" -C ${svc_user_home}/runner
+sudo tar xzf "${TMPDIR}/${runner_file}" -C ${svc_user_home}/runner
 
 # export of pass
-sudo chown -R ${svc_user}:${svc_user} ${svc_user_home}/runner
+sudo chown -R ${svc_user}:${svc_user_group} ${svc_user_home}/runner
 
 #---------------------------------------
 # Unattended config
@@ -179,16 +186,16 @@ if [ -n "${ghe_hostname}" ]; then
 fi
 
 echo
-echo "Configuring ${runner_name} @ $runner_url"
-echo "sudo RUNNER_TOKEN=\${RUNNER_TOKEN} -i -u ${svc_user} bash -c \"cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token \${RUNNER_TOKEN} ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}\""
-sudo RUNNER_TOKEN=${RUNNER_TOKEN} -i -u ${svc_user} bash -c "cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token ${RUNNER_TOKEN} ${replace:+--replace} --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"} ${disableupdate:+--disableupdate}"
+echo "Configuring ${runner_name} @ ${runner_url}"
+echo
+echo "sudo RUNNER_TOKEN=\${RUNNER_TOKEN} -i -u ${svc_user} bash -c \"cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token \${RUNNER_TOKEN} ${replace:+--replace} --name ${runner_name} ${labels:+--labels ${labels}} ${runner_group:+--runnergroup "${runner_group}"} ${disableupdate:+--disableupdate}\""
+sudo RUNNER_TOKEN=${RUNNER_TOKEN} -i -u ${svc_user} bash -c "cd ${svc_user_home}/runner && ./config.sh --unattended --url $runner_url --token ${RUNNER_TOKEN} ${replace:+--replace} --name ${runner_name} ${labels:+--labels ${labels}} ${runner_group:+--runnergroup "${runner_group}"} ${disableupdate:+--disableupdate}"
 
 #---------------------------------------
 # Configuring as a service
 #---------------------------------------
 echo
 echo "Configuring as a service ..."
-prefix=""
 if [ "${runner_plat}" == "linux" ]; then
     sudo bash -c "cd ${svc_user_home}/runner && ./svc.sh install ${svc_user}"
     sudo bash -c "cd ${svc_user_home}/runner && ./svc.sh start"
