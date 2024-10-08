@@ -96,6 +96,17 @@ namespace GitHub.Runner.Worker.Handlers
                     var isLocalOptOut = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion));
                     bool isOptOut = isWorkflowOptOutSet ? StringUtil.ConvertToBoolean(workflowOptOut) : isLocalOptOut;
 
+                    if (isOptOut && (executionContext.Global.Variables.GetBoolean("DistributedTask.NotAllowOptOutForNode20") ?? false))
+                    {
+                        executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                        {
+                            Type = JobTelemetryType.General,
+                            Message = $"Not allowing opt out for node20 in step {executionContext.Id}"
+                        });
+                        Trace.Info("Not allowing opt out for node20");
+                        isOptOut = false;
+                    }
+
                     if (!isOptOut)
                     {
                         var repoAction = action as Pipelines.RepositoryPathReference;
