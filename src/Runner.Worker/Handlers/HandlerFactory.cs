@@ -104,6 +104,7 @@ namespace GitHub.Runner.Worker.Handlers
                             Message = $"Not allowing opt out for node20 in step {executionContext.Id}"
                         });
                         Trace.Info("Not allowing opt out for node20");
+                        executionContext.Warning("End of life for Actions Node16. For more info: https://github.blog/changelog/2024-09-25-end-of-life-for-actions-node16/");
                         isOptOut = false;
                     }
 
