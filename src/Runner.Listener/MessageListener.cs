@@ -264,8 +264,6 @@ namespace GitHub.Runner.Listener
 
                     if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                     {
-                        Trace.Info("BrokerMigration message received. Polling Broker for messages...");
-
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
 
                         await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _creds);
