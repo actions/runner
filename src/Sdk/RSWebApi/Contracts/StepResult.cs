@@ -19,6 +19,12 @@ namespace GitHub.Actions.RunService.WebApi
         [DataMember(Name = "name", EmitDefaultValue = false)]
         public string Name { get; set; }
 
+        [DataMember(Name = "ref", EmitDefaultValue = false)]
+        public string Ref { get; set; }
+
+        [DataMember(Name = "type", EmitDefaultValue = false)]
+        public string Type { get; set; }
+
         [DataMember(Name = "status")]
         public TimelineRecordState? Status { get; set; }
 
