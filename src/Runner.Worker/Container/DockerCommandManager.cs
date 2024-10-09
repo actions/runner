@@ -9,6 +9,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker;
 
 namespace GitHub.Runner.Worker.Container
 {
@@ -154,6 +155,11 @@ namespace GitHub.Runner.Worker.Container
 
             foreach (var volume in container.MountVolumes)
             {
+                if (!Directory.Exists(volume.SourceVolumePath) && !File.Exists(volume.SourceVolumePath))
+                {
+                    continue;
+                }
+                
                 // replace `"` with `\"` and add `"{0}"` to all path.
                 String volumeArg;
                 if (String.IsNullOrEmpty(volume.SourceVolumePath))
@@ -230,6 +236,11 @@ namespace GitHub.Runner.Worker.Container
 
             foreach (var volume in container.MountVolumes)
             {
+                if (!Directory.Exists(volume.SourceVolumePath) && !File.Exists(volume.SourceVolumePath))
+                {
+                    continue;
+                }
+                
                 // replace `"` with `\"` and add `"{0}"` to all path.
                 String volumeArg;
                 if (String.IsNullOrEmpty(volume.SourceVolumePath))
@@ -336,10 +347,7 @@ namespace GitHub.Runner.Worker.Container
                 }
             };
 
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
-            {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
-            }
+            FeatureManager.EnsureContainerOperationsFeature(context.Global.Variables);
             return await processInvoker.ExecuteAsync(
                             workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                             fileName: DockerPath,
@@ -397,11 +405,7 @@ namespace GitHub.Runner.Worker.Container
             processInvoker.OutputDataReceived += stdoutDataReceived;
             processInvoker.ErrorDataReceived += stderrDataReceived;
 
-
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
-            {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
-            }
+            FeatureManager.EnsureContainerOperationsFeature(context.Global.Variables);
             return await processInvoker.ExecuteAsync(
                 workingDirectory: context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
@@ -429,10 +433,7 @@ namespace GitHub.Runner.Worker.Container
                 context.Output(message.Data);
             };
 
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
-            {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
-            }
+            FeatureManager.EnsureContainerOperationsFeature(context.Global.Variables);
             return await processInvoker.ExecuteAsync(
                 workingDirectory: workingDirectory ?? context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
