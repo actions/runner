@@ -75,5 +75,5 @@ elif [[ $returnCode == 5 ]]; then
     exit 0
 else
     echo "Exiting with unknown error code: ${returnCode}"
-    exit 0
+    exit $returnCode
 fi
