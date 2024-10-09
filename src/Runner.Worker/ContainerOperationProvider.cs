@@ -311,7 +311,7 @@ namespace GitHub.Runner.Worker
 #if OS_WINDOWS
                 @"C:\github\";
 #else
-                "/github/"
+                "/github/";
 #endif
 
 
