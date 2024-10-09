@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -130,6 +130,18 @@
 						"default": false,
 						"scope": "window",
 						"description": "Hide all status bar entries"
+					},
+					"azure-pipelines-vscode-ext.enable-auto-complete": {
+						"type": "boolean",
+						"default": false,
+						"scope": "window",
+						"description": "Enable currently slow auto completion in this web extension"
+					},
+					"azure-pipelines-vscode-ext.enable-semantic-highlighting": {
+						"type": "boolean",
+						"default": false,
+						"scope": "window",
+						"description": "Colorize Pipeline Expressions via Semantic Highlighting"
 					}
 				}
 			}
@@ -306,6 +318,15 @@
 				},
 				"type": "azure-pipelines-vscode-ext"
 			}
+		],
+		"semanticTokenScopes": [
+			{
+				"scopes": {
+					"constant.defaultLibrary": ["constant.language"],
+					"constant.numeric": ["constant.numeric"],
+					"punctuation": ["meta.embedded"]
+				}
+			}
 		]
 	},
 	"scripts": {
@@ -313,7 +334,7 @@
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.73.0",
-		"@vscode/vsce": "^2.31.1",
+		"@vscode/vsce": "^3.1.0",
 		"webpack-cli": "^5.1.4"
 	},
 	"license": "MIT",

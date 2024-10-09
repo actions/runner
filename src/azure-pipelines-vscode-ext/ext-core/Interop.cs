@@ -13,4 +13,9 @@ public static partial class Interop {
     internal static partial Task<string> RequestRequiredParameter(JSObject handle, string name);
     [JSImport("error", "extension.js")]
     internal static partial Task Error(JSObject handle, string message);
+    [JSImport("autocompletelist", "extension.js")]
+    internal static partial Task AutoCompleteList(JSObject handle, string json);
+    [JSImport("semTokens", "extension.js")]
+    internal static partial Task SemTokens(JSObject handle, int[] data);
+
 }

@@ -4,11 +4,26 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk.Functions.v1;
+using GitHub.DistributedTask.Expressions2.Tokens;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
+    internal class AutoCompleteEntry {
+        public int Depth { get; set; }
+        public TemplateToken Token { get; set; }
+        public Definition[] Definitions { get; set; }
+        public string[] AllowedContext { get; set; }
+        public List<Token> Tokens { get; set; }
+        public int Index { get; set; } = -1;
+        public bool SemTokensOnly { get; set; }
+        public (int, int)[] Mapping { get; set; }
+        public Dictionary<(int, int), int> RMapping { get; internal set; }
+
+    }
+
     /// <summary>
     /// Context object that is flowed through while loading and evaluating object templates
     /// </summary>
@@ -17,6 +32,40 @@ namespace GitHub.DistributedTask.ObjectTemplating
     {
         public ExpressionFlags Flags { get; set; }
         internal CancellationToken CancellationToken { get; set; }
+
+        public int? Column { get; set; }
+        public int? Row { get; set; }
+        internal List<AutoCompleteEntry> AutoCompleteMatches { get; set; }
+        public List<int> SemTokens { get; set; } = new List<int>();
+        public int LastRow { get; set; } = 1;
+        public int LastColumn { get; set; } = 1;
+
+        public void AddSemToken(int row, int column, int len, int type, int mod) {
+            if(row - LastRow < 0 || ((row - LastRow) != 0 ? column - 1: column - LastColumn) < 0) {
+                // Insert
+                int i = 0;
+                int r = 1;
+                while(r + SemTokens[i * 5] < row) {
+                    r += SemTokens[i++ * 5];
+                }
+                int c = 1;
+                while(c + SemTokens[i * 5 + 1] <= column && r + SemTokens[i * 5] == row) {
+                    c += SemTokens[i * 5 + 1];
+                    r += SemTokens[i * 5];
+                    i++;
+                }
+                if(SemTokens[i * 5] == 0) {
+                    SemTokens[i * 5 + 1] -= (row - r) != 0 ? column - 1: column - c;
+                } else {
+                    SemTokens[i * 5] -= row - r;
+                }
+                SemTokens.InsertRange(i * 5, new int[] { row - r, (row - r) != 0 ? column - 1: column - c, len, type, mod });
+            } else {
+                SemTokens.AddRange(new int[] { row - LastRow, (row - LastRow) != 0 ? column - 1: column - LastColumn, len, type, mod});
+                LastRow = row;
+                LastColumn = column;
+            }
+        }
 
         internal TemplateValidationErrors Errors
         {

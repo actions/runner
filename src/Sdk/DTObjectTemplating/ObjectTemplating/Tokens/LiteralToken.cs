@@ -18,5 +18,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             : base(tokenType, fileId, line, column)
         {
         }
+
+        public string RawData { get; internal set; }
     }
 }

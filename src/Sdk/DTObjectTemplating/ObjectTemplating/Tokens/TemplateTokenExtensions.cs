@@ -309,13 +309,13 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                             if (!skip && level + 1 < pattern.Length && (token is SequenceToken && pattern[level + 1] == "*" || token is MappingToken))
                             {
                                 state = new TraversalState(state, token);
-                                level++;
+                                level+=state.Increment;
                             }
                         }
                         else
                         {
+                            level -= state.Increment;
                             state = state.Parent;
-                            level--;
                         }
                     }
                 }
@@ -434,6 +434,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             private bool m_isKey;
             public TemplateToken Current;
             public TraversalState Parent;
+            public int Increment = 1;
         }
     }
 }

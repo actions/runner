@@ -23,6 +23,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         public Int32 MaxBytes => m_maxBytes;
 
+        public Int32 Depth => m_depth;
+
         internal void AddBytes(Int32 bytes)
         {
             checked

@@ -112,6 +112,9 @@ var addDefinition = function(id) {
     var d = schema.definitions[id]
     var target = {}
     var deprecated = false
+    if(d.description) {
+      target.description = d.description;
+    }
     if(d.type === "object" || d.properties) {
         target.mapping = {}
         target.mapping.properties = {}
@@ -122,7 +125,7 @@ var addDefinition = function(id) {
             }
             target.mapping.properties[pname] = {}
             var ref = pval["$ref"]
-            if(ref && ref.indexOf(defprefix) === 0) {
+            if(ref && ref.indexOf(defprefix) === 0 && !pval.enum) {
                 target.mapping.properties[pname].type = getId(ref.substring(defprefix.length))
             } else {
                 schema.definitions[id + "-" + pname] = pval
@@ -130,6 +133,10 @@ var addDefinition = function(id) {
                 if(!addDefinition(id + "-" + pname)) {
                   deprecated = true
                 }
+            }
+            var description = pval.description;
+            if(description) {
+              target.mapping.properties[pname].description = description;
             }
             if(d.firstProperty && d.firstProperty.includes(pname)) {
                 target.mapping.properties[pname]["first-property"] = true
@@ -144,7 +151,20 @@ var addDefinition = function(id) {
             target.mapping["loose-value-type"] = "any"
         }
         targetSchema.definitions[getId(id)] = target
-    } else if(d.type === "string") {
+    } else if(d.enum && d.enum.length === 1) {
+      target.string = {}
+      target.string.constant = d.enum[0]
+      if(d.ignoreCase === "value" || d.ignoreCase === "all") {
+        target.string["ignore-case"] = true
+    }
+      targetSchema.definitions[getId(id)] = target
+  }  else if(d.enum) {
+      target["allowed-values"] = []
+      for(var val of d.enum) {
+          target["allowed-values"].push(val)
+      }
+      targetSchema.definitions[getId(id)] = target
+  } else if(d.type === "string") {
         // "referenceName": {
         //     "type": "string",
         //     "pattern": "^[-_A-Za-z0-9]*$"
@@ -157,19 +177,6 @@ var addDefinition = function(id) {
             target.string["ignore-case"] = true
         }
         
-        targetSchema.definitions[getId(id)] = target
-    } else if(d.enum && d.enum.length === 1) {
-        target.string = {}
-        target.string.constant = d.enum[0]
-        if(d.ignoreCase === "value" || d.ignoreCase === "all") {
-          target.string["ignore-case"] = true
-      }
-        targetSchema.definitions[getId(id)] = target
-    }  else if(d.enum) {
-        target["allowed-values"] = []
-        for(var val of d.enum) {
-            target["allowed-values"].push(val)
-        }
         targetSchema.definitions[getId(id)] = target
     } else if(d.anyOf) {
         target["one-of"] = []
@@ -321,6 +328,7 @@ targetSchema.definitions["task-task"] = targetSchema.definitions["nonEmptyString
 
 targetSchema.definitions["azp-any"]["one-of"].push("boolean", "null", "number")
 targetSchema.definitions["any_allowExpressions"]["one-of"].push("boolean", "null", "number")
+targetSchema.definitions["task"].mapping.properties["target"] = "stepTarget"
 
 
 console.log(JSON.stringify(targetSchema, null, 4))

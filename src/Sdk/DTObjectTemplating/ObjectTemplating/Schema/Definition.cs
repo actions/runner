@@ -47,7 +47,9 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 }
                 else if (String.Equals(definitionKey.Value, TemplateConstants.Description, StringComparison.Ordinal))
                 {
+                    var description = definition[i].Value.AssertString($"description");
                     definition.RemoveAt(i);
+                    Description = description.Value;
                 }
                 else if (String.Equals(definitionKey.Value, "actionsIfExpression", StringComparison.Ordinal))
                 {
@@ -63,6 +65,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         }
 
         public bool ActionsIfExpression { get; private set; }
+
+        public string Description { get; }
 
         internal abstract DefinitionType DefinitionType { get; }
 

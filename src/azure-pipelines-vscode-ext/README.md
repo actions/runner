@@ -8,6 +8,22 @@ The first VSCode Extension which can Validate and Expand Azure Pipeline YAML fil
 #### Live preview of the expanded / rendered pipeline
 ![Live preview of the expanded / rendered pipeline](https://raw.githubusercontent.com/wiki/ChristopherHX/runner.server/live-preview.gif)
 
+#### Experimental autocompletion
+
+**slow ( disabled by default )**
+
+You can try this out by enabling setting `azure-pipelines-vscode-ext.enable-auto-complete` (no restart needed), feedback wanted.
+
+![experimental autocompletion](https://raw.githubusercontent.com/wiki/ChristopherHX/runner.server/auto-completion.gif)
+
+#### Experimental semantic highlighting of template and runtime expressions
+
+**potentially slow ( disabled by default )**
+
+You can try this out by enabling setting `azure-pipelines-vscode-ext.enable-semantic-highlighting` (no restart needed), feedback wanted.
+
+![experimental highlighting](https://raw.githubusercontent.com/wiki/ChristopherHX/runner.server/semantic-highlighting.gif)
+
 ## Features
 
 ### Remote Template References

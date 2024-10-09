@@ -2,8 +2,14 @@
 using System.Globalization;
 using System.IO;
 using System.Linq;
+
+using GitHub.DistributedTask.Expressions2.Tokens;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+
+using Runner.Server.Azure.Devops;
+
+
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 
@@ -30,6 +36,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             m_force_azure_pipelines = forceAzurePipelines;
         }
 
+        internal YamlObjectReader(
+            Int32? fileId,
+            string input,
+            bool yamlAnchors = false,
+            bool yamlFold = false,
+            bool yamlMerge = false,
+            bool preserveString = false,
+            bool forceAzurePipelines = false) : this(fileId, new StringReader(input), yamlAnchors, yamlFold, yamlMerge, preserveString, forceAzurePipelines)
+        {
+            m_rawInput = input;
+        }
+
         private string GetScalarStringValue(Scalar scalar) {
             return m_yamlFold && scalar.Style == ScalarStyle.Folded ? scalar.Value.Replace("\n", " ") : scalar.Value;
         }
@@ -44,7 +62,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // String tag
                     if (String.Equals(scalar.Tag.Value, c_stringTag, StringComparison.Ordinal))
                     {
-                        value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+                        value = CreateStringToken(scalar);
                         MoveNext();
                         return true;
                     }
@@ -74,6 +92,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             throw new NotSupportedException($"Unexpected tag '{scalar.Tag}'");
                     }
 
+                    if(!string.IsNullOrEmpty(m_rawInput)) {
+                        FillPreWhitespace(scalar, value);
+                        FillPostWhitespace(scalar, value);
+                    }
+
                     MoveNext();
                     return true;
                 }
@@ -96,7 +119,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
                     else
                     {
-                        value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+                        value = CreateStringToken(scalar);
+                    }
+                    if(!string.IsNullOrEmpty(m_rawInput) && value.Type != TokenType.String) {
+                        FillPreWhitespace(scalar, value);
+                        FillPostWhitespace(scalar, value);
                     }
 
                     MoveNext();
@@ -104,7 +131,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
 
                 // Otherwise assume string
-                value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+                value = CreateStringToken(scalar);
                 MoveNext();
                 return true;
             }
@@ -112,12 +139,100 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             value = default;
             return false;
         }
+
+        private LiteralToken CreateStringToken(Scalar scalar)
+        {
+            var tkn = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+            if(!string.IsNullOrEmpty(m_rawInput))
+            {
+                tkn.RawData = m_rawInput.Substring(scalar.Start.Index, scalar.End.Index - scalar.Start.Index);
+                if(scalar.Style != ScalarStyle.SingleQuoted && scalar.Style != ScalarStyle.DoubleQuoted) {
+                    FillPreWhitespace(scalar, tkn);
+                    // TODO Yaml scalar keys break intellisense, this modifies preprocessing
+                    if(tkn.PreWhiteSpace != null && tkn.PreWhiteSpace.Line < tkn.Line) {
+                        tkn.PreWhiteSpace.Line = tkn.Line.Value;
+                        tkn.PreWhiteSpace.Character = 1;
+                    }
+                    FillPostWhitespace(scalar, tkn);
+                } else {
+                    tkn.PostWhiteSpace = new Position { Line = scalar.End.Line, Character = scalar.End.Column };
+                }
+            }
+            return tkn;
+        }
+
+        private void FillPreWhitespace(NodeEvent scalar, TemplateToken tkn)
+        {
+            var lines = 0;
+            var column = 0;
+            int i = scalar.Start.Index - 1;
+            for (; i >= 0 && (m_rawInput[i] == ' ' || m_rawInput[i] == '\n'); i--)
+            {
+                switch (m_rawInput[i])
+                {
+                    case ' ':
+                        column++;
+                        break;
+                    case '\n':
+                        lines++;
+                        column = 0;
+                        if (i - 1 >= 0 && m_rawInput[i - 1] == '\r')
+                        {
+                            i--;
+                        }
+                        break;
+                }
+            }
+            int cpos = 0;
+            if (lines > 0 && i >= 0)
+            {
+                int lstart = m_rawInput.LastIndexOf('\n', i);
+                cpos = i + 1 - lstart;
+            }
+            tkn.PreWhiteSpace = new Position() { Line = scalar.Start.Line - lines, Character = lines == 0 ? scalar.Start.Column - column : cpos };
+        }
+
+        private void FillPostWhitespace(ParsingEvent scalar, TemplateToken tkn)
+        {
+            var lines = 0;
+            var column = 0;
+            int i = scalar.End.Index;
+            for (; i < m_rawInput.Length && (m_rawInput[i] == ' ' || m_rawInput[i] == '\r' || m_rawInput[i] == '\n'); i++)
+            {
+                switch (m_rawInput[i])
+                {
+                    case ' ':
+                        column++;
+                        break;
+                    case '\n':
+                        lines++;
+                        column = 1;
+                        break;
+                    case '\r':
+                        lines++;
+                        column = 1;
+                        if (i + 1 < m_rawInput.Length && m_rawInput[i + 1] == '\n')
+                        {
+                            i++;
+                        }
+                        break;
+                }
+            }
+            tkn.PostWhiteSpace = new Position() { Line = scalar.End.Line + lines, Character = lines == 0 ? scalar.End.Column + column : column };
+        }
+
 
         public Boolean AllowSequenceStart(out SequenceToken value)
         {
             if (EvaluateCurrent() is SequenceStart sequenceStart)
             {
                 value = new SequenceToken(m_fileId, sequenceStart.Start.Line, sequenceStart.Start.Column);
+                if(!string.IsNullOrEmpty(m_rawInput))
+                {
+                    if(sequenceStart.Style == SequenceStyle.Block) {
+                        FillPreWhitespace(sequenceStart, value);
+                    }
+                }
                 MoveNext();
                 return true;
             }
@@ -126,10 +241,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return false;
         }
 
-        public Boolean AllowSequenceEnd()
+        public Boolean AllowSequenceEnd(SequenceToken value)
         {
-            if (EvaluateCurrent() is SequenceEnd)
+            if (EvaluateCurrent() is SequenceEnd sequenceEnd)
             {
+                if(!string.IsNullOrEmpty(m_rawInput) && value != null)
+                {
+                    if(value.PreWhiteSpace != null) {
+                        FillPostWhitespace(sequenceEnd, value);
+                    } else {
+                        value.PostWhiteSpace = new Position() { Line = sequenceEnd.End.Line, Character = sequenceEnd.End.Column };
+                    }
+                }
                 MoveNext();
                 return true;
             }
@@ -142,6 +265,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             if (EvaluateCurrent() is MappingStart mappingStart)
             {
                 value = new MappingToken(m_fileId, mappingStart.Start.Line, mappingStart.Start.Column);
+                if(!string.IsNullOrEmpty(m_rawInput))
+                {
+                    if(mappingStart.Style == MappingStyle.Block) {
+                        FillPreWhitespace(mappingStart, value);
+                    }
+                }
                 MoveNext();
                 return true;
             }
@@ -150,10 +279,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return false;
         }
 
-        public Boolean AllowMappingEnd()
+        public Boolean AllowMappingEnd(MappingToken value)
         {
-            if (EvaluateCurrent() is MappingEnd)
+            if (EvaluateCurrent() is MappingEnd mappingEnd)
             {
+                if(!string.IsNullOrEmpty(m_rawInput) && value != null)
+                {
+                    if(value.PreWhiteSpace != null) {
+                        FillPostWhitespace(mappingEnd, value);
+                    } else {
+                        value.PostWhiteSpace = new Position() { Line = mappingEnd.End.Line, Character = mappingEnd.End.Column };
+                    }
+                }
                 MoveNext();
                 return true;
             }
@@ -606,5 +743,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private readonly bool m_preserve_string;
         private readonly bool m_force_azure_pipelines;
         private ParsingEvent m_current;
+        private string m_rawInput;
+
     }
 }

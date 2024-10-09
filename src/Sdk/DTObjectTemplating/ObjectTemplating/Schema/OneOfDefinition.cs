@@ -39,7 +39,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
             }
         }
 
-        internal override DefinitionType DefinitionType => DefinitionType.Mapping;
+        internal override DefinitionType DefinitionType => DefinitionType.OneOf;
 
         internal List<String> OneOf { get; } = new List<String>();
 

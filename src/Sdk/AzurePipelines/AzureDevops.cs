@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.Expressions2.Sdk.Functions;
+using GitHub.DistributedTask.Expressions2.Tokens;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -21,7 +22,7 @@ namespace Runner.Server.Azure.Devops {
 
     public class AzureDevops {
 
-        private static TemplateSchema LoadSchema() {
+        public static TemplateSchema LoadSchema() {
             var assembly = Assembly.GetExecutingAssembly();
             var json = default(String);
             using (var stream = assembly.GetManifestResourceStream("azurepiplines.json"))
@@ -628,6 +629,154 @@ namespace Runner.Server.Azure.Devops {
             return string.Join('/', path.ToArray());
         }
 
+        private static ((int, int)[], Dictionary<(int, int), int>) CreateIdxMapping(TemplateToken token) {
+            if(token is LiteralToken lit && lit.RawData != null) {
+                var rand = new Random();
+                string C = "CX";
+                while(lit.RawData.Contains(C)) {
+                    C = rand.Next(255).ToString("X2");
+                }
+                var praw = lit.ToString();
+                (int, int)[] mapping = new (int, int)[praw.Length + 1];
+                var rmapping = new Dictionary<(int, int), int>();
+                Array.Fill(mapping, (-1, -1));
+
+                int column = lit.Column.Value;
+                int line = lit.Line.Value;
+                int ridx = -1;
+                for(int idx = 0; idx < lit.RawData.Length; idx++) {
+                    if(lit.RawData[idx] == '\n') {
+                        line++;
+                        column = 1;
+                        continue;
+                    }
+                    var xraw = lit.RawData.Insert(idx, C);
+
+                    var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
+                    try {
+                        while(scanner.MoveNext()) {
+                            if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
+                                var x = s.Value;
+                                var m = x.IndexOf(C);
+                                if(m >= 0 && m < mapping.Length && ridx <= m) {
+                                    if(mapping[m] != (-1,-1)) {
+                                        rmapping.Remove(mapping[m]);
+                                    }
+                                    mapping[m] = (line, column);
+                                    rmapping[(line, column)] = m;
+                                    ridx = m;
+                                }
+                            }
+                        }
+                    } catch {
+
+                    }
+                    column++;
+                }
+                return (mapping, rmapping);
+            }
+            return (null, null);
+        }
+
+        private static void SyntaxHighlightExpression(TemplateContext m_context, TemplateToken token, int offset, string value, int poffset = 0) {
+            var (mapping, rmapping) = CreateIdxMapping(token);
+            LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(value.Substring(offset), m_context.Flags);
+            Token tkn = null;
+            var startIndex = offset;
+            var lit = token as LiteralToken;
+            if(lit.RawData != null) {
+                while(lexicalAnalyzer.TryGetNextToken(ref tkn)) {
+                    var (r, c) = mapping[startIndex + tkn.Index];
+                    if(tkn.Kind == TokenKind.Function) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 2, 2);
+                    } else if(tkn.Kind == TokenKind.NamedValue) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 0, 1);
+                    } else if(tkn.Kind == TokenKind.PropertyName) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 3, 0);
+                    } else if(tkn.Kind == TokenKind.Boolean || tkn.Kind == TokenKind.Null) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 4, 2);
+                    } else if(tkn.Kind == TokenKind.Number || tkn.Kind == TokenKind.String && tkn.ParsedValue is VersionWrapper) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 4, 4);
+                    } else if(tkn.Kind == TokenKind.StartGroup || tkn.Kind == TokenKind.StartIndex || tkn.Kind == TokenKind.StartParameters || tkn.Kind == TokenKind.EndGroup || tkn.Kind == TokenKind.EndParameters
+                        || tkn.Kind == TokenKind.EndIndex || tkn.Kind == TokenKind.Wildcard || tkn.Kind == TokenKind.Separator || tkn.Kind == TokenKind.LogicalOperator || tkn.Kind == TokenKind.Dereference) {
+                        m_context.AddSemToken(r, c, tkn.RawValue.Length, 5, 0);
+                    } else if(tkn.Kind == TokenKind.String) {
+                        var (er, ec) = mapping[startIndex + tkn.Index + tkn.RawValue.Length];
+                        // Only add single line string
+                        if(er == r && c < ec) {
+                            m_context.AddSemToken(r, c, ec - c /* May contain escape codes */, 6, 0);
+                        }
+                        // TODO multi line string by splitting them
+                    }
+                }
+            }
+        }
+
+        private static bool AutoCompleteExpression(TemplateContext m_context, AutoCompleteEntry completion, int offset, string value, int poffset = 0) {
+            if(completion != null && m_context.AutoCompleteMatches != null) {
+                var idx = GetIdxOfExpression(completion.Token as LiteralToken, m_context.Row.Value, m_context.Column.Value);
+                var startIndex = -1 - completion.Index + offset;
+                if(idx == -1 && completion.Token.PreWhiteSpace != null && (m_context.Row.Value > completion.Token.PreWhiteSpace.Line || m_context.Row.Value == completion.Token.PreWhiteSpace.Line && m_context.Column.Value >= completion.Token.PostWhiteSpace.Character)) {
+                    idx = startIndex;
+                }
+                if(idx == -1 && completion.Token.PostWhiteSpace != null && (m_context.Row.Value < completion.Token.PostWhiteSpace.Line || m_context.Row.Value == completion.Token.PostWhiteSpace.Line && m_context.Column.Value <= completion.Token.PostWhiteSpace.Character)) {
+                    idx = startIndex + value.Length + poffset;
+                }
+                if(idx != -1 && idx >= startIndex && (idx <= startIndex + value.Length + poffset)) {
+                    LexicalAnalyzer lexicalAnalyzer = new LexicalAnalyzer(value, m_context.Flags);
+                    Token tkn = null;
+                    List<Token> tkns = new List<Token>();
+                    while(lexicalAnalyzer.TryGetNextToken(ref tkn)) {
+                        tkns.Add(tkn);
+                        if(tkn.Index + startIndex > idx) {
+                            break;
+                        }
+                    }
+                    completion.Tokens = tkns;
+                    completion.Index = idx - startIndex;
+                }
+            }
+            return true;
+        }
+
+        private static int GetIdxOfExpression(LiteralToken lit, int row, int column)
+        {
+          var lc = column - lit.Column;
+          var lr = row - lit.Line;
+          var rand = new Random();
+          string C = "CX";
+          while(lit.RawData.Contains(C)) {
+            C = rand.Next(255).ToString("X2");
+          }
+          var xraw = lit.RawData;
+          var idx = 0;
+          for(int i = 0; i < lr; i++) {
+            var n = xraw.IndexOf('\n', idx);
+            if(n == -1) {
+              return -1;
+            }
+            idx = n + 1;
+          }
+          idx += idx == 0 ? lc ?? 0 : column - 1;
+          if(idx < 0 || idx > xraw.Length) {
+            return -1;
+          }
+          xraw = xraw.Insert(idx, C);
+
+          var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
+          try {
+            while(scanner.MoveNext()) {
+              if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
+                var x = s.Value;
+                return x.IndexOf(C);
+              }
+            }
+          } catch {
+
+          }
+          return -1;
+        }
+
         
         public static async Task<(string, TemplateToken)> ParseTemplate(Context context, string filenameAndRef, string schemaName = null, bool checks = true)
         {
@@ -653,16 +802,18 @@ namespace Runner.Server.Azure.Devops {
             context.FileTable ??= new List<string>();
             context.FileTable.Add(errorTemplateFileName);
             var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
+            if(context.Column != 0 && context.Row != 0) {
+                templateContext.AutoCompleteMatches = context.AutoCompleteMatches ??= new List<AutoCompleteEntry>();
+                templateContext.Column = context.Column;
+                templateContext.Row = context.Row;
+            }
             var fileId = templateContext.GetFileId(errorTemplateFileName);
 
-            TemplateToken token;
-            using (var stringReader = new StringReader(fileContent))
-            {
-                // preserveString is needed for azure pipelines compatability of the templateContext property all boolean and number token are casted to string without loosing it's exact string value
-                var yamlObjectReader = new YamlObjectReader(fileId, stringReader, preserveString: true, forceAzurePipelines: true);
-                token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
-            }
+            // preserveString is needed for azure pipelines compatibility of the templateContext property all boolean and number token are casted to string without loosing it's exact string value
+            var yamlObjectReader = new YamlObjectReader(fileId, fileContent, preserveString: true, forceAzurePipelines: true);
+            TemplateToken token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
 
+            context.SemTokens = templateContext.SemTokens;
             if(checks)
             {
                 foreach (var stepCond in token.TraverseByPattern(new[] { "steps", "*", "condition" })
@@ -674,18 +825,18 @@ namespace Runner.Server.Azure.Devops {
                                     .Concat(token.TraverseByPattern(new[] { "stages", "*", "jobs", "*", "strategy", "on", "", "steps", "*", "condition" }))
                     )
                 {
-                    CheckConditionalExpressions(templateContext.Errors, stepCond, Level.Step);
+                    CheckConditionalExpressions(templateContext, stepCond, Level.Step);
                 }
                 foreach (var jobCond in token.TraverseByPattern(new[] { "jobs", "*", "condition" })
                                     .Concat(token.TraverseByPattern(new[] { "stages", "*", "jobs", "*", "condition" }))
                     )
                 {
-                    CheckConditionalExpressions(templateContext.Errors, jobCond, Level.Job);
+                    CheckConditionalExpressions(templateContext, jobCond, Level.Job);
                 }
                 foreach (var stageCond in token.TraverseByPattern(new[] { "stages", "*", "condition" })
                     )
                 {
-                    CheckConditionalExpressions(templateContext.Errors, stageCond, Level.Stage);
+                    CheckConditionalExpressions(templateContext, stageCond, Level.Stage);
                 }
                 foreach (var runtimeExpr in token.TraverseByPattern(new[] { "variables", "*", "value" })
                                     .Concat(token.TraverseByPattern(new[] { "variables", "" }))
@@ -722,7 +873,7 @@ namespace Runner.Server.Azure.Devops {
                                     .Concat(token.TraverseByPattern(new[] { "jobs", "*", "strategy", "parallel" }))
                     )
                 {
-                    CheckSingleRuntimeExpression(templateContext.Errors, runtimeExpr);
+                    CheckSingleRuntimeExpression(templateContext, runtimeExpr);
                 }
 
                 try
@@ -824,6 +975,8 @@ namespace Runner.Server.Azure.Devops {
                             }
                             if (fdef != null && val != null)
                             {
+                                // var autoCompleteState = templateContext.AutoCompleteMatches;
+                                // templateContext.AutoCompleteMatches = new List<AutoCompleteEntry>();
                                 TemplateEvaluator.Evaluate(templateContext, fdef, val, 0, fileId);
                                 if(start != null) {
                                     foreach(var (tkn, sh) in GetPatterns(start.Value)
@@ -831,16 +984,16 @@ namespace Runner.Server.Azure.Devops {
                                     {
                                         switch(sh) {
                                             case 0:
-                                                CheckConditionalExpressions(templateContext.Errors, tkn, Level.Step);
+                                                CheckConditionalExpressions(templateContext, tkn, Level.Step);
                                             break;
                                             case 1:
-                                                CheckConditionalExpressions(templateContext.Errors, tkn, Level.Job);
+                                                CheckConditionalExpressions(templateContext, tkn, Level.Job);
                                             break;
                                             case 2:
-                                                CheckConditionalExpressions(templateContext.Errors, tkn, Level.Stage);
+                                                CheckConditionalExpressions(templateContext, tkn, Level.Stage);
                                             break;
                                             case 3:
-                                                CheckSingleRuntimeExpression(templateContext.Errors, tkn);
+                                                CheckSingleRuntimeExpression(templateContext, tkn);
                                             break;
                                         }
                                     }
@@ -969,16 +1122,16 @@ namespace Runner.Server.Azure.Devops {
                                 {
                                     switch(sh) {
                                         case 0:
-                                            CheckConditionalExpressions(templateContext.Errors, tkn, Level.Step);
+                                            CheckConditionalExpressions(templateContext, tkn, Level.Step);
                                         break;
                                         case 1:
-                                            CheckConditionalExpressions(templateContext.Errors, tkn, Level.Job);
+                                            CheckConditionalExpressions(templateContext, tkn, Level.Job);
                                         break;
                                         case 2:
-                                            CheckConditionalExpressions(templateContext.Errors, tkn, Level.Stage);
+                                            CheckConditionalExpressions(templateContext, tkn, Level.Stage);
                                         break;
                                         case 3:
-                                            CheckSingleRuntimeExpression(templateContext.Errors, tkn);
+                                            CheckSingleRuntimeExpression(templateContext, tkn);
                                         break;
                                     }
                                 }
@@ -1092,9 +1245,10 @@ namespace Runner.Server.Azure.Devops {
 
         }
 
-        private static void CheckSingleRuntimeExpression(TemplateValidationErrors errors, TemplateToken rawVal)
+        private static void CheckSingleRuntimeExpression(TemplateContext m_context, TemplateToken rawVal)
         {
-            if(rawVal == null || rawVal.Type == TokenType.Null || !(rawVal is LiteralToken) || rawVal.Type == TokenType.BasicExpression) {
+            var autoComplete = m_context.AutoCompleteMatches?.Count > 0 && m_context.AutoCompleteMatches.Last().Token == rawVal;
+            if(rawVal == null || !autoComplete && rawVal.Type == TokenType.Null || !(rawVal is LiteralToken) || rawVal.Type == TokenType.BasicExpression) {
                 return;
             }
             var val = rawVal.AssertLiteralString("runtime expression");
@@ -1103,12 +1257,22 @@ namespace Runner.Server.Azure.Devops {
                 return;
             }
             try {
+                var pval = val.Substring(2, val.Length - 3);
+                var names = new[] { "variables", "resources", "pipeline", "dependencies", "stageDependencies" };
+                if(autoComplete) {
+                    var match = m_context.AutoCompleteMatches.Last();
+                    match.AllowedContext = names.Append("counter(0,2)").ToArray();
+                    AutoCompleteExpression(m_context, match, 2, pval);
+                }
+                // m_context.AddSemToken(rawVal.Line.Value, rawVal.Column.Value, 2, 5, 0);
+                SyntaxHighlightExpression(m_context, rawVal, 2, val);
+                // m_context.AddSemToken(rawVal.Line.Value, rawVal.Column.Value, 2, 5, 0);
                 var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert };
-                var node = parser.CreateTree(val.Substring(2, val.Length - 3), new EmptyTraceWriter().ToExpressionTraceWriter(),
-                    new[] { "variables", "resources", "pipeline", "dependencies", "stageDependencies" }.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),
+                var node = parser.CreateTree(pval, new EmptyTraceWriter().ToExpressionTraceWriter(),
+                    names.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),
                     ExpressionConstants.AzureWellKnownFunctions.Where(kv => kv.Key != "split").Select(kv => kv.Value).Append(new FunctionInfo<NoOperation>("counter", 0, 2)));
             } catch (Exception ex) {
-                errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rawVal)}{ex.Message}");
+                m_context.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rawVal)}{ex.Message}");
             }
         }
 
@@ -1118,10 +1282,10 @@ namespace Runner.Server.Azure.Devops {
             Step
         }
 
-        private static void CheckConditionalExpressions(TemplateValidationErrors errors, TemplateToken rawCondition, Level level)
+        private static void CheckConditionalExpressions(TemplateContext m_context, TemplateToken rawCondition, Level level)
         {
-
-            if(rawCondition == null || rawCondition.Type == TokenType.Null || !(rawCondition is LiteralToken) || rawCondition.Type == TokenType.BasicExpression) {
+            var autoComplete = m_context.AutoCompleteMatches?.Count > 0 && m_context.AutoCompleteMatches.Last().Token == rawCondition;
+            if(rawCondition == null || !autoComplete && rawCondition.Type == TokenType.Null || !(rawCondition is LiteralToken) || rawCondition.Type == TokenType.BasicExpression) {
                 return;
             }
             var val = rawCondition.AssertLiteralString("condition");
@@ -1143,12 +1307,22 @@ namespace Runner.Server.Azure.Devops {
             funcs.Add(new FunctionInfo<NoOperation>("Succeeded", 0, Int32.MaxValue));
             funcs.Add(new FunctionInfo<NoOperation>("SucceededOrFailed", 0, Int32.MaxValue));
             try {
+                if(autoComplete) {
+                    var match = m_context.AutoCompleteMatches.Last();
+                    match.AllowedContext = names.Concat(funcs.Select(f => $"{f.Name}({f.MinParameters},{f.MaxParameters})")).ToArray();
+                    if(rawCondition.Type == TokenType.Null) {
+                        match.Token = new NullToken(match.Token.FileId, match.Token.Line, match.Token.Column + 1, "");
+                    }
+                    AutoCompleteExpression(m_context, match, rawCondition.Type == TokenType.Null ? 1 : 0, val);
+                }
+                SyntaxHighlightExpression(m_context, rawCondition, 0, val);
+                
                 var parser = new ExpressionParser() { Flags = ExpressionFlags.DTExpressionsV1 | ExpressionFlags.ExtendedDirectives | ExpressionFlags.AllowAnyForInsert };
                 var node = parser.CreateTree(val, new EmptyTraceWriter().ToExpressionTraceWriter(),
                     names.Select(n => new NamedValueInfo<NoOperationNamedValue>(n)),
                     ExpressionConstants.AzureWellKnownFunctions.Where(kv => kv.Key != "split").Select(kv => kv.Value).Concat(funcs));
             } catch (Exception ex) {
-                errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rawCondition)}{ex.Message}");
+                m_context.Errors.Add($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(rawCondition)}{ex.Message}");
             }
         }
         

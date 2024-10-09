@@ -1,4 +1,10 @@
-### v0.1.1
+### v0.2.0
+- experimental **slow** auto complete (opt int via azure-pipelines-vscode-ext.enable-auto-complete)
+  - the upcoming Runner.Server extension would be faster by using the native dotnet builds via a language server
+- experimental semantic highlighting of template and runtime expressions (opt in via azure-pipelines-vscode-ext.enable-semantic-highlighting)
+  - currently could slow down syntax checking, this task and the syntax check task needs to be merged to provide both results via one round trip
+
+### v0.1.2
 - syntax check template parameter types for variable templates as well
 
 ### v0.1.1

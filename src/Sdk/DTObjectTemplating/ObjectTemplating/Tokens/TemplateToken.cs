@@ -8,6 +8,8 @@ using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
 
+using Runner.Server.Azure.Devops;
+
 namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
     /// <summary>
@@ -287,5 +289,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             context.Memory.AddBytes(result);
             return result;
         }
+
+        public Position PreWhiteSpace { get; set; }
+        public Position PostWhiteSpace { get; set; }
     }
 }

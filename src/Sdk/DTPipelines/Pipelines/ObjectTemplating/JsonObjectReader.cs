@@ -62,7 +62,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return false;
         }
 
-        public Boolean AllowSequenceEnd()
+        public Boolean AllowSequenceEnd(SequenceToken _)
         {
             if (m_enumerator.Current.Type == ParseEventType.SequenceEnd)
             {
@@ -87,7 +87,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return false;
         }
 
-        public Boolean AllowMappingEnd()
+        public Boolean AllowMappingEnd(MappingToken _)
         {
             if (m_enumerator.Current.Type == ParseEventType.MappingEnd)
             {

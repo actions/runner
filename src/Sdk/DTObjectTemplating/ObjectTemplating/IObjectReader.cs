@@ -13,11 +13,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         Boolean AllowSequenceStart(out SequenceToken token);
 
-        Boolean AllowSequenceEnd();
+        Boolean AllowSequenceEnd(SequenceToken token = null);
 
         Boolean AllowMappingStart(out MappingToken token);
 
-        Boolean AllowMappingEnd();
+        Boolean AllowMappingEnd(MappingToken token = null);
 
         void ValidateStart();
 

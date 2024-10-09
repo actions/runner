@@ -1,0 +1,282 @@
+{
+  "root": {
+    "github": {
+      "description": "Information about the workflow run. For more information, see [`github` context](https://docs.github.com/actions/learn-github-actions/contexts#github-context)."
+    },
+    "env": {
+      "description": "Contains variables set in a workflow, job, or step. For more information, see [`env` context](https://docs.github.com/actions/learn-github-actions/contexts#env-context)."
+    },
+    "vars": {
+      "description": "Contains variables set at the repository, organization, or environment levels. For more information, see [`vars` context](https://docs.github.com/actions/learn-github-actions/contexts#vars-context)."
+    },
+    "job": {
+      "description": "Information about the currently running job. For more information, see [`job` context](https://docs.github.com/actions/learn-github-actions/contexts#job-context)."
+    },
+    "jobs": {
+      "description": "For reusable workflows only, contains outputs of jobs from the reusable workflow. For more information, see [`jobs` context](https://docs.github.com/actions/learn-github-actions/contexts#jobs-context)."
+    },
+    "steps": {
+      "description": "Information about the steps that have been run in the current job. For more information, see [`steps` context](https://docs.github.com/actions/learn-github-actions/contexts#steps-context)."
+    },
+    "runner": {
+      "description": "Information about the runner that is running the current job. For more information, see [`runner` context](https://docs.github.com/actions/learn-github-actions/contexts#runner-context)."
+    },
+    "secrets": {
+      "description": "Contains the names and values of secrets that are available to a workflow run. For more information, see [`secrets` context](https://docs.github.com/actions/learn-github-actions/contexts#secrets-context)."
+    },
+    "strategy": {
+      "description": "Information about the matrix execution strategy for the current job. For more information, see [`strategy` context](https://docs.github.com/actions/learn-github-actions/contexts#strategy-context)."
+    },
+    "matrix": {
+      "description": "Contains the matrix properties defined in the workflow that apply to the current job. For more information, see [`matrix` context](https://docs.github.com/actions/learn-github-actions/contexts#matrix-context)."
+    },
+    "needs": {
+      "description": "Contains the outputs of all jobs that are defined as a dependency of the current job. For more information, see [`needs` context](https://docs.github.com/actions/learn-github-actions/contexts#needs-context)."
+    },
+    "inputs": {
+      "description": "Contains the inputs of a reusable or manually triggered workflow. For more information, see [`inputs` context](https://docs.github.com/actions/learn-github-actions/contexts#inputs-context)."
+    }
+  },
+  "functions": {
+    "success": {
+      "description": "Returns `true` if all transitive dependencies are successful"
+    },
+    "always": {
+      "description": "Causes the step to always execute, and returns `true`, even when canceled. The `always` expression is best used at the step level or on tasks that you expect to run even when a job is canceled. For example, you can use `always` to send logs even when a job is canceled."
+    },
+    "cancelled": {
+      "description": "Returns `true` if the workflow was canceled."
+    },
+    "failure": {
+      "description": "Returns `true` when any previous step of a job fails. If you have a chain of dependent jobs, `failure()` returns `true` if any ancestor job fails."
+    },
+    "hashFiles": {
+      "description": "Returns a single hash for the set of files that matches the `path` pattern. You can provide a single `path` pattern or multiple `path` patterns separated by commas. The `path` is relative to the `GITHUB_WORKSPACE` directory and can only include files inside of the `GITHUB_WORKSPACE`. This function calculates an individual SHA-256 hash for each matched file, and then uses those hashes to calculate a final SHA-256 hash for the set of files. If the `path` pattern does not match any files, this returns an empty string. For more information about SHA-256, see \"[SHA-2](https://wikipedia.org/wiki/SHA-2).\"\n\nYou can use pattern matching characters to match file names. Pattern matching is case-insensitive on Windows. For more information about supported pattern matching characters, see \"[Workflow syntax for GitHub Actions](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet).\""
+    },
+    "contains": {
+      "description": "`contains( search, item )`\n\nReturns `true` if `search` contains `item`. If `search` is an array, this function returns `true` if the `item` is an element in the array. If `search` is a string, this function returns `true` if the `item` is a substring of `search`. This function is not case sensitive. Casts values to a string."
+    },
+    "endswith": {
+      "description": "`endsWith( searchString, searchValue )`\n\nReturns `true` if `searchString` ends with `searchValue`. This function is not case sensitive. Casts values to a string."
+    },
+    "format": {
+      "description": "`format( string, replaceValue0, replaceValue1, ..., replaceValueN)`\n\nReplaces values in the `string`, with the variable `replaceValueN`. Variables in the `string` are specified using the `{N}` syntax, where `N` is an integer. You must specify at least one `replaceValue` and `string`. There is no maximum for the number of variables (`replaceValueN`) you can use. Escape curly braces using double braces."
+    },
+    "fromjson": {
+      "description": "`fromJSON(value)`\n\nReturns a JSON object or JSON data type for `value`. You can use this function to provide a JSON object as an evaluated expression or to convert environment variables from a string."
+    },
+    "join": {
+      "description": "`join( array, optionalSeparator )`\n\nThe value for `array` can be an array or a string. All values in `array` are concatenated into a string. If you provide `optionalSeparator`, it is inserted between the concatenated values. Otherwise, the default separator `,` is used. Casts values to a string."
+    },
+    "startswith": {
+      "description": "`startsWith( searchString, searchValue )`\n\nReturns `true` when `searchString` starts with `searchValue`. This function is not case sensitive. Casts values to a string."
+    },
+    "tojson": {
+      "description": "`toJSON(value)`\n\nReturns a pretty-print JSON representation of `value`. You can use this function to debug the information provided in contexts."
+    }
+  },
+  "github": {
+    "action": {
+      "description": "The name of the action currently running, or the [`id`](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsid) of a step. GitHub removes special characters, and uses the name `__run` when the current step runs a script without an `id`. If you use the same action more than once in the same job, the name will include a suffix with the sequence number with underscore before it. For example, the first script you run will have the name `__run`, and the second script will be named `__run_2`. Similarly, the second invocation of `actions/checkout` will be `actionscheckout2`."
+    },
+    "action_path": {
+      "description": "The path where an action is located. This property is only supported in composite actions. You can use this path to access files located in the same repository as the action, for example by changing directories to the path: `cd ${{ github.action_path }}`."
+    },
+    "action_ref": {
+      "description": "For a step executing an action, this is the ref of the action being executed. For example, `v2`."
+    },
+    "action_repository": {
+      "description": "For a step executing an action, this is the owner and repository name of the action. For example, `actions/checkout`."
+    },
+    "action_status": {
+      "description": "For a composite action, the current result of the composite action."
+    },
+    "actor": {
+      "description": "The username of the user that triggered the initial workflow run. If the workflow run is a re-run, this value may differ from `github.triggering_actor`. Any workflow re-runs will use the privileges of `github.actor`, even if the actor initiating the re-run (`github.triggering_actor`) has different privileges."
+    },
+    "actor_id": {
+      "description": "The account ID of the person or app that triggered the initial workflow run. For example, `1234567`. Note that this is different from the actor username.",
+      "versions": {
+        "ghes": ">=3.9",
+        "ghae": ">=3.9"
+      }
+    },
+    "api_url": {
+      "description": "The URL of the GitHub REST API."
+    },
+    "base_ref": {
+      "description": "The `base_ref` or target branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either `pull_request` or `pull_request_target`."
+    },
+    "env": {
+      "description": "Path on the runner to the file that sets environment variables from workflow commands. This file is unique to the current step and is a different file for each step in a job. For more information, see \"[Workflow commands for GitHub Actions](https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable).\""
+    },
+    "event": {
+      "description": "The full event webhook payload. You can access individual properties of the event using this context. This object is identical to the webhook payload of the event that triggered the workflow run, and is different for each event. The webhooks for each GitHub Actions event is linked in \"[Events that trigger workflows](https://docs.github.com/actions/using-workflows/events-that-trigger-workflows).\" For example, for a workflow run triggered by the [`push` event](https://docs.github.com/actions/using-workflows/events-that-trigger-workflows#push), this object contains the contents of the [push webhook payload](https://docs.github.com/webhooks-and-events/webhooks/webhook-events-and-payloads#push)."
+    },
+    "event_name": {
+      "description": "The name of the event that triggered the workflow run."
+    },
+    "event_path": {
+      "description": "The path to the file on the runner that contains the full event webhook payload."
+    },
+    "graphql_url": {
+      "description": "The URL of the GitHub GraphQL API."
+    },
+    "head_ref": {
+      "description": "The `head_ref` or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either `pull_request` or `pull_request_target`."
+    },
+    "job": {
+      "description": "The [`job_id`](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_id) of the current job.\nNote: This context property is set by the Actions runner, and is only available within the execution `steps` of a job. Otherwise, the value of this property will be `null`."
+    },
+    "job_workflow_sha": {
+      "description": "For jobs using a reusable workflow, the commit SHA for the reusable workflow file.",
+      "versions": {
+        "ghes": ">=3.9",
+        "ghae": ">=3.9"
+      }
+    },
+    "path": {
+      "description": "Path on the runner to the file that sets system PATH variables from workflow commands. This file is unique to the current step and is a different file for each step in a job. For more information, see \"[Workflow commands for GitHub Actions](https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-system-path).\""
+    },
+    "ref": {
+      "description": "The fully-formed ref of the branch or tag that triggered the workflow run. For workflows triggered by `push`, this is the branch or tag ref that was pushed. For workflows triggered by `pull_request`, this is the pull request merge branch. For workflows triggered by `release`, this is the release tag created. For other triggers, this is the branch or tag ref that triggered the workflow run. This is only set if a branch or tag is available for the event type. The ref given is fully-formed, meaning that for branches the format is `refs/heads/<branch_name>`, for pull requests it is `refs/pull/<pr_number>/merge`, and for tags it is `refs/tags/<tag_name>`. For example, `refs/heads/feature-branch-1`."
+    },
+    "ref_name": {
+      "description": "The short ref name of the branch or tag that triggered the workflow run. This value matches the branch or tag name shown on GitHub. For example, `feature-branch-1`."
+    },
+    "ref_protected": {
+      "description": "`true` if branch protections are configured for the ref that triggered the workflow run."
+    },
+    "ref_type": {
+      "description": "The type of ref that triggered the workflow run. Valid values are `branch` or `tag`."
+    },
+    "repository": {
+      "description": "The owner and repository name. For example, `octocat/Hello-World`."
+    },
+    "repository_id": {
+      "description": "The ID of the repository. For example, `123456789`. Note that this is different from the repository name.",
+      "versions": {
+        "ghes": ">=3.9",
+        "ghae": ">=3.9"
+      }
+    },
+    "repository_owner": {
+      "description": "The repository owner's username. For example, `octocat`."
+    },
+    "repository_owner_id": {
+      "description": "The repository owner's account ID. For example, `1234567`. Note that this is different from the owner's name.",
+      "versions": {
+        "ghes": ">=3.9",
+        "ghae": ">=3.9"
+      }
+    },
+    "repositoryUrl": {
+      "description": "The Git URL to the repository. For example, `git://github.com/octocat/hello-world.git`."
+    },
+    "retention_days": {
+      "description": "The number of days that workflow run logs and artifacts are kept."
+    },
+    "run_id": {
+      "description": "A unique number for each workflow run within a repository. This number does not change if you re-run the workflow run."
+    },
+    "run_number": {
+      "description": "A unique number for each run of a particular workflow in a repository. This number begins at 1 for the workflow's first run, and increments with each new run. This number does not change if you re-run the workflow run."
+    },
+    "run_attempt": {
+      "description": "A unique number for each attempt of a particular workflow run in a repository. This number begins at 1 for the workflow run's first attempt, and increments with each re-run."
+    },
+    "secret_source": {
+      "description": "The source of a secret used in a workflow. Possible values are `None`, `Actions`, `Dependabot`, or `Codespaces`."
+    },
+    "server_url": {
+      "description": "The URL of the GitHub server. For example: `https://github.com`."
+    },
+    "sha": {
+      "description": "The commit SHA that triggered the workflow. The value of this commit SHA depends on the event that triggered the workflow. For more information, see \"[Events that trigger workflows](https://docs.github.com/actions/using-workflows/events-that-trigger-workflows).\" For example, `ffac537e6cbbf934b08745a378932722df287a53`."
+    },
+    "token": {
+      "description": "A token to authenticate on behalf of the GitHub App installed on your repository. This is functionally equivalent to the `GITHUB_TOKEN` secret. For more information, see \"[Automatic token authentication](https://docs.github.com/actions/security-guides/automatic-token-authentication).\"\nNote: This context property is set by the Actions runner, and is only available within the execution `steps` of a job. Otherwise, the value of this property will be `null`."
+    },
+    "triggering_actor": {
+      "description": "The username of the user that initiated the workflow run. If the workflow run is a re-run, this value may differ from `github.actor`. Any workflow re-runs will use the privileges of `github.actor`, even if the actor initiating the re-run (`github.triggering_actor`) has different privileges."
+    },
+    "workflow": {
+      "description": "The name of the workflow. If the workflow file doesn't specify a `name`, the value of this property is the full path of the workflow file in the repository."
+    },
+    "workflow_ref": {
+      "description": "The ref path to the workflow. For example, `octocat/hello-world/.github/workflows/my-workflow.yml@refs/heads/my_branch`.",
+      "versions": {
+        "ghes": ">=3.9",
+        "ghae": ">=3.9"
+      }
+    },
+    "workflow_sha": {
+      "description": "The commit SHA for the workflow file.",
+      "versions": {
+        "ghes": ">=3.9",
+        "ghae": ">=3.9"
+      }
+    },
+    "workspace": {
+      "description": "The default working directory on the runner for steps, and the default location of your repository when using the [`checkout`](https://github.com/actions/checkout) action."
+    }
+  },
+  "secrets": {
+    "GITHUB_TOKEN": {
+      "description": "Automatically created token for each workflow run. For more information, see \"[Automatic token authentication](https://docs.github.com/actions/security-guides/automatic-token-authentication).\""
+    }
+  },
+  "jobs": {
+    "outputs": {
+      "description": "The set of outputs of a job in a reusable workflow."
+    },
+    "result": {
+      "description": "The result of a job in the reusable workflow. Possible values are `success`, `failure`, `cancelled`, or `skipped`."
+    }
+  },
+  "steps": {
+    "outputs": {
+      "description": "The set of outputs defined for the step. For more information, see \"[Metadata syntax for GitHub Actions](https://docs.github.com/actions/creating-actions/metadata-syntax-for-github-actions#outputs-for-docker-container-and-javascript-actions).\""
+    },
+    "conclusion": {
+      "description": "The result of a completed step after [`continue-on-error`](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error) is applied. Possible values are `success`, `failure`, `cancelled`, or `skipped`. When a `continue-on-error` step fails, the `outcome` is `failure`, but the final conclusion is `success`."
+    },
+    "outcome": {
+      "description": "The result of a completed step before [`continue-on-error`](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepscontinue-on-error) is applied. Possible values are `success`, `failure`, `cancelled`, or `skipped`. When a `continue-on-error` step fails, the `outcome` is `failure`, but the final conclusion is `success`."
+    }
+  },
+  "runner": {
+    "name": {
+      "description": "The name of the runner executing the job."
+    },
+    "os": {
+      "description": "The operating system of the runner executing the job. Possible values are `Linux`, `Windows`, or `macOS`."
+    },
+    "arch": {
+      "description": "The architecture of the runner executing the job. Possible values are `X86`, `X64`, `ARM`, or `ARM64`."
+    },
+    "temp": {
+      "description": "The path to a temporary directory on the runner. This directory is emptied at the beginning and end of each job. Note that files will not be removed if the runner's user account does not have permission to delete them."
+    },
+    "tool_cache": {
+      "description": "The path to the directory containing preinstalled tools for GitHub-hosted runners. For more information, see \"[About GitHub-hosted runners](https://docs.github.com/actions/reference/specifications-for-github-hosted-runners/#supported-software).\""
+    },
+    "debug": {
+      "description": "This is set only if [debug logging](https://docs.github.com/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging) is enabled, and always has the value of `1`. It can be useful as an indicator to enable additional debugging or verbose logging in your own job steps."
+    }
+  },
+  "strategy": {
+    "fail-fast": {
+      "description": "When `true`, all in-progress jobs are canceled if any job in a matrix fails. For more information, see \"[Workflow syntax for GitHub Actions](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast).\""
+    },
+    "job-index": {
+      "description": "The index of the current job in the matrix. **Note:** This number is a zero-based number. The first job's index in the matrix is `0`."
+    },
+    "job-total": {
+      "description": "The total number of jobs in the matrix. **Note:** This number **is not** a zero-based number. For example, for a matrix with four jobs, the value of `job-total` is `4`."
+    },
+    "max-parallel": {
+      "description": "The maximum number of jobs that can run simultaneously when using a matrix job strategy. For more information, see \"[Workflow syntax for GitHub Actions](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymax-parallel).\""
+    }
+  }
+}

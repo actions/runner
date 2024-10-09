@@ -8,12 +8,15 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.JavaScript;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
+using System.Linq;
+using System.Text.RegularExpressions;
 
-while(true) {
+while (true) {
     await Interop.Sleep(10 * 60 * 1000);
 }
 
-public class MyClass {
+public partial class MyClass {
     
     public class MyFileProvider : IFileProvider
     {
@@ -79,6 +82,7 @@ public class MyClass {
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    [JSExport]
     public static async Task<string> ExpandCurrentPipeline(JSObject handle, string currentFileName, string variables, string parameters, bool returnErrorContent, string schema) {
         var context = new Runner.Server.Azure.Devops.Context {
             FileProvider = new MyFileProvider(handle),
@@ -125,18 +129,22 @@ public class MyClass {
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName, string schemaName) {
+    [JSExport]
+    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName, string schemaName, int column, int row) {
         var context = new Context {
             FileProvider = new MyFileProvider(handle),
             TraceWriter = new TraceWriter(handle),
             Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
             RequiredParametersProvider = new RequiredParametersProvider(handle),
-            VariablesProvider = new VariablesProvider { Variables = new Dictionary<string, string>() }
+            VariablesProvider = new VariablesProvider { Variables = new Dictionary<string, string>() },
+            Column = column,
+            Row = row
         };
+        var check = column == 0 && row == 0;
         try {
-            var (name, template) = await AzureDevops.ParseTemplate(context, currentFileName, schemaName);
+            var (name, template) = await AzureDevops.ParseTemplate(context, currentFileName, schemaName, true);
             Interop.Log(handle, 0, "Done: " + template.ToString());
-        } catch(TemplateValidationException ex) {
+        } catch(TemplateValidationException ex) when(check) {
             var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
             var allErrors = new List<string>();
             foreach(var error in ex.Errors) {
@@ -147,16 +155,30 @@ public class MyClass {
             }
             await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = allErrors }));
         } catch(Exception ex) {
-            var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
-            var errorContent = fileIdReplacer.Replace(ex.Message, match => {
-                return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
-            });
-            await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = new List<string> { errorContent } }));
+            if(check) {
+                var fileIdReplacer = new System.Text.RegularExpressions.Regex("FileId: (\\d+)");
+                var errorContent = fileIdReplacer.Replace(ex.Message, match => {
+                    return $"{context.FileTable[int.Parse(match.Groups[1].Value) - 1]}";
+                });
+                await Interop.Error(handle, JsonConvert.SerializeObject(new ErrorWrapper { Message = ex.Message, Errors = new List<string> { errorContent } }));
+            }
         }
+        if(!check && context.AutoCompleteMatches.Count > 0) {
+            // Bug Only suggest scalar values if cursor is within the token
+            // Don't suggest mapping and array on the other location, or fix autocomplete structure
+            // transform string + multi enum values to oneofdefinition with constants so autocomplete works / use allowed values
+            var schema = AzureDevops.LoadSchema();
+            List<CompletionItem> list = AutoCompletetionHelper.CollectCompletions(column, row, context, schema);
+            await Interop.AutoCompleteList(handle, JsonConvert.SerializeObject(list));
+        }
+        if(check && context.SemTokens?.Count > 0) {
+            await Interop.SemTokens(handle, [.. context.SemTokens]);
+        }
+        
     }
 
-
     [MethodImpl(MethodImplOptions.NoInlining)]
+    [JSExport]
     public static string YAMLToJson(string content) {
         try {
             return AzurePipelinesUtils.YAMLToJson(content);
