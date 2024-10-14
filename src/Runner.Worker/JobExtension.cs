@@ -127,6 +127,10 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    // Check OS warning
+                    var osWarningChecker = HostContext.GetService<IOSWarningChecker>();
+                    await osWarningChecker.CheckOSAsync(context);
+
                     try
                     {
                         var tokenPermissions = jobContext.Global.Variables.Get("system.github.token.permissions") ?? "";
@@ -399,7 +403,7 @@ namespace GitHub.Runner.Worker
                         var snapshotOperationProvider = HostContext.GetService<ISnapshotOperationProvider>();
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(
                             runAsync: (executionContext, _) => snapshotOperationProvider.CreateSnapshotRequestAsync(executionContext, snapshotRequest),
-                            condition: $"{PipelineTemplateConstants.Success}()",
+                            condition: snapshotRequest.Condition,
                             displayName: $"Create custom image",
                             data: null));
                     }

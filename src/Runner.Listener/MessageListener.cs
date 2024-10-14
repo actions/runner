@@ -88,7 +88,8 @@ namespace GitHub.Runner.Listener
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
             };
-            string sessionName = $"{Environment.MachineName ?? "RUNNER"}";
+            var currentProcess = Process.GetCurrentProcess();
+            string sessionName = $"{Environment.MachineName ?? "RUNNER"} (PID: {currentProcess.Id})";
             var taskAgentSession = new TaskAgentSession(sessionName, agent);
 
             string errorMessage = string.Empty;
@@ -263,8 +264,6 @@ namespace GitHub.Runner.Listener
 
                     if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                     {
-                        Trace.Info("BrokerMigration message received. Polling Broker for messages...");
-
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
 
                         await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _creds);

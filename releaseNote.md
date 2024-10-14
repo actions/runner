@@ -1,12 +1,17 @@
 ## What's Changed
 
-- Do not give up when uploading steps metadata by @yacaovsnc in https://github.com/actions/runner/pull/3280
-- Upgrade node20 to 20.13.1 by @pje in https://github.com/actions/runner/pull/3284
-- Delete all the contentHash files by @pje in https://github.com/actions/runner/pull/3285
-- Make it easy to install `git` on an Action Runner Image by @jww3 in https://github.com/actions/runner/pull/3273
-- Install `gpg-agent` during actions/runner container image build by @jww3 in https://github.com/actions/runner/pull/3294
+- Adding Snapshot additional mapping tokens https://github.com/actions/runner/pull/3468
+- Create launch httpclient using the right handler and setting https://github.com/actions/runner/pull/3476
+- Fix missing default user-agent for jitconfig runner https://github.com/actions/runner/pull/3473
+- Cleanup back-compat code for interpreting Run Service status codes https://github.com/actions/runner/pull/3456
+- Add runner or worker to the useragent https://github.com/actions/runner/pull/3457
+- Handle Error Body in Responses from Broker https://github.com/actions/runner/pull/3454
+- Fix issues for composite actions (Run Service flow) https://github.com/actions/runner/pull/3446
+- Trace GitHub RequestId to log https://github.com/actions/runner/pull/3442
+- Add `jq`, `git`, `unzip` and `curl` to default packages installed https://github.com/actions/runner/pull/3056
+- Add pid to user-agent and session owner https://github.com/actions/runner/pull/3432
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.316.1...v2.317.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.319.1...v2.320.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.

@@ -1102,6 +1102,7 @@ namespace GitHub.Runner.Worker
             int timeoutSeconds = 20 * 60;
             while (retryCount < 3)
             {
+                string requestId = string.Empty;
                 using (var actionDownloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
                 using (var actionDownloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(actionDownloadTimeout.Token, executionContext.CancellationToken))
                 {
@@ -1117,7 +1118,7 @@ namespace GitHub.Runner.Worker
                             httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                             using (var response = await httpClient.GetAsync(downloadUrl))
                             {
-                                var requestId = UrlUtil.GetGitHubRequestId(response.Headers);
+                                requestId = UrlUtil.GetGitHubRequestId(response.Headers);
                                 if (!string.IsNullOrEmpty(requestId))
                                 {
                                     Trace.Info($"Request URL: {downloadUrl} X-GitHub-Request-Id: {requestId} Http Status: {response.StatusCode}");
@@ -1155,7 +1156,7 @@ namespace GitHub.Runner.Worker
                     catch (OperationCanceledException ex) when (!executionContext.CancellationToken.IsCancellationRequested && retryCount >= 2)
                     {
                         Trace.Info($"Action download final retry timeout after {timeoutSeconds} seconds.");
-                        throw new TimeoutException($"Action '{downloadUrl}' download has timed out. Error: {ex.Message}");
+                        throw new TimeoutException($"Action '{downloadUrl}' download has timed out. Error: {ex.Message} {requestId}");
                     }
                     catch (ActionNotFoundException)
                     {
@@ -1170,11 +1171,11 @@ namespace GitHub.Runner.Worker
                         if (actionDownloadTimeout.Token.IsCancellationRequested)
                         {
                             // action download didn't finish within timeout
-                            executionContext.Warning($"Action '{downloadUrl}' didn't finish download within {timeoutSeconds} seconds.");
+                            executionContext.Warning($"Action '{downloadUrl}' didn't finish download within {timeoutSeconds} seconds. {requestId}");
                         }
                         else
                         {
-                            executionContext.Warning($"Failed to download action '{downloadUrl}'. Error: {ex.Message}");
+                            executionContext.Warning($"Failed to download action '{downloadUrl}'. Error: {ex.Message} {requestId}");
                         }
                     }
                 }

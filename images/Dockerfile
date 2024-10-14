@@ -5,8 +5,8 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
 ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
-ARG DOCKER_VERSION=25.0.5
-ARG BUILDX_VERSION=0.13.2
+ARG DOCKER_VERSION=27.1.1
+ARG BUILDX_VERSION=0.16.2
 
 RUN apt update -y && apt install curl unzip -y
 
@@ -41,12 +41,13 @@ ENV ImageOS=ubuntu22
 
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common \
+    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
 RUN add-apt-repository ppa:git-core/ppa \
-    && apt update -y
+    && apt update -y \
+    && apt install -y --no-install-recommends git
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
