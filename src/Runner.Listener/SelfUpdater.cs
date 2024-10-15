@@ -132,26 +132,39 @@ namespace GitHub.Runner.Listener
 
         private async Task<bool> UpdateNeeded(string targetVersion, CancellationToken token)
         {
-            // when talk to old version server, always prefer latest package.
-            // old server won't send target version as part of update message.
-            if (string.IsNullOrEmpty(targetVersion))
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
             {
-                var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, true, token);
-                if (packages == null || packages.Count == 0)
+                _targetPackage = new PackageMetadata()
                 {
-                    Trace.Info($"There is no package for {_packageType} and {_platform}.");
-                    return false;
-                }
-
-                _targetPackage = packages.FirstOrDefault();
+                    Type = "agent",
+                    Platform = BuildConstants.RunnerPackage.PackageName,
+                    Version = new PackageVersion(targetVersion),
+                };
             }
             else
             {
-                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, true, token);
-                if (_targetPackage == null)
+
+                // when talk to old version server, always prefer latest package.
+                // old server won't send target version as part of update message.
+                if (string.IsNullOrEmpty(targetVersion))
                 {
-                    Trace.Info($"There is no package for {_packageType} and {_platform} with version {targetVersion}.");
-                    return false;
+                    var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, true, token);
+                    if (packages == null || packages.Count == 0)
+                    {
+                        Trace.Info($"There is no package for {_packageType} and {_platform}.");
+                        return false;
+                    }
+
+                    _targetPackage = packages.FirstOrDefault();
+                }
+                else
+                {
+                    _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, true, token);
+                    if (_targetPackage == null)
+                    {
+                        Trace.Info($"There is no package for {_packageType} and {_platform} with version {targetVersion}.");
+                        return false;
+                    }
                 }
             }
 

@@ -248,15 +248,16 @@ namespace GitHub.Runner.Listener
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
                 {
-                    message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
-                                                                _session.SessionId,
-                                                                _lastMessageId,
-                                                                runnerStatus,
-                                                                BuildConstants.RunnerPackage.Version,
-                                                                VarUtil.OS,
-                                                                VarUtil.OSArchitecture,
-                                                                _settings.DisableUpdate,
-                                                                _getMessagesTokenSource.Token);
+                    await Task.Delay(5000);
+                    // message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
+                    //                                             _session.SessionId,
+                    //                                             _lastMessageId,
+                    //                                             runnerStatus,
+                    //                                             BuildConstants.RunnerPackage.Version,
+                    //                                             VarUtil.OS,
+                    //                                             VarUtil.OSArchitecture,
+                    //                                             _settings.DisableUpdate,
+                    //                                             _getMessagesTokenSource.Token);
 
                     // Decrypt the message body if the session is using encryption
                     message = DecryptMessage(message);
