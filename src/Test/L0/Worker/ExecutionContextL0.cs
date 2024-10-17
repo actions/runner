@@ -677,7 +677,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.InitializeJob(jobRequest, CancellationToken.None);
                 ec.Start();
 
-                ec.StepTelemetry.Type = "node16";
+                ec.StepTelemetry.Type = "node20";
                 ec.StepTelemetry.Action = "actions/checkout";
                 ec.StepTelemetry.Ref = "v2";
                 ec.StepTelemetry.IsEmbedded = false;
@@ -695,7 +695,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal(1, ec.Global.StepsTelemetry.Count);
-                Assert.Equal("node16", ec.Global.StepsTelemetry.Single().Type);
+                Assert.Equal("node20", ec.Global.StepsTelemetry.Single().Type);
                 Assert.Equal("actions/checkout", ec.Global.StepsTelemetry.Single().Action);
                 Assert.Equal("v2", ec.Global.StepsTelemetry.Single().Ref);
                 Assert.Equal(TaskResult.Succeeded, ec.Global.StepsTelemetry.Single().Result);
@@ -746,7 +746,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var embeddedStep = ec.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null, ActionRunStage.Main, isEmbedded: true);
                 embeddedStep.Start();
 
-                embeddedStep.StepTelemetry.Type = "node16";
+                embeddedStep.StepTelemetry.Type = "node20";
                 embeddedStep.StepTelemetry.Action = "actions/checkout";
                 embeddedStep.StepTelemetry.Ref = "v2";
 
@@ -758,7 +758,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal(1, ec.Global.StepsTelemetry.Count);
-                Assert.Equal("node16", ec.Global.StepsTelemetry.Single().Type);
+                Assert.Equal("node20", ec.Global.StepsTelemetry.Single().Type);
                 Assert.Equal("actions/checkout", ec.Global.StepsTelemetry.Single().Action);
                 Assert.Equal("v2", ec.Global.StepsTelemetry.Single().Ref);
                 Assert.Equal(ActionRunStage.Main.ToString(), ec.Global.StepsTelemetry.Single().Stage);
@@ -816,7 +816,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Embedded step 1a context
                 var embeddedStep1a = step1.CreateEmbeddedChild(null, null, Guid.NewGuid(), ActionRunStage.Main);
                 embeddedStep1a.Start();
-                embeddedStep1a.StepTelemetry.Type = "node16";
+                embeddedStep1a.StepTelemetry.Type = "node20";
                 embeddedStep1a.StepTelemetry.Action = "actions/checkout";
                 embeddedStep1a.StepTelemetry.Ref = "v2";
                 embeddedStep1a.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
@@ -827,7 +827,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Embedded step 1b context
                 var embeddedStep1b = step1.CreateEmbeddedChild(null, null, Guid.NewGuid(), ActionRunStage.Main);
                 embeddedStep1b.Start();
-                embeddedStep1b.StepTelemetry.Type = "node16";
+                embeddedStep1b.StepTelemetry.Type = "node20";
                 embeddedStep1b.StepTelemetry.Action = "actions/checkout";
                 embeddedStep1b.StepTelemetry.Ref = "v2";
                 embeddedStep1b.AddIssue(new Issue() { Type = IssueType.Error, Message = "error 2" }, ExecutionContextLogOptions.Default);
@@ -886,7 +886,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var embeddedStep = ec.CreateEmbeddedChild(null, null, Guid.NewGuid(), ActionRunStage.Main);
                 embeddedStep.Start();
 
-                embeddedStep.StepTelemetry.Type = "node16";
+                embeddedStep.StepTelemetry.Type = "node20";
                 embeddedStep.StepTelemetry.Action = "actions/checkout";
                 embeddedStep.StepTelemetry.Ref = "v2";
 
