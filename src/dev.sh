@@ -35,7 +35,7 @@ if [[ "$DEV_CONFIG" == "Release" ]]; then
 fi
 
 CURRENT_PLATFORM="windows"
-if [[ ($(uname) == "Linux") || ($(uname) == "Darwin") ]]; then
+if [[ ($(uname) == "Linux") || ($(uname) == "Darwin") || ($(uname) == "FreeBSD")]]; then
     CURRENT_PLATFORM=$(uname | awk '{print tolower($0)}')
 fi
 
@@ -64,6 +64,8 @@ elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
             arm64) RUNTIME_ID="osx-arm64";;
         esac
     fi
+elif [[ "$CURRENT_PLATFORM" == 'freebsd' ]]; then
+    RUNTIME_ID='freebsd-x64'
 fi
 
 if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
@@ -183,7 +185,7 @@ function package ()
 
     pushd "$PACKAGE_DIR" > /dev/null
 
-    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
+    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") || ("$CURRENT_PLATFORM" == "freebsd")]]; then
         tar_name="${runner_pkg_name}.tar.gz"
         echo "Creating $tar_name in ${LAYOUT_DIR}"
         tar -czf "${tar_name}" -C "${LAYOUT_DIR}" .

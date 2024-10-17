@@ -50,7 +50,8 @@ namespace GitHub.Runner.Common
         {
             OSX,
             Linux,
-            Windows
+            Windows,
+            FreeBSD
         }
 
         public enum Architecture
@@ -69,6 +70,8 @@ namespace GitHub.Runner.Common
             public static readonly OSPlatform Platform = OSPlatform.OSX;
 #elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
+#elif OS_FREEBSD
+            public static readonly OSPlatform Platform = OSPlatform.FreeBSD;
 #else
             public static readonly OSPlatform Platform = OSPlatform.Linux;
 #endif

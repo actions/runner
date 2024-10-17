@@ -53,6 +53,13 @@ namespace GitHub.Runner.Listener
                         return Constants.Runner.ReturnCode.TerminatedError;
                     }
                     break;
+                case Constants.OSPlatform.FreeBSD:
+                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
+                    {
+                        terminal.WriteLine("This runner version is built for FreeBSD. Please install a correct build for your OS.");
+                        return Constants.Runner.ReturnCode.TerminatedError;
+                    }
+                    break;
                 case Constants.OSPlatform.Windows:
                     if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     {

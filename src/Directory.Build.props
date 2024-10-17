@@ -6,6 +6,10 @@
     <BUILD_OS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">Linux</BUILD_OS>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'false'">
+    <BUILD_OS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::FreeBSD)))' == 'true'">FreeBSD</BUILD_OS>
+  </PropertyGroup>
+
   <!-- Set OS vars -->
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Windows'">
     <DefineConstants>$(DefineConstants);OS_WINDOWS</DefineConstants>
@@ -15,6 +19,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux'">
     <DefineConstants>$(DefineConstants);OS_LINUX</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'FreeBSD'">
+    <DefineConstants>$(DefineConstants);OS_FREEBSD</DefineConstants>
   </PropertyGroup>
 
   <!-- Set Platform/bitness vars -->
@@ -43,6 +50,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'linux-arm64'">
     <DefineConstants>$(DefineConstants);ARM64</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'FreeBSD' AND ('$(PackageRuntime)' == 'freebsd-x64' OR '$(PackageRuntime)' == '')">
+    <DefineConstants>$(DefineConstants);X64</DefineConstants>
   </PropertyGroup>
 
   <!-- Set TRACE/DEBUG vars -->
