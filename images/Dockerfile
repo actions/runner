@@ -5,8 +5,8 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
 ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
-ARG DOCKER_VERSION=27.1.1
-ARG BUILDX_VERSION=0.16.2
+ARG DOCKER_VERSION=27.3.1
+ARG BUILDX_VERSION=0.17.1
 
 RUN apt update -y && apt install curl unzip -y
 
@@ -47,7 +47,8 @@ RUN apt update -y \
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
 RUN add-apt-repository ppa:git-core/ppa \
     && apt update -y \
-    && apt install -y --no-install-recommends git
+    && apt install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
