@@ -97,8 +97,8 @@ ENV ImageOS=ubuntu22
 RUN echo "PATH=${PATH}" > /etc/environment \
     && echo "ImageOS=${ImageOS}" >> /etc/environment
 
+USER runner
+
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="$HOME/.cargo/bin:${PATH}"
 RUN rustup target add wasm32-unknown-unknown
-
-USER runner
