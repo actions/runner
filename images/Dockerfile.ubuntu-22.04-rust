@@ -101,4 +101,5 @@ USER runner
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="$HOME/.cargo/bin:${PATH}"
+RUN rustup toolchain install 1.78.0-x86_64-unknown-linux-gnu
 RUN rustup target add wasm32-unknown-unknown
