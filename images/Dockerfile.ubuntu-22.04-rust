@@ -14,6 +14,7 @@ ARG DOCKER_GROUP_GID=121
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y \
     && apt-get install -y software-properties-common \
+    && apt-get install -y build-essential \
     && add-apt-repository -y ppa:git-core/ppa \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
@@ -99,7 +100,7 @@ RUN echo "PATH=${PATH}" > /etc/environment \
 
 USER runner
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- --default-toolchain none -y
 ENV PATH="$HOME/.cargo/bin:${PATH}"
 RUN rustup toolchain install 1.78.0-x86_64-unknown-linux-gnu
 RUN rustup target add wasm32-unknown-unknown
