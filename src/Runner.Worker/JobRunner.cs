@@ -278,23 +278,6 @@ namespace GitHub.Runner.Worker
         {
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
-            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
-            {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings));
-                jobContext.Warning(string.Format(Constants.Runner.DetectedNodeAfterEndOfLifeMessage, actions));
-            }
-
-            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
-            {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
-                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
-            }
-
-            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings) && (jobContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode20") ?? false))
-            {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node20ForceWarnings));
-                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode16DetectedAfterEndOfLife, actions));
-            }
 
             await ShutdownQueue(throwOnFailure: false);
 
@@ -389,24 +372,6 @@ namespace GitHub.Runner.Worker
                     // Ignore any error since suggest runner update is best effort.
                     Trace.Error($"Caught exception during runner version check: {ex}");
                 }
-            }
-
-            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
-            {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings));
-                jobContext.Warning(string.Format(Constants.Runner.DetectedNodeAfterEndOfLifeMessage, actions));
-            }
-
-            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode12DetectedAfterEndOfLifeEnvVariable, out var node16ForceWarnings))
-            {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node16ForceWarnings));
-                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode12DetectedAfterEndOfLife, actions));
-            }
-
-            if (jobContext.Global.Variables.TryGetValue(Constants.Runner.EnforcedNode16DetectedAfterEndOfLifeEnvVariable, out var node20ForceWarnings))
-            {
-                var actions = string.Join(", ", StringUtil.ConvertFromJson<HashSet<string>>(node20ForceWarnings));
-                jobContext.Warning(string.Format(Constants.Runner.EnforcedNode16DetectedAfterEndOfLife, actions));
             }
 
             try
