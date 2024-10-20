@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(WASM)' == '1'">
+    <TargetArchitecture>wasm</TargetArchitecture>
+    <TargetOS>Browser</TargetOS>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <UseMonoRuntime>true</UseMonoRuntime>
+    <OutputType>Exe</OutputType>
+    <WasmEnableES6>true</WasmEnableES6>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>WASM</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(WASM)' != '1'">
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OmniSharp.Extensions.LanguageServer" Version="0.19.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sdk\Sdk.csproj" />
+    <ProjectReference Condition="'$(WASM)' != '1'" Include="..\Runner.Client\Runner.Client.csproj" />
+  </ItemGroup>
+
+  <Target Condition="'$(WASM)' == '1'" Name="RenameIcuForVsMarketplace" AfterTargets="WasmBuildApp;WasmNestedPublishApp">
+    <ItemGroup>
+      <IcuFiles Include="$(WasmAppDir)\**\icu*.dat"/>
+    </ItemGroup>
+    <Move SourceFiles="@(IcuFiles)" OverwriteReadOnlyFiles="true" DestinationFiles="%(RelativeDir)%(Filename).icu"/>
+  </Target>
+
+</Project>

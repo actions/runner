@@ -21,7 +21,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
         public bool SemTokensOnly { get; set; }
         public (int, int)[] Mapping { get; set; }
         public Dictionary<(int, int), int> RMapping { get; internal set; }
-
+        public string Description { get; internal set; }
     }
 
     /// <summary>

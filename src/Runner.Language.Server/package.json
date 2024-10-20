@@ -1,0 +1,5 @@
+{
+    "scripts": {
+        "build": "dotnet build -c Release /p:WASM=1"
+    }
+}

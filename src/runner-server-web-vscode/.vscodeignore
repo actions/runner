@@ -1,0 +1,13 @@
+.vscode/**
+**/*.ts
+**/*.mjs
+**/*.map
+.gitignore
+**/tsconfig.json
+**/tsconfig.base.json
+contributing.md
+.travis.yml
+**/node_modules/**
+server/src/*.js
+server/src/build/**
+!server/src/build/AppBundle/_framework

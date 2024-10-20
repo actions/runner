@@ -28,8 +28,10 @@ namespace Runner.Server.Azure.Devops
                 GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Separator,
             };
             if(/*bestMatch.Tokens.Count == 0 || validTokens.Contains(bestMatch.Tokens.Last().Kind)*/ true) {
+                var adoFunctions = (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedFunctions) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None
+                    || (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None;
 
-                var desc = ActionsDescriptions.LoadDescriptions();
+                var desc = adoFunctions ? PipelinesDescriptions.LoadDescriptions() : ActionsDescriptions.LoadDescriptions();
                 var i = bestMatch.Tokens.FindLastIndex(t => t.Index <= bestMatch.Index);
                 var last = bestMatch;
                 if(i >= 0 && last.Tokens[i].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Dereference) {
@@ -99,8 +101,6 @@ namespace Runner.Server.Azure.Devops
                         }
                     }
                 }
-                var adoFunctions = (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedFunctions) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None
-                    || (context.Flags & GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1) != GitHub.DistributedTask.Expressions2.ExpressionFlags.None;
                 if(bestMatch.AllowedContext.Length > 0 && adoFunctions) {
                     yield return new CompletionItem {
                         Label = new CompletionItemLabel {

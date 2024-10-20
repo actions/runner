@@ -1,0 +1,62 @@
+{
+	"name": "runner-server-vscode",
+	"displayName": "Actions and Pipelines Emulator",
+	"description": "Run your GH Actions and ADO Pipelines locally",
+	"categories": [
+		"Azure",
+		"Testing"
+	],
+	"icon": "pipeline-rocket.png",
+	"version": "0.0.1",
+	"publisher": "christopherhx",
+	"repository": "https://github.com/ChristopherHX/runner.server",
+	"engines": {
+		"vscode": "^1.74.0"
+	},
+	"activationEvents": [
+		"onLanguage:yaml"
+	],
+	"main": "./index.js",
+	"sponsor": {
+		"url": "https://paypal.me/christopherhx"
+	},
+	"contributes": {
+		"commands": [
+			{
+				"command": "runner-server.runjob",
+				"title": "Run Job",
+				"shortTitle": "Run"
+			},
+			{
+				"command": "runner.server.start-client",
+				"title": "Start Runner.Client"
+			}
+		],
+		"semanticTokenScopes": [
+			{
+				"scopes": {
+					"constant.defaultLibrary": ["constant.language"],
+					"constant.numeric": ["constant.numeric"],
+					"punctuation": ["meta.embedded"]
+				}
+			}
+		]
+	},
+	"scripts": {
+		"build": "dotnet publish ../Runner.Language.Server --no-self-contained --output native"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.73.0",
+		"@vscode/vsce": "^2.31.1",
+		"webpack-cli": "^5.1.4"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"ts-loader": "^9.5.0",
+		"url": "^0.11.3",
+		"vscode-languageclient": "^9.0.1"
+	},
+	"extensionDependencies": [
+		"ms-dotnettools.vscode-dotnet-runtime"
+	]
+}

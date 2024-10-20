@@ -1,0 +1,41 @@
+{
+	"name": "runner-server-web-vscode",
+	"description": "A c# based language server in a web extension",
+	"author": "Christopher Homberger",
+	"license": "MIT",
+	"version": "0.0.1",
+	"icon": "pipeline-rocket.png",
+	"repository": "https://github.com/ChristopherHX/runner.server",
+	"publisher": "christopherhx",
+	"categories": [],
+	"keywords": [
+		"multi-root ready"
+	],
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"activationEvents": [
+		"onLanguage:yaml"
+	],
+	"browser": "./client/dist/browserClientMain",
+	"scripts": {
+		"vscode:prepublish": "npm run build",
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+		"build": "dotnet build ../Runner.Language.Server -p:WASM=1 --output server/src/build && webpack"
+	},
+	"sponsor": {
+		"url": "https://paypal.me/christopherhx"
+	},
+	"devDependencies": {
+		"@vscode/vsce": "^3.1.0",
+		"@typescript-eslint/eslint-plugin": "^6.20.0",
+		"@typescript-eslint/parser": "^6.20.0",
+		"eslint": "^8.56.0",
+		"path-browserify": "^1.0.1",
+		"ts-loader": "^9.5.1",
+		"typescript": "^5.6.2",
+		"webpack": "^5.90.1",
+		"webpack-cli": "^5.1.4"
+		
+	}
+}

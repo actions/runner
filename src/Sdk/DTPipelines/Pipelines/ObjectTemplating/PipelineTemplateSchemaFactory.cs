@@ -31,7 +31,28 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return s_schema;
         }
 
+        public static TemplateSchema GetActionSchema()
+        {
+            if (s_actionSchema == null)
+            {
+                var assembly = Assembly.GetExecutingAssembly();
+                var json = default(String);
+                using (var stream = assembly.GetManifestResourceStream("GitHub.DistributedTask.Pipelines.ObjectTemplating.action_yaml.json"))
+                using (var streamReader = new StreamReader(stream))
+                {
+                    json = streamReader.ReadToEnd();
+                }
+
+                var objectReader = new JsonObjectReader(null, json);
+                var schema = TemplateSchema.Load(objectReader);
+                Interlocked.CompareExchange(ref s_actionSchema, schema, null);
+            }
+
+            return s_actionSchema;
+        }
+
         private static TemplateSchema s_schema;
+        private static TemplateSchema s_actionSchema;
 
         public static string LoadResource(string resource, Assembly assembly = null)
         {

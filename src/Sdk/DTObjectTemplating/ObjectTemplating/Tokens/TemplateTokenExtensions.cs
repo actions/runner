@@ -280,7 +280,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         /// </summary>
         public static IEnumerable<TemplateToken> TraverseByPattern(
             this TemplateToken token,
-            string[] pattern)
+            params string[] pattern)
         {
             int level = 0;
             if (token != null)

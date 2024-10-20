@@ -39,6 +39,21 @@ jobs:
           node_modules/.bin/vsce pack -o azure-pipelines-vscode-ext.vsix
           node_modules/.bin/vsce pack --pre-release -o azure-pipelines-vscode-ext-pre-release.vsix
         working-directory: src/azure-pipelines-vscode-ext
+      - name: Build runner-server-vscode
+        run: |
+          npm install
+          npm run build
+          node_modules/.bin/vsce pack -o runner-server-vscode.vsix
+          node_modules/.bin/vsce pack --pre-release -o runner-server-vscode-pre-release.vsix
+        working-directory: src/runner-server-vscode
+      - name: Build runner-server-web-vscode
+        run: |
+          npm install
+          dotnet workload install wasm-tools
+          npm run build
+          node_modules/.bin/vsce pack -o runner-server-web-vscode.vsix
+          node_modules/.bin/vsce pack --pre-release -o runner-server-web-vscode-pre-release.vsix
+        working-directory: src/runner-server-web-vscode
       - name: Make layout
         run: |
           mkdir webapp
@@ -48,11 +63,25 @@ jobs:
           mv src/azure-pipelines-vscode-ext/dist webapp/azure-pipelines-vscode-ext/
           mv src/azure-pipelines-vscode-ext/package.json webapp/azure-pipelines-vscode-ext/
           mv src/azure-pipelines-vscode-ext/*.vsix webapp/azure-pipelines-vscode-ext/
+          mkdir -p webapp/runner-server-vscode
+          mv src/runner-server-vscode/*.vsix webapp/runner-server-vscode/
+          mkdir -p webapp/runner-server-web-vscode
+          mv src/runner-server-web-vscode/*.vsix webapp/runner-server-web-vscode/
       - name: Upload vsix
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: azure-pipelines-vscode-ext-pre-release
           path: webapp/azure-pipelines-vscode-ext/azure-pipelines-vscode-ext-pre-release.vsix
+      - name: Upload vsix runner-server
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-server-vscode-pre-release
+          path: webapp/runner-server-vscode/runner-server-vscode-pre-release.vsix
+      - name: Upload vsix runner-server-web
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-server-web-vscode-pre-release
+          path: webapp/runner-server-web-vscode/runner-server-web-vscode-pre-release.vsix
       - name: Setup Pages
         if: github.event_name == 'push'
         uses: actions/configure-pages@v3

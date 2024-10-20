@@ -293,6 +293,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 {
                     m_memory.AddBytes(nextKey);
                     var nextValueDefinition = new DefinitionInfo(definition, nextValueType);
+                    var last = m_context.AutoCompleteMatches?.LastOrDefault();
+                    if(last != null && last.Token == nextKeyScalar) {
+                        last.Description = nextValueDefinition.Definition.Description;
+                    }
+                    
                     var nextValue = ReadValue(nextValueDefinition);
                     mapping.Add(nextKey, nextValue);
                     continue;
@@ -386,7 +391,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
             while (m_objectReader.AllowLiteral(out LiteralToken rawLiteral))
             {
-                var nextKeyScalar = ParseScalar(rawLiteral, mappingDefinition);
+                var keyDef = new DefinitionInfo(mappingDefinition, "string");
+                var nextKeyScalar = ParseScalar(rawLiteral, keyDef);
+                var last = m_context.AutoCompleteMatches?.LastOrDefault();
+                if(last != null && last.Token == nextKeyScalar) {
+                    last.Description = valueDefinition.Definition.Description;
+                }
 
                 // Expression
                 if (nextKeyScalar is ExpressionToken)

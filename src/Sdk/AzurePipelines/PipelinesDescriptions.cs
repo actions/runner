@@ -22,7 +22,7 @@ namespace Sdk.Actions {
         public string Description { get; set; }
 
         public Dictionary<string, string> Versions { get; set; }
-        public static Dictionary<string, Dictionary<string, PipelinesDescriptions>> LoadDescriptions() {
+        public static Dictionary<string, Dictionary<string, ActionsDescriptions>> LoadDescriptions() {
             var assembly = Assembly.GetExecutingAssembly();
             var json = default(String);
             using (var stream = assembly.GetManifestResourceStream("pipelines.descriptions.json"))
@@ -31,7 +31,7 @@ namespace Sdk.Actions {
                 json = streamReader.ReadToEnd();
             }
 
-            return ToOrdinalIgnoreCaseDictionary(JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, PipelinesDescriptions>>>(json).Select(kv => new KeyValuePair<string, Dictionary<string, PipelinesDescriptions>>(kv.Key, ToOrdinalIgnoreCaseDictionary(kv.Value))));
+            return ToOrdinalIgnoreCaseDictionary(JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, ActionsDescriptions>>>(json).Select(kv => new KeyValuePair<string, Dictionary<string, ActionsDescriptions>>(kv.Key, ToOrdinalIgnoreCaseDictionary(kv.Value))));
         }
     }
 

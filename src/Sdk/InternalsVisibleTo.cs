@@ -6,3 +6,4 @@
 [assembly: InternalsVisibleTo("Sdk.Tests")]
 [assembly: InternalsVisibleTo("azuredevopsutility")]
 [assembly: InternalsVisibleTo("ext-core")]
+[assembly: InternalsVisibleTo("Runner.Language.Server")]
