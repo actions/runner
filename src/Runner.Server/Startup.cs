@@ -176,6 +176,11 @@ namespace Runner.Server
             services.AddSingleton<IAuthorizationHandler, DevModeOrAuthenticatedUser>();
 
             var rsa = RSA.Create();
+            var rsaSignatureKeyPath = Configuration.GetSection("Runner.Server")?.GetValue<string>("RSASignatureKeyPath");
+            if(!string.IsNullOrEmpty(rsaSignatureKeyPath)) {
+                var rawKey = File.ReadAllText(rsaSignatureKeyPath);
+                rsa.ImportFromPem(rawKey);
+            }
             AccessTokenParameter = rsa.ExportParameters(true);
             KeyId = Guid.NewGuid().ToString();
             var auth = services.AddAuthentication(options =>
