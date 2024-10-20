@@ -7323,6 +7323,17 @@ namespace Runner.Server.Controllers
         [HttpGet("workflow/runs")]
         [SwaggerResponse(200, type: typeof(WorkflowRun[]))]
         public async Task<IActionResult> GetWorkflows([FromQuery] int? page, [FromQuery] string owner, [FromQuery] string repo) {
+            if(!string.IsNullOrEmpty(owner)) {
+                var own = await _context.Set<Owner>().Where(o => o.Name.ToLower() == owner.ToLower()).FirstOrDefaultAsync();
+                if(own != null && !string.IsNullOrEmpty(repo)) {
+                    var rep = await _context.Set<Repository>().Where(r => r.Owner == own && r.Name.ToLower() == repo.ToLower()).FirstOrDefaultAsync();
+                    if(rep != null) {
+                        var altquery = from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && attempt.WorkflowRun.Workflow.Repository == rep orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id, Owner = run.Workflow.Repository.Owner.Name, Repo = run.Workflow.Repository.Name};
+                        return await Ok(page.HasValue ? altquery.Skip(page.Value * 30).Take(30) : altquery, true);
+                    }
+                }
+            }
+
             var query = (from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && (string.IsNullOrEmpty(owner) || run.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower()) && (string.IsNullOrEmpty(repo) || run.Workflow.Repository.Name.ToLower() == repo.ToLower()) orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id, Owner = run.Workflow.Repository.Owner.Name, Repo = run.Workflow.Repository.Name});
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
