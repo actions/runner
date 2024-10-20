@@ -1,0 +1,114 @@
+{
+  "root": {
+    "parameters": {
+      "description": "Contains parameters."
+    },
+    "pipeline": {
+      "description": "Contains informations about this pipeline run"
+    },
+    "dependencies": {
+      "description": "Contains output and status informations of dependend stages or jobs in same stage."
+    },
+    "stageDependencies": {
+      "description": "Contains output and status informations of jobs in dependend stages."
+    },
+    "variables": {
+      "description": "Contains variables set at the repository, organization, or environment levels. For more information, see [`vars` context](https://docs.github.com/actions/learn-github-actions/contexts#vars-context)."
+    }
+  },
+  "functions": {
+    "always": {
+      "description": "* Always evaluates to `True` (even when canceled). Note: A critical failure may still prevent a task from running. For example, if getting sources failed."
+    },
+    "canceled": {
+      "description": "* Evaluates to `True` if the pipeline was canceled."
+    },
+    "failed": {
+      "description": "* For a step, equivalent to `eq(variables['Agent.JobStatus'], 'Failed')`.\n* For a job:\n  * With no arguments, evaluates to `True` only if any previous job in the dependency graph failed.\n  * With job names as arguments, evaluates to `True` only if any of those jobs failed."
+    },
+    "succeeded": {
+      "description": "* For a step, equivalent to `in(variables['Agent.JobStatus'], 'Succeeded', 'SucceededWithIssues')`\n* Use with `dependsOn` when working with jobs and you want to evaluate whether a previous job was successful. Jobs are designed to run in parallel while stages run sequentially. \n* For a job:\n  * With no arguments, evaluates to `True` only if all previous jobs in the dependency graph succeeded or partially succeeded.\n  * With job names as arguments, evaluates to `True` if all of those jobs succeeded or partially succeeded.\n  * Evaluates to `False` if the pipeline is canceled."
+    },
+    "succeededOrFailed": {
+      "description": "* For a step, equivalent to `in(variables['Agent.JobStatus'], 'Succeeded', 'SucceededWithIssues', 'Failed')`\n* For a job:\n  * With no arguments, evaluates to `True` regardless of whether any jobs in the dependency graph succeeded or failed.\n  * With job names as arguments, evaluates to `True` whether any of those jobs succeeded or failed.\n  * You may want to use `not(canceled())` instead when there are previous skipped jobs in the dependency graph. \n\n  > This is like `always()`, except it will evaluate `False` when the pipeline is canceled."
+    },
+    "and": {
+      "description": "* Evaluates to `True` if all parameters are `True`\n* Min parameters: 2. Max parameters: N\n* Casts parameters to Boolean for evaluation\n* Short-circuits after first `False`\n* Example: `and(eq(variables.letters, 'ABC'), eq(variables.numbers, 123))`"
+    },
+    "coalesce": {
+      "description": "* Evaluates the parameters in order (left to right), and returns the first value that doesn't equal null or empty-string.\n* No value is returned if the parameter values all are null or empty strings.\n* Min parameters: 2. Max parameters: N\n* Example: `coalesce(variables.couldBeNull, variables.couldAlsoBeNull, 'literal so it always works')`"
+    },
+    "contains": {
+      "description": "* Evaluates `True` if left parameter String contains right parameter\n* Min parameters: 2. Max parameters: 2\n* Casts parameters to String for evaluation\n* Performs ordinal ignore-case comparison\n* Example: `contains('ABCDE', 'BCD')` (returns True)"
+    },
+    "containsValue": {
+      "description": "* Evaluates `True` if the left parameter is an array, and any item equals the right parameter. Also evaluates `True` if the left parameter is an object, and the value of any property equals the right parameter.\n* Min parameters: 2. Max parameters: 2\n* If the left parameter is an array, convert each item to match the type of the right parameter. If the left parameter is an object, convert the value of each property to match the type of the right parameter.  The equality comparison for each specific item evaluates `False` if the conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Short-circuits after the first match\n\n> [!NOTE]\n> There is no literal syntax in a YAML pipeline for specifying an array.\n> This function is of limited use in general pipelines.\n> It's intended for use in the [pipeline decorator context](../../extend/develop/pipeline-decorator-context.md) with system-provided arrays such as the list of steps.\n\nYou can use the `containsValue` expression to find a matching value in an object. Here's an example that demonstrates looking in list of source branches for a match for `Build.SourceBranch`. \n\n```yaml\nparameters:\n- name: branchOptions\n  displayName: Source branch options\n  type: object\n  default:\n    - refs/heads/main\n    - refs/heads/test\n\njobs:\n  - job: A1 \n    steps:\n    - ${{ each value in parameters.branchOptions }}:\n      - script: echo ${{ value }}\n\n  - job: B1 \n    condition: ${{ containsValue(parameters.branchOptions, variables['Build.SourceBranch']) }}\n    steps:\n      - script: echo \"Matching branch found\"\n```"
+    },
+    "convertToJson": {
+      "description": "* Take a complex object and outputs it as JSON.\n* Min parameters: 1. Max parameters: 1.\n\n```yaml\nparameters:\n  - name: listOfValues\n    type: object\n    default:\n      this_is:\n        a_complex: object\n        with:\n          - one\n          - two\n \nsteps:\n- script: |\n    echo \"${MY_JSON}\"\n  env:\n    MY_JSON: ${{ convertToJson(parameters.listOfValues) }}\n```\n\nScript output:\n\n```json\n{\n  \"this_is\": {\n    \"a_complex\": \"object\",\n    \"with\": [\n      \"one\",\n      \"two\"\n    ]\n  }\n}\n```"
+    },
+    "counter": {
+      "description": "* This function can only be used in an expression that defines a variable. It can't be used as part of a condition for a step, job, or stage.\n* Evaluates a number that is incremented with each run of a pipeline.\n* Parameters: 2. `prefix` and `seed`.\n* Prefix is a string expression. A separate value of counter is tracked for each unique value of prefix. The `prefix` should use UTF-16 characters.\n* Seed is the starting value of the counter\n\nYou can create a counter that is automatically incremented by one in each execution of your pipeline. When you define a counter, you provide a `prefix` and a `seed`. Here's an example that demonstrates this. \n\n```yaml\nvariables:\n  major: 1\n  # define minor as a counter with the prefix as variable major, and seed as 100.\n  minor: $[counter(variables['major'], 100)]\n\nsteps:\n- bash: echo $(minor)\n```\n\nThe value of `minor` in the above example in the first run of the pipeline is 100. In the second run it is 101, provided the value of `major` is still 1.\n\nIf you edit the YAML file, and update the value of the variable `major` to be 2, then in the next run of the pipeline, the value of `minor` will be 100. Subsequent runs increment the counter to 101, 102, 103, ...\n\nLater, if you edit the YAML file, and set the value of `major` back to 1, then the value of the counter resumes where it left off for that prefix. In this example, it resumes at 102.\n\nHere's another example of setting a variable to act as a counter that starts at 100, gets incremented by 1 for every run, and gets reset to 100 every day.\n\n> [!NOTE]\n> `pipeline.startTime` is not available outside of expressions. `pipeline.startTime`\n>  formats `system.pipelineStartTime` into a date and time object so that it is available to work with expressions.\n> The default time zone for `pipeline.startTime` is UTC. You can [change the time zone](../../organizations/accounts/change-time-zone.md) for your organization.\n\n\n```yaml\njobs:\n- job:\n  variables:\n    a: $[counter(format('{0:yyyyMMdd}', pipeline.startTime), 100)]\n  steps:\n  - bash: echo $(a)\n```\n\nHere's an example of having a counter that maintains a separate value for PRs and CI runs.\n\n```yaml\nvariables:\n  patch: $[counter(variables['build.reason'], 0)]\n```\n\nCounters are scoped to a pipeline. In other words, its value is incremented for each run of that pipeline. There are no project-scoped counters."
+    },
+    "endsWith": {
+      "description": "* Evaluates `True` if left parameter String ends with right parameter\n* Min parameters: 2. Max parameters: 2\n* Casts parameters to String for evaluation\n* Performs ordinal ignore-case comparison\n* Example: `endsWith('ABCDE', 'DE')` (returns True)"
+    },
+    "eq": {
+      "description": "* Evaluates `True` if parameters are equal\n* Min parameters: 2. Max parameters: 2\n* Converts right parameter to match type of left parameter. Returns `False` if conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Example: `eq(variables.letters, 'ABC')`"
+    },
+    "format": {
+      "description": "* Evaluates the trailing parameters and inserts them into the leading parameter string\n* Min parameters: 1. Max parameters: N\n* Example: `format('Hello {0} {1}', 'John', 'Doe')`\n* Uses [.NET custom date and time format specifiers](/dotnet/standard/base-types/custom-date-and-time-format-strings) for date formatting (`yyyy`, `yy`, `MM`, `M`, `dd`, `d`, `HH`, `H`, `m`, `mm`, `ss`, `s`, `f`, `ff`, `ffff`, `K`)\n* Example: `format('{0:yyyyMMdd}', pipeline.startTime)`. In this case `pipeline.startTime` is a special date time object variable.\n* Escape by doubling braces. For example: `format('literal left brace {{ and literal right brace }}')`"
+    },
+    "ge": {
+      "description": "* Evaluates `True` if left parameter is greater than or equal to the right parameter\n* Min parameters: 2. Max parameters: 2\n* Converts right parameter to match type of left parameter. Errors if conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Example: `ge(5, 5)` (returns True)"
+    },
+    "gt": {
+      "description": "* Evaluates `True` if left parameter is greater than the right parameter\n* Min parameters: 2. Max parameters: 2\n* Converts right parameter to match type of left parameter. Errors if conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Example: `gt(5, 2)` (returns True)"
+    },
+    "in": {
+      "description": "* Evaluates `True` if left parameter is equal to any right parameter\n* Min parameters: 1. Max parameters: N\n* Converts right parameters to match type of left parameter. Equality comparison evaluates `False` if conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Short-circuits after first match\n* Example: `in('B', 'A', 'B', 'C')` (returns True)"
+    },
+    "join": {
+      "description": "* Concatenates all elements in the right parameter array, separated by the left parameter string.\n* Min parameters: 2. Max parameters: 2\n* Each element in the array is converted to a string. Complex objects are converted to empty string.\n* If the right parameter isn't an array, the result is the right parameter converted to a string.\n\nIn this example, a semicolon gets added between each item in the array. The parameter type is an object.\n\n```yaml\nparameters:\n- name: myArray\n  type: object\n  default:\n    - FOO\n    - BAR\n    - ZOO\n\nvariables:\n   A: ${{ join(';',parameters.myArray) }}\n\nsteps:\n  - script: echo $A # outputs FOO;BAR;ZOO\n```"
+    },
+    "le": {
+      "description": "* Evaluates `True` if left parameter is less than or equal to the right parameter\n* Min parameters: 2. Max parameters: 2\n* Converts right parameter to match type of left parameter. Errors if conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Example: `le(2, 2)` (returns True)"
+    },
+    "length": {
+      "description": "* Returns the length of a string or an array, either one that comes from the system or that comes from a parameter\n* Min parameters: 1. Max parameters 1\n* Example: `length('fabrikam')` returns 8"
+    },
+    "lower": {
+      "description": "* Converts a string or variable value to all lowercase characters\n* Min parameters: 1. Max parameters 1\n* Returns the lowercase equivalent of a string\n* Example: `lower('FOO')` returns `foo`"
+    },
+    "lt": {
+      "description": "* Evaluates `True` if left parameter is less than the right parameter\n* Min parameters: 2. Max parameters: 2\n* Converts right parameter to match type of left parameter. Errors if conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Example: `lt(2, 5)` (returns True)"
+    },
+    "ne": {
+      "description": "* Evaluates `True` if parameters are not equal\n* Min parameters: 2. Max parameters: 2\n* Converts right parameter to match type of left parameter. Returns `True` if conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Example: `ne(1, 2)` (returns True)"
+    },
+    "not": {
+      "description": "* Evaluates `True` if parameter is `False`\n* Min parameters: 1. Max parameters: 1\n* Converts value to Boolean for evaluation\n* Example: `not(eq(1, 2))` (returns True)"
+    },
+    "notIn": {
+      "description": "* Evaluates `True` if left parameter isn't equal to any right parameter\n* Min parameters: 1. Max parameters: N\n* Converts right parameters to match type of left parameter. Equality comparison evaluates `False` if conversion fails.\n* Ordinal ignore-case comparison for Strings\n* Short-circuits after first match\n* Example: `notIn('D', 'A', 'B', 'C')` (returns True)"
+    },
+    "or": {
+      "description": "* Evaluates `True` if any parameter is `True`\n* Min parameters: 2. Max parameters: N\n* Casts parameters to Boolean for evaluation\n* Short-circuits after first `True`\n* Example: `or(eq(1, 1), eq(2, 3))` (returns True, short-circuits)"
+    },
+    "replace": {
+      "description": "* Returns a new string in which all instances of a string in the current instance are replaced with another string\n* Min parameters: 3. Max parameters: 3\n* `replace(a, b, c)`: returns a, with all instances of b replaced by c\n* Example: `replace('https://www.tinfoilsecurity.com/saml/consume','https://www.tinfoilsecurity.com','http://server')` (returns `http://server/saml/consume`)"
+    },
+    "split": {
+      "description": "* Splits a string into substrings based on the specified delimiting characters \n* Min parameters: 2. Max parameters: 2\n* The first parameter is the string to split\n* The second parameter is the delimiting characters\n* Returns an array of substrings. The array includes empty strings when the delimiting characters appear consecutively or at the end of the string\n* Example: \n  ```yml\n  variables:\n  - name: environments\n    value: prod1,prod2 \n  steps:  \n    - ${{ each env in split(variables.environments, ',')}}:\n      - script: ./deploy.sh --environment ${{ env }}\n  ```\n* Example of using split() with replace():\n  ```yml\n  parameters:\n  - name: resourceIds\n    type: object\n    default:\n    - /subscriptions/mysubscription/resourceGroups/myResourceGroup/providers/Microsoft.Network/loadBalancers/kubernetes-internal\n    - /subscriptions/mysubscription02/resourceGroups/myResourceGroup02/providers/Microsoft.Network/loadBalancers/kubernetes\n  - name: environments\n    type: object\n    default: \n    - prod1\n    - prod2\n\n  trigger:\n  - main\n    \n  steps:\n  - ${{ each env in parameters.environments }}:\n    - ${{ each resourceId in parameters.resourceIds }}:\n        - script: echo ${{ replace(split(resourceId, '/')[8], '-', '_') }}_${{ env }}\n  ```"
+    },
+    "startsWith": {
+      "description": "* Evaluates `True` if left parameter string starts with right parameter\n* Min parameters: 2. Max parameters: 2\n* Casts parameters to String for evaluation\n* Performs ordinal ignore-case comparison\n* Example: `startsWith('ABCDE', 'AB')` (returns True)"
+    },
+    "upper": {
+      "description": "* Converts a string or variable value to all uppercase characters\n* Min parameters: 1. Max parameters 1\n* Returns the uppercase equivalent of a string\n* Example: `upper('bah')` returns `BAH`"
+    },
+    "xor": {
+      "description": "* Evaluates `True` if exactly one parameter is `True`\n* Min parameters: 2. Max parameters: 2\n* Casts parameters to Boolean for evaluation\n* Example: `xor(True, False)` (returns True)"
+    }
+  }
+}

@@ -18,4 +18,6 @@ public static partial class Interop {
     [JSImport("semTokens", "extension.js")]
     internal static partial Task SemTokens(JSObject handle, int[] data);
 
+    [JSImport("hoverResult", "extension.js")]
+    internal static partial Task HoverResult(JSObject handle, string jsonRange, string conten);
 }

@@ -142,6 +142,12 @@
 						"default": false,
 						"scope": "window",
 						"description": "Colorize Pipeline Expressions via Semantic Highlighting"
+					},
+					"azure-pipelines-vscode-ext.enable-hover": {
+						"type": "boolean",
+						"default": false,
+						"scope": "window",
+						"description": "Enable currently slow hover content in this web extension"
 					}
 				}
 			}

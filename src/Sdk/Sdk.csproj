@@ -37,6 +37,9 @@
         <EmbeddedResource Include="AzurePipelines\azurepiplines.json">
             <LogicalName>azurepiplines.json</LogicalName>
         </EmbeddedResource>
+        <EmbeddedResource Include="AzurePipelines\descriptions.json">
+            <LogicalName>pipelines.descriptions.json</LogicalName>
+        </EmbeddedResource>
         <EmbeddedResource Include="Actions\descriptions.json">
             <LogicalName>descriptions.json</LogicalName>
         </EmbeddedResource>

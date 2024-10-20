@@ -11,6 +11,7 @@ using System.Runtime.InteropServices.JavaScript;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Sdk.Actions;
 
 while (true) {
     await Interop.Sleep(10 * 60 * 1000);
@@ -170,11 +171,34 @@ public partial class MyClass {
             var schema = AzureDevops.LoadSchema();
             List<CompletionItem> list = AutoCompletetionHelper.CollectCompletions(column, row, context, schema);
             await Interop.AutoCompleteList(handle, JsonConvert.SerializeObject(list));
+            var (pos, doc) = GetHoverResult(context, row, column);
+            await Interop.HoverResult(handle, JsonConvert.SerializeObject(pos), doc);
         }
         if(check && context.SemTokens?.Count > 0) {
             await Interop.SemTokens(handle, [.. context.SemTokens]);
         }
         
+    }
+
+    private static (Runner.Server.Azure.Devops.Range, string) GetHoverResult(Context context, int row, int column) {
+        var last = context.AutoCompleteMatches?.LastOrDefault();
+        if(last?.Tokens?.Any() == true) {
+            var tkn = last.Tokens.LastOrDefault(t => t.Index <= last.Index);
+            if(tkn == null || tkn.Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.String) {
+                return (null, null);
+            }
+
+            var i = last.Tokens.IndexOf(tkn);
+
+            var desc = PipelinesDescriptions.LoadDescriptions();
+            
+            return  (new Runner.Server.Azure.Devops.Range { Start = new Position { Line = row - 1, Character = column - 1 - (last.Index - tkn.Index) }, End = new Position { Line = row - 1, Character = column - 1 - (last.Index - tkn.Index) + tkn.RawValue.Length } }, i > 2 && last.Tokens[i - 2].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.NamedValue && last.Tokens[i - 1].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Dereference && new [] { "github", "runner", "strategy" }.Contains(last.Tokens[i - 2].RawValue.ToLower()) && desc[last.Tokens[i - 2].RawValue].TryGetValue(tkn.RawValue, out var d)
+                    || i > 4 && last.Tokens[i - 4].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.NamedValue && last.Tokens[i - 3].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Dereference 
+                    && last.Tokens[i - 2].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.PropertyName && last.Tokens[i - 1].Kind == GitHub.DistributedTask.Expressions2.Tokens.TokenKind.Dereference && new [] { "steps", "jobs", "needs" }.Contains(last.Tokens[i - 4].RawValue.ToLower()) && desc[last.Tokens[i - 4].RawValue].TryGetValue(tkn.RawValue, out d)
+                    || desc["root"].TryGetValue(tkn.RawValue, out d)
+                    || desc["functions"].TryGetValue(tkn.RawValue, out d) ? d.Description : tkn.RawValue);
+        }
+        return (new Runner.Server.Azure.Devops.Range { Start = last.Token.PreWhiteSpace != null ? new Position { Line = (int)last.Token.PreWhiteSpace.Line - 1, Character = (int)last.Token.PreWhiteSpace.Character - 1 } : new Position { Line = last.Token.Line.Value - 1, Character = last.Token.Column.Value - 1 }, End = new Position { Line = (int)last.Token.PostWhiteSpace.Line - 1, Character = (int)last.Token.PostWhiteSpace.Character - 1 } }, last.Definitions.FirstOrDefault()?.Description ?? "???");
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]

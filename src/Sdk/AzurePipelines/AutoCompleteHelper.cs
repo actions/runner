@@ -608,6 +608,42 @@ Example: xor(True, False) (returns True)
                         };
                         yield return new CompletionItem {
                             Label = new CompletionItemLabel {
+                                Label = "<=",
+                            },
+                            Kind = 24,
+                            Documentation = new MarkdownString {
+                                Value = "Less Equals Operator"
+                            }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = ">=",
+                            },
+                            Kind = 24,
+                            Documentation = new MarkdownString {
+                                Value = "Greater Equals Operator"
+                            }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = "<",
+                            },
+                            Kind = 24,
+                            Documentation = new MarkdownString {
+                                Value = "Less Operator"
+                            }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
+                                Label = ">",
+                            },
+                            Kind = 24,
+                            Documentation = new MarkdownString {
+                                Value = "Greater Operator"
+                            }
+                        };
+                        yield return new CompletionItem {
+                            Label = new CompletionItemLabel {
                                 Label = "||",
                             },
                             Kind = 24,

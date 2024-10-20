@@ -159,6 +159,9 @@ function activate(context) {
 				if(handle.enableSemTokens){
 					handle.semTokens = completions;
 				}
+			},
+			hoverResult: async (handle, range, content) => {
+				handle.hover = { range: JSON.parse(range), content };
 			}
 		});
 		logchannel.appendLine("Starting extension main to keep dotnet alive");
@@ -392,6 +395,7 @@ function activate(context) {
 
         if(pos) {
 			autocompletelist.autocompletelist = handle.autocompletelist
+			autocompletelist.hover = handle.hover
 		}
 		if(handle.enableSemTokens) {
 			autocompletelist.semTokens = handle.semTokens
@@ -533,72 +537,106 @@ function activate(context) {
 		}
 		return schema;
 	}
-
-	var registerSemanticHighlighting = () => vscode.languages.registerDocumentSemanticTokensProvider({
-		language: "yaml"
-	}, {
-		provideDocumentSemanticTokens: async (doc, token) => {
-			var data = {enableSemTokens: true};
-			await expandAzurePipeline(false, null, null, null, () => {
-			}, null, () => {
-			}, null, null, null, true, true, null, null, data);
-			var semTokens = data.semTokens || new Uint32Array();
-			return new vscode.SemanticTokens(semTokens);
-		}
-	}, new vscode.SemanticTokensLegend(["variable","parameter","function","property","constant","punctuation","string"], ["readonly","defaultLibrary","numeric"]));
-	var registerAutoCompletionYaml = (lang) => vscode.languages.registerCompletionItemProvider({
-		language: lang ?? "yaml"
-	}, {
-		provideCompletionItems: async (doc, pos, token, context) => {
-			var data = {autocompletelist: []};
-			await expandAzurePipeline(false, null, null, null, () => {
-			}, null, () => {
-			}, null, null, null, true, true, null, pos, data);
-			for(var item of data.autocompletelist) {
-				if(item.insertText && item.insertText.value) {
-					item.insertText = new vscode.SnippetString(item.insertText.value)
-				}
-				if(item.documentation) {
-					item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
-				}
-			}
-			return data.autocompletelist
-		}
-	});
 	
-	var semHightl = null;
-	var autoCompleteYaml = null;
-	var autoCompleteAdo = null;
-	var semHightlSettingChanged = () => {
+	var semHighlight = null;
+	var autoComplete = null;
+	var hover = null;
+	var semHighlightSettingChanged = () => {
 		if(vscode.workspace.getConfiguration("azure-pipelines-vscode-ext").get("enable-semantic-highlighting")) {
-			semHightl = registerSemanticHighlighting();
-			context.subscriptions.push(semHightl);
+			semHighlight = vscode.languages.registerDocumentSemanticTokensProvider([
+				{
+					language: "yaml"
+				},
+				{
+					language: "azure-pipelines"
+				}
+			], {
+				provideDocumentSemanticTokens: async (doc, token) => {
+					var data = {enableSemTokens: true};
+					await expandAzurePipeline(false, null, null, null, () => {
+					}, null, () => {
+					}, null, null, null, true, true, null, null, data);
+					var semTokens = data.semTokens || new Uint32Array();
+					return new vscode.SemanticTokens(semTokens);
+				}
+			}, new vscode.SemanticTokensLegend(["variable","parameter","function","property","constant","punctuation","string"], ["readonly","defaultLibrary","numeric"]));
+			context.subscriptions.push(semHighlight);
 		} else {
-			semHightl?.dispose();
+			semHighlight?.dispose();
 		}
 	};
 	var autoCompleteSettingChanged = () => {
 		if(vscode.workspace.getConfiguration("azure-pipelines-vscode-ext").get("enable-auto-complete")) {
-			autoCompleteYaml = registerAutoCompletionYaml();
-			autoCompleteAdo = registerAutoCompletionYaml("azure-pipelines");
-			context.subscriptions.push(autoCompleteYaml);
-			context.subscriptions.push(autoCompleteAdo);
+			autoComplete = vscode.languages.registerCompletionItemProvider([
+				{
+					language: "yaml"
+				},
+				{
+					language: "azure-pipelines"
+				}
+			], {
+				provideCompletionItems: async (doc, pos, token, context) => {
+					var data = {autocompletelist: []};
+					await expandAzurePipeline(false, null, null, null, () => {
+					}, null, () => {
+					}, null, null, null, true, true, null, pos, data);
+					for(var item of data.autocompletelist) {
+						if(item.insertText && item.insertText.value) {
+							item.insertText = new vscode.SnippetString(item.insertText.value)
+						}
+						if(item.documentation) {
+							item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
+						}
+					}
+					return data.autocompletelist
+				}
+			});
+			context.subscriptions.push(autoComplete);
 		} else {
-			autoCompleteYaml?.dispose();
-			autoCompleteAdo?.dispose();
+			autoComplete?.dispose();
+		}
+	};
+	var hoverSettingChanged = () => {
+		if(vscode.workspace.getConfiguration("azure-pipelines-vscode-ext").get("enable-hover")) {
+			hover = vscode.languages.registerHoverProvider([
+				{
+					language: "yaml"
+				},
+				{
+					language: "azure-pipelines"
+				}
+			], {
+				provideHover: async (doc, pos, token) => {
+					var data = {autocompletelist: []};
+					await expandAzurePipeline(false, null, null, null, () => {
+					}, null, () => {
+					}, null, null, null, true, true, null, pos, data);
+					if(data.hover && data.hover.range && data.hover.content) {
+						return new vscode.Hover(new vscode.MarkdownString(data.hover.content, true), data.hover.range)
+					}
+					return null;
+				}
+			});
+			context.subscriptions.push(hover);
+		} else {
+			hover?.dispose();
 		}
 	};
 	vscode.workspace.onDidChangeConfiguration(conf => {
 		if(conf.affectsConfiguration("azure-pipelines-vscode-ext.enable-semantic-highlighting")) {
-			semHightlSettingChanged();
+			semHighlightSettingChanged();
 		}
 		if(conf.affectsConfiguration("azure-pipelines-vscode-ext.enable-auto-complete")) {
 			autoCompleteSettingChanged();
 		}
+		if(conf.affectsConfiguration("azure-pipelines-vscode-ext.enable-hover")) {
+			hoverSettingChanged();
+		}
 	})
-	semHightlSettingChanged();
+	semHighlightSettingChanged();
 	autoCompleteSettingChanged();
-	
+	hoverSettingChanged();
+
 	context.subscriptions.push(vscode.commands.registerCommand(statusbar.command.command, async (file, collection, obj) => {
 		var getSchema = () => {
             try {
