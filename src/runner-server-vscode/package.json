@@ -43,7 +43,7 @@
 		]
 	},
 	"scripts": {
-		"build": "dotnet publish ../Runner.Language.Server --no-self-contained --output native"
+		"build": "dotnet publish ../Runner.Language.Server --no-self-contained -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 --output native"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.73.0",
