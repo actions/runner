@@ -1,4 +1,4 @@
-# Runner.Server for VSCode (Web)
+# Runner.Server for VSCode (Native)
 
 This is experimental
 
