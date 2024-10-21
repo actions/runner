@@ -92,6 +92,9 @@ RUN apt-get update -y \
         wget \
         xdg-utils
 
+# Link default python
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
 # github cli repo
 RUN mkdir -p -m 755 /etc/apt/keyrings \
     && curl --silent https://cli.github.com/packages/githubcli-archive-keyring.gpg \
