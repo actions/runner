@@ -17,10 +17,8 @@ LAYOUT_DIR="$SCRIPT_DIR/../_layout"
 DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="6.0.425"
+DOTNETSDK_VERSION="8.0.403"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
-DOTNET8SDK_VERSION="8.0.303"
-DOTNET8SDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNET8SDK_VERSION"
 RUNNER_VERSION=$(cat runnerversion)
 
 pushd "$SCRIPT_DIR"
@@ -127,19 +125,6 @@ function build ()
 {
     heading "Building ..."
     dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed build
-
-    # Build TestDotNet8Compatibility
-    heading "Building .NET 8 compatibility test"
-    echo "Prepend ${DOTNET8SDK_INSTALLDIR} to %PATH%"         # Prepend .NET 8 SDK to PATH
-    PATH_BAK=$PATH
-    export PATH=${DOTNET8SDK_INSTALLDIR}:$PATH
-    pushd "$SCRIPT_DIR/TestDotNet8Compatibility" > /dev/null  # Working directory
-    pwd
-    echo "Dotnet 8 SDK Version"
-    dotnet --version
-    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed build
-    popd > /dev/null       # Restore working directory
-    export PATH=$PATH_BAK  # Restore PATH
 }
 
 function layout ()
@@ -158,18 +143,6 @@ function layout ()
 
     heading "Setup externals folder for $RUNTIME_ID runner's layout"
     bash ./Misc/externals.sh $RUNTIME_ID || checkRC externals.sh
-
-    # Build TestDotNet8Compatibility
-    echo "Prepend ${DOTNET8SDK_INSTALLDIR} to %PATH%"         # Prepend .NET 8 SDK to PATH
-    PATH_BAK=$PATH
-    export PATH=${DOTNET8SDK_INSTALLDIR}:$PATH
-    pushd "$SCRIPT_DIR/TestDotNet8Compatibility" > /dev/null  # Working directory
-    heading "Dotnet 8 SDK Version"
-    dotnet --version
-    heading "Building .NET 8 compatibility test"
-    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed build
-    popd > /dev/null       # Restore working directory
-    export PATH=$PATH_BAK  # Restore PATH
 }
 
 function runtest ()
@@ -250,32 +223,6 @@ if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTN
     fi
 
     echo "${DOTNETSDK_VERSION}" > "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}"
-fi
-
-# Install .NET 8 SDK
-if [[ (! -d "${DOTNET8SDK_INSTALLDIR}") || (! -e "${DOTNET8SDK_INSTALLDIR}/.${DOTNET8SDK_VERSION}") || (! -e "${DOTNET8SDK_INSTALLDIR}/dotnet") ]]; then
-
-    # Download dotnet 8 SDK to ../_dotnetsdk directory
-    heading "Ensure Dotnet 8 SDK"
-
-    # _dotnetsdk
-    #           \1.0.x
-    #                            \dotnet
-    #                            \.1.0.x
-    echo "Download dotnet8sdk into ${DOTNET8SDK_INSTALLDIR}"
-    rm -Rf "${DOTNETSDK_DIR}"
-
-    # run dotnet-install.ps1 on windows, dotnet-install.sh on linux
-    if [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
-        echo "Convert ${DOTNET8SDK_INSTALLDIR} to Windows style path"
-        sdkinstallwindow_path=${DOTNET8SDK_INSTALLDIR:1}
-        sdkinstallwindow_path=${sdkinstallwindow_path:0:1}:${sdkinstallwindow_path:1}
-        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "& \"./Misc/dotnet-install.ps1\" -Version ${DOTNET8SDK_VERSION} -InstallDir \"${sdkinstallwindow_path}\" -NoPath; exit \$LastExitCode;" || checkRC dotnet-install.ps1
-    else
-        bash ./Misc/dotnet-install.sh --version ${DOTNET8SDK_VERSION} --install-dir "${DOTNET8SDK_INSTALLDIR}" --no-path || checkRC dotnet-install.sh
-    fi
-
-    echo "${DOTNET8SDK_VERSION}" > "${DOTNET8SDK_INSTALLDIR}/.${DOTNET8SDK_VERSION}"
 fi
 
 echo "Prepend ${DOTNETSDK_INSTALLDIR} to %PATH%"

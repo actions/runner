@@ -30,8 +30,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Theory]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        [InlineData("node12", "node16")]
-        [InlineData("node16", "node16")]
+        [InlineData("node12", "node20")]
+        [InlineData("node16", "node20")]
         [InlineData("node20", "node20")]
         public void IsNodeVersionUpgraded(string inputVersion, string expectedVersion)
         {
@@ -70,7 +70,6 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal(expectedVersion, handler.Data.NodeVersion);
-                Environment.SetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion, null);
             }
         }
     }

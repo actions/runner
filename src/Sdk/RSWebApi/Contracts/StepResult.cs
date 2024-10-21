@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
@@ -16,8 +16,13 @@ namespace GitHub.Actions.RunService.WebApi
         [DataMember(Name = "number", EmitDefaultValue = false)]
         public int? Number { get; set; }
 
+        // Example: "Run actions/checkout@v3"
         [DataMember(Name = "name", EmitDefaultValue = false)]
         public string Name { get; set; }
+
+        // Example: "actions/checkout"
+        [DataMember(Name = "action_name", EmitDefaultValue = false)]
+        public string ActionName { get; set; }
 
         [DataMember(Name = "ref", EmitDefaultValue = false)]
         public string Ref { get; set; }

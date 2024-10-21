@@ -127,10 +127,6 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // Check OS warning
-                    var osWarningChecker = HostContext.GetService<IOSWarningChecker>();
-                    await osWarningChecker.CheckOSAsync(context);
-
                     try
                     {
                         var tokenPermissions = jobContext.Global.Variables.Get("system.github.token.permissions") ?? "";

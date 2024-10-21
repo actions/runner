@@ -105,23 +105,6 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-            if (string.Equals(Data.NodeVersion, "node12", StringComparison.OrdinalIgnoreCase) &&
-                Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
-            {
-                ExecutionContext.Output($"The node12 is not supported. Use node16 instead.");
-                Data.NodeVersion = "node16";
-            }
-
-            string forcedNodeVersion = System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
-            if (forcedNodeVersion == "node16" && Data.NodeVersion != "node16")
-            {
-                Data.NodeVersion = "node16";
-            }
-
-            if (forcedNodeVersion == "node20" && Data.NodeVersion != "node20")
-            {
-                Data.NodeVersion = "node20";
-            }
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             ExecutionContext.StepTelemetry.Type = nodeRuntimeVersion;
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
@@ -142,28 +125,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Remove environment variable that may cause conflicts with the node within the runner.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
-
-            if (string.Equals(Data.NodeVersion, Constants.Runner.DeprecatedNodeVersion, StringComparison.OrdinalIgnoreCase) && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node16Warning) ?? false))
-            {
-                var repoAction = Action as RepositoryPathReference;
-                var warningActions = new HashSet<string>();
-                if (ExecutionContext.Global.Variables.TryGetValue(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, out var deprecatedNodeWarnings))
-                {
-                    warningActions = StringUtil.ConvertFromJson<HashSet<string>>(deprecatedNodeWarnings);
-                }
-
-                if (string.IsNullOrEmpty(repoAction.Name))
-                {
-                    // local actions don't have a 'Name'
-                    warningActions.Add(repoAction.Path);
-                }
-                else
-                {
-                    warningActions.Add($"{repoAction.Name}/{repoAction.Path ?? string.Empty}".TrimEnd('/') + $"@{repoAction.Ref}");
-                }
-
-                ExecutionContext.Global.Variables.Set(Constants.Runner.DeprecatedNodeDetectedAfterEndOfLifeActions, StringUtil.ConvertToJson(warningActions));
-            }
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))

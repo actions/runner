@@ -75,10 +75,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     .ReturnsAsync(0);
 
                 // Act.
-                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node16");
+                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node20");
 
                 // Assert.
-                Assert.Equal("node16_alpine", nodeVersion);
+                Assert.Equal("node20_alpine", nodeVersion);
             }
         }
 
@@ -129,10 +129,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                     .ReturnsAsync(0);
 
                 // Act.
-                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node16");
+                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node20");
 
                 // Assert.
-                Assert.Equal("node16", nodeVersion);
+                Assert.Equal("node20", nodeVersion);
             }
         }
 

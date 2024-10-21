@@ -508,6 +508,7 @@ namespace GitHub.Runner.Worker
                     Status = _record.State,
                     Number = _record.Order,
                     Name = _record.Name,
+                    ActionName = StepTelemetry?.Action,
                     Ref = StepTelemetry?.Ref,
                     Type = StepTelemetry?.Type,
                     StartedAt = _record.StartTime,
@@ -813,11 +814,6 @@ namespace GitHub.Runner.Worker
             SetDebugUsingVars(variables, message.ContextData);
 
             Global.Variables = new Variables(HostContext, variables);
-
-            if (Global.Variables.GetBoolean("DistributedTask.ForceInternalNodeVersionOnRunnerTo16") ?? false)
-            {
-                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion, "node16");
-            }
 
             // Environment variables shared across all actions
             Global.EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
