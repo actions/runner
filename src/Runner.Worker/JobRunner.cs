@@ -210,8 +210,14 @@ namespace GitHub.Runner.Worker
                     // Server won't issue ID_TOKEN for non-inprogress job.
                     // If the job is trying to use OIDC feature, we want the job to be marked as in-progress before running any customer's steps as much as we can.
                     // Timeline record update background process runs every 500ms, so delay 1000ms is enough for most of the cases
-                    Trace.Info($"Waiting for job to be marked as started.");
-                    await Task.WhenAny(_jobServerQueue.JobRecordUpdated.Task, Task.Delay(1000));
+                    var maxWaitTimeInSeconds = jobContext.Global.Variables.GetInt("DistributedTask.FirstJobRecordUpdateWaitTimeInSeconds");
+                    if (maxWaitTimeInSeconds == null)
+                    {
+                        maxWaitTimeInSeconds = 1;
+                    }
+
+                    Trace.Info($"Waiting {maxWaitTimeInSeconds.Value} seconds for job to be marked as started.");
+                    await Task.WhenAny(_jobServerQueue.JobRecordUpdated.Task, Task.Delay(maxWaitTimeInSeconds.Value * 1000));
                 }
 
                 // Run all job steps
