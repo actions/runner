@@ -508,6 +508,7 @@ namespace GitHub.Runner.Worker
                     Status = _record.State,
                     Number = _record.Order,
                     Name = _record.Name,
+                    ActionName = StepTelemetry?.Action,
                     Ref = StepTelemetry?.Ref,
                     Type = StepTelemetry?.Type,
                     StartedAt = _record.StartTime,
