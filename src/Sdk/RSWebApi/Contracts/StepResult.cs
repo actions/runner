@@ -18,6 +18,9 @@ namespace GitHub.Actions.RunService.WebApi
 
         [DataMember(Name = "name", EmitDefaultValue = false)]
         public string Name { get; set; }
+        
+        [DataMember(Name = "action_name", EmitDefaultValue = false)]
+        public string ActionName { get; set; }
 
         [DataMember(Name = "ref", EmitDefaultValue = false)]
         public string Ref { get; set; }
