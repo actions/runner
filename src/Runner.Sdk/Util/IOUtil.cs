@@ -558,5 +558,13 @@ namespace GitHub.Runner.Sdk
                 item.Attributes = item.Attributes & ~FileAttributes.ReadOnly;
             }
         }
+
+        public static string GetDotnet() {
+            var procPath = Environment.ProcessPath;
+            if(Path.GetFileNameWithoutExtension(procPath) == "dotnet" && Path.GetExtension(procPath) == ExeExtension) {
+                return procPath;
+            }
+            return WhichUtil.Which("dotnet", true);
+        }
     }
 }

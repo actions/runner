@@ -264,7 +264,7 @@ namespace Runner.Client
                 Console.WriteLine(e.Data);
             };
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-            var dotnet = WhichUtil.Which("dotnet", true);
+            var dotnet = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
             string ext = ".dll";
 #else
             string ext = IOUtil.ExeExtension;
@@ -497,7 +497,7 @@ namespace Runner.Client
                             // Use embedded runner to configure external github agent, otherwise only port 80 or 443 are possible to use for configuration
                         #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                             arguments = $"\"{Path.Join(binpath, "Runner.Listener.dll")}\" {arguments}";
-                            file = WhichUtil.Which("dotnet", true);
+                            file = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
                         #else
                             file = Path.Join(binpath, $"Runner.Listener{ext}");
                         #endif
@@ -535,7 +535,7 @@ namespace Runner.Client
                                     if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                                         #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                                             arguments = $"\"{Path.Join(binpath, "Runner.Client.dll")}\" spawn \"{file}\" {arguments}";
-                                            file = WhichUtil.Which("dotnet", true);
+                                            file = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
                                         #else
                                             arguments = $"spawn \"{file}\" {arguments}";
                                             file = Path.Join(binpath, $"Runner.Client{ext}");
@@ -1293,7 +1293,7 @@ namespace Runner.Client
                                 invoker.ErrorDataReceived += _out;
                             }
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                            var dotnet = WhichUtil.Which("dotnet", true);
+                            var dotnet = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
                             string ext = ".dll";
 #else
                             string ext = IOUtil.ExeExtension;

@@ -17,6 +17,17 @@
 	"activationEvents": [
 		"onLanguage:yaml"
 	],
+	"contributes": {
+		"semanticTokenScopes": [
+			{
+				"scopes": {
+					"constant.defaultLibrary": ["constant.language"],
+					"constant.numeric": ["constant.numeric"],
+					"punctuation": ["meta.embedded"]
+				}
+			}
+		]
+	},
 	"browser": "./client/dist/browserClientMain",
 	"scripts": {
 		"vscode:prepublish": "npm run build",
