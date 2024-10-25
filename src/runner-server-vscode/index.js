@@ -67,12 +67,36 @@ function activate(context) {
 					}
 				);
 
+				const fullWebServerUri = await vscode.env.asExternalUri(
+					vscode.Uri.parse(address)
+				);
+
 				var args = [ path.join(context.extensionPath, 'native', 'Runner.Client.dll'), 'startrunner', '--parallel', '4' ];
 				if(address) {
 					args.push('--server', address)
 				}
-				vscode.window.createTerminal("runner.client", dotnetPath, args)
-				panel.webview.html = `<html><body style="height: 100%;width: 100%;border: 0;padding: 0; margin: 0;overflow: hidden;" ><iframe style="height: 100vh;width: 100%;border: 0;padding: 0; margin: 0;overflow: hidden;" src="${address}"></iframe></body></html>`;
+				setTimeout(() => {
+					vscode.window.createTerminal("runner.client", dotnetPath, args)
+				}, 2000);
+				const cspSource = panel.webview.cspSource;
+				// Get the content Uri
+				const style = panel.webview.asWebviewUri(
+					vscode.Uri.joinPath(context.extensionUri, 'style.css')
+				);
+				panel.webview.html = `<!DOCTYPE html>
+				<html>
+					<head>
+						<meta
+							http-equiv="Content-Security-Policy"
+							content="default-src 'none'; frame-src ${fullWebServerUri} ${cspSource} https:; img-src ${cspSource} https:; script-src ${cspSource}; style-src ${cspSource};"
+						/>
+						<meta name="viewport" content="width=device-width, initial-scale=1.0">
+						<link rel="stylesheet" href="${style}">
+					</head>
+					<body>
+						<iframe src="${fullWebServerUri}"></iframe>
+					</body>
+				</html>`;
 				context.subscriptions.push(panel);
 			}
 		});
