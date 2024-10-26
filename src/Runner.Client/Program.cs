@@ -1421,10 +1421,12 @@ namespace Runner.Client
                         }
 
                         if(parameters.StartServer || parameters.StartRunner) {
-                            Console.WriteLine($"Press {(Debugger.IsAttached ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.Parallel != 1 ? "Runners" : "Runner"))}");
+                            var exitAfterEnterEnv = System.Environment.GetEnvironmentVariable("RUNNER_CLIENT_EXIT_AFTER_ENTER");
+                            var exitAfterEnter = Debugger.IsAttached && exitAfterEnterEnv != "0" || exitAfterEnterEnv == "1";
+                            Console.WriteLine($"Press {(exitAfterEnter ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.Parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
-                                if(Debugger.IsAttached) {
+                                if(exitAfterEnter) {
                                     await Task.WhenAny(Task.Run(() => {
                                         Console.In.ReadLine();
                                     }), Task.Delay(-1, token));
