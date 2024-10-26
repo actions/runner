@@ -3,6 +3,9 @@ const { LanguageClient, TransportKind } = require('vscode-languageclient/node');
 const path = require('path');
 const cp = require('child_process');
 
+var startRunner = null;
+var finishPromise = null;
+
 /**
  * @param {vscode.ExtensionContext} context
  */
@@ -51,6 +54,7 @@ function activate(context) {
 		var address = null;
 		serverproc.stdout.on('data', async (data) => {
 			var sdata = data.asciiSlice();
+			console.log(sdata)
 			var i = sdata.indexOf("http://");
 			if(i !== -1) {
 				var end = sdata.indexOf('\n', i + 1);
@@ -75,8 +79,18 @@ function activate(context) {
 				if(address) {
 					args.push('--server', address)
 				}
-				context.subscriptions.push(vscode.window.createTerminal("runner.client", dotnetPath, args));
 
+				finishPromise = new Promise(onexit => {
+					startRunner = cp.spawn(dotnetPath, args, { encoding: 'utf-8', windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env, RUNNER_CLIENT_EXIT_AFTER_ENTER: "1" } });
+					startRunner.stdout.on('data', async (data) => {
+						var sdata = data.asciiSlice();
+						console.log(sdata)
+					});
+					startRunner.addListener('exit', code => {
+						console.log(code);
+						onexit();
+					});
+				})
 				const cspSource = panel.webview.cspSource;
 				// Get the content Uri
 				const style = panel.webview.asWebviewUri(
@@ -131,8 +145,12 @@ function activate(context) {
 }
 
 // this method is called when your extension is deactivated
-function deactivate() {}
-
+async function deactivate() {
+	if(finishPromise !== null) {
+		startRunner.stdin.write("\n");
+		await finishPromise;
+	}
+}
 module.exports = {
 	activate,
 	deactivate
