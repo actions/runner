@@ -54,7 +54,7 @@ function activate(context) {
 			var i = sdata.indexOf("http://");
 			if(i !== -1) {
 				var end = sdata.indexOf('\n', i + 1);
-				address = sdata.substring(i, end).replace("[::]", "localhost").replace("0.0.0.0", "localhost");
+				address = sdata.substring(i, end).replace("[::]", "localhost").replace("0.0.0.0", "localhost").trim();
 
 				var panel = vscode.window.createWebviewPanel(
 					"runner.server",
@@ -75,9 +75,8 @@ function activate(context) {
 				if(address) {
 					args.push('--server', address)
 				}
-				setTimeout(() => {
-					vscode.window.createTerminal("runner.client", dotnetPath, args)
-				}, 2000);
+				context.subscriptions.push(vscode.window.createTerminal("runner.client", dotnetPath, args));
+
 				const cspSource = panel.webview.cspSource;
 				// Get the content Uri
 				const style = panel.webview.asWebviewUri(
@@ -106,7 +105,7 @@ function activate(context) {
 			if(address) {
 				args.push('--server', address)
 			}
-			vscode.window.createTerminal("runner.client", dotnetPath, args)
+			context.subscriptions.push(vscode.window.createTerminal("runner.client", dotnetPath, args))
 		});
 
 		vscode.commands.registerCommand("runner.server.runworkflow", (workflow) => {
@@ -115,7 +114,7 @@ function activate(context) {
 			if(address) {
 				args.push('--server', address)
 			}
-			vscode.window.createTerminal("runner.client", dotnetPath, args)
+			context.subscriptions.push(vscode.window.createTerminal("runner.client", dotnetPath, args))
 		});
 		vscode.commands.registerCommand("runner.server.runjob", (workflow, job) => {
 			console.log(`runner.server.runjob {workflow}.{job}`)
@@ -123,7 +122,7 @@ function activate(context) {
 			if(address) {
 				args.push('--server', address)
 			}
-			vscode.window.createTerminal("runner.client", dotnetPath, args)
+			context.subscriptions.push(vscode.window.createTerminal("runner.client", dotnetPath, args))
 		});
 
 		context.subscriptions.push(client);
