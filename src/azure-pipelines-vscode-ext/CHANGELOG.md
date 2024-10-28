@@ -1,3 +1,7 @@
+### v0.2.1
+- fix loading web extension on vscode.dev
+  - .net8.0 update produced pdb files that are banned, this change removes them from boot config
+
 ### v0.2.0
 - experimental **slow** auto complete (opt int via azure-pipelines-vscode-ext.enable-auto-complete)
   - the upcoming Runner.Server extension would be faster by using the native dotnet builds via a language server

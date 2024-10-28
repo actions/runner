@@ -2,6 +2,7 @@ node_modules
 ext-core
 **.mjs
 **.js
+**.ts
 build/**
 !build/AppBundle/_framework
 dist/*

@@ -36,6 +36,9 @@ function activate(context) {
 		var citem = 0;
 		var runtime = await dotnet.withOnConfigLoaded(async config => {
 			items = Object.keys(config.resources.assembly).length;
+			// 2024-10-28 Unknown breaking change in .net8.0 deployed pdb's that refuse to be served by marketplace cdn
+			config.debugLevel = 0;
+			config.resources.pdb = {};
 		}).withConfigSrc(context.extensionUri.with({ path: context.extensionUri.path + "/build/AppBundle/_framework/blazor.boot.json" }).toString()).withResourceLoader((type, name, defaultUri, integrity, behavior) => {
 			if(type === "dotnetjs") {
 				// Allow both nodejs and browser to use the same code
