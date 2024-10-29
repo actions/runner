@@ -1,21 +1,18 @@
-const vscode = require('vscode');
-const { LanguageClient, TransportKind } = require('vscode-languageclient/node');
-const path = require('path');
-const cp = require('child_process');
+import { commands, window, ExtensionContext, Uri, ViewColumn, env } from 'vscode';
+import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
+import { join } from 'path';
+import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 
-var startRunner = null;
-var finishPromise = null;
+var startRunner : ChildProcessWithoutNullStreams | null = null;
+var finishPromise : Promise<void> | null = null;
 
-/**
- * @param {vscode.ExtensionContext} context
- */
-function activate(context) {
+function activate(context : ExtensionContext) {
 
 	(async() => {
 		console.log("Aquire Dotnet!")
 
 		// App requires .NET 8.0
-		const commandRes = await vscode.commands.executeCommand('dotnet.acquire', { version: '8.0', requestingExtensionId: `${context.extension.packageJSON.publisher}.${context.extension.packageJSON.name}`, mode: "aspnetcore" });
+		const commandRes = await commands.executeCommand('dotnet.acquire', { version: '8.0', requestingExtensionId: `${context.extension.packageJSON.publisher}.${context.extension.packageJSON.name}`, mode: "aspnetcore" }) as any;
 		const dotnetPath = commandRes.dotnetPath;
 		console.log("Dotnet " + dotnetPath)
 
@@ -31,12 +28,12 @@ function activate(context) {
 				run: {
 					transport: TransportKind.stdio,
 					command: dotnetPath,
-					args: [ path.join(context.extensionPath, 'native', 'Runner.Language.Server.dll') ]
+					args: [ join(context.extensionPath, 'native', 'Runner.Language.Server.dll') ]
 				},
 				debug: {
 					transport: TransportKind.stdio,
 					command: dotnetPath,
-					args: [ path.join(context.extensionPath, 'native', 'Runner.Language.Server.dll') ]
+					args: [ join(context.extensionPath, 'native', 'Runner.Language.Server.dll') ]
 				}
 			},
 			{
@@ -46,12 +43,12 @@ function activate(context) {
 
 		var stopServer = new AbortController();
 
-		var serverproc = cp.spawn(dotnetPath, [ path.join(context.extensionPath, 'native', 'Runner.Server.dll'), '--urls', 'http://*:0' ], { encoding: 'utf-8', killSignal: 'SIGINT', signal: stopServer.signal, windowsHide: true, stdio: 'pipe', shell: false });
+		var serverproc = spawn(dotnetPath, [ join(context.extensionPath, 'native', 'Runner.Server.dll'), '--urls', 'http://*:0' ], { killSignal: 'SIGINT', signal: stopServer.signal, windowsHide: true, stdio: 'pipe', shell: false });
 		context.subscriptions.push({ dispose: () => stopServer.abort() })
 		serverproc.addListener('exit', code => {
 			console.log(code);
 		});
-		var address = null;
+		var address : string | null = null;
 		serverproc.stdout.on('data', async (data) => {
 			var sdata = data.asciiSlice();
 			console.log(sdata)
@@ -60,10 +57,10 @@ function activate(context) {
 				var end = sdata.indexOf('\n', i + 1);
 				address = sdata.substring(i, end).replace("[::]", "localhost").replace("0.0.0.0", "localhost").trim();
 
-				var panel = vscode.window.createWebviewPanel(
+				var panel = window.createWebviewPanel(
 					"runner.server",
 					"Runner Server",
-					vscode.ViewColumn.Two,
+					ViewColumn.Two,
 					{
 						enableScripts: true,
 						// Without this we loose your webview position when the webview is in background
@@ -71,17 +68,17 @@ function activate(context) {
 					}
 				);
 
-				const fullWebServerUri = await vscode.env.asExternalUri(
-					vscode.Uri.parse(address)
+				const fullWebServerUri = address && await env.asExternalUri(
+					Uri.parse(address)
 				);
 
-				var args = [ path.join(context.extensionPath, 'native', 'Runner.Client.dll'), 'startrunner', '--parallel', '4' ];
 				if(address) {
+					var args = [ join(context.extensionPath, 'native', 'Runner.Client.dll'), 'startrunner', '--parallel', '4' ];
 					args.push('--server', address)
 				}
 
-				finishPromise = new Promise(onexit => {
-					startRunner = cp.spawn(dotnetPath, args, { encoding: 'utf-8', windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env, RUNNER_CLIENT_EXIT_AFTER_ENTER: "1" } });
+				finishPromise = new Promise<void>(onexit => {
+					startRunner = spawn(dotnetPath, args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env, RUNNER_CLIENT_EXIT_AFTER_ENTER: "1" } });
 					startRunner.stdout.on('data', async (data) => {
 						var sdata = data.asciiSlice();
 						console.log(sdata)
@@ -94,7 +91,7 @@ function activate(context) {
 				const cspSource = panel.webview.cspSource;
 				// Get the content Uri
 				const style = panel.webview.asWebviewUri(
-					vscode.Uri.joinPath(context.extensionUri, 'style.css')
+					Uri.joinPath(context.extensionUri, 'style.css')
 				);
 				panel.webview.html = `<!DOCTYPE html>
 				<html>
@@ -114,29 +111,29 @@ function activate(context) {
 			}
 		});
 		
-		vscode.commands.registerCommand("runner.server.start-client", () => {
-			var args = [ path.join(context.extensionPath, 'native', 'Runner.Client.dll'), '--interactive' ];
+		commands.registerCommand("runner.server.start-client", () => {
+			var args = [ join(context.extensionPath, 'native', 'Runner.Client.dll'), '--interactive' ];
 			if(address) {
 				args.push('--server', address)
 			}
-			context.subscriptions.push(vscode.window.createTerminal("runner.client", dotnetPath, args))
+			context.subscriptions.push(window.createTerminal("runner.client", dotnetPath, args))
 		});
 
-		vscode.commands.registerCommand("runner.server.runworkflow", (workflow) => {
+		commands.registerCommand("runner.server.runworkflow", (workflow) => {
 			console.log(`runner.server.runjob {workflow}`)
-			var args = [ path.join(context.extensionPath, 'native', 'Runner.Client.dll'), '-W', vscode.Uri.parse(workflow).fsPath ];
+			var args = [ join(context.extensionPath, 'native', 'Runner.Client.dll'), '-W', Uri.parse(workflow).fsPath ];
 			if(address) {
 				args.push('--server', address)
 			}
-			context.subscriptions.push(vscode.window.createTerminal("runner.client", dotnetPath, args))
+			context.subscriptions.push(window.createTerminal("runner.client", dotnetPath, args))
 		});
-		vscode.commands.registerCommand("runner.server.runjob", (workflow, job) => {
+		commands.registerCommand("runner.server.runjob", (workflow, job) => {
 			console.log(`runner.server.runjob {workflow}.{job}`)
-			var args = [ path.join(context.extensionPath, 'native', 'Runner.Client.dll'), '-W', vscode.Uri.parse(workflow).fsPath, '-j', job ];
+			var args = [ join(context.extensionPath, 'native', 'Runner.Client.dll'), '-W', Uri.parse(workflow).fsPath, '-j', job ];
 			if(address) {
 				args.push('--server', address)
 			}
-			context.subscriptions.push(vscode.window.createTerminal("runner.client", dotnetPath, args))
+			context.subscriptions.push(window.createTerminal("runner.client", dotnetPath, args))
 		});
 
 		context.subscriptions.push(client);
@@ -146,7 +143,7 @@ function activate(context) {
 
 // this method is called when your extension is deactivated
 async function deactivate() {
-	if(finishPromise !== null) {
+	if(finishPromise !== null && startRunner !== null) {
 		startRunner.stdin.write("\n");
 		await finishPromise;
 	}

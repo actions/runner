@@ -1,2 +1,5 @@
-!index.js
-!node_modules
+*.js
+*.ts
+node_modules
+tsconfig.json
+.gitignore

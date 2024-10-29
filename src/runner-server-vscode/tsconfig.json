@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"target": "ES2020",
+		"outDir": "out",
+		"lib": [
+			"WebWorker",
+			"ES2020"
+		],
+		"sourceMap": true,
+	},
+	"exclude": [
+		"node_modules"
+	]
+}
