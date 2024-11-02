@@ -30,17 +30,49 @@
 			{
 				"command": "runner.server.start-client",
 				"title": "Start Runner.Client"
+			},
+			{
+				"command": "runner.server.refreshWorkflows",
+				"category": "GitHub Actions",
+				"title": "Refresh",
+				"icon": {
+				  "dark": "resources/icons/dark/refresh.svg",
+				  "light": "resources/icons/light/refresh.svg"
+				}
 			}
 		],
 		"semanticTokenScopes": [
 			{
 				"scopes": {
-					"constant.defaultLibrary": ["constant.language"],
-					"constant.numeric": ["constant.numeric"],
-					"punctuation": ["meta.embedded"]
+					"constant.defaultLibrary": [
+						"constant.language"
+					],
+					"constant.numeric": [
+						"constant.numeric"
+					],
+					"punctuation": [
+						"meta.embedded"
+					]
 				}
 			}
-		]
+		],
+		"views": {
+			"explorer": [
+				{
+					"id": "workflow-view",
+					"name": "Workflow View"
+				}
+			]
+		},
+		"menus": {
+			"view/title": [
+				{
+					"command": "runner.server.refreshWorkflows",
+					"group": "navigation",
+					"when": "view == workflow-view"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"build": "npx webpack && dotnet publish ../Runner.Language.Server --no-self-contained -p:UseAppHost=false -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 --output native"

@@ -1,7 +1,8 @@
-import { commands, window, ExtensionContext, Uri, ViewColumn, env } from 'vscode';
+import { commands, window, ExtensionContext, Uri, ViewColumn, env, workspace } from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import { join } from 'path';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
+import { RSTreeDataProvider } from './treeItemProvider';
 
 var startRunner : ChildProcessWithoutNullStreams | null = null;
 var finishPromise : Promise<void> | null = null;
@@ -68,6 +69,8 @@ function activate(context : ExtensionContext) {
 					}
 				);
 
+				window.registerTreeDataProvider("workflow-view", new RSTreeDataProvider(context, address));
+
 				const fullWebServerUri = address && await env.asExternalUri(
 					Uri.parse(address)
 				);
@@ -104,11 +107,49 @@ function activate(context : ExtensionContext) {
 						<link rel="stylesheet" href="${style}">
 					</head>
 					<body>
-						<iframe src="${fullWebServerUri}"></iframe>
+						<iframe src="${fullWebServerUri}?view=allworkflows"></iframe>
 					</body>
 				</html>`;
 				context.subscriptions.push(panel);
+
+				commands.registerCommand("runner.server.openjob", (runId, id) => {
+					panel.webview.html = `<!DOCTYPE html>
+					<html>
+						<head>
+							<meta
+								http-equiv="Content-Security-Policy"
+								content="default-src 'none'; frame-src ${fullWebServerUri} ${cspSource} https:; img-src ${cspSource} https:; script-src ${cspSource}; style-src ${cspSource};"
+							/>
+							<meta name="viewport" content="width=device-width, initial-scale=1.0">
+							<link rel="stylesheet" href="${style}">
+						</head>
+						<body>
+							<iframe src="${fullWebServerUri}?view=allworkflows#/0/${runId}/0/${id}"></iframe>
+						</body>
+					</html>`;
+				});
+
+				commands.registerCommand("runner.server.openworkflowrun", runId => {
+					panel.webview.html = `<!DOCTYPE html>
+					<html>
+						<head>
+							<meta
+								http-equiv="Content-Security-Policy"
+								content="default-src 'none'; frame-src ${fullWebServerUri} ${cspSource} https:; img-src ${cspSource} https:; script-src ${cspSource}; style-src ${cspSource};"
+							/>
+							<meta name="viewport" content="width=device-width, initial-scale=1.0">
+							<link rel="stylesheet" href="${style}">
+						</head>
+						<body>
+							<iframe src="${fullWebServerUri}?view=allworkflows#/0/${runId}"></iframe>
+						</body>
+					</html>`;
+				});
 			}
+		});
+		serverproc.stderr.on('data', async (data) => {
+			var sdata = data.asciiSlice();
+			console.log(sdata)
 		});
 		
 		commands.registerCommand("runner.server.start-client", () => {
