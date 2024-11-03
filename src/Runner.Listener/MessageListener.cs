@@ -308,6 +308,10 @@ namespace GitHub.Runner.Listener
                 {
                     throw;
                 }
+                catch (RunnerNotFoundException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     Trace.Error("Catch exception during get next message.");
@@ -457,6 +461,7 @@ namespace GitHub.Runner.Listener
                 ex is TaskAgentPoolNotFoundException ||
                 ex is TaskAgentSessionExpiredException ||
                 ex is AccessDeniedException ||
+                ex is RunnerNotFoundException ||
                 ex is VssUnauthorizedException)
             {
                 Trace.Info($"Non-retriable exception: {ex.Message}");
