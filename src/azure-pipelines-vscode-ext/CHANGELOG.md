@@ -1,3 +1,6 @@
+### v0.2.2
+- fix an issue that could cause the v0.2.x extension to hang forever
+
 ### v0.2.1
 - fix loading web extension on vscode.dev
   - .net8.0 update produced pdb files that are banned, this change removes them from boot config
