@@ -631,7 +631,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
                     var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
                     try {
-                        while(scanner.MoveNext()) {
+                        while(scanner.MoveNext() && !(scanner.Current is YamlDotNet.Core.Tokens.Error)) {
                             if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
                                 var x = s.Value;
                                 var m = x.IndexOf(C);
