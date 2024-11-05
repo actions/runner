@@ -25,7 +25,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
     && curl -fLo docker.tgz https://download.docker.com/${TARGETOS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
-    && tar zxvf docker.tgz \
+    && tar -C /tmp -zxvf docker.tgz \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
@@ -61,7 +61,6 @@ WORKDIR /home/runner
 
 COPY --chown=runner:docker --from=build /actions-runner .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
-
-RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
+COPY --chown=root:root --chmod=755 --from=build /tmp/docker/* /usr/bin/
 
 USER runner
