@@ -830,13 +830,6 @@ namespace GitHub.Runner.Worker
 
         private async Task CheckServiceConnectivityAsync(IExecutionContext context, CancellationToken token)
         {
-            var foo = new ServiceConnectivityCheckInput() { IntervalInSecond = 30, RequestTimeoutInSecond = 30 };
-            foo.Endpoints.Add("pipelines", "https://pipelinesghubeus20.actions.githubusercontent.com/_apis/connectiondata");
-            foo.Endpoints.Add("broker", "https://broker.actions.githubusercontent.com/health");
-            foo.Endpoints.Add("results", "https://results-receiver.actions.githubusercontent.com/health");
-            var fooJson = StringUtil.ConvertToJson(foo);
-            context.Global.Variables.Set(WellKnownDistributedTaskVariables.RunnerServiceConnectivityTest, fooJson);
-
             var connectionTest = context.Global.Variables.Get(WellKnownDistributedTaskVariables.RunnerServiceConnectivityTest);
             if (string.IsNullOrEmpty(connectionTest))
             {

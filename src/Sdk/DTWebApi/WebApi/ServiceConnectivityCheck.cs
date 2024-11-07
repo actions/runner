@@ -33,7 +33,7 @@ namespace GitHub.DistributedTask.WebApi
             EndpointsResult = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         }
 
-        [DataMember(Order = 1, EmitDefaultValue = false)]
+        [DataMember(Order = 1, EmitDefaultValue = true)]
         public bool HasFailure { get; set; }
 
         [DataMember(Order = 2, EmitDefaultValue = false)]
