@@ -282,7 +282,7 @@ namespace GitHub.Runner.Worker
 
             var jobQueueTelemetry = await ShutdownQueue(throwOnFailure: false);
             // include any job telemetry from the background upload process.
-            if (jobQueueTelemetry.Count > 0)
+            if (jobQueueTelemetry?.Count > 0)
             {
                 jobContext.Global.JobTelemetry.AddRange(jobQueueTelemetry);
             }
@@ -349,7 +349,7 @@ namespace GitHub.Runner.Worker
             {
                 var jobQueueTelemetry = await ShutdownQueue(throwOnFailure: true);
                 // include any job telemetry from the background upload process.
-                if (jobQueueTelemetry.Count > 0)
+                if (jobQueueTelemetry?.Count > 0)
                 {
                     jobContext.Global.JobTelemetry.AddRange(jobQueueTelemetry);
                 }
