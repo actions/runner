@@ -28,6 +28,7 @@ namespace GitHub.Runner.Common
             IList<StepResult> stepResults,
             IList<Annotation> jobAnnotations,
             string environmentUrl,
+            IList<Telemetry> telemetry,
             CancellationToken token);
 
         Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken token);
@@ -76,11 +77,12 @@ namespace GitHub.Runner.Common
             IList<StepResult> stepResults,
             IList<Annotation> jobAnnotations,
             string environmentUrl,
+            IList<Telemetry> telemetry,
             CancellationToken cancellationToken)
         {
             CheckConnection();
             return RetryRequest(
-                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, environmentUrl, cancellationToken), cancellationToken);
+                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, environmentUrl, telemetry, cancellationToken), cancellationToken);
         }
 
         public Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken cancellationToken)

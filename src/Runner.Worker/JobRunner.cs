@@ -15,6 +15,7 @@ using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
+using Sdk.RSWebApi.Contracts;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -279,7 +280,12 @@ namespace GitHub.Runner.Worker
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
 
-            await ShutdownQueue(throwOnFailure: false);
+            var jobQueueTelemetry = await ShutdownQueue(throwOnFailure: false);
+            // include any job telemetry from the background upload process.
+            if (jobQueueTelemetry.Count > 0)
+            {
+                jobContext.Global.JobTelemetry.AddRange(jobQueueTelemetry);
+            }
 
             // Make sure to clean temp after file upload since they may be pending fileupload still use the TEMP dir.
             _tempDirectoryManager?.CleanupTempDirectory();
@@ -297,6 +303,13 @@ namespace GitHub.Runner.Worker
                 environmentUrl = urlStringToken.Value;
             }
 
+            // Get telemetry
+            IList<Telemetry> telemetry = null;
+            if (jobContext.Global.JobTelemetry.Count > 0)
+            {
+                telemetry = jobContext.Global.JobTelemetry.Select(x => new Telemetry { Type = x.Type.ToString(), Message = x.Message, }).ToList();
+            }
+
             Trace.Info($"Raising job completed against run service");
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
@@ -304,7 +317,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, default);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, default);
                     return result;
                 }
                 catch (Exception ex)
@@ -329,49 +342,7 @@ namespace GitHub.Runner.Worker
 
             if (_runnerSettings.DisableUpdate == true)
             {
-                try
-                {
-                    var currentVersion = new PackageVersion(BuildConstants.RunnerPackage.Version);
-                    ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-                    VssCredentials serverCredential = VssUtil.GetVssCredential(systemConnection);
-
-                    var runnerServer = HostContext.GetService<IRunnerServer>();
-                    await runnerServer.ConnectAsync(systemConnection.Url, serverCredential);
-                    var serverPackages = await runnerServer.GetPackagesAsync("agent", BuildConstants.RunnerPackage.PackageName, 5, includeToken: false, cancellationToken: CancellationToken.None);
-                    if (serverPackages.Count > 0)
-                    {
-                        serverPackages = serverPackages.OrderByDescending(x => x.Version).ToList();
-                        Trace.Info($"Newer packages {StringUtil.ConvertToJson(serverPackages.Select(x => x.Version.ToString()))}");
-
-                        var warnOnFailedJob = false; // any minor/patch version behind.
-                        var warnOnOldRunnerVersion = false; // >= 2 minor version behind
-                        if (serverPackages.Any(x => x.Version.CompareTo(currentVersion) > 0))
-                        {
-                            Trace.Info($"Current runner version {currentVersion} is behind the latest runner version {serverPackages[0].Version}.");
-                            warnOnFailedJob = true;
-                        }
-
-                        if (serverPackages.Where(x => x.Version.Major == currentVersion.Major && x.Version.Minor > currentVersion.Minor).Count() > 1)
-                        {
-                            Trace.Info($"Current runner version {currentVersion} is way behind the latest runner version {serverPackages[0].Version}.");
-                            warnOnOldRunnerVersion = true;
-                        }
-
-                        if (result == TaskResult.Failed && warnOnFailedJob)
-                        {
-                            jobContext.Warning($"This job failure may be caused by using an out of date self-hosted runner. You are currently using runner version {currentVersion}. Please update to the latest version {serverPackages[0].Version}");
-                        }
-                        else if (warnOnOldRunnerVersion)
-                        {
-                            jobContext.Warning($"This self-hosted runner is currently using runner version {currentVersion}. This version is out of date. Please update to the latest version {serverPackages[0].Version}");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Ignore any error since suggest runner update is best effort.
-                    Trace.Error($"Caught exception during runner version check: {ex}");
-                }
+                await WarningOutdatedRunnerAsync(jobContext, message, result);
             }
 
             try
@@ -505,6 +476,53 @@ namespace GitHub.Runner.Worker
             }
 
             return Array.Empty<JobTelemetry>();
+        }
+
+        private async Task WarningOutdatedRunnerAsync(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult result)
+        {
+            try
+            {
+                var currentVersion = new PackageVersion(BuildConstants.RunnerPackage.Version);
+                ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                VssCredentials serverCredential = VssUtil.GetVssCredential(systemConnection);
+
+                var runnerServer = HostContext.GetService<IRunnerServer>();
+                await runnerServer.ConnectAsync(systemConnection.Url, serverCredential);
+                var serverPackages = await runnerServer.GetPackagesAsync("agent", BuildConstants.RunnerPackage.PackageName, 5, includeToken: false, cancellationToken: CancellationToken.None);
+                if (serverPackages.Count > 0)
+                {
+                    serverPackages = serverPackages.OrderByDescending(x => x.Version).ToList();
+                    Trace.Info($"Newer packages {StringUtil.ConvertToJson(serverPackages.Select(x => x.Version.ToString()))}");
+
+                    var warnOnFailedJob = false; // any minor/patch version behind.
+                    var warnOnOldRunnerVersion = false; // >= 2 minor version behind
+                    if (serverPackages.Any(x => x.Version.CompareTo(currentVersion) > 0))
+                    {
+                        Trace.Info($"Current runner version {currentVersion} is behind the latest runner version {serverPackages[0].Version}.");
+                        warnOnFailedJob = true;
+                    }
+
+                    if (serverPackages.Where(x => x.Version.Major == currentVersion.Major && x.Version.Minor > currentVersion.Minor).Count() > 1)
+                    {
+                        Trace.Info($"Current runner version {currentVersion} is way behind the latest runner version {serverPackages[0].Version}.");
+                        warnOnOldRunnerVersion = true;
+                    }
+
+                    if (result == TaskResult.Failed && warnOnFailedJob)
+                    {
+                        jobContext.Warning($"This job failure may be caused by using an out of date self-hosted runner. You are currently using runner version {currentVersion}. Please update to the latest version {serverPackages[0].Version}");
+                    }
+                    else if (warnOnOldRunnerVersion)
+                    {
+                        jobContext.Warning($"This self-hosted runner is currently using runner version {currentVersion}. This version is out of date. Please update to the latest version {serverPackages[0].Version}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Ignore any error since suggest runner update is best effort.
+                Trace.Error($"Caught exception during runner version check: {ex}");
+            }
         }
     }
 }
