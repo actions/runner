@@ -879,7 +879,7 @@ namespace GitHub.Runner.Worker
                         testResult.EndpointsResult[endpoint.Key].Add($"{result.StartTime:s}: {result.StatusCode} - {result.RequestId} - {result.DurationInMs}ms");
                         if (!testResult.HasFailure &&
                             result.StatusCode != "OK" &&
-                            result.StatusCode == "canceled")
+                            result.StatusCode != "canceled")
                         {
                             // track if any endpoint is not reachable
                             testResult.HasFailure = true;
