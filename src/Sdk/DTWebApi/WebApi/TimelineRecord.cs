@@ -217,7 +217,7 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-        public Int32 ErrorCount
+        public Int32? ErrorCount
         {
             get
             {
@@ -229,7 +229,7 @@ namespace GitHub.DistributedTask.WebApi
             }
         }
 
-        public Int32 WarningCount
+        public Int32? WarningCount
         {
             get
             {
@@ -241,7 +241,7 @@ namespace GitHub.DistributedTask.WebApi
             }
         }
 
-        public Int32 NoticeCount
+        public Int32? NoticeCount
         {
             get
             {

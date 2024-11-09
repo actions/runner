@@ -1426,6 +1426,7 @@ namespace Runner.Server.Controllers
                     if(callingJob != null) {
                         callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                     } else {
+                        attempt.Status = Status.Completed;
                         attempt.Result = TaskResult.Skipped;
                         UpdateWorkflowRun(attempt, repository_name);
                         _context.SaveChanges();
@@ -2701,6 +2702,7 @@ namespace Runner.Server.Controllers
                         } else {
                             WorkflowStates.Remove(runid, out _);
                             workflowevent?.Invoke(evargs);
+                            attempt.Status = Status.Completed;
                             attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
                             UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
@@ -2708,6 +2710,9 @@ namespace Runner.Server.Controllers
                         _context.Dispose();
                     };
                     FinishJobController.JobCompleted withoutlock = e => {
+                        attempt.Status = Status.Running;
+                        _context.SaveChanges();
+                        UpdateWorkflowRun(attempt, repository_name);
                         var ja = e != null ? jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault() : null;
                         Action<JobItem> updateStatus = job => {
                             job.Status = e.Result;
@@ -2887,6 +2892,12 @@ namespace Runner.Server.Controllers
                             var evargs = new WorkflowEventArgs { runid = runid, Success = false };
                             finishAsyncWorkflow(evargs);
                         };
+
+                        var myAttempt = _context.Set<WorkflowRunAttempt>().Find(attempt.Id);
+                        myAttempt.Status = Status.Waiting;
+                        _context.SaveChanges();
+                        UpdateWorkflowRun(myAttempt, repository_name);
+
 
                         Action<Concurrency, Action<ConcurrencyGroup>> addToConcurrencyGroup = (concurrency, action) => {
                             var key = $"{repository_name}/{concurrency.Group}";
@@ -7328,13 +7339,13 @@ namespace Runner.Server.Controllers
                 if(own != null && !string.IsNullOrEmpty(repo)) {
                     var rep = await _context.Set<Repository>().Where(r => r.Owner == own && r.Name.ToLower() == repo.ToLower()).FirstOrDefaultAsync();
                     if(rep != null) {
-                        var altquery = from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && attempt.WorkflowRun.Workflow.Repository == rep orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id, Owner = run.Workflow.Repository.Owner.Name, Repo = run.Workflow.Repository.Name};
+                        var altquery = from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && attempt.WorkflowRun.Workflow.Repository == rep orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, Status = attempt.Status, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id, Owner = run.Workflow.Repository.Owner.Name, Repo = run.Workflow.Repository.Name};
                         return await Ok(page.HasValue ? altquery.Skip(page.Value * 30).Take(30) : altquery, true);
                     }
                 }
             }
 
-            var query = (from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && (string.IsNullOrEmpty(owner) || run.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower()) && (string.IsNullOrEmpty(repo) || run.Workflow.Repository.Name.ToLower() == repo.ToLower()) orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id, Owner = run.Workflow.Repository.Owner.Name, Repo = run.Workflow.Repository.Name});
+            var query = (from run in _context.Set<WorkflowRun>() from attempt in _context.Set<WorkflowRunAttempt>() where run.Id == attempt.WorkflowRun.Id && attempt.Attempt == (from a in _context.Set<WorkflowRunAttempt>() where run.Id == a.WorkflowRun.Id orderby a.Attempt descending select a.Attempt).First() && (string.IsNullOrEmpty(owner) || run.Workflow.Repository.Owner.Name.ToLower() == owner.ToLower()) && (string.IsNullOrEmpty(repo) || run.Workflow.Repository.Name.ToLower() == repo.ToLower()) orderby run.Id descending select new WorkflowRun() { EventName = attempt.EventName, Ref = attempt.Ref, Sha = attempt.Sha, Result = attempt.Result, Status = attempt.Status, FileName = run.FileName, DisplayName = run.DisplayName, Id = run.Id, Owner = run.Workflow.Repository.Owner.Name, Repo = run.Workflow.Repository.Name});
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 

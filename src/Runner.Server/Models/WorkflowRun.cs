@@ -28,6 +28,8 @@ namespace Runner.Server.Models
         [NotMapped]
         public TaskResult? Result { get; set; }
         [NotMapped]
+        public Status Status { get; set; }
+        [NotMapped]
         public String Owner { get; set; }
         [NotMapped]
         public String Repo { get; set; }

@@ -28,6 +28,15 @@
 				"shortTitle": "Run"
 			},
 			{
+				"command": "runner.server.workflow.logs",
+				"title": "Open Log",
+				"shortTitle": "Log",
+				"icon": {
+					"dark": "resources/icons/dark/logs.svg",
+					"light": "resources/icons/light/logs.svg"
+				}
+			},
+			{
 				"command": "runner.server.start-client",
 				"title": "Start Runner.Client"
 			},
@@ -71,11 +80,18 @@
 					"group": "navigation",
 					"when": "view == workflow-view"
 				}
+			],
+			"view/item/context": [
+				{
+					"command": "runner.server.workflow.logs",
+					"group": "inline",
+					"when": "view == workflow-view && viewItem =~ /completed/ && viewItem =~ /job/"
+				}
 			]
 		}
 	},
 	"scripts": {
-		"build": "npx webpack && dotnet publish ../Runner.Language.Server --no-self-contained -p:UseAppHost=false -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 --output native"
+		"build": "npx webpack && dotnet publish ../Runner.Language.Server -c Debug --no-self-contained -p:UseAppHost=false -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 --output native"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.73.0",

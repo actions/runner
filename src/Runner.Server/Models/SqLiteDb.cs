@@ -52,9 +52,9 @@ namespace Runner.Server.Models
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Ignore(agent => agent.Issues);
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Ignore(agent => agent.PreviousAttempts)
             .Ignore(agent => agent.Variables).Property(e => e.Id).ValueGeneratedNever();
-
-            
-            
+            modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Property(agent => agent.WarningCount).IsRequired(false);
+            modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Property(agent => agent.ErrorCount).IsRequired(false);
+            modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Property(agent => agent.NoticeCount).IsRequired(false);
             
             // modelBuilder.Entity<GitHub.DistributedTask.WebApi.JobCompletedEvent>().Ignore(e => e.Outputs);
             // modelBuilder.Entity<GitHub.DistributedTask.WebApi.JobCompletedEvent>().Ignore(e => e.ActionsEnvironment);

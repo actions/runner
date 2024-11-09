@@ -85,5 +85,7 @@ namespace Runner.Server.Models {
 
         [NotMapped]
         public long Attempt { get => WorkflowRunAttempt?.Attempt ?? 1; }
+
+        public Status Status { get; set; } = Status.Pending;
     }
 }

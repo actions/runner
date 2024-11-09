@@ -28,5 +28,6 @@ namespace Runner.Server.Models
         public string Sha { get; set; }
         public string StatusCheckSha { get; set; }
         public TaskResult? Result { get; set; }
+        public Status Status { get; set; } = Status.Pending;
     }
 }

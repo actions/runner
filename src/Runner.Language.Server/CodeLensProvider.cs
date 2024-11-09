@@ -198,14 +198,28 @@ public class CodeLensProvider : ICodeLensHandler
                 var jobs = token.TraverseByPattern("jobs").FirstOrDefault().AssertMapping("");
                 var codeLens = new List<CodeLens>();
 
+                MappingToken mappingEvent = null;
+                var tk = token.TraverseByPattern("on").FirstOrDefault();
+                List<string> events = new List<string>();
+                switch(tk.Type) {
+                    case TokenType.String:
+                        events.Add(tk.AssertString("on").Value);
+                        break;
+                    case TokenType.Sequence:
+                        events.AddRange(from r in tk.AssertSequence("on") select r.AssertString("").Value);
+                        break;
+                    case TokenType.Mapping:
+                        events.AddRange(from r in tk.AssertMapping("on") select r.Key.AssertString("").Value);
+                        break;
+                }
 
 
-                codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runworkflow", Title = $"Run Workflow", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString()) },
+                codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runworkflow", Title = $"Run Workflow", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), new Newtonsoft.Json.Linq.JArray(events.ToArray())) },
                     Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(0, 0), new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(0, 0))
                 });
 
                 for(int i = 0; i < jobs.Count; i++) {
-                    codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = $"Run job {jobs[i].Key}", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), jobs[i].Key.ToString()) },
+                    codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = $"Run job {jobs[i].Key}", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), jobs[i].Key.ToString(), new Newtonsoft.Json.Linq.JArray(events.ToArray())) },
                         Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
                             new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(jobs[i].Key.Line.Value - 1, jobs[i].Key.Column.Value - 1),
                             new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(jobs[i].Key.Line.Value - 1, jobs[i].Key.Column.Value - 1)
@@ -342,8 +356,8 @@ public class CodeLensProvider : ICodeLensHandler
                     if(rawstrategy != null) {
                         Action<string, Dictionary<string, TemplateToken>> addAction = (suffix, item) => {
                             var json = JsonConvert.SerializeObject(item.ToDictionary(kv => kv.Key, kv => kv.Value.ToContextData().ToJToken()));
-
-                            codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = $"{jobs[i].Key}{suffix}", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), $"{jobs[i].Key}({json})") },
+                            
+                            codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = $"{jobs[i].Key}{suffix}", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), $"{jobs[i].Key}({json})", new Newtonsoft.Json.Linq.JArray(events.ToArray())) },
                                 Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
                                     new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1),
                                     new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1)

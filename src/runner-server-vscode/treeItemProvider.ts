@@ -10,6 +10,7 @@ interface IWorkflowRun {
     ref: string,
     sha: string,
     result: string
+    status: string
 }
 
 function getAbsoluteIconPath(_context : ExtensionContext, relativeIconPath: string): {
@@ -24,9 +25,11 @@ function getAbsoluteIconPath(_context : ExtensionContext, relativeIconPath: stri
 
 function getAbsoluteStatusIcon(_context : ExtensionContext, status: string) {
   switch(status?.toLowerCase()) {
+    case "running":
     case "inprogress":
       return getAbsoluteIconPath(_context, "workflowruns/wr_inprogress.svg");
     case "waiting":
+      return getAbsoluteIconPath(_context, "workflowruns/wr_waiting.svg");
     case "pending":
       return getAbsoluteIconPath(_context, "workflowruns/wr_pending.svg");
     case "succeeded":
@@ -104,8 +107,8 @@ export class RSTreeDataProvider implements TreeDataProvider<TreeItem> {
                 var result : IWorkflowRun[] = await (await fetch(`${this.ghHostApiUrl}/_apis/v1/Message/workflow/runs?page=${"0"}`)).json();
                 return result.map(r => {
                     var item = new TreeItem(`${r.displayName ?? r.fileName} #${r.id}`, TreeItemCollapsibleState.Collapsed);
-                    item.iconPath = getAbsoluteStatusIcon(this._context, r.result || "Pending");
-                    item.contextValue = `${r.id}`;
+                    item.iconPath = getAbsoluteStatusIcon(this._context, r.result || r.status || "Pending");
+                    item.contextValue = `/workflow/${r.result ? "completed" : "inprogress"}/`;
                     item.command = {
                         title: "Open Workflow",
                         command: "runner.server.openworkflowrun",
@@ -118,17 +121,18 @@ export class RSTreeDataProvider implements TreeDataProvider<TreeItem> {
             })()
         }
         return (async () => {
-            var result : IJob[] = await (await fetch(`${this.ghHostApiUrl}/_apis/v1/Message?page=${encodeURIComponent("0")}&runid=${encodeURIComponent(element.contextValue)}`)).json();
+            var result : IJob[] = await (await fetch(`${this.ghHostApiUrl}/_apis/v1/Message?page=${encodeURIComponent("0")}&runid=${encodeURIComponent(element.command.arguments[0])}`)).json();
             return result.map(r => {
                 var item = new TreeItem(`${r.name ?? r.name} #${r.attempt}`, TreeItemCollapsibleState.None);
                 item.iconPath = getAbsoluteStatusIcon(this._context, r.result ?? "inprogress");
-                item.contextValue = r.jobId;
+                item.contextValue = `/job/${r.result ? "completed" : "inprogress"}/`;
                 item.command = {
                     title: "Open Job",
                     command: "runner.server.openjob",
                     arguments: [
                         r.runid,
-                        r.jobId
+                        r.jobId,
+                        `${r.name ?? r.name} #${r.attempt}`
                     ]
                 };
                 return item;
