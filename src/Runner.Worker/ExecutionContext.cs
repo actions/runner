@@ -676,17 +676,17 @@ namespace GitHub.Runner.Worker
             {
                 case IssueType.Error:
                     wellKnownTag = WellKnownTags.Error;
-                    previousCountForIssueType = _record.ErrorCount;
+                    previousCountForIssueType = _record.ErrorCount ??= 0;
                     incrementIssueTypeCount = () => { _record.ErrorCount++; };
                     break;
                 case IssueType.Warning:
                     wellKnownTag = WellKnownTags.Warning;
-                    previousCountForIssueType = _record.WarningCount;
+                    previousCountForIssueType = _record.WarningCount ??= 0;
                     incrementIssueTypeCount = () => { _record.WarningCount++; };
                     break;
                 case IssueType.Notice:
                     wellKnownTag = WellKnownTags.Notice;
-                    previousCountForIssueType = _record.NoticeCount;
+                    previousCountForIssueType = _record.NoticeCount ??= 0;
                     incrementIssueTypeCount = () => { _record.NoticeCount++; };
                     break;
             }
