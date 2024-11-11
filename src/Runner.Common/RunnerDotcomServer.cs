@@ -48,7 +48,7 @@ namespace GitHub.Runner.Common
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
             var isOrgRunner = path.Length == 1;
             var isRepoOrEnterpriseRunner = path.Length == 2;
-            var isRepoRunner = !string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase);
+            var isRepoRunner = isRepoOrEnterpriseRunner && !string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase);
 
             if (isOrgRunner)
             {
@@ -75,7 +75,9 @@ namespace GitHub.Runner.Common
                     {
                         githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/repos/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                     }
-                } else {
+                }
+                else
+                {
                     // Enterprise runner
                     if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
                     {
@@ -104,7 +106,7 @@ namespace GitHub.Runner.Common
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
             var isOrgRunner = path.Length == 1;
             var isRepoOrEnterpriseRunner = path.Length == 2;
-            var isRepoRunner = !string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase);
+            var isRepoRunner = isRepoOrEnterpriseRunner && !string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase);
 
             if (isOrgRunner)
             {
@@ -131,7 +133,9 @@ namespace GitHub.Runner.Common
                     {
                         githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/repos/{path[0]}/{path[1]}/actions/runner-groups";
                     }
-                } else {
+                }
+                else
+                {
                     // Enterprise Runner
                     if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
                     {
