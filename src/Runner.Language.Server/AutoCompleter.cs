@@ -62,7 +62,8 @@ public class AutoCompleter : ICompletionHandler
             TraceWriter = new GitHub.DistributedTask.ObjectTemplating.EmptyTraceWriter(),
             Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives | GitHub.DistributedTask.Expressions2.ExpressionFlags.AllowAnyForInsert,
             Column = column,
-            Row = row
+            Row = row,
+            RawMapping = true
         };
         GitHub.DistributedTask.ObjectTemplating.Schema.TemplateSchema? schema = null;
         try {

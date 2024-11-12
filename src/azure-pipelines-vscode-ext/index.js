@@ -393,7 +393,7 @@ function activate(context) {
 		handle.enableSemTokens = autocompletelist && ('enableSemTokens' in autocompletelist);
 
 		var result = syntaxOnly
-		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename, schema, pos ? pos.character + 1 : 0, pos ? pos.line + 1 : 0)
+		                ? await runtime.BINDING.bind_static_method("[ext-core] MyClass:ParseCurrentPipeline")(handle, filename, schema ?? null, pos ? pos.character + 1 : 0, pos ? pos.line + 1 : 0, (handle.enableSemTokens || pos) ? true : false)
 						: await runtime.BINDING.bind_static_method("[ext-core] MyClass:ExpandCurrentPipeline")(handle, filename, JSON.stringify(variables), JSON.stringify(parameters), (error && true) == true, schema)
 
         if(pos) {

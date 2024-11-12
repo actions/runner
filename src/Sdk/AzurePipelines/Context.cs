@@ -23,6 +23,8 @@ namespace Runner.Server.Azure.Devops
         internal List<AutoCompleteEntry> AutoCompleteMatches { get; set; }
         public List<int> SemTokens { get; internal set; }
 
+        public bool RawMapping { get; set; }
+
         public Context Clone() {
             return MemberwiseClone() as Context;
         }

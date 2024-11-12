@@ -131,7 +131,7 @@ public partial class MyClass {
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     [JSExport]
-    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName, string schemaName, int column, int row) {
+    public static async Task ParseCurrentPipeline(JSObject handle, string currentFileName, string schemaName, int column, int row, bool rawMapping) {
         var context = new Context {
             FileProvider = new MyFileProvider(handle),
             TraceWriter = new TraceWriter(handle),
@@ -139,7 +139,8 @@ public partial class MyClass {
             RequiredParametersProvider = new RequiredParametersProvider(handle),
             VariablesProvider = new VariablesProvider { Variables = new Dictionary<string, string>() },
             Column = column,
-            Row = row
+            Row = row,
+            RawMapping = rawMapping
         };
         var check = column == 0 && row == 0;
         try {

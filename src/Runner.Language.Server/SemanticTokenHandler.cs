@@ -62,6 +62,7 @@ public class SemanticTokenHandler : ISemanticTokensFullHandler
             FileProvider = new DefaultInMemoryFileProviderFileProvider(files.ToArray()),
             TraceWriter = new GitHub.DistributedTask.ObjectTemplating.EmptyTraceWriter(),
             Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives | GitHub.DistributedTask.Expressions2.ExpressionFlags.AllowAnyForInsert,
+            RawMapping = true
         };
         TemplateToken? token = null;
         List<int>? semTokens = null;

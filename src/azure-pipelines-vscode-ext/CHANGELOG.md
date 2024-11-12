@@ -1,3 +1,7 @@
+### v0.2.3
+- fix degraded performance due to disabled new features added in the v0.2.x extension 
+- fix Check Manually for Syntax Errors
+
 ### v0.2.2
 - fix an issue that could cause the v0.2.x extension to hang forever
 

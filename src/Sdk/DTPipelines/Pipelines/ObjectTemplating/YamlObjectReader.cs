@@ -43,9 +43,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             bool yamlFold = false,
             bool yamlMerge = false,
             bool preserveString = false,
-            bool forceAzurePipelines = false) : this(fileId, new StringReader(input), yamlAnchors, yamlFold, yamlMerge, preserveString, forceAzurePipelines)
+            bool forceAzurePipelines = false,
+            bool rawMapping = false) : this(fileId, new StringReader(input), yamlAnchors, yamlFold, yamlMerge, preserveString, forceAzurePipelines)
         {
-            m_rawInput = input;
+            m_rawInput = rawMapping ? input : null;
         }
 
         private string GetScalarStringValue(Scalar scalar) {

@@ -594,20 +594,20 @@ namespace GitHub.DistributedTask.ObjectTemplating
             LiteralToken token,
             DefinitionInfo definitionInfo)
         {
-            AutoCompleteEntry completion = null;//m_context.Row >= token.Line
-            completion = new AutoCompleteEntry {
-                Depth = m_memory.Depth,
-                Token = token,
-                AllowedContext = definitionInfo.AllowedContext,
-                Definitions = new [] { definitionInfo.Definition }
-            };
-            if(m_context.AutoCompleteMatches != null && Match(token) && (token.PostWhiteSpace == null || MatchPost(token) /*(m_context.Row < token.PostWhiteSpace.Line && !(token.PostWhiteSpace.Line == m_context.Row && token.PostWhiteSpace.Character > m_context.Column))*/)) {
-                m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= m_memory.Depth);
-                m_context.AutoCompleteMatches.Add(completion);
-            } else {
-                completion.SemTokensOnly = true;
-            }
+            AutoCompleteEntry completion = null;
             if(token is LiteralToken lit && lit.RawData != null) {
+                completion = new AutoCompleteEntry {
+                    Depth = m_memory.Depth,
+                    Token = token,
+                    AllowedContext = definitionInfo.AllowedContext,
+                    Definitions = new [] { definitionInfo.Definition }
+                };
+                if(m_context.AutoCompleteMatches != null && Match(token) && (token.PostWhiteSpace == null || MatchPost(token) /*(m_context.Row < token.PostWhiteSpace.Line && !(token.PostWhiteSpace.Line == m_context.Row && token.PostWhiteSpace.Character > m_context.Column))*/)) {
+                    m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= m_memory.Depth);
+                    m_context.AutoCompleteMatches.Add(completion);
+                } else {
+                    completion.SemTokensOnly = true;
+                }
                 var rand = new Random();
                 string C = "CX";
                 while(lit.RawData.Contains(C)) {
@@ -692,7 +692,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // An expression starts here:
                 if (i == startExpression)
                 {
-                    if(completion.Mapping?.Length > startExpression && token.Line != null && token.Column != null) {
+                    if(completion?.Mapping?.Length > startExpression && token.Line != null && token.Column != null) {
                         var (r, c) = completion.Mapping[startExpression];
                         m_context.AddSemToken(r, c, 3, 5, 0);
                     }
@@ -739,7 +739,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         endExpression - startExpression + 1 - TemplateConstants.OpenExpression.Length - TemplateConstants.CloseExpression.Length);
                     var expression = ParseExpression(completion, token.Line, token.Column, rawExpression, allowedContext, out Exception ex);
 
-                    if(completion.Mapping?.Length >= endExpression - 1 && hasEnd && token.Line != null && token.Column != null) {
+                    if(completion?.Mapping?.Length >= endExpression - 1 && hasEnd && token.Line != null && token.Column != null) {
                         var (r, c) = completion.Mapping[endExpression - 1];
                         m_context.AddSemToken(r, c, 2, 5, 0);
                     }
@@ -899,44 +899,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 }
             }
             return true;
-        }
-
-        private static int GetIdxOfExpression(LiteralToken lit, int row, int column)
-        {
-          var lc = column - lit.Column;
-          var lr = row - lit.Line;
-          var rand = new Random();
-          string C = "CX";
-          while(lit.RawData.Contains(C)) {
-            C = rand.Next(255).ToString("X2");
-          }
-          var xraw = lit.RawData;
-          var idx = 0;
-          for(int i = 0; i < lr; i++) {
-            var n = xraw.IndexOf('\n', idx);
-            if(n == -1) {
-              return -1;
-            }
-            idx = n + 1;
-          }
-          idx += idx == 0 ? lc ?? 0 : column - 1;
-          if(idx > xraw.Length) {
-            return -1;
-          }
-          xraw = xraw.Insert(idx, C);
-
-          var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
-          try {
-            while(scanner.MoveNext()) {
-              if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
-                var x = s.Value;
-                return x.IndexOf(C);
-              }
-            }
-          } catch {
-
-          }
-          return -1;
         }
 
         private ExpressionToken ParseExpression(

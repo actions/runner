@@ -654,7 +654,7 @@ namespace Runner.Server.Azure.Devops {
 
                     var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
                     try {
-                        while(scanner.MoveNext()) {
+                        while(scanner.MoveNext() && !(scanner.Current is YamlDotNet.Core.Tokens.Error)) {
                             if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
                                 var x = s.Value;
                                 var m = x.IndexOf(C);
@@ -765,7 +765,7 @@ namespace Runner.Server.Azure.Devops {
 
           var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
           try {
-            while(scanner.MoveNext()) {
+            while(scanner.MoveNext() && !(scanner.Current is YamlDotNet.Core.Tokens.Error)) {
               if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
                 var x = s.Value;
                 return x.IndexOf(C);
@@ -810,7 +810,7 @@ namespace Runner.Server.Azure.Devops {
             var fileId = templateContext.GetFileId(errorTemplateFileName);
 
             // preserveString is needed for azure pipelines compatibility of the templateContext property all boolean and number token are casted to string without loosing it's exact string value
-            var yamlObjectReader = new YamlObjectReader(fileId, fileContent, preserveString: true, forceAzurePipelines: true);
+            var yamlObjectReader = new YamlObjectReader(fileId, fileContent, preserveString: true, forceAzurePipelines: true, rawMapping: context.RawMapping);
             TemplateToken token = TemplateReader.Read(templateContext, schemaName ?? "pipeline-root", yamlObjectReader, fileId, out _);
 
             context.SemTokens = templateContext.SemTokens;
