@@ -1,0 +1,58 @@
+name: Alert the team of upstream changes
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * 1'
+  
+jobs:
+  check-for-updates:
+    name: Check for updates
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Git user
+        run: | # shell
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream
+        run: git remote upstream git@github.com:actions/runner.git
+
+      - name: Checkout upstream as temporary branch
+        run: | #shell
+          if [[ $(git rev-parse --verify origin/upstream-main) ]]
+          then
+            git checkout --track origin/upstream-main
+            git rebase main
+            git checkout --theirs .
+          else
+            git checkout -b upstream-main
+          fi
+          git pull upstream main
+
+      - name: Open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: | # shell
+          if [[ $(git rev-list --count main..upstream-main) > 0 ]]
+          then
+            git push --force origin upstream-main
+
+            last_pr_id=$(gh pr list --json id --head upstream-main | jq '.[0].id')
+
+            if [[ $last_pr_id == 'null' ]]
+            then
+              gh pr create \
+                --base main \
+                --body "There are changes in the upstream repository that you should release." \
+                --head upstream-main \
+                --title "Pulling upstream changes"
+            fi
+          fi
