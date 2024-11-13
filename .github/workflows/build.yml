@@ -69,7 +69,7 @@ jobs:
     - name: Package Release
       if: github.event_name != 'pull_request'
       run: |
-        ${{ matrix.devScript }} package Release
+        ${{ matrix.devScript }} package Release ${{ matrix.runtime }}
       working-directory: src
 
     # Upload runner package tar.gz/zip as artifact
