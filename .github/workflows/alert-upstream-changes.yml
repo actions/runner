@@ -9,15 +9,12 @@ jobs:
   check-for-updates:
     name: Check for updates
     runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: write
-      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
 
       - name: Configure Git
         run: | # shell
@@ -44,7 +41,7 @@ jobs:
 
       - name: Open PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: | # shell
           if [[ $(git rev-list --count main..upstream-main) > 0 ]]
           then
