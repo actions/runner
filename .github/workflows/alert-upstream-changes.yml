@@ -24,7 +24,9 @@ jobs:
           git config pull.rebase false
 
       - name: Add upstream
-        run: git remote add upstream https://github.com/actions/checkout.git
+        run: | # shell
+          git remote add upstream https://github.com/actions/checkout.git
+          git fetch upstream
 
       - name: Checkout upstream as temporary branch
         run: | # shell
