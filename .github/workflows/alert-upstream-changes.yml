@@ -23,7 +23,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Add upstream
-        run: git remote upstream git@github.com:actions/runner.git
+        run: git remote add upstream git@github.com:actions/runner.git
 
       - name: Checkout upstream as temporary branch
         run: | #shell
