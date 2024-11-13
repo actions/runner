@@ -25,7 +25,7 @@ jobs:
 
       - name: Add upstream
         run: | # shell
-          git remote add upstream https://github.com/actions/checkout.git
+          git remote add upstream https://github.com/actions/runner.git
           git fetch upstream
 
       - name: Checkout upstream as temporary branch
