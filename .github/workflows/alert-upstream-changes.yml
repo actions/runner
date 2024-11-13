@@ -10,6 +10,7 @@ jobs:
     name: Check for updates
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: write
     steps:
