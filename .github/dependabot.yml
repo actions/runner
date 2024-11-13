@@ -6,7 +6,7 @@ updates:
     interval: "daily" 
   target-branch: "main" 
 - package-ecosystem: "github-actions"
-  directory: "/.github/workflows"
+  directory: "/"
   schedule:
     interval: "daily" 
   target-branch: "main" 
