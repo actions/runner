@@ -1,10 +1,10 @@
 {
   "name": "Actions Runner Devcontainer",
-  "image": "mcr.microsoft.com/devcontainers/base:focal",
+  "image": "mcr.microsoft.com/devcontainers/base:noble",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:1": {},
-    "ghcr.io/devcontainers/features/dotnet": {=
-      "version": "9.0.100-rc.2.24474.11"
+    "ghcr.io/devcontainers/features/dotnet": {
+      "version": "9.0.100"
     },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "20"
