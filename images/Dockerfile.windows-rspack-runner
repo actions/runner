@@ -5,6 +5,9 @@ USER ContainerAdministrator
 
 SHELL ["powershell.exe"]
 
+ARG RUNNER_VERSION=2.319.1
+ENV RUNNER_VERSION=$RUNNER_VERSION
+
 ENV RUSTUP_HOME='C:\Users\ContainerAdministrator\.rustup' `
     CARGO_HOME='C:\Users\ContainerAdministrator\.cargo' `
     GIT_HOME='C:\Users\ContainerAdministrator\Git' `
@@ -54,7 +57,7 @@ RUN Invoke-WebRequest -UseBasicParsing https://aka.ms/vs/17/release/vs_buildtool
     del C:\Git.tar; `
     del C:\Git.tar.bz2; `
     # install github runner
-    Invoke-WebRequest -UseBasicParsing https://github.com/actions/runner/releases/download/v2.319.1/actions-runner-win-x64-2.319.1.zip -o C:\actions-runner.zip; `
+    Invoke-WebRequest -UseBasicParsing https://github.com/actions/runner/releases/download/v${env:RUNNER_VERSION}/actions-runner-win-x64-${env:RUNNER_VERSION}.zip -o C:\actions-runner.zip; `
     Expand-Archive C:\actions-runner.zip -DestinationPath $env:RUNNER_HOME; `
     del C:\actions-runner.zip; `
     # npm
