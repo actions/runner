@@ -38,7 +38,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DownloadActionFromDotCom_OnPremises_Legacy()
+        public async Task PrepareActions_DownloadActionFromDotCom_OnPremises_Legacy()
         {
             try
             {
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DownloadActionFromDotCom_ZipFileError()
+        public async Task PrepareActions_DownloadActionFromDotCom_ZipFileError()
         {
             try
             {
@@ -156,7 +156,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DownloadUnknownActionFromGraph_OnPremises_Legacy()
+        public async Task PrepareActions_DownloadUnknownActionFromGraph_OnPremises_Legacy()
         {
             try
             {
@@ -216,7 +216,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_PullImageFromDockerHub()
+        public async Task PrepareActions_PullImageFromDockerHub()
         {
             try
             {
@@ -254,7 +254,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DownloadActionFromGraph()
+        public async Task PrepareActions_DownloadActionFromGraph()
         {
             try
             {
@@ -296,7 +296,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DownloadActionFromGraph_UseCache()
+        public async Task PrepareActions_DownloadActionFromGraph_UseCache()
         {
             try
             {
@@ -406,7 +406,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_AlwaysClearActionsCache()
+        public async Task PrepareActions_AlwaysClearActionsCache()
         {
             try
             {
@@ -436,7 +436,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_SkipDownloadActionForSelfRepo()
+        public async Task PrepareActions_SkipDownloadActionForSelfRepo()
         {
             try
             {
@@ -472,7 +472,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithDockerfile()
+        public async Task PrepareActions_RepositoryActionWithDockerfile()
         {
             try
             {
@@ -511,7 +511,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithDockerfileInRelativePath()
+        public async Task PrepareActions_RepositoryActionWithDockerfileInRelativePath()
         {
             try
             {
@@ -552,7 +552,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithActionfile_Dockerfile()
+        public async Task PrepareActions_RepositoryActionWithActionfile_Dockerfile()
         {
             try
             {
@@ -591,7 +591,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithActionfile_DockerfileRelativePath()
+        public async Task PrepareActions_RepositoryActionWithActionfile_DockerfileRelativePath()
         {
             try
             {
@@ -631,7 +631,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithActionfile_DockerHubImage()
+        public async Task PrepareActions_RepositoryActionWithActionfile_DockerHubImage()
         {
             try
             {
@@ -670,7 +670,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithActionYamlFile_DockerHubImage()
+        public async Task PrepareActions_RepositoryActionWithActionYamlFile_DockerHubImage()
         {
             try
             {
@@ -709,7 +709,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithActionfileAndDockerfile()
+        public async Task PrepareActions_RepositoryActionWithActionfileAndDockerfile()
         {
             try
             {
@@ -749,7 +749,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_NotPullOrBuildImagesMultipleTimes()
+        public async Task PrepareActions_NotPullOrBuildImagesMultipleTimes()
         {
             try
             {
@@ -889,7 +889,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithActionfile_Node()
+        public async Task PrepareActions_RepositoryActionWithActionfile_Node()
         {
             try
             {
@@ -926,7 +926,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithInvalidWrapperActionfile_Node()
+        public async Task PrepareActions_RepositoryActionWithInvalidWrapperActionfile_Node()
         {
             try
             {
@@ -969,7 +969,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_RepositoryActionWithWrapperActionfile_PreSteps()
+        public async Task PrepareActions_RepositoryActionWithWrapperActionfile_PreSteps()
         {
             try
             {
@@ -1024,7 +1024,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_CompositeActionWithActionfile_Node()
+        public async Task PrepareActions_CompositeActionWithActionfile_Node()
         {
             try
             {
@@ -1067,7 +1067,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_CompositeActionWithActionfile_MaxLimit()
+        public async Task PrepareActions_CompositeActionWithActionfile_MaxLimit()
         {
             try
             {
@@ -1107,7 +1107,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_CompositeActionWithActionfile_CompositePrestepNested()
+        public async Task PrepareActions_CompositeActionWithActionfile_CompositePrestepNested()
         {
             try
             {
@@ -1149,7 +1149,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_CompositeActionWithActionfile_CompositeContainerNested()
+        public async Task PrepareActions_CompositeActionWithActionfile_CompositeContainerNested()
         {
             try
             {

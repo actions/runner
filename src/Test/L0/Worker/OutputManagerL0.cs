@@ -647,7 +647,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void MatcherFile()
+        public async Task MatcherFile()
         {
             Environment.SetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE", "2");
             var matchers = new IssueMatchersConfig
@@ -761,7 +761,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void MatcherFile_JobContainer()
+        public async Task MatcherFile_JobContainer()
         {
             var matchers = new IssueMatchersConfig
             {
@@ -822,7 +822,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void MatcherFile_StepContainer()
+        public async Task MatcherFile_StepContainer()
         {
             var matchers = new IssueMatchersConfig
             {
@@ -884,7 +884,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void MatcherFromPath()
+        public async Task MatcherFromPath()
         {
             var matchers = new IssueMatchersConfig
             {

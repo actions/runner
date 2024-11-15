@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
@@ -22,7 +23,7 @@ public class SnapshotOperationProviderL0
     [InlineData(false)]
     [Trait("Level", "L0")]
     [Trait("Category", "Worker")]
-    public async void CreateSnapshotRequestAsync(bool shouldSnapshotDirectoryAlreadyExist)
+    public async Task CreateSnapshotRequestAsync(bool shouldSnapshotDirectoryAlreadyExist)
     {
         using (TestHostContext testHostContext = CreateTestHostContext())
         {

@@ -57,7 +57,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         //process 2 new job messages, and one cancel message
-        public async void TestRunAsync()
+        public async Task TestRunAsync()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -169,7 +169,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [MemberData(nameof(RunAsServiceTestData))]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestExecuteCommandForRunAsService(string[] args, bool configureAsService, Times expectedTimes)
+        public async Task TestExecuteCommandForRunAsService(string[] args, bool configureAsService, Times expectedTimes)
         {
             using (var hc = new TestHostContext(this))
             {
@@ -201,7 +201,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestMachineProvisionerCLI()
+        public async Task TestMachineProvisionerCLI()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -235,7 +235,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestRunOnce()
+        public async Task TestRunOnce()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -332,7 +332,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestRunOnceOnlyTakeOneJobMessage()
+        public async Task TestRunOnceOnlyTakeOneJobMessage()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -433,7 +433,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestRunOnceHandleUpdateMessage()
+        public async Task TestRunOnceHandleUpdateMessage()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -523,7 +523,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestRemoveLocalRunnerConfig()
+        public async Task TestRemoveLocalRunnerConfig()
         {
             using (var hc = new TestHostContext(this))
             {
