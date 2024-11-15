@@ -25,6 +25,7 @@ RUN apt-get update -y \
     sudo \
     unzip \
     zip \
+    iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Download latest git-lfs version
