@@ -199,6 +199,9 @@ stages:
 - May contain different bugs than the Azure Pipelines Service
 - You can self-host Azure Devops Server and commit your changes to your local system with more accurate results of the template engine
 - Missing predefined Variables, feel free to add them manually as needed
+- Unsupported legacy syntax causes errors
+  - phases
+  - queue
 
 ## Available in both VSCode Marketplace and Open VSX Registry
 
