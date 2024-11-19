@@ -1145,7 +1145,7 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    Trace.Info($"Publish step telemetry for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
+                    Trace.Info($"Publish step telemetry for current step {StringUtil.ConvertToJson(StepTelemetry, Formatting.None)}.");
                     Global.StepsTelemetry.Add(StepTelemetry);
                     _stepTelemetryPublished = true;
                 }
