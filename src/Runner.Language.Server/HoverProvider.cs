@@ -80,7 +80,7 @@ public class HoverProvider : IHoverHandler
 
                 // Read the file
                 var fileContent = content;
-                var yamlObjectReader = new YamlObjectReader(fileId, fileContent);
+                var yamlObjectReader = new YamlObjectReader(fileId, fileContent, rawMapping: true);
                 TemplateReader.Read(templateContext, isWorkflow ? "workflow-root" : "action-root", yamlObjectReader, fileId, out _);
 
                 templateContext.Errors.Check();

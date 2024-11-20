@@ -93,7 +93,7 @@ public class AutoCompleter : ICompletionHandler
                         Token = new MappingToken(fileId, 1, 1)
                     });
                 } else {
-                    var yamlObjectReader = new YamlObjectReader(fileId, fileContent);
+                    var yamlObjectReader = new YamlObjectReader(fileId, fileContent, rawMapping: true);
                     TemplateReader.Read(templateContext, isWorkflow ? "workflow-root" : "action-root", yamlObjectReader, fileId, out _);
                 }
             } else {

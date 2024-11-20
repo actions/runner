@@ -81,7 +81,7 @@ public class SemanticTokenHandler : ISemanticTokensFullHandler
 
                 // Read the file
                 var fileContent = content;
-                var yamlObjectReader = new YamlObjectReader(fileId, fileContent);
+                var yamlObjectReader = new YamlObjectReader(fileId, fileContent, rawMapping: true);
                 token = TemplateReader.Read(templateContext, isWorkflow ? "workflow-root" : "action-root", yamlObjectReader, fileId, out _);
 
 
