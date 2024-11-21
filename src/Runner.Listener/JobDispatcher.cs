@@ -545,28 +545,36 @@ namespace GitHub.Runner.Listener
                                     detailInfo = string.Join(Environment.NewLine, workerOutput);
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
 
-                                    var jobServer = await InitializeJobServerAsync(systemConnection);
-                                    var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
-                                    unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
-                                    switch (jobServer)
+                                    try
                                     {
-                                        case IJobServer js:
-                                            {
-                                                await LogWorkerProcessUnhandledException(js, message, unhandledExceptionIssue);
-                                                // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
-                                                if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
+                                        var jobServer = await InitializeJobServerAsync(systemConnection);
+                                        var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
+                                        unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
+                                        switch (jobServer)
+                                        {
+                                            case IJobServer js:
                                                 {
-                                                    Trace.Info($"Finish job with result 'Failed' due to IOException.");
-                                                    await ForceFailJob(js, message);
-                                                }
+                                                    await LogWorkerProcessUnhandledException(js, message, unhandledExceptionIssue);
+                                                    // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
+                                                    if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        Trace.Info($"Finish job with result 'Failed' due to IOException.");
+                                                        await ForceFailJob(js, message);
+                                                    }
 
+                                                    break;
+                                                }
+                                            case IRunServer rs:
+                                                await ForceFailJob(rs, message, unhandledExceptionIssue);
                                                 break;
-                                            }
-                                        case IRunServer rs:
-                                            await ForceFailJob(rs, message, unhandledExceptionIssue);
-                                            break;
-                                        default:
-                                            throw new NotSupportedException($"JobServer type '{jobServer.GetType().Name}' is not supported.");
+                                            default:
+                                                throw new NotSupportedException($"JobServer type '{jobServer.GetType().Name}' is not supported.");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.Error($"Catch exception during log worker process unhandled exception.");
+                                        Trace.Error(ex);
                                     }
                                 }
 
