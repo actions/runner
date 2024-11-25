@@ -153,12 +153,12 @@ namespace GitHub.Runner.Common
                 public const int RetryableError = 2;
                 public const int RunnerUpdating = 3;
                 public const int RunOnceRunnerUpdating = 4;
+                public const int SessionConflict = 5;
             }
 
             public static class Features
             {
                 public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
-                public static readonly string Node16Warning = "DistributedTask.AddWarningToNode16Action";
                 public static readonly string LogTemplateErrorsAsDebugMessages = "DistributedTask.LogTemplateErrorsAsDebugMessages";
                 public static readonly string UseContainerPathForTemplate = "DistributedTask.UseContainerPathForTemplate";
                 public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks";
@@ -175,11 +175,6 @@ namespace GitHub.Runner.Common
             public static readonly string UnsupportedStopCommandTokenDisabled = "You cannot use a endToken that is an empty string, the string 'pause-logging', or another workflow command. For more information see: https://docs.github.com/actions/learn-github-actions/workflow-commands-for-github-actions#example-stopping-and-starting-workflow-commands or opt into insecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS` environment variable to `true`.";
             public static readonly string UnsupportedSummarySize = "$GITHUB_STEP_SUMMARY upload aborted, supports content up to a size of {0}k, got {1}k. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
             public static readonly string SummaryUploadError = "$GITHUB_STEP_SUMMARY upload aborted, an error occurred when uploading the summary. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
-            public static readonly string DetectedNodeAfterEndOfLifeMessage = "Node.js 16 actions are deprecated. Please update the following actions to use Node.js 20: {0}. For more information see: https://github.blog/changelog/2023-09-22-github-actions-transitioning-from-node-16-to-node-20/.";
-            public static readonly string DeprecatedNodeDetectedAfterEndOfLifeActions = "DeprecatedNodeActionsMessageWarnings";
-            public static readonly string DeprecatedNodeVersion = "node16";
-            public static readonly string EnforcedNode12DetectedAfterEndOfLife = "The following actions uses node12 which is deprecated and will be forced to run on node16: {0}. For more info: https://github.blog/changelog/2023-06-13-github-actions-all-actions-will-run-on-node16-instead-of-node12-by-default/";
-            public static readonly string EnforcedNode12DetectedAfterEndOfLifeEnvVariable = "Node16ForceActionsWarnings";
         }
 
         public static class RunnerEvent
@@ -250,14 +245,13 @@ namespace GitHub.Runner.Common
                 public static readonly string RequireJobContainer = "ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
-                public static readonly string AllowActionsUseUnsecureNodeVersion = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
             }
 
             public static class Agent
             {
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
 
-                // Set this env var to "node12" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
+                // Set this env var to "nodeXY" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
                 public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION";
                 public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
                 public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";

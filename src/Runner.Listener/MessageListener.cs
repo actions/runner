@@ -18,10 +18,17 @@ using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Listener
 {
+    public enum CreateSessionResult
+    {
+        Success,
+        Failure,
+        SessionConflict
+    }
+
     [ServiceLocator(Default = typeof(MessageListener))]
     public interface IMessageListener : IRunnerService
     {
-        Task<Boolean> CreateSessionAsync(CancellationToken token);
+        Task<CreateSessionResult> CreateSessionAsync(CancellationToken token);
         Task DeleteSessionAsync();
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
@@ -59,7 +66,7 @@ namespace GitHub.Runner.Listener
             _brokerServer = hostContext.GetService<IBrokerServer>();
         }
 
-        public async Task<Boolean> CreateSessionAsync(CancellationToken token)
+        public async Task<CreateSessionResult> CreateSessionAsync(CancellationToken token)
         {
             Trace.Entering();
 
@@ -81,7 +88,8 @@ namespace GitHub.Runner.Listener
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
             };
-            string sessionName = $"{Environment.MachineName ?? "RUNNER"}";
+            var currentProcess = Process.GetCurrentProcess();
+            string sessionName = $"{Environment.MachineName ?? "RUNNER"} (PID: {currentProcess.Id})";
             var taskAgentSession = new TaskAgentSession(sessionName, agent);
 
             string errorMessage = string.Empty;
@@ -109,7 +117,8 @@ namespace GitHub.Runner.Listener
                     if (_session.BrokerMigrationMessage != null)
                     {
                         Trace.Info("Runner session is in migration mode: Creating Broker session with BrokerBaseUrl: {0}", _session.BrokerMigrationMessage.BrokerBaseUrl);
-                        await _brokerServer.ConnectAsync(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
+
+                        await _brokerServer.UpdateConnectionIfNeeded(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
                         _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
                         _isBrokerSession = true;
                     }
@@ -122,7 +131,7 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                     }
 
-                    return true;
+                    return CreateSessionResult.Success;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -146,7 +155,7 @@ namespace GitHub.Runner.Listener
                         if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
                             _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return false;
+                            return CreateSessionResult.Failure;
                         }
 
                         // Check whether we get 401 because the runner registration already removed by the service.
@@ -157,14 +166,18 @@ namespace GitHub.Runner.Listener
                         if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
                             _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return false;
+                            return CreateSessionResult.Failure;
                         }
                     }
 
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
                         _term.WriteError($"Failed to create session. {ex.Message}");
-                        return false;
+                        if (ex is TaskAgentSessionConflictException)
+                        {
+                            return CreateSessionResult.SessionConflict;
+                        }
+                        return CreateSessionResult.Failure;
                     }
 
                     if (!encounteringError) //print the message only on the first error
@@ -187,12 +200,12 @@ namespace GitHub.Runner.Listener
                 {
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
+                        await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
+
                         if (_isBrokerSession)
                         {
                             await _brokerServer.DeleteSessionAsync(ts.Token);
-                            return;
                         }
-                        await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
                     }
                 }
                 else
@@ -204,19 +217,17 @@ namespace GitHub.Runner.Listener
 
         public void OnJobStatus(object sender, JobStatusEventArgs e)
         {
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
+            Trace.Info("Received job status event. JobState: {0}", e.Status);
+            runnerStatus = e.Status;
+            try
             {
-                Trace.Info("Received job status event. JobState: {0}", e.Status);
-                runnerStatus = e.Status;
-                try
-                {
-                    _getMessagesTokenSource?.Cancel();
-                }
-                catch (ObjectDisposedException)
-                {
-                    Trace.Info("_getMessagesTokenSource is already disposed.");
-                }
+                _getMessagesTokenSource?.Cancel();
             }
+            catch (ObjectDisposedException)
+            {
+                Trace.Info("_getMessagesTokenSource is already disposed.");
+            }
+
         }
 
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
@@ -226,6 +237,7 @@ namespace GitHub.Runner.Listener
             ArgUtil.NotNull(_settings, nameof(_settings));
             bool encounteringError = false;
             int continuousError = 0;
+            int continuousEmptyMessage = 0;
             string errorMessage = string.Empty;
             Stopwatch heartbeat = new();
             heartbeat.Restart();
@@ -252,11 +264,9 @@ namespace GitHub.Runner.Listener
 
                     if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                     {
-                        Trace.Info("BrokerMigration message received. Polling Broker for messages...");
-
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
 
-                        await _brokerServer.ConnectAsync(migrationMessage.BrokerBaseUrl, _creds);
+                        await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _creds);
                         message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
                                                                         runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
@@ -298,13 +308,17 @@ namespace GitHub.Runner.Listener
                 {
                     throw;
                 }
+                catch (RunnerNotFoundException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
 
                     // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
-                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && await CreateSessionAsync(token))
+                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
                     {
                         Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
                     }
@@ -349,14 +363,25 @@ namespace GitHub.Runner.Listener
 
                 if (message == null)
                 {
+                    continuousEmptyMessage++;
                     if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
                     {
                         Trace.Info($"No message retrieved from session '{_session.SessionId}' within last 30 minutes.");
                         heartbeat.Restart();
+                        continuousEmptyMessage = 0;
                     }
                     else
                     {
                         Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
+                    }
+
+                    if (continuousEmptyMessage > 50)
+                    {
+                        // retried more than 50 times in less than 30mins and still getting empty message
+                        // something is not right on the service side, backoff for 15-30s before retry
+                        _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), _getNextMessageRetryInterval);
+                        Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
+                        await HostContext.Delay(_getNextMessageRetryInterval, token);
                     }
 
                     continue;
@@ -384,6 +409,7 @@ namespace GitHub.Runner.Listener
         public async Task RefreshListenerTokenAsync(CancellationToken cancellationToken)
         {
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
+            await _brokerServer.ForceRefreshConnection(_creds);
         }
 
         private TaskAgentMessage DecryptMessage(TaskAgentMessage message)
@@ -435,6 +461,7 @@ namespace GitHub.Runner.Listener
                 ex is TaskAgentPoolNotFoundException ||
                 ex is TaskAgentSessionExpiredException ||
                 ex is AccessDeniedException ||
+                ex is RunnerNotFoundException ||
                 ex is VssUnauthorizedException)
             {
                 Trace.Info($"Non-retriable exception: {ex.Message}");

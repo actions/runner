@@ -71,7 +71,8 @@
           "env": "job-env",
           "outputs": "job-outputs",
           "defaults": "job-defaults",
-          "steps": "steps"
+          "steps": "steps",
+          "snapshot": "snapshot"
         }
       }
     },
@@ -153,6 +154,41 @@
         "loose-key-type": "non-empty-string",
         "loose-value-type": "any"
       }
+    },
+
+    "snapshot": {
+      "one-of": [
+        "non-empty-string",
+        "snapshot-mapping"
+      ]
+    },
+
+    "snapshot-mapping": {
+      "mapping": {
+        "properties": {
+          "image-name": {
+            "type": "non-empty-string",
+            "required": true
+          },
+          "if": "snapshot-if",
+          "version": {
+            "type": "non-empty-string",
+            "required": false
+          }
+        }
+      }
+    },
+
+    "snapshot-if": {
+      "context": [
+        "github",
+        "inputs",
+        "vars",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "string": {}
     },
 
     "runs-on": {

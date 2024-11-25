@@ -103,6 +103,7 @@ namespace GitHub.Actions.RunService.WebApi
                 new HttpMethod("GET"),
                 requestUri: requestUri,
                 queryParameters: queryParams,
+                readErrorBody: true,
                 cancellationToken: cancellationToken);
 
             if (result.IsSuccess)
@@ -110,12 +111,32 @@ namespace GitHub.Actions.RunService.WebApi
                 return result.Value;
             }
 
-            if (result.StatusCode == HttpStatusCode.Forbidden)
+            if (TryParseErrorBody(result.ErrorBody, out BrokerError brokerError))
             {
-                throw new AccessDeniedException(result.Error);
+                switch (brokerError.ErrorKind)
+                {
+                    case BrokerErrorKind.RunnerNotFound:
+                        throw new RunnerNotFoundException(brokerError.Message);
+                    case BrokerErrorKind.RunnerVersionTooOld:
+                        throw new AccessDeniedException(brokerError.Message)
+                        {
+                            ErrorCode = 1
+                        };
+                    default:
+                        break;
+                }
             }
 
-            throw new Exception($"Failed to get job message: {result.Error}");
+            // temporary back compat
+            if (result.StatusCode == HttpStatusCode.Forbidden)
+            {
+                throw new AccessDeniedException($"{result.Error} Runner version v{runnerVersion} is deprecated and cannot receive messages.")
+                {
+                    ErrorCode = 1
+                };
+            }
+
+            throw new Exception($"Failed to get job message. Request to {requestUri} failed with status: {result.StatusCode}. Error message {result.Error}");
         }
 
         public async Task<TaskAgentSession> CreateSessionAsync(
@@ -166,6 +187,27 @@ namespace GitHub.Actions.RunService.WebApi
             }
 
             throw new Exception($"Failed to delete broker session: {result.Error}");
+        }
+
+        private static bool TryParseErrorBody(string errorBody, out BrokerError error)
+        {
+            if (!string.IsNullOrEmpty(errorBody))
+            {
+                try
+                {
+                    error = JsonUtility.FromString<BrokerError>(errorBody);
+                    if (error?.Source == "actions-broker-listener")
+                    {
+                        return true;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            error = null;
+            return false;
         }
     }
 }

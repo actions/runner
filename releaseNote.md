@@ -1,40 +1,42 @@
 ## What's Changed
-* Bump docker and buildx to the latest version by @diogotorres97 in https://github.com/actions/runner/pull/3100
-* Revert "Bump container hook version to 0.5.0 in runner image (#3003)" by @TingluoHuang in https://github.com/actions/runner/pull/3101
-* Make embedded timeline record has same order as its parent record. by @TingluoHuang in https://github.com/actions/runner/pull/3113
-* Fix release workflow. by @TingluoHuang in https://github.com/actions/runner/pull/3102
-* Add user-agent to all http clients using RawClientHttpRequestSettings. by @TingluoHuang in https://github.com/actions/runner/pull/3115
-* Fix JobDispatcher crash during force cancellation. by @TingluoHuang in https://github.com/actions/runner/pull/3118
-* Implement Broker Redirects for Session and Messages by @luketomlinson in https://github.com/actions/runner/pull/3103
-* Only keep 1 older version runner around after self-upgrade. by @TingluoHuang in https://github.com/actions/runner/pull/3122
-* Upgrade `docker` from `24.0.7` to `24.0.8` by @MPV in https://github.com/actions/runner/pull/3124
-* Upload the diagnostic logs to the Results Service by @jtamsut in https://github.com/actions/runner/pull/3114
-* Upgrade `docker` from `24.0.8` to `24.0.9` by @MPV in https://github.com/actions/runner/pull/3126
-* Make sure to drain the upload queue before clean temp directory by @yacaovsnc in https://github.com/actions/runner/pull/3125
-* Specify `Content-Type` for BlockBlob upload by @bethanyj28 in https://github.com/actions/runner/pull/3119
-* Improve error report for invalid action.yml by @jsoref in https://github.com/actions/runner/pull/3106
-* Add sshd to .devcontainer.json by @pje in https://github.com/actions/runner/pull/3079
-* Resolve CVE-2024-21626 by @luka5 in https://github.com/actions/runner/pull/3123
-* Handle ForceTokenRefresh message by @luketomlinson in https://github.com/actions/runner/pull/3133
-* Bump hook version to 0.5.1 by @nikola-jokic in https://github.com/actions/runner/pull/3129
+
+* Fix release workflow to use distinct artifact names by @ericsciple in https://github.com/actions/runner/pull/3485
+* Update dotnet sdk to latest version @6.0.425 by @github-actions in https://github.com/actions/runner/pull/3433
+* add ref and type to job completion in run service by @yaananth in https://github.com/actions/runner/pull/3492
+* Remove Broker Migration Message logging by @luketomlinson in https://github.com/actions/runner/pull/3493
+* Bump dotnet SDK to dotnet 8. by @TingluoHuang in https://github.com/actions/runner/pull/3500
+* Remove dotnet8 compatibility test. by @TingluoHuang in https://github.com/actions/runner/pull/3502
+* Remove node16 from the runner. by @TingluoHuang in https://github.com/actions/runner/pull/3503
+* send action name for run service by @yaananth in https://github.com/actions/runner/pull/3520
+* Handle runner not found by @ericsciple in https://github.com/actions/runner/pull/3536
+* Publish job telemetry to run-service. by @TingluoHuang in https://github.com/actions/runner/pull/3545
+* Fetch repo-level runner groups from API in v2 flow by @lucavallin in https://github.com/actions/runner/pull/3546
+* Allow runner to check service connection in background. by @TingluoHuang in https://github.com/actions/runner/pull/3542
+* Expose ENV for cache service v2. by @TingluoHuang in https://github.com/actions/runner/pull/3548
+* Update runner docker image. by @TingluoHuang in https://github.com/actions/runner/pull/3511
+* Bump Azure.Storage.Blobs from 12.19.1 to 12.23.0 in /src by @dependabot in https://github.com/actions/runner/pull/3549
+* fix dotnet-upgrade.yml to print right version by @TingluoHuang in https://github.com/actions/runner/pull/3550
+* Update dotnet sdk to latest version @8.0.404 by @github-actions in https://github.com/actions/runner/pull/3552
+* Configure dependabot to check github-actions updates by @Goooler in https://github.com/actions/runner/pull/3333
+* Bump actions/checkout from 3 to 4 by @dependabot in https://github.com/actions/runner/pull/3556
 
 ## New Contributors
-* @diogotorres97 made their first contribution in https://github.com/actions/runner/pull/3100
-* @MPV made their first contribution in https://github.com/actions/runner/pull/3124
-* @jtamsut made their first contribution in https://github.com/actions/runner/pull/3114
-* @luka5 made their first contribution in https://github.com/actions/runner/pull/3123
+* @lucavallin made their first contribution in https://github.com/actions/runner/pull/3546
+* @Goooler made their first contribution in https://github.com/actions/runner/pull/3333
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.312.0...v2.313.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.320.0...v2.321.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
 See https://docs.github.com/en/enterprise-cloud@latest/actions/hosting-your-own-runners/adding-self-hosted-runners_
 
 ## Windows x64
+
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 
 The following snipped needs to be run on `powershell`:
-``` powershell
+
+```powershell
 # Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
@@ -44,13 +46,13 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
 ```
 
-## [Pre-release] Windows arm64
-**Warning:** Windows arm64 runners are currently in preview status and use [unofficial versions of nodejs](https://unofficial-builds.nodejs.org/). They are not intended for production workflows.
+## Windows arm64
 
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 
 The following snipped needs to be run on `powershell`:
-``` powershell
+
+```powershell
 # Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
@@ -62,7 +64,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 
 ## OSX x64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -73,7 +75,7 @@ tar xzf ./actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
 
 ## OSX arm64 (Apple silicon)
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -84,7 +86,7 @@ tar xzf ./actions-runner-osx-arm64-<RUNNER_VERSION>.tar.gz
 
 ## Linux x64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -95,7 +97,7 @@ tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 
 ## Linux arm64
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -106,7 +108,7 @@ tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 
 ## Linux arm
 
-``` bash
+```bash
 # Create a folder
 mkdir actions-runner && cd actions-runner
 # Download the latest runner package
@@ -116,6 +118,7 @@ tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 ```
 
 ## Using your self hosted runner
+
 For additional details about configuring, running, or shutting down the runner please check out our [product docs.](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners)
 
 ## SHA-256 Checksums
