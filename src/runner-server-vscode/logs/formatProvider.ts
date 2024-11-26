@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import {LogInfo} from "./model";
 import {Parser, VSCodeDefaultColors} from "./parser";
 
-const timestampRE = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{7}Z/;
+const timestampRE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{7}Z/;
 
 const timestampDecorationType = vscode.window.createTextEditorDecorationType({
   color: "#99999959"
