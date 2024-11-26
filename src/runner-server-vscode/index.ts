@@ -217,7 +217,19 @@ function activate(context : ExtensionContext) {
 			if(address) {
 				args.push('--server', address)
 			}
-			context.subscriptions.push(window.createTerminal("runner.client", dotnetPath, args))
+
+			let startproc = spawn(dotnetPath, args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env } });
+			startproc.stdout.on('data', async (data) => {
+				var sdata = data.asciiSlice();
+				console.log(sdata)
+			});
+			startproc.stderr.on('data', async (data) => {
+				var sdata = data.asciiSlice();
+				console.log(sdata)
+			});
+			startproc.addListener('exit', code => {
+				console.log(code);
+			});
 		});
 		commands.registerCommand("runner.server.runjob", async (workflow, job, events) => {
 			console.log(`runner.server.runjob {workflow}.{job}`)
@@ -226,7 +238,19 @@ function activate(context : ExtensionContext) {
 			if(address) {
 				args.push('--server', address)
 			}
-			context.subscriptions.push(window.createTerminal("runner.client", dotnetPath, args))
+			
+			let startproc = spawn(dotnetPath, args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env } });
+			startproc.stdout.on('data', async (data) => {
+				var sdata = data.asciiSlice();
+				console.log(sdata)
+			});
+			startproc.stderr.on('data', async (data) => {
+				var sdata = data.asciiSlice();
+				console.log(sdata)
+			});
+			startproc.addListener('exit', code => {
+				console.log(code);
+			});
 		});
 
 		context.subscriptions.push(client);
