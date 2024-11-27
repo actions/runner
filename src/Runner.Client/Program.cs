@@ -816,7 +816,7 @@ namespace Runner.Client
                 };
                 Dictionary<string, TemplateToken> cparameters = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
                 if(handle.InputFiles?.Length > 0) {
-                    foreach(var file in handle.InputFiles) {
+                    foreach(var file in handle.InputFiles.Where(f => f != "")) {
                         Util.ReadEnvFile(file, (varname, varval) => cparameters[varname] = AzurePipelinesUtils.ConvertStringToTemplateToken(varval));
                     }
                 }
@@ -1093,6 +1093,8 @@ namespace Runner.Client
                 environmentSecretFileOpt,
                 environmentVarOpt,
                 environmentVarFileOpt,
+                workflowInputsOpt,
+                workflowInputFilesOpt,
                 jobOpt,
                 matrixOpt,
                 listOpt,
@@ -1761,7 +1763,7 @@ namespace Runner.Client
                                     List<string> wenv = new List<string>();
                                     List<string> wsecrets = new List<string>();
                                     if(parameters.EnvFile?.Length > 0) {
-                                        foreach(var file in parameters.EnvFile) {
+                                        foreach(var file in parameters.EnvFile.Where(f => f != "")) {
                                             try {
                                                 wenv.AddRange(Util.ReadEnvFile(file));
                                             } catch(Exception ex) {
@@ -1771,7 +1773,7 @@ namespace Runner.Client
                                         }
                                     }
                                     if(parameters.SecretFiles?.Length > 0) {
-                                        foreach(var file in parameters.SecretFiles) {
+                                        foreach(var file in parameters.SecretFiles.Where(f => f != "")) {
                                             try {
                                                 wsecrets.AddRange(Util.ReadEnvFile(file));
                                             } catch(Exception ex) {
@@ -1976,7 +1978,7 @@ namespace Runner.Client
                                         var inputs = payloadContent.TryGetValue("inputs", out var oinputs) ? (JObject)oinputs : new JObject();
                                         payloadContent["inputs"] = inputs;
                                         if(parameters.InputFiles?.Length > 0) {
-                                            foreach(var file in parameters.InputFiles) {
+                                            foreach(var file in parameters.InputFiles.Where(f => f != "")) {
                                                 try {
                                                     Util.ReadEnvFile(file, (k, v) => inputs[k] = v);
                                                 } catch(Exception ex) {
@@ -1998,7 +2000,7 @@ namespace Runner.Client
                                     if(!ffVars.ContainsKey("system.runner.server.parameters")) {
                                         var inputs = new JObject();
                                         if(parameters.InputFiles?.Length > 0) {
-                                            foreach(var file in parameters.InputFiles) {
+                                            foreach(var file in parameters.InputFiles.Where(f => f != "")) {
                                                 try {
                                                     Util.ReadEnvFile(file, (k, v) => inputs[k] = v);
                                                 } catch(Exception ex) {
@@ -2538,10 +2540,6 @@ namespace Runner.Client
                         cmd.AddOption(opt);
                     }
                 }
-                if(ev == "workflow_dispatch" || ev == "azexpand" || ev == "azpipelines") {
-                    cmd.AddOption(workflowInputsOpt);
-                    cmd.AddOption(workflowInputFilesOpt);
-                }
             }
             var startserver = new Command("startserver", "Starts a server listening on the supplied address or selects a random free http address.");
             rootCommand.AddCommand(startserver);
@@ -2617,7 +2615,7 @@ namespace Runner.Client
         {
             var envSecrets = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             if(parameters.EnvironmentSecretFiles?.Length > 0) {
-                foreach(var opt in parameters.EnvironmentSecretFiles) {
+                foreach(var opt in parameters.EnvironmentSecretFiles.Where(f => f != "")) {
                     var subopt = opt.Split('=', 2);
                     string name = subopt.Length == 2 ? subopt[0] : "";
                     string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
@@ -2643,7 +2641,7 @@ namespace Runner.Client
             }
             var envVars = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             if(parameters.EnvironmentVarFiles?.Length > 0) {
-                foreach(var opt in parameters.EnvironmentVarFiles) {
+                foreach(var opt in parameters.EnvironmentVarFiles.Where(f => f != "")) {
                     var subopt = opt.Split('=', 2);
                     string name = subopt.Length == 2 ? subopt[0] : "";
                     string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
@@ -2652,7 +2650,7 @@ namespace Runner.Client
                 }
             }
             if(parameters.VarFiles?.Length > 0) {
-                foreach(var opt in parameters.VarFiles) {
+                foreach(var opt in parameters.VarFiles.Where(f => f != "")) {
                     string name = "";
                     string filename = opt;
                     var dict = envVars[name] = envVars.TryGetValue(name, out var v) ? v : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
