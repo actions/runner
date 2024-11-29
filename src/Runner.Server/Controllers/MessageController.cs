@@ -1053,16 +1053,16 @@ namespace Runner.Server.Controllers
                 workflowTimelineId = Guid.NewGuid();
                 attempt.TimeLineId = workflowTimelineId;
                 _context.SaveChanges();
-                var records = new List<TimelineRecord>{ new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath } };
+                var records = new List<TimelineRecord>{ new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath, RefName = fileRelativePath, RecordType = "workflow" } };
                 TimelineController.dict[workflowTimelineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
             }
             Guid workflowRecordId = callingJob?.RecordId ?? attempt.TimeLineId;
             if(workflowTimelineId == attempt.TimeLineId) {
                 // Add workflow as dummy job, to improve early cancellation of Runner.Client
-                initializingJobs.TryAdd(workflowTimelineId, new Job() { JobId = workflowTimelineId, TimeLineId = workflowTimelineId, runid = runid } );
+                initializingJobs.TryAdd(workflowTimelineId, new Job() { JobId = workflowTimelineId, TimeLineId = workflowTimelineId, runid = runid, workflowname = fileRelativePath } );
                 if(attempt.Attempt > 1) {
                     workflowRecordId = Guid.NewGuid();
-                    TimelineController.dict[workflowTimelineId] = (new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}" } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
+                    TimelineController.dict[workflowTimelineId] = (new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}", RecordType = "workflow" } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                     new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
                 } else {
                     new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
@@ -1997,7 +1997,7 @@ namespace Runner.Server.Controllers
 
                                     var jid = jobitem.Id;
                                     jobitem.TimelineId = Guid.NewGuid();
-                                    var jobrecord = new TimelineRecord{ Id = jobitem.Id, Name = jobitem.name };
+                                    var jobrecord = new TimelineRecord{ Id = jobitem.Id, Name = jobitem.name, RefName = jobitem.name, RecordType = "job" };
                                     TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                     var jobTraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
                                     var jobNameToken = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value).FirstOrDefault();
@@ -7189,9 +7189,11 @@ namespace Runner.Server.Controllers
                     List<long> runid = new List<long>();
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
-                    Func<Job, Task> updateJob = async job => {
-                        if(jobCache.TryAdd(job.JobId, job)) {
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job", JsonConvert.SerializeObject(job, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                    Func<Job, Task> updateJob = async jobInstance => {
+                        if(jobCache.TryAdd(jobInstance.JobId, jobInstance)) {
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job", JsonConvert.SerializeObject(jobInstance, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        } else {
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job_update", JsonConvert.SerializeObject(jobInstance, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     TimeLineWebConsoleLogController.LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
