@@ -36,7 +36,7 @@ jobs:
           - osx-arm64
         fxdependent: [ true, false ]
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ contains(matrix.runtime, 'osx') && 'macos-latest' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-dotnet@v3
