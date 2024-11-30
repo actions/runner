@@ -5,6 +5,10 @@ on:
     - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      PUBLISH_PREVIEW_TO_NUGET:
+        type: boolean
+        default: false
 jobs:
   package:
     runs-on: ubuntu-latest
@@ -37,6 +41,7 @@ jobs:
     - name: Pack
       run: |
         dotnet pack --no-restore -c Release --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=6.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack --no-restore -c Release --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=6.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Upload Artifacts
@@ -45,7 +50,7 @@ jobs:
         name: nupkg
         path: src/Runner.Client/nupkg
     - name: Push to Nuget
-      if: false && env.GHARUN != ''
+      if: (vars.PUBLISH_PREVIEW_TO_NUGET == 'true' && github.event_name == 'push' || inputs.PUBLISH_PREVIEW_TO_NUGET) && env.GHARUN != ''
       run: dotnet nuget push ./*.nupkg --api-key $($ENV:GHARUN) --source https://api.nuget.org/v3/index.json
       shell: pwsh
       working-directory: ./src/Runner.Client/nupkg
@@ -98,129 +103,129 @@ jobs:
         path: src/Runner.Client/nupkg
     - name: Install
       run: |
-        dotnet tool install -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg --version ${{needs.package.outputs.version}}
-        # Make shure to have gharun in path in job container
+        dotnet tool install -g Runner.Client --add-source src/Runner.Client/nupkg --version ${{needs.package.outputs.version}}
+        # Make shure to have Runner.Client in path in job container
         echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
     - name: Test
       run: |
         set -x
-        gharun -C testworkflows/workflowerrors || :
-        gharun -C testworkflows/workflowerrors --trace --var system.runner.server.sendlostevents=true || :
-        gharun -W testworkflows/testlocalcheckout.yml
-        gharun -W testworkflows/testhashfiles.yml
-        gharun -W testworkflows/dumpcontexts.yml
-        gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets
-        gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets
-        gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets.yaml
-        gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets.yaml
+        Runner.Client -C testworkflows/workflowerrors || :
+        Runner.Client -C testworkflows/workflowerrors --trace --var system.runner.server.sendlostevents=true || :
+        Runner.Client -W testworkflows/testlocalcheckout.yml
+        Runner.Client -W testworkflows/testhashfiles.yml
+        Runner.Client -W testworkflows/dumpcontexts.yml
+        Runner.Client -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets
+        Runner.Client -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets
+        Runner.Client -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets.yaml
+        Runner.Client -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets.yaml
         cd testworkflows/environment-test
-        gharun -W sample.yml --environment-secret-file prod=prod.secrets --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
+        Runner.Client -W sample.yml --environment-secret-file prod=prod.secrets --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
         cd ../..
-        gharun -W testworkflows/dumpcontexts.yml --list
-        gharun -C testworkflows/case-insensitive-keys-matrix
-        gharun -C testworkflows/matrix-eq-test --parallel 2
+        Runner.Client -W testworkflows/dumpcontexts.yml --list
+        Runner.Client -C testworkflows/case-insensitive-keys-matrix
+        Runner.Client -C testworkflows/matrix-eq-test --parallel 2
         ${{matrix.image && 'echo "Skipping additional testcases" && exit 0' || ''}}
-        gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
-        gharun -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
-        gharun -W testworkflows/artifact.yml
-        gharun -W testworkflows/issue70/main.yml
-        gharun -W testworkflows/called.yml -e testworkflows/called_workflow_dispatch_event.json --env "input_x=Hello World 2" workflow_dispatch
-        gharun -W testworkflows/called.yml --env "input_x=Hello World" workflow_dispatch
-        gharun --workflow testworkflows/test_template_runs_on.yml --workflow testworkflows/called_template_runs_on.yml
-        gharun --workflow testworkflows/test_template_runs_on2.yml --workflow testworkflows/called_template_runs_on.yml -P self-hosted,testsystem=-self-hosted
-        gharun --workflow testworkflows/test_template_runs_on3.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,self-hosted,testsystem=-self-hosted
-        gharun --workflow testworkflows/test_template_runs_on3.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,SELF-HOSTED,testsystem=-self-hosted
-        gharun --workflow testworkflows/test_template_runs_on4.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,self-hosted,testsystem=-self-hosted
-        gharun --workflow testworkflows/test_template_runs_on4.yml --workflow testworkflows/called_template_runs_on.yml -P Testsystem2,SELF-hosted,TESTSYSTEM=-self-hosted
-        gharun -W testworkflows/skippedjob.yml
-        gharun --workflow testworkflows/test_with_required_secret.yml --workflow testworkflows/called_with_required_secret.yml
-        gharun -W testworkflows/job-continue-on-error.yml
-        gharun -W testworkflows/continue-on-error-bug-3.6.0-4-test.yml
-        gharun -W testworkflows/expect-matrix-error-on-missing-exclude-key.yml && exit 1 || [[ "$?" = "1" ]]
+        Runner.Client -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
+        Runner.Client -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
+        Runner.Client -W testworkflows/artifact.yml
+        Runner.Client -W testworkflows/issue70/main.yml
+        Runner.Client -W testworkflows/called.yml -e testworkflows/called_workflow_dispatch_event.json --env "input_x=Hello World 2" workflow_dispatch
+        Runner.Client -W testworkflows/called.yml --env "input_x=Hello World" workflow_dispatch
+        Runner.Client --workflow testworkflows/test_template_runs_on.yml --workflow testworkflows/called_template_runs_on.yml
+        Runner.Client --workflow testworkflows/test_template_runs_on2.yml --workflow testworkflows/called_template_runs_on.yml -P self-hosted,testsystem=-self-hosted
+        Runner.Client --workflow testworkflows/test_template_runs_on3.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,self-hosted,testsystem=-self-hosted
+        Runner.Client --workflow testworkflows/test_template_runs_on3.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,SELF-HOSTED,testsystem=-self-hosted
+        Runner.Client --workflow testworkflows/test_template_runs_on4.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,self-hosted,testsystem=-self-hosted
+        Runner.Client --workflow testworkflows/test_template_runs_on4.yml --workflow testworkflows/called_template_runs_on.yml -P Testsystem2,SELF-hosted,TESTSYSTEM=-self-hosted
+        Runner.Client -W testworkflows/skippedjob.yml
+        Runner.Client --workflow testworkflows/test_with_required_secret.yml --workflow testworkflows/called_with_required_secret.yml
+        Runner.Client -W testworkflows/job-continue-on-error.yml
+        Runner.Client -W testworkflows/continue-on-error-bug-3.6.0-4-test.yml
+        Runner.Client -W testworkflows/expect-matrix-error-on-missing-exclude-key.yml && exit 1 || [[ "$?" = "1" ]]
         cd testworkflows/node16_complex_reusable_workflows
-        gharun
+        Runner.Client
         cd ../..
         cd testworkflows/db-disposed-issue
-        gharun -P ubuntu-latest=-self-hosted
-        gharun -P ubuntu-latest=-self-hosted --parallel 8
+        Runner.Client -P ubuntu-latest=-self-hosted
+        Runner.Client -P ubuntu-latest=-self-hosted --parallel 8
         cd ../..
-        gharun -W testworkflows/test-setup-node.yml
-        gharun -C testworkflows/actions_checkout_v1
-        gharun -C testworkflows/case_insensitive_needs
-        gharun -C testworkflows/inherit_secrets -s misc=topSecretVal
-        gharun -C testworkflows/reusablesCaseInsensitive
-        gharun -C testworkflows/workflow_dispatch workflow_dispatch -i misc=myInput -i si=UdHe -i bval=true -i bval2=false
-        gharun -C testworkflows/workflow_dispatch workflow_dispatch -i Misc=myInput -i SI=UdHe -i bVal=true -i BVAL2=false
-        gharun -C testworkflows/matrix-selector push -j test -m fail:false
-        gharun -C testworkflows/oidc-provider
-        gharun -C testworkflows/reusablesConsistentWorkflowName
-        gharun -C testworkflows/matrix-partial-test
-        gharun -C testworkflows/workflow_ref_and_job_workflow_ref
-        gharun -C testworkflows/reusable-workflows-secrets-inherit-with-required-secrets -s TEST=topsecret -s OPT=testsec
-        gharun -C testworkflows/inherit_vars --var ACTIONS_STEP_DEBUG=true
-        gharun -C testworkflows/actions_artifacts_v4 -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true --runner-version v2.311.0
-        gharun -C testworkflows/actions_artifacts_v4 -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true
-        gharun -C testworkflows/cache-save-restore-order-tests -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true
-        gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-checkout -W testworkflows/azpipelines/cross-repo-checkout/pipeline.yml --local-repository az/containermatrix@main=testworkflows/azpipelines/containermatrix
-        gharun --event azpipelines -C testworkflows/azpipelines/typedtemplates -W testworkflows/azpipelines/typedtemplates/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/untypedtemplates -W testworkflows/azpipelines/untypedtemplates/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/stagetostagedeps -W testworkflows/azpipelines/stagetostagedeps/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/staticvars -W testworkflows/azpipelines/staticvars/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/staticvarfromcli -W testworkflows/azpipelines/staticvarfromcli/pipeline.yml --var myvar=myval --var myvarwitheq=my=val --env myenvar=myval
-        gharun --event azpipelines -C testworkflows/azpipelines/staticvargroupfromcli -W testworkflows/azpipelines/staticvargroupfromcli/pipeline.yml --environment-var B=myvar=myval --environment-var b=myvarwitheq=my=val --environment-var C=myenvar=myval
-        gharun --event azpipelines -C testworkflows/azpipelines/matrixgenerator -W testworkflows/azpipelines/matrixgenerator/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/matrixjoboutputs -W testworkflows/azpipelines/matrixjoboutputs/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/runoncedeployonlyoutput -W testworkflows/azpipelines/runoncedeployonlyoutput/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/runoncedeployoutput -W testworkflows/azpipelines/runoncedeployoutput/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-template -W testworkflows/azpipelines/cross-repo-template/pipeline.yml --local-repository az/typedtemplates@main=testworkflows/azpipelines/typedtemplates --local-repository az/untypedtemplates@main=testworkflows/azpipelines/untypedtemplates
-        gharun --event azpipelines -C testworkflows/azpipelines/expressions-docs -W testworkflows/azpipelines/expressions-docs --var Build.SourceBranch=refs/heads/main
-        gharun --event azpipelines -C testworkflows/azpipelines/typedtemplates-extends -W testworkflows/azpipelines/typedtemplates-extends/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/version-literal -W testworkflows/azpipelines/version-literal/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/relative-and-absolute-paths -W testworkflows/azpipelines/relative-and-absolute-paths/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/null-each-loop -W testworkflows/azpipelines/null-each-loop/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/cross-repo-relative-paths/repo1 -W testworkflows/azpipelines/cross-repo-relative-paths/repo1/pipeline.yml --local-repository central/shared@main=testworkflows/azpipelines/cross-repo-relative-paths/repo2
-        gharun --event azpipelines -C testworkflows/azpipelines/extend-variables -W testworkflows/azpipelines/extend-variables/pipeline.yml
+        Runner.Client -W testworkflows/test-setup-node.yml
+        Runner.Client -C testworkflows/actions_checkout_v1
+        Runner.Client -C testworkflows/case_insensitive_needs
+        Runner.Client -C testworkflows/inherit_secrets -s misc=topSecretVal
+        Runner.Client -C testworkflows/reusablesCaseInsensitive
+        Runner.Client -C testworkflows/workflow_dispatch workflow_dispatch -i misc=myInput -i si=UdHe -i bval=true -i bval2=false
+        Runner.Client -C testworkflows/workflow_dispatch workflow_dispatch -i Misc=myInput -i SI=UdHe -i bVal=true -i BVAL2=false
+        Runner.Client -C testworkflows/matrix-selector push -j test -m fail:false
+        Runner.Client -C testworkflows/oidc-provider
+        Runner.Client -C testworkflows/reusablesConsistentWorkflowName
+        Runner.Client -C testworkflows/matrix-partial-test
+        Runner.Client -C testworkflows/workflow_ref_and_job_workflow_ref
+        Runner.Client -C testworkflows/reusable-workflows-secrets-inherit-with-required-secrets -s TEST=topsecret -s OPT=testsec
+        Runner.Client -C testworkflows/inherit_vars --var ACTIONS_STEP_DEBUG=true
+        Runner.Client -C testworkflows/actions_artifacts_v4 -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true --runner-version v2.311.0
+        Runner.Client -C testworkflows/actions_artifacts_v4 -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true
+        Runner.Client -C testworkflows/cache-save-restore-order-tests -s ACTIONS_STEP_DEBUG=true -s ACTIONS_RUNNER_DEBUG=true
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/cross-repo-checkout -W testworkflows/azpipelines/cross-repo-checkout/pipeline.yml --local-repository az/containermatrix@main=testworkflows/azpipelines/containermatrix
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/typedtemplates -W testworkflows/azpipelines/typedtemplates/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/untypedtemplates -W testworkflows/azpipelines/untypedtemplates/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/stagetostagedeps -W testworkflows/azpipelines/stagetostagedeps/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/staticvars -W testworkflows/azpipelines/staticvars/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/staticvarfromcli -W testworkflows/azpipelines/staticvarfromcli/pipeline.yml --var myvar=myval --var myvarwitheq=my=val --env myenvar=myval
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/staticvargroupfromcli -W testworkflows/azpipelines/staticvargroupfromcli/pipeline.yml --environment-var B=myvar=myval --environment-var b=myvarwitheq=my=val --environment-var C=myenvar=myval
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/matrixgenerator -W testworkflows/azpipelines/matrixgenerator/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/matrixjoboutputs -W testworkflows/azpipelines/matrixjoboutputs/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/runoncedeployonlyoutput -W testworkflows/azpipelines/runoncedeployonlyoutput/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/runoncedeployoutput -W testworkflows/azpipelines/runoncedeployoutput/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/cross-repo-template -W testworkflows/azpipelines/cross-repo-template/pipeline.yml --local-repository az/typedtemplates@main=testworkflows/azpipelines/typedtemplates --local-repository az/untypedtemplates@main=testworkflows/azpipelines/untypedtemplates
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/expressions-docs -W testworkflows/azpipelines/expressions-docs --var Build.SourceBranch=refs/heads/main
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/typedtemplates-extends -W testworkflows/azpipelines/typedtemplates-extends/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/version-literal -W testworkflows/azpipelines/version-literal/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/relative-and-absolute-paths -W testworkflows/azpipelines/relative-and-absolute-paths/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/null-each-loop -W testworkflows/azpipelines/null-each-loop/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/cross-repo-relative-paths/repo1 -W testworkflows/azpipelines/cross-repo-relative-paths/repo1/pipeline.yml --local-repository central/shared@main=testworkflows/azpipelines/cross-repo-relative-paths/repo2
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/extend-variables -W testworkflows/azpipelines/extend-variables/pipeline.yml
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
-        New-NetFirewallRule -Name gharun -DisplayName gharun -Enabled True -Action Allow -Direction Inbound -Program ($env:USERPROFILE + '\.dotnet\tools\gharun.exe') -Protocol tcp
+        New-NetFirewallRule -Name Runner.Client -DisplayName Runner.Client -Enabled True -Action Allow -Direction Inbound -Program ($env:USERPROFILE + '\.dotnet\tools\Runner.Client.exe') -Protocol tcp
         Get-NetFirewallProfile | Set-NetFirewallProfile -Enabled False
       shell: pwsh
     - name: Test Windows Container
       if: contains(matrix.os, 'windows') && !job.container
       run: |
         set -x
-        gharun -W testworkflows/windows.yml -P windows-latest=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
-        gharun -W testworkflows/testlocalcheckout.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        Runner.Client -W testworkflows/windows.yml -P windows-latest=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        Runner.Client -W testworkflows/testlocalcheckout.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
         # depends on bash, therefore disabled for now
-        # gharun -W testworkflows/artifact.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
-        gharun -W testworkflows/cachewindowscontainer.yml -P windows-latest=mcr.microsoft.com/powershell:lts-windowsservercore-${{matrix.tag}}
-        gharun -W testworkflows/test-setup-node.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
-        gharun -C testworkflows/windows-container-test1
-        gharun -C testworkflows/windows-container-test2
-        gharun -C testworkflows/windows-container-test3-invalid-problem-matcher && exit 1 || [[ "$?" = "1" ]]
-        gharun -C testworkflows/windows-add-path
-        gharun -C testworkflows/windows-add-path -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
-        gharun --event azpipelines -C testworkflows/azpipelines/windows-container-docs -W testworkflows/azpipelines/windows-container-docs
+        # Runner.Client -W testworkflows/artifact.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        Runner.Client -W testworkflows/cachewindowscontainer.yml -P windows-latest=mcr.microsoft.com/powershell:lts-windowsservercore-${{matrix.tag}}
+        Runner.Client -W testworkflows/test-setup-node.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        Runner.Client -C testworkflows/windows-container-test1
+        Runner.Client -C testworkflows/windows-container-test2
+        Runner.Client -C testworkflows/windows-container-test3-invalid-problem-matcher && exit 1 || [[ "$?" = "1" ]]
+        Runner.Client -C testworkflows/windows-add-path
+        Runner.Client -C testworkflows/windows-add-path -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/windows-container-docs -W testworkflows/azpipelines/windows-container-docs
     - name: Test Linux Container
       if: contains(matrix.os, 'ubuntu') && !job.container
       run: |
         set -x
-        gharun -W testworkflows/testlocalcheckout.yml -P self-hosted=ubuntu:latest
-        gharun -W testworkflows/artifact.yml -P self-hosted=ubuntu:latest
-        gharun -W testworkflows/cache.yml -P ubuntu-latest=ubuntu:latest
-        gharun -W testworkflows/test-setup-node.yml -P self-hosted=ubuntu:latest
-        gharun -C testworkflows/linux-container-problem-matcher-test1
-        gharun -C testworkflows/linux-container-i386
-        gharun --event azpipelines -C testworkflows/azpipelines/containermatrix -W testworkflows/azpipelines/containermatrix/pipeline.yml
-        gharun --event azpipelines -C testworkflows/azpipelines/container-docs -W testworkflows/azpipelines/container-docs
+        Runner.Client -W testworkflows/testlocalcheckout.yml -P self-hosted=ubuntu:latest
+        Runner.Client -W testworkflows/artifact.yml -P self-hosted=ubuntu:latest
+        Runner.Client -W testworkflows/cache.yml -P ubuntu-latest=ubuntu:latest
+        Runner.Client -W testworkflows/test-setup-node.yml -P self-hosted=ubuntu:latest
+        Runner.Client -C testworkflows/linux-container-problem-matcher-test1
+        Runner.Client -C testworkflows/linux-container-i386
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/containermatrix -W testworkflows/azpipelines/containermatrix/pipeline.yml
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/container-docs -W testworkflows/azpipelines/container-docs
       shell: bash
     - name: Test sqlite support
       if: contains(matrix.os, 'ubuntu') && !job.container
       run: |
-        mkdir gharun
-        cd gharun
-        unzip ../src/Runner.Client/nupkg/io.github.christopherhx.gharun.${{needs.package.outputs.version}}.nupkg
+        mkdir Runner.Client
+        cd Runner.Client
+        unzip ../src/Runner.Client/nupkg/Runner.Client.${{needs.package.outputs.version}}.nupkg
         chmod -R +rw tools/
         dotnet tools/net6.0/any/Runner.Server.dll --urls http://*:5000 "--ConnectionStrings:sqlite=Data Source=Agents.db;" &
         sleep 2
@@ -234,10 +239,10 @@ jobs:
         echo "Send job"
         cd ..
         set -x
-        gharun --server http://localhost:5000 -W testworkflows/testlocalcheckout.yml
-        gharun --server http://localhost:5000 -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
-        gharun --server http://localhost:5000 -W testworkflows/testhashfiles.yml
-        gharun --server http://localhost:5000 -W testworkflows/dumpcontexts.yml
-        gharun --server http://localhost:5000 -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
-        gharun --server http://localhost:5000 -W testworkflows/artifact.yml
+        Runner.Client --server http://localhost:5000 -W testworkflows/testlocalcheckout.yml
+        Runner.Client --server http://localhost:5000 -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
+        Runner.Client --server http://localhost:5000 -W testworkflows/testhashfiles.yml
+        Runner.Client --server http://localhost:5000 -W testworkflows/dumpcontexts.yml
+        Runner.Client --server http://localhost:5000 -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
+        Runner.Client --server http://localhost:5000 -W testworkflows/artifact.yml
       shell: bash

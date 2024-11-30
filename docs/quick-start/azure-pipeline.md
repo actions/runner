@@ -13,15 +13,15 @@ This introduction guide will install the tool globally so you can easily use the
 
 ### Install [ChristopherHX/runner.server](https://github.com/ChristopherHX/runner.server) as a dotnet tool
 
-`dotnet tool install --global io.github.christopherhx.gharun`
+`dotnet tool install --global Runner.Client`
 
 #### Updating the dotnet tool
 
-`dotnet tool update --global io.github.christopherhx.gharun`
+`dotnet tool update --global Runner.Client`
 
 ### Open a terminal or command prompt in a directory that contains a pipeline.yml file.
 
-`gharun --event azpipelines -W pipeline.yml`
+`Runner.Client --event azpipelines -W pipeline.yml`
 
 The output of your pipeline should output to your cli.
 
@@ -35,7 +35,7 @@ To keep the server alive and also watch you directory for live changes run:
 
 add `-w` or `--watch` to the command.
 
-`gharun --event azpipelines -W pipeline.yml --watch`
+`Runner.Client --event azpipelines -W pipeline.yml --watch`
 
 ### Multiple Workers/Parallel Jobs
 
@@ -45,7 +45,7 @@ To simulate multiple runners to use Jobs in parallel use this command.
 
 where N is the number of runners.
 
-`gharun --event azpipelines -W ./pipeline.yml --parallel 5`
+`Runner.Client --event azpipelines -W ./pipeline.yml --parallel 5`
 
 ### Using a specfic Azure Pipelines Agent Version
 
@@ -53,7 +53,7 @@ where N is the number of runners.
 
 where VERSION is the tagname of [microsoft/azure-pipelines-agent](https://github.com/microsoft/azure-pipelines-agent/releases) without the `v` prefix.
 
-`gharun --event azpipelines -W ./pipeline.yml --runner-version 3.217.1`
+`Runner.Client --event azpipelines -W ./pipeline.yml --runner-version 3.217.1`
 
 ### Known Issues
 

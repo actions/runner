@@ -2,10 +2,16 @@
   <PropertyGroup>
     <CHANGELOG_LINE Condition=" '$(CHANGELOG_URL)' != '' ">Changelog $(CHANGELOG_URL). </CHANGELOG_LINE>
   </PropertyGroup>
-  <PropertyGroup>
+  <PropertyGroup Condition=" '$(LegacyDotnetTool)' != '' ">
     <PackageId>io.github.christopherhx.gharun</PackageId>
-    <PackAsTool>true</PackAsTool>
     <ToolCommandName>gharun</ToolCommandName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(LegacyDotnetTool)' == '' ">
+    <PackageId>Runner.Client</PackageId>
+    <ToolCommandName>Runner.Client</ToolCommandName>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PackAsTool>true</PackAsTool>
     <PackageOutputPath>./nupkg</PackageOutputPath>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>

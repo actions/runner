@@ -19,8 +19,14 @@ This fork of [actions/runner](https://github.com/actions/runner) adds two execut
 - Clone your github actions repo
 - Run `Runner.Client`(`.exe`) (It is inside the bin folder of the package) inside your checkout
 
+## Dotnet Tool (Runner.Client)
+The current nuget package [can be found here](https://www.nuget.org/packages/Runner.Client)
+- Install the [dotnet sdk 6.0.0 or newer](https://dotnet.microsoft.com/en-us/download/dotnet)
+- Install `dotnet tool install --global Runner.Client`
+- Already Installed? Update `dotnet tool update --global Runner.Client`
+
 ### Dotnet Tool (gharun)
-The nuget package [can be found here](https://www.nuget.org/packages/io.github.christopherhx.gharun)
+The legacy nuget package [can be found here](https://www.nuget.org/packages/io.github.christopherhx.gharun)
 - Install the [dotnet sdk 6.0.0 or newer](https://dotnet.microsoft.com/en-us/download/dotnet)
   - dotnet sdk 6.0.100 and 6.0.x are known to work and tested via CI
 - `dotnet tool install --global io.github.christopherhx.gharun`
@@ -158,11 +164,11 @@ dotnet pack src/Runner.Client -c Release -p:BUILD_OS=Any -p:RuntimeFrameworkVers
 ```
 #### To install the package
 ```
-dotnet tool install -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg
+dotnet tool install -g Runner.Client --add-source src/Runner.Client/nupkg
 ```
 #### To run the package
 ```
-gharun
+Runner.Client
 ```
 
 ## Advanced Usage
@@ -578,7 +584,8 @@ act -W cache.yml --env ACTIONS_CACHE_URL=http://host.docker.internal:4555/
 dotnet build ./src/Runner.Server/ /p:EFMigration=ON
 dotnet ef migrations add --project ./src/Runner.Server/ --no-build PersistentJobs
 dotnet pack src/Runner.Client -c Release -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 -p:Version=3.4.0.3
-dotnet tool update -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg
+dotnet tool install -g Runner.Client --add-source src/Runner.Client/nupkg
+dotnet tool update -g Runner.Client --add-source src/Runner.Client/nupkg
 ```
 
 ## Notes
