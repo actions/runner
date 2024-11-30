@@ -2105,7 +2105,7 @@ namespace Runner.Client
                                         
                                     }
                                     if(parameters.Json) {
-                                        Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobId = rec.TimeLine[0].RefName, level = "info", matrix = new {}, jobResult = ActionResultStatusConverter.FromPipelines(ev.Result).ToString().ToLower(), msg = $"Job Completed with Status: {ev.Result.ToString()}", time = System.DateTime.Now }));
+                                        Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobID = rec.TimeLine[0].RefName, level = "info", matrix = new {}, jobResult = ActionResultStatusConverter.FromPipelines(ev.Result).ToString().ToLower(), msg = $"Job Completed with Status: {ev.Result.ToString()}", time = System.DateTime.Now }));
                                     } else {
                                         WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Job Completed with Status: {ev.Result.ToString()}");
                                     }
@@ -2148,7 +2148,7 @@ namespace Runner.Client
                                                             continue;
                                                         }
                                                         if(parameters.Json) {
-                                                            Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobId = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), stepResult = ActionResultStatusConverter.FromPipelines(record.Result.Value).ToString().ToLower(), msg = $"{record.Result.Value.ToString()}: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == e.record.StepId)?.Name, stepId = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
+                                                            Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobID = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), stepResult = ActionResultStatusConverter.FromPipelines(record.Result.Value).ToString().ToLower(), msg = $"{record.Result.Value.ToString()}: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == e.record.StepId)?.Name, stepID = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
                                                         } else {
                                                             WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"{record.Result.Value.ToString()}: {record.Name}");
                                                         }
@@ -2167,7 +2167,7 @@ namespace Runner.Client
                                                             
                                                         }
                                                         if(parameters.Json) {
-                                                            Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobId = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), msg = $"Running: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == e.record.StepId)?.Name, stepId = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
+                                                            Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobID = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), msg = $"Running: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == e.record.StepId)?.Name, stepID = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
                                                         } else {
                                                             WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null && rec.TimeLine[0].RecordType != "workflow" ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Running: {record.Name}");
                                                         }
@@ -2175,7 +2175,7 @@ namespace Runner.Client
                                                 }
                                                 foreach (var webconsoleline in e.record.Value) {
                                                     if(parameters.Json) {
-                                                        Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobId = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), msg = webconsoleline, stage = "Main", step = rec.TimeLine.Find(r => r.Id == e.record.StepId)?.Name, stepId = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
+                                                        Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobID = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), msg = webconsoleline, stage = "Main", step = rec.TimeLine.Find(r => r.Id == e.record.StepId)?.Name, stepID = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
                                                     } else {
                                                         WriteLogLine((int)rec.Color, webconsoleline);
                                                     }
@@ -2199,7 +2199,7 @@ namespace Runner.Client
                                                             }
                                                             var rec = timelineRecords[e.timelineId];
                                                             if(parameters.Json) {
-                                                                Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobId = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), stepResult = ActionResultStatusConverter.FromPipelines(record.Result.Value).ToString().ToLower(), msg = $"{record.Result.Value.ToString()}: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == e2.record.StepId)?.Name, stepId = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
+                                                                Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobID = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), stepResult = ActionResultStatusConverter.FromPipelines(record.Result.Value).ToString().ToLower(), msg = $"{record.Result.Value.ToString()}: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == e2.record.StepId)?.Name, stepID = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
                                                             } else {
                                                                 WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"{record.Result.Value.ToString()}: {record.Name}");
                                                             }
@@ -2218,7 +2218,7 @@ namespace Runner.Client
                                                                 
                                                             }
                                                             if(parameters.Json) {
-                                                                Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobId = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), msg = $"Running: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == e2.record.StepId)?.Name, stepId = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
+                                                                Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobID = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), msg = $"Running: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == e2.record.StepId)?.Name, stepID = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
                                                             } else {
                                                                 WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Running: {record.Name}");
                                                             }
@@ -2227,7 +2227,7 @@ namespace Runner.Client
                                                     foreach (var webconsoleline in e2.record.Value) {
                                                         if(parameters.Json) {
                                                             var rec = timelineRecords[e.timelineId];
-                                                            Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobId = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), msg = webconsoleline, stage = "Main", step = rec.TimeLine.Find(r => r.Id == e2.record.StepId)?.Name, stepId = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
+                                                            Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobID = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), msg = webconsoleline, stage = "Main", step = rec.TimeLine.Find(r => r.Id == e2.record.StepId)?.Name, stepID = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
                                                         } else {
                                                             WriteLogLine((int)timelineRecords[e.timelineId].Color, webconsoleline);
                                                         }
@@ -2240,7 +2240,7 @@ namespace Runner.Client
                                                         var rec = timelineRecords[e.timelineId];
                                                         rec.RecordId = Guid.Empty;
                                                         if(parameters.Json) {
-                                                            Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobId = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), stepResult = ActionResultStatusConverter.FromPipelines(record.Result.Value).ToString().ToLower(), msg = $"{record.Result.Value.ToString()}: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == rec.RecordId)?.Name, stepId = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
+                                                            Console.WriteLine(JsonConvert.SerializeObject(new { dryrun = false, workflowName = rec.WorkflowName, job = rec.TimeLine[0].Name, jobID = rec.TimeLine[0].RefName, level = "info", matrix = JArray.Parse(jobs.FirstOrDefault(j => j.JobId == rec.TimeLine[0].Id)?.Matrix ?? "[{}]").LastOrDefault() ?? new JObject(), stepResult = ActionResultStatusConverter.FromPipelines(record.Result.Value).ToString().ToLower(), msg = $"{record.Result.Value.ToString()}: {record.Name}", stage = "Main", step = rec.TimeLine.Find(r => r.Id == rec.RecordId)?.Name, stepID = new [] { rec.RecordId.ToString() }, time = System.DateTime.Now }));
                                                         } else {
                                                             WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"{record.Result.Value.ToString()}: {record.Name}");
                                                         }
