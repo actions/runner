@@ -50,7 +50,10 @@ public class AutoCompleter : ICompletionHandler
 
     public async Task<CompletionList> Handle(CompletionParams request, CancellationToken cancellationToken)
     {
-        var content = data.Content[request.TextDocument.Uri];
+        string content;
+        if(!data.Content.TryGetValue(request.TextDocument.Uri, out content)) {
+            return new CompletionList();
+        }
         var currentFileName = "t.yml";
         var files = new Dictionary<string, string>() { { currentFileName, content } };
 

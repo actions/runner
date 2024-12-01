@@ -65,7 +65,6 @@ _ = Task.Run(async () => {
             }
         }
         Interop.Output.Reader.AdvanceTo(result.Buffer.End);
-        // await Interop.SendOutputMessageAsync(result.Buffer.ToArray());
     }
 }).ConfigureAwait(false);
 #endif
@@ -90,7 +89,9 @@ var server = await LanguageServer.From(
            .WithHandler<WorkspaceFolderListener>()
            .WithHandler<HoverProvider>()
            .WithHandler<SemanticTokenHandler>()
+#if !WASM
            .WithHandler<CodeLensProvider>()
+#endif
             .WithServices(x => x.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace)))
             .WithServices(
                 services =>

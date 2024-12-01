@@ -1,4 +1,4 @@
-import { commands, window, ExtensionContext, Uri, ViewColumn, env, workspace, languages, TreeItem, TextEditor, WebviewPanel } from 'vscode';
+import { commands, window, ExtensionContext, Uri, ViewColumn, env, workspace, languages, TreeItem, TextEditor, WebviewPanel, QuickPickItem } from 'vscode';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node';
 import { join } from 'path';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
@@ -232,6 +232,19 @@ function activate(context : ExtensionContext) {
 			});
 		});
 		commands.registerCommand("runner.server.runjob", async (workflow, job, events) => {
+			if(typeof job === 'object') {
+				var jobs : QuickPickItem[] = [];
+				for(var j of job) {
+					jobs.push({
+						label: j.name,
+						detail: j.jobIdLong
+					});
+				}
+				job = (await window.showQuickPick(jobs, { canPickMany: false, title: "Select matrix job entry" }))?.detail;
+				if(!job) {
+					throw new Error("No job selected");
+				}
+			}
 			console.log(`runner.server.runjob {workflow}.{job}`)
 			var sel : string = events.length === 1 ? events : await window.showQuickPick(events, { canPickMany: false })
 			var args = [ join(context.extensionPath, 'native', 'Runner.Client.dll'), '--event', sel || 'push', '-W', Uri.parse(workflow).fsPath, '-j', job ];

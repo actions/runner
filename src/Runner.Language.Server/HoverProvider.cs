@@ -48,7 +48,10 @@ public class HoverProvider : IHoverHandler
 
     public async Task<Hover?> Handle(HoverParams request, CancellationToken cancellationToken)
     {
-        var content = data.Content[request.TextDocument.Uri];
+        string content;
+        if(!data.Content.TryGetValue(request.TextDocument.Uri, out content)) {
+            return null;
+        }
         var currentFileName = "t.yml";
         var files = new Dictionary<string, string>() { { currentFileName, content } };
 

@@ -9,6 +9,7 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
@@ -29,7 +30,7 @@ public class CodeLensProvider : ICodeLensHandler
     public CodeLensRegistrationOptions GetRegistrationOptions(CodeLensCapability capability, ClientCapabilities clientCapabilities)
     {
         return new CodeLensRegistrationOptions { 
-            DocumentSelector = new TextDocumentSelector(new TextDocumentFilter() { Language = "yaml" }, new TextDocumentFilter() { Language = "azure-pipelines" }),
+            DocumentSelector = new TextDocumentSelector(new TextDocumentFilter() { Language = "yaml", Pattern = "**/.github/workflows/*.{yml,yaml}" }),
         };
     }
 
@@ -167,7 +168,10 @@ public class CodeLensProvider : ICodeLensHandler
 
     public async Task<CodeLensContainer?> Handle(CodeLensParams request, CancellationToken cancellationToken)
     {
-        var content = data.Content[request.TextDocument.Uri];
+        string content;
+        if(!data.Content.TryGetValue(request.TextDocument.Uri, out content)) {
+            return null;
+        }
         var currentFileName = "t.yml";
         var files = new Dictionary<string, string>() { { currentFileName, content } };
             
@@ -354,15 +358,25 @@ public class CodeLensProvider : ICodeLensHandler
                     }
 
                     if(rawstrategy != null) {
+                        JArray allMatrices = new JArray();
                         Action<string, Dictionary<string, TemplateToken>> addAction = (suffix, item) => {
-                            var json = JsonConvert.SerializeObject(item.ToDictionary(kv => kv.Key, kv => kv.Value.ToContextData().ToJToken()));
-                            
-                            codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = $"{jobs[i].Key}{suffix}", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), $"{jobs[i].Key}({json})", new Newtonsoft.Json.Linq.JArray(events.ToArray())) },
-                                Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
-                                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1),
-                                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1)
-                                )
-                            });
+                            var matrixEntries = item.ToDictionary(kv => kv.Key, kv => kv.Value.ToContextData().ToJToken());
+                            var json = JsonConvert.SerializeObject(matrixEntries);
+
+                            if(allMatrices.Count < 2) {
+                                codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = $"{jobs[i].Key}{suffix}", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), $"{jobs[i].Key}({json})", new Newtonsoft.Json.Linq.JArray(events.ToArray())) },
+                                    Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                                        new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1),
+                                        new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1)
+                                    )
+                                });
+                            }
+                            var entry = new JObject();
+                            entry["name"] = $"{jobs[i].Key}{suffix}";
+                            entry["jobId"] = $"{jobs[i].Key}";
+                            entry["jobIdLong"] = $"{jobs[i].Key}({json})";
+                            entry["matrix"] = JsonConvert.DeserializeObject<JObject>(json);
+                            allMatrices.Add(entry);
                         };
 
                         if(keys.Count != 0 || includematrix.Count == 0) {
@@ -372,6 +386,15 @@ public class CodeLensProvider : ICodeLensHandler
                         }
                         foreach (var item in includematrix) {
                             addAction(GetDefaultDisplaySuffix(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                        }
+
+                        if(allMatrices.Count >= 2) {
+                            codeLens.Add(new CodeLens { Command = new Command { Name = "runner.server.runjob", Title = "More", Arguments = new Newtonsoft.Json.Linq.JArray(request.TextDocument.Uri.ToString(), allMatrices, new Newtonsoft.Json.Linq.JArray(events.ToArray())) },
+                                Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(
+                                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1),
+                                    new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(rawstrategy.Line.Value - 1, rawstrategy.Column.Value - 1)
+                                )
+                            });
                         }
                     }
                 }

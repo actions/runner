@@ -14,6 +14,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
+using YamlDotNet.RepresentationModel;
 
 using Runner.Server.Azure.Devops;
 
@@ -31,17 +32,103 @@ public partial class TextDocumentSyncHelper : TextDocumentSyncHandlerBase
         return new TextDocumentAttributes(uri, "yaml");
     }
 
+    private async Task<bool> ShouldHandle(TextDocumentIdentifier doc, string content, string? langID) {
+        var known = langID == "azure-pipelines" || doc.Uri.Path.Contains("/.github/workflows/") || doc.Uri.Path.EndsWith("/action.yml") || doc.Uri.Path.EndsWith("/azure-pipeline.yml");
+        
+        if(known) {
+            return true;
+        }
+        try {
+            var input = new StringReader(content);
+            var yamlStream = new YamlStream();
+            yamlStream.Load(input);
+            var rootNode = (YamlMappingNode)yamlStream.Documents[0].RootNode; 
+            var isPipeline = CheckIsPipeline(rootNode);
+            return isPipeline != null;
+        } catch {
+
+        }
+        
+        return false;
+
+        static bool CheckAllIsIn(YamlMappingNode obj, string[] allowed)
+        {
+            foreach (var k in obj.Children.Keys)
+            {
+                if (!allowed.Contains(k.ToString()))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        static YamlMappingNode CheckIsPipeline(YamlMappingNode obj)
+        {
+            try
+            {
+                var hasPipelineProperties = 
+                    (obj.Children.ContainsKey("trigger") || obj.Children.ContainsKey("pr") ||
+                    (obj.Children.ContainsKey("resources") && 
+                    (obj["resources"] is YamlMappingNode resources &&
+                    (resources.Children.ContainsKey("builds") ||
+                        resources.Children.ContainsKey("containers") ||
+                        resources.Children.ContainsKey("pipelines") ||
+                        resources.Children.ContainsKey("repositories") ||
+                        resources.Children.ContainsKey("webhooks") ||
+                        resources.Children.ContainsKey("packages")))) ||
+                    obj.Children.ContainsKey("schedules") ||
+                    obj.Children.ContainsKey("lockBehavior") ||
+                    obj.Children.ContainsKey("variables") ||
+                    obj.Children.ContainsKey("parameters")) &&
+                    (obj.Children.ContainsKey("stages") ||
+                    obj.Children.ContainsKey("jobs") ||
+                    obj.Children.ContainsKey("steps"))
+                    || obj.Children.ContainsKey("extends") && obj["extends"] is YamlMappingNode extends && extends.Children.ContainsKey("template")
+                    || obj.Children.ContainsKey("steps") && ((YamlSequenceNode)obj["steps"]).Children.Any(x => x is YamlMappingNode step && 
+                    (step.Children.ContainsKey("task") || step.Children.ContainsKey("script") ||
+                        step.Children.ContainsKey("bash") || step.Children.ContainsKey("pwsh") ||
+                        step.Children.ContainsKey("powershell") || step.Children.ContainsKey("template")))
+                    || obj.Children.ContainsKey("jobs") && ((YamlSequenceNode)obj["jobs"]).Children.Any(x => x is YamlMappingNode job && 
+                    (job.Children.ContainsKey("job") || job.Children.ContainsKey("deployment") ||
+                        job.Children.ContainsKey("template")))
+                    || obj.Children.ContainsKey("stages") && ((YamlSequenceNode)obj["stages"]).Children.Any(x => x is YamlMappingNode stage && 
+                    (stage.Children.ContainsKey("stage") || stage.Children.ContainsKey("template")))
+                    || obj.Children.ContainsKey("variables") && ((YamlSequenceNode)obj["variables"]).Children.Any(x => x is YamlMappingNode variable &&
+                    (variable.Children.ContainsKey("name") && variable.Children.ContainsKey("value") ||
+                        variable.Children.ContainsKey("group") || variable.Children.ContainsKey("template")))
+                    || obj.Children.ContainsKey("variables") && CheckAllIsIn(obj, new[] { "parameters", "variables" });
+
+                return hasPipelineProperties ? obj : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    } 
+
     public override async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
     {
-        this.data.Content[request.TextDocument.Uri] = request.TextDocument.Text;
-        await ValidateSyntaxAsync(request.TextDocument.Uri);
+        if(await ShouldHandle(request.TextDocument, request.TextDocument.Text, request.TextDocument.LanguageId)) {
+            this.data.Content[request.TextDocument.Uri] = request.TextDocument.Text;
+            await ValidateSyntaxAsync(request.TextDocument.Uri);
+        } else {
+            this.data.Content.Remove(request.TextDocument.Uri);
+            SendDiagnostics(request.TextDocument.Uri, new List<string>());
+        }
         return Unit.Value;
     }
 
     public override async Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
     {
-        this.data.Content[request.TextDocument.Uri] = request.ContentChanges.FirstOrDefault()?.Text ?? "";
-        await ValidateSyntaxAsync(request.TextDocument.Uri);
+        if(await ShouldHandle(request.TextDocument, request.ContentChanges.FirstOrDefault()?.Text, null)) {
+            this.data.Content[request.TextDocument.Uri] = request.ContentChanges.FirstOrDefault()?.Text ?? "";
+            await ValidateSyntaxAsync(request.TextDocument.Uri);
+        } else {
+            this.data.Content.Remove(request.TextDocument.Uri);
+            SendDiagnostics(request.TextDocument.Uri, new List<string>());
+        }
         return Unit.Value;
     }
 
