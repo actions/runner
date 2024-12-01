@@ -1458,13 +1458,13 @@ namespace Runner.Client
                                 parameters.List = false;
                                 parameters.Job = null;
                                 parameters.Matrix = null;
-                                Console.Write("gharun> ");
+                                Console.Write(">");
                                 try {
                                     command = await Task.Run(() => Console.In.ReadLineAsync()).WithCancellation(source.Token);
                                 } catch {
                                     command = "";
                                 }
-                                var interactiveCommand = new Command("gharun>");
+                                var interactiveCommand = new Command(">");
                                 var runCommand = new Command("run", "Create a new run, this is the default action of this tool");
                                 runCommand.Add(jobOpt);
                                 runCommand.Add(matrixOpt);
