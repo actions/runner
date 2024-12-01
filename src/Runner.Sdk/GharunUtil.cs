@@ -8,7 +8,7 @@ namespace GitHub.Runner.Sdk {
             return localStorage != "" && !localStorage.Contains(' ') && !localStorage.Contains('"') && !localStorage.Contains('\'');
         }
 
-        public static string GetLocalStorage() {
+        private static string GetLocalStorageLocation(string name) {
             var localStorage = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if(!IsUsableLocalStorage(localStorage)) {
                 localStorage = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -25,7 +25,20 @@ namespace GitHub.Runner.Sdk {
             if(!IsUsableLocalStorage(localStorage)) {
                 localStorage = Path.GetTempPath();
             }
-            return Path.GetFullPath(Path.Join(localStorage, "gharun"));
+            return Path.GetFullPath(Path.Join(localStorage, name));
+        }
+
+        public static string GetLocalStorage() {
+            string current = GetLocalStorageLocation("runner.server");
+            if(Directory.Exists(current)) {
+                return current;
+            }
+            string legacy = GetLocalStorageLocation("gharun");
+            if(Directory.Exists(legacy)) {
+                return legacy;
+            }
+            Directory.CreateDirectory(current);
+            return current;
         }
 
         public static string GetHostOS() {
