@@ -595,7 +595,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             DefinitionInfo definitionInfo)
         {
             AutoCompleteEntry completion = null;
-            if(token is LiteralToken lit && lit.RawData != null) {
+            if(token is LiteralToken lit && (lit.PreWhiteSpace != null || lit.PostWhiteSpace != null || lit.RawData != null)) {
                 completion = new AutoCompleteEntry {
                     Depth = m_memory.Depth,
                     Token = token,
@@ -608,50 +608,52 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 } else {
                     completion.SemTokensOnly = true;
                 }
-                var rand = new Random();
-                string C = "CX";
-                while(lit.RawData.Contains(C)) {
-                    C = rand.Next(255).ToString("X2");
-                }
-                var praw = lit.ToString();
-                (int, int)[] mapping = new (int, int)[praw.Length + 1];
-                var rmapping = new Dictionary<(int, int), int>();
-                Array.Fill(mapping, (-1, -1));
-
-                int column = lit.Column.Value;
-                int line = lit.Line.Value;
-                int ridx = -1;
-                for(int idx = 0; idx < lit.RawData.Length; idx++) {
-                    if(lit.RawData[idx] == '\n') {
-                        line++;
-                        column = 1;
-                        continue;
+                if(lit.RawData != null) {
+                    var rand = new Random();
+                    string C = "CX";
+                    while(lit.RawData.Contains(C)) {
+                        C = rand.Next(255).ToString("X2");
                     }
-                    var xraw = lit.RawData.Insert(idx, C);
+                    var praw = lit.ToString();
+                    (int, int)[] mapping = new (int, int)[praw.Length + 1];
+                    var rmapping = new Dictionary<(int, int), int>();
+                    Array.Fill(mapping, (-1, -1));
 
-                    var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
-                    try {
-                        while(scanner.MoveNext() && !(scanner.Current is YamlDotNet.Core.Tokens.Error)) {
-                            if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
-                                var x = s.Value;
-                                var m = x.IndexOf(C);
-                                if(m >= 0 && m < mapping.Length && ridx <= m) {
-                                    if(mapping[m] != (-1,-1)) {
-                                        rmapping.Remove(mapping[m]);
+                    int column = lit.Column.Value;
+                    int line = lit.Line.Value;
+                    int ridx = -1;
+                    for(int idx = 0; idx < lit.RawData.Length; idx++) {
+                        if(lit.RawData[idx] == '\n') {
+                            line++;
+                            column = 1;
+                            continue;
+                        }
+                        var xraw = lit.RawData.Insert(idx, C);
+
+                        var scanner = new YamlDotNet.Core.Scanner(new StringReader(xraw), true);
+                        try {
+                            while(scanner.MoveNext() && !(scanner.Current is YamlDotNet.Core.Tokens.Error)) {
+                                if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
+                                    var x = s.Value;
+                                    var m = x.IndexOf(C);
+                                    if(m >= 0 && m < mapping.Length && ridx <= m) {
+                                        if(mapping[m] != (-1,-1)) {
+                                            rmapping.Remove(mapping[m]);
+                                        }
+                                        mapping[m] = (line, column);
+                                        rmapping[(line, column)] = m;
+                                        ridx = m;
                                     }
-                                    mapping[m] = (line, column);
-                                    rmapping[(line, column)] = m;
-                                    ridx = m;
                                 }
                             }
-                        }
-                    } catch {
+                        } catch {
 
+                        }
+                        column++;
                     }
-                    column++;
+                    completion.Mapping = mapping;
+                    completion.RMapping = rmapping;
                 }
-                completion.Mapping = mapping;
-                completion.RMapping = rmapping;
             }
             var allowedContext = definitionInfo.AllowedContext;
             var isExpression = definitionInfo.Definition is StringDefinition sdef && sdef.IsExpression;

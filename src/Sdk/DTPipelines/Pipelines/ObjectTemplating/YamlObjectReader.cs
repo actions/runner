@@ -122,7 +122,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     {
                         value = CreateStringToken(scalar);
                     }
-                    if(!string.IsNullOrEmpty(m_rawInput) && value.Type != TokenType.String) {
+                    if(!string.IsNullOrEmpty(m_rawInput)) {
                         FillPreWhitespace(scalar, value);
                         FillPostWhitespace(scalar, value);
                     }
@@ -164,6 +164,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         private void FillPreWhitespace(NodeEvent scalar, TemplateToken tkn)
         {
+            if(tkn.PreWhiteSpace != null) {
+                return;
+            }
             var lines = 0;
             var column = 0;
             int i = scalar.Start.Index - 1;
@@ -195,6 +198,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         private void FillPostWhitespace(ParsingEvent scalar, TemplateToken tkn)
         {
+            if(tkn.PostWhiteSpace != null) {
+                return;
+            }
             var lines = 0;
             var column = 0;
             int i = scalar.End.Index;
