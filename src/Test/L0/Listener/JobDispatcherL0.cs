@@ -49,7 +49,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatchesJobRequest()
+        public async Task DispatchesJobRequest()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatcherRenewJobRequest()
+        public async Task DispatcherRenewJobRequest()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -157,7 +157,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatcherRenewJobRequestStopOnJobNotFoundExceptions()
+        public async Task DispatcherRenewJobRequestStopOnJobNotFoundExceptions()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -216,7 +216,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatcherRenewJobOnRunServiceStopOnJobNotFoundExceptions()
+        public async Task DispatcherRenewJobOnRunServiceStopOnJobNotFoundExceptions()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -285,7 +285,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions()
+        public async Task DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -344,7 +344,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void RenewJobRequestNewAgentNameUpdatesSettings()
+        public async Task RenewJobRequestNewAgentNameUpdatesSettings()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -401,7 +401,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void RenewJobRequestSameAgentNameIgnored()
+        public async Task RenewJobRequestSameAgentNameIgnored()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -456,7 +456,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void RenewJobRequestNullAgentNameIgnored()
+        public async Task RenewJobRequestNullAgentNameIgnored()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -509,7 +509,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatcherRenewJobRequestRecoverFromExceptions()
+        public async Task DispatcherRenewJobRequestRecoverFromExceptions()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -570,7 +570,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatcherRenewJobRequestFirstRenewRetrySixTimes()
+        public async Task DispatcherRenewJobRequestFirstRenewRetrySixTimes()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -625,7 +625,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatcherRenewJobRequestStopOnExpiredRequest()
+        public async Task DispatcherRenewJobRequestStopOnExpiredRequest()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -691,7 +691,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatchesOneTimeJobRequest()
+        public async Task DispatchesOneTimeJobRequest()
         {
             //Arrange
             using (var hc = new TestHostContext(this))
