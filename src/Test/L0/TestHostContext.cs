@@ -370,6 +370,11 @@ namespace GitHub.Runner.Common.Tests
                 Unloading(this, null);
             }
         }
+
+        public void LoadDefaultUserAgents()
+        {
+            return;
+        }
     }
 
     public class DelayEventArgs : EventArgs

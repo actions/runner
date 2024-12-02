@@ -11,9 +11,10 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Sdk;
-using GitHub.Services.Common;
 using GitHub.Runner.Common.Util;
+using GitHub.Services.Common;
 using GitHub.Services.OAuth;
+using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Listener
 {
@@ -69,7 +70,8 @@ namespace GitHub.Runner.Listener
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
             };
-            string sessionName = $"{Environment.MachineName ?? "RUNNER"}";
+            var currentProcess = Process.GetCurrentProcess();
+            string sessionName = $"{Environment.MachineName ?? "RUNNER"} (PID: {currentProcess.Id})";
             var taskAgentSession = new TaskAgentSession(sessionName, agent);
 
             string errorMessage = string.Empty;
@@ -240,6 +242,10 @@ namespace GitHub.Runner.Listener
                 {
                     throw;
                 }
+                catch (RunnerNotFoundException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     Trace.Error("Catch exception during get next message.");
@@ -323,6 +329,7 @@ namespace GitHub.Runner.Listener
                 ex is TaskAgentPoolNotFoundException ||
                 ex is TaskAgentSessionExpiredException ||
                 ex is AccessDeniedException ||
+                ex is RunnerNotFoundException ||
                 ex is VssUnauthorizedException)
             {
                 Trace.Info($"Non-retriable exception: {ex.Message}");

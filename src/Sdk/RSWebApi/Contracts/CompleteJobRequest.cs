@@ -27,6 +27,9 @@ namespace GitHub.Actions.RunService.WebApi
         [DataMember(Name = "annotations", EmitDefaultValue = false)]
         public IList<Annotation> Annotations { get; set; }
 
+        [DataMember(Name = "telemetry", EmitDefaultValue = false)]
+        public IList<Telemetry> Telemetry { get; set; }
+
         [DataMember(Name = "environmentUrl", EmitDefaultValue = false)]
         public string EnvironmentUrl { get; set; }
     }

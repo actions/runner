@@ -88,7 +88,8 @@ namespace GitHub.Runner.Listener
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
             };
-            string sessionName = $"{Environment.MachineName ?? "RUNNER"}";
+            var currentProcess = Process.GetCurrentProcess();
+            string sessionName = $"{Environment.MachineName ?? "RUNNER"} (PID: {currentProcess.Id})";
             var taskAgentSession = new TaskAgentSession(sessionName, agent);
 
             string errorMessage = string.Empty;
@@ -263,8 +264,6 @@ namespace GitHub.Runner.Listener
 
                     if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                     {
-                        Trace.Info("BrokerMigration message received. Polling Broker for messages...");
-
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
 
                         await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _creds);
@@ -306,6 +305,10 @@ namespace GitHub.Runner.Listener
                     throw;
                 }
                 catch (AccessDeniedException e) when (e.ErrorCode == 1)
+                {
+                    throw;
+                }
+                catch (RunnerNotFoundException)
                 {
                     throw;
                 }
@@ -458,6 +461,7 @@ namespace GitHub.Runner.Listener
                 ex is TaskAgentPoolNotFoundException ||
                 ex is TaskAgentSessionExpiredException ||
                 ex is AccessDeniedException ||
+                ex is RunnerNotFoundException ||
                 ex is VssUnauthorizedException)
             {
                 Trace.Info($"Non-retriable exception: {ex.Message}");
