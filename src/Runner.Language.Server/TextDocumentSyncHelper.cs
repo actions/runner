@@ -32,8 +32,9 @@ public partial class TextDocumentSyncHelper : TextDocumentSyncHandlerBase
         return new TextDocumentAttributes(uri, "yaml");
     }
 
-    private async Task<bool> ShouldHandle(TextDocumentIdentifier doc, string content, string? langID) {
-        var known = langID == "azure-pipelines" || doc.Uri.Path.Contains("/.github/workflows/") || doc.Uri.Path.EndsWith("/action.yml") || doc.Uri.Path.EndsWith("/azure-pipeline.yml");
+    private bool ShouldHandle(TextDocumentIdentifier doc, string content, string? langID, out string schema) {
+        schema = null;
+        var known = langID == "azure-pipelines" || doc.Uri.Path.Contains("/.github/workflows/") || doc.Uri.Path.EndsWith("/action.yml") || doc.Uri.Path.EndsWith("/action.yaml") || doc.Uri.Path.EndsWith("/azure-pipeline.yml") || doc.Uri.Path.EndsWith("/azure-pipeline.yaml");
         
         if(known) {
             return true;
@@ -44,6 +45,9 @@ public partial class TextDocumentSyncHelper : TextDocumentSyncHandlerBase
             yamlStream.Load(input);
             var rootNode = (YamlMappingNode)yamlStream.Documents[0].RootNode; 
             var isPipeline = CheckIsPipeline(rootNode);
+            if(isPipeline != null) {
+                schema = ExtractSchema(rootNode);
+            }
             return isPipeline != null;
         } catch {
 
@@ -106,14 +110,52 @@ public partial class TextDocumentSyncHelper : TextDocumentSyncHandlerBase
                 return null;
             }
         }
-    } 
+
+        static string ExtractSchema(YamlMappingNode obj)
+        {
+            var variables = obj.Children.ContainsKey(new YamlScalarNode("variables")) ? obj.Children[new YamlScalarNode("variables")] : null;
+            var stages = obj.Children.ContainsKey(new YamlScalarNode("stages")) ? obj.Children[new YamlScalarNode("stages")] as YamlSequenceNode : null;
+            var jobs = obj.Children.ContainsKey(new YamlScalarNode("jobs")) ? obj.Children[new YamlScalarNode("jobs")] as YamlSequenceNode : null;
+            var steps = obj.Children.ContainsKey(new YamlScalarNode("steps")) ? obj.Children[new YamlScalarNode("steps")] as YamlSequenceNode : null;
+            bool isTypedTemplate = false;
+            var parameters = obj.Children.ContainsKey(new YamlScalarNode("parameters")) ? obj.Children[new YamlScalarNode("parameters")] : null;
+            bool mustBeTemplate = parameters != null && (!(isTypedTemplate = parameters is YamlSequenceNode) || ((YamlSequenceNode)parameters).Children.Any(x => x is YamlMappingNode param && param.Children.ContainsKey(new YamlScalarNode("type")) && param.Children[new YamlScalarNode("type")].ToString() == "legacyObject"));
+            string schema = null;
+
+            if (mustBeTemplate && isTypedTemplate && obj.Children.ContainsKey(new YamlScalarNode("extends")))
+            {
+                schema = "extend-template-root";
+            }
+            else if (mustBeTemplate && variables == null && stages != null && jobs == null && steps == null)
+            {
+                schema = "stage-template-root";
+            }
+            else if (mustBeTemplate && variables == null && stages == null && jobs != null && steps == null)
+            {
+                schema = "job-template-root";
+            }
+            else if (mustBeTemplate && variables == null && stages == null && jobs == null && steps != null)
+            {
+                schema = "step-template-root";
+            }
+            else if ((mustBeTemplate || !obj.Children.ContainsKey(new YamlScalarNode("extends"))) && variables != null && stages == null && jobs == null && steps == null)
+            {
+                schema = "variable-template-root";
+            }
+
+            return schema;
+        }
+    }
 
     public override async Task<Unit> Handle(DidOpenTextDocumentParams request, CancellationToken cancellationToken)
     {
-        if(await ShouldHandle(request.TextDocument, request.TextDocument.Text, request.TextDocument.LanguageId)) {
+        if(ShouldHandle(request.TextDocument, request.TextDocument.Text, request.TextDocument.LanguageId, out var schema)) {
+            this.data.Types[request.TextDocument.Uri] = request.TextDocument.LanguageId;
+            this.data.Schema[request.TextDocument.Uri] = schema;
             this.data.Content[request.TextDocument.Uri] = request.TextDocument.Text;
-            await ValidateSyntaxAsync(request.TextDocument.Uri);
+            await ValidateSyntaxAsync(request.TextDocument.Uri, schema);
         } else {
+            this.data.Types[request.TextDocument.Uri] = request.TextDocument.LanguageId;
             this.data.Content.Remove(request.TextDocument.Uri);
             SendDiagnostics(request.TextDocument.Uri, new List<string>());
         }
@@ -122,9 +164,10 @@ public partial class TextDocumentSyncHelper : TextDocumentSyncHandlerBase
 
     public override async Task<Unit> Handle(DidChangeTextDocumentParams request, CancellationToken cancellationToken)
     {
-        if(await ShouldHandle(request.TextDocument, request.ContentChanges.FirstOrDefault()?.Text, null)) {
+        if(ShouldHandle(request.TextDocument, request.ContentChanges.FirstOrDefault()?.Text, null, out var schema)) {
+            this.data.Schema[request.TextDocument.Uri] = schema;
             this.data.Content[request.TextDocument.Uri] = request.ContentChanges.FirstOrDefault()?.Text ?? "";
-            await ValidateSyntaxAsync(request.TextDocument.Uri);
+            await ValidateSyntaxAsync(request.TextDocument.Uri, schema);
         } else {
             this.data.Content.Remove(request.TextDocument.Uri);
             SendDiagnostics(request.TextDocument.Uri, new List<string>());
@@ -149,7 +192,7 @@ public partial class TextDocumentSyncHelper : TextDocumentSyncHandlerBase
         return templateContext;
     }
 
-    private async Task ValidateSyntaxAsync(DocumentUri uri)
+    private async Task ValidateSyntaxAsync(DocumentUri uri, string? schema)
     {
         var content = this.data.Content[uri];
         var currentFileName = "t.yml";
@@ -180,7 +223,7 @@ public partial class TextDocumentSyncHelper : TextDocumentSyncHandlerBase
 
                 templateContext.Errors.Check();
             } else {
-                var template = await AzureDevops.ParseTemplate(context, currentFileName, null, true);
+                var template = await AzureDevops.ParseTemplate(context, currentFileName, schema, true);
                 _ = template;
             }
             SendDiagnostics(uri, new List<string>());

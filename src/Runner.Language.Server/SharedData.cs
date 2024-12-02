@@ -7,5 +7,9 @@ public class SharedData
 
     public Dictionary<DocumentUri, string> Content { get; } = [];
 
+    public Dictionary<DocumentUri, string> Types { get; } = [];
+
+    public Dictionary<DocumentUri, string> Schema { get; } = [];
+
     public OmniSharp.Extensions.LanguageServer.Protocol.Server.ILanguageServer? Server { get; set; }
 }

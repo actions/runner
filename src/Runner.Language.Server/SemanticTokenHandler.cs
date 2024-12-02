@@ -89,7 +89,7 @@ public class SemanticTokenHandler : ISemanticTokensFullHandler
 
 
             } else {
-                var template = await AzureDevops.ParseTemplate(context, currentFileName, null, true);
+                var template = await AzureDevops.ParseTemplate(context, currentFileName, this.data.Schema[request.TextDocument.Uri], true);
                 token = template.Item2;
             }
         } catch

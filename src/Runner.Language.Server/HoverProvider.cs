@@ -88,7 +88,7 @@ public class HoverProvider : IHoverHandler
 
                 templateContext.Errors.Check();
             } else {
-                var template = await AzureDevops.ParseTemplate(context, currentFileName, null, true);
+                var template = await AzureDevops.ParseTemplate(context, currentFileName, this.data.Schema[request.TextDocument.Uri], true);
                 _ = template;
             }
         } catch
