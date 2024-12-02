@@ -11,7 +11,7 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # Make sure ./releaseVersion match ./src/runnerversion
     # Query GitHub release ensure version is not used
@@ -87,7 +87,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # Build runner layout
     - name: Build & Layout Release
@@ -130,7 +130,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact (win-x64)
@@ -296,7 +296,7 @@ jobs:
       IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Compute image version
         id: image
