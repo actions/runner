@@ -83,7 +83,7 @@ namespace GitHub.Runner.Worker
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null, TimeSpan? timeout = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, List<Issue> embeddedIssueCollector = null, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null, TimeSpan? timeout = null);
         IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null);
 
         // logging
@@ -135,7 +135,6 @@ namespace GitHub.Runner.Worker
 
         private readonly TimelineRecord _record = new();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new();
-        private readonly List<Issue> _embeddedIssueCollector;
         private readonly object _loggerLock = new();
         private readonly object _matchersLock = new();
         private readonly ExecutionContext _parentExecutionContext;
@@ -154,6 +153,7 @@ namespace GitHub.Runner.Worker
         private CancellationTokenSource _cancellationTokenSource;
         private TaskCompletionSource<int> _forceCompleted = new();
         private bool _throttlingReported = false;
+        private List<Issue> _embeddedIssueCollector;
 
         // only job level ExecutionContext will track throttling delay.
         private long _totalThrottlingDelayInMilliseconds = 0;
@@ -356,6 +356,7 @@ namespace GitHub.Runner.Worker
             int? recordOrder = null,
             IPagingLogger logger = null,
             bool isEmbedded = false,
+            List<Issue> embeddedIssueCollector = null,
             CancellationTokenSource cancellationTokenSource = null,
             Guid embeddedId = default(Guid),
             string siblingScopeName = null,
@@ -365,6 +366,10 @@ namespace GitHub.Runner.Worker
 
             var child = new ExecutionContext(this, isEmbedded);
             child.Initialize(HostContext);
+            if ((Global.Variables.GetBoolean("RunService.FixEmbeddedIssues") ?? false) && embeddedIssueCollector != null)
+            {
+                child._embeddedIssueCollector = embeddedIssueCollector;
+            }
             child.Global = Global;
             child.ScopeName = scopeName;
             child.ContextName = contextName;
@@ -433,7 +438,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> intraActionState = null,
             string siblingScopeName = null)
         {
-            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: null, intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName, timeout: GetRemainingTimeout(), recordOrder: _record.Order);
+            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, embeddedIssueCollector: _embeddedIssueCollector, cancellationTokenSource: null, intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName, timeout: GetRemainingTimeout(), recordOrder: _record.Order);
         }
 
         public void Start(string currentOperation = null)
@@ -519,7 +524,6 @@ namespace GitHub.Runner.Worker
 
                 Global.StepsResult.Add(stepResult);
             }
-
 
             if (Root != this)
             {
@@ -836,7 +840,6 @@ namespace GitHub.Runner.Worker
 
             // Actions environment
             ActionsEnvironment = message.ActionsEnvironment;
-
 
             // Service container info
             Global.ServiceContainers = new List<ContainerInfo>();
@@ -1418,7 +1421,7 @@ namespace GitHub.Runner.Worker
             {
                 if (key == PipelineTemplateConstants.HostWorkspace)
                 {
-                    // The HostWorkspace context var is excluded so that there is a var that always points to the host path. 
+                    // The HostWorkspace context var is excluded so that there is a var that always points to the host path.
                     // This var can be used to translate back from container paths, e.g. in HashFilesFunction, which always runs on the host machine
                     continue;
                 }

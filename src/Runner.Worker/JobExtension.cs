@@ -403,7 +403,7 @@ namespace GitHub.Runner.Worker
                         var snapshotOperationProvider = HostContext.GetService<ISnapshotOperationProvider>();
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(
                             runAsync: (executionContext, _) => snapshotOperationProvider.CreateSnapshotRequestAsync(executionContext, snapshotRequest),
-                            condition: $"{PipelineTemplateConstants.Success}()",
+                            condition: snapshotRequest.Condition,
                             displayName: $"Create custom image",
                             data: null));
                     }
