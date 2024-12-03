@@ -3,6 +3,10 @@ name: Publish Runner Image
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        type: string
+        description: 'Branch to run the workflow on'
+        default: 'main'
       runnerVersion:
         type: string
         description: Version of the runner being installed
@@ -26,6 +30,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Compute image version
         id: image
