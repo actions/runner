@@ -609,6 +609,27 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     completion.SemTokensOnly = true;
                 }
                 if(lit.RawData != null) {
+#if HAVE_YAML_DOTNET_FORK
+                    var praw = lit.ToString();
+
+                    YamlDotNet.Core.Tokens.Scalar found = null;
+                    var scanner = new YamlDotNet.Core.Scanner(new StringReader(praw), true);
+                    try {
+                        while(scanner.MoveNext() && !(scanner.Current is YamlDotNet.Core.Tokens.Error)) {
+                            if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
+                                found = s;
+                                break;
+                            }
+                        }
+                    } catch {
+
+                    }
+
+                    if(found != null) {
+                        completion.Mapping = found.Mapping.Select(m => ((int)(m.Line - 1 + token.Line), m.Line == 1 ? (int)(token.Column - 1 + m.Column) : (int)m.Column)).ToArray();
+                        completion.RMapping = found.RMapping.ToDictionary(m => ((int)(m.Key.Line - 1 + token.Line), (int)m.Key.Line == 1 ? (int)(token.Column - 1 + m.Key.Column) : (int)m.Key.Column), m => m.Value);
+                    }
+#else
                     var rand = new Random();
                     string C = "CX";
                     while(lit.RawData.Contains(C)) {
@@ -653,6 +674,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     }
                     completion.Mapping = mapping;
                     completion.RMapping = rmapping;
+#endif
                 }
             }
             var allowedContext = definitionInfo.AllowedContext;

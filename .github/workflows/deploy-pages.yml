@@ -26,6 +26,10 @@ jobs:
       - uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 8.0.x
+      - name: Setup YamlDotnetFork
+        run: |
+          git clone https://github.com/ChristopherHX/runner-server-lsp-YamlDotNet YamlDotNet
+          echo "YAML_DOTNET_FORK_PATH=$PWD/YamlDotNet/YamlDotNet/YamlDotNet.csproj" >> $GITHUB_ENV
       - name: Build ExpandAzurePipelines
         run: dotnet publish src/ExpandAzurePipelines -c Release --output out
       - uses: actions/setup-node@v3

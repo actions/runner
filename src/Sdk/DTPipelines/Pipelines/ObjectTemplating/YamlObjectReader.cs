@@ -71,7 +71,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Not plain style
                     if (scalar.Style != ScalarStyle.Plain)
                     {
-                        throw new NotSupportedException($"The scalar style '{scalar.Style}' on line {scalar.Start.Line} and column {scalar.Start.Column} is not valid with the tag '{scalar.Tag}'");
+                        throw new NotSupportedException($"The scalar style '{scalar.Style}' on line (int) {scalar.Start.Line} and column (int) {scalar.Start.Column} is not valid with the tag '{scalar.Tag}'");
                     }
 
                     // Boolean, Float, Integer, or Null
@@ -143,10 +143,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         private LiteralToken CreateStringToken(Scalar scalar)
         {
-            var tkn = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
+            var tkn = new StringToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, GetScalarStringValue(scalar));
             if(!string.IsNullOrEmpty(m_rawInput))
             {
-                tkn.RawData = m_rawInput.Substring(scalar.Start.Index, scalar.End.Index - scalar.Start.Index);
+                tkn.RawData = m_rawInput.Substring((int) scalar.Start.Index, (int) (scalar.End.Index - scalar.Start.Index));
                 if(scalar.Style != ScalarStyle.SingleQuoted && scalar.Style != ScalarStyle.DoubleQuoted) {
                     FillPreWhitespace(scalar, tkn);
                     // TODO Yaml scalar keys break intellisense, this modifies preprocessing
@@ -169,7 +169,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
             var lines = 0;
             var column = 0;
-            int i = scalar.Start.Index - 1;
+            int i = (int) scalar.Start.Index - 1;
             for (; i >= 0 && (m_rawInput[i] == ' ' || m_rawInput[i] == '\n'); i--)
             {
                 switch (m_rawInput[i])
@@ -193,7 +193,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 int lstart = m_rawInput.LastIndexOf('\n', i);
                 cpos = i + 1 - lstart;
             }
-            tkn.PreWhiteSpace = new Position() { Line = scalar.Start.Line - lines, Character = lines == 0 ? scalar.Start.Column - column : cpos };
+            tkn.PreWhiteSpace = new Position() { Line = (int) scalar.Start.Line - lines, Character = lines == 0 ? (int) scalar.Start.Column - column : cpos };
         }
 
         private void FillPostWhitespace(ParsingEvent scalar, TemplateToken tkn)
@@ -203,7 +203,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
             var lines = 0;
             var column = 0;
-            int i = scalar.End.Index;
+            int i = (int) scalar.End.Index;
             for (; i < m_rawInput.Length && (m_rawInput[i] == ' ' || m_rawInput[i] == '\r' || m_rawInput[i] == '\n'); i++)
             {
                 switch (m_rawInput[i])
@@ -233,7 +233,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             if (EvaluateCurrent() is SequenceStart sequenceStart)
             {
-                value = new SequenceToken(m_fileId, sequenceStart.Start.Line, sequenceStart.Start.Column);
+                value = new SequenceToken(m_fileId, (int) sequenceStart.Start.Line, (int) sequenceStart.Start.Column);
                 if(!string.IsNullOrEmpty(m_rawInput))
                 {
                     if(sequenceStart.Style == SequenceStyle.Block) {
@@ -271,7 +271,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             if (EvaluateCurrent() is MappingStart mappingStart)
             {
-                value = new MappingToken(m_fileId, mappingStart.Start.Line, mappingStart.Start.Column);
+                value = new MappingToken(m_fileId, (int) mappingStart.Start.Line, (int) mappingStart.Start.Column);
                 if(!string.IsNullOrEmpty(m_rawInput))
                 {
                     if(mappingStart.Style == MappingStyle.Block) {
@@ -472,10 +472,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 switch (scalar.Value ?? String.Empty)
                 {
                     case "true":
-                        value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, true, scalar.Value);
+                        value = new BooleanToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, true, scalar.Value);
                         return true;
                     case "false":
-                        value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, false, scalar.Value);
+                        value = new BooleanToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, false, scalar.Value);
                         return true;
                 }
             } else {
@@ -485,12 +485,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     case "true":
                     case "True":
                     case "TRUE":
-                        value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, true, scalar.Value);
+                        value = new BooleanToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, true, scalar.Value);
                         return true;
                     case "false":
                     case "False":
                     case "FALSE":
-                        value = new BooleanToken(m_fileId, scalar.Start.Line, scalar.Start.Column, false, scalar.Value);
+                        value = new BooleanToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, false, scalar.Value);
                         return true;
                 }
             }
@@ -517,17 +517,17 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         case "+.inf":
                         case "+.Inf":
                         case "+.INF":
-                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.PositiveInfinity, m_preserve_string ? str : null);
+                            value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, Double.PositiveInfinity, m_preserve_string ? str : null);
                             return true;
                         case "-.inf":
                         case "-.Inf":
                         case "-.INF":
-                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.NegativeInfinity, m_preserve_string ? str : null);
+                            value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, Double.NegativeInfinity, m_preserve_string ? str : null);
                             return true;
                         case ".nan":
                         case ".NaN":
                         case ".NAN":
-                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, Double.NaN, m_preserve_string ? str : null);
+                            value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, Double.NaN, m_preserve_string ? str : null);
                             return true;
                     }
                 }
@@ -571,7 +571,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         // Try parse
                         if (Double.TryParse(str, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var doubleValue))
                         {
-                            value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
+                            value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
                             return true;
                         }
                         // Otherwise exceeds range
@@ -605,7 +605,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             // Try parse
                             if (Double.TryParse(str, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var doubleValue))
                             {
-                                value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, (Double)doubleValue, m_preserve_string ? str : null);
+                                value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, (Double)doubleValue, m_preserve_string ? str : null);
                                 return true;
                             }
                             // Otherwise exceeds range
@@ -638,7 +638,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Try parse
                     if (Double.TryParse(str, NumberStyles.None, CultureInfo.InvariantCulture, out var doubleValue))
                     {
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
+                        value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
                         return true;
                     }
 
@@ -653,7 +653,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Try parse
                     if (Double.TryParse(str, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var doubleValue))
                     {
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
+                        value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, doubleValue, m_preserve_string ? str : null);
                         return true;
                     }
 
@@ -669,7 +669,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Try parse
                     if (Int32.TryParse(str.Substring(2), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var integerValue))
                     {
-                        value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, integerValue, m_preserve_string ? str : null);
+                        value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, integerValue, m_preserve_string ? str : null);
                         return true;
                     }
 
@@ -694,7 +694,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         ThrowInvalidValue(scalar, c_integerTag); // throws
                     }
 
-                    value = new NumberToken(m_fileId, scalar.Start.Line, scalar.Start.Column, integerValue, m_preserve_string ? str : null);
+                    value = new NumberToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, integerValue, m_preserve_string ? str : null);
                     return true;
                 }
             }
@@ -711,7 +711,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 switch (scalar.Value ?? String.Empty)
                 {
                     case "null":
-                        value = new NullToken(m_fileId, scalar.Start.Line, scalar.Start.Column, m_preserve_string ? scalar.Value : null);
+                        value = new NullToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, m_preserve_string ? scalar.Value : null);
                         return true;
                 }
             } else {
@@ -723,7 +723,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     case "Null":
                     case "NULL":
                     case "~":
-                        value = new NullToken(m_fileId, scalar.Start.Line, scalar.Start.Column, m_preserve_string ? scalar.Value : null);
+                        value = new NullToken(m_fileId, (int) scalar.Start.Line, (int) scalar.Start.Column, m_preserve_string ? scalar.Value : null);
                         return true;
                 }
             }
@@ -736,7 +736,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             Scalar scalar,
             String tag)
         {
-            throw new NotSupportedException($"The value '{scalar.Value}' on line {scalar.Start.Line} and column {scalar.Start.Column} is invalid for the type '{scalar.Tag}'");
+            throw new NotSupportedException($"The value '{scalar.Value}' on line (int) {scalar.Start.Line} and column (int) {scalar.Start.Column} is invalid for the type '{scalar.Tag}'");
         }
 
         private const String c_booleanTag = "tag:yaml.org,2002:bool";

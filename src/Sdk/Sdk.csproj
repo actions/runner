@@ -22,10 +22,15 @@
         <PackageReference Include="System.Security.Cryptography.Cng" Version="5.0.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.*" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="6.0.0" />
-        <PackageReference Include="YamlDotNet" Version="15.1.1" />
+        <PackageReference Condition="'$(YAML_DOTNET_FORK_PATH)' == ''" Include="YamlDotNet" Version="15.1.1" />
+        <ProjectReference Condition="'$(YAML_DOTNET_FORK_PATH)' != ''" Include="$(YAML_DOTNET_FORK_PATH)"/>
         <PackageReference Include="System.Net.Http" Version="4.3.4" />
         <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
     </ItemGroup>
+
+    <PropertyGroup Condition="'$(YAML_DOTNET_FORK_PATH)' != ''">
+        <DefineConstants>$(DefineConstants);HAVE_YAML_DOTNET_FORK</DefineConstants>
+    </PropertyGroup>
 
     <ItemGroup>
         <EmbeddedResource Include="DTPipelines\workflow-v1.0.json">

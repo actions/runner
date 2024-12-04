@@ -1,7 +1,10 @@
+### v0.2.5 (Preview)
+- speed up sematic highlighting, autocomplete and hover by patching YamlDotnet a bit
+
 ### v0.2.4
 - release fixes of last preview
 
-### v0.2.3  (Preview)
+### v0.2.3 (Preview)
 - fix degraded performance due to disabled new features added in the v0.2.x extension 
 - fix Check Manually for Syntax Errors
 
