@@ -631,6 +631,26 @@ namespace Runner.Server.Azure.Devops {
 
         private static ((int, int)[], Dictionary<(int, int), int>) CreateIdxMapping(TemplateToken token) {
             if(token is LiteralToken lit && lit.RawData != null) {
+#if HAVE_YAML_DOTNET_FORK
+                var praw = lit.ToString();
+
+                YamlDotNet.Core.Tokens.Scalar found = null;
+                var scanner = new YamlDotNet.Core.Scanner(new StringReader(praw), true);
+                try {
+                    while(scanner.MoveNext() && !(scanner.Current is YamlDotNet.Core.Tokens.Error)) {
+                        if(scanner.Current is YamlDotNet.Core.Tokens.Scalar s) {
+                            found = s;
+                            break;
+                        }
+                    }
+                } catch {
+
+                }
+
+                if(found != null) {
+                    return (found.Mapping.Select(m => ((int)(m.Line - 1 + token.Line), m.Line == 1 ? (int)(token.Column - 1 + m.Column) : (int)m.Column)).ToArray(), found.RMapping.ToDictionary(m => ((int)(m.Key.Line - 1 + token.Line), (int)m.Key.Line == 1 ? (int)(token.Column - 1 + m.Key.Column) : (int)m.Key.Column), m => m.Value));
+                }
+#else
                 var rand = new Random();
                 string C = "CX";
                 while(lit.RawData.Contains(C)) {
@@ -674,6 +694,7 @@ namespace Runner.Server.Azure.Devops {
                     column++;
                 }
                 return (mapping, rmapping);
+#endif
             }
             return (null, null);
         }
