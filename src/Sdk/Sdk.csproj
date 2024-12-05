@@ -26,6 +26,14 @@
         <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
         <PackageReference Include="System.Net.Http" Version="4.3.4" />
         <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+        <!-- cve-2022-24464 -->
+        <PackageReference Include="System.Text.Encodings.Web" Version="7.0.0" />
+        <!-- GHSA-5f2m-466j-3848 et al -->
+        <PackageReference Include="System.Private.Uri" Version="4.3.2" />
+        <!-- GHSA-447r-wph3-92pm -->
+        <PackageReference Include="System.Formats.Asn1" Version="8.0.7" />
+        <!-- CVE-2018-8416 -->
+        <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
     </ItemGroup>
 
     <ItemGroup>
