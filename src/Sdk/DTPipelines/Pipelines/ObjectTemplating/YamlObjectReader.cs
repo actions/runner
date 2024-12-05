@@ -71,7 +71,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Not plain style
                     if (scalar.Style != ScalarStyle.Plain)
                     {
-                        throw new NotSupportedException($"The scalar style '{scalar.Style}' on line (int) {scalar.Start.Line} and column (int) {scalar.Start.Column} is not valid with the tag '{scalar.Tag}'");
+                        throw new NotSupportedException($"The scalar style '{scalar.Style}' on line {scalar.Start.Line} and column {scalar.Start.Column} is not valid with the tag '{scalar.Tag}'");
                     }
 
                     // Boolean, Float, Integer, or Null
@@ -736,7 +736,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             Scalar scalar,
             String tag)
         {
-            throw new NotSupportedException($"The value '{scalar.Value}' on line (int) {scalar.Start.Line} and column (int) {scalar.Start.Column} is invalid for the type '{scalar.Tag}'");
+            throw new NotSupportedException($"The value '{scalar.Value}' on line {scalar.Start.Line} and column {scalar.Start.Column} is invalid for the type '{scalar.Tag}'");
         }
 
         private const String c_booleanTag = "tag:yaml.org,2002:bool";
