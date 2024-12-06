@@ -26,6 +26,7 @@ using System.ComponentModel;
 using GitHub.Services.WebApi;
 using System.CommandLine.Builder;
 using System.CommandLine.Binding;
+using System.CommandLine.Parsing;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using GitHub.Runner.Common;
@@ -169,6 +170,7 @@ namespace Runner.Client
             public string[] LocalRepositories { get; set; }
             public bool Trace { get; set; }
             public bool Json { get; set; }
+            public bool ListOptions { get; set; }
             public Parameters ShallowCopy()
             {
                 return (Parameters) this.MemberwiseClone();
@@ -1006,7 +1008,7 @@ namespace Runner.Client
             var verboseOpt = new Option<bool>(
                 new[] {"-v", "--verbose"},
                 "Print more details like server / runner logs to stdout");
-            var parallelOpt = new Option<int?>(
+            var parallelOpt = new Option<int>(
                 "--parallel",
                 description: "Run n parallel runners");
             var noCopyGitDirOpt = new Option<bool>(
@@ -1080,6 +1082,9 @@ namespace Runner.Client
             var localrepositoriesOpt = new Option<string[]>(
                 "--local-repository",
                 description: "Redirect dependent repositories to the local filesystem. E.g `--local-repository org/name@ref=/path/to/repository`");
+            var listOptionsOpt = new Option<bool>(
+                "--list-options",
+                description: "Print a json structure of compatible options");
             var rootCommand = new RootCommand
             {
                 workflowOption,
@@ -1139,6 +1144,7 @@ namespace Runner.Client
                 shaOpt,
                 refOpt,
                 localrepositoriesOpt,
+                listOptionsOpt,
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -1178,6 +1184,15 @@ namespace Runner.Client
             // Note that the parameters of the handler method are matched according to the names of the options
             Func<Parameters, Task<int>> handler = async (parameters) =>
             {
+                if(parameters.ListOptions) {
+                    var options = new JArray();
+                    foreach(var opt in rootCommand.Options) {
+                        options.Add(JObject.FromObject(new { name = opt.Name, aliases = opt.Aliases, required = opt.IsRequired, @default = (opt as IValueDescriptor).HasDefaultValue ? (opt as IValueDescriptor).GetDefaultValue() : null, description = opt.Description, @type = TypeHelper.GetTypeName(opt.ValueType), minValues = opt.Arity.MinimumNumberOfValues, maxValues = opt.Arity.MaximumNumberOfValues }));
+                    }
+                    Console.WriteLine(options);
+                    return 0;
+                }
+
                 var expandAzurePipeline = string.Equals(parameters.Event, "azexpand", StringComparison.OrdinalIgnoreCase);
                 if(parameters.Parallel == null && !parameters.StartServer && !parameters.List && !expandAzurePipeline) {
                     parameters.Parallel = 1;
@@ -2538,6 +2553,7 @@ namespace Runner.Client
                 parameters.Interactive = bindingContext.ParseResult.GetValueForOption(interactiveOpt);
                 parameters.Trace = bindingContext.ParseResult.GetValueForOption(traceOpt);
                 parameters.Json = bindingContext.ParseResult.GetValueForOption(jsonOpt);
+                parameters.ListOptions = bindingContext.ParseResult.GetValueForOption(listOptionsOpt);
                 parameters.Quiet = bindingContext.ParseResult.GetValueForOption(quietOpt);
                 parameters.Privileged = bindingContext.ParseResult.GetValueForOption(privilegedOpt);
                 parameters.Userns = bindingContext.ParseResult.GetValueForOption(usernsOpt);
@@ -2546,7 +2562,7 @@ namespace Runner.Client
                 parameters.KeepContainer = bindingContext.ParseResult.GetValueForOption(keepContainerOpt);
                 parameters.Directory = bindingContext.ParseResult.GetValueForOption(DirectoryOpt);
                 parameters.Verbose = bindingContext.ParseResult.GetValueForOption(verboseOpt);
-                parameters.Parallel = bindingContext.ParseResult.GetValueForOption(parallelOpt);
+                parameters.Parallel = bindingContext.ParseResult.HasOption(parallelOpt) ? bindingContext.ParseResult.GetValueForOption<int>(parallelOpt) : null;
                 parameters.NoCopyGitDir = bindingContext.ParseResult.GetValueForOption(noCopyGitDirOpt);
                 parameters.KeepRunnerDirectory = bindingContext.ParseResult.GetValueForOption(keepRunnerDirectoryOpt);
                 parameters.RunnerDirectory = bindingContext.ParseResult.GetValueForOption(runnerDirectoryOpt);
