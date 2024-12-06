@@ -96,10 +96,6 @@ RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && which docker-compose \
     && docker compose version
 
-# Add the Python "User Script Directory" to the PATH
-ENV PATH="${PATH}:${HOME}/.local/bin/"
-ENV ImageOS=ubuntu22
-
 # Add the Android sdk,ndk,avd
 ENV ANDROID_HOME /root/Android/SDK/
 
