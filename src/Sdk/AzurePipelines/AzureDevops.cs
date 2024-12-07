@@ -632,7 +632,7 @@ namespace Runner.Server.Azure.Devops {
         private static ((int, int)[], Dictionary<(int, int), int>) CreateIdxMapping(TemplateToken token) {
             if(token is LiteralToken lit && lit.RawData != null) {
 #if HAVE_YAML_DOTNET_FORK
-                var praw = lit.ToString();
+                var praw = lit.RawData;
 
                 YamlDotNet.Core.Tokens.Scalar found = null;
                 var scanner = new YamlDotNet.Core.Scanner(new StringReader(praw), true);

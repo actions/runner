@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -610,7 +610,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 }
                 if(lit.RawData != null) {
 #if HAVE_YAML_DOTNET_FORK
-                    var praw = lit.ToString();
+                    var praw = lit.RawData;
 
                     YamlDotNet.Core.Tokens.Scalar found = null;
                     var scanner = new YamlDotNet.Core.Scanner(new StringReader(praw), true);
