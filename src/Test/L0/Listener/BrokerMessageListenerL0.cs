@@ -33,7 +33,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreatesSession()
+        public async Task CreatesSession()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())

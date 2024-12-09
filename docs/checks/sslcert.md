@@ -41,7 +41,7 @@ To let the runner trusts your CA certificate, you will need to:
     - macOS: ![trust ca cert](./../res/macOStrustCA.gif)
     - Linux: Refer to the distribution documentation
       1. RedHat: https://www.redhat.com/sysadmin/ca-certificates-cli
-      2. Ubuntu: http://manpages.ubuntu.com/manpages/focal/man8/update-ca-certificates.8.html
+      2. Ubuntu: https://manpages.ubuntu.com/manpages/noble/man8/update-ca-certificates.8.html
       3. Google search: "trust ca certificate on [linux distribution]"
       4. If all approaches failed, set environment variable `SSL_CERT_FILE` to the CA bundle `.pem` file we get.
     > To verify cert gets installed properly on Linux, you can try use `curl -v https://sitewithsslissue.com` and `pwsh -Command \"Invoke-WebRequest -Uri https://sitewithsslissue.com\"`
