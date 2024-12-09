@@ -1,0 +1,1 @@
+export function nodeRequire(url : string) : any

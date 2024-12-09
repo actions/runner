@@ -29,6 +29,7 @@
 		]
 	},
 	"browser": "./client/dist/browserClientMain",
+	"main": "./client/dist/nodeClientMain",
 	"scripts": {
 		"vscode:prepublish": "npm run build",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",

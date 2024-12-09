@@ -11,3 +11,6 @@ export var customImports = {
 export async function myimport(url) {
     return customImports[url];
 }
+export function nodeRequire(url) {
+    return __non_webpack_require__(url);
+}

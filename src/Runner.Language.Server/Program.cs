@@ -20,57 +20,86 @@ using OmniSharp.Extensions.LanguageServer.Server;
 using Runner.Language.Server;
 
 #if WASM
-Console.WriteLine("Loading Lsp...");
 
-_ = Task.Run(async () => {
-    var crlf = System.Text.Encoding.UTF8.GetBytes("\r\n\r\n");
-    while(true) {
-        Console.WriteLine("Read Message");
-        var result = await Interop.Output.Reader.ReadAsync();
-        Console.WriteLine("Got Message len = " + result.Buffer.Length);
-        var header = "";
-        var body = "";
-        var remainingBody = 0;
-        foreach (var cp in result.Buffer)
-        {
-            var span = cp;
-            while(span.Length > 0) {
-                if(remainingBody == 0) {
-                    int endOfHeader = span.Span.IndexOf(crlf);
-                    if(endOfHeader == -1) {
-                        header += System.Text.Encoding.UTF8.GetString(span.Span);
-
-                        span = span.Slice(span.Length);
-                        // Console.WriteLine(header);
-                    } else {
-                        header += System.Text.Encoding.UTF8.GetString(span.Slice(0, endOfHeader).Span);
-                        
-                        Console.WriteLine(header);
-
-                        remainingBody = int.Parse(header.Split(": ")[1]);
-
-                        header = "";
-                        body = "";
-                        span = span.Slice(endOfHeader + 4);
-                    }
-                } else {
-                    var n = Math.Min(span.Length, remainingBody);
-                    body += System.Text.Encoding.UTF8.GetString(span.Slice(0, n).Span);
-                    remainingBody -= n;
-                    span = span.Slice(n);
+if(args.Length == 0 || args.Length == 1 && args[0] == "--webworker") {
+    Console.WriteLine("Loading Lsp...");
+    _ = Task.Run(async () => {
+        var crlf = System.Text.Encoding.UTF8.GetBytes("\r\n\r\n");
+        while(true) {
+            Console.WriteLine("Read Message");
+            var result = await Interop.Output.Reader.ReadAsync();
+            if(result.IsCanceled) {
+                System.Environment.Exit(1);
+                return;
+            }
+            Console.WriteLine("Got Message len = " + result.Buffer.Length);
+            var header = "";
+            var body = "";
+            var remainingBody = 0;
+            foreach (var cp in result.Buffer)
+            {
+                var span = cp;
+                while(span.Length > 0) {
                     if(remainingBody == 0) {
-                        await Interop.SendOutputMessageAsync(body);
+                        int endOfHeader = span.Span.IndexOf(crlf);
+                        if(endOfHeader == -1) {
+                            header += System.Text.Encoding.UTF8.GetString(span.Span);
+
+                            span = span.Slice(span.Length);
+                            // Console.WriteLine(header);
+                        } else {
+                            header += System.Text.Encoding.UTF8.GetString(span.Slice(0, endOfHeader).Span);
+                            
+                            Console.WriteLine(header);
+
+                            remainingBody = int.Parse(header.Split(": ")[1]);
+
+                            header = "";
+                            body = "";
+                            span = span.Slice(endOfHeader + 4);
+                        }
+                    } else {
+                        var n = Math.Min(span.Length, remainingBody);
+                        body += System.Text.Encoding.UTF8.GetString(span.Slice(0, n).Span);
+                        remainingBody -= n;
+                        span = span.Slice(n);
+                        if(remainingBody == 0) {
+                            await Interop.SendOutputMessageAsync(body);
+                        }
                     }
                 }
             }
+            if(result.IsCompleted) {
+                System.Environment.Exit(0);
+                return;
+            }
+            Interop.Output.Reader.AdvanceTo(result.Buffer.End);
         }
-        Interop.Output.Reader.AdvanceTo(result.Buffer.End);
-    }
-}).ConfigureAwait(false);
+    }).ConfigureAwait(false);
+} else if(args.Length == 1 && args[0] == "--stdio") {
+    Interop.IsNode = true;
+    _ = Task.Run(async () => {
+        while(true) {
+            var result = await Interop.Output.Reader.ReadAsync();
+            if(result.IsCanceled) {
+                System.Environment.Exit(1);
+                return;
+            }
+            foreach (var cp in result.Buffer) {
+                await Interop.SendOutputMessageAsync(System.Text.Encoding.UTF8.GetString(cp.ToArray()));
+            }
+            if(result.IsCompleted) {
+                System.Environment.Exit(0);
+                return;
+            }
+            Interop.Output.Reader.AdvanceTo(result.Buffer.End);
+        }
+    }).ConfigureAwait(false);
+}
 #endif
 
 var server = await LanguageServer.From(
-    options =>
+    options => {
         options
 #if WASM
             .WithInput(Interop.Input.Reader)
@@ -158,7 +187,13 @@ var server = await LanguageServer.From(
 
                     logger.LogInformation("Scoped Config: {@Config}", scopedConfig);
                 }
-            )
+            );
+#if WASM
+        if(Interop.IsNode) {
+           options.WithHandler<CodeLensProvider>();
+        }
+#endif
+    }
 ).ConfigureAwait(false);
 
 await server.WaitForExit.ConfigureAwait(false);
@@ -166,12 +201,18 @@ await server.WaitForExit.ConfigureAwait(false);
 #if WASM
 
 public static partial class Interop {
+    public static bool IsNode { get; set; }
+
     [JSImport("sendOutputMessageAsync", "extension.js")]
     internal static partial Task SendOutputMessageAsync(string message);
 
     [SupportedOSPlatform("browser")]
     [JSExport]
     public async static Task SendInputMessageAsync(string message) {
+        if(Interop.IsNode) {
+            await Input.Writer.WriteAsync(System.Text.Encoding.UTF8.GetBytes(message));
+            return;
+        }
         Console.WriteLine("Message received");
         Console.WriteLine(message);
 
