@@ -53,7 +53,7 @@ then
         command -v apt-get
         if [ $? -eq 0 ]
         then
-            apt_get=apt-get
+            apt_get="apt-get -o DPkg::Lock::Timeout=300"
         else
             command -v apt
             if [ $? -eq 0 ]
