@@ -22,6 +22,7 @@ namespace Sdk.RSWebApi.Contracts
             var columnNumber = GetAnnotationNumber(issue, RunIssueKeys.Col) ?? 0;
             var endColumnNumber = GetAnnotationNumber(issue, RunIssueKeys.EndColumn) ?? columnNumber;
             var logLineNumber = GetAnnotationNumber(issue, RunIssueKeys.LogLineNumber) ?? 0;
+            var stepNumber = GetAnnotationNumber(issue, RunIssueKeys.StepNumber) ?? 0;
 
             if (path == null && lineNumber == 0 && logLineNumber != 0)
             {
@@ -38,6 +39,7 @@ namespace Sdk.RSWebApi.Contracts
                 EndLine = endLineNumber,
                 StartColumn = columnNumber,
                 EndColumn = endColumnNumber,
+                StepNumber = stepNumber,
             };
         }
 

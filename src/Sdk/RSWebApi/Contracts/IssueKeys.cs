@@ -9,5 +9,6 @@
         public const string EndLine = "endLine";
         public const string EndColumn = "endColumn";
         public const string LogLineNumber = "logFileLineNumber";
+        public const string StepNumber = "stepNumber";
     }
 }
