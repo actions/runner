@@ -34,6 +34,8 @@ const browserClientConfig = {
 		alias: {},
 		fallback: {
 			path: require.resolve('path-browserify'),
+			child_process: false,
+			process: false
 		},
 	},
 	module: {
