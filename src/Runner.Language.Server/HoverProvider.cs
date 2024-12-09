@@ -3,7 +3,8 @@ using System;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-
+using GitHub.DistributedTask.ObjectTemplating.Schema;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -66,6 +67,7 @@ public class HoverProvider : IHoverHandler
             Row = row,
             RawMapping = true
         };
+        GitHub.DistributedTask.ObjectTemplating.Schema.TemplateSchema? schema = null;
         try {
             var isWorkflow = request.TextDocument.Uri.Path.Contains("/.github/workflows/");
             if(isWorkflow || request.TextDocument.Uri.Path.Contains("/action.yml") || request.TextDocument.Uri.Path.Contains("/action.yaml")) {
@@ -85,9 +87,9 @@ public class HoverProvider : IHoverHandler
                 var fileContent = content;
                 var yamlObjectReader = new YamlObjectReader(fileId, fileContent, rawMapping: true);
                 TemplateReader.Read(templateContext, isWorkflow ? "workflow-root" : "action-root", yamlObjectReader, fileId, out _);
-
-                templateContext.Errors.Check();
+                schema = templateContext.Schema;
             } else {
+                schema = AzureDevops.LoadSchema();
                 var template = await AzureDevops.ParseTemplate(context, currentFileName, this.data.Schema[request.TextDocument.Uri], true);
                 _ = template;
             }
@@ -113,7 +115,16 @@ public class HoverProvider : IHoverHandler
                     || desc["root"].TryGetValue(tkn.RawValue, out d)
                     || desc["functions"].TryGetValue(tkn.RawValue, out d) ? d.Description : tkn.RawValue }) };
         }
+        string descr = null;
+        Definition[] mappings = last.Definitions.FirstOrDefault() is OneOfDefinition oneOf ? oneOf.OneOf.Select(s => schema.GetDefinition(s)).ToArray() : last.Definitions.FirstOrDefault() is MappingDefinition xmdef ? new [] { xmdef } : null;
+        if(mappings != null && last.Token is ScalarToken) {
+            foreach(var def in mappings) {
+                if(def is MappingDefinition mdef) {
+                    descr ??= mdef.Properties.FirstOrDefault(p => p.Key.StartsWith(last.Token.ToString())).Value?.Description;
+                }
+            }
+        }
         return last == null || last.Token.Line == null || last.Token.Column == null ? null : new Hover { Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(last.Token.PreWhiteSpace != null ? new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position((int)last.Token.PreWhiteSpace.Line - 1, (int)last.Token.PreWhiteSpace.Character - 1) : new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(last.Token.Line.Value - 1, last.Token.Column.Value - 1), new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position((int)last.Token.PostWhiteSpace.Line - 1, (int)last.Token.PostWhiteSpace.Character - 1)),
-        Contents = new MarkedStringsOrMarkupContent(new MarkupContent() { Kind = MarkupKind.Markdown, Value = last.Description ?? last.Definitions.FirstOrDefault()?.Description ?? "???" }) };
+        Contents = new MarkedStringsOrMarkupContent(new MarkupContent() { Kind = MarkupKind.Markdown, Value = descr ?? last.Description ?? last.Definitions.FirstOrDefault()?.Description ?? "???" }) };
     }
 }
