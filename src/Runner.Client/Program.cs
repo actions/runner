@@ -72,21 +72,21 @@ namespace Runner.Client
 
         public class TraceWriter : GitHub.Runner.Sdk.ITraceWriter
         {
-            private bool verbose;
-            public TraceWriter(bool verbose = false) {
-                this.verbose = verbose;
+            private Parameters parameters;
+            public TraceWriter(Parameters parameters) {
+                this.parameters = parameters;
             }
             public void Info(string message)
             {
-                if(verbose) {
-                    Console.WriteLine(message);
+                if(parameters.Verbose) {
+                    WriteLogMessage(parameters, "trace", message);
                 }
             }
 
             public void Verbose(string message)
             {
-                if(verbose) {
-                    Console.WriteLine(message);
+                if(parameters.Verbose) {
+                    WriteLogMessage(parameters, "trace", message);
                 }
             }
         }
@@ -108,7 +108,7 @@ namespace Runner.Client
             public string contentLocation {get;set;}
         }
 
-        private class Parameters {
+        public class Parameters {
             public string[] WorkflowFiles { get; set; }
             public string Server { get; set; }
             public string Payload { get; set; }
@@ -216,22 +216,19 @@ namespace Runner.Client
             return input.ToString();
         }
 
-        private static void OnError(object sender, ErrorEventArgs e) =>
-            PrintException(e.GetException());
-
-        private static void PrintException(Exception ex)
+        private static void PrintException(Parameters parameters, Exception ex)
         {
             if (ex != null)
             {
-                Console.WriteLine($"Message: {ex.Message}");
-                Console.WriteLine("Stacktrace:");
-                Console.WriteLine(ex.StackTrace);
-                Console.WriteLine();
-                PrintException(ex.InnerException);
+                WriteLogMessage(parameters, "trace", $"Message: {ex.Message}");
+                WriteLogMessage(parameters, "trace", "Stacktrace:");
+                WriteLogMessage(parameters, "trace", ex.StackTrace);
+                WriteLogMessage(parameters, "trace", "");
+                PrintException(parameters, ex.InnerException);
             }
         }
 
-        private static async Task<bool> IsIgnored(string dir, string path) {
+        private static async Task<bool> IsIgnored(Parameters parameters, string dir, string path) {
             if(path.StartsWith(".git/") || path.StartsWith(".git\\")) {
                 return true;
             }
@@ -246,7 +243,7 @@ namespace Runner.Client
                         }
                     }
                 };
-                GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(false));
+                GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                 gitinvoker.OutputDataReceived += handleoutput;
                 var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                 var git = WhichUtil.Which("git", true);
@@ -263,9 +260,6 @@ namespace Runner.Client
         }
 
         private static async Task<int> CreateRunner(string binpath, Parameters parameters, List<Task> listener, Channel<bool> workerchannel, CancellationTokenSource source) {
-            EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
-                Console.WriteLine(e.Data);
-            };
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
             var dotnet = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
             string ext = ".dll";
@@ -284,12 +278,17 @@ namespace Runner.Client
                 int attempt = 1;
                 while(!source.IsCancellationRequested) {
                     try {
-                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
-                        if(parameters.Verbose) {
+                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
+                        EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) =>
+                        {
+                            WriteLogMessage(parameters, "trace", e.Data);
+                        };
+                        if (parameters.Verbose)
+                        {
                             inv.OutputDataReceived += _out;
                             inv.ErrorDataReceived += _out;
                         }
-                        
+
                         var systemEnv = System.Environment.GetEnvironmentVariables();
                         var runnerEnv = new Dictionary<string, string>();
                         foreach(var e in systemEnv.Keys) {
@@ -325,7 +324,7 @@ namespace Runner.Client
                         int execAttempt = 1;                    
                         while(true) {
                             try {
-                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                 if(parameters.Verbose) {
                                     runnerlistener.OutputDataReceived += _out;
                                     runnerlistener.ErrorDataReceived += _out;
@@ -355,7 +354,7 @@ namespace Runner.Client
                                 if(execAttempt++ <= 3) {
                                     await Task.Delay(500);
                                 } else {
-                                    Console.Error.WriteLine("Failed to start actions runner after 3 attempts");
+                                    WriteLogMessage(parameters, "error", "Failed to start actions runner after 3 attempts");
                                     int delattempt = 1;
                                     while(true) {
                                         try {
@@ -363,7 +362,7 @@ namespace Runner.Client
                                             break;
                                         } catch {
                                             if(delattempt++ >= 3) {
-                                                await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                                 break;
                                             } else {
                                                 await Task.Delay(500);
@@ -379,7 +378,7 @@ namespace Runner.Client
                         if(attempt++ <= 3) {
                             await Task.Delay(500);
                         } else {
-                            Console.Error.WriteLine("Failed to auto-configure actions runner after 3 attempts");
+                            WriteLogMessage(parameters, "error", "Failed to auto-configure actions runner after 3 attempts");
                             int delattempt = 1;
                             while(true) {
                                 try {
@@ -387,7 +386,7 @@ namespace Runner.Client
                                     break;
                                 } catch {
                                     if(delattempt++ >= 3) {
-                                        await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                        WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                         break;
                                     } else {
                                         await Task.Delay(500);
@@ -399,7 +398,7 @@ namespace Runner.Client
                     }
                 }
             } finally {
-                Console.WriteLine("Stopped Runner");
+                WriteLogMessage(parameters, "info", "Stopped Runner");
                 if(!parameters.KeepContainer && !parameters.KeepRunnerDirectory) {
                     int delattempt = 1;
                     while(true) {
@@ -411,7 +410,7 @@ namespace Runner.Client
                                 break;
                             }
                             if(delattempt++ >= 3) {
-                                await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                 break;
                             } else {
                                 await Task.Delay(500);
@@ -422,9 +421,9 @@ namespace Runner.Client
             }
             if(parameters.KeepContainer || parameters.NoReuse) {
                 if(!source.IsCancellationRequested) {
-                    Console.WriteLine("Recreate Runner");
+                    WriteLogMessage(parameters, "info", "Recreate Runner");
                     if(await CreateRunner(binpath, parameters, listener, workerchannel, source) != 0 && !source.IsCancellationRequested) {
-                        Console.WriteLine("Failed to recreate Runner, exiting...");
+                        WriteLogMessage(parameters, "error", "Failed to recreate Runner, exiting...");
                         source.Cancel();
                     }
                 }
@@ -432,9 +431,25 @@ namespace Runner.Client
             return 0;
         }
 
+        private static void WriteLogMessage(Parameters parameters, string level, string msg)
+        {
+            if (parameters.Json)
+            {
+                Console.WriteLine(JsonConvert.SerializeObject(new { level, msg, time = System.DateTime.Now }));
+            }
+            else if(level == "error")
+            {
+                Console.Error.WriteLine(msg);
+            }
+            else
+            {
+                Console.WriteLine(msg);
+            }
+        }
+
         private static async Task<int> CreateExternalRunner(string binpath, Parameters parameters, List<Task> listener, Channel<bool> workerchannel, CancellationTokenSource source) {
             EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
-                Console.WriteLine(e.Data);
+                WriteLogMessage(parameters, "trace", e.Data);
             };
             var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
             var prefix = azure ? "Agent" : "Runner";
@@ -470,7 +485,7 @@ namespace Runner.Client
                 int attempt = 1;
                 while(!source.IsCancellationRequested) {
                     try {
-                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                        var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                         if(parameters.Verbose) {
                             inv.OutputDataReceived += _out;
                             inv.ErrorDataReceived += _out;
@@ -513,7 +528,7 @@ namespace Runner.Client
                         while(true) {
                             file = runner;
                             try {
-                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                 if(parameters.Verbose) {
                                     runnerlistener.OutputDataReceived += _out;
                                     runnerlistener.ErrorDataReceived += _out;
@@ -574,12 +589,12 @@ namespace Runner.Client
                                     if(source.IsCancellationRequested) {
                                         return 1;
                                     }
-                                    Console.Error.WriteLine("runner crashed after listening for jobs");
+                                    WriteLogMessage(parameters, "error", "runner crashed after listening for jobs");
                                 } else {
                                     if(execAttempt++ <= 3) {
                                         await Task.Delay(500);
                                     } else {
-                                        Console.Error.WriteLine("Failed to start actions runner after 3 attempts");
+                                        WriteLogMessage(parameters, "error", "Failed to start actions runner after 3 attempts");
                                         int delattempt = 1;
                                         while(true) {
                                             try {
@@ -587,7 +602,7 @@ namespace Runner.Client
                                                 break;
                                             } catch {
                                                 if(delattempt++ >= 3) {
-                                                    await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                    WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                                     break;
                                                 } else {
                                                     await Task.Delay(500);
@@ -604,7 +619,7 @@ namespace Runner.Client
                         if(attempt++ <= 3) {
                             await Task.Delay(500);
                         } else {
-                            Console.Error.WriteLine("Failed to auto-configure actions runner after 3 attempts");
+                            WriteLogMessage(parameters, "error", "Failed to auto-configure actions runner after 3 attempts");
                             int delattempt = 1;
                             while(true) {
                                 try {
@@ -612,7 +627,7 @@ namespace Runner.Client
                                     break;
                                 } catch {
                                     if(delattempt++ >= 3) {
-                                        await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                        WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                         break;
                                     } else {
                                         await Task.Delay(500);
@@ -624,7 +639,7 @@ namespace Runner.Client
                     }
                 }
             } finally {
-                Console.WriteLine("Stopped Runner");
+                WriteLogMessage(parameters, "trace", "Stopped Runner");
                 if(!parameters.KeepContainer && !parameters.KeepRunnerDirectory) {
                     int delattempt = 1;
                     while(true) {
@@ -636,7 +651,7 @@ namespace Runner.Client
                                 break;
                             }
                             if(delattempt++ >= 3) {
-                                await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                 break;
                             } else {
                                 await Task.Delay(500);
@@ -647,9 +662,9 @@ namespace Runner.Client
             }
             if(parameters.KeepContainer || parameters.NoReuse) {
                 if(!source.IsCancellationRequested) {
-                    Console.WriteLine("Recreate Runner");
+                    WriteLogMessage(parameters, "info", "Recreate Runner");
                     if(await CreateExternalRunner(binpath, parameters, listener, workerchannel, source) != 0 && !source.IsCancellationRequested) {
-                        Console.WriteLine("Failed to recreate Runner, exiting...");
+                        WriteLogMessage(parameters, "trace", "Failed to recreate Runner, exiting...");
                         source.Cancel();
                     }
                 }
@@ -770,34 +785,40 @@ namespace Runner.Client
             }
 
             public class TraceWriter : GitHub.DistributedTask.ObjectTemplating.ITraceWriter {
+                private Parameters parameters;
+
+                public TraceWriter(Parameters parameters) {
+                    this.parameters = parameters;
+                }
+
                 public void Error(string format, params object[] args)
                 {
                     if(args?.Length == 1 && args[0] is Exception ex) {
-                        Console.Error.WriteLine(string.Format("{0} {1}", format, ex.Message));
+                        WriteLogMessage(parameters, "error", string.Format("{0} {1}", format, ex.Message));
                         return;
                     }
                     try {
-                        Console.Error.WriteLine(args?.Length > 0 ? string.Format(format, args) : format);
+                        WriteLogMessage(parameters, "error", args?.Length > 0 ? string.Format(format, args) : format);
                     } catch {
-                        Console.Error.WriteLine(format);
+                        WriteLogMessage(parameters, "error", format);
                     }
                 }
 
                 public void Info(string format, params object[] args)
                 {
                     try {
-                        Console.WriteLine(args?.Length > 0 ? string.Format(format, args) : format);
+                        WriteLogMessage(parameters, "info", args?.Length > 0 ? string.Format(format, args) : format);
                     } catch {
-                        Console.WriteLine(format);
+                        WriteLogMessage(parameters, "info", format);
                     }
                 }
 
                 public void Verbose(string format, params object[] args)
                 {
                     try {
-                        Console.WriteLine(args?.Length > 0 ? string.Format(format, args) : format);
+                        WriteLogMessage(parameters, "trace", args?.Length > 0 ? string.Format(format, args) : format);
                     } catch {
-                        Console.WriteLine(format);
+                        WriteLogMessage(parameters, "trace", format);
                     }
                 }
             }
@@ -813,7 +834,7 @@ namespace Runner.Client
                 var (secs, vars) = await ReadSecretsAndVariables(handle);
                 var context = new Runner.Server.Azure.Devops.Context {
                     FileProvider = new MyFileProvider(handle),
-                    TraceWriter = handle.Quiet ? new EmptyTraceWriter() : new TraceWriter(),
+                    TraceWriter = handle.Quiet ? new EmptyTraceWriter() : new TraceWriter(handle),
                     Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives | GitHub.DistributedTask.Expressions2.ExpressionFlags.AllowAnyForInsert,
                     VariablesProvider = new VariablesProvider { Variables = vars }
                 };
@@ -1228,7 +1249,7 @@ namespace Runner.Client
                 }
                 if(errors.Count > 0) {
                     foreach(var error in errors) {
-                        Console.Error.WriteLine(error);
+                        WriteLogMessage(parameters, "error", error);
                     }
                     return 1;
                 }
@@ -1246,7 +1267,7 @@ namespace Runner.Client
                         return;
                     }
                     e.Cancel = !canceled;
-                    Console.WriteLine($"CTRL+C received {(e.Cancel ? "Shutting down... CTRL+C again to Terminate" : "Terminating")}");
+                    WriteLogMessage(parameters, "info", $"CTRL+C received {(e.Cancel ? "Shutting down... CTRL+C again to Terminate" : "Terminating")}");
                     canceled = true;
                     source.Cancel();
                 };
@@ -1256,7 +1277,7 @@ namespace Runner.Client
                         parameters.RunnerVersion = "3.243.1";
                     }
                     if(!string.IsNullOrEmpty(parameters.RunnerVersion)) {
-                        parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
+                        parameters.RunnerPath = Directory.GetParent(await ExternalToolHelper.GetAgent(parameters, azure ? "azagent" : "runner", parameters.RunnerVersion, source.Token)).Parent.FullName;
                     }
                 }
                 List<Task> listener = new List<Task>();
@@ -1264,14 +1285,14 @@ namespace Runner.Client
                     if(!expandAzurePipeline && (parameters.Server == null || parameters.StartServer || parameters.StartRunner)) {
                         var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                         EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
-                            Console.WriteLine(e.Data);
+                            WriteLogMessage(parameters, "trace", e.Data);
                         };
                         if(parameters.StartRunner) {
                             if(parameters.Server == null) {
                                 parameters.Server = "http://localhost:5000";
                             }
                         } else {
-                            Console.WriteLine("Starting Server...");
+                            WriteLogMessage(parameters, "info", "Starting Server...");
                             string listeningAddr = parameters.Server;
                             if(parameters.Server == null) {
                                 listeningAddr = "http://*:0";
@@ -1305,11 +1326,11 @@ namespace Runner.Client
                                     }
                                 }
                                 if(parameters.Server == null) {
-                                    Console.WriteLine("Failed to autodetect non loopback ip, docker actions will fail to connect");
+                                    WriteLogMessage(parameters, "warn", "Failed to autodetect non loopback ip, docker actions will fail to connect");
                                     parameters.Server = "http://localhost:0";
                                 }
                             }
-                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                             if(parameters.Verbose) {
                                 invoker.OutputDataReceived += _out;
                                 invoker.ErrorDataReceived += _out;
@@ -1392,10 +1413,10 @@ namespace Runner.Client
                                                 serverEnv[kv.Key] = kv.Value;
                                             }
                                             if(parameters.Verbose) {
-                                                Console.WriteLine($"serverEnv: {(serverEnv.Select(kv => $"{kv.Key}={kv.Value}").Aggregate((l, nl) => string.IsNullOrEmpty(l) ? nl : $"{l}\n{nl}"))}");
+                                                WriteLogMessage(parameters, "trace", $"serverEnv: {(serverEnv.Select(kv => $"{kv.Key}={kv.Value}").Aggregate((l, nl) => string.IsNullOrEmpty(l) ? nl : $"{l}\n{nl}"))}");
                                             }
                                             var x = await invoker.ExecuteAsync(binpath, file, arguments, serverEnv, false, null, true, runToken.Token);
-                                            Console.WriteLine("Stopped Server");
+                                            WriteLogMessage(parameters, "info", "Stopped Server");
                                             File.Delete(serverconfigfileName);
                                         }
                                     });
@@ -1409,12 +1430,12 @@ namespace Runner.Client
                                             var caddr = new UriBuilder(line);
                                             caddr.Host = uri.Host;
                                             parameters.Server = caddr.Uri.ToString().Trim('/');
-                                            Console.WriteLine($"The server is listening on {line} / {parameters.Server}");
+                                            WriteLogMessage(parameters, "info", $"The server is listening on {line} / {parameters.Server}");
                                         }
                                     });
                                     if(await Task.WhenAny(serveriptask, servertask) == servertask) {
                                         if(!canceled) {
-                                            Console.Error.WriteLine("Failed to start server, rerun with `-v` to find out what is wrong");
+                                            WriteLogMessage(parameters, "error", "Failed to start server, rerun with `-v` to find out what is wrong");
                                         }
                                         return 1;
                                     }
@@ -1423,7 +1444,7 @@ namespace Runner.Client
                         }
 
                         if(parameters.Parallel > 0) {
-                            Console.WriteLine($"Starting {parameters.Parallel} Runner{(parameters.Parallel != 1 ? "s" : "")}...");
+                            WriteLogMessage(parameters, "info", $"Starting {parameters.Parallel} Runner{(parameters.Parallel != 1 ? "s" : "")}...");
                             var workerchannel = Channel.CreateBounded<bool>(1);
                             for(int i = 0; i < parameters.Parallel; i++) {
                                 if(string.IsNullOrEmpty(parameters.RunnerPath)) {
@@ -1435,17 +1456,17 @@ namespace Runner.Client
                             var task = workerchannel.Reader.ReadAsync().AsTask();
                             if(await Task.WhenAny(listener.Append(task)) != task) {
                                 if(!canceled) {
-                                    Console.Error.WriteLine("Fatal: Failed to start Runner or Server crashed");
+                                    WriteLogMessage(parameters, "error", "Fatal: Failed to start Runner or Server crashed");
                                 }
                                 return 1;
                             }
-                            Console.WriteLine($"First runner is listening for jobs");
+                            WriteLogMessage(parameters, "info", $"First runner is listening for jobs");
                         }
 
                         if(parameters.StartServer || parameters.StartRunner) {
                             var exitAfterEnterEnv = System.Environment.GetEnvironmentVariable("RUNNER_CLIENT_EXIT_AFTER_ENTER");
                             var exitAfterEnter = Debugger.IsAttached && exitAfterEnterEnv != "0" || exitAfterEnterEnv == "1";
-                            Console.WriteLine($"Press {(exitAfterEnter ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.Parallel != 1 ? "Runners" : "Runner"))}");
+                            WriteLogMessage(parameters, "info", $"Press {(exitAfterEnter ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.Parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
                                 if(exitAfterEnter) {
@@ -1652,23 +1673,23 @@ namespace Runner.Client
                                 using(FileSystemWatcher watcher = new FileSystemWatcher(parameters.Directory ?? ".") {IncludeSubdirectories = true}) {
                                     watcher.Created += (s, f) => {
                                         var path = Path.GetRelativePath(parameters.Directory ?? ".", f.FullPath);
-                                        Console.WriteLine($"Added {path}");
+                                        WriteLogMessage(parameters, "info", $"Added {path}");
                                         added.Enqueue(path);
                                     };
                                     watcher.Deleted += (s, f) => {
                                         var path = Path.GetRelativePath(parameters.Directory ?? ".", f.FullPath);
-                                        Console.WriteLine($"Removed {path}");
+                                        WriteLogMessage(parameters, "info", $"Removed {path}");
                                         removed.Enqueue(path);
                                     };
                                     watcher.Changed += (s, f) => {
                                         var path = Path.GetRelativePath(parameters.Directory ?? ".", f.FullPath);
-                                        Console.WriteLine($"Changed {path}");
+                                        WriteLogMessage(parameters, "info", $"Changed {path}");
                                         changed.Enqueue(path);
                                     };
                                     watcher.Renamed += (s, f) => {
                                         var path = Path.GetRelativePath(parameters.Directory ?? ".", f.FullPath);
                                         var oldpath = Path.GetRelativePath(parameters.Directory ?? ".", f.OldFullPath);
-                                        Console.WriteLine($"Renamed {oldpath} to {path}");
+                                        WriteLogMessage(parameters, "info", $"Renamed {oldpath} to {path}");
                                         if(oldpath != f.OldFullPath) {
                                             removed.Enqueue(oldpath);
                                         }
@@ -1676,10 +1697,10 @@ namespace Runner.Client
                                             added.Enqueue(path);
                                         }
                                     };
-                                    watcher.Error += OnError;
+                                    watcher.Error += (s, e) => PrintException(parameters, e.GetException());
                                     watcher.EnableRaisingEvents = true;
 
-                                    Console.WriteLine("Watching for changes");
+                                    WriteLogMessage(parameters, "info", "Watching for changes");
 
                                     string addedFile = null;
                                     string changedFile = null;
@@ -1687,24 +1708,24 @@ namespace Runner.Client
                                     try {
                                         do {
                                             await Task.Delay(2000, source.Token);
-                                        } while(!(added.TryDequeue(out addedFile) && !await IsIgnored(parameters.Directory ?? ".", addedFile)) && !(changed.TryDequeue(out changedFile) && !await IsIgnored(parameters.Directory ?? ".", changedFile)) && !(removed.TryDequeue(out removedFile) && !await IsIgnored(parameters.Directory ?? ".", removedFile)));
+                                        } while(!(added.TryDequeue(out addedFile) && !await IsIgnored(parameters, parameters.Directory ?? ".", addedFile)) && !(changed.TryDequeue(out changedFile) && !await IsIgnored(parameters, parameters.Directory ?? ".", changedFile)) && !(removed.TryDequeue(out removedFile) && !await IsIgnored(parameters, parameters.Directory ?? ".", removedFile)));
                                     } catch(TaskCanceledException) {
 
                                     }
                                     while(addedFile != null || added.TryDequeue(out addedFile)) {
-                                        if(!await IsIgnored(parameters.Directory ?? ".", addedFile)) {
+                                        if(!await IsIgnored(parameters, parameters.Directory ?? ".", addedFile)) {
                                             addedFiles.Add(addedFile.Replace('\\', '/'));
                                         }
                                         addedFile = null;
                                     }
                                     while(changedFile != null || changed.TryDequeue(out changedFile)) {
-                                        if(!await IsIgnored(parameters.Directory ?? ".", changedFile)) {
+                                        if(!await IsIgnored(parameters, parameters.Directory ?? ".", changedFile)) {
                                             changedFiles.Add(changedFile.Replace('\\', '/'));
                                         }
                                         changedFile = null;
                                     }
                                     while(removedFile != null || removed.TryDequeue(out removedFile)) {
-                                        if(!await IsIgnored(parameters.Directory ?? ".", removedFile)) {
+                                        if(!await IsIgnored(parameters, parameters.Directory ?? ".", removedFile)) {
                                             removedFiles.Add(removedFile.Replace('\\', '/'));
                                         }
                                         removedFile = null;
@@ -1726,17 +1747,17 @@ namespace Runner.Client
                                     try {
                                         workflows = Directory.GetFiles(pWorkflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Concat(Directory.GetFiles(pWorkflows, "*.yaml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })).ToArray();
                                         if((workflows == null || workflows.Length == 0)) {
-                                            Console.Error.WriteLine($"No workflow *.yml / *.yaml file found inside of {pWorkflows}");
+                                            WriteLogMessage(parameters, "error", $"No workflow *.yml / *.yaml file found inside of {pWorkflows}");
                                             return 1;
                                         }
                                     } catch {
-                                        Console.Error.WriteLine($"Failed to read directory {pWorkflows}");
+                                        WriteLogMessage(parameters, "error", $"Failed to read directory {pWorkflows}");
                                         return 1;
                                     }
                                 } else if (File.Exists(pWorkflows)) {
                                     workflows = new[] { pWorkflows };
                                 } else {
-                                    Console.Error.WriteLine($"No such file or directory {pWorkflows}");
+                                    WriteLogMessage(parameters, "error", $"No such file or directory {pWorkflows}");
                                     return 1;
                                 }
                             }
@@ -1745,11 +1766,11 @@ namespace Runner.Client
                                     foreach(var workflow in workflows) {
                                         var name = Path.GetRelativePath(parameters.Directory ?? ".", workflow).Replace('\\', '/');
                                         var res = await AzurePipelinesExpander.ExpandCurrentPipeline(parameters, name);
-                                        Console.WriteLine(res);
+                                        WriteLogMessage(parameters, "info", res);
                                     }
                                     return 0;
                                 } catch (Exception except) {
-                                    Console.WriteLine($"Exception: {except.Message}, {except.StackTrace}");
+                                    WriteLogMessage(parameters, "error", $"Exception: {except.Message}, {except.StackTrace}");
                                     return 1;
                                 } finally {
                                     cancelWorkflow = null;
@@ -1775,7 +1796,7 @@ namespace Runner.Client
                                             var name = Path.GetRelativePath(parameters.Directory ?? ".", w).Replace('\\', '/');
                                             mp.Add(new StreamContent(workflow), name, name);
                                         } catch(Exception ex) {
-                                            Console.WriteLine($"Failed to read file: {w}, Details: {ex.Message}");
+                                            WriteLogMessage(parameters, "error", $"Failed to read file: {w}, Details: {ex.Message}");
                                             return 1;
                                         }
                                     }
@@ -1787,7 +1808,7 @@ namespace Runner.Client
                                             try {
                                                 wenv.AddRange(Util.ReadEnvFile(file));
                                             } catch(Exception ex) {
-                                                Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                WriteLogMessage(parameters, "error", $"Failed to read file: {file}, Details: {ex.Message}");
                                                 return 1;
                                             }
                                         }
@@ -1797,7 +1818,7 @@ namespace Runner.Client
                                             try {
                                                 wsecrets.AddRange(Util.ReadEnvFile(file));
                                             } catch(Exception ex) {
-                                                Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                WriteLogMessage(parameters, "error", $"Failed to read file: {file}, Details: {ex.Message}");
                                                 return 1;
                                             }
                                         }
@@ -1876,7 +1897,7 @@ namespace Runner.Client
                                             var git = WhichUtil.Which("git", true);
                                             GitHub.Runner.Sdk.ProcessInvoker gitinvoker;
                                             if(string.IsNullOrEmpty(Ref)) {
-                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                                 gitinvoker.OutputDataReceived += handleoutput;
                                                 var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                                                 await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, "tag --points-at HEAD", new Dictionary<string, string>(), source.Token);
@@ -1885,7 +1906,7 @@ namespace Runner.Client
                                                 }
                                             }
                                             if(string.IsNullOrEmpty(Ref) || string.IsNullOrEmpty(repofullname)) {
-                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                                 gitinvoker.OutputDataReceived += handleoutput;
                                                 await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, "symbolic-ref HEAD", new Dictionary<string, string>(), source.Token);
                                                 if(line != null) {
@@ -1895,14 +1916,14 @@ namespace Runner.Client
                                                     }
                                                     if(string.IsNullOrEmpty(repofullname)) {
                                                         line = null;
-                                                        gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                                        gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                                         gitinvoker.OutputDataReceived += handleoutput;
                                                         await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, $"for-each-ref --format=%(upstream:short) {_ref}", new Dictionary<string, string>(), source.Token);
                                                         if(line != null && line != "") {
                                                             var remote = line.Substring(0, line.IndexOf('/'));
                                                             if(parameters.DefaultBranch == null) {
                                                                 line = null;
-                                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                                                 gitinvoker.OutputDataReceived += handleoutput;
                                                                 await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, $"symbolic-ref refs/remotes/{remote}/HEAD", new Dictionary<string, string>(), source.Token);
                                                                 if(line != null && line.StartsWith($"refs/remotes/{remote}/")) {
@@ -1911,7 +1932,7 @@ namespace Runner.Client
                                                                 }
                                                             }
                                                             line = null;
-                                                            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                                            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                                             gitinvoker.OutputDataReceived += handleoutput;
                                                             await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, $"remote get-url {remote}", new Dictionary<string, string>(), source.Token);
                                                             if(line != null) {
@@ -1929,23 +1950,23 @@ namespace Runner.Client
                                                         }
                                                     }
                                                 } else {
-                                                    await Console.Error.WriteLineAsync("No default github.ref found");
+                                                    WriteLogMessage(parameters, "error", "No default github.ref found");
                                                 }
                                             }
                                             if(string.IsNullOrEmpty(sha)) {
                                                 line = null;
-                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                                 gitinvoker.OutputDataReceived += handleoutput;
                                                 await gitinvoker.ExecuteAsync(parameters.Directory ?? Path.GetFullPath("."), git, "rev-parse HEAD", new Dictionary<string, string>(), source.Token);
                                                 if(line != null && line != "HEAD" /* on failure git returns HEAD instead of a sha */) {
                                                     sha = line;
                                                     line = null;
                                                 } else {
-                                                    await Console.Error.WriteLineAsync("Couldn't retrieve github.sha");
+                                                    WriteLogMessage(parameters, "error", "Couldn't retrieve github.sha");
                                                 }
                                             }
                                         } catch {
-                                            await Console.Error.WriteLineAsync("Failed to detect git repo the github context may have invalid values");
+                                            WriteLogMessage(parameters, "error", "Failed to detect git repo the github context may have invalid values");
                                         }
                                         if(string.IsNullOrEmpty(repofullname) || !repofullname.Contains('/')) {
                                             repofullname = "Unknown/Unknown";
@@ -1988,7 +2009,7 @@ namespace Runner.Client
                                                 payloadContent.Merge(obj, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
                                             }
                                         } catch(Exception ex) {
-                                            Console.WriteLine($"Failed to read file: {parameters.Payload}, Details: {ex.Message}");
+                                            WriteLogMessage(parameters, "error", $"Failed to read file: {parameters.Payload}, Details: {ex.Message}");
                                             return 1;
                                         }
                                     } else if(parameters.NoDefaultPayload) {
@@ -2002,7 +2023,7 @@ namespace Runner.Client
                                                 try {
                                                     Util.ReadEnvFile(file, (k, v) => inputs[k] = v);
                                                 } catch(Exception ex) {
-                                                    Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                    WriteLogMessage(parameters, "error", $"Failed to read file: {file}, Details: {ex.Message}");
                                                     return 1;
                                                 }
                                             }
@@ -2024,7 +2045,7 @@ namespace Runner.Client
                                                 try {
                                                     Util.ReadEnvFile(file, (k, v) => inputs[k] = v);
                                                 } catch(Exception ex) {
-                                                    Console.WriteLine($"Failed to read file: {file}, Details: {ex.Message}");
+                                                    WriteLogMessage(parameters, "error", $"Failed to read file: {file}, Details: {ex.Message}");
                                                     return 1;
                                                 }
                                             }
@@ -2063,7 +2084,7 @@ namespace Runner.Client
                                 List<Job> jobs = new List<Job>();
                                 var forceCancelWorkflow = () => {
                                     cancelWorkflow = null;
-                                    Console.WriteLine($"CTRL+C received Force Cancel Running Jobs");
+                                    WriteLogMessage(parameters, "info", $"CTRL+C received Force Cancel Running Jobs");
                                     var runIds = (from j in jobs.ToArray() select j.runid).ToHashSet();
                                     foreach(var runId in runIds) {
                                         client.PostAsync(GetForceCancelWorkflowUrl(b.ToString(), runId), null, CancellationToken.None);
@@ -2071,7 +2092,7 @@ namespace Runner.Client
                                 };
                                 cancelWorkflow = () => {
                                     cancelWorkflow = forceCancelWorkflow;
-                                    Console.WriteLine($"CTRL+C received Cancel Running Jobs");
+                                    WriteLogMessage(parameters, "info", $"CTRL+C received Cancel Running Jobs");
                                     var runIds = (from j in jobs.ToArray() select j.runid).ToHashSet();
                                     foreach(var runId in runIds) {
                                         client.PostAsync(GetCancelWorkflowUrl(b.ToString(), runId), null, CancellationToken.None);
@@ -2141,8 +2162,8 @@ namespace Runner.Client
                                                 break;
                                             }
                                             if(parameters.Trace) {
-                                                Console.WriteLine($"##[Trace]{line}");
-                                                Console.WriteLine($"##[Trace]{data}");
+                                                WriteLogMessage(parameters, "trace", $"##[Trace]{line}");
+                                                WriteLogMessage(parameters, "trace", $"##[Trace]{data}");
                                             }
                                             if(!parameters.Quiet && line == "event: log") {
                                                 var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
@@ -2396,7 +2417,7 @@ namespace Runner.Client
                                                         WriteLogLine((int)rec.Color, $"{rec.TimeLine[0].Name}", $"Workflow {_workflow.runid} Completed with Status: {result.ToString()}");
                                                     }
                                                 } else {
-                                                    Console.WriteLine($"Workflow {_workflow.runid} finished with status {result.ToString()}");
+                                                    WriteLogMessage(parameters, "info", $"Workflow {_workflow.runid} finished with status {result.ToString()}");
                                                 }
                                                 hasErrors |= !_workflow.Success;
                                                 hasAny = true;
@@ -2438,7 +2459,7 @@ namespace Runner.Client
                                                     try {
                                                         var artfactBasePath = Path.Combine(parameters.ArtifactOutputDir, runId.ToString(), artifact.name);
                                                         Directory.CreateDirectory(artfactBasePath);
-                                                        Console.WriteLine($"Downloading {runId}/{artifact.name}");
+                                                        WriteLogMessage(parameters, "info", $"Downloading {runId}/{artifact.name}");
                                                         var files = JsonConvert.DeserializeObject<VssJsonCollectionWrapper<DownloadInfo[]>>(await client.GetStringAsync(artifact.fileContainerResourceUrl));
                                                         foreach(var file in files.Value) {
                                                             try {
@@ -2468,7 +2489,7 @@ namespace Runner.Client
                                             try {
                                                 var logBasePath = Path.Combine(parameters.LogOutputDir, job.runid.ToString(), special.Replace(job.name, "-"));
                                                 Directory.CreateDirectory(logBasePath);
-                                                Console.WriteLine($"Downloading Logs {job.runid}/{special.Replace(job.name, "-")}");
+                                                WriteLogMessage(parameters, "info", $"Downloading Logs {job.runid}/{special.Replace(job.name, "-")}");
                                                 var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.Server + $"/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
                                                 foreach(var timeLineRecord in timeLineRecords) {
                                                     try {
@@ -2493,15 +2514,15 @@ namespace Runner.Client
                                     }
                                 }
                                 if(hasErrors) {
-                                    Console.WriteLine("All Workflows finished, at least one workflow failed");
+                                    WriteLogMessage(parameters, "error", "All Workflows finished, at least one workflow failed");
                                 } else if(!hasAny) {
-                                    Console.WriteLine("All Workflows skipped, due to filters");
+                                    WriteLogMessage(parameters, "info", "All Workflows skipped, due to filters");
                                 } else {
-                                    Console.WriteLine("All Workflows finished successfully");
+                                    WriteLogMessage(parameters, "info", "All Workflows finished successfully");
                                 }
                                 return hasErrors ? 1 : 0;
                             } catch (Exception except) {
-                                Console.WriteLine($"Exception: {except.Message}, {except.StackTrace}");
+                                WriteLogMessage(parameters, "error", $"Exception: {except.Message}, {except.StackTrace}");
                                 return 1;
                             } finally {
                                 cancelWorkflow = null;
@@ -2783,7 +2804,7 @@ namespace Runner.Client
                         } else if(file.StartsWith("120")) {
                             //Symlink
                             submoduleTasks.Add(async () => {
-                                GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+                                GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                                 string dest = null;
                                 gitinvoker.OutputDataReceived += (s, e) => {
                                     dest = e.Data;
@@ -2809,7 +2830,7 @@ namespace Runner.Client
                     }
                 }
             };
-            GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+            GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
             gitinvoker.OutputDataReceived += handleoutput;
             var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var git = WhichUtil.Which("git", true);
@@ -2818,7 +2839,7 @@ namespace Runner.Client
             foreach (var submodule in submoduleTasks) {
                 await submodule();
             }
-            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.Verbose));
+            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
             gitinvoker.OutputDataReceived += (s, e) => {
                 var files = e.Data.Split('\0');
                 foreach(var filename in files) {
