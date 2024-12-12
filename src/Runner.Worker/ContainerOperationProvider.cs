@@ -90,16 +90,21 @@ namespace GitHub.Runner.Worker
             }
             executionContext.Output("##[endgroup]");
 
-            // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
-            // All containers within a job join the same network
-            executionContext.Output("##[group]Create local container network");
-            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
-            await CreateContainerNetworkAsync(executionContext, containerNetwork);
-            executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
-            executionContext.Output("##[endgroup]");
-
             foreach (var container in containers)
             {
+                string containerNetwork = null;
+                // Do not create a network if user specified --network within container options
+                if (!container.ContainerCreateOptions.Contains("--network"))
+                {
+                    // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
+                    executionContext.Output("##[group]Create local container network");
+                    containerNetwork = $"github_network_{Guid.NewGuid():N}";
+
+                    await CreateContainerNetworkAsync(executionContext, containerNetwork);
+                    executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
+                    executionContext.Output("##[endgroup]");
+                }
+
                 container.ContainerNetwork = containerNetwork;
                 await StartContainerAsync(executionContext, container);
             }
@@ -159,8 +164,16 @@ namespace GitHub.Runner.Worker
             {
                 await StopContainerAsync(executionContext, container);
             }
-            // Remove the container network
-            await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
+            var removedNetworks = new HashSet<string>();
+            foreach (var container in containers)
+            {
+                if (!string.IsNullOrEmpty(container.ContainerNetwork) && !removedNetworks.Contains(container.ContainerNetwork))
+                {
+                    // Remove the container network
+                    await RemoveContainerNetworkAsync(executionContext, container.ContainerNetwork);
+                    removedNetworks.Add(container.ContainerNetwork);
+                }
+            }
         }
 
         private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
