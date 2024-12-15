@@ -199,11 +199,11 @@ public class CodeLensProvider : ICodeLensHandler
                 var fileContent = content;
                 var yamlObjectReader = new YamlObjectReader(fileId, fileContent);
                 token = TemplateReader.Read(templateContext, isWorkflow ? "workflow-root" : "action-root", yamlObjectReader, fileId, out _);
-                var jobs = token.TraverseByPattern("jobs").FirstOrDefault().AssertMapping("");
+                var jobs = token.TraverseByPattern(false, "jobs").FirstOrDefault().AssertMapping("");
                 var codeLens = new List<CodeLens>();
 
                 MappingToken mappingEvent = null;
-                var tk = token.TraverseByPattern("on").FirstOrDefault();
+                var tk = token.TraverseByPattern(false, "on").FirstOrDefault();
                 List<string> events = new List<string>();
                 switch(tk.Type) {
                     case TokenType.String:

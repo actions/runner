@@ -280,6 +280,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         /// </summary>
         public static IEnumerable<TemplateToken> TraverseByPattern(
             this TemplateToken token,
+            bool traverseIf,
             params string[] pattern)
         {
             int level = 0;
@@ -298,6 +299,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         {
                             token = state.Current;
                             bool skip = state.IsMapping && pattern[level] != "" && (token is ExpressionToken || token.AssertLiteralString("") != pattern[level]);
+                            bool innerExpr = traverseIf && skip && token is ConditionalExpressionToken;
                             if(state.IsMapping) {
                                 state.MoveNext(false);
                                 token = state.Current;
@@ -310,6 +312,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                             {
                                 state = new TraversalState(state, token);
                                 level+=state.Increment;
+                            } else if(innerExpr && token is SequenceToken) {
+                                state = new TraversalState(state, token) { Increment = -1 };
+                                level += state.Increment;
+                            } else if(innerExpr && token is MappingToken) {
+                                state = new TraversalState(state, token) { Increment = 0 };
+                                level += state.Increment;
                             }
                         }
                         else
