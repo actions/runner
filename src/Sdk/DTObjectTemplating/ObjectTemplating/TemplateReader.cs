@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -243,7 +243,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         if(nextKeyScalar is EachExpressionToken eachexp) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
                             def.AllowedContext = definition.AllowedContext.Append(eachexp.Variable).ToArray();
-                            if(m_context.AutoCompleteMatches != null && definition.Parent is SequenceDefinition) {
+                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(definition.Parent).Any()) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(definition.ParentName);
                                 oneOf.OneOf.Add(definition.Name);
@@ -252,7 +252,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             nextValue = ReadValue(def);
                         } else if(nextKeyScalar is ConditionalExpressionToken || nextKeyScalar is InsertExpressionToken && (m_context.Flags & Expressions2.ExpressionFlags.AllowAnyForInsert) != Expressions2.ExpressionFlags.None) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
-                            if(m_context.AutoCompleteMatches != null && definition.Parent is SequenceDefinition) {
+                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(definition.Parent).Any()) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(definition.ParentName);
                                 oneOf.OneOf.Add(definition.Name);
@@ -408,7 +408,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         if(nextKeyScalar is EachExpressionToken eachexp) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(mappingDefinition) : new DefinitionInfo(mappingDefinition, "any");
                             def.AllowedContext = valueDefinition.AllowedContext.Append(eachexp.Variable).ToArray();
-                            if(m_context.AutoCompleteMatches != null && mappingDefinition.Parent is SequenceDefinition) {
+                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).Any()) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(mappingDefinition.ParentName);
                                 oneOf.OneOf.Add(mappingDefinition.Name);
@@ -417,7 +417,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             nextValue = ReadValue(def);
                         } else if(nextKeyScalar is ConditionalExpressionToken || nextKeyScalar is InsertExpressionToken && (m_context.Flags & Expressions2.ExpressionFlags.AllowAnyForInsert) != Expressions2.ExpressionFlags.None) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(mappingDefinition) : new DefinitionInfo(mappingDefinition, "any");
-                            if(m_context.AutoCompleteMatches != null && mappingDefinition.Parent is SequenceDefinition) {
+                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).Any()) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(mappingDefinition.ParentName);
                                 oneOf.OneOf.Add(mappingDefinition.Name);
@@ -603,8 +603,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     Definitions = new [] { definitionInfo.Definition }
                 };
                 if(m_context.AutoCompleteMatches != null && Match(token) && (token.PostWhiteSpace == null || MatchPost(token) /*(m_context.Row < token.PostWhiteSpace.Line && !(token.PostWhiteSpace.Line == m_context.Row && token.PostWhiteSpace.Character > m_context.Column))*/)) {
-                    m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= m_memory.Depth);
-                    m_context.AutoCompleteMatches.Add(completion);
+                    var element = m_context.AutoCompleteMatches.FirstOrDefault(m => m.Depth == m_memory.Depth);
+                    // Only Replace if the pre whitespace is beginning later
+                    // Bug the next key scalar has been choosen
+                    if(element?.Token?.PreWhiteSpace == null || completion?.Token?.PreWhiteSpace == null || element.Token.PreWhiteSpace.Line > completion.Token.PreWhiteSpace.Line || element.Token.PreWhiteSpace.Line == completion.Token.PreWhiteSpace.Line && element.Token.PreWhiteSpace.Character > completion.Token.PreWhiteSpace.Character ) {
+                        m_context.AutoCompleteMatches.RemoveAll(m => m.Depth >= m_memory.Depth);
+                        m_context.AutoCompleteMatches.Add(completion);
+                    }
                 } else {
                     completion.SemTokensOnly = true;
                 }
