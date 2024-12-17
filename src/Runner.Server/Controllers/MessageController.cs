@@ -47,6 +47,8 @@ using System.Reflection;
 using Quartz;
 using Quartz.Impl.Matchers;
 using Swashbuckle.AspNetCore.Annotations;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi.Writers;
 
 namespace Runner.Server.Controllers
 {
@@ -60,6 +62,7 @@ namespace Runner.Server.Controllers
         private string GitGraphQlServerUrl;
         private IMemoryCache _cache;
         private SqLiteDb _context;
+        private IServiceProvider _provider;
         private ISchedulerFactory factory;
         private string GITHUB_TOKEN;
         private string GITHUB_TOKEN_READ_ONLY;
@@ -91,7 +94,7 @@ namespace Runner.Server.Controllers
         private string OnQueueJobProgram { get; }
         private string OnQueueJobArgs { get; }
         private MessageController Clone() {
-            var nc = new MessageController(Configuration, _cache, new SqLiteDb(_context.Options), factory);
+            var nc = new MessageController(Configuration, _cache, new SqLiteDb(_context.Options), _provider, factory);
             // We have no access to the HttpContext in the clone
             nc.ServerUrl = ServerUrl;
             return nc;
@@ -105,8 +108,8 @@ namespace Runner.Server.Controllers
         public class QuartzScheduleWorkflowJob : IJob
         {
             private MessageController controller;
-            public QuartzScheduleWorkflowJob(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, ISchedulerFactory factory = null) {
-                controller = new MessageController(configuration, memoryCache, context, factory);
+            public QuartzScheduleWorkflowJob(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, IServiceProvider provider, ISchedulerFactory factory = null) {
+                controller = new MessageController(configuration, memoryCache, context, provider, factory);
             }
 
             public async Task Execute(IJobExecutionContext context)
@@ -120,7 +123,7 @@ namespace Runner.Server.Controllers
             }
         }
 
-        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, ISchedulerFactory factory = null) : base(configuration)
+        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, IServiceProvider provider, ISchedulerFactory factory = null) : base(configuration)
         {
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<string>("GitServerUrl") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<string>("GitApiServerUrl") ?? "";
@@ -154,6 +157,7 @@ namespace Runner.Server.Controllers
             workflowRootFolder = configuration.GetSection("Runner.Server").GetValue<string>("WorkflowRootFolder", ".github/workflows");
             _cache = memoryCache;
             _context = context;
+            _provider = provider;
             this.factory = factory;
         }
 
@@ -5779,10 +5783,19 @@ namespace Runner.Server.Controllers
                         new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                     } else {
                         Action _queueJob = () => {
-                            Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+                            using(var scope = _provider.CreateScope()) {
+                                var queueService = scope.ServiceProvider.GetService<IQueueService>();
 
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
-                            queue.Writer.WriteAsync(job);
+                                if(queueService != null) {
+                                    job.SessionId = Guid.NewGuid();
+                                    queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), job.CancelRequest.Token, new string[0]);
+                                } else {
+                                    Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+
+                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
+                                    queue.Writer.WriteAsync(job);
+                                }
+                            }
                         };
                         if(string.IsNullOrEmpty(group)) {
                             _queueJob();
@@ -6306,10 +6319,20 @@ namespace Runner.Server.Controllers
                         new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = result ?? TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                     } else {
                         Action _queueJob = () => {
-                            Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+                            using(var scope = _provider.CreateScope()) {
 
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
-                            queue.Writer.WriteAsync(job);
+                                var queueService = scope.ServiceProvider.GetService<IQueueService>();
+
+                                if(queueService != null) {
+                                    job.SessionId = Guid.NewGuid();
+                                    queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), job.CancelRequest.Token, new string[0]);
+                                } else {
+                                    Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+
+                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
+                                    queue.Writer.WriteAsync(job);
+                                }
+                            }
                         };
                         if(string.IsNullOrEmpty(group)) {
                             _queueJob();

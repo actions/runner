@@ -101,6 +101,13 @@ jobs:
       with:
         name: nupkg
         path: src/Runner.Client/nupkg
+    - name: Windows Container Change Firewall Settings
+      if: contains(matrix.os, 'windows') && !job.container
+      run: |
+        docker pull mcr.microsoft.com/windows/servercore:${{matrix.tag}}&
+        docker pull mcr.microsoft.com/windows/servercore:ltsc2022&
+        docker pull mcr.microsoft.com/powershell:lts-windowsservercore-ltsc2022&
+      shell: bash
     - name: Install
       run: |
         dotnet tool install -g Runner.Client --add-source src/Runner.Client/nupkg --version ${{needs.package.outputs.version}}

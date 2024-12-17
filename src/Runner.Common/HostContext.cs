@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Common
 {
@@ -75,12 +76,12 @@ namespace GitHub.Runner.Common
         public ISecretMasker SecretMasker => _secretMasker;
         public List<ProductInfoHeaderValue> UserAgents => _userAgents;
         public RunnerWebProxy WebProxy => _webProxy;
-        public HostContext(string hostType, string logFile = null)
+        public HostContext(string hostType, string logFile = null, string customConfigDir = null)
         {
             // Validate args.
             ArgUtil.NotNullOrEmpty(hostType, nameof(hostType));
 
-            configRoot = Environment.GetEnvironmentVariable("RUNNER_SERVER_CONFIG_ROOT");
+            configRoot ??= customConfigDir ?? Environment.GetEnvironmentVariable("RUNNER_SERVER_CONFIG_ROOT");
 
             _loadContext = AssemblyLoadContext.GetLoadContext(typeof(HostContext).GetTypeInfo().Assembly);
             _loadContext.Unloading += LoadContext_Unloading;
@@ -508,6 +509,19 @@ namespace GitHub.Runner.Common
 
             // Return the instance from the cache.
             return _serviceInstances[typeof(T)] as T;
+        }
+
+        public T PutService<T>(T instance) where T : class, IRunnerService
+        {
+            // Otherwise create a new instance and try to add it to the cache.
+            _serviceInstances.SetIfNotNull(typeof(T), instance);
+
+            // Return the instance from the cache.
+            return _serviceInstances[typeof(T)] as T;
+        }
+
+        public void PutServiceFactory<I, T>() where I : class, IRunnerService where T : class, I {
+            _serviceTypes.SetIfNotNull(typeof(I), typeof(T));
         }
 
         public void SetDefaultCulture(string name)

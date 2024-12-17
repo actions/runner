@@ -21,8 +21,6 @@ using System.Net;
 using System.IO.Pipes;
 using System.Threading.Channels;
 using System.Text.RegularExpressions;
-using System.Runtime.InteropServices;
-using System.ComponentModel;
 using GitHub.Services.WebApi;
 using System.CommandLine.Builder;
 using System.CommandLine.Binding;
@@ -34,10 +32,15 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Runner.Server.Azure.Devops;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.Services.Common;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using Runner.Server;
 
 namespace Runner.Client
 {
-    class Program
+    partial class Program
     {
         public class Job {
             public Guid JobId { get; set; }
@@ -171,6 +174,8 @@ namespace Runner.Client
             public bool Trace { get; set; }
             public bool Json { get; set; }
             public bool ListOptions { get; set; }
+            public bool LegacyRunner { get; set; }
+            public bool LegacyServer { get; set; }
             public Parameters ShallowCopy()
             {
                 return (Parameters) this.MemberwiseClone();
@@ -447,164 +452,183 @@ namespace Runner.Client
             }
         }
 
-        private static async Task<int> CreateExternalRunner(string binpath, Parameters parameters, List<Task> listener, Channel<bool> workerchannel, CancellationTokenSource source) {
-            EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
+        private static async Task<int> CreateExternalRunner(string binpath, Parameters parameters, List<Task> listener, Channel<bool> workerchannel, CancellationTokenSource source)
+        {
+            EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) =>
+            {
                 WriteLogMessage(parameters, "trace", e.Data);
             };
-            var azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
-            var prefix = azure ? "Agent" : "Runner";
-            string ext = IOUtil.ExeExtension;
-            var root = Path.GetFullPath(parameters.RunnerPath);
-            var listenerexe = Path.Join(root, "bin", $"{prefix}.Listener{ext}");
-            var agentname = Path.GetRandomFileName();
-            string tmpdir = Path.Combine(Path.GetFullPath(parameters.RunnerDirectory), agentname);
-            Directory.CreateDirectory(Path.Join(tmpdir, "bin"));
-            var bindir = Path.Join(root, "bin");
-            foreach(var bfile in Directory.EnumerateFileSystemEntries(bindir)) {
-                var fname = bfile.Substring(bindir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                var destfile = Path.Join(tmpdir, "bin", fname);
-                // copy .exe on windows alters the assembly path
-                // copy .dll on linux alters the assembly path, not shure about the executable stub
-                if(fname.StartsWith(prefix + ".") && (fname.EndsWith(".exe") || fname.EndsWith(".dll") || !fname.Substring(prefix.Length + 1).Contains("."))) {
-                    File.Copy(bfile, destfile);
-                } else {
-                    if(Directory.Exists(bfile)) {
-                        Directory.CreateSymbolicLink(destfile, bfile);
-                    } else {
-                        File.CreateSymbolicLink(destfile, bfile);
-                    }
-                }
-            }
-            Directory.CreateSymbolicLink(Path.Join(tmpdir, "externals"), Path.Join(root, "externals"));
-            // for the azure pipelines agent on linux, doesn't exist on windows
-            File.CreateSymbolicLink(Path.Join(tmpdir, "license.html"), Path.Join(root, "license.html"));
+            bool azure;
+            string prefix, ext, agentname, tmpdir;
+            CreateExternalRunnerDirectory(parameters, out azure, out prefix, out ext, out agentname, out tmpdir);
 
             var runner = Path.Join(tmpdir, "bin", $"{prefix}.Listener{ext}");
             var file = runner;
-            try {
+            try
+            {
                 int attempt = 1;
-                while(!source.IsCancellationRequested) {
-                    try {
+                while (!source.IsCancellationRequested)
+                {
+                    try
+                    {
                         var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
-                        if(parameters.Verbose) {
+                        if (parameters.Verbose)
+                        {
                             inv.OutputDataReceived += _out;
                             inv.ErrorDataReceived += _out;
                         }
                         var systemEnv = System.Environment.GetEnvironmentVariables();
                         var runnerEnv = new Dictionary<string, string>();
-                        foreach(var e in systemEnv.Keys) {
+                        foreach (var e in systemEnv.Keys)
+                        {
                             runnerEnv[e as string] = systemEnv[e] as string;
                         }
-                        if(azure) {
+                        if (azure)
+                        {
                             // Backward compat with old runner.server < 3.11.3
                             runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"] = "1";
                             // the 3.x.x azure agents don't use PredefinedCulturesOnly https://learn.microsoft.com/en-US/dotnet/core/runtime-config/globalization#predefined-cultures, however actions/runner added it
                             runnerEnv["DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY"] = "false";
-                        } else {
+                        }
+                        else
+                        {
                             // the official runner drops the port from the host
                             runnerEnv["RUNNER_SERVER_CONFIG_ROOT"] = tmpdir;
                         }
                         var toolCacheEnv = azure ? "AGENT_TOOLSDIRECTORY" : "RUNNER_TOOL_CACHE";
-                        if(!parameters.NoSharedToolcache && !runnerEnv.TryGetValue(toolCacheEnv, out _)) {
+                        if (!parameters.NoSharedToolcache && !runnerEnv.TryGetValue(toolCacheEnv, out _))
+                        {
                             runnerEnv[toolCacheEnv] = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "tool_cache", GitHub.Runner.Sdk.GharunUtil.GetHostOS());
                         }
 
                         // PAT Auth is only possible via https for azure devops agents, fallback to negotiate with dummy credentials otherwise it wouldn't work on linux without https
-                        var arguments = azure ? parameters.Server.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ?  $"configure --auth pat --token {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.Server} --work w" : $"configure --auth negotiate --userName token --password {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.Server} --work w" : $"configure --name {agentname} --unattended --url {parameters.Server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
-                        if(!azure) {
+                        var arguments = azure ? parameters.Server.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? $"configure --auth pat --token {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.Server} --work w" : $"configure --auth negotiate --userName token --password {parameters.Token ?? "empty"} --unattended --agent {agentname} --url {parameters.Server} --work w" : $"configure --name {agentname} --unattended --url {parameters.Server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
+                        if (!azure)
+                        {
                             // Use embedded runner to configure external github agent, otherwise only port 80 or 443 are possible to use for configuration
-                        #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                             arguments = $"\"{Path.Join(binpath, "Runner.Listener.dll")}\" {arguments}";
                             file = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
-                        #else
+#else
                             file = Path.Join(binpath, $"Runner.Listener{ext}");
-                        #endif
+#endif
                         }
                         var code = await inv.ExecuteAsync(tmpdir, file, arguments, runnerEnv, true, null, true, CancellationTokenSource.CreateLinkedTokenSource(source.Token, new CancellationTokenSource(60 * 1000).Token).Token);
                         int execAttempt = 1;
                         var success = false;
                         // unset RUNNER_SERVER_CONFIG_ROOT to not appear in jobs created by external runners
                         runnerEnv.Remove("RUNNER_SERVER_CONFIG_ROOT");
-                        while(true) {
+                        while (true)
+                        {
                             file = runner;
-                            try {
+                            try
+                            {
                                 var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
-                                if(parameters.Verbose) {
+                                if (parameters.Verbose)
+                                {
                                     runnerlistener.OutputDataReceived += _out;
                                     runnerlistener.ErrorDataReceived += _out;
                                 }
-                                
+
                                 var runToken = CancellationTokenSource.CreateLinkedTokenSource(source.Token);
-                                using(var timer = new Timer(obj => {
+                                using (var timer = new Timer(obj =>
+                                {
                                     runToken.Cancel();
-                                }, null, 60 * 1000, -1)) {
-                                    runnerlistener.OutputDataReceived += (s, e) => {
-                                        if(e.Data.Contains("Listen")) {
+                                }, null, 60 * 1000, -1))
+                                {
+                                    runnerlistener.OutputDataReceived += (s, e) =>
+                                    {
+                                        if (e.Data.Contains("Listen"))
+                                        {
                                             timer.Change(-1, -1);
                                             success = true;
                                             workerchannel.Writer.WriteAsync(true);
                                         }
                                     };
-                                    if(source.IsCancellationRequested) {
+                                    if (source.IsCancellationRequested)
+                                    {
                                         return 1;
                                     }
                                     arguments = $"run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}";
                                     // Wrap listener to avoid that ctrl-c is sent to the runner
-                                    if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                                        #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                    if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+                                    {
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                                             arguments = $"\"{Path.Join(binpath, "Runner.Client.dll")}\" spawn \"{file}\" {arguments}";
                                             file = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
-                                        #else
-                                            arguments = $"spawn \"{file}\" {arguments}";
-                                            file = Path.Join(binpath, $"Runner.Client{ext}");
-                                        #endif
+#else
+                                        arguments = $"spawn \"{file}\" {arguments}";
+                                        file = Path.Join(binpath, $"Runner.Client{ext}");
+#endif
                                     }
-                                    ((Func<Task>)(async () => {
-                                        try {
+                                    ((Func<Task>)(async () =>
+                                    {
+                                        try
+                                        {
                                             var client = new HttpClient();
                                             var isagentonline = new UriBuilder(parameters.Server);
                                             isagentonline.Path = $"_apis/v1/Message/isagentonline";
                                             var query = new QueryBuilder();
                                             query.Add("name", agentname);
                                             isagentonline.Query = query.ToString().TrimStart('?');
-                                            for(int i = 0; i < 60; i++) {
+                                            for (int i = 0; i < 60; i++)
+                                            {
                                                 await Task.Delay(1000, source.Token);
                                                 var resp = await client.GetAsync(isagentonline.ToString());
-                                                if(resp.IsSuccessStatusCode) {
+                                                if (resp.IsSuccessStatusCode)
+                                                {
                                                     timer.Change(-1, -1);
                                                     success = true;
                                                     workerchannel.Writer.WriteAsync(true);
                                                     break;
                                                 }
                                             }
-                                        } catch {
+                                        }
+                                        catch
+                                        {
 
                                         }
                                     }))();
                                     await runnerlistener.ExecuteAsync(tmpdir, file, arguments, runnerEnv, true, null, true, runToken.Token);
                                     break;
                                 }
-                            } catch {
-                                if(success) {
-                                    if(source.IsCancellationRequested) {
+                            }
+                            catch
+                            {
+                                if (success)
+                                {
+                                    if (source.IsCancellationRequested)
+                                    {
                                         return 1;
                                     }
                                     WriteLogMessage(parameters, "error", "runner crashed after listening for jobs");
-                                } else {
-                                    if(execAttempt++ <= 3) {
+                                }
+                                else
+                                {
+                                    if (execAttempt++ <= 3)
+                                    {
                                         await Task.Delay(500);
-                                    } else {
+                                    }
+                                    else
+                                    {
                                         WriteLogMessage(parameters, "error", "Failed to start actions runner after 3 attempts");
                                         int delattempt = 1;
-                                        while(true) {
-                                            try {
+                                        while (true)
+                                        {
+                                            try
+                                            {
                                                 Directory.Delete(tmpdir, true);
                                                 break;
-                                            } catch {
-                                                if(delattempt++ >= 3) {
+                                            }
+                                            catch
+                                            {
+                                                if (delattempt++ >= 3)
+                                                {
                                                     WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                                     break;
-                                                } else {
+                                                }
+                                                else
+                                                {
                                                     await Task.Delay(500);
                                                 }
                                             }
@@ -615,21 +639,33 @@ namespace Runner.Client
                             }
                         }
                         break;
-                    } catch {
-                        if(attempt++ <= 3) {
+                    }
+                    catch
+                    {
+                        if (attempt++ <= 3)
+                        {
                             await Task.Delay(500);
-                        } else {
+                        }
+                        else
+                        {
                             WriteLogMessage(parameters, "error", "Failed to auto-configure actions runner after 3 attempts");
                             int delattempt = 1;
-                            while(true) {
-                                try {
+                            while (true)
+                            {
+                                try
+                                {
                                     Directory.Delete(tmpdir, true);
                                     break;
-                                } catch {
-                                    if(delattempt++ >= 3) {
+                                }
+                                catch
+                                {
+                                    if (delattempt++ >= 3)
+                                    {
                                         WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                         break;
-                                    } else {
+                                    }
+                                    else
+                                    {
                                         await Task.Delay(500);
                                     }
                                 }
@@ -638,38 +674,90 @@ namespace Runner.Client
                         }
                     }
                 }
-            } finally {
+            }
+            finally
+            {
                 WriteLogMessage(parameters, "trace", "Stopped Runner");
-                if(!parameters.KeepContainer && !parameters.KeepRunnerDirectory) {
+                if (!parameters.KeepContainer && !parameters.KeepRunnerDirectory)
+                {
                     int delattempt = 1;
-                    while(true) {
-                        try {
+                    while (true)
+                    {
+                        try
+                        {
                             Directory.Delete(tmpdir, true);
                             break;
-                        } catch {
-                            if(!Directory.Exists(tmpdir)) {
+                        }
+                        catch
+                        {
+                            if (!Directory.Exists(tmpdir))
+                            {
                                 break;
                             }
-                            if(delattempt++ >= 3) {
+                            if (delattempt++ >= 3)
+                            {
                                 WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                 break;
-                            } else {
+                            }
+                            else
+                            {
                                 await Task.Delay(500);
                             }
                         }
                     }
                 };
             }
-            if(parameters.KeepContainer || parameters.NoReuse) {
-                if(!source.IsCancellationRequested) {
+            if (parameters.KeepContainer || parameters.NoReuse)
+            {
+                if (!source.IsCancellationRequested)
+                {
                     WriteLogMessage(parameters, "info", "Recreate Runner");
-                    if(await CreateExternalRunner(binpath, parameters, listener, workerchannel, source) != 0 && !source.IsCancellationRequested) {
+                    if (await CreateExternalRunner(binpath, parameters, listener, workerchannel, source) != 0 && !source.IsCancellationRequested)
+                    {
                         WriteLogMessage(parameters, "trace", "Failed to recreate Runner, exiting...");
                         source.Cancel();
                     }
                 }
             }
             return 0;
+        }
+
+        private static void CreateExternalRunnerDirectory(Parameters parameters, out bool azure, out string prefix, out string ext, out string agentname, out string tmpdir)
+        {
+            azure = string.Equals(parameters.Event, "azpipelines", StringComparison.OrdinalIgnoreCase);
+            prefix = azure ? "Agent" : "Runner";
+            ext = IOUtil.ExeExtension;
+            var root = Path.GetFullPath(parameters.RunnerPath);
+            var listenerexe = Path.Join(root, "bin", $"{prefix}.Listener{ext}");
+            agentname = Path.GetRandomFileName();
+            tmpdir = Path.Combine(Path.GetFullPath(parameters.RunnerDirectory), agentname);
+            Directory.CreateDirectory(Path.Join(tmpdir, "bin"));
+            var bindir = Path.Join(root, "bin");
+            foreach (var bfile in Directory.EnumerateFileSystemEntries(bindir))
+            {
+                var fname = bfile.Substring(bindir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var destfile = Path.Join(tmpdir, "bin", fname);
+                // copy .exe on windows alters the assembly path
+                // copy .dll on linux alters the assembly path, not shure about the executable stub
+                if (fname.StartsWith(prefix + ".") && (fname.EndsWith(".exe") || fname.EndsWith(".dll") || !fname.Substring(prefix.Length + 1).Contains(".")))
+                {
+                    File.Copy(bfile, destfile);
+                }
+                else
+                {
+                    if (Directory.Exists(bfile))
+                    {
+                        Directory.CreateSymbolicLink(destfile, bfile);
+                    }
+                    else
+                    {
+                        File.CreateSymbolicLink(destfile, bfile);
+                    }
+                }
+            }
+            Directory.CreateSymbolicLink(Path.Join(tmpdir, "externals"), Path.Join(root, "externals"));
+            // for the azure pipelines agent on linux, doesn't exist on windows
+            File.CreateSymbolicLink(Path.Join(tmpdir, "license.html"), Path.Join(root, "license.html"));
         }
 
         private static string GetJobUrl(string baseUrl, Guid id) {
@@ -861,6 +949,36 @@ namespace Runner.Client
         
         static int Main(string[] args)
         {
+            if(args.Length > 0 && args[0] == "spawn") {
+                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    try {
+                        if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
+                            Console.WriteLine($"Failed to change Process Group");
+                        }
+                    } catch {
+                        Console.WriteLine($"Failed to change Process Group exception");
+                    }
+                }
+                var proc = new System.Diagnostics.Process();
+                proc.StartInfo.FileName = args[1];
+                for(int i = 2; i < args.Length; i++) {
+                    proc.StartInfo.ArgumentList.Add(args[i]);
+                }
+                proc.StartInfo.RedirectStandardError = true;
+                proc.StartInfo.RedirectStandardInput = true;
+                proc.StartInfo.RedirectStandardOutput = true;
+                proc.Start();
+                var stdout = proc.StandardOutput.BaseStream.CopyToAsync(System.Console.OpenStandardOutput());
+                var stderr = proc.StandardError.BaseStream.CopyToAsync(System.Console.OpenStandardError());
+                var stdin = System.Console.OpenStandardInput().CopyToAsync(proc.StandardInput.BaseStream);
+                Task.WhenAll(stdout, stderr).Wait();
+                proc.WaitForExit();
+                return proc.ExitCode;
+            }
+            if(args.Length > 0 && args[0] == "server") {
+                Runner.Server.Program.Main(args.Skip(1).ToArray());
+                return 0;
+            }
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
                 WindowsUtils.EnableVT();
             }
@@ -1170,38 +1288,6 @@ namespace Runner.Client
 
             rootCommand.Description = "Run your workflows locally.";
 
-            var spawn = new Command("spawn", "executes a process and changes it's process group") { IsHidden = true };
-            var spawnargs = new Argument<string[]>();
-            spawn.AddArgument(spawnargs);
-            Func<string[], Task<int>> spawnHandler = async (string[] args) => {
-                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                    try {
-                        if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
-                            Console.WriteLine($"Failed to change Process Group");
-                        }
-                    } catch {
-                        Console.WriteLine($"Failed to change Process Group exception");
-                    }
-                }
-                var proc = new System.Diagnostics.Process();
-                proc.StartInfo.FileName = args[0];
-                for(int i = 1; i < args.Length; i++) {
-                    proc.StartInfo.ArgumentList.Add(args[i]);
-                }
-                proc.StartInfo.RedirectStandardError = true;
-                proc.StartInfo.RedirectStandardInput = true;
-                proc.StartInfo.RedirectStandardOutput = true;
-                proc.Start();
-                var stdout = proc.StandardOutput.BaseStream.CopyToAsync(System.Console.OpenStandardOutput());
-                var stderr = proc.StandardError.BaseStream.CopyToAsync(System.Console.OpenStandardError());
-                var stdin = System.Console.OpenStandardInput().CopyToAsync(proc.StandardInput.BaseStream);
-                await Task.WhenAll(stdout, stderr);
-                proc.WaitForExit();
-                return proc.ExitCode;
-            };
-            spawn.SetHandler(spawnHandler, spawnargs);
-            rootCommand.Add(spawn);
-
             // Note that the parameters of the handler method are matched according to the names of the options
             Func<Parameters, Task<int>> handler = async (parameters) =>
             {
@@ -1213,10 +1299,19 @@ namespace Runner.Client
                     Console.WriteLine(options);
                     return 0;
                 }
+                if(Environment.GetEnvironmentVariable("RUNNER_CLIENT_LEGACY_SERVER") == "1") {
+                    parameters.LegacyServer = true;
+                }
+                if(Environment.GetEnvironmentVariable("RUNNER_CLIENT_LEGACY_RUNNER") == "1") {
+                    parameters.LegacyRunner = true;
+                }
 
                 var expandAzurePipeline = string.Equals(parameters.Event, "azexpand", StringComparison.OrdinalIgnoreCase);
                 if(parameters.Parallel == null && !parameters.StartServer && !parameters.List && !expandAzurePipeline) {
                     parameters.Parallel = 1;
+                }
+                if(parameters.LegacyServer || parameters.StartRunner || (parameters.Server == null || parameters.StartServer) && parameters.Parallel == 0) {
+                    parameters.LegacyRunner = true;
                 }
                 if(parameters.Actor == null) {
                     parameters.Actor = "runnerclient";
@@ -1330,24 +1425,6 @@ namespace Runner.Client
                                     parameters.Server = "http://localhost:0";
                                 }
                             }
-                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
-                            if(parameters.Verbose) {
-                                invoker.OutputDataReceived += _out;
-                                invoker.ErrorDataReceived += _out;
-                            }
-#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                            var dotnet = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
-                            string ext = ".dll";
-#else
-                            string ext = IOUtil.ExeExtension;
-#endif
-                            var server = Path.Join(binpath, $"Runner.Server{ext}");
-                            var file = server;
-                            var arguments = "";
-#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                            file = dotnet;
-                            arguments = $"\"{server}\"";
-#endif
                             string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
                             JObject serverconfig = new JObject();
                             var connectionopts = new JObject();
@@ -1368,7 +1445,8 @@ namespace Runner.Client
                                         ReturnWithoutResolvingSha = false,
                                     }
                                 }.ToList(),
-                                DefaultWebUIView = "allworkflows"
+                                DefaultWebUIView = "allworkflows",
+                                QueueJobsWithoutRunner = parameters.Parallel > 0 && !parameters.LegacyRunner,
                             };
                             if(parameters.GitHubConnect) {
                                 rsconfig.ActionDownloadUrls.Add(new {
@@ -1415,7 +1493,55 @@ namespace Runner.Client
                                             if(parameters.Verbose) {
                                                 WriteLogMessage(parameters, "trace", $"serverEnv: {(serverEnv.Select(kv => $"{kv.Key}={kv.Value}").Aggregate((l, nl) => string.IsNullOrEmpty(l) ? nl : $"{l}\n{nl}"))}");
                                             }
-                                            var x = await invoker.ExecuteAsync(binpath, file, arguments, serverEnv, false, null, true, runToken.Token);
+                                            if(parameters.LegacyServer) {
+                                                GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
+                                                if(parameters.Verbose) {
+                                                    invoker.OutputDataReceived += _out;
+                                                    invoker.ErrorDataReceived += _out;
+                                                }
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                                var dotnet = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
+                                                string ext = ".dll";
+#else
+                                                string ext = IOUtil.ExeExtension;
+#endif
+                                                var server = Path.Join(binpath, $"Runner.Server{ext}");
+                                                var file = server;
+                                                var arguments = "";
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                                file = dotnet;
+                                                arguments = $"\"{server}\"";
+#endif
+                                                var x = await invoker.ExecuteAsync(binpath, file, arguments, serverEnv, false, null, true, runToken.Token);
+                                            } else {
+                                                foreach (var kv in serverEnv)
+                                                {
+                                                    System.Environment.SetEnvironmentVariable(kv.Key, kv.Value);                                                
+                                                }
+                                                Runner.Server.Program.CreateHostBuilder(new string[0])
+                                                    .ConfigureLogging(logger => {
+                                                        if(!parameters.Verbose) {
+                                                            logger.AddFilter(level => false);
+                                                        }
+                                                        if(parameters.Json) {
+                                                            logger.ClearProviders();
+                                                            logger.AddProvider(new JsonLoggerProvider());
+                                                        }
+                                                    })
+                                                    .ConfigureServices(services => {
+                                                        if(parameters.Parallel > 0 && !parameters.LegacyRunner) {
+                                                            if(string.IsNullOrEmpty(parameters.RunnerPath)) {
+                                                                services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory, parameters.Parallel.Value), ServiceLifetime.Singleton));
+                                                            } else {
+                                                                services.Add(new ServiceDescriptor(typeof(IQueueService), p => new ExternalQueueService(parameters), ServiceLifetime.Singleton));
+                                                            }
+                                                        }
+                                                        services.AddSingleton<IHostLifetime, NoopConsoleLifetime>();
+                                                    })
+                                                    .Build()
+                                                .Run();
+                                            }
+
                                             WriteLogMessage(parameters, "info", "Stopped Server");
                                             File.Delete(serverconfigfileName);
                                         }
@@ -1443,7 +1569,7 @@ namespace Runner.Client
                             }
                         }
 
-                        if(parameters.Parallel > 0) {
+                        if(parameters.Parallel > 0 && parameters.LegacyRunner) {
                             WriteLogMessage(parameters, "info", $"Starting {parameters.Parallel} Runner{(parameters.Parallel != 1 ? "s" : "")}...");
                             var workerchannel = Channel.CreateBounded<bool>(1);
                             for(int i = 0; i < parameters.Parallel; i++) {
@@ -1544,9 +1670,11 @@ namespace Runner.Client
 
                                 interactiveCommand.Add(rerunCommand);
 
-                                var listCommand = new Command("list", "Lists jobs of the selected workflows");
-                                listCommand.Add(jobOpt);
-                                listCommand.Add(matrixOpt);
+                                var listCommand = new Command("list", "Lists jobs of the selected workflows")
+                                {
+                                    jobOpt,
+                                    matrixOpt
+                                };
                                 listCommand.SetHandler((job, matrix) => {
                                     parameters.Job = job;
                                     parameters.Matrix = matrix;
@@ -1574,12 +1702,14 @@ namespace Runner.Client
                                 deleteCommand.Add(deleteArtifactsCommand);
                                 interactiveCommand.Add(deleteCommand);
 
-                                var updateCommand = new Command("update", "Update provided env and secrets");
-                                updateCommand.Add(workflowOption);
-                                updateCommand.Add(DirectoryOpt);
-                                updateCommand.Add(payloadOpt);
-                                updateCommand.Add(envOpt);
-                                updateCommand.Add(secretOpt);
+                                var updateCommand = new Command("update", "Update provided env and secrets")
+                                {
+                                    workflowOption,
+                                    DirectoryOpt,
+                                    payloadOpt,
+                                    envOpt,
+                                    secretOpt
+                                };
                                 var eventOpt = new Option<string>(
                                     "--event",
                                     description: "Change the event to trigger the workflow");
@@ -2942,116 +3072,6 @@ namespace Runner.Client
                     relativeTo = prefix + relativeTo;
                 }
                 return Path.GetRelativePath(relativeTo, finalPath);
-            }
-        }
-
-        public static class NativeMethods
-        {
-            private static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
-
-            private const uint FILE_READ_EA = 0x0008;
-            private const uint FILE_FLAG_BACKUP_SEMANTICS = 0x2000000;
-
-            [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-            static extern uint GetFinalPathNameByHandle(IntPtr hFile, [MarshalAs(UnmanagedType.LPTStr)] StringBuilder lpszFilePath, uint cchFilePath, uint dwFlags);
-
-            [DllImport("kernel32.dll", SetLastError = true)]
-            [return: MarshalAs(UnmanagedType.Bool)]
-            static extern bool CloseHandle(IntPtr hObject);
-
-            public static Int32 FSCTL_GET_REPARSE_POINT = ( ((0x00000009) << 16) | ((0) << 14) | ((42) << 2) | (0) );
-            public static uint FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
-
-            [StructLayout(LayoutKind.Sequential)]
-            class REPARSE_DATA_BUFFER {
-                public uint ReparseTag;
-                public ushort ReparseDataLength;
-                public ushort Reserved;
-                public ushort SubstituteNameOffset;
-                public ushort SubstituteNameLength;
-                public ushort PrintNameOffset;
-                public ushort PrintNameLength;
-                public uint Flags;
-
-                [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x3FF0)]
-                public byte[] PathBuffer;
-            }
-
-
-            [DllImport("kernel32.dll")]
-            public static extern byte DeviceIoControl(IntPtr hDevice, Int32 dwIoControlCode, IntPtr lpInBuffer, Int32 nInBufferSize, IntPtr lpOutBuffer, Int32 nOutBufferSize, ref Int32 lpBytesReturned, IntPtr lpOverlapped);
-
-            [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-            public static extern IntPtr CreateFile(
-                    [MarshalAs(UnmanagedType.LPTStr)] string filename,
-                    [MarshalAs(UnmanagedType.U4)] uint access,
-                    [MarshalAs(UnmanagedType.U4)] FileShare share,
-                    IntPtr securityAttributes, // optional SECURITY_ATTRIBUTES struct or IntPtr.Zero
-                    [MarshalAs(UnmanagedType.U4)] FileMode creationDisposition,
-                    [MarshalAs(UnmanagedType.U4)] uint flagsAndAttributes,
-                    IntPtr templateFile);
-
-            public static string GetFinalPathName(string path)
-            {
-                var h = CreateFile(path, 
-                    FILE_READ_EA, 
-                    FileShare.ReadWrite | FileShare.Delete, 
-                    IntPtr.Zero, 
-                    FileMode.Open, 
-                    FILE_FLAG_BACKUP_SEMANTICS,
-                    IntPtr.Zero);
-                if (h == INVALID_HANDLE_VALUE)
-                    throw new Win32Exception();
-
-                try
-                {
-                    var sb = new StringBuilder(1024);
-                    var res = GetFinalPathNameByHandle(h, sb, 1024, 0);
-                    if (res == 0)
-                        throw new Win32Exception();
-
-                    return sb.ToString();
-                }
-                finally
-                {
-                    CloseHandle(h);
-                }
-            }
-
-            private static uint IO_REPARSE_TAG_SYMLINK = 0xA000000C;
-
-            public static string ReadSymlink(string path)
-            {
-                var h = CreateFile(path, 
-                    FILE_READ_EA, 
-                    FileShare.ReadWrite | FileShare.Delete, 
-                    IntPtr.Zero, 
-                    FileMode.Open, 
-                    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
-                    IntPtr.Zero);
-                if (h == INVALID_HANDLE_VALUE)
-                    throw new Win32Exception();
-
-                try
-                {
-                    REPARSE_DATA_BUFFER rdb = new REPARSE_DATA_BUFFER();
-                    var buf = Marshal.AllocHGlobal(Marshal.SizeOf(rdb));
-                    int size = 0;
-                    var res = DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, IntPtr.Zero, 0, buf, Marshal.SizeOf(rdb), ref size, IntPtr.Zero);
-                    if (res == 0)
-                        throw new Win32Exception();
-                    Marshal.PtrToStructure<REPARSE_DATA_BUFFER>(buf, rdb);
-                    if(rdb.ReparseTag != IO_REPARSE_TAG_SYMLINK) {
-                        throw new Exception("Invalid reparse point, only symlinks are supported");
-                    }
-                    //var sres = Encoding.Unicode.GetString(rdb.PathBuffer, rdb.PrintNameOffset, rdb.PrintNameLength);
-                    var sres2 = Encoding.Unicode.GetString(rdb.PathBuffer, rdb.SubstituteNameOffset, rdb.SubstituteNameLength);
-                    return sres2;
-                }
-                finally
-                {
-                    CloseHandle(h);
-                }
             }
         }
     }
