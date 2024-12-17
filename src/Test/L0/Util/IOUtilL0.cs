@@ -1,4 +1,4 @@
-using GitHub.Runner.Sdk;
+﻿using GitHub.Runner.Sdk;
 using System;
 using System.IO;
 using System.Threading;
@@ -958,6 +958,33 @@ namespace GitHub.Runner.Common.Tests.Util
                     Directory.Delete(directory, recursive: true);
                 }
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ReplaceInvalidFileNameChars()
+        {
+            Assert.Equal(string.Empty, IOUtil.ReplaceInvalidFileNameChars(null));
+            Assert.Equal(string.Empty, IOUtil.ReplaceInvalidFileNameChars(string.Empty));
+            Assert.Equal("hello.txt", IOUtil.ReplaceInvalidFileNameChars("hello.txt"));
+#if OS_WINDOWS
+            // Refer https://github.com/dotnet/runtime/blob/ce84f1d8a3f12711bad678a33efbc37b461f684f/src/libraries/System.Private.CoreLib/src/System/IO/Path.Windows.cs#L15
+            Assert.Equal(
+                "1_ 2_ 3_ 4_ 5_ 6_ 7_ 8_ 9_ 10_ 11_ 12_ 13_ 14_ 15_ 16_ 17_ 18_ 19_ 20_ 21_ 22_ 23_ 24_ 25_ 26_ 27_ 28_ 29_ 30_ 31_ 32_ 33_ 34_ 35_ 36_ 37_ 38_ 39_ 40_ 41_",
+                IOUtil.ReplaceInvalidFileNameChars($"1\" 2< 3> 4| 5\0 6{(char)1} 7{(char)2} 8{(char)3} 9{(char)4} 10{(char)5} 11{(char)6} 12{(char)7} 13{(char)8} 14{(char)9} 15{(char)10} 16{(char)11} 17{(char)12} 18{(char)13} 19{(char)14} 20{(char)15} 21{(char)16} 22{(char)17} 23{(char)18} 24{(char)19} 25{(char)20} 26{(char)21} 27{(char)22} 28{(char)23} 29{(char)24} 30{(char)25} 31{(char)26} 32{(char)27} 33{(char)28} 34{(char)29} 35{(char)30} 36{(char)31} 37: 38* 39? 40\\ 41/"));
+#else
+            // Refer https://github.com/dotnet/runtime/blob/ce84f1d8a3f12711bad678a33efbc37b461f684f/src/libraries/System.Private.CoreLib/src/System/IO/Path.Unix.cs#L12
+            Assert.Equal("1_ 2_", IOUtil.ReplaceInvalidFileNameChars("1\0 2/"));
+#endif
+            Assert.Equal("_leading", IOUtil.ReplaceInvalidFileNameChars("/leading"));
+            Assert.Equal("__consecutive leading", IOUtil.ReplaceInvalidFileNameChars("//consecutive leading"));
+            Assert.Equal("trailing_", IOUtil.ReplaceInvalidFileNameChars("trailing/"));
+            Assert.Equal("consecutive trailing__", IOUtil.ReplaceInvalidFileNameChars("consecutive trailing//"));
+            Assert.Equal("middle_middle", IOUtil.ReplaceInvalidFileNameChars("middle/middle"));
+            Assert.Equal("consecutive middle__consecutive middle", IOUtil.ReplaceInvalidFileNameChars("consecutive middle//consecutive middle"));
+            Assert.Equal("_leading_middle_trailing_", IOUtil.ReplaceInvalidFileNameChars("/leading/middle/trailing/"));
+            Assert.Equal("__consecutive leading__consecutive middle__consecutive trailing__", IOUtil.ReplaceInvalidFileNameChars("//consecutive leading//consecutive middle//consecutive trailing//"));
         }
 
         private static async Task CreateDirectoryReparsePoint(IHostContext context, string link, string target)

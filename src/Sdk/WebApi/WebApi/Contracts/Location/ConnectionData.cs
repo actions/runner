@@ -361,7 +361,7 @@ namespace GitHub.Services.Location
                         default:
                             // Allow attributes such as xsi:type to fall through
                             break;
-                    }                    
+                    }
                 }
             }
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -295,7 +295,7 @@ namespace GitHub.Runner.Worker
                     !jobCancellationToken.IsCancellationRequested)
                 {
                     Trace.Error($"Caught timeout exception from step: {ex.Message}");
-                    step.ExecutionContext.Error("The action has timed out.");
+                    step.ExecutionContext.Error($"The action '{step.DisplayName}' has timed out after {timeoutMinutes} minutes.");
                     step.ExecutionContext.Result = TaskResult.Failed;
                 }
                 else

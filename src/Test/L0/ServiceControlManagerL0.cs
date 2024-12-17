@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using GitHub.Runner.Listener.Configuration;
 using Xunit;
 
@@ -84,7 +84,7 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
-        #if OS_WINDOWS
+#if OS_WINDOWS
             [Fact]
             [Trait("Level", "L0")]
             [Trait("Category", "Service")]
@@ -163,46 +163,46 @@ namespace GitHub.Runner.Common.Tests
                     Assert.Equal("name", serviceNameParts[3]);
                 }
             }
-        #else
-            [Fact]
-            [Trait("Level", "L0")]
-            [Trait("Category", "Service")]
-            public void CalculateServiceNameLimitsServiceNameTo150Chars()
+#else
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Service")]
+        public void CalculateServiceNameLimitsServiceNameTo150Chars()
+        {
+            RunnerSettings settings = new();
+
+            settings.AgentName = "thisisareallyreallylongbutstillvalidagentnameiamusingforthisexampletotestverylongnamelimits";
+            settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
+            settings.GitHubUrl = "https://github.com/myreallylongorganizationexampleonlinux/myreallylongrepoexampleonlinux1234";
+
+            string serviceNamePattern = "actions.runner.{0}.{1}";
+            string serviceDisplayNamePattern = "GitHub Actions Runner ({0}.{1})";
+
+            using (TestHostContext hc = CreateTestContext())
             {
-                RunnerSettings settings = new();
+                ServiceControlManager scm = new();
 
-                settings.AgentName = "thisisareallyreallylongbutstillvalidagentnameiamusingforthisexampletotestverylongnamelimits";
-                settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
-                settings.GitHubUrl = "https://github.com/myreallylongorganizationexampleonlinux/myreallylongrepoexampleonlinux1234";
+                scm.Initialize(hc);
+                scm.CalculateServiceName(
+                    settings,
+                    serviceNamePattern,
+                    serviceDisplayNamePattern,
+                    out string serviceName,
+                    out string serviceDisplayName);
 
-                string serviceNamePattern = "actions.runner.{0}.{1}";
-                string serviceDisplayNamePattern = "GitHub Actions Runner ({0}.{1})";
+                // Verify name has been shortened to 150
+                Assert.Equal(150, serviceName.Length);
 
-                using (TestHostContext hc = CreateTestContext())
-                {
-                    ServiceControlManager scm = new();
+                var serviceNameParts = serviceName.Split('.');
 
-                    scm.Initialize(hc);
-                    scm.CalculateServiceName(
-                        settings,
-                        serviceNamePattern,
-                        serviceDisplayNamePattern,
-                        out string serviceName,
-                        out string serviceDisplayName);
-
-                    // Verify name has been shortened to 150
-                    Assert.Equal(150, serviceName.Length);
-
-                    var serviceNameParts = serviceName.Split('.');
-
-                    // Verify that each component has been shortened to a sensible length
-                    Assert.Equal("actions", serviceNameParts[0]); // Never shortened
-                    Assert.Equal("runner", serviceNameParts[1]); // Never shortened
-                    Assert.Equal("myreallylongorganizationexampleonlinux-myreallylongrepoexampleonlinux1", serviceNameParts[2]); // First 70 chars, '/' has been replaced with '-'
-                    Assert.Matches(@"^(thisisareallyreallylongbutstillvalidagentnameiamusingforthi-[0-9]{4})$", serviceNameParts[3]);
-                }
+                // Verify that each component has been shortened to a sensible length
+                Assert.Equal("actions", serviceNameParts[0]); // Never shortened
+                Assert.Equal("runner", serviceNameParts[1]); // Never shortened
+                Assert.Equal("myreallylongorganizationexampleonlinux-myreallylongrepoexampleonlinux1", serviceNameParts[2]); // First 70 chars, '/' has been replaced with '-'
+                Assert.Matches(@"^(thisisareallyreallylongbutstillvalidagentnameiamusingforthi-[0-9]{4})$", serviceNameParts[3]);
             }
-        #endif
+        }
+#endif
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using GitHub.Runner.Common;
@@ -46,7 +46,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             if (!store.HasCredentials())
             {
-                throw new InvalidOperationException("Credentials not stored.  Must reconfigure.");
+                throw new InvalidOperationException("Credentials not stored. Must reconfigure.");
             }
 
             CredentialData credData = store.GetCredentials();

@@ -2,7 +2,7 @@
 SET UPDATEFILE=update.finished
 "%~dp0\bin\Runner.Listener.exe" run %*
 
-rem using `if %ERRORLEVEL% EQU N` insterad of `if ERRORLEVEL N`
+rem using `if %ERRORLEVEL% EQU N` instead of `if ERRORLEVEL N`
 rem `if ERRORLEVEL N` means: error level is N or MORE
   
 if %ERRORLEVEL% EQU 0 (
@@ -47,6 +47,11 @@ if %ERRORLEVEL% EQU 4 (
     ping 127.0.0.1 -n 2 -w 1000 >NUL
   )
   exit /b 1
+)
+
+if %ERRORLEVEL% EQU 5 (
+  echo "Runner listener exit with Session Conflict error, stop the service, no retry needed."
+  exit /b 0
 )
 
 echo "Exiting after unknown error code: %ERRORLEVEL%"

@@ -20,15 +20,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Compute image version
         id: image
         uses: actions/github-script@v6
+        env:
+          RUNNER_VERSION: ${{ github.event.inputs.runnerVersion }}
         with:
           script: |
             const fs = require('fs');
-            const inputRunnerVersion = "${{ github.event.inputs.runnerVersion }}"
+            const inputRunnerVersion = process.env.RUNNER_VERSION;
             if (inputRunnerVersion) {
               console.log(`Using input runner version ${inputRunnerVersion}`)
               core.setOutput('version', inputRunnerVersion);
@@ -53,6 +55,9 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./images
+          platforms: |
+            linux/amd64
+            linux/arm64
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

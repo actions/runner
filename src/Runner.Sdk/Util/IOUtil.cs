@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -6,6 +6,8 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Sdk
 {
@@ -69,6 +71,25 @@ namespace GitHub.Runner.Sdk
 
                 string hash = sBuilder.ToString();
                 return hash;
+            }
+        }
+
+        public static async Task<string> GetFileContentSha256HashAsync(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return string.Empty;
+            }
+
+            using (FileStream stream = File.OpenRead(path))
+            {
+                using (SHA256 sha256 = SHA256.Create())
+                {
+                    byte[] srcHashBytes = await sha256.ComputeHashAsync(stream);
+                    var hash = PrimitiveExtensions.ConvertToHexString(srcHashBytes);
+                    return hash;
+                }
+
             }
         }
 
@@ -436,6 +457,34 @@ namespace GitHub.Runner.Sdk
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path, null);
+        }
+
+        /// <summary>
+        /// Replaces invalid file name characters with '_'
+        /// </summary>
+        public static string ReplaceInvalidFileNameChars(string fileName)
+        {
+            var result = new StringBuilder();
+            var invalidChars = Path.GetInvalidFileNameChars();
+
+            var current = 0; // Current index
+            while (current < fileName?.Length)
+            {
+                var next = fileName.IndexOfAny(invalidChars, current);
+                if (next >= 0)
+                {
+                    result.Append(fileName.Substring(current, next - current));
+                    result.Append('_');
+                    current = next + 1;
+                }
+                else
+                {
+                    result.Append(fileName.Substring(current));
+                    break;
+                }
+            }
+
+            return result.ToString();
         }
 
         /// <summary>

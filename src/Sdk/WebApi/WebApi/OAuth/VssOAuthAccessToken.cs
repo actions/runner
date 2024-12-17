@@ -24,7 +24,7 @@ namespace GitHub.Services.OAuth
         /// <param name="value">The value of the access token, encoded as a string</param>
         /// <param name="validTo">The date and time when this token is no longer valid</param>
         public VssOAuthAccessToken(
-            String value, 
+            String value,
             DateTime validTo)
         {
             ArgumentUtility.CheckStringForNullOrEmpty(value, nameof(value));

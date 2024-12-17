@@ -809,7 +809,7 @@ namespace GitHub.Services.WebApi.Location
                 {
                     return await m_locationClient.GetConnectionDataAsync(connectOptions, lastChangeId, cancellationToken).ConfigureAwait(false);
                 }
-                catch(TimeoutException) when (timeoutRetries-- > 0) { } // Catch TimeoutException when we have retries remaining; otherwise, let it go.
+                catch (TimeoutException) when (timeoutRetries-- > 0) { } // Catch TimeoutException when we have retries remaining; otherwise, let it go.
             }
         }
     }

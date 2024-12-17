@@ -32,10 +32,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
-                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
-                   .Callback((Issue issue, string message) =>
+                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>()))
+                   .Callback((Issue issue, ExecutionContextLogOptions logOptions) =>
                    {
-                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {logOptions.LogMessageOverride ?? string.Empty}");
                    });
 
                 _commandManager.EnablePluginInternalCommand();
@@ -59,10 +59,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
-                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
-                   .Callback((Issue issue, string message) =>
+                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>()))
+                   .Callback((Issue issue, ExecutionContextLogOptions logOptions) =>
                    {
-                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {logOptions.LogMessageOverride ?? string.Empty}");
                    });
 
                 _commandManager.EnablePluginInternalCommand();
@@ -92,10 +92,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 return 1;
                             });
 
-                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
-                   .Callback((Issue issue, string message) =>
+                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>()))
+                   .Callback((Issue issue, ExecutionContextLogOptions logOptions) =>
                    {
-                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {logOptions.LogMessageOverride ?? string.Empty}");
                    });
 
                 _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
@@ -232,7 +232,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,

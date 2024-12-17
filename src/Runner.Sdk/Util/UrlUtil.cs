@@ -1,4 +1,6 @@
-using System;
+﻿using System;
+using System.Linq;
+using System.Net.Http.Headers;
 
 namespace GitHub.Runner.Sdk
 {
@@ -47,6 +49,26 @@ namespace GitHub.Runner.Sdk
             }
 
             return credUri.Uri;
+        }
+
+        public static string GetGitHubRequestId(HttpResponseHeaders headers)
+        {
+            if (headers != null &&
+                headers.TryGetValues("x-github-request-id", out var headerValues))
+            {
+                return headerValues.FirstOrDefault();
+            }
+            return string.Empty;
+        }
+
+        public static string GetVssRequestId(HttpResponseHeaders headers)
+        {
+            if (headers != null &&
+                headers.TryGetValues("x-vss-e2eid", out var headerValues))
+            {
+                return headerValues.FirstOrDefault();
+            }
+            return string.Empty;
         }
     }
 }

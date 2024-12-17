@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Security;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -11,10 +12,10 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using GitHub.Services.OAuth;
+using GitHub.Services.Results.Client;
 using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Utilities.Internal;
-using GitHub.Services.Results.Client;
-using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Common
 {
@@ -179,6 +180,10 @@ namespace GitHub.Runner.Common
                     userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
                     userAgentValues.AddRange(HostContext.UserAgents);
                     this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+                    {
+                        this._websocketClient.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                    }
 
                     this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
                 }
@@ -254,7 +259,7 @@ namespace GitHub.Runner.Common
                 {
                     failedAttemptsToPostBatchedLinesByWebsocket++;
                     Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
-                    Trace.Error(ex);
+                    Trace.Verbose(ex.ToString());
                     if (totalBatchedLinesAttemptedByWebsocket > _minWebsocketBatchedLinesCountToConsider)
                     {
                         // let's consider failure percentage

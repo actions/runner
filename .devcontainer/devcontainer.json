@@ -1,27 +1,27 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 {
-	"name": "Actions Runner Devcontainer",
-	"image": "mcr.microsoft.com/devcontainers/base:focal",
-	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:1": {},
-		"ghcr.io/devcontainers/features/dotnet": {
-			"version": "6.0.405"
-		},
-		"ghcr.io/devcontainers/features/node:1": {
-			"version": "16"
-		}
-	},
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"ms-azuretools.vscode-docker",
-				"ms-dotnettools.csharp",
-				"eamodio.gitlens"
-			]
-		}
-	},
-	// dotnet restore to install dependencies so OmniSharp works out of the box
-	// src/Test restores all other projects it references, src/Runner.PluginHost is not one of them
-	"postCreateCommand": "dotnet restore src/Test && dotnet restore src/Runner.PluginHost",
-	"remoteUser": "vscode"
+  "name": "Actions Runner Devcontainer",
+  "image": "mcr.microsoft.com/devcontainers/base:focal",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:1": {},
+    "ghcr.io/devcontainers/features/dotnet": {
+      "version": "8.0.404"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "ms-dotnettools.csharp",
+        "eamodio.gitlens"
+      ]
+    }
+  },
+  "postCreateCommand": "dotnet restore src/Test && dotnet restore src/Runner.PluginHost",
+  "remoteUser": "vscode"
 }

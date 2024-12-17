@@ -1,4 +1,4 @@
-#if OS_WINDOWS
+﻿#if OS_WINDOWS
 #pragma warning disable CA1416
 using System;
 using System.Collections;
@@ -514,9 +514,25 @@ namespace GitHub.Runner.Listener.Configuration
                 failureActions.Add(new FailureAction(RecoverAction.Restart, 60000));
 
                 // Lock the Service Database
-                svcLock = LockServiceDatabase(scmHndl);
-                if (svcLock.ToInt64() <= 0)
+                int svcLockRetries = 10;
+                int svcLockRetryTimeout = 5000;
+                while (true)
                 {
+                    svcLock = LockServiceDatabase(scmHndl);
+                    if (svcLock.ToInt64() > 0)
+                    {
+                        break;
+                    }
+
+                    _term.WriteLine("Retrying Lock Service Database...");
+
+                    svcLockRetries--;
+                    if (svcLockRetries > 0)
+                    {
+                        Thread.Sleep(svcLockRetryTimeout);
+                        continue;
+                    }
+
                     throw new Exception("Failed to Lock Service Database for Write");
                 }
 

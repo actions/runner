@@ -1,4 +1,4 @@
-using GitHub.Services.WebApi;
+﻿using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using System;
 using System.Globalization;

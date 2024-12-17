@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -87,6 +87,26 @@ namespace GitHub.Services.Results.Contracts
         public string BlobStorageType;
         [DataMember]
         public long SoftSizeLimit;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedDiagnosticLogsURLRequest
+    {
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string WorkflowRunBackendId;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedDiagnosticLogsURLResponse
+    {
+        [DataMember]
+        public string DiagLogsURL;
+        [DataMember]
+        public string BlobStorageType;
     }
 
     [DataContract]

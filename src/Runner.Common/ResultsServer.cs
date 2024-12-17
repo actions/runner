@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Security;
@@ -18,7 +19,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(ResultServer))]
     public interface IResultsServer : IRunnerService, IAsyncDisposable
     {
-        void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token);
+        void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token, bool useSdk);
 
         Task<bool> AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken);
 
@@ -34,6 +35,8 @@ namespace GitHub.Runner.Common
 
         Task UpdateResultsWorkflowStepsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId,
             IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
+
+        Task CreateResultsDiagnosticLogsAsync(string planId, string jobId, string file, CancellationToken cancellationToken);
     }
 
     public sealed class ResultServer : RunnerService, IResultsServer
@@ -50,16 +53,36 @@ namespace GitHub.Runner.Common
         private String _liveConsoleFeedUrl;
         private string _token;
 
-        public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token)
+        public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token, bool useSdk)
         {
-            var httpMessageHandler = HostContext.CreateHttpClientHandler();
-            this._resultsClient = new ResultsHttpClient(uri, httpMessageHandler, token, disposeHandler: true);
+            this._resultsClient = CreateHttpClient(uri, token, useSdk);
+
             _token = token;
             if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
             {
                 _liveConsoleFeedUrl = liveConsoleFeedUrl;
                 InitializeWebsocketClient(liveConsoleFeedUrl, token, TimeSpan.Zero, retryConnection: true);
             }
+        }
+
+        public ResultsHttpClient CreateHttpClient(Uri uri, string token, bool useSdk)
+        {
+            // Using default 100 timeout
+            RawClientHttpRequestSettings settings = VssUtil.GetHttpRequestSettings(null);
+
+            // Create retry handler
+            IEnumerable<DelegatingHandler> delegatingHandlers = new List<DelegatingHandler>();
+            if (settings.MaxRetryRequest > 0)
+            {
+                delegatingHandlers = new DelegatingHandler[] { new VssHttpRetryMessageHandler(settings.MaxRetryRequest) };
+            }
+
+            // Setup RawHttpMessageHandler without credentials
+            var httpMessageHandler = new RawHttpMessageHandler(new NoOpCredentials(null), settings);
+
+            var pipeline = HttpClientFactory.CreatePipeline(httpMessageHandler, delegatingHandlers);
+
+            return new ResultsHttpClient(uri, pipeline, token, disposeHandler: true, useSdk: useSdk);
         }
 
         public Task CreateResultsStepSummaryAsync(string planId, string jobId, Guid stepId, string file,
@@ -115,6 +138,18 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Failed to update steps status due to {ex.GetType().Name}");
                     Trace.Error(ex);
                 }
+            }
+
+            throw new InvalidOperationException("Results client is not initialized.");
+        }
+
+        public Task CreateResultsDiagnosticLogsAsync(string planId, string jobId, string file,
+            CancellationToken cancellationToken)
+        {
+            if (_resultsClient != null)
+            {
+                return _resultsClient.UploadResultsDiagnosticLogsAsync(planId, jobId, file,
+                    cancellationToken: cancellationToken);
             }
 
             throw new InvalidOperationException("Results client is not initialized.");
@@ -222,7 +257,7 @@ namespace GitHub.Runner.Common
                         {
                             var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebsocketReconnect, MaxDelayForWebsocketReconnect);
                             Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
-                            Trace.Error(ex);
+                            Trace.Verbose(ex.ToString());
                             retries++;
                             InitializeWebsocketClient(_liveConsoleFeedUrl, _token, delay);
                         }

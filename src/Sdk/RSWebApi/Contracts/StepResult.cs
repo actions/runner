@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
+using Sdk.RSWebApi.Contracts;
 
 namespace GitHub.Actions.RunService.WebApi
 {
@@ -14,8 +16,19 @@ namespace GitHub.Actions.RunService.WebApi
         [DataMember(Name = "number", EmitDefaultValue = false)]
         public int? Number { get; set; }
 
+        // Example: "Run actions/checkout@v3"
         [DataMember(Name = "name", EmitDefaultValue = false)]
         public string Name { get; set; }
+
+        // Example: "actions/checkout"
+        [DataMember(Name = "action_name", EmitDefaultValue = false)]
+        public string ActionName { get; set; }
+
+        [DataMember(Name = "ref", EmitDefaultValue = false)]
+        public string Ref { get; set; }
+
+        [DataMember(Name = "type", EmitDefaultValue = false)]
+        public string Type { get; set; }
 
         [DataMember(Name = "status")]
         public TimelineRecordState? Status { get; set; }
@@ -34,5 +47,8 @@ namespace GitHub.Actions.RunService.WebApi
 
         [DataMember(Name = "completed_log_lines", EmitDefaultValue = false)]
         public long? CompletedLogLines { get; set; }
+
+        [DataMember(Name = "annotations", EmitDefaultValue = false)]
+        public List<Annotation> Annotations { get; set; }
     }
 }

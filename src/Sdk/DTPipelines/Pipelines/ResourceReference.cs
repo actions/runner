@@ -42,7 +42,7 @@ namespace GitHub.DistributedTask.Pipelines
                 {
                     return s;
                 }
-                
+
                 s = name.Expression;
                 if (!String.IsNullOrEmpty(s))
                 {

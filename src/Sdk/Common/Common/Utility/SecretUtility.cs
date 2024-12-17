@@ -121,7 +121,7 @@ namespace GitHub.Services.Common
             return message;
         }
 
-        private static string ScrubSecret(string message, string token, string mask, bool assertOnDetection, bool maskToken=false)
+        private static string ScrubSecret(string message, string token, string mask, bool assertOnDetection, bool maskToken = false)
         {
             int startIndex = -1;
 

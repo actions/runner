@@ -37,7 +37,7 @@ namespace GitHub.DistributedTask.WebApi
         /// Identifier of the agent.
         /// </summary>
         [DataMember]
-        public Int32 Id
+        public ulong Id
         {
             get;
             set;

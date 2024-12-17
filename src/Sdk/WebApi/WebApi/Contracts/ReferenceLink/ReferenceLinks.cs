@@ -139,7 +139,7 @@ namespace GitHub.Services.WebApi
                 }
             }
         }
-        
+
         XmlSchema IXmlSerializable.GetSchema()
         {
             return null;

@@ -1,4 +1,4 @@
-using GitHub.Runner.Common.Util;
+﻿using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
 using System.IO;
@@ -203,7 +203,7 @@ namespace GitHub.Runner.Common.Tests.Util
             File.CreateSymbolicLink(brokenSymlink, target);
 
             // Act.
-            var exception = Assert.Throws<FileNotFoundException>(()=>WhichUtil.Which(brokenSymlinkName, require: true, trace: trace));
+            var exception = Assert.Throws<FileNotFoundException>(() => WhichUtil.Which(brokenSymlinkName, require: true, trace: trace));
 
             // Assert
             Assert.Equal(brokenSymlinkName, exception.FileName);

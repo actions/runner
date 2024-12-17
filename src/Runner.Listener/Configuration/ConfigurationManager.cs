@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -137,7 +137,7 @@ namespace GitHub.Runner.Listener.Configuration
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     runnerSettings.UseV2Flow = authResult.UseV2Flow;
-                    _term.WriteLine($"Using V2 flow: {runnerSettings.UseV2Flow}");
+                    Trace.Info($"Using V2 flow: {runnerSettings.UseV2Flow}");
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
                 }
@@ -244,11 +244,11 @@ namespace GitHub.Runner.Listener.Configuration
                 List<TaskAgent> agents;
                 if (runnerSettings.UseV2Flow)
                 {
-                    agents = await _dotcomServer.GetRunnersAsync(runnerSettings.PoolId, runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
+                    agents = await _dotcomServer.GetRunnerByNameAsync(runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
                 }
                 else
                 {
-                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
+                    agents = await _runnerServer.GetAgentsAsync(runnerSettings.AgentName);
                 }
 
                 Trace.Verbose("Returns {0} agents", agents.Count);
@@ -259,11 +259,27 @@ namespace GitHub.Runner.Listener.Configuration
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version.
-                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
+                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate, command.NoDefaultLabels);
 
                         try
                         {
-                            agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            if (runnerSettings.UseV2Flow)
+                            {
+                                var runner = await _dotcomServer.ReplaceRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                                runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                                agent.Id = runner.Id;
+                                agent.Authorization = new TaskAgentAuthorization()
+                                {
+                                    AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                                    ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                                };
+                            }
+                            else
+                            {
+                                agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            }
+
                             if (command.DisableUpdate &&
                                 command.DisableUpdate != agent.DisableUpdate)
                             {
@@ -293,7 +309,7 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent.
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate, command.NoDefaultLabels);
 
                     try
                     {
@@ -554,7 +570,7 @@ namespace GitHub.Runner.Listener.Configuration
         }
 
 
-        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
+        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate, bool noDefaultLabels)
         {
             ArgUtil.NotNull(agent, nameof(agent));
             agent.Authorization = new TaskAgentAuthorization
@@ -571,9 +587,16 @@ namespace GitHub.Runner.Listener.Configuration
 
             agent.Labels.Clear();
 
-            agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
-            agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
-            agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+            if (!noDefaultLabels)
+            {
+                agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
+                agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
+                agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+            }
+            else if (userLabels.Count == 0)
+            {
+                throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
+            }
 
             foreach (var userLabel in userLabels)
             {
@@ -583,7 +606,7 @@ namespace GitHub.Runner.Listener.Configuration
             return agent;
         }
 
-        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
+        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate, bool noDefaultLabels)
         {
             TaskAgent agent = new(agentName)
             {
@@ -598,9 +621,16 @@ namespace GitHub.Runner.Listener.Configuration
                 DisableUpdate = disableUpdate
             };
 
-            agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
-            agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
-            agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+            if (!noDefaultLabels)
+            {
+                agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
+                agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
+                agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+            }
+            else if (userLabels.Count == 0)
+            {
+                throw new NotSupportedException("Disabling default labels via --no-default-labels without specifying --labels is not supported");
+            }
 
             foreach (var userLabel in userLabels)
             {
@@ -695,7 +725,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -714,7 +744,7 @@ namespace GitHub.Runner.Listener.Configuration
                     catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
-                        Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
+                        Trace.Error($"Failed to get JIT runner token -- Attempt: {retryCount}");
                         Trace.Error(ex);
                     }
                 }
@@ -758,7 +788,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
-                        var githubRequestId = _dotcomServer.GetGitHubRequestId(response.Headers);
+                        var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -777,7 +807,7 @@ namespace GitHub.Runner.Listener.Configuration
                     catch (Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
-                        Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
+                        Trace.Error($"Failed to get tenant credentials -- Attempt: {retryCount}");
                         Trace.Error(ex);
                     }
                 }
