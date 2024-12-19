@@ -27,7 +27,7 @@ namespace Runner.Client
                 case System.Runtime.InteropServices.Architecture.Arm64:
                     return "arm64";
                 default:
-                    throw new InvalidOperationException();
+                    return "unsupported";
             }
         }
 
@@ -39,7 +39,7 @@ namespace Runner.Client
             } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
                 return "osx";
             }
-            return null;
+            return "unsupported";
         }
 
         private static string runnerOfficialUrl(string runner_URL, string runner12_VERSION, string os, string arch, string suffix) {
@@ -171,6 +171,9 @@ namespace Runner.Client
             var externalsPath = Path.Join(GharunUtil.GetLocalStorage());
             var os = GetHostOS();
             var arch = GetHostArch();
+            if(System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("musl") || System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("alpine")) {
+                os += "-musl";
+            }
             string platform = os + "/" + arch;
             var exeExtension = os == "windows" ? ".exe" : "";
             var prefix = azagent ? "Agent" : "Runner";
@@ -186,6 +189,8 @@ namespace Runner.Client
                     { "linux/amd64", dest => DownloadTool(parameters, AURL("linux-x64", "tar.gz"), dest, token, unwrap: false)},
                     { "linux/arm", dest => DownloadTool(parameters, AURL("linux-arm", "tar.gz"), dest, token, unwrap: false)},
                     { "linux/arm64", dest => DownloadTool(parameters, AURL("linux-arm64", "tar.gz"), dest, token, unwrap: false)},
+                    { "linux-musl/amd64", dest => DownloadTool(parameters, AURL("linux-musl-x64", "tar.gz"), dest, token, unwrap: false)},
+                    { "linux-musl/arm64", dest => DownloadTool(parameters, AURL("linux-musl-arm64", "tar.gz"), dest, token, unwrap: false)},
                     { "osx/amd64", dest => DownloadTool(parameters, AURL("osx-x64", "tar.gz"), dest, token, unwrap: false)},
                     { "osx/arm64", dest => DownloadTool(parameters, AURL("osx-arm64", "tar.gz"), dest, token, unwrap: false)},
                 };

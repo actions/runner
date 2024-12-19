@@ -262,7 +262,7 @@ namespace GitHub.Runner.Common
             } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
                 return "osx";
             }
-            return null;
+            return "unsupported";
         }
 
         public string GetDirectory(WellKnownDirectory directory)

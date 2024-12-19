@@ -49,7 +49,7 @@ namespace GitHub.Runner.Sdk {
             } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
                 return "osx";
             }
-            return null;
+            return "unsupported";
         }
     }
 }

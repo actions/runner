@@ -27,7 +27,7 @@ namespace GitHub.Runner.Worker
                 case System.Runtime.InteropServices.Architecture.Arm64:
                     return "arm64";
                 default:
-                    throw new InvalidOperationException();
+                    return "unsupported";
             }
         }
 
@@ -39,7 +39,7 @@ namespace GitHub.Runner.Worker
             } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
                 return "osx";
             }
-            return null;
+            return "unsupported";
         }
 
         private static string NodeOfficialUrl(string NODE_URL, string NODE12_VERSION, string os, string arch, string suffix) {

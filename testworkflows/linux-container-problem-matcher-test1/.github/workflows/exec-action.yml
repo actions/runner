@@ -6,7 +6,7 @@ jobs:
       matrix:
         image:
           - ""
-          - "ubuntu:18.04"
+          - "ubuntu:24.04"
     container: ${{matrix.image}}
     runs-on: self-hosted
     steps:

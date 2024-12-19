@@ -39,7 +39,7 @@ namespace GitHub.Runner.Common.Util
                     case Constants.OSPlatform.Windows:
                         return "Windows";
                     default:
-                        throw new NotSupportedException(); // Should never reach here.
+                        return "Unsupported";
                 }
             }
         }
@@ -59,7 +59,7 @@ namespace GitHub.Runner.Common.Util
                     case Constants.Architecture.Arm64:
                         return "ARM64";
                     default:
-                        throw new NotSupportedException(); // Should never reach here.
+                        return "Unsupported";
                 }
             }
         }

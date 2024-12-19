@@ -47,7 +47,8 @@ namespace GitHub.Runner.Common
         {
             OSX,
             Linux,
-            Windows
+            Windows,
+            Unsupported
         }
 
         public enum Architecture
@@ -55,7 +56,8 @@ namespace GitHub.Runner.Common
             X86,
             X64,
             Arm,
-            Arm64
+            Arm64,
+            Unsupported
         }
 
         public static class Runner
@@ -70,7 +72,7 @@ namespace GitHub.Runner.Common
                 if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
                     return OSPlatform.OSX;
                 }
-                throw new NotSupportedException();
+                return OSPlatform.Unsupported;
             } }
 
             public static Architecture PlatformArchitecture { get {
@@ -84,7 +86,7 @@ namespace GitHub.Runner.Common
                     case System.Runtime.InteropServices.Architecture.Arm64:
                         return Architecture.Arm64;
                 }
-                throw new NotSupportedException();
+                return Architecture.Unsupported;
             } }
 
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);
