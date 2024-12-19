@@ -196,6 +196,10 @@ namespace Runner.Server.Controllers
             }));
             records = MergeTimelineRecords(records);
             foreach(var r in records) {
+                // Bug Detail TimeLine Updates not supported
+                if(r.Details != null) {
+                    r.Details = null;
+                }
                 var stored = (from va in _context.TimelineVariables where va.Record == r select va).ToDictionary(kv => kv.Name, kv => kv, StringComparer.OrdinalIgnoreCase);
                 foreach(var item in r.Variables)
                 {
