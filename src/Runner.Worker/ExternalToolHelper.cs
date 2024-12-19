@@ -220,12 +220,14 @@ namespace GitHub.Runner.Worker
 
                 } else if(name == "node20") {
                     string nodeUrl = "https://nodejs.org/dist";
+                    string nodeUnofficialUrl = "https://unofficial-builds.nodejs.org/download/release";
                     string nodeVersion = "20.5.0";
                     string tarextraopts = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? " --exclude \"*/lib/*\" \"*/bin/node*\" \"*/LICENSE\"" : "";
                     _tools = new Dictionary<string, Func<string, Task>> {
                         { "windows/386", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x86", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
                         { "windows/amd64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
                         { "windows/arm64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "arm64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "linux/386", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUnofficialUrl, "20.18.1", "linux", "x86", "tar.gz"), dest, tarextraopts, true)},
                         { "linux/amd64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "x64", "tar.gz"), dest, tarextraopts, true)},
                         { "linux/arm", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "armv7l", "tar.gz"), dest, tarextraopts, true)},
                         { "linux/arm64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "arm64", "tar.gz"), dest, tarextraopts, true)},
