@@ -61,7 +61,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            if(System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("alpine")) {
+            if(System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("musl") || System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("alpine")) {
                 return Task.FromResult<string>(preferredVersion + "_alpine");
             }
             return Task.FromResult<string>(preferredVersion);
