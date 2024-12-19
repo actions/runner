@@ -37,6 +37,7 @@ namespace GitHub.Runner.Common
         event EventHandler Unloading;
         void ShutdownRunner(ShutdownReason reason);
         void WritePerfCounter(string counter);
+        void LoadDefaultUserAgents();
     }
 
     public enum StartupType
@@ -69,6 +70,7 @@ namespace GitHub.Runner.Common
         private string _perfFile;
         private RunnerWebProxy _webProxy = new();
         private string configRoot = null;
+        private string _hostType = string.Empty;
 
         public event EventHandler Unloading;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
@@ -80,6 +82,7 @@ namespace GitHub.Runner.Common
         {
             // Validate args.
             ArgUtil.NotNullOrEmpty(hostType, nameof(hostType));
+            _hostType = hostType;
 
             configRoot ??= customConfigDir ?? Environment.GetEnvironmentVariable("RUNNER_SERVER_CONFIG_ROOT");
 
@@ -200,6 +203,16 @@ namespace GitHub.Runner.Common
                 }
             }
 
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+            {
+                _trace.Warning($"Runner is running under insecure mode: HTTPS server certificate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
+            }
+
+            LoadDefaultUserAgents();
+        }
+
+        public void LoadDefaultUserAgents()
+        {
             if (string.IsNullOrEmpty(WebProxy.HttpProxyAddress) && string.IsNullOrEmpty(WebProxy.HttpsProxyAddress))
             {
                 _trace.Info($"No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)");
@@ -207,11 +220,6 @@ namespace GitHub.Runner.Common
             else
             {
                 _userAgents.Add(new ProductInfoHeaderValue("HttpProxyConfigured", bool.TrueString));
-            }
-
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
-            {
-                _trace.Warning($"Runner is running under insecure mode: HTTPS server certificate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
             }
 
             var credFile = GetConfigFile(WellKnownConfigFile.Credentials);
@@ -252,6 +260,7 @@ namespace GitHub.Runner.Common
             var currentProcess = Process.GetCurrentProcess();
             _userAgents.Add(new ProductInfoHeaderValue("Pid", currentProcess.Id.ToString()));
             _userAgents.Add(new ProductInfoHeaderValue("CreationTime", Uri.EscapeDataString(DateTime.UtcNow.ToString("O"))));
+            _userAgents.Add(new ProductInfoHeaderValue($"({_hostType})"));
         }
 
         private static string GetHostOS() {
@@ -674,7 +683,7 @@ namespace GitHub.Runner.Common
                     payload[0] = Enum.Parse(typeof(GitHub.Services.Common.VssCredentialsType), ((int)payload[0]).ToString());
                 }
 
-                if (payload.Length > 0)
+                if (payload.Length > 0 && !string.IsNullOrEmpty(eventData.Message))
                 {
                     message = String.Format(eventData.Message.Replace("%n", Environment.NewLine), payload);
                 }

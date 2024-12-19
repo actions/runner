@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
+using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Listener
 {
@@ -155,6 +156,12 @@ namespace GitHub.Runner.Listener
             catch (AccessDeniedException e) when (e.ErrorCode == 1)
             {
                 terminal.WriteError($"An error occured: {e.Message}");
+                trace.Error(e);
+                return Constants.Runner.ReturnCode.TerminatedError;
+            }
+            catch (RunnerNotFoundException e)
+            {
+                terminal.WriteError($"An error occurred: {e.Message}");
                 trace.Error(e);
                 return Constants.Runner.ReturnCode.TerminatedError;
             }

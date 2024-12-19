@@ -68,15 +68,7 @@ namespace GitHub.Runner.Worker
 
         public bool? Step_Debug => GetBoolean(Constants.Variables.Actions.StepDebug);
 
-        public string System_DotNet8CompatibilityWarning => Get(Constants.Variables.System.DotNet8CompatibilityWarning);
-
-        public string System_DotNet8CompatibilityOutputPattern => Get(Constants.Variables.System.DotNet8CompatibilityOutputPattern);
-
-        public int? System_DotNet8CompatibilityOutputLength => GetInt(Constants.Variables.System.DotNet8CompatibilityOutputLength);
-
         public string System_PhaseDisplayName => Get(Constants.Variables.System.PhaseDisplayName);
-
-        public bool System_TestDotNet8Compatibility => GetBoolean(Constants.Variables.System.TestDotNet8Compatibility) ?? false;
 
         public string Get(string name)
         {

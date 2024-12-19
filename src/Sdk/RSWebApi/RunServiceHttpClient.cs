@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -107,15 +108,6 @@ namespace GitHub.Actions.RunService.WebApi
                 }
             }
 
-            // Temporary back compat
-            switch (result.StatusCode)
-            {
-                case HttpStatusCode.NotFound:
-                    throw new TaskOrchestrationJobNotFoundException($"Job message not found: {messageId}");
-                case HttpStatusCode.Conflict:
-                    throw new TaskOrchestrationJobAlreadyAcquiredException($"Job message already acquired: {messageId}");
-            }
-
             if (!string.IsNullOrEmpty(result.ErrorBody))
             {
                 throw new Exception($"Failed to get job message: {result.Error}. {Truncate(result.ErrorBody)}");
@@ -135,6 +127,7 @@ namespace GitHub.Actions.RunService.WebApi
             IList<StepResult> stepResults,
             IList<Annotation> jobAnnotations,
             string environmentUrl,
+            IList<Telemetry> telemetry,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
@@ -147,6 +140,7 @@ namespace GitHub.Actions.RunService.WebApi
                 StepResults = stepResults,
                 Annotations = jobAnnotations,
                 EnvironmentUrl = environmentUrl,
+                Telemetry = telemetry,
             };
 
             requestUri = new Uri(requestUri, "completejob");
@@ -169,13 +163,6 @@ namespace GitHub.Actions.RunService.WebApi
                     case HttpStatusCode.NotFound:
                         throw new TaskOrchestrationJobNotFoundException($"Job not found: {jobId}. {error.Message}");
                 }
-            }
-
-            // Temporary back compat
-            switch (result.StatusCode)
-            {
-                case HttpStatusCode.NotFound:
-                    throw new TaskOrchestrationJobNotFoundException($"Job not found: {jobId}");
             }
 
             if (!string.IsNullOrEmpty(result.ErrorBody))
@@ -223,13 +210,6 @@ namespace GitHub.Actions.RunService.WebApi
                     case HttpStatusCode.NotFound:
                         throw new TaskOrchestrationJobNotFoundException($"Job not found: {jobId}. {error.Message}");
                 }
-            }
-
-            // Temporary back compat
-            switch (result.StatusCode)
-            {
-                case HttpStatusCode.NotFound:
-                    throw new TaskOrchestrationJobNotFoundException($"Job not found: {jobId}");
             }
 
             if (!string.IsNullOrEmpty(result.ErrorBody))

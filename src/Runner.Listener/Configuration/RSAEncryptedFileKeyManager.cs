@@ -1,3 +1,4 @@
+#pragma warning disable CA1416
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -83,3 +84,4 @@ namespace GitHub.Runner.Listener.Configuration
         }
     }
 }
+#pragma warning restore CA1416

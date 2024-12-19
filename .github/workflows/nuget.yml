@@ -18,13 +18,13 @@ jobs:
     - uses: actions/checkout@v3
     - uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '6.0.x'
+        dotnet-version: '8.0.x'
     - name: GenerateConstant
       run: dotnet msbuild ./dir.proj -t:GenerateConstant /p:RunnerVersion=$(Get-Content ./runnerversion) /p:PackageRuntime=any
       shell: pwsh
       working-directory: ./src
     - name: Restore
-      run: dotnet restore /p:RuntimeFrameworkVersion=6.0.0
+      run: dotnet restore /p:RuntimeFrameworkVersion=8.0.0
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Build
@@ -32,7 +32,7 @@ jobs:
       run: |
         $d = Get-Date
         $version = $("$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")".TrimStart("v") + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
-        dotnet build --no-restore -c Release /p:BUILD_OS=Any /p:Version=$version /p:RuntimeFrameworkVersion=6.0.0
+        dotnet build --no-restore -c Release /p:BUILD_OS=Any /p:Version=$version /p:RuntimeFrameworkVersion=8.0.0
         echo "version=$version" > $env:GITHUB_OUTPUT
       shell: pwsh
       working-directory: ./src/Runner.Client
@@ -40,8 +40,8 @@ jobs:
         GH_TOKEN: ${{ github.token }}
     - name: Pack
       run: |
-        dotnet pack --no-restore -c Release --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=6.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
-        dotnet pack --no-restore -c Release --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=6.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack --no-restore -c Release --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=8.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack --no-restore -c Release --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=8.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Upload Artifacts
@@ -77,15 +77,14 @@ jobs:
         - ubuntu-latest
         - macos-latest
         dotnet-version:
-        # - '6.0.100'
-        - '6.0.x'
+        - '8.0.x'
         image:
         - ''
         include:
         - os: windows-2022
           tag: ltsc2022
         - os: ubuntu-latest
-          image: mcr.microsoft.com/dotnet/sdk:6.0-alpine3.15
+          image: mcr.microsoft.com/dotnet/sdk:8.0-alpine3.20
           shell: sh
     runs-on: ${{matrix.os}}
     container: ${{matrix.image}}
@@ -234,14 +233,14 @@ jobs:
         cd Runner.Client
         unzip ../src/Runner.Client/nupkg/Runner.Client.${{needs.package.outputs.version}}.nupkg
         chmod -R +rw tools/
-        dotnet tools/net6.0/any/Runner.Server.dll --urls http://*:5000 "--ConnectionStrings:sqlite=Data Source=Agents.db;" &
+        dotnet tools/net8.0/any/Runner.Server.dll --urls http://*:5000 "--ConnectionStrings:sqlite=Data Source=Agents.db;" &
         sleep 2
         echo "Check for creation of sqlite db"
         stat Agents.db
         echo "Configure Runner"
-        dotnet tools/net6.0/any/Runner.Listener.dll configure --url http://localhost:5000 --token nothing
+        dotnet tools/net8.0/any/Runner.Listener.dll configure --url http://localhost:5000 --token nothing
         echo "Start Runner"
-        dotnet tools/net6.0/any/Runner.Listener.dll run&
+        dotnet tools/net8.0/any/Runner.Listener.dll run&
         sleep 2
         echo "Send job"
         cd ..

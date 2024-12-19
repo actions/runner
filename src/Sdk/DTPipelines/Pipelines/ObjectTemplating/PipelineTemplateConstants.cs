@@ -30,6 +30,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String If = "if";
         public const String Image = "image";
         public const String ImageName = "image-name";
+        public const String CustomImageVersion = "version";
         public const String Include = "include";
         public const String Inputs = "inputs";
         public const String Job = "job";

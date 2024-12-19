@@ -56,4 +56,13 @@
   <PropertyGroup>
     <RollForward>LatestMajor</RollForward>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Enable NuGet package auditing -->
+    <NuGetAudit>true</NuGetAudit>
+    <!-- Audit direct and transitive packages -->
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <!-- Report low, moderate, high and critical advisories -->
+    <NuGetAuditLevel>moderate</NuGetAuditLevel>
+  </PropertyGroup>
 </Project>

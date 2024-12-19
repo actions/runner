@@ -91,7 +91,7 @@
 		}
 	},
 	"scripts": {
-		"build": "npx webpack && dotnet publish ../Runner.Language.Server -c Debug --no-self-contained -p:UseAppHost=false -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 --output native"
+		"build": "npx webpack && dotnet publish ../Runner.Language.Server -c Debug --no-self-contained -p:UseAppHost=false -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=8.0.0 --output native"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.73.0",

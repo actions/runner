@@ -239,6 +239,10 @@ namespace GitHub.Runner.Listener
                             File.SetAttributes(configFile, File.GetAttributes(configFile) | FileAttributes.Hidden);
                             Trace.Info($"Saved {configContent.Length} bytes to '{configFile}'.");
                         }
+
+                        // make sure we have the right user agent data added from the jitconfig
+                        HostContext.LoadDefaultUserAgents();
+                        VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
                     }
                     catch (Exception ex)
                     {

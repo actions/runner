@@ -46,7 +46,11 @@ namespace GitHub.Runner.Common
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
-            if (path.Length == 1)
+            var isOrgRunner = path.Length == 1;
+            var isRepoOrEnterpriseRunner = path.Length == 2;
+            var isRepoRunner = isRepoOrEnterpriseRunner && !string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase);
+
+            if (isOrgRunner)
             {
                 // org runner
                 if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
@@ -58,21 +62,31 @@ namespace GitHub.Runner.Common
                     githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
                 }
             }
-            else if (path.Length == 2)
+            else if (isRepoOrEnterpriseRunner)
             {
-                // repo or enterprise runner.
-                if (!string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase))
+                // Repository runner
+                if (isRepoRunner)
                 {
-                    return null;
-                }
-
-                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
+                    if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+                    {
+                        githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/repos/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
+                    }
+                    else
+                    {
+                        githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/repos/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
+                    }
                 }
                 else
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
+                    // Enterprise runner
+                    if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+                    {
+                        githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
+                    }
+                    else
+                    {
+                        githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runners?name={Uri.EscapeDataString(agentName)}";
+                    }
                 }
             }
             else
@@ -90,7 +104,11 @@ namespace GitHub.Runner.Common
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
-            if (path.Length == 1)
+            var isOrgRunner = path.Length == 1;
+            var isRepoOrEnterpriseRunner = path.Length == 2;
+            var isRepoRunner = isRepoOrEnterpriseRunner && !string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase);
+
+            if (isOrgRunner)
             {
                 // org runner
                 if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
@@ -102,21 +120,31 @@ namespace GitHub.Runner.Common
                     githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runner-groups";
                 }
             }
-            else if (path.Length == 2)
+            else if (isRepoOrEnterpriseRunner)
             {
-                // repo or enterprise runner.
-                if (!string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase))
+                // Repository Runner
+                if (isRepoRunner)
                 {
-                    return null;
-                }
-
-                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
-                {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runner-groups";
+                    if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+                    {
+                        githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/repos/{path[0]}/{path[1]}/actions/runner-groups";
+                    }
+                    else
+                    {
+                        githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/repos/{path[0]}/{path[1]}/actions/runner-groups";
+                    }
                 }
                 else
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runner-groups";
+                    // Enterprise Runner
+                    if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+                    {
+                        githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{path[0]}/{path[1]}/actions/runner-groups";
+                    }
+                    else
+                    {
+                        githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{path[0]}/{path[1]}/actions/runner-groups";
+                    }
                 }
             }
             else

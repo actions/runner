@@ -31,5 +31,8 @@ namespace Sdk.RSWebApi.Contracts
 
         [DataMember(Name = "endColumn", EmitDefaultValue = false)]
         public long EndColumn;
+
+        [DataMember(Name = "stepNumber", EmitDefaultValue = false)]
+        public long StepNumber;
     }
 }

@@ -17,8 +17,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(WASM)' != '1'">
     <OutputType>Exe</OutputType>
-      <!-- See https://github.com/dotnet/sdk/issues/18116#issuecomment-855266314 -->
-    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
   </PropertyGroup>
 
   <ItemGroup>
