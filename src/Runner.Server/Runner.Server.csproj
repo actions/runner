@@ -34,6 +34,7 @@
     <PackageReference Include="GitHubJwt" Version="0.0.5" />
     <PackageReference Include="Octokit" Version="0.50.0" />
     <PackageReference Include="Google.Protobuf" Version="3.25.1" />
+    <PackageReference Include="System.Text.Json" Version="8.0.11" />
   </ItemGroup>
 
   <ItemGroup>
