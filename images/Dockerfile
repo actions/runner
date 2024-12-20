@@ -50,6 +50,9 @@ RUN add-apt-repository ppa:git-core/ppa \
     && apt install -y git \
     && rm -rf /var/lib/apt/lists/*
 
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
     && usermod -aG sudo runner \
