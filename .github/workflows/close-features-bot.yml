@@ -1,8 +1,8 @@
 name: Close Features Bot
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *' # every day at midnight
+  # schedule:
+  #   - cron: '0 0 * * *' # every day at midnight
 jobs:
   stale:
     runs-on: ubuntu-latest

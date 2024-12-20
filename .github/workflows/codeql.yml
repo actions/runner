@@ -8,8 +8,8 @@ on:
     branches: 
       - main
   pull_request:
-  schedule:
-    - cron: '0 0 * * 0'
+  # schedule:
+  #   - cron: '0 0 * * 0'
 
 jobs:
   CodeQL-Build:
