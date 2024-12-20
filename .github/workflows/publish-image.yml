@@ -39,7 +39,12 @@ jobs:
             const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
             console.log(`Using runner version ${runnerVersion}`)
             core.setOutput('version', runnerVersion);
-
+      - name: Normalize Image Name
+        id: normalize
+        run: |
+          NAME=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=$NAME" >> $GITHUB_ENV
+          
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v2
 
