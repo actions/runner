@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -465,18 +466,24 @@ namespace GitHub.Runner.Listener
                                 // Start the child process.
                                 HostContext.WritePerfCounter("StartingWorkerProcess");
                                 var assemblyDirectory = HostContext.GetDirectory(WellKnownDirectory.Bin);
-#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                                string ext = ".dll";
-#else
-                                string ext = IOUtil.ExeExtension;
-#endif
-                                string workerFileName = Path.Combine(assemblyDirectory, $"{_workerProcessName}{ext}");
+                                var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                                 string arguments = "spawnclient " + pipeHandleOut + " " + pipeHandleIn;
+                                string workerFileName;
+                                if(string.IsNullOrWhiteSpace(binpath)) {
+                                    workerFileName = Environment.ProcessPath;
+                                } else {
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                                var dotnet = global::Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
-                                arguments = $"\"{workerFileName}\" {arguments}";
-                                workerFileName = dotnet;
+                                    string ext = ".dll";
+#else
+                                    string ext = IOUtil.ExeExtension;
 #endif
+                                    workerFileName = Path.Combine(assemblyDirectory, $"{_workerProcessName}{ext}");
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                    var dotnet = global::Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
+                                    arguments = $"\"{workerFileName}\" {arguments}";
+                                    workerFileName = dotnet;
+#endif
+                                }
                                 workerProcessTask = processInvoker.ExecuteAsync(
                                     workingDirectory: assemblyDirectory,
                                     fileName: workerFileName,

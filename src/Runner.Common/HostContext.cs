@@ -281,6 +281,9 @@ namespace GitHub.Runner.Common
             {
                 case WellKnownDirectory.Bin:
                     path = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                    if(path == null) {
+                        path = AppContext.BaseDirectory;
+                    }
                     break;
 
                 case WellKnownDirectory.Diag:
@@ -304,7 +307,11 @@ namespace GitHub.Runner.Common
                     break;
 
                 case WellKnownDirectory.Root:
-                    path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
+                    if(string.IsNullOrWhiteSpace(Assembly.GetEntryAssembly().Location)) {
+                        path = AppContext.BaseDirectory;
+                    } else {
+                        path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
+                    }
                     break;
 
                 case WellKnownDirectory.ConfigRoot:

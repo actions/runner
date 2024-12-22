@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework Condition="'$(RuntimeFrameworkVersion)' != '6.0.0'">net8.0</TargetFramework>
+        <TargetFramework Condition="'$(RuntimeFrameworkVersion)' == '6.0.0'">net6.0</TargetFramework>
         <OutputType>Library</OutputType>
         <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
-        <!-- <SelfContained>true</SelfContained> -->
         <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
         <NoWarn>NU1701;NU1603;SYSLIB0050;SYSLIB0051</NoWarn>
         <Version>$(Version)</Version>
@@ -21,14 +21,22 @@
         <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1" />
         <PackageReference Include="System.Security.Cryptography.Cng" Version="5.0.0" />
-        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.0" />
-        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
         <PackageReference Condition="'$(YAML_DOTNET_FORK_PATH)' == ''" Include="YamlDotNet" Version="15.1.1" />
         <ProjectReference Condition="'$(YAML_DOTNET_FORK_PATH)' != ''" Include="$(YAML_DOTNET_FORK_PATH)"/>
         <PackageReference Include="System.Net.Http" Version="4.3.4" />
         <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
         <PackageReference Include="System.Private.Uri" Version="4.3.2" />
         <PackageReference Include="System.Formats.Asn1" Version="8.0.1" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(RuntimeFrameworkVersion)' != '6.0.0'">
+        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(RuntimeFrameworkVersion)' == '6.0.0'">
+        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.*" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="6.0.0" />
     </ItemGroup>
 
     <PropertyGroup Condition="'$(YAML_DOTNET_FORK_PATH)' != ''">

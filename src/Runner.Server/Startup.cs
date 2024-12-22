@@ -399,11 +399,24 @@ namespace Runner.Server
                 app.UseRewriter(rewriteOptions);
             }
 
-            DefaultFilesOptions options = new DefaultFilesOptions();
-            options.DefaultFileNames.Clear();
-            options.DefaultFileNames.Add("index.html");
-            app.UseDefaultFiles(options);
-            app.UseStaticFiles();
+            if(string.IsNullOrEmpty(Assembly.GetEntryAssembly().Location)) {
+                var fileProvider = new ManifestEmbeddedFileProvider(Assembly.GetAssembly(type: typeof(Program))!, "wwwroot");
+
+                DefaultFilesOptions options = new DefaultFilesOptions();
+                options.DefaultFileNames.Clear();
+                options.DefaultFileNames.Add("index.html");
+                options.FileProvider = fileProvider;
+                options.RequestPath = string.Empty;
+                app.UseDefaultFiles(options);
+
+                app.UseStaticFiles(new StaticFileOptions
+                {
+                    FileProvider = fileProvider,
+                    RequestPath = string.Empty,
+                });
+            } else {
+                app.UseStaticFiles();
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -38,10 +39,12 @@ namespace Runner.Server
                 {
                     webBuilder.UseStartup<Startup>();
                     var contentRoot = System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                    var wwwRoot = System.IO.Path.Combine(contentRoot, "wwwroot");
-                    if(System.IO.Directory.Exists(contentRoot) && System.IO.Directory.Exists(wwwRoot)) {
-                        webBuilder.UseContentRoot(contentRoot);
-                        webBuilder.UseWebRoot(wwwRoot);
+                    if(contentRoot != null) {
+                        var wwwRoot = System.IO.Path.Combine(contentRoot, "wwwroot");
+                        if(System.IO.Directory.Exists(contentRoot) && System.IO.Directory.Exists(wwwRoot)) {
+                            webBuilder.UseContentRoot(contentRoot);
+                            webBuilder.UseWebRoot(wwwRoot);
+                        }
                     }
                     var RUNNER_SERVER_APP_JSON_SETTINGS_FILE = Environment.GetEnvironmentVariable("RUNNER_SERVER_APP_JSON_SETTINGS_FILE");
                     if(RUNNER_SERVER_APP_JSON_SETTINGS_FILE != null) {

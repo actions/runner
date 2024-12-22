@@ -2,10 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition="'$(RuntimeFrameworkVersion)' != '6.0.0'">net8.0</TargetFramework>
+    <TargetFramework Condition="'$(RuntimeFrameworkVersion)' == '6.0.0'">net6.0</TargetFramework>
     <NoWarn>NU1701;NU1603;NU1605;CS4014</NoWarn>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64</RuntimeIdentifiers>
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <GenerateEmbeddedFilesManifest Condition="'$(PublishSingleFile)' == 'true'">true</GenerateEmbeddedFilesManifest>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(EFMigration)' != ''">
@@ -13,6 +15,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Quartz" Version="3.5.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.5.0" />
+    <PackageReference Include="Quartz.Serialization.Json" Version="3.5.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.5.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="6.5.0" />
+    <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
+    <PackageReference Include="GitHubJwt" Version="0.0.5" />
+    <PackageReference Include="Octokit" Version="0.50.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.25.1" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeFrameworkVersion)' != '6.0.0'">
     <PackageReference Include="AspNet.Security.OAuth.GitHub" Version="8.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.11" />
@@ -22,19 +37,23 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.2" />
-    <PackageReference Include="Quartz" Version="3.5.0" />
-    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.5.0" />
-    <PackageReference Include="Quartz.Serialization.Json" Version="3.5.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.5.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="6.5.0" />
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.1" />
-    <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="8.0.1" />
-    <PackageReference Include="GitHubJwt" Version="0.0.5" />
-    <PackageReference Include="Octokit" Version="0.50.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.25.1" />
     <PackageReference Include="System.Text.Json" Version="8.0.11" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeFrameworkVersion)' == '6.0.0'">
+    <PackageReference Include="AspNet.Security.OAuth.GitHub" Version="6.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="6.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameWorkCore" Version="6.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameWorkCore.Design" Version="6.0.3" Condition=" '$(EFMigration)' != '' " />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="6.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.3" />
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="6.0.2" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="6.0.0" />
+    <PackageReference Include="System.Threading.Tasks.Dataflow" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,8 +64,16 @@
     <EmbeddedResource Include="localcheckout_template.yml">
       <LogicalName>Runner.Server.localcheckout_template.yml</LogicalName>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PublishSingleFile)' != 'true'">
     <None Include="wwwroot\**" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" Link="wwwroot\%(RecursiveDir)\%(Filename)%(Extension)" />
     <None Include="appsettings*.json" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <EmbeddedResource Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.11" />
   </ItemGroup>
 
   <ItemGroup>

@@ -271,11 +271,13 @@ namespace Runner.Client
 #else
             string ext = IOUtil.ExeExtension;
 #endif
-            var runner = Path.Join(binpath, $"Runner.Listener{ext}");
+            var runner = string.IsNullOrWhiteSpace(binpath) ? Environment.ProcessPath : Path.Join(binpath, $"Runner.Listener{ext}");
             var file = runner;
+            if(!string.IsNullOrWhiteSpace(binpath)) {
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-            file = dotnet;
+                file = dotnet;
 #endif
+            }
             var agentname = Path.GetRandomFileName();
             string tmpdir = Path.Combine(Path.GetFullPath(parameters.RunnerDirectory), agentname);
             Directory.CreateDirectory(tmpdir);
@@ -320,10 +322,12 @@ namespace Runner.Client
                             runnerEnv["RUNNER_CONTAINER_KEEP"] = "1";
                         }
 
-                        var arguments = $"Configure --name {agentname} --unattended --url {parameters.Server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
+                        var arguments = $"configure --name {agentname} --unattended --url {parameters.Server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
+                        if(!string.IsNullOrWhiteSpace(binpath)) {
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                        arguments = $"\"{runner}\" {arguments}";
+                            arguments = $"\"{runner}\" {arguments}";
 #endif
+                        }
                         
                         var code = await inv.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, CancellationTokenSource.CreateLinkedTokenSource(source.Token, new CancellationTokenSource(60 * 1000).Token).Token);
                         int execAttempt = 1;                    
@@ -348,10 +352,12 @@ namespace Runner.Client
                                     if(source.IsCancellationRequested) {
                                         return 1;
                                     }
-                                    arguments = $"Run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}";
-    #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                                    arguments = $"\"{runner}\" {arguments}";
-    #endif
+                                    arguments = $"run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}";
+                                    if(!string.IsNullOrWhiteSpace(binpath)) {
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                        arguments = $"\"{runner}\" {arguments}";
+#endif
+                                    }
                                     await runnerlistener.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, runToken.Token);
                                     break;
                                 }
@@ -553,13 +559,18 @@ namespace Runner.Client
                                     // Wrap listener to avoid that ctrl-c is sent to the runner
                                     if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
                                     {
+                                        if(string.IsNullOrWhiteSpace(binpath)) {
+                                            arguments = $"spawn \"{file}\" {arguments}";
+                                            file = Environment.ProcessPath;
+                                        } else {
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                                             arguments = $"\"{Path.Join(binpath, "Runner.Client.dll")}\" spawn \"{file}\" {arguments}";
                                             file = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
 #else
-                                        arguments = $"spawn \"{file}\" {arguments}";
-                                        file = Path.Join(binpath, $"Runner.Client{ext}");
+                                            arguments = $"spawn \"{file}\" {arguments}";
+                                            file = Path.Join(binpath, $"Runner.Client{ext}");
 #endif
+                                        }
                                     }
                                     ((Func<Task>)(async () =>
                                     {
@@ -977,6 +988,18 @@ namespace Runner.Client
             }
             if(args.Length > 0 && args[0] == "server") {
                 Runner.Server.Program.Main(args.Skip(1).ToArray());
+                return 0;
+            }
+            if(args.Length > 0 && (args[0] == "configure" || args[0] == "run" || args[0] == "remove")) {
+                GitHub.Runner.Listener.Program.Main(args);
+                return 0;
+            }
+            if(args.Length > 0 && args[0] == "spawnclient") {
+                GitHub.Runner.Worker.Program.Main(args);
+                return 0;
+            }
+            if(args.Length > 0 && args[0] == "action") {
+                GitHub.Runner.PluginHost.Program.Main(args);
                 return 0;
             }
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {

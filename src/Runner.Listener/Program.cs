@@ -176,7 +176,7 @@ namespace GitHub.Runner.Listener
         private static void LoadAndSetEnv()
         {
             var binDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            var rootDir = new DirectoryInfo(binDir).Parent.FullName;
+            var rootDir = string.IsNullOrWhiteSpace(binDir) ? AppContext.BaseDirectory : new DirectoryInfo(binDir).Parent.FullName;
             string envFile = Path.Combine(rootDir, ".env");
             if (File.Exists(envFile))
             {

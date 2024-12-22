@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition="'$(RuntimeFrameworkVersion)' != '6.0.0'">net8.0</TargetFramework>
+    <TargetFramework Condition="'$(RuntimeFrameworkVersion)' == '6.0.0'">net6.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
@@ -17,10 +18,16 @@
     <ProjectReference Include="..\Runner.Sdk\Runner.Sdk.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(RuntimeFrameworkVersion)' != '6.0.0'">
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
     <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RuntimeFrameworkVersion)' == '6.0.0'">
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="6.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="6.0.0" />
+    <PackageReference Include="System.Threading.Channels" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>

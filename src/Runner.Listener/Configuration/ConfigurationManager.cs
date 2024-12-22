@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -420,20 +421,22 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteSuccessMessage("Settings Saved.");
             _term.WriteLine();
 
-            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                // config windows service
-                bool runAsService = command.GetRunAsService();
-                if (runAsService)
-                {
-                    Trace.Info("Configuring to run the agent as service");
-                    var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
-                    serviceControlManager.ConfigureService(runnerSettings, command);
-                }
+            if(!string.IsNullOrWhiteSpace(Assembly.GetExecutingAssembly().Location)) {
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    // config windows service
+                    bool runAsService = command.GetRunAsService();
+                    if (runAsService)
+                    {
+                        Trace.Info("Configuring to run the agent as service");
+                        var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
+                        serviceControlManager.ConfigureService(runnerSettings, command);
+                    }
 
-            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) || System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
-                // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
-                var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
-                serviceControlManager.GenerateScripts(runnerSettings);
+                } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) || System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+                    // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
+                    var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
+                    serviceControlManager.GenerateScripts(runnerSettings);
+                }
             }
         }
 

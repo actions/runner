@@ -89,23 +89,30 @@ namespace GitHub.Runner.Worker
             string workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             ArgUtil.Directory(workingDirectory, nameof(workingDirectory));
 
-            // Runner.PluginHost
-#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-            string ext = ".dll";
-#else
-            string ext = IOUtil.ExeExtension;
-#endif
-            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), $"Runner.PluginHost{ext}");
-            ArgUtil.File(file, $"Runner.PluginHost{ext}");
+            string file;
 
             // Runner.PluginHost's arguments
             string arguments = $"action \"{plugin}\"";
 
+            var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            if(string.IsNullOrWhiteSpace(binpath)) {
+                file = Environment.ProcessPath;
+            } else {
+                // Runner.PluginHost
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-            var dotnet = global::Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
-            arguments = $"\"{file}\" {arguments}";
-            file = dotnet;
+                string ext = ".dll";
+#else
+                string ext = IOUtil.ExeExtension;
 #endif
+                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), $"Runner.PluginHost{ext}");
+                ArgUtil.File(file, $"Runner.PluginHost{ext}");
+
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                var dotnet = global::Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
+                arguments = $"\"{file}\" {arguments}";
+                file = dotnet;
+#endif
+            }
             // construct plugin context
             RunnerActionPluginExecutionContext pluginContext = new()
             {

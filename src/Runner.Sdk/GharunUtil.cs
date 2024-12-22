@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using Newtonsoft.Json;
 
 namespace GitHub.Runner.Sdk {
     public class GharunUtil {
@@ -8,7 +9,24 @@ namespace GitHub.Runner.Sdk {
             return localStorage != "" && !localStorage.Contains(' ') && !localStorage.Contains('"') && !localStorage.Contains('\'');
         }
 
+        private class PortableConfig {
+            public string StoragePath { get; set; }
+        }
+
+        private static PortableConfig ExeConfig { get; set; }
+
         private static string GetLocalStorageLocation(string name) {
+            var portableConfig = Environment.ProcessPath + ".portable.config";
+            if(ExeConfig == null) {
+                if(File.Exists(portableConfig)) {
+                    ExeConfig = JsonConvert.DeserializeObject<PortableConfig>(File.ReadAllText(portableConfig));
+                } else {
+                    ExeConfig = new PortableConfig();
+                }
+            }
+            if(!string.IsNullOrWhiteSpace(ExeConfig?.StoragePath)) {
+                return Path.GetFullPath(ExeConfig.StoragePath);
+            }
             var localStorage = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if(!IsUsableLocalStorage(localStorage)) {
                 localStorage = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
