@@ -31,6 +31,15 @@ The legacy nuget package [can be found here](https://www.nuget.org/packages/io.g
 - `dotnet tool install --global io.github.christopherhx.gharun`
 - Run `gharun` like `Runner.Client`
 
+### GitHub CLI Extension (gh rc)
+The experimental [GitHub CLI](https://docs.github.com/en/github-cli/github-cli/about-github-cli) Extension [can be found here](https://github.com/actions-oss/gh-rc)
+- If you face crashes like frequently seen on macos-arm64
+  - please install the Dotnet Tool instead of the gh cli extension
+  - please report these problems together with the log as [GitHub Issues](https://github.com/actions-oss/gh-rc/issues/new)
+  - eventually we need to forward them to the dotnet runtime
+- `gh extension install https://github.com/actions-oss/gh-rc`
+- Run `gh rc` instead of `Runner.Client`
+
 ### Azure Pipelines
 This is experimental and covers a subset of Azure Pipelines.
 
