@@ -2281,11 +2281,7 @@ namespace Runner.Server.Controllers
                                             var clone = Clone();
                                             Task.Run(async () => {
                                                 try {
-                                                    try {
-                                                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token).Token);
-                                                    } catch {
-
-                                                    }
+                                                    await Helper.WaitAnyCancellationToken(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token);
                                                     if(!finished.IsCancellationRequested) {
                                                         jobitem.Cancel.Cancel();
                                                         foreach(var ji in jobitem.Childs) {
@@ -2803,14 +2799,10 @@ namespace Runner.Server.Controllers
                         Task.Run(async () => {
                             try {
                                 for(int i = 0; i < 2; i++) {
-                                    try {
                                         if(i == 0) {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
+                                        await Helper.WaitAnyCancellationToken(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                                         } else {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                                        }
-                                    } catch {
-
+                                        await Helper.WaitAnyCancellationToken(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                                     }
                                     if(finished.IsCancellationRequested) {
                                         return;
@@ -2927,10 +2919,7 @@ namespace Runner.Server.Controllers
                                     } else {
                                         workflowTraceWriter.Info("{0}", $"Starting Workflow run by concurrency group: {group}");
                                         then();
-                                        try {
-                                            await Task.Delay(-1, finished.Token);
-                                        } catch {
-                                        }
+                                        await Helper.WaitAnyCancellationToken(finished.Token);
                                     }
                                     cgroup.FinishRunning(centry);
                                 };
@@ -2948,11 +2937,7 @@ namespace Runner.Server.Controllers
                         // Needed to avoid a deadlock between caller and reusable workflow
                         var prerunCancel = new CancellationTokenSource();
                         Task.Run(async () => {
-                            try {
-                                await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                            } catch {
-
-                            }
+                            await Helper.WaitAnyCancellationToken(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                             if(!prerunCancel.Token.IsCancellationRequested && !finished.Token.IsCancellationRequested) {
                                 workflowTraceWriter.Info("{0}", $"Prerun cancellation");
                                 cancelPendingWorkflow();
@@ -3989,11 +3974,7 @@ namespace Runner.Server.Controllers
                                         var clone = Clone();
                                         Task.Run(async () => {
                                             try {
-                                                try {
-                                                    await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token).Token);
-                                                } catch {
-
-                                                }
+                                                await Helper.WaitAnyCancellationToken(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token);
                                                 if(!finished.IsCancellationRequested) {
                                                     jobitem.Cancel.Cancel();
                                                     foreach(var ji in jobitem.Childs) {
@@ -4683,14 +4664,11 @@ namespace Runner.Server.Controllers
                         Task.Run(async () => {
                             try {
                                 for(int i = 0; i < 2; i++) {
-                                    try {
-                                        if(i == 0) {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                                        } else {
-                                            await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                                        }
-                                    } catch {
 
+                                        if(i == 0) {
+                                        await Helper.WaitAnyCancellationToken(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
+                                        } else {
+                                        await Helper.WaitAnyCancellationToken(finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                                     }
                                     if(finished.IsCancellationRequested) {
                                         return;
@@ -4796,10 +4774,7 @@ namespace Runner.Server.Controllers
                                     } else {
                                         workflowTraceWriter.Info("{0}", $"Starting Workflow run by concurrency group: {group}");
                                         then();
-                                        try {
-                                            await Task.Delay(-1, finished.Token);
-                                        } catch {
-                                        }
+                                        await Helper.WaitAnyCancellationToken(finished.Token);
                                     }
                                     cgroup.FinishRunning(centry);
                                 };
@@ -4817,11 +4792,7 @@ namespace Runner.Server.Controllers
                         // Needed to avoid a deadlock between caller and reusable workflow
                         var prerunCancel = new CancellationTokenSource();
                         Task.Run(async () => {
-                            try {
-                                await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
-                            } catch {
-
-                            }
+                            await Helper.WaitAnyCancellationToken(workflowContext.CancellationToken, prerunCancel.Token, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None);
                             if(!prerunCancel.Token.IsCancellationRequested && !finished.Token.IsCancellationRequested) {
                                 workflowTraceWriter.Info("{0}", $"Prerun cancellation");
                                 cancelPendingWorkflow();
@@ -6535,7 +6506,7 @@ namespace Runner.Server.Controllers
                             // Attempt to mitigate an actions/runner bug, where the runner doesn't send a jobcompleted event if we cancel to early
                             await Task.Delay(session.DoNotCancelBefore.Value - now, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token).Token);
                         }
-                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token, job.CancelRequest.Token).Token);
+                        await Helper.WaitAnyCancellationToken(jobRunningToken, ts.Token, job.CancelRequest.Token);
                     } catch (TaskCanceledException) {
                         // Connection Reset
                         if(ts.Token.IsCancellationRequested)
@@ -6584,7 +6555,7 @@ namespace Runner.Server.Controllers
                     }
                 } else {
                     try {
-                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token).Token);
+                        await Helper.WaitAnyCancellationToken(jobRunningToken, ts.Token);
                     } catch (TaskCanceledException) {
                         // Connection Reset
                         if(ts.Token.IsCancellationRequested)
