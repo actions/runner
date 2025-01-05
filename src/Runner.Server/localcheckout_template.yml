@@ -110,20 +110,13 @@ runs:
       ssh-key: ${{ inputs.ssh-key }}
       ssh-known-hosts: ${{ inputs.ssh-known-hosts }}
       ssh-strict: ${{ inputs.ssh-strict }}
-      ssh-user: ${{ inputs.ssh-user }}
       persist-credentials: ${{ inputs.persist-credentials }}
       path: ${{ inputs.path }}
       clean: ${{ inputs.clean }}
-      filter: ${{ inputs.filter }}
-      sparse-checkout: ${{ inputs.sparse-checkout }}
-      sparse-checkout-cone-mode: ${{ inputs.sparse-checkout-cone-mode }}
       fetch-depth: ${{ inputs.fetch-depth }}
       fetch-tags: ${{ inputs.fetch-tags }}
-      show-progress: ${{ inputs.show-progress }}
       lfs: ${{ inputs.lfs }}
       submodules: ${{ inputs.submodules }}
-      set-safe-directory: ${{ inputs.set-safe-directory }}
-      github-server-url: ${{ inputs.github-server-url }}
       checkoutref: _____REF_____
   - uses: _____checkout_____@_____SHA__________REF_____
     if: "!fromJSON(steps.local.outputs.skip)"
