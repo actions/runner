@@ -1494,12 +1494,7 @@ namespace Runner.Client
                                         using (AnonymousPipeServerStream shutdownPipe =
                                             new AnonymousPipeServerStream(PipeDirection.Out,
                                             HandleInheritability.Inheritable)) {
-                                            Task.Run(async () => {
-                                                try {
-                                                    await Task.Delay(-1, token);
-                                                } catch {
-
-                                                }
+                                            using var reg = token.Register(() => {
                                                 using (StreamWriter sr = new StreamWriter(shutdownPipe))
                                                 {
                                                     sr.WriteLine("shutdown");
