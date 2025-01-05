@@ -724,51 +724,8 @@ namespace Runner.Server.Controllers
             var runid = run.Id;
             long runnumber = run.Id;
             // Legacy compat of pre 3.6.0
-            if(string.IsNullOrEmpty(Ref)) {
-                Ref = hook?.Ref;
-                if(Ref == null) {
-                    if(e == "pull_request_target") {
-                        var tmp = hook?.pull_request?.Base?.Ref;
-                        if(tmp != null) {
-                            Ref = "refs/heads/" + tmp;
-                        }
-                    } else if(e == "pull_request" && hook?.Number != null) {
-                        if(HasPullRequestMergePseudoBranch) {
-                            Ref = $"refs/pull/{hook.Number}/merge";
-                        } else {
-                            Ref = $"refs/pull/{hook.Number}/head";
-                        }
-                    }
-                } else if(hook?.ref_type != null) {
-                    if(e == "create") {
-                        // Fixup create hooks to have a git ref
-                        if(hook?.ref_type == "branch") {
-                            Ref = "refs/heads/" + Ref;
-                        } else if(hook?.ref_type == "tag") {
-                            Ref = "refs/tags/" + Ref;
-                        }
-                        hook.After = hook?.Sha;
-                    } else {
-                        Ref = null;
-                    }
-                }
-                if(Ref == null && hook?.repository?.default_branch != null) {
-                    Ref = "refs/heads/" + hook?.repository?.default_branch;
-                }
-            }
-            if(string.IsNullOrEmpty(Sha)) {
-                if(e == "pull_request_target") {
-                    Sha = hook?.pull_request?.Base?.Sha;
-                } else if(e == "pull_request") {
-                    if(!HasPullRequestMergePseudoBranch) {
-                        Sha = hook?.pull_request?.head?.Sha;
-                    } else {
-                        Sha = hook?.pull_request?.merge_commit_sha;
-                    }
-                } else {
-                    Sha = hook.After;
-                }
-            }
+            Ref = LegacyCompatFillRef(hook, e, Ref);
+            Sha = LegacyCompatFillSha(hook, e, Sha);
             return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs);
         }
 
@@ -827,51 +784,8 @@ namespace Runner.Server.Controllers
             var runid = run.Id;
             long runnumber = run.Id;
             // Legacy compat of pre 3.6.0
-            if(string.IsNullOrEmpty(Ref)) {
-                Ref = hook?.Ref;
-                if(Ref == null) {
-                    if(e == "pull_request_target") {
-                        var tmp = hook?.pull_request?.Base?.Ref;
-                        if(tmp != null) {
-                            Ref = "refs/heads/" + tmp;
-                        }
-                    } else if(e == "pull_request" && hook?.Number != null) {
-                        if(HasPullRequestMergePseudoBranch) {
-                            Ref = $"refs/pull/{hook.Number}/merge";
-                        } else {
-                            Ref = $"refs/pull/{hook.Number}/head";
-                        }
-                    }
-                } else if(hook?.ref_type != null) {
-                    if(e == "create") {
-                        // Fixup create hooks to have a git ref
-                        if(hook?.ref_type == "branch") {
-                            Ref = "refs/heads/" + Ref;
-                        } else if(hook?.ref_type == "tag") {
-                            Ref = "refs/tags/" + Ref;
-                        }
-                        hook.After = hook?.Sha;
-                    } else {
-                        Ref = null;
-                    }
-                }
-                if(Ref == null && hook?.repository?.default_branch != null) {
-                    Ref = "refs/heads/" + hook?.repository?.default_branch;
-                }
-            }
-            if(string.IsNullOrEmpty(Sha)) {
-                if(e == "pull_request_target") {
-                    Sha = hook?.pull_request?.Base?.Sha;
-                } else if(e == "pull_request") {
-                    if(!HasPullRequestMergePseudoBranch) {
-                        Sha = hook?.pull_request?.head?.Sha;
-                    } else {
-                        Sha = hook?.pull_request?.merge_commit_sha;
-                    }
-                } else {
-                    Sha = hook.After;
-                }
-            }
+            Ref = LegacyCompatFillRef(hook, e, Ref);
+            Sha = LegacyCompatFillSha(hook, e, Sha);
             return AzureDevopsMain(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs, taskNames: taskNames);
         }
 
@@ -7437,53 +7351,94 @@ namespace Runner.Server.Controllers
             long runnumber = run.Id;
             var Ref = _attempt.Ref;
             // Legacy compat of pre 3.6.0
-            if(string.IsNullOrEmpty(Ref)) {
+            Ref = LegacyCompatFillRef(hook, e, Ref);
+            string Sha = _attempt.Sha;
+            Sha = LegacyCompatFillSha(hook, e, Sha);
+            var xres = ConvertYaml2(run.FileName, _attempt.Workflow, repository_name, GitServerUrl, hook, payloadObject, e, null, false, null, null, null, null, false, runid, runnumber, Ref, Sha, attempt: _attempt, finishedJobs: finishedJobs, statusSha: !string.IsNullOrEmpty(_attempt.StatusCheckSha) ? _attempt.StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha));
+        }
+
+        private string LegacyCompatFillRef(GiteaHook hook, string e, string Ref)
+        {
+            if (string.IsNullOrEmpty(Ref))
+            {
                 Ref = hook?.Ref;
-                if(Ref == null) {
-                    if(e == "pull_request_target") {
+                if (Ref == null)
+                {
+                    if (e == "pull_request_target")
+                    {
                         var tmp = hook?.pull_request?.Base?.Ref;
-                        if(tmp != null) {
+                        if (tmp != null)
+                        {
                             Ref = "refs/heads/" + tmp;
                         }
-                    } else if(e == "pull_request" && hook?.Number != null) {
-                        if(HasPullRequestMergePseudoBranch) {
+                    }
+                    else if (e == "pull_request" && hook?.Number != null)
+                    {
+                        if (HasPullRequestMergePseudoBranch)
+                        {
                             Ref = $"refs/pull/{hook.Number}/merge";
-                        } else {
+                        }
+                        else
+                        {
                             Ref = $"refs/pull/{hook.Number}/head";
                         }
                     }
-                } else if(hook?.ref_type != null) {
-                    if(e == "create") {
+                }
+                else if (hook?.ref_type != null)
+                {
+                    if (e == "create")
+                    {
                         // Fixup create hooks to have a git ref
-                        if(hook?.ref_type == "branch") {
+                        if (hook?.ref_type == "branch")
+                        {
                             Ref = "refs/heads/" + Ref;
-                        } else if(hook?.ref_type == "tag") {
+                        }
+                        else if (hook?.ref_type == "tag")
+                        {
                             Ref = "refs/tags/" + Ref;
                         }
                         hook.After = hook?.Sha;
-                    } else {
+                    }
+                    else
+                    {
                         Ref = null;
                     }
                 }
-                if(Ref == null && hook?.repository?.default_branch != null) {
+                if (Ref == null && hook?.repository?.default_branch != null)
+                {
                     Ref = "refs/heads/" + hook?.repository?.default_branch;
                 }
             }
-            string Sha = _attempt.Sha;
-            if(string.IsNullOrEmpty(Sha)) {
-                if(e == "pull_request_target") {
+
+            return Ref;
+        }
+
+        private string LegacyCompatFillSha(GiteaHook hook, string e, string Sha)
+        {
+            if (string.IsNullOrEmpty(Sha))
+            {
+                if (e == "pull_request_target")
+                {
                     Sha = hook?.pull_request?.Base?.Sha;
-                } else if(e == "pull_request") {
-                    if(!HasPullRequestMergePseudoBranch) {
+                }
+                else if (e == "pull_request")
+                {
+                    if (!HasPullRequestMergePseudoBranch)
+                    {
                         Sha = hook?.pull_request?.head?.Sha;
-                    } else {
+                    }
+                    else
+                    {
                         Sha = hook?.pull_request?.merge_commit_sha;
                     }
-                } else {
+                }
+                else
+                {
                     Sha = hook.After;
                 }
             }
-            var xres = ConvertYaml2(run.FileName, _attempt.Workflow, repository_name, GitServerUrl, hook, payloadObject, e, null, false, null, null, null, null, false, runid, runnumber, Ref, Sha, attempt: _attempt, finishedJobs: finishedJobs, statusSha: !string.IsNullOrEmpty(_attempt.StatusCheckSha) ? _attempt.StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha));
+
+            return Sha;
         }
 
         private Dictionary<string, List<Job>> getJobsWithout(Job job) {
