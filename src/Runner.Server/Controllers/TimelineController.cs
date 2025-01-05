@@ -35,7 +35,7 @@ namespace Runner.Server.Controllers
         }
 
         internal void SyncLiveLogsToDb(Guid timelineId) {
-            if(dict.TryGetValue(timelineId, out var entry)) {
+            if(dict.TryRemove(timelineId, out var entry)) {
                 foreach(var rec in (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList()) {
                     if(rec.Log == null && entry.Item2.TryGetValue(rec.Id, out var value)) {
                         var log = new TaskLog() {  };
@@ -44,7 +44,6 @@ namespace Runner.Server.Controllers
                     }
                 }
                 _context.SaveChanges();
-                dict.TryRemove(timelineId, out _);
             }
         }
 
