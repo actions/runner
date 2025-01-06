@@ -34,7 +34,7 @@ export async function activate(context: ExtensionContext) {
 		var sel : string = events.length === 1 ? events : await window.showQuickPick(events, { canPickMany: false })
 		var args = ['--event', sel || 'push', '-W', Uri.parse(workflow).fsPath ];
 
-		let startproc = spawn('Runner.Client', args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env, FORCE_COLOR: "1" } });
+		let startproc = spawn('Runner.Client', args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env, FORCE_COLOR: "1" }, cwd: workspace.getWorkspaceFolder(Uri.parse(workflow))?.uri?.fsPath });
 		startproc.stdout.on('data', async (data) => {
 			var sdata = data.asciiSlice();
 			writeEmitter.fire(sdata.replace(/\r?\n/g, "\r\n"));
@@ -80,7 +80,7 @@ export async function activate(context: ExtensionContext) {
 		var sel : string = events.length === 1 ? events : await window.showQuickPick(events, { canPickMany: false })
 		var args = [ '--event', sel || 'push', '-W', Uri.parse(workflow).fsPath, '-j', job ];
 		
-		let startproc = spawn('Runner.Client', args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env, FORCE_COLOR: "1" } });
+		let startproc = spawn('Runner.Client', args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env, FORCE_COLOR: "1" }, cwd: workspace.getWorkspaceFolder(Uri.parse(workflow))?.uri?.fsPath });
 		startproc.stdout.on('data', async (data) => {
 			var sdata = data.asciiSlice();
 			writeEmitter.fire(sdata.replace(/\r?\n/g, "\r\n"));

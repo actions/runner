@@ -218,7 +218,7 @@ function activate(context : ExtensionContext) {
 				args.push('--server', address)
 			}
 
-			let startproc = spawn(dotnetPath, args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env } });
+			let startproc = spawn(dotnetPath, args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env }, cwd: workspace.getWorkspaceFolder(Uri.parse(workflow))?.uri?.fsPath });
 			startproc.stdout.on('data', async (data) => {
 				var sdata = data.asciiSlice();
 				console.log(sdata)
@@ -252,7 +252,7 @@ function activate(context : ExtensionContext) {
 				args.push('--server', address)
 			}
 			
-			let startproc = spawn(dotnetPath, args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env } });
+			let startproc = spawn(dotnetPath, args, { windowsHide: true, stdio: 'pipe', shell: false, env: { ...process.env }, cwd: workspace.getWorkspaceFolder(Uri.parse(workflow))?.uri?.fsPath });
 			startproc.stdout.on('data', async (data) => {
 				var sdata = data.asciiSlice();
 				console.log(sdata)
