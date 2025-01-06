@@ -415,6 +415,12 @@ namespace Runner.Server
                     RequestPath = string.Empty,
                 });
             } else {
+                DefaultFilesOptions options = new DefaultFilesOptions();
+                options.DefaultFileNames.Clear();
+                options.DefaultFileNames.Add("index.html");
+                options.RequestPath = string.Empty;
+                app.UseDefaultFiles(options);
+
                 app.UseStaticFiles();
             }
         }
