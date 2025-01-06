@@ -6502,7 +6502,9 @@ namespace Runner.Server.Controllers
                         session.JobAccepted = false;
                         agentlabels = queues[i].Key;
                         TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Read Job from Queue: {req.name} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
+                        _context.Attach(req);
                         req.SessionId = sessionId;
+                        _context.SaveChanges();
                         if (req.CancelRequest.IsCancellationRequested)
                         {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Cancelled Job: {req.name} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);

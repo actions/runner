@@ -40,6 +40,8 @@ function getAbsoluteStatusIcon(_context : ExtensionContext, status: string) {
       return getAbsoluteIconPath(_context, "workflowruns/wr_skipped.svg");
     case "canceled":
         return getAbsoluteIconPath(_context, "workflowruns/wr_cancelled.svg");
+    case "queued":
+        return getAbsoluteIconPath(_context, "workflowruns/wr_queued.svg");
     default:
       return null;
   }
@@ -56,6 +58,7 @@ interface IJob {
     errors: string[],
     result: string,
     attempt: number
+    sessionId: string
   }
 
 export class RSTreeDataProvider implements TreeDataProvider<TreeItem> {
@@ -124,7 +127,7 @@ export class RSTreeDataProvider implements TreeDataProvider<TreeItem> {
             var result : IJob[] = await (await fetch(`${this.ghHostApiUrl}/_apis/v1/Message?page=${encodeURIComponent("0")}&runid=${encodeURIComponent(element.command.arguments[0])}`)).json();
             return result.map(r => {
                 var item = new TreeItem(`${r.name ?? r.name} #${r.attempt}`, TreeItemCollapsibleState.None);
-                item.iconPath = getAbsoluteStatusIcon(this._context, r.result ?? "inprogress");
+                item.iconPath = getAbsoluteStatusIcon(this._context, r.result ?? (r.sessionId === '00000000-0000-0000-0000-000000000000' ? "queued" : "inprogress"));
                 item.contextValue = `/job/${r.result ? "completed" : "inprogress"}/`;
                 item.command = {
                     title: "Open Job",
