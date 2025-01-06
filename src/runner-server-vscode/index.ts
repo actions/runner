@@ -63,7 +63,7 @@ function activate(context : ExtensionContext) {
 			// Custom formatting after the editor has been opened
 			updateDecorations(editor, logInfo);
 		})
-		);	
+	);
 
 	(async() => {
 		console.log("Aquire Dotnet!")
@@ -185,15 +185,15 @@ function activate(context : ExtensionContext) {
 							<iframe src="${fullWebServerUri}${url}"></iframe>
 						</body>
 					</html>`;
-					panel.reveal(ViewColumn.One, false);
+					panel.reveal(ViewColumn.One, true);
 				};
 
 				commands.registerCommand("runner.server.openjob", (runId, id, name) => {
-					openPanel(name, `?view=allworkflows#/0/${runId}/0/${id}`);
+					openPanel(name, `?view=allworkflows&extension=1#/0/${runId}/0/${id}`);
 				});
 
 				commands.registerCommand("runner.server.openworkflowrun", runId => {
-					openPanel(`#${runId}`, `?view=allworkflows#/0/${runId}`);
+					openPanel(`#${runId}`, `?view=allworkflows&extension=1#/0/${runId}/0`);
 				});
 			}
 		});
@@ -265,6 +265,38 @@ function activate(context : ExtensionContext) {
 				console.log(code);
 			});
 		});
+
+		context.subscriptions.push(commands.registerCommand("runner.server.workflow.cancel", async (obj : TreeItem) => {
+			var items : QuickPickItem[] = [];
+			if(obj.contextValue?.indexOf("job") !== -1) {
+				items.push({
+					label: "Cancel",
+					description: "Cancel only this job"
+				});
+				items.push({
+					label: "Force Cancel",
+					description: "Force Cancel only this job"
+				});
+			} else {
+				items.push({
+					label: "Cancel",
+					description: "Cancel this workflow run"
+				});
+				items.push({
+					label: "Force Cancel",
+					description: "Force Cancel this workflow run"
+				});
+			}
+			var selection = await window.showQuickPick(items);
+			if(!selection) {
+				return;
+			}
+			if(obj.contextValue?.indexOf("job") !== -1) {
+				await fetch(address + "/_apis/v1/Message/cancel/" + obj.command.arguments[1] + "?force=" + (selection.label.indexOf("Force") !== -1), { method: "POST" });
+			} else {
+				await fetch(address + "/_apis/v1/Message/" + (selection.label.indexOf("Force") !== -1 ? "forceCancelWorkflow" : "cancelWorkflow") + "/" + obj.command.arguments[0], { method: "POST" });
+			}
+		}));
 
 		context.subscriptions.push(client);
 		client.start();

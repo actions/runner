@@ -54,14 +54,23 @@
             "requireExactSource": false
         },
         {
-			"name": "Run azure-pipelines-vscode-ext Extension",
+            "name": "Run azure-pipelines-vscode-ext Extension",
             "type": "extensionHost",
             "debugWebWorkerHost": true,
-			"request": "launch",
-			"runtimeExecutable": "${execPath}",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
             "cwd": "${workspaceFolder}/src/azure-pipelines-vscode-ext",
-			"args": ["--extensionDevelopmentPath=${workspaceFolder}/src/azure-pipelines-vscode-ext"]
-		}
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}/src/azure-pipelines-vscode-ext"]
+        },
+        {
+            "name": "Run runner-server-vscode Extension",
+            "type": "extensionHost",
+            "debugWebWorkerHost": true,
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "cwd": "${workspaceFolder}/src/runner-server-vscode",
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}/src/runner-server-vscode"]
+        }
     ],
 }
 

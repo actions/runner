@@ -37,6 +37,12 @@
 				}
 			},
 			{
+				"command": "runner.server.workflow.cancel",
+				"title": "Cancel",
+				"shortTitle": "Cancel",
+				"icon": "$(stop-circle)"
+			},
+			{
 				"command": "runner.server.start-client",
 				"title": "Start Runner.Client"
 			},
@@ -86,6 +92,11 @@
 					"command": "runner.server.workflow.logs",
 					"group": "inline",
 					"when": "view == workflow-view && viewItem =~ /completed/ && viewItem =~ /job/"
+				},
+				{
+					"command": "runner.server.workflow.cancel",
+					"group": "inline",
+					"when": "view == workflow-view && !(viewItem =~ /completed/) && (viewItem =~ /job/ || viewItem =~ /workflow/ )"
 				}
 			]
 		}
