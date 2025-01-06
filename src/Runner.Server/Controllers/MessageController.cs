@@ -669,7 +669,7 @@ namespace Runner.Server.Controllers
         }
         private static ConcurrentDictionary<string, ConcurrencyGroup> concurrencyGroups = new ConcurrentDictionary<string, ConcurrencyGroup>(StringComparer.OrdinalIgnoreCase);
 
-        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, int? rrunid = null, string jobId = null, bool? failed = null, bool? rresetArtifacts = null, bool? refresh = null) {
+        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, int? rrunid = null, string jobId = null, bool? failed = null, bool? rresetArtifacts = null, bool? refresh = null, string[] taskNames = null, bool azure = false) {
             string owner_name = repository.Split('/', 2)[0];
             string repo_name = repository.Split('/', 2)[1];
             Func<Workflow> getWorkflow = () => (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault();
@@ -726,67 +726,10 @@ namespace Runner.Server.Controllers
             // Legacy compat of pre 3.6.0
             Ref = LegacyCompatFillRef(hook, e, Ref);
             Sha = LegacyCompatFillSha(hook, e, Sha);
+            if(azure) {
+                return AzureDevopsMain(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs, taskNames: taskNames);
+            }
             return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs);
-        }
-
-        private HookResponse ConvertYamlAzure(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null, int? rrunid = null, string jobId = null, bool? failed = null, bool? rresetArtifacts = null, bool? refresh = null, string[] taskNames = null) {
-            string owner_name = repository.Split('/', 2)[0];
-            string repo_name = repository.Split('/', 2)[1];
-            Func<Workflow> getWorkflow = () => (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault();
-            var run = new WorkflowRun { FileName = fileRelativePath, Workflow = getWorkflow() };
-            long attempt = 1;
-            var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt++, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha };
-            Dictionary<string, List<Job>> finishedJobs = null;
-            if(rrunid != null) {
-                run = (from r in _context.Set<WorkflowRun>() where r.Id == rrunid select r).First();
-                var lastAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt descending select a).First();
-                var firstAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt ascending select a).First();
-                attempt = lastAttempt.Attempt + 1;
-                _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha, TimeLineId = firstAttempt.TimeLineId, ArtifactsMinAttempt = rresetArtifacts == true ? (int) attempt : lastAttempt.ArtifactsMinAttempt };
-                if(failed == true) {
-                    finishedJobs = getFailedJobs(rrunid.Value);
-                } else if(!string.IsNullOrEmpty(jobId)) {
-                    finishedJobs = getPreviousJobs(rrunid.Value).Where(kv => !(string.Equals(kv.Key, jobId, StringComparison.OrdinalIgnoreCase) || kv.Key.StartsWith(jobId + "/", StringComparison.OrdinalIgnoreCase))).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
-                } else if(refresh == true) {
-                    finishedJobs = getPreviousJobs(rrunid.Value);
-                }
-            }
-            _context.Artifacts.Add(new ArtifactContainer() { Attempt = _attempt } );
-            if(run.Workflow == null && rrunid == null) {
-                // Fix creating duplicated repositories
-                lock(concurrencyGroups) {
-                    if((run.Workflow = getWorkflow()) == null) {
-                        Func<Owner> createOwner = () => {
-                            var o = new Owner { Name = owner_name };
-                            Task.Run(() => ownerevent?.Invoke(o));
-                            return o;
-                        };
-                        Func<Repository> createRepo = () => {
-                            var r = new Repository { Name = repo_name, Owner = (from o in _context.Set<Owner>() where o.Name == owner_name select o).FirstOrDefault() ?? createOwner() };
-                            Task.Run(() => repoevent?.Invoke(r));
-                            return r;
-                        };
-                        run.Workflow = new Workflow { FileName = fileRelativePath, Repository = (from r in _context.Set<Repository>() where r.Owner.Name == owner_name && r.Name == repo_name select r).FirstOrDefault() ?? createRepo() };
-                    }
-                    _context.SaveChanges();
-                }
-            } else {
-                _context.SaveChanges();
-            }
-            run.Result = _attempt.Result;
-            run.Ref = _attempt.Ref;
-            run.Sha = _attempt.Sha;
-            run.EventName = _attempt.EventName;
-            run.Owner = owner_name;
-            run.Repo = repo_name;
-            Task.Run(() => runevent?.Invoke(owner_name, repo_name, run));
-            workflowrun?.Invoke(run.Id);
-            var runid = run.Id;
-            long runnumber = run.Id;
-            // Legacy compat of pre 3.6.0
-            Ref = LegacyCompatFillRef(hook, e, Ref);
-            Sha = LegacyCompatFillSha(hook, e, Sha);
-            return AzureDevopsMain(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider, finishedJobs: finishedJobs, taskNames: taskNames);
         }
 
         private void AddJob(Job job) {
@@ -7180,8 +7123,7 @@ namespace Runner.Server.Controllers
                     lock(runid) {
                         if(workflow.Any()) {
                             foreach (var w in workflow) {
-                                HookResponse response = !azpipelines ? Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh)
-                                                                     : Clone().ConvertYamlAzure(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames);
+                                HookResponse response = Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments, VarEnvironments = varEnvironments }, rrunid: rrunid, jobId: jobId, failed: failed, rresetArtifacts: resetArtifacts, refresh: refresh, taskNames: taskNames, azure: azpipelines);
                                 if(response.skipped || response.failed) {
                                     runid.Remove(response.run_id);
                                     if(response.failed) {
