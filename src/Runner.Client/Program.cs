@@ -1325,7 +1325,7 @@ namespace Runner.Client
                 if(Environment.GetEnvironmentVariable("RUNNER_CLIENT_LEGACY_SERVER") == "1") {
                     parameters.LegacyServer = true;
                 }
-                if(Environment.GetEnvironmentVariable("RUNNER_CLIENT_LEGACY_RUNNER") == "1") {
+                if((Environment.GetEnvironmentVariable("RUNNER_CLIENT_LEGACY_RUNNER") ?? (string.IsNullOrWhiteSpace(Assembly.GetEntryAssembly().Location) ? null : "1")) == "1") {
                     parameters.LegacyRunner = true;
                 }
 

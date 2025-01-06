@@ -16,36 +16,34 @@ jobs:
       version: ${{ steps.build.outputs.version }}
     steps:
     - uses: actions/checkout@v3
+    - run: npm install -g semver
     - uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '8.0.x'
+    - uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '6.0.x'
     - name: GenerateConstant
       run: dotnet msbuild ./dir.proj -t:GenerateConstant /p:RunnerVersion=$(Get-Content ./runnerversion) /p:PackageRuntime=any
       shell: pwsh
       working-directory: ./src
-    - name: Restore
-      run: dotnet restore /p:RuntimeFrameworkVersion=8.0.0
-      shell: pwsh
-      working-directory: ./src/Runner.Client
-    - name: Build
+    - name: Pack
       id: build
       run: |
         $d = Get-Date
-        $version = $("$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")".TrimStart("v") + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
-        dotnet build --no-restore -c Release /p:BUILD_OS=Any /p:Version=$version /p:RuntimeFrameworkVersion=8.0.0
+        $version6 = $("$(semver "$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")" -i patch)".TrimStart("v") + ".6-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
+        $version = $("$(semver "$(gh release view --repo ${{ github.server_url }}/${{ github.repository }} --json tagName -t "{{.tagName}}")" -i patch)".TrimStart("v") + ".8-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
+        dotnet pack /p:BUILD_OS=Any -c Release /p:Version=$version6 /p:RuntimeFrameworkVersion=6.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack /p:BUILD_OS=Any -c Release /p:Version=$version6 /p:RuntimeFrameworkVersion=6.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack /p:BUILD_OS=Any -c Release /p:Version=$version /p:RuntimeFrameworkVersion=8.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+        dotnet pack /p:BUILD_OS=Any -c Release /p:Version=$version /p:RuntimeFrameworkVersion=8.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
         echo "version=$version" > $env:GITHUB_OUTPUT
       shell: pwsh
       working-directory: ./src/Runner.Client
       env:
         GH_TOKEN: ${{ github.token }}
-    - name: Pack
-      run: |
-        dotnet pack --no-restore -c Release --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=8.0.0 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
-        dotnet pack --no-restore -c Release --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=8.0.0 /p:LegacyDotnetTool=1 /p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
-      shell: pwsh
-      working-directory: ./src/Runner.Client
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: nupkg
         path: src/Runner.Client/nupkg
@@ -89,14 +87,14 @@ jobs:
     runs-on: ${{matrix.os}}
     container: ${{matrix.image}}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - if: matrix.dotnet-version
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: ${{matrix.dotnet-version}}
     - run: mkdir src/Runner.Client/nupkg
     - name: Download Artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: nupkg
         path: src/Runner.Client/nupkg
