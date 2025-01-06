@@ -6,7 +6,7 @@ jobs:
     createcache:
         runs-on: windows-latest
         steps:
-        -   uses: actions/cache@v2
+        -   uses: actions/cache@v4
             id: cache
             with:
                 path: |
@@ -22,7 +22,7 @@ jobs:
         needs: createcache
         runs-on: windows-latest
         steps:
-        -   uses: actions/cache@v2
+        -   uses: actions/cache@v4
             id: cache
             with:
                 path: |
