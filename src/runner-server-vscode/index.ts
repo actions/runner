@@ -125,7 +125,8 @@ function activate(context : ExtensionContext) {
 			var i = sdata.indexOf("http://");
 			if(i !== -1) {
 				var end = sdata.indexOf('\n', i + 1);
-				address = sdata.substring(i, end).replace("[::]", getExternalIP()).replace("0.0.0.0", getExternalIP()).trim();
+				var externalAddress = await getExternalIP();
+				address = sdata.substring(i, end).replace("[::]", externalAddress).replace("0.0.0.0", externalAddress).trim();
 
 				window.registerTreeDataProvider("workflow-view", new RSTreeDataProvider(context, address));
 
