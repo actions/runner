@@ -127,6 +127,7 @@ function activate(context : ExtensionContext) {
 				var end = sdata.indexOf('\n', i + 1);
 				var externalAddress = await getExternalIP();
 				address = sdata.substring(i, end).replace("[::]", externalAddress).replace("0.0.0.0", externalAddress).trim();
+				var webviewAddress = sdata.substring(i, end).replace("[::]", "localhost").replace("0.0.0.0", "localhost").trim();
 
 				window.registerTreeDataProvider("workflow-view", new RSTreeDataProvider(context, address));
 
@@ -174,12 +175,13 @@ function activate(context : ExtensionContext) {
 					return panel;
 				}
 
+				const fullWebServerUri = webviewAddress && await env.asExternalUri(
+					Uri.parse(webviewAddress)
+				);
+
 				var openPanel = async(name: string, url : string) => {
 					await getPanel();
 					panel.title = name;
-					const fullWebServerUri = address && await env.asExternalUri(
-						Uri.parse(address)
-					);
 					const cspSource = panel.webview.cspSource;
 					// Get the content Uri
 					const style = panel.webview.asWebviewUri(
@@ -206,8 +208,16 @@ function activate(context : ExtensionContext) {
 					openPanel(name, `?view=allworkflows&extension=1#/0/${runId}/0/${id}`);
 				});
 
+				commands.registerCommand("runner.server.openjobexternal", (obj : TreeItem) => {
+					env.openExternal(Uri.parse(`${fullWebServerUri}?view=allworkflows#/0/${obj.command.arguments[0]}/0/${obj.command.arguments[1]}`));
+				});
+
 				commands.registerCommand("runner.server.openworkflowrun", runId => {
 					openPanel(`#${runId}`, `?view=allworkflows&extension=1#/0/${runId}/0`);
+				});
+
+				commands.registerCommand("runner.server.openworkflowrunexternal", (obj : TreeItem) => {
+					env.openExternal(Uri.parse(`${fullWebServerUri}?view=allworkflows#/0/${obj.command.arguments[0]}/0`));
 				});
 			}
 		});

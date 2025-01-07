@@ -43,6 +43,18 @@
 				"icon": "$(stop-circle)"
 			},
 			{
+				"command": "runner.server.openjobexternal",
+				"title": "Open in Browser",
+				"shortTitle": "Open in Browser",
+				"icon": "$(globe)"
+			},
+			{
+				"command": "runner.server.openworkflowrunexternal",
+				"title": "Open in Browser",
+				"shortTitle": "Open in Browser",
+				"icon": "$(globe)"
+			},
+			{
 				"command": "runner.server.start-client",
 				"title": "Start Runner.Client"
 			},
@@ -72,7 +84,7 @@
 			}
 		],
 		"views": {
-			"explorer": [
+			"runner-server": [
 				{
 					"id": "workflow-view",
 					"name": "Workflow View"
@@ -97,6 +109,25 @@
 					"command": "runner.server.workflow.cancel",
 					"group": "inline",
 					"when": "view == workflow-view && !(viewItem =~ /completed/) && (viewItem =~ /job/ || viewItem =~ /workflow/ )"
+},
+				{
+					"command": "runner.server.openjobexternal",
+					"group": "inline",
+					"when": "view == workflow-view && viewItem =~ /job/"
+				},
+				{
+					"command": "runner.server.openworkflowrunexternal",
+					"group": "inline",
+					"when": "view == workflow-view && viewItem =~ /workflow/"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "runner-server",
+					"title": "Runner.Server",
+					"icon": "resources/icons/light/run.svg"
 				}
 			]
 		}
