@@ -10,9 +10,22 @@ import {WorkflowStepLogSymbolProvider} from "./logs/symbolProvider";
 import { getLogInfo } from './logs/logInfo';
 import { updateDecorations } from './logs/formatProvider';
 import { buildLogURI } from './logs/scheme';
+import { createSocket } from 'dgram';
 
 var startRunner : ChildProcessWithoutNullStreams | null = null;
 var finishPromise : Promise<void> | null = null;
+
+function getExternalIP() {
+	return new Promise((resolve, reject) => {
+		const socket = createSocket('udp4');
+		socket.connect(65530, '8.8.8.8', () => {
+			const address = socket.address();
+			resolve(address.address);
+		});
+	}).catch(() => {
+		return "localhost";
+	});
+}
 
 function activate(context : ExtensionContext) {
 	// Log providers
@@ -112,7 +125,7 @@ function activate(context : ExtensionContext) {
 			var i = sdata.indexOf("http://");
 			if(i !== -1) {
 				var end = sdata.indexOf('\n', i + 1);
-				address = sdata.substring(i, end).replace("[::]", "localhost").replace("0.0.0.0", "localhost").trim();
+				address = sdata.substring(i, end).replace("[::]", getExternalIP()).replace("0.0.0.0", getExternalIP()).trim();
 
 				window.registerTreeDataProvider("workflow-view", new RSTreeDataProvider(context, address));
 
