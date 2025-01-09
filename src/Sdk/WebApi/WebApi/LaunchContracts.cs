@@ -29,6 +29,9 @@ namespace GitHub.Services.Launch.Contracts
     {
         [DataMember(EmitDefaultValue = false, Name = "authentication")]
         public ActionDownloadAuthenticationResponse Authentication { get; set; }
+        
+        [DataMember(EmitDefaultValue = false, Name = "package_details")]
+        public ActionDownloadPackageDetailsResponse PackageDetails { get; set; }
 
         [DataMember(EmitDefaultValue = false, Name = "name")]
         public string Name { get; set; }
@@ -57,6 +60,17 @@ namespace GitHub.Services.Launch.Contracts
 
         [DataMember(EmitDefaultValue = false, Name = "token")]
         public string Token { get; set; }
+    }
+
+
+    [DataContract]
+    public class ActionDownloadPackageDetailsResponse 
+    {
+        [DataMember(EmitDefaultValue = false, Name = "version")]
+        public string Version { get; set; }
+
+        [DataMember(EmitDefaultValue = false, Name = "manifest_digest")]
+        public string ManifestDigest { get; set; }
     }
 
     [DataContract]
