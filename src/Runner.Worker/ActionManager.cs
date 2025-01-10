@@ -781,7 +781,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Output($"##[group]Download immutable action package '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}'");
                     executionContext.Output($"Version: {downloadInfo.PackageDetails.Version}");
                     executionContext.Output($"Digest: {downloadInfo.PackageDetails.ManifestDigest}");
-                    executionContext.Output($"Commit SHA: {downloadInfo.ResolvedSha}");
+                    executionContext.Output($"Source commit SHA: {downloadInfo.ResolvedSha}");
                     executionContext.Output("##[endgroup]");
                 } 
                 else 
