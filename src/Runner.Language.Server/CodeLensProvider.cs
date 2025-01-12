@@ -52,21 +52,6 @@ public class CodeLensProvider : ICodeLensHandler
         return templateContext;
     }
 
-    string GetDefaultDisplaySuffix(IEnumerable<string> item) {
-        var displaySuffix = new StringBuilder();
-        int z = 0;
-        foreach (var mk in item) {
-            if(!string.IsNullOrEmpty(mk)) {
-                displaySuffix.Append(z++ == 0 ? "(" : ", ");
-                displaySuffix.Append(mk);
-            }
-        }
-        if(z > 0) {
-            displaySuffix.Append( ")");
-        }
-        return displaySuffix.ToString();
-    }
-
     public async Task<CodeLensContainer?> Handle(CodeLensParams request, CancellationToken cancellationToken)
     {
         string content;
@@ -130,135 +115,15 @@ public class CodeLensProvider : ICodeLensHandler
                             new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(jobs[i].Key.Line.Value - 1, jobs[i].Key.Column.Value - 1)
                         )
                     });
-                    var rawstrategy = (jobs[i].Value as IReadOnlyObject)["strategy"] as MappingToken;
-                    var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase) };
-                    var includematrix = new List<Dictionary<string, TemplateToken>> { };
-                    SequenceToken include = null;
-                    SequenceToken exclude = null;
-                    bool failFast = true;
-                    double? max_parallel = null;
-                    // Allow including and excluding via list properties https://github.com/orgs/community/discussions/7835
-                    // https://github.com/actions/runner/issues/857
-                    // Matrix has partial subobject matching reported here https://github.com/rhysd/actionlint/issues/249
-                    // It also reveals that sequences are matched partially, if the left seqence starts with the right sequence they are matched
-                    var jobname = "";
-                    var matrixexcludeincludelists = false;//workflowContext.HasFeature("system.runner.server.matrixexcludeincludelists");
-                    if (rawstrategy != null) {
-                        // jobTraceWriter.Info("{0}", "Evaluate strategy");
-                        // var templateContext = CreateTemplateContext(jobTraceWriter, workflowContext, contextData);
-                        var strategy = rawstrategy;//GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, null, true)?.AssertMapping($"jobs.{jobname}.strategy");
-                        // templateContext.Errors.Check();
-                        failFast = (from r in strategy where r.Key.AssertString($"jobs.{jobname}.strategy mapping key").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean($"jobs.{jobname}.strategy.fail-fast")?.Value ?? failFast;
-                        max_parallel = (from r in strategy where r.Key.AssertString($"jobs.{jobname}.strategy mapping key").Value == "max-parallel" select r).FirstOrDefault().Value?.AssertNumber($"jobs.{jobname}.strategy.max-parallel")?.Value;
-                        var matrix = (from r in strategy where r.Key.AssertString($"jobs.{jobname}.strategy mapping key").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping($"jobs.{jobname}.strategy.matrix");
-                        if(matrix != null) {
-                            foreach (var item in matrix)
-                            {
-                                var key = item.Key.AssertString($"jobs.{jobname}.strategy.matrix mapping key").Value;
-                                switch (key)
-                                {
-                                    case "include":
-                                        include = item.Value?.AssertSequence($"jobs.{jobname}.strategy.matrix.include");
-                                        break;
-                                    case "exclude":
-                                        exclude = item.Value?.AssertSequence($"jobs.{jobname}.strategy.matrix.exclude");
-                                        break;
-                                    default:
-                                        var val = item.Value.AssertSequence($"jobs.{jobname}.strategy.matrix.{key}");
-                                        var next = new List<Dictionary<string, TemplateToken>>();
-                                        foreach (var mel in flatmatrix)
-                                        {
-                                            foreach (var n in val)
-                                            {
-                                                var ndict = new Dictionary<string, TemplateToken>(mel, StringComparer.OrdinalIgnoreCase);
-                                                ndict.Add(key, n);
-                                                next.Add(ndict);
-                                            }
-                                        }
-                                        flatmatrix = next;
-                                        break;
-                                }
-                            }
-                            if (exclude != null)
-                            {
-                                foreach (var item in exclude)
-                                {
-                                    var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.exclude.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.exclude.* mapping key").Value, k => k.Value, StringComparer.OrdinalIgnoreCase);
-                                    flatmatrix.RemoveAll(dict =>
-                                    {
-                                        foreach (var item in map)
-                                        {
-                                            TemplateToken val;
-                                            if (!dict.TryGetValue(item.Key, out val))
-                                            {
-                                                // The official github actions service reject this matrix, return false would just ignore it
-                                                throw new Exception($"Tried to exclude a matrix key {item.Key} which isn't defined by the matrix");
-                                            }
-                                            if (!(matrixexcludeincludelists && val is SequenceToken seq ? seq.Any(t => t.DeepEquals(item.Value, true)) : val.DeepEquals(item.Value, true))) {
-                                                return false;
-                                            }
-                                        }
-                                        return true;
-                                    });
-                                }
-                            }
-                        }
-                        if(flatmatrix.Count == 0) {
-                            // Fix empty matrix after exclude
-                            flatmatrix.Add(new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase));
-                        }
-                    }
-                    var keys = flatmatrix.First().Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                    if (include != null) {
-                        foreach(var map in include.SelectMany(item => {
-                            var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.include.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.include.* mapping key").Value, k => k.Value, StringComparer.OrdinalIgnoreCase);
-                            if(matrixexcludeincludelists) {
-                                var ret = new List<Dictionary<string, TemplateToken>>{ new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase) };
-                                foreach(var m in map) {
-                                    var next = new List<Dictionary<string, TemplateToken>>();
-                                    var cur = next.ToArray();
-                                    foreach(var n in ret) {
-                                        var d = new Dictionary<string, TemplateToken>(n, StringComparer.OrdinalIgnoreCase);
-                                        if(m.Value is SequenceToken seq) {
-                                            foreach(var v in seq) {
-                                                d[m.Key] = v;
-                                            }
-                                        } else {
-                                            d[m.Key] = m.Value;
-                                        }
-                                        next.Add(d);
-                                    }
-                                    ret = next;
-                                }
-                                return ret.AsEnumerable();
-                            } else {
-                                return new[] { map }.AsEnumerable();
-                            }
-                        })) {
-                            bool matched = false;
-                            if(keys.Count > 0) {
-                                flatmatrix.ForEach(dict => {
-                                    foreach (var item in keys) {
-                                        TemplateToken val;
-                                        if (map.TryGetValue(item, out val) && !dict[item].DeepEquals(val, true)) {
-                                            return;
-                                        }
-                                    }
-                                    matched = true;
-                                    foreach (var item in map) {
-                                        if(!keys.Contains(item.Key)) {
-                                            dict[item.Key] = item.Value;
-                                        }
-                                    }
-                                });
-                            }
-                            if (!matched) {
-                                includematrix.Add(map);
-                            }
-                        }
-                    }
+                    var rawstrategy = (jobs[i].Value as IReadOnlyObject)?["strategy"] as MappingToken;
+                    var result = StrategyUtils.ExpandStrategy(rawstrategy, false, null, jobs[i].Key.ToString());
 
-                    if(rawstrategy != null) {
+                    var flatmatrix = result.FlatMatrix;
+                    var includematrix = result.IncludeMatrix;
+                    bool failFast = result.FailFast;
+                    double? max_parallel = result.MaxParallel;
+                    var keys = result.MatrixKeys;
+                    if(rawstrategy != null && result.Result == null) {
                         JArray allMatrices = new JArray();
                         Action<string, Dictionary<string, TemplateToken>> addAction = (suffix, item) => {
                             var matrixEntries = item.ToDictionary(kv => kv.Key, kv => kv.Value.ToContextData().ToJToken());
@@ -282,11 +147,11 @@ public class CodeLensProvider : ICodeLensHandler
 
                         if(keys.Count != 0 || includematrix.Count == 0) {
                             foreach (var item in flatmatrix) {
-                                addAction(GetDefaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                                addAction(StrategyUtils.GetDefaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                             }
                         }
                         foreach (var item in includematrix) {
-                            addAction(GetDefaultDisplaySuffix(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                            addAction(StrategyUtils.GetDefaultDisplaySuffix(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                         }
 
                         if(allMatrices.Count >= 2) {
