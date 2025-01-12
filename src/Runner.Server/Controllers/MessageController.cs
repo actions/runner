@@ -48,6 +48,7 @@ using Quartz.Impl.Matchers;
 using Swashbuckle.AspNetCore.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Writers;
+using Sdk.Actions;
 using Sdk.Pipelines;
 using ExecutionContext = Sdk.Pipelines.ExecutionContext;
 
@@ -183,107 +184,6 @@ namespace Runner.Server.Controllers
                 return Ok();
             } else {
                 return NotFound();
-            }
-        }
-
-        class Equality : IEqualityComparer<TemplateToken>
-        {
-            public bool PartialMatch { get; set; }
-
-            public bool Equals(TemplateToken x, TemplateToken y)
-            {
-                return TemplateTokenEqual(x, y, PartialMatch);
-            }
-
-            public int GetHashCode([DisallowNull] TemplateToken obj)
-            {
-                throw new NotImplementedException();
-            }
-        }
-        private static Exception UnexpectedTemplateTokenType(TemplateToken token) {
-            return new NotSupportedException($"Unexpected {nameof(TemplateToken)} type '{token.Type}'");
-        }
-        private static bool TemplateTokenEqual(TemplateToken token, TemplateToken other, bool partialMatch = false) {
-            switch(token.Type) {
-            case TokenType.Null:
-            case TokenType.Boolean:
-            case TokenType.Number:
-            case TokenType.String:
-                switch(other.Type) {
-                case TokenType.Null:
-                case TokenType.Boolean:
-                case TokenType.Number:
-                case TokenType.String:
-                    return EvaluationResult.CreateIntermediateResult(null, token).AbstractEqual(EvaluationResult.CreateIntermediateResult(null, other));
-                case TokenType.Mapping:
-                case TokenType.Sequence:
-                    return false;
-                default:
-                    throw UnexpectedTemplateTokenType(other);
-                }
-            case TokenType.Mapping:
-                switch(other.Type) {
-                case TokenType.Mapping:
-                    break;
-                case TokenType.Null:
-                case TokenType.Boolean:
-                case TokenType.Number:
-                case TokenType.String:
-                case TokenType.Sequence:
-                    return false;
-                default:
-                    throw UnexpectedTemplateTokenType(other);
-                }
-                var mapping = token as MappingToken;
-                var othermapping = other as MappingToken;
-                if(partialMatch ? mapping.Count < othermapping.Count : mapping.Count != othermapping.Count) {
-                    return false;
-                }
-                Dictionary<string, TemplateToken> dictionary = new Dictionary<string, TemplateToken>(StringComparer.OrdinalIgnoreCase);
-                if (mapping.Count > 0)
-                {
-                    foreach (var pair in mapping)
-                    {
-                        var keyLiteral = pair.Key.AssertString("dictionary context data key");
-                        var key = keyLiteral.Value;
-                        var value = pair.Value;
-                        dictionary.Add(key, value);
-                    }
-                    foreach (var pair in othermapping)
-                    {
-                        var keyLiteral = pair.Key.AssertString("dictionary context data key");
-                        var key = keyLiteral.Value;
-                        var otherv = pair.Value;
-                        TemplateToken value;
-                        if(!dictionary.TryGetValue(key, out value) || !TemplateTokenEqual(value, otherv, partialMatch)) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-
-            case TokenType.Sequence:
-                switch(other.Type) {
-                case TokenType.Sequence:
-                    break;
-                case TokenType.Null:
-                case TokenType.Boolean:
-                case TokenType.Number:
-                case TokenType.String:
-                case TokenType.Mapping:
-                    return false;
-                default:
-                    throw UnexpectedTemplateTokenType(other);
-                }
-                var sequence = token as SequenceToken;
-                var otherseq = other as SequenceToken;
-                if(partialMatch ? sequence.Count < otherseq.Count : sequence.Count != otherseq.Count) {
-                    return false;
-                }
-                return (partialMatch ? sequence.Take(otherseq.Count) : sequence).SequenceEqual(otherseq, new Equality() { PartialMatch = partialMatch });
-
-            default:
-                throw UnexpectedTemplateTokenType(token);
             }
         }
 
@@ -1878,7 +1778,7 @@ namespace Runner.Server.Controllers
                                                                     // The official github actions service reject this matrix, return false would just ignore it
                                                                     throw new Exception($"Tried to exclude a matrix key {item.Key} which isn't defined by the matrix");
                                                                 }
-                                                                if (!(matrixexcludeincludelists && val is SequenceToken seq ? seq.Any(t => TemplateTokenEqual(t, item.Value, true)) : TemplateTokenEqual(val, item.Value, true))) {
+                                                                if (!(matrixexcludeincludelists && val is SequenceToken seq ? seq.Any(t => t.DeepEquals(item.Value, true)) : val.DeepEquals(item.Value, true))) {
                                                                     return false;
                                                                 }
                                                             }
@@ -1932,7 +1832,7 @@ namespace Runner.Server.Controllers
                                                     flatmatrix.ForEach(dict => {
                                                         foreach (var item in keys) {
                                                             TemplateToken val;
-                                                            if (map.TryGetValue(item, out val) && !TemplateTokenEqual(dict[item], val, true)) {
+                                                            if (map.TryGetValue(item, out val) && !dict[item].DeepEquals(val, true)) {
                                                                 return;
                                                             }
                                                         }
@@ -1981,7 +1881,7 @@ namespace Runner.Server.Controllers
                                             Predicate<Dictionary<string, TemplateToken>> match = dict => {
                                                 foreach(var kv in mdict) {
                                                     TemplateToken val;
-                                                    if(!dict.TryGetValue(kv.Key, out val) || !TemplateTokenEqual(kv.Value, val, true)) {
+                                                    if(!dict.TryGetValue(kv.Key, out val) || !kv.Value.DeepEquals(val, true)) {
                                                         return true;
                                                     }
                                                 }
@@ -2117,7 +2017,7 @@ namespace Runner.Server.Controllers
                                                     } else {
                                                         if(finishedJobs.TryGetValue(jobname, out var fjobs)) {
                                                             foreach(var fjob in fjobs) {
-                                                                if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new NullToken(null, null, null), fjob.MatrixContextData[callingJob?.Depth ?? 0].ToTemplateToken() ?? new NullToken(null, null, null))) {
+                                                                if((matrixContext?.ToTemplateToken() ?? new NullToken(null, null, null)).DeepEquals(fjob.MatrixContextData[callingJob?.Depth ?? 0].ToTemplateToken() ?? new NullToken(null, null, null))) {
                                                                     var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true } : jobitem;
                                                                     _next.TimelineId = fjob.TimeLineId;
                                                                     _next.NoStatusCheck = true;
@@ -3682,7 +3582,7 @@ namespace Runner.Server.Controllers
                                         Predicate<Dictionary<string, TemplateToken>> match = dict => {
                                             foreach(var kv in mdict) {
                                                 TemplateToken val;
-                                                if(!dict.TryGetValue(kv.Key, out val) || !TemplateTokenEqual(kv.Value, val)) {
+                                                if(!dict.TryGetValue(kv.Key, out val) || !kv.Value.DeepEquals(val)) {
                                                     return true;
                                                 }
                                             }
@@ -3803,7 +3703,7 @@ namespace Runner.Server.Controllers
                                             if(finishedJobs != null) {
                                                 if(finishedJobs.TryGetValue($"{stage.Name}/{jobname}", out var fjobs)) {
                                                     foreach(var fjob in fjobs) {
-                                                        if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new MappingToken(null, null, null), fjob.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new MappingToken(null, null, null))) {
+                                                        if((matrixContext?.ToTemplateToken() ?? new MappingToken(null, null, null)).DeepEquals(fjob.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new MappingToken(null, null, null))) {
                                                             var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true, Stage = stage.Name } : jobitem;
                                                             if(!string.IsNullOrEmpty(displaySuffix)) {
                                                                 _next.RefPrefix = $"{displaySuffix}.";
@@ -5079,7 +4979,7 @@ namespace Runner.Server.Controllers
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                 }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, WorkflowRunName = workflowContext.WorkflowRunName, WorkflowFileName = workflowContext.FileName, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
-                                var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value.Where(val => TemplateTokenEqual(val.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new NullToken(null, null, null), contextData["matrix"]?.ToTemplateToken() ?? new NullToken(null, null, null))).ToList(), StringComparer.OrdinalIgnoreCase);
+                                var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value.Where(val => (val.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new NullToken(null, null, null)).DeepEquals(contextData["matrix"]?.ToTemplateToken() ?? new NullToken(null, null, null))).ToList(), StringComparer.OrdinalIgnoreCase);
                                 var sjob = TryParseJobSelector(selectedJob, out var cjob, out _, out var cselector) && string.Equals(name, cjob, StringComparison.OrdinalIgnoreCase) ? cselector : null;
                                 if(reusableWorkflowInheritEnv) {
                                     for(int i = 0; i < environment.Count; i++) {
@@ -7291,10 +7191,10 @@ namespace Runner.Server.Controllers
         private Dictionary<string, List<Job>> getJobsWithout(Job job) {
             var finishedJobs = new Dictionary<string, List<Job>>(StringComparer.OrdinalIgnoreCase);
             foreach(var _job in (from j in _context.Jobs where j.runid == job.runid && j.WorkflowIdentifier != null && (j.WorkflowIdentifier != job.WorkflowIdentifier || (j.Matrix != job.Matrix && job.Matrix != null)) select j).Include(z => z.Outputs).Include(z => z.WorkflowRunAttempt)) {
-                if((job.WorkflowIdentifier != _job.WorkflowIdentifier || !TemplateTokenEqual(job.MatrixToken, _job.MatrixToken)) && !finishedJobs.TryAdd(_job.WorkflowIdentifier, new List<Job> { _job })) {
+                if((job.WorkflowIdentifier != _job.WorkflowIdentifier || !job.MatrixToken.DeepEquals(_job.MatrixToken)) && !finishedJobs.TryAdd(_job.WorkflowIdentifier, new List<Job> { _job })) {
                     bool found = false;
                     for(int i = 0; i < finishedJobs[_job.WorkflowIdentifier].Count; i++) {
-                        if(TemplateTokenEqual(finishedJobs[_job.WorkflowIdentifier][i].MatrixToken, _job.MatrixToken)) {
+                        if(finishedJobs[_job.WorkflowIdentifier][i].MatrixToken.DeepEquals(_job.MatrixToken)) {
                             found = true;
                             if(finishedJobs[_job.WorkflowIdentifier][i].WorkflowRunAttempt.Attempt < _job.WorkflowRunAttempt.Attempt) {
                                 finishedJobs[_job.WorkflowIdentifier][i] = _job;
@@ -7326,7 +7226,7 @@ namespace Runner.Server.Controllers
                 if(!finishedJobs.TryAdd(_job.WorkflowIdentifier, new List<Job> { _job })) {
                     bool found = false;
                     for(int i = 0; i < finishedJobs[_job.WorkflowIdentifier].Count; i++) {
-                        if(TemplateTokenEqual(finishedJobs[_job.WorkflowIdentifier][i].MatrixToken, _job.MatrixToken)) {
+                        if(finishedJobs[_job.WorkflowIdentifier][i].MatrixToken.DeepEquals(_job.MatrixToken)) {
                             found = true;
                             if(finishedJobs[_job.WorkflowIdentifier][i].WorkflowRunAttempt.Attempt < _job.WorkflowRunAttempt.Attempt) {
                                 finishedJobs[_job.WorkflowIdentifier][i] = _job;
