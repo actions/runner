@@ -26,7 +26,6 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Http;
 using System.Diagnostics.CodeAnalysis;
-using GitHub.DistributedTask.Expressions2.Sdk;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text;
 using Runner.Server.Models;
@@ -49,13 +48,15 @@ using Quartz.Impl.Matchers;
 using Swashbuckle.AspNetCore.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Writers;
+using Sdk.Pipelines;
+using ExecutionContext = Sdk.Pipelines.ExecutionContext;
 
 namespace Runner.Server.Controllers
 {
     [ApiController]
     [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
-    public class MessageController : GitHubAppIntegrationBase
+    public partial class MessageController : GitHubAppIntegrationBase
     {
         private string GitServerUrl;
         private string GitApiServerUrl;
@@ -286,113 +287,7 @@ namespace Runner.Server.Controllers
             }
         }
 
-        public sealed class AlwaysFunction : Function
-        {
-            protected override Object EvaluateCore(EvaluationContext context, out ResultMemory resultMemory)
-            {
-                resultMemory = null;
-                return true;
-            }
-        }
-
-        public sealed class SuccessFunction : Function
-        {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
-            {
-                resultMemory = null;
-                var templateContext = evaluationContext.State as TemplateContext;
-                var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
-                if(executionContext.Cancelled.IsCancellationRequested) {
-                    return false;
-                }
-                if(Parameters?.Any() ?? false) {
-                    foreach(var parameter in Parameters) {
-                        var s = parameter.Evaluate(evaluationContext).ConvertToString();
-                        JobItem item = null;
-                        if(executionContext.JobContext.Dependencies?.TryGetValue(s, out item) ?? false) {
-                            if(item?.Status != TaskResult.Succeeded && item?.Status != TaskResult.SucceededWithIssues) {
-                                return false;
-                            }
-                        } else {
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-                return executionContext.JobContext.Success;
-            }
-        }
-
-        public sealed class SucceededOrFailedFunction : Function
-        {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
-            {
-                resultMemory = null;
-                var templateContext = evaluationContext.State as TemplateContext;
-                var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
-                if(executionContext.Cancelled.IsCancellationRequested) {
-                    return false;
-                }
-                if(Parameters?.Any() ?? false) {
-                    foreach(var parameter in Parameters) {
-                        var s = parameter.Evaluate(evaluationContext).ConvertToString();
-                        JobItem item = null;
-                        if(executionContext.JobContext.Dependencies?.TryGetValue(s, out item) ?? false) {
-                            if(item?.Status != TaskResult.Succeeded && item?.Status != TaskResult.SucceededWithIssues && item?.Status != TaskResult.Failed) {
-                                return false;
-                            }
-                        } else {
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-                return executionContext.JobContext.SucceededOrFailed;
-            }
-        }
-        public sealed class FailureFunction : Function
-        {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
-            {
-                resultMemory = null;
-                var templateContext = evaluationContext.State as TemplateContext;
-                var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
-                if(executionContext.Cancelled.IsCancellationRequested) {
-                    return false;
-                }
-                if(Parameters?.Any() ?? false) {
-                    foreach(var parameter in Parameters) {
-                        var s = parameter.Evaluate(evaluationContext).ConvertToString();
-                        JobItem item = null;
-                        if(executionContext.JobContext.Dependencies?.TryGetValue(s, out item) ?? false) {
-                            if(item?.Status == TaskResult.Failed) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
-                }
-                return executionContext.JobContext.Failure;
-            }
-        }
-        public sealed class CancelledFunction : Function
-        {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
-            {
-                resultMemory = null;
-                var templateContext = evaluationContext.State as TemplateContext;
-                var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
-                return executionContext.Cancelled.IsCancellationRequested;
-            }
-        }
-
-        class ExecutionContext
-        {
-            public CancellationToken Cancelled { get; set; }
-            public JobItem JobContext { get; set; }
-        }
-
-        class JobItem {
+        class JobItem : JobItemFacade {
             public JobItem() {
                 RequestId = Interlocked.Increment(ref reqId);
                 ActionStatusQueue = new System.Threading.Tasks.Dataflow.ActionBlock<Func<Task>>(action => action().Wait());
@@ -439,7 +334,14 @@ namespace Runner.Server.Controllers
 
             public JobCompletedEvent JobCompletedEvent { get; set; }
 
-            // public List<Task<IEnumerable<AgentJobRequestMessage>>> enum
+            public bool TryGetDependency(string name, out JobItemFacade jobItem) {
+                if(Dependencies.TryGetValue(name, out var job)) {
+                    jobItem = job;
+                    return true;
+                }
+                jobItem = null;
+                return false;
+            }
         }
 
         [DataContract]
@@ -3534,11 +3436,12 @@ namespace Runner.Server.Controllers
                                     // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                     templateContext.ExpressionValues["dependencies"] = stageToStageDependencies;
                                     templateContext.ExpressionValues["variables"] = workflowVariables;
-                                    var exctx = new ExecutionContext() { Cancelled = workflowContext.CancellationToken, JobContext = new JobItem() { Dependencies = new Dictionary<string, JobItem>(StringComparer.OrdinalIgnoreCase) } };
+                                    var jobCtx = new JobItem() { Dependencies = new Dictionary<string, JobItem>(StringComparer.OrdinalIgnoreCase) };
+                                    var exctx = new ExecutionContext() { Cancelled = workflowContext.CancellationToken, JobContext = jobCtx };
                                     if(stage.Dependencies != null) {
                                         foreach(var kv in stage.Dependencies) {
                                             var status = stageToStageDependencies.TryGetValue(kv.Key, out var jobdata) && jobdata is DictionaryContextData jobdatadict && jobdatadict.TryGetValue("result", out var jobresult) && jobresult is StringContextData jobresultstr ? Enum.Parse<TaskResult>(jobresultstr.Value, true) : TaskResult.Succeeded;
-                                            exctx.JobContext.Dependencies[kv.Key] = new JobItem { Status = status };
+                                            jobCtx.Dependencies[kv.Key] = new JobItem { Status = status };
                                         }
                                     }
                                     templateContext.State[nameof(ExecutionContext)] = exctx;
