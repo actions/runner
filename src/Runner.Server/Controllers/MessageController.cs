@@ -1856,20 +1856,6 @@ namespace Runner.Server.Controllers
                                         }
                                         {
                                             int i = 0;
-                                            Func<IEnumerable<string>, string> defaultDisplaySuffix = item => {
-                                                var displaySuffix = new StringBuilder();
-                                                int z = 0;
-                                                foreach (var mk in item) {
-                                                    if(!string.IsNullOrEmpty(mk)) {
-                                                        displaySuffix.Append(z++ == 0 ? "(" : ", ");
-                                                        displaySuffix.Append(mk);
-                                                    }
-                                                }
-                                                if(z > 0) {
-                                                    displaySuffix.Append( ")");
-                                                }
-                                                return displaySuffix.ToString();
-                                            };
                                             var usesJob = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "uses" select r).FirstOrDefault().Value != null;
                                             if(usesJob) {
                                                 if((callingJob?.Depth ?? 0) >= MaxWorkflowDepth && MaxWorkflowDepth >= 0) {
@@ -2067,7 +2053,7 @@ namespace Runner.Server.Controllers
                                                         cancelAll(cancelreqmsg);
                                                         return;
                                                     }
-                                                    var j = act(defaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                                                    var j = act(StrategyUtils.GetDefaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                                                     if(j != null) {
                                                         jobs.Enqueue(j);
                                                     }
@@ -2078,7 +2064,7 @@ namespace Runner.Server.Controllers
                                                     cancelAll(cancelreqmsg);
                                                     return;
                                                 }
-                                                var j = act(defaultDisplaySuffix(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                                                var j = act(StrategyUtils.GetDefaultDisplaySuffix(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                                                 if(j != null) {
                                                     jobs.Enqueue(j);
                                                 }
@@ -3550,20 +3536,6 @@ namespace Runner.Server.Controllers
                                     }
                                     {
                                         int i = 0;
-                                        Func<IEnumerable<string>, string> defaultDisplaySuffix = item => {
-                                            var displaySuffix = new StringBuilder();
-                                            int z = 0;
-                                            foreach (var mk in item) {
-                                                if(!string.IsNullOrEmpty(mk)) {
-                                                    displaySuffix.Append(z++ == 0 ? "(" : ", ");
-                                                    displaySuffix.Append(mk);
-                                                }
-                                            }
-                                            if(z > 0) {
-                                                displaySuffix.Append( ")");
-                                            }
-                                            return displaySuffix.ToString();
-                                        };
                                         Func<string, Dictionary<string, TemplateToken>, Func<TaskResult?, Job>> act = (displaySuffix, item) => {
                                             var providedVars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
                                             int c = i++;
@@ -3795,7 +3767,7 @@ namespace Runner.Server.Controllers
                                                         cancelAll(cancelreqmsg);
                                                         return;
                                                     }
-                                                    var j = act(defaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
+                                                    var j = act(StrategyUtils.GetDefaultDisplaySuffix(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                                                     if(j != null) {
                                                         jobs.Enqueue(j);
                                                     }
