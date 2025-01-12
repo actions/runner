@@ -213,6 +213,29 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             return ret;
         }
 
+        public static IEnumerable<string> GetContextReferences(
+            this TemplateToken token,
+            String name,
+            ExpressionFlags flags = ExpressionFlags.None)
+        {
+            var expressionTokens = token.Traverse()
+                .OfType<BasicExpressionToken>()
+                .ToArray();
+            var parser = new ExpressionParser() { Flags = flags };
+            foreach (var expressionToken in expressionTokens)
+            {
+                var tree = parser.ValidateSyntax(expressionToken.Expression, null);
+            
+                foreach (var node in tree.Traverse())
+                {
+                    if (node is Index indexAccess && indexAccess.Parameters[0] is NamedValue namedValue && string.Equals(name, namedValue.Name, StringComparison.OrdinalIgnoreCase ) && indexAccess.Parameters[1] is Literal literal && literal.Value is String literalString)
+                    {
+                        yield return literalString;
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// Traverses the token and checks whether all required expression values
         /// and functions are provided.
