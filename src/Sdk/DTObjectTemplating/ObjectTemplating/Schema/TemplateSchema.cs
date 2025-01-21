@@ -132,6 +132,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                         case TemplateConstants.Context:
                                         case TemplateConstants.Description:
                                         case "actionsIfExpression":
+                                        case "azureVariableBlock":
+                                        case "azureVariableBlockScope":
                                             continue;
 
                                         default:
@@ -415,6 +417,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.Sequence, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceDefinitionProperties)));
+                    mappingDefinition.Properties.Add("azureVariableBlock", new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.SequenceDefinition, mappingDefinition);
 
                     // sequence-definition-properties
@@ -427,6 +430,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
                     mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     mappingDefinition.Properties.Add(TemplateConstants.Mapping, new PropertyValue(new StringToken(null, null, null, TemplateConstants.MappingDefinitionProperties)));
+                    mappingDefinition.Properties.Add("azureVariableBlock", new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add("azureVariableBlockScope", new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.MappingDefinition, mappingDefinition);
 
                     // mapping-definition-properties

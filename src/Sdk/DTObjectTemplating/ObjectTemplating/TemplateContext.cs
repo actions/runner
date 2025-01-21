@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk.Functions.v1;
 using GitHub.DistributedTask.Expressions2.Tokens;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -39,6 +41,14 @@ namespace GitHub.DistributedTask.ObjectTemplating
         public List<int> SemTokens { get; set; } = new List<int>();
         public int LastRow { get; set; } = 1;
         public int LastColumn { get; set; } = 1;
+
+        public Func<TemplateContext, MappingToken, DictionaryContextData, Task> EvaluateVariable { get; set; }
+
+        public bool SkipError { get; set; }
+
+        public SkipErrorDisposable SkopedErrorLevel(bool skipError = true) {
+            return new SkipErrorDisposable(this, skipError);
+        }
 
         public void AddSemToken(int row, int column, int len, int type, int mod) {
             if(row - LastRow < 0 || ((row - LastRow) != 0 ? column - 1: column - LastColumn) < 0) {
@@ -172,6 +182,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         internal void Error(TemplateValidationError error)
         {
+            if(SkipError) {
+                return;
+            }
             Errors.Add(error);
             TraceWriter.Error(error.Message);
         }
@@ -189,6 +202,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             Int32? column,
             Exception ex)
         {
+            if(SkipError) {
+                return;
+            }
             var prefix = GetErrorPrefix(fileId, line, column);
             Errors.Add(prefix, ex);
             TraceWriter.Error(prefix, ex);
@@ -207,6 +223,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             Int32? column,
             String message)
         {
+            if(SkipError) {
+                return;
+            }
             var prefix = GetErrorPrefix(fileId, line, column);
             if (!String.IsNullOrEmpty(prefix))
             {

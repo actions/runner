@@ -57,6 +57,18 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                     definition.RemoveAt(i);
                     ActionsIfExpression = actionifexpr.Value;
                 }
+                else if (String.Equals(definitionKey.Value, "azureVariableBlock", StringComparison.Ordinal))
+                {
+                    var actionifexpr = definition[i].Value.AssertBoolean($"azureVariableBlock");
+                    definition.RemoveAt(i);
+                    AzureVariableBlock = actionifexpr.Value;
+                }
+                else if (String.Equals(definitionKey.Value, "azureVariableBlockScope", StringComparison.Ordinal))
+                {
+                    var actionifexpr = definition[i].Value.AssertBoolean($"azureVariableBlockScope");
+                    definition.RemoveAt(i);
+                    AzureVariableBlockScope = actionifexpr.Value;
+                }
                 else
                 {
                     i++;
@@ -65,9 +77,10 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         }
 
         public bool ActionsIfExpression { get; private set; }
+        public bool AzureVariableBlock { get; private set; }
 
         public string Description { get; }
-
+        public bool AzureVariableBlockScope { get; private set; }
         internal abstract DefinitionType DefinitionType { get; }
 
         /// <summary>

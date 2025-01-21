@@ -241,24 +241,34 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         TemplateToken nextValue;
                         var anyDefinition = new DefinitionInfo(definition, TemplateConstants.Any);
                         if(nextKeyScalar is EachExpressionToken eachexp) {
-                            var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
+                            var def = new DefinitionInfo(definition);
                             def.AllowedContext = definition.AllowedContext.Append(eachexp.Variable).ToArray();
-                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(definition.Parent).Any()) {
+                            var parentSeq = m_schema.Get<SequenceDefinition>(definition.Parent).FirstOrDefault();
+                            var skipError = m_context.SkipError;
+                            m_context.SkipError = true;
+                            if(parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
-                                oneOf.OneOf.Add(definition.ParentName);
+                                oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
                                 oneOf.OneOf.Add(definition.Name);
+                                oneOf.OneOf.Add("string");
                                 def.Definition = oneOf;
                             }
                             nextValue = ReadValue(def);
+                            m_context.SkipError = skipError;
                         } else if(nextKeyScalar is ConditionalExpressionToken || nextKeyScalar is InsertExpressionToken && (m_context.Flags & Expressions2.ExpressionFlags.AllowAnyForInsert) != Expressions2.ExpressionFlags.None) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
-                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(definition.Parent).Any()) {
+                            var parentSeq = m_schema.Get<SequenceDefinition>(definition.Parent).FirstOrDefault();
+                            var skipError = m_context.SkipError;
+                            m_context.SkipError = true;
+                            if(parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
-                                oneOf.OneOf.Add(definition.ParentName);
+                                oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
                                 oneOf.OneOf.Add(definition.Name);
+                                oneOf.OneOf.Add("string");
                                 def.Definition = oneOf;
                             }
                             nextValue = ReadValue(def);
+                            m_context.SkipError = skipError;
                         } else {
                             nextValue = ReadValue(m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : anyDefinition);
                         }
@@ -408,22 +418,32 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         if(nextKeyScalar is EachExpressionToken eachexp) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(mappingDefinition) : new DefinitionInfo(mappingDefinition, "any");
                             def.AllowedContext = valueDefinition.AllowedContext.Append(eachexp.Variable).ToArray();
-                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).Any()) {
+                            var parentSeq = m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).FirstOrDefault();
+                            var skipError = m_context.SkipError;
+                            m_context.SkipError = true;
+                            if(parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
-                                oneOf.OneOf.Add(mappingDefinition.ParentName);
+                                oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
                                 oneOf.OneOf.Add(mappingDefinition.Name);
+                                oneOf.OneOf.Add("string");
                                 def.Definition = oneOf;
                             }
                             nextValue = ReadValue(def);
+                            m_context.SkipError = skipError;
                         } else if(nextKeyScalar is ConditionalExpressionToken || nextKeyScalar is InsertExpressionToken && (m_context.Flags & Expressions2.ExpressionFlags.AllowAnyForInsert) != Expressions2.ExpressionFlags.None) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(mappingDefinition) : new DefinitionInfo(mappingDefinition, "any");
-                            if(m_context.AutoCompleteMatches != null && m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).Any()) {
+                            var parentSeq = m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).FirstOrDefault();
+                            var skipError = m_context.SkipError;
+                            m_context.SkipError = true;
+                            if(parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
-                                oneOf.OneOf.Add(mappingDefinition.ParentName);
+                                oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
                                 oneOf.OneOf.Add(mappingDefinition.Name);
+                                oneOf.OneOf.Add("string");
                                 def.Definition = oneOf;
                             }
                             nextValue = ReadValue(def);
+                            m_context.SkipError = skipError;
                         } else {
                             nextValue = ReadValue(m_context.AutoCompleteMatches != null ? new DefinitionInfo(mappingDefinition) : valueDefinition);
                         }
@@ -543,6 +563,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             ref ScalarToken scalar,
             DefinitionInfo definition)
         {
+            using var _ = m_context.SkopedErrorLevel(false);
             switch (scalar.Type)
             {
                 case TokenType.Null:
@@ -1134,7 +1155,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 m_schema = schema;
 
                 Parent = null;
-                ParentName = null;
                 Name = name;
 
                 // Lookup the definition
@@ -1149,7 +1169,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 m_schema = parent.m_schema;
                 Parent = parent.Definition;
-                ParentName = parent.ParentName;
 
                 Name = parent.Name;
 
@@ -1167,7 +1186,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 m_schema = parent.m_schema;
 
                 Parent = parent.Definition;
-                ParentName = parent.Name;
 
                 Name = name;
 
@@ -1192,8 +1210,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
 
             public Definition? Parent { get; }
-            public string? ParentName { get; }
-
             private TemplateSchema m_schema;
             public string? Name { get; }
             public Definition Definition;

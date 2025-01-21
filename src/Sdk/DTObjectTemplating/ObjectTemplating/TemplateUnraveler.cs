@@ -895,6 +895,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             bool skip = false;
             bool metastate = false;
             Func<bool> shouldRun = () => {
+                using var _ = m_context.SkopedErrorLevel(false);
                 if(parentMappingState != null) {
                     if(parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip)) {
                         return skip;
@@ -1651,7 +1652,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 Int32 removeBytes = 0)
             {
                 // Adjust the state
-                i++;//IsStart = false;
+                i++;
 
                 // Create the nested state
                 var nestedState = CreateState(this, value, Context, removeBytes) as MappingState;
@@ -1663,7 +1664,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 Int32 removeBytes = 0)
             {
                 // Adjust the state
-                i++;//IsStart = false;
+                i++;
 
                 // Create the nested state
                 var nestedState = CreateState(this, value, Context, removeBytes) as SequenceState;

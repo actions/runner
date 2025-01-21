@@ -60,7 +60,7 @@ namespace Runner.Server.Azure.Devops {
             return templateContext;
         }
 
-        public static async Task<TemplateToken> ParseVariables(Runner.Server.Azure.Devops.Context context, IDictionary<string, VariableValue> vars, TemplateToken rawvars, TemplateContext staticVarCtx = null) {
+        public static async Task ParseVariables(Runner.Server.Azure.Devops.Context context, IDictionary<string, VariableValue> vars, TemplateToken rawvars, TemplateContext staticVarCtx = null) {
             DictionaryContextData staticVars = null;
             if(staticVarCtx != null && staticVarCtx.ExpressionValues.TryGetValue("variables", out var rvars) && rvars is GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject tvars) {
                 staticVars = new DictionaryContextData();
@@ -72,23 +72,16 @@ namespace Runner.Server.Azure.Devops {
             }
             if(rawvars is MappingToken mvars)
             {
-                var map = new MappingToken(rawvars.FileId, rawvars.Line, rawvars.Column);
-                foreach(var x in ProcessVariableMapping(vars, staticVarCtx, staticVars, mvars)) {
-                    map.Add(x);
-                }
-                return map;
+                await ProcessVariableMapping(vars, staticVarCtx, staticVars, mvars);
+                return;
             }
             else if(rawvars is SequenceToken svars)
             {
-                var seq = new SequenceToken(rawvars.FileId, rawvars.Line, rawvars.Column);
-                await foreach(var x in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, svars)) {
-                    seq.Add(x);
-                }
-                return seq;
+                await ProcessVariableSequence(context, vars, staticVarCtx, staticVars, svars);
+                return;
             }
-            return TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", rawvars, 0, rawvars.FileId);
 
-            static IEnumerable<KeyValuePair<ScalarToken, TemplateToken>> ProcessVariableMapping(IDictionary<string, VariableValue> vars, TemplateContext staticVarCtx, DictionaryContextData staticVars, MappingToken mvars)
+            static async Task ProcessVariableMapping(IDictionary<string, VariableValue> vars, TemplateContext staticVarCtx, DictionaryContextData staticVars, MappingToken mvars)
             {
                 for (int i = 0; i < mvars.Count; i++)
                 {
@@ -111,12 +104,10 @@ namespace Runner.Server.Azure.Devops {
                                 }
                             }
                         }
-                        var res = TemplateEvaluator.Evaluate(staticVarCtx, kv.Key is ExpressionToken ? "single-layer-workflow-mapping" : "workflow-value", evT, 0, kv.Key.FileId);
+                        var res = await TemplateEvaluator.EvaluateAsync(staticVarCtx, kv.Key is ExpressionToken ? "single-layer-workflow-mapping" : "workflow-value", evT, 0, kv.Key.FileId);
                         if (res is MappingToken r)
                         {
-                            foreach(var l in ProcessVariableMapping(vars, staticVarCtx, staticVars, r)) {
-                                yield return l;
-                            }
+                            await ProcessVariableMapping(vars, staticVarCtx, staticVars, r);
                         }
                         continue;
                     }
@@ -126,11 +117,10 @@ namespace Runner.Server.Azure.Devops {
                     if(staticVars != null) {
                         staticVars[k] = new StringContextData(v);
                     }
-                    yield return kv;
                 }
             }
 
-            static async IAsyncEnumerable<TemplateToken> ProcessVariableSequence(Context context, IDictionary<string, VariableValue> vars, TemplateContext staticVarCtx, DictionaryContextData staticVars, SequenceToken svars)
+            static async Task ProcessVariableSequence(Context context, IDictionary<string, VariableValue> vars, TemplateContext staticVarCtx, DictionaryContextData staticVars, SequenceToken svars)
             {
                 for (int i = 0; i < svars.Count; i++)
                 {
@@ -141,46 +131,9 @@ namespace Runner.Server.Azure.Devops {
                     string value = null;
                     bool isReadonly = false;
                     string group = null;
-                    bool skip = false;
-                    if (staticVars != null && rawdef is ExpressionToken)
-                    {
-                        var s = new SequenceToken(rawdef.FileId, rawdef.Line, rawdef.Column) { rawdef };
-                        var res = TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", s, 0, rawdef.FileId);
-                        if(res is SequenceToken st) {
-                            await foreach(var t in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, st)) {
-                                yield return t;
-                            }
-                        }
-                        continue;
-                    }
                     var vdef = rawdef.AssertMapping("");
-                    if (vdef.Count == 1 && vdef[0].Key.Type == TokenType.IfExpression && vdef[0].Value.Type == TokenType.Sequence)
-                    {
-                        var s = new SequenceToken(rawdef.FileId, rawdef.Line, rawdef.Column) { vdef };
-                        while (i + 1 < svars.Count && svars[i + 1] is MappingToken mdef && mdef.Count == 1 && (mdef[0].Key.Type & (TokenType.ElseIfExpression | TokenType.ElseExpression)) != 0 && mdef[0].Value.Type == TokenType.Sequence)
-                        {
-                            i++;
-                            s.Add(svars[i]);
-                            if ((svars[i] as MappingToken)[0].Key.Type == TokenType.ElseExpression)
-                            {
-                                break;
-                            }
-                        }
-                        var res = TemplateEvaluator.Evaluate(staticVarCtx, "single-layer-workflow-sequence", s, 0, rawdef.FileId);
-                        if(res is SequenceToken st) {
-                            await foreach(var t in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, st)) {
-                                yield return t;
-                            }
-                        }
-                        continue;
-                    }
                     foreach (var kv in vdef)
                     {
-                        if (staticVars != null && (kv.Key is ExpressionToken || kv.Value is ExpressionToken))
-                        {
-                            skip = true;
-                            break;
-                        }
                         var primaryKey = kv.Key.AssertString("variables").Value;
                         switch (primaryKey)
                         {
@@ -204,23 +157,6 @@ namespace Runner.Server.Azure.Devops {
                                 break;
                         }
                     }
-                    // Skip expressions and template references if we parse static variables
-                    if (skip)
-                    {
-                        if (skip)
-                        {
-                            var s = new SequenceToken(rawdef.FileId, rawdef.Line, rawdef.Column) { rawdef };
-                            var res = TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", s, 0, rawdef.FileId);
-                            if(res is SequenceToken st) {
-                                await foreach(var t in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, st)) {
-                                    yield return t;
-                                }
-                            }
-                        } else {
-                            yield return rawdef;
-                        }
-                        continue;
-                    }
                     if (group != null)
                     {
                         // Skip metainfo while preprocessing via staticVars != null
@@ -236,27 +172,12 @@ namespace Runner.Server.Azure.Devops {
                                 vars[v.Key] = new VariableValue(v.Value) { IsGroupMember = true };
                             }
                         }
-                        yield return rawdef;
                     }
                     else if (template != null)
                     {
-                        var evalp = parameters != null && staticVarCtx != null ? TemplateEvaluator.Evaluate(staticVarCtx, "workflow-value", parameters, 0, parameters.FileId) : null;
+                        var evalp = parameters != null && staticVarCtx != null ? await TemplateEvaluator.EvaluateAsync(staticVarCtx, "workflow-value", parameters, 0, parameters.FileId) : null;
                         var file = await ReadTemplate(context, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
-                        var res = await ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), staticVarCtx);
-                        if (res is SequenceToken sq) {
-                            await foreach(var x in ProcessVariableSequence(context, vars, staticVarCtx, staticVars, sq)) {
-                                yield return x;
-                            }
-                        } else if (res is MappingToken mq) {
-                            foreach(var x in ProcessVariableMapping(vars, staticVarCtx, staticVars, mq)) {
-                                var mt = new MappingToken(x.Key.FileId, x.Key.Line, x.Key.Column)
-                                {
-                                    new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "name"), x.Key),
-                                    new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "value"), x.Value)
-                                };
-                                yield return mt;
-                            }
-                        }
+                        await ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), staticVarCtx);
                     }
                     else
                     {
@@ -264,7 +185,6 @@ namespace Runner.Server.Azure.Devops {
                         if(staticVars != null) {
                             staticVars[name] = new StringContextData(value);
                         }
-                        yield return rawdef;
                     }
                 }
             }
@@ -998,7 +918,7 @@ namespace Runner.Server.Azure.Devops {
                             {
                                 // var autoCompleteState = templateContext.AutoCompleteMatches;
                                 // templateContext.AutoCompleteMatches = new List<AutoCompleteEntry>();
-                                TemplateEvaluator.Evaluate(templateContext, fdef, val, 0, fileId);
+                                await TemplateEvaluator.EvaluateAsync(templateContext, fdef, val, 0, fileId);
                                 if(start != null) {
                                     foreach(var (tkn, sh) in GetPatterns(start.Value)
                                         .SelectMany(v => val.TraverseByPattern(cCtx.RawMapping, v.Item1).Select(t => (t, v.Item2))))
@@ -1136,7 +1056,7 @@ namespace Runner.Server.Azure.Devops {
                         }
                         if (fdef != null && val != null)
                         {
-                            TemplateEvaluator.Evaluate(templateContext, fdef, val, 0, fileId);
+                            await TemplateEvaluator.EvaluateAsync(templateContext, fdef, val, 0, fileId);
                             if(start != null) {
                                 foreach(var (tkn, sh) in GetPatterns(start.Value)
                                     .SelectMany(v => val.TraverseByPattern(cCtx.RawMapping, v.Item1).Select(t => (t, v.Item2))))
@@ -1484,115 +1404,70 @@ namespace Runner.Server.Azure.Devops {
                 dict[param.Key] = param.Value;
             }
 
-            if (rawStaticVariables != null)
-            {
-                // See "testworkflows/azpipelines/expressions-docs/Conditionally assign a variable.yml"
-                templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                if(strictParametersCheck) {
-                    templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                }
-                // rawStaticVariables = TemplateEvaluator.Evaluate(templateContext, "workflow-value", rawStaticVariables, 0, fileId);
-                // templateContext.Errors.Check();
-
-                IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                pipelineroot[pipelineroot.Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), await ParseVariables(childContext, pvars, rawStaticVariables, templateContext));
-                foreach (var v in pvars)
-                {
-                    variablesData[v.Key] = new StringContextData(v.Value.Value);
-                }
-            }
-
-            //pipelineroot.Traverse().Any(t => t is ExpressionToken);
-            // lookahead vars
-            // TODO Generalize and stepwise patch the template structure
-            templateContext = await evalJobsWithExtraVars(context, templateContext, fileId, contextData, variablesData, dict, pipelineroot, null);
-            templateContext = await evalStagesWithExtraVars(context, templateContext, fileId, pipelineroot, contextData, variablesData, dict);
-
             templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
+            templateContext.EvaluateVariable = async (tcontext, mapping, vars) => {
+                string template = null;
+                TemplateToken parameters = null;
+                string name = null;
+                string value = null;
+                bool isReadonly = false;
+                string group = null;
+                var vdef = mapping;
+                foreach (var kv in vdef)
+                {
+                    var primaryKey = kv.Key.AssertString("variables").Value;
+                    switch (primaryKey)
+                    {
+                        case "template":
+                            template = kv.Value.AssertString("variables").Value;
+                            break;
+                        case "parameters":
+                            parameters = kv.Value;
+                            break;
+                        case "name":
+                            name = kv.Value.AssertLiteralString("variables");
+                            break;
+                        case "value":
+                            value = kv.Value.AssertLiteralString("variables");
+                            break;
+                        case "readonly":
+                            isReadonly = kv.Value.AssertAzurePipelinesBoolean("variables");
+                            break;
+                        case "group":
+                            group = kv.Value.AssertLiteralString("variables");
+                            break;
+                    }
+                }
+                if (group != null)
+                {
+
+                }
+                else if (template != null)
+                {
+                    var evalp = parameters;
+                    var file = await ReadTemplate(childContext, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
+                    IDictionary<string, VariableValue> rvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                    await ParseVariables(childContext.ChildContext(file, template), rvars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), tcontext);
+                    foreach(var kv in rvars) {
+                        if(kv.Value.IsGroup || kv.Value.IsGroupMember) {
+                            continue;
+                        }
+                        vars.Add(kv.Key, new StringContextData(kv.Value.Value));
+                    }
+                }
+                else
+                {
+                    vars.Add(name, new StringContextData(value));
+                }
+            };
             if(strictParametersCheck) {
                 templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
             }
 
-            var evaluatedResult = TemplateEvaluator.Evaluate(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
+            var evaluatedResult = await TemplateEvaluator.EvaluateAsync(templateContext, schemaName ?? "pipeline-root", pipelineroot, 0, fileId);
             templateContext.Errors.Check();
             context.TraceWriter?.Verbose("{0}", evaluatedResult.ToContextData().ToJToken().ToString());
             return evaluatedResult.AssertMapping("root");
-
-            async Task<TemplateContext> evalJobsWithExtraVars(Context context, TemplateContext templateContext, int fileId, DictionaryContextData contextData, DictionaryContextData variablesData, Dictionary<string, object> dict, GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject stage, DictionaryContextData vardata)
-            {
-                if (stage.TryGetValue("jobs", out var rjobs) && rjobs is SequenceToken jobs)
-                {
-                    foreach (var ji in jobs.ToArray().Select((t, i) => new { t, i }))
-                    {
-                        var rjob = ji.t;
-                        if (rjob is GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject job && job.TryGetValue("variables", out var rjvars) && rjvars is TemplateToken jvars)
-                        {
-                            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                            if(strictParametersCheck) {
-                                templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                            }
-                            if(vardata != null) {
-                                templateContext.ExpressionValues["variables"] = vardata;
-                            }
-                            IDictionary<string, VariableValue> pjvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                            jvars = await ParseVariables(childContext, pjvars, jvars, templateContext);
-                            var varjdata = (vardata ?? variablesData).Clone() as DictionaryContextData;
-                            foreach (var v in pjvars)
-                            {
-                                varjdata[v.Key] = new StringContextData(v.Value.Value);
-                            }
-                            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                            if(strictParametersCheck) {
-                                templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                            }
-                            templateContext.ExpressionValues["variables"] = varjdata;
-                            (rjob as MappingToken)[(rjob as MappingToken).Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), jvars);
-                            rjob = TemplateEvaluator.Evaluate(templateContext, "workflow-value", rjob, 0, fileId);
-                            templateContext.Errors.Check();
-                            jobs[ji.i] = rjob;
-                        }
-                    }
-                }
-
-                return templateContext;
-            }
-
-            async Task<TemplateContext> evalStagesWithExtraVars(Context context, TemplateContext templateContext, int fileId, MappingToken pipelineroot, DictionaryContextData contextData, DictionaryContextData variablesData, Dictionary<string, object> dict)
-            {
-                if ((pipelineroot as GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject).TryGetValue("stages", out var rstages) && rstages is SequenceToken stages)
-                {
-                    foreach (var si in stages.ToArray().Select((t, i) => new { t, i }))
-                    {
-                        var rstage = si.t;
-                        if (rstage is GitHub.DistributedTask.Expressions2.Sdk.IReadOnlyObject stage && stage.TryGetValue("variables", out var rvars) && rvars is TemplateToken vars)
-                        {
-                            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                            if(strictParametersCheck) {
-                                templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                            }
-                            IDictionary<string, VariableValue> pvars = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                            vars = await ParseVariables(childContext, pvars, vars, templateContext);
-                            var vardata = variablesData.Clone() as DictionaryContextData;
-                            foreach (var v in pvars)
-                            {
-                                vardata[v.Key] = new StringContextData(v.Value.Value);
-                            }
-                            templateContext = await evalJobsWithExtraVars(context, templateContext, fileId, contextData, variablesData, dict, stage, vardata);
-                            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
-                            if(strictParametersCheck) {
-                                templateContext.ExpressionValues["parameters"] = new ParametersContextData(dict, templateContext.Errors);
-                            }
-                            templateContext.ExpressionValues["variables"] = vardata;
-                            (rstage as MappingToken)[(rstage as MappingToken).Select((x, i) => (x, i)).First(x => x.x.Key.ToString() == "variables").i] = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, "variables"), vars);
-                            rstage = TemplateEvaluator.Evaluate(templateContext, "workflow-value", rstage, 0, fileId);
-                            templateContext.Errors.Check();
-                            stages[si.i] = rstage;
-                        }
-                    }
-                }
-
-                return templateContext;
-            }
         }
 
         public static TemplateToken ConvertAllScalarsToString(TemplateToken token) {

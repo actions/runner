@@ -31,12 +31,11 @@ stages:
         value: ${{ variables.requiredVar }}
       - name: othervar3
         value: ${{ variables.othervar }}
-      # TODO fix bug
-      # - name: chained-0
-      #   value: loop-0
-      # - ${{ each x in split('0,1|1,2|2,3', '|')}}:
-      #   - name: chained-${{ split(x, ',')[1] }}
-      #     value: ${{ variables[format('chained-{0}', split(x, ',')[0])] }}-${{ split(x, ',')[1] }}
+      - name: chained-0
+        value: loop-0
+      - ${{ each x in split('0,1|1,2|2,3', '|')}}:
+        - name: chained-${{ split(x, ',')[1] }}
+          value: ${{ variables[format('chained-{0}', split(x, ',')[0])] }}-${{ split(x, ',')[1] }}
     steps:
     - ${{ if ne(variables.requiredVar, 'Substitute-test-s3') }}:
       - assert: ${{ converttojson(variables) }}
@@ -55,4 +54,12 @@ stages:
     - ${{ if ne(variables.othervar2, '') }}:
       - assert: ${{ converttojson(variables) }}
     - ${{ if ne(variables.othervar2, '') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables['chained-0'], 'loop-0') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables['chained-1'], 'loop-0-1') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables['chained-2'], 'loop-0-1-2') }}:
+      - assert: ${{ converttojson(variables) }}
+    - ${{ if ne(variables['chained-3'], 'loop-0-1-2-3') }}:
       - assert: ${{ converttojson(variables) }}

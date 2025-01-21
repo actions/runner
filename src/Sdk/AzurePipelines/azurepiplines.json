@@ -1952,15 +1952,16 @@
         },
         "variables-0": {
             "mapping": {
-                "properties": {},
                 "loose-key-type": "string",
                 "loose-value-type": "any"
-            }
+            },
+            "azureVariableBlock": true
         },
         "variables-1": {
             "sequence": {
                 "item-type": "variable"
-            }
+            },
+            "azureVariableBlock": true
         },
         "variables": {
             "one-of": [
@@ -2043,6 +2044,7 @@
             ]
         },
         "stage-0": {
+            "azureVariableBlockScope": true,
             "mapping": {
                 "properties": {
                     "stage": {
@@ -2094,6 +2096,7 @@
             }
         },
         "stage-1": {
+            "azureVariableBlockScope": true,
             "mapping": {
                 "properties": {
                     "template": {
@@ -2389,6 +2392,7 @@
             ]
         },
         "job-0": {
+            "azureVariableBlockScope": true,
             "mapping": {
                 "properties": {
                     "job": {
@@ -2458,6 +2462,7 @@
             }
         },
         "job-1": {
+            "azureVariableBlockScope": true,
             "mapping": {
                 "properties": {
                     "deployment": {
@@ -2527,6 +2532,7 @@
             }
         },
         "job-2": {
+            "azureVariableBlockScope": true,
             "mapping": {
                 "properties": {
                     "template": {

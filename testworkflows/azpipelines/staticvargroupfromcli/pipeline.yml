@@ -7,8 +7,14 @@ steps:
       echo ${{variables.myvarwitheq}}
       echo ${{variables.myenvar}}
   - script: exit 1
-    condition: ne('${{ variables.myvar }}', 'myval')
+    condition: ne('${{ variables.myvar }}', '')
   - script: exit 1
-    condition: ne('${{ variables.myvarwitheq }}', 'my=val')
+    condition: ne('${{ variables.myvarwitheq }}', '')
   - script: exit 1
-    condition: ne('${{ variables.myenvar }}', 'myval')
+    condition: ne('${{ variables.myenvar }}', '')
+  - script: exit 1
+    condition: ne(variables.myvar, 'myval')
+  - script: exit 1
+    condition: ne(variables.myvarwitheq, 'my=val')
+  - script: exit 1
+    condition: ne(variables.myenvar, 'myval')

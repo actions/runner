@@ -1,3 +1,6 @@
+### v0.2.6 (Preview)
+- Includes experimental bug fixes for dynamic each expressions https://github.com/ChristopherHX/runner.server/issues/278 and https://github.com/ChristopherHX/runner.server/issues/514
+
 ### v0.2.5 (Preview)
 - speed up sematic highlighting, autocomplete and hover by patching YamlDotnet a bit
 
