@@ -12,6 +12,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
     {
         [DataMember(Name = "condition", EmitDefaultValue = false)]
         public string Condition { get; set; }
+        [IgnoreDataMember]
+        public TemplateValidationErrors Errors { get; set; }
         internal ConditionalExpressionToken (
             int type,
             Int32? fileId,

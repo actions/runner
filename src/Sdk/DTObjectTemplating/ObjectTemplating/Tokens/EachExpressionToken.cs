@@ -26,10 +26,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         public string Variable { get; set; }
         [DataMember(Name = "collection", EmitDefaultValue = false)]
         public string Collection { get; set; }
+        [IgnoreDataMember]
+        public TemplateValidationErrors Errors { get; set; }
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-            return omitSource ? new EachExpressionToken(null, null, null, Variable, Collection) : new EachExpressionToken(FileId, Line, Column, Variable, Collection);
+            return omitSource ? new EachExpressionToken(null, null, null, Variable, Collection) { Errors = Errors } : new EachExpressionToken(FileId, Line, Column, Variable, Collection) { Errors = Errors };
         }
 
         public override String ToString()

@@ -44,9 +44,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         public Func<TemplateContext, MappingToken, DictionaryContextData, Task> EvaluateVariable { get; set; }
 
-        public bool SkipError { get; set; }
-
-        public SkipErrorDisposable SkopedErrorLevel(bool skipError = true) {
+        public SkipErrorDisposable SkopedErrorLevel(TemplateValidationErrors skipError = null) {
+            m_fatal_errors ??= Errors;
             return new SkipErrorDisposable(this, skipError);
         }
 
@@ -77,6 +76,24 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
         }
 
+        internal TemplateValidationErrors FatalErrors
+        {
+            get
+            {
+                if (m_fatal_errors == null)
+                {
+                    m_fatal_errors = new TemplateValidationErrors();
+                }
+
+                return m_fatal_errors;
+            }
+
+            set
+            {
+                m_fatal_errors = value;
+            }
+        }
+
         internal TemplateValidationErrors Errors
         {
             get
@@ -92,6 +109,24 @@ namespace GitHub.DistributedTask.ObjectTemplating
             set
             {
                 m_errors = value;
+            }
+        }
+
+        internal TemplateValidationErrors Warnings
+        {
+            get
+            {
+                if (m_warnings == null)
+                {
+                    m_warnings = new TemplateValidationErrors();
+                }
+
+                return m_warnings;
+            }
+
+            set
+            {
+                m_warnings = value;
             }
         }
 
@@ -182,9 +217,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         internal void Error(TemplateValidationError error)
         {
-            if(SkipError) {
-                return;
-            }
             Errors.Add(error);
             TraceWriter.Error(error.Message);
         }
@@ -202,9 +234,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
             Int32? column,
             Exception ex)
         {
-            if(SkipError) {
-                return;
-            }
             var prefix = GetErrorPrefix(fileId, line, column);
             Errors.Add(prefix, ex);
             TraceWriter.Error(prefix, ex);
@@ -223,9 +252,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
             Int32? column,
             String message)
         {
-            if(SkipError) {
-                return;
-            }
             var prefix = GetErrorPrefix(fileId, line, column);
             if (!String.IsNullOrEmpty(prefix))
             {
@@ -296,7 +322,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
         }
 
+        private TemplateValidationErrors m_fatal_errors;
         private TemplateValidationErrors m_errors;
+        private TemplateValidationErrors m_warnings;
         private IList<IFunctionInfo> m_expressionFunctions;
         private IDictionary<String, Object> m_expressionValues;
         private IDictionary<String, Int32> m_fileIds;

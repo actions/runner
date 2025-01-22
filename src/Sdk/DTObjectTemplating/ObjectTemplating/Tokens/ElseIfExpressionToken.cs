@@ -21,7 +21,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-            return omitSource ? new ElseIfExpressionToken(null, null, null, Condition) : new ElseIfExpressionToken(FileId, Line, Column, Condition);
+            return omitSource ? new ElseIfExpressionToken(null, null, null, Condition) { Errors = Errors } : new ElseIfExpressionToken(FileId, Line, Column, Condition) { Errors = Errors };
         }
 
         public override String ToString()

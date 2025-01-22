@@ -4,19 +4,19 @@ namespace GitHub.DistributedTask.ObjectTemplating
 {
     public class SkipErrorDisposable : IDisposable
     {
-        public SkipErrorDisposable(TemplateContext context, bool skipError = true)
+        public SkipErrorDisposable(TemplateContext context, TemplateValidationErrors skipError = null)
         {
             m_context = context;
-            m_originalSkipError = context.SkipError;
-            context.SkipError = skipError;
+            m_originalSkipError = context.Errors;
+            context.Errors = skipError ?? context.Warnings;
         }
 
         public void Dispose()
         {
-            m_context.SkipError = m_originalSkipError;
+            m_context.Errors = m_originalSkipError;
         }
 
         private TemplateContext m_context;
-        private Boolean m_originalSkipError;
+        private TemplateValidationErrors m_originalSkipError;
     }
 }

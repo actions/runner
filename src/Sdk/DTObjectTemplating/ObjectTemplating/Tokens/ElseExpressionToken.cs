@@ -20,7 +20,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override TemplateToken Clone(Boolean omitSource)
         {
-            return omitSource ? new ElseExpressionToken(null, null, null) : new ElseExpressionToken(FileId, Line, Column);
+            return omitSource ? new ElseExpressionToken(null, null, null) { Errors = Errors } : new ElseExpressionToken(FileId, Line, Column) { Errors = Errors };
         }
 
         public override String ToString()

@@ -895,7 +895,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
             bool skip = false;
             bool metastate = false;
             Func<bool> shouldRun = () => {
-                using var _ = m_context.SkopedErrorLevel(false);
                 if(parentMappingState != null) {
                     if(parentMappingState.IfExpressionResults.TryGetValue(parentMappingState.Index - 1, out skip)) {
                         return skip;
@@ -914,6 +913,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
             } else {
                 skip = true;
                 metastate = false;
+            }
+            if(!skip) {
+                if(expressionState.Value.Errors != null) {
+                    m_context.Errors.Add(expressionState.Value.Errors);
+                }
             }
             if(parentSequenceState == null) {
                 if(expressionState.Value.Type != TokenType.ElseExpression) {
@@ -1629,6 +1633,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 Context.Memory.AddBytes(expression);
                 Context.Memory.IncrementDepth();
                 i = 0;
+                if(expression.Errors != null) {
+                    Context.Errors.Add(expression.Errors);
+                }
             }
 
             public TemplateToken Content { get; set; }
