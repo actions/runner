@@ -1,30 +1,23 @@
 ## What's Changed
-
-* Fix release workflow to use distinct artifact names by @ericsciple in https://github.com/actions/runner/pull/3485
-* Update dotnet sdk to latest version @6.0.425 by @github-actions in https://github.com/actions/runner/pull/3433
-* add ref and type to job completion in run service by @yaananth in https://github.com/actions/runner/pull/3492
-* Remove Broker Migration Message logging by @luketomlinson in https://github.com/actions/runner/pull/3493
-* Bump dotnet SDK to dotnet 8. by @TingluoHuang in https://github.com/actions/runner/pull/3500
-* Remove dotnet8 compatibility test. by @TingluoHuang in https://github.com/actions/runner/pull/3502
-* Remove node16 from the runner. by @TingluoHuang in https://github.com/actions/runner/pull/3503
-* send action name for run service by @yaananth in https://github.com/actions/runner/pull/3520
-* Handle runner not found by @ericsciple in https://github.com/actions/runner/pull/3536
-* Publish job telemetry to run-service. by @TingluoHuang in https://github.com/actions/runner/pull/3545
-* Fetch repo-level runner groups from API in v2 flow by @lucavallin in https://github.com/actions/runner/pull/3546
-* Allow runner to check service connection in background. by @TingluoHuang in https://github.com/actions/runner/pull/3542
-* Expose ENV for cache service v2. by @TingluoHuang in https://github.com/actions/runner/pull/3548
-* Update runner docker image. by @TingluoHuang in https://github.com/actions/runner/pull/3511
-* Bump Azure.Storage.Blobs from 12.19.1 to 12.23.0 in /src by @dependabot in https://github.com/actions/runner/pull/3549
-* fix dotnet-upgrade.yml to print right version by @TingluoHuang in https://github.com/actions/runner/pull/3550
-* Update dotnet sdk to latest version @8.0.404 by @github-actions in https://github.com/actions/runner/pull/3552
-* Configure dependabot to check github-actions updates by @Goooler in https://github.com/actions/runner/pull/3333
-* Bump actions/checkout from 3 to 4 by @dependabot in https://github.com/actions/runner/pull/3556
+* Fix name of generated of artifact builds from GitHub workflow for arm artifacts by @satmandu in https://github.com/actions/runner/pull/3568
+* Ignore error when fail to report worker crash. by @TingluoHuang in https://github.com/actions/runner/pull/3588
+* Fix null ref in 'OnEventWritten()' by @TingluoHuang in https://github.com/actions/runner/pull/3593
+* Send stepNumber for annotation to run-service by @TingluoHuang in https://github.com/actions/runner/pull/3614
+* Enable nuget audit. by @TingluoHuang in https://github.com/actions/runner/pull/3615
+* Update dotnet install script. by @TingluoHuang in https://github.com/actions/runner/pull/3659
+* Print immutable action package details in set up job logs by @heavymachinery in https://github.com/actions/runner/pull/3645
+* Update dotnet sdk to latest version @8.0.405 by @github-actions in https://github.com/actions/runner/pull/3666
+* Upgrade `buildx` from `0.18.0` to `0.19.3` (critical CVE) by @MPV in https://github.com/actions/runner/pull/3647
+* Upgrade `docker` from `27.3.1` to `27.4.1` by @MPV in https://github.com/actions/runner/pull/3648
+* Bump Microsoft.NET.Test.Sdk from 17.8.0 to 17.12.0 in /src by @dependabot in https://github.com/actions/runner/pull/3584
+* Bump docker/setup-buildx-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3564
+* Bump github/codeql-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3555
+* Bump Moq from 4.20.70 to 4.20.72 in /src by @dependabot in https://github.com/actions/runner/pull/3672
 
 ## New Contributors
-* @lucavallin made their first contribution in https://github.com/actions/runner/pull/3546
-* @Goooler made their first contribution in https://github.com/actions/runner/pull/3333
+* @satmandu made their first contribution in https://github.com/actions/runner/pull/3568
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.320.0...v2.321.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.321.0...v2.322.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
