@@ -21,7 +21,7 @@
         <PackageReference Include="System.Buffers" Version="4.5.1" />
         <PackageReference Include="System.Reflection.TypeExtensions" Version="4.7.0" />
         <PackageReference Include="System.Threading.ThreadPool" Version="4.3.0" />
-        <PackageReference Include="Moq" Version="4.20.70" />
+        <PackageReference Include="Moq" Version="4.20.72" />
     </ItemGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
