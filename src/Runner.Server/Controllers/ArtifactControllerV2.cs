@@ -17,6 +17,7 @@ using GitHub.Actions.Pipelines.WebApi;
 using System.Security.Cryptography;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Xml.Linq;
 
 namespace Runner.Server.Controllers
 {
@@ -72,19 +73,32 @@ namespace Runner.Server.Controllers
 
         [HttpPut("UploadArtifact")]
         [AllowAnonymous]
-        public async Task<IActionResult> UploadArtifact(int id, string sig, string comp = null, bool seal = false) {
+        public async Task<IActionResult> UploadArtifact(int id, string sig, string comp = null, bool seal = false, string blockid = null) {
             if(string.IsNullOrEmpty(sig) || !VerifySignature(id, sig)) {
                 return NotFound();
             }
             if(comp == "block" || comp == "appendBlock" || comp == null) {
                 var record = await _context.ArtifactRecords.FindAsync(id);
                 var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
-                using(var targetStream = new FileStream(Path.Combine(_targetFilePath, record.StoreName), FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.Write)) {
+                Directory.CreateDirectory(_targetFilePath);
+                using(var targetStream = new FileStream(Path.Combine(_targetFilePath, string.IsNullOrWhiteSpace(blockid) ? record.StoreName : $"{record.StoreName}-{System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(blockid))}"), FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.Write)) {
                     await Request.Body.CopyToAsync(targetStream);
                 }
                 return Created(HttpContext.Request.GetEncodedUrl(), null);
             }
             if(comp == "blocklist") {
+                XElement blockList = await XElement.LoadAsync(Request.Body, LoadOptions.None, Request.HttpContext.RequestAborted);
+                var record = await _context.ArtifactRecords.FindAsync(id);
+                var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
+                Directory.CreateDirectory(_targetFilePath);
+                using(var targetStream = new FileStream(Path.Combine(_targetFilePath, record.StoreName), FileMode.Create, FileAccess.Write, FileShare.Write))
+                foreach(var block in from item in blockList.Descendants("Latest") select item.Value) {
+                    var filename = $"{record.StoreName}-{System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(block))}";
+                    using(var sourceStream = new FileStream(Path.Combine(_targetFilePath, filename), FileMode.Open, FileAccess.Read, FileShare.Read)) {
+                        await sourceStream.CopyToAsync(targetStream);
+                    }
+                    System.IO.File.Delete(Path.Combine(_targetFilePath, filename));
+                }
                 return Created(HttpContext.Request.GetEncodedUrl(), null);
             }
             return Ok();

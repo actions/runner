@@ -4,19 +4,15 @@ using Microsoft.Extensions.Configuration;
 using Google.Protobuf;
 using System;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Http;
 using System.IO;
-using System.Reflection;
-using Google.Protobuf.Reflection;
 using Microsoft.AspNetCore.Http.Extensions;
 using Runner.Server.Models;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using GitHub.Actions.Pipelines.WebApi;
 using System.Security.Cryptography;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Xml.Linq;
 
 namespace Runner.Server.Controllers
 {
@@ -62,7 +58,7 @@ namespace Runner.Server.Controllers
 
         [HttpPut("UploadCache")]
         [AllowAnonymous]
-        public async Task<IActionResult> UploadCache(int id, string sig, string comp = null, bool seal = false) {
+        public async Task<IActionResult> UploadCache(int id, string sig, string comp = null, bool seal = false, string blockid = null) {
             if(string.IsNullOrEmpty(sig) || !VerifySignature(id, sig)) {
                 return NotFound();
             }
@@ -70,12 +66,24 @@ namespace Runner.Server.Controllers
                 var record = await _context.Caches.FindAsync(id);
                 var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
                 Directory.CreateDirectory(_targetFilePath);
-                using(var targetStream = new FileStream(Path.Combine(_targetFilePath, record.Storage), FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.Write)) {
+                using(var targetStream = new FileStream(Path.Combine(_targetFilePath, string.IsNullOrWhiteSpace(blockid) ? record.Storage : $"{record.Storage}-{System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(blockid))}"), FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.Write)) {
                     await Request.Body.CopyToAsync(targetStream);
                 }
                 return Created(HttpContext.Request.GetEncodedUrl(), null);
             }
             if(comp == "blocklist") {
+                XElement blockList = await XElement.LoadAsync(Request.Body, LoadOptions.None, Request.HttpContext.RequestAborted);
+                var record = await _context.Caches.FindAsync(id);
+                var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
+                Directory.CreateDirectory(_targetFilePath);
+                using(var targetStream = new FileStream(Path.Combine(_targetFilePath, record.Storage), FileMode.Create, FileAccess.Write, FileShare.Write))
+                foreach(var block in from item in blockList.Descendants("Latest") select item.Value) {
+                    var filename = $"{record.Storage}-{System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(block))}";
+                    using(var sourceStream = new FileStream(Path.Combine(_targetFilePath, filename), FileMode.Open, FileAccess.Read, FileShare.Read)) {
+                        await sourceStream.CopyToAsync(targetStream);
+                    }
+                    System.IO.File.Delete(Path.Combine(_targetFilePath, filename));
+                }
                 return Created(HttpContext.Request.GetEncodedUrl(), null);
             }
             return Ok();
