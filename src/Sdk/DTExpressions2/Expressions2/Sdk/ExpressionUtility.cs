@@ -134,7 +134,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             }
         }
 
-        internal static bool IsLegalKeyword(String str)
+        internal static bool IsLegalKeyword(String str, bool isLegacy = false)
         {
             if (String.IsNullOrEmpty(str))
             {
@@ -153,7 +153,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
                         (c >= 'A' && c <= 'Z') ||
                         (c >= '0' && c <= '9') ||
                         c == '_' ||
-                        c == '-')
+                        !isLegacy && c == '-')
                     {
                         // OK
                     }

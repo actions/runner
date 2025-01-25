@@ -1,0 +1,10 @@
+# ExpectedException: TemplateValidationException
+# ExpectedMessage: param-minus
+parameters:
+- name: param-minus
+  type: boolean
+  default: true
+
+steps:
+- ${{ if parameters.param-minus }}:
+  - script: echo ${{ parameters.param-minus }}

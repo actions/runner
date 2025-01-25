@@ -188,7 +188,7 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
             // Test if valid keyword character sequence.
             var length = m_index - startIndex;
             var str = m_expression.Substring(startIndex, length);
-            if (ExpressionUtility.IsLegalKeyword(str))
+            if (ExpressionUtility.IsLegalKeyword(str, (Flags & ExpressionFlags.DTExpressionsV1) == ExpressionFlags.DTExpressionsV1))
             {
                 // Test if follows property dereference operator.
                 if (m_lastToken != null && m_lastToken.Kind == TokenKind.Dereference)
