@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package github.actions.results.api.v1;
+
+import "cache_metadata.proto";
+
+message CreateCacheEntryRequest {
+  github.actions.results.entities.v1.CacheMetadata metadata = 1;
+  string key = 2;
+  string version = 3;
+}
+
+message CreateCacheEntryResponse {
+  bool ok = 1;
+  string signed_upload_url = 2;
+}
+
+message FinalizeCacheEntryUploadRequest {
+  github.actions.results.entities.v1.CacheMetadata metadata = 1;
+  string key = 2;
+  int64 size_bytes = 3;
+  string version = 4;
+}
+
+message FinalizeCacheEntryUploadResponse {
+  bool ok = 1;
+  int64 entry_id = 2;
+}
+
+message GetCacheEntryDownloadURLRequest {
+  github.actions.results.entities.v1.CacheMetadata metadata = 1;
+  string key = 2;
+  repeated string restore_keys = 3;
+  string version = 4;
+}
+
+message GetCacheEntryDownloadURLResponse {
+  bool ok = 1;
+  string signed_download_url = 2;
+  string matched_key = 3;
+}

@@ -35,12 +35,12 @@ namespace Runner.Server.Controllers
         }
 
         private string CreateSignature(int id) {
-            using(var rsa = RSA.Create(Startup.AccessTokenParameter))
+            using var rsa = RSA.Create(Startup.AccessTokenParameter);
             return Base64UrlEncoder.Encode(rsa.SignData(Encoding.UTF8.GetBytes(id.ToString()), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
         }
 
         private bool VerifySignature(int id, string sig) {
-            using(var rsa = RSA.Create(Startup.AccessTokenParameter))
+            using var rsa = RSA.Create(Startup.AccessTokenParameter);
             return rsa.VerifyData(Encoding.UTF8.GetBytes(id.ToString()), Base64UrlEncoder.DecodeBytes(sig), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         }
 
@@ -76,7 +76,7 @@ namespace Runner.Server.Controllers
             if(string.IsNullOrEmpty(sig) || !VerifySignature(id, sig)) {
                 return NotFound();
             }
-            if(comp == "block" || comp == "appendBlock") {
+            if(comp == "block" || comp == "appendBlock" || comp == null) {
                 var record = await _context.ArtifactRecords.FindAsync(id);
                 var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
                 using(var targetStream = new FileStream(Path.Combine(_targetFilePath, record.StoreName), FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.Write)) {
@@ -170,37 +170,6 @@ namespace Runner.Server.Controllers
                 ArtifactId = res?.fileContainer?.Id ?? 0
             };
             return new OkObjectResult(formatter.Format(resp));
-        }
-
-
-        public class ProtobufBinder : IModelBinder
-        {
-            public async Task BindModelAsync(ModelBindingContext bindingContext)
-            {
-                if (!bindingContext.HttpContext.Request.HasJsonContentType())
-                {
-                    throw new BadHttpRequestException(
-                        "Request content type was not a recognized JSON content type.",
-                        StatusCodes.Status415UnsupportedMediaType);
-                }
-
-                using var sr = new StreamReader(bindingContext.HttpContext.Request.Body);
-                var str = await sr.ReadToEndAsync();
-
-                var valueType = bindingContext.ModelType;
-                var parser = new JsonParser(JsonParser.Settings.Default.WithIgnoreUnknownFields(true));
-
-                var descriptor = (MessageDescriptor)bindingContext.ModelType.GetProperty("Descriptor", BindingFlags.Public | BindingFlags.Static).GetValue(null, null);
-                var obj = parser.Parse(str, descriptor);
-
-                bindingContext.Result = ModelBindingResult.Success(obj);
-            }
-        }
-
-        public class ProtobufAttribute : ModelBinderAttribute {
-            public ProtobufAttribute() : base(typeof(ProtobufBinder)) {
-
-            }
         }
     }
 }

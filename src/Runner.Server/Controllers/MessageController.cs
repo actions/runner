@@ -5174,6 +5174,7 @@ namespace Runner.Server.Controllers
                         variables.Add("DistributedTask.AllowRunnerContainerHooks", new VariableValue("true", false));
                         variables.Add("DistributedTask.DeprecateStepOutputCommands", new VariableValue("true", false));
                         variables.Add("DistributedTask.ForceGithubJavascriptActionsToNode16", new VariableValue("true", false)); // https://github.blog/changelog/2023-05-04-github-actions-all-actions-will-run-on-node16-instead-of-node12/
+                        variables.Add("actions_uses_cache_service_v2", new VariableValue("true", false)); // https://github.com/actions/toolkit/discussions/1890
                         // For actions/upload-artifact@v1, actions/download-artifact@v1
                         variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                         variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));

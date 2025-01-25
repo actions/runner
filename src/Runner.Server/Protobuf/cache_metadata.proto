@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package github.actions.results.entities.v1;
+
+message CacheScope {
+  string scope = 1;
+  int64 permission = 2;
+}
+
+message CacheMetadata {
+  int64 repository_id = 1;
+  repeated CacheScope scope = 2;
+}
