@@ -1,0 +1,14 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/release-notes/2025/pipelines/sprint-248-update#new-pipeline-expression-functions
+parameters:
+- name: regions
+  type: string
+  default: '  wus1,   wus2, wus3,wus4'
+
+stages:
+- ${{ each region in split(parameters.regions, ',')}}:
+  - stage: stage_${{trim(region)}}
+    displayName: Deploy to ${{trim(region)}}
+    jobs:
+    - job: deploy
+      steps:
+      - script: ./deploy.sh ${{trim(region)}}

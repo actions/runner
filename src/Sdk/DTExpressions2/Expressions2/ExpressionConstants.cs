@@ -41,6 +41,9 @@ namespace GitHub.DistributedTask.Expressions2
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Upper>("upper", 1, 1);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Xor>("xor", 2, 2);
             AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Split>("split", 2, 2);
+            // https://learn.microsoft.com/en-us/azure/devops/release-notes/2025/pipelines/sprint-248-update#new-pipeline-expression-functions
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Iif>("iif", 3, 3);
+            AddAzureFunction<GitHub.DistributedTask.Expressions2.Sdk.Functions.v1.Trim>("trim", 1, 1);
         }
 
         private static void AddFunction<T>(String name, Int32 minParameters, Int32 maxParameters)

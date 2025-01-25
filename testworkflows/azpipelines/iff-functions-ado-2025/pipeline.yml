@@ -1,0 +1,13 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/release-notes/2025/pipelines/sprint-248-update#new-pipeline-expression-functions
+variables:
+  poolToUse: ${{ iif(eq(variables['Build.Reason'], 'PullRequest'), 'Azure Pipelines', 'ManagedDevOpsPool')}}
+
+stages:
+- stage: build
+  pool: ${{variables.poolToUse}}
+  jobs:
+  - job:
+    steps:   
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
