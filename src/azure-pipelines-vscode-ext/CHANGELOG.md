@@ -1,3 +1,9 @@
+### v0.2.7 (Preview)
+- Show errors of used if / each branches again
+- Support native folder path in settings / prompt
+- Allow to show a folder picker if leaving the path empty
+- Ask to save the changed repositories
+
 ### v0.2.6 (Preview)
 - Includes experimental bug fixes for dynamic each expressions https://github.com/ChristopherHX/runner.server/issues/278 and https://github.com/ChristopherHX/runner.server/issues/514
 

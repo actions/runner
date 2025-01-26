@@ -30,7 +30,7 @@ You can try this out by enabling setting `azure-pipelines-vscode-ext.enable-sema
 
 The `azure-pipelines-vscode-ext.repositories` settings maps the external Repositories to local or remote folders.
 
-Syntax `[<owner>/]<repo>@<ref>=<uri>` per line. `<uri>` can be formed like `file:///<folder>` (raw file paths are not supported (yet?)), `vscode-vfs://github/<owner>/<repository>` and `vscode-vfs://azurerepos/<owner>/<project>/<repository>`
+Syntax `[<owner>/]<repo>@<ref>=<uri>` per line. `<uri>` can be formed like `file:///<folder>`, native folder path (since v0.2.7), `vscode-vfs://github/<owner>/<repository>` and `vscode-vfs://azurerepos/<owner>/<project>/<repository>`
 
 ### Check Syntax Azure Pipeline
 

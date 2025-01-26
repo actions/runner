@@ -25,6 +25,27 @@ function activate(context) {
 		}
 	});
 	var joinPath = (l, r) => l ? l + "/" + r : r;
+	var locateExternalRepoUrl = async (rawbase, filename) => {
+		try {
+			var base = vscode.Uri.parse(rawbase, true);
+			var stat = await vscode.workspace.fs.stat(base);
+			if(stat.type === vscode.FileType.Directory) {
+				return base.with({ path: joinPath(base.path, filename) });
+			}
+		} catch {
+
+		}
+		try {
+			var base = vscode.Uri.file(rawbase);
+			var stat = await vscode.workspace.fs.stat(base);
+			if(stat.type === vscode.FileType.Directory) {
+				return base.with({ path: joinPath(base.path, filename) });
+			}
+		} catch {
+
+		}
+		throw Error(`Cannot locate: ${rawbase}`);
+	};
 	var loadingPromise = null;
 	var runtimePromise = () => loadingPromise ??= vscode.window.withProgress({
 		location: vscode.ProgressLocation.Notification,
@@ -62,26 +83,47 @@ function activate(context) {
 		runtime.setModuleImports("extension.js", {
 			readFile: async (handle, repositoryAndRef, filename) => {
 				try {
-					var uri = "";
+					var uri = null;
 					if(repositoryAndRef) {
 						if(handle.repositories && repositoryAndRef in handle.repositories) {
-							var base = vscode.Uri.parse(handle.repositories[repositoryAndRef]);
-							uri = base.with({ path: joinPath(base.path, filename) });
+							var rawbase = handle.repositories[repositoryAndRef];
+							uri = await locateExternalRepoUrl(rawbase, filename);
 						} else {
-							var result = handle.askForInput ? await vscode.window.showInputBox({
-								ignoreFocusOut: true,
-								placeHolder: "value",
-								prompt: `${repositoryAndRef} (${filename})`,
-								title: "Provide the uri to the required Repository"
-							}) : null;
-							if(result) {
-								handle.repositories ??= {};
-								handle.repositories[repositoryAndRef] = result;
-								var base = vscode.Uri.parse(result);
-								uri = base.with({ path: joinPath(base.path, filename) });
-							} else {
-								logchannel.error(`Cannot access remote repository ${repositoryAndRef} (${filename})`);
-								return null;
+							var result = null;
+							while(true) {
+								try {
+									result = handle.askForInput ? await vscode.window.showInputBox({
+										ignoreFocusOut: true,
+										placeHolder: "value",
+										value: result,
+										prompt: `${repositoryAndRef} (${filename}) (Leave empty to show a folder picker)`,
+										title: "Provide the uri or filepath to the folder of your required Repository"
+									}) : null;
+									if(result === "") {
+										var uris = await vscode.window.showOpenDialog({ canSelectFolders: true, openLabel: "Select Repository"});
+										result = uris && uris[0] ? uris[0].toString() : null;
+									}
+									if(result) {
+										handle.repositories ??= {};
+										handle.repositories[repositoryAndRef] = result;
+										uri = await locateExternalRepoUrl(result, filename);
+										handle.customConfig ??= {};
+										handle.customConfig.repositories ??= {};
+										handle.customConfig.repositories[repositoryAndRef] = result;
+										break;
+									} else {
+										throw new Error(`Cannot access remote repository ${repositoryAndRef} (${filename})`);
+									}
+								} catch(ex) {
+									if(handle.askForInput) {
+										var retry = await vscode.window.showQuickPick(["Retry", "Cancel"], { placeHolder: ex.toString(), ignoreFocusOut: true });
+										if(retry === "Retry") {
+											continue;
+										}
+									}
+									logchannel.error(ex.toString());
+									break;
+								}
 							}
 						}
 					} else {
@@ -402,6 +444,35 @@ function activate(context) {
 		}
 		if(handle.enableSemTokens) {
 			autocompletelist.semTokens = handle.semTokens
+		}
+		// Ask for saving the changed repository setting
+		if(handle.customConfig?.repositories) {
+			await (async () => {
+				var result = await vscode.window.showQuickPick(["No", /* "Save (Workspace Folder)", */ "Save (Workspace)", "Save (Global)"], { placeHolder: "Remember chosen external repositories in extension settings?", ignoreFocusOut: true });
+				var target = null;
+				switch(result) {
+					// Broken?, can we check if it is working
+					case "Save (Workspace Folder)":
+						target = vscode.ConfigurationTarget.WorkspaceFolder;
+						break;
+					case "Save (Workspace)":
+						target = vscode.ConfigurationTarget.Workspace;
+						break;
+					case "Save (Global)":
+						target = vscode.ConfigurationTarget.Global;
+						break;
+					default:
+						break;
+				}
+				if(target !== null) {
+					var config = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
+					for(var key in handle.customConfig.repositories) {
+						config.repositories ??= [];
+						config.repositories.push(`${key}=${handle.customConfig.repositories[key]}`);
+					}
+					await config.update("repositories", config.repositories, target);
+				}
+			})().catch(() => {});
 		}
 		if(state) {
             state.referencedFiles = handle.referencedFiles;
