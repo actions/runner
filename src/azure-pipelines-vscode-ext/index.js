@@ -329,6 +329,9 @@ function activate(context) {
 			filename ??= current.path.substring(li + 1);
 		}
 		var handle = { hasErrors: false, base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, parameters: parameters, error: (async jsonex => {
+			if(autocompletelist?.disableErrors) {
+				return;
+			}
 			var items = [];
 			var pex = JSON.parse(jsonex);
 			for(var ex of pex.Errors) {
@@ -495,7 +498,7 @@ function activate(context) {
 
 		if(result || syntaxOnly) {
 			logchannel.debug(result);
-			if(!handle.hasErrors) {
+			if(!handle.hasErrors && !autocompletelist?.disableErrors) {
 				var items = [];
 				for(var uri of handle.referencedFiles) {
 					items.push([uri, []]);
@@ -636,7 +639,7 @@ function activate(context) {
 						return extractSchema(obj);
 					}
 					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
-						var data = {enableSemTokens: true};
+						var data = {enableSemTokens: true, disableErrors: true};
 						await expandAzurePipeline(false, null, null, null, () => {
 						}, doc.uri.toString(), () => {
 						}, null, null, null, true, true, getSchema(), null, data);
@@ -672,7 +675,7 @@ function activate(context) {
 						return extractSchema(obj);
 					}
 					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
-						var data = {autocompletelist: []};
+						var data = {autocompletelist: [], disableErrors: true};
 						await expandAzurePipeline(false, null, null, null, () => {
 						}, doc.uri.toString(), () => {
 						}, null, null, null, true, true, getSchema(), pos, data);
@@ -715,7 +718,7 @@ function activate(context) {
 						return extractSchema(obj);
 					}
 					if(doc.languageId === "azure-pipelines" || doc.languageId === "yaml" && (obj = checkIsPipelineByContent(doc.getText()))) {
-						var data = {autocompletelist: []};
+						var data = {autocompletelist: [], disableErrors: true};
 						await expandAzurePipeline(false, null, null, null, () => {
 						}, doc.uri.toString(), () => {
 						}, null, null, null, true, true, getSchema(), pos, data);
