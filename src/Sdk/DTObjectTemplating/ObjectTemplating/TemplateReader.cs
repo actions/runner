@@ -241,11 +241,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         TemplateToken nextValue;
                         var anyDefinition = new DefinitionInfo(definition, TemplateConstants.Any);
                         if(nextKeyScalar is EachExpressionToken eachexp) {
-                            var def = new DefinitionInfo(definition);
+                            var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
                             def.AllowedContext = definition.AllowedContext.Append(eachexp.Variable).ToArray();
                             var parentSeq = m_schema.Get<SequenceDefinition>(definition.Parent).FirstOrDefault();
                             using var _ = m_context.SkopedErrorLevel(eachexp.Errors ??= new TemplateValidationErrors());
-                            if(parentSeq != null) {
+                            if(m_context.AutoCompleteMatches != null && parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
                                 oneOf.OneOf.Add(definition.Name);
@@ -257,7 +257,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
                             var parentSeq = m_schema.Get<SequenceDefinition>(definition.Parent).FirstOrDefault();
                             using var _ = m_context.SkopedErrorLevel(conditional.Errors ??= new TemplateValidationErrors());
-                            if(parentSeq != null) {
+                            if(m_context.AutoCompleteMatches != null && parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
                                 oneOf.OneOf.Add(definition.Name);
@@ -419,7 +419,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             def.AllowedContext = valueDefinition.AllowedContext.Append(eachexp.Variable).ToArray();
                             var parentSeq = m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).FirstOrDefault();
                             using var _ = m_context.SkopedErrorLevel(eachexp.Errors ??= new TemplateValidationErrors());
-                            if(parentSeq != null) {
+                            if(m_context.AutoCompleteMatches != null && parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
                                 oneOf.OneOf.Add(mappingDefinition.Name);
@@ -431,7 +431,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(mappingDefinition) : new DefinitionInfo(mappingDefinition, "any");
                             var parentSeq = m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).FirstOrDefault();
                             using var _ = m_context.SkopedErrorLevel(conditional.Errors ??= new TemplateValidationErrors());
-                            if(parentSeq != null) {
+                            if(m_context.AutoCompleteMatches != null && parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
                                 oneOf.OneOf.Add(mappingDefinition.Name);

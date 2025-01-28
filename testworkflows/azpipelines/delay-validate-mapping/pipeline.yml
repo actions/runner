@@ -1,0 +1,14 @@
+parameters:
+- name: y
+  default: val
+stages:
+  - ${{ each x in split('3,4,54,45,34', ',')}}:
+    - stage: stage_${{x}}
+      ${{ if x }}:
+        variables:
+          ${{ if true }}:
+            IsNull: ${{ replace(coalesce(parameters.y, parameters.y), '''', '''''') }}
+        jobs:
+        - job: test
+          steps:
+          - bash: echo ok
