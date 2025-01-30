@@ -71,13 +71,15 @@ namespace GitHub.Actions.RunService.WebApi
             Uri requestUri,
             string messageId,
             string runnerOS,
+            string billingOwnerId,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
             var payload = new AcquireJobRequest
             {
                 JobMessageId = messageId,
-                RunnerOS = runnerOS
+                RunnerOS = runnerOS,
+                BillingOwnerId = billingOwnerId,
             };
 
             requestUri = new Uri(requestUri, "acquirejob");
@@ -128,6 +130,7 @@ namespace GitHub.Actions.RunService.WebApi
             IList<Annotation> jobAnnotations,
             string environmentUrl,
             IList<Telemetry> telemetry,
+            string billingOwnerId,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
@@ -141,6 +144,7 @@ namespace GitHub.Actions.RunService.WebApi
                 Annotations = jobAnnotations,
                 EnvironmentUrl = environmentUrl,
                 Telemetry = telemetry,
+                BillingOwnerId = billingOwnerId,
             };
 
             requestUri = new Uri(requestUri, "completejob");

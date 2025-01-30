@@ -584,7 +584,7 @@ namespace GitHub.Runner.Listener
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
                                         try
                                         {
-                                            jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                            jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageRef.BillingOwnerId, messageQueueLoopTokenSource.Token);
                                             _acquireJobThrottler.Reset();
                                         }
                                         catch (Exception ex) when (

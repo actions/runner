@@ -7,9 +7,14 @@ namespace GitHub.Runner.Listener
     {
         [DataMember(Name = "id")]
         public string Id { get; set; }
+        
         [DataMember(Name = "runner_request_id")]
         public string RunnerRequestId { get; set; }
+        
         [DataMember(Name = "run_service_url")]
         public string RunServiceUrl { get; set; }
+        
+        [DataMember(Name = "billing_owner_id")]
+        public string BillingOwnerId { get; set; }
     }
 }
