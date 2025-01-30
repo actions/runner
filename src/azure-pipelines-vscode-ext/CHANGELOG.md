@@ -1,6 +1,7 @@
 ### v0.2.8 (Preview)
 - Suppress mapping schema errors while parsing if / each expressions
   - Show errors after evaluating the expressions
+- use the folder button to show the folder picker instead of using the empty string input
 
 ### v0.2.7 (Preview)
 - Show errors of used if / each branches again
