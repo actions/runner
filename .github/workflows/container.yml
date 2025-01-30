@@ -10,7 +10,7 @@ jobs:
       contents: read
       packages: write
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: |
         FROM ${{ runner.arch == 'x64' && '--platform=linux/amd64' || runner.arch == 'arm64' && '--platform=linux/arm64' }} mcr.microsoft.com/dotnet/sdk:8.0
         COPY . ./
@@ -42,7 +42,7 @@ jobs:
         OWNER: ${{github.repository_owner}}
     -
       name: Build and push
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       with:
         context: .
         platforms: linux/amd64,linux/arm64

@@ -22,8 +22,8 @@ jobs:
       BASE_URL: https://${{ github.repository_owner }}.github.io${{ github.repository_owner != github.event.repository.name && format('/{0}', github.event.repository.name) || '' }}
       REPO_NAME: ${{ github.repository_owner != github.event.repository.name && format('{0}-{1}', github.repository_owner, github.event.repository.name) || github.repository_owner }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
       - name: Setup YamlDotnetFork
@@ -32,7 +32,7 @@ jobs:
           echo "YAML_DOTNET_FORK_PATH=$PWD/YamlDotNet/YamlDotNet/YamlDotNet.csproj" >> $GITHUB_ENV
       - name: Build ExpandAzurePipelines
         run: dotnet publish src/ExpandAzurePipelines -c Release --output out
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Build azure-pipelines-vscode-ext
@@ -88,13 +88,13 @@ jobs:
           path: webapp/runner-server-web-vscode/runner-server-web-vscode-pre-release.vsix
       - name: Setup Pages
         if: github.event_name == 'push'
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v5
       - name: Upload artifact
         if: github.event_name == 'push'
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: 'webapp'
       - name: Deploy to GitHub Pages
         if: github.event_name == 'push'
         id: deployment
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v4

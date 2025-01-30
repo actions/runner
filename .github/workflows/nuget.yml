@@ -15,12 +15,12 @@ jobs:
     outputs:
       version: ${{ steps.build.outputs.version }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: npm install -g semver
-    - uses: actions/setup-dotnet@v3
+    - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-    - uses: actions/setup-dotnet@v3
+    - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '6.0.x'
     - name: GenerateConstant
@@ -89,7 +89,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - if: matrix.dotnet-version
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{matrix.dotnet-version}}
     - run: mkdir src/Runner.Client/nupkg

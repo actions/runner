@@ -38,8 +38,8 @@ jobs:
 
     runs-on: ${{ contains(matrix.runtime, 'osx') && 'macos-latest' || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
       - run: dotnet msbuild src/dir.proj -t:GenerateConstant -p:RunnerVersion=${{ inputs.version || '3.0.0' }} -p:PackageRuntime=${{ !matrix.fxdependent && matrix.runtime || 'Any' }}
@@ -54,7 +54,7 @@ jobs:
         run: |
           zip -r ../runner.server-${{matrix.runtime}}${{ matrix.fxdependent && '-fxdependent' || '' }}.zip ./*
         working-directory: output
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: runner.server-${{matrix.runtime}}${{ matrix.fxdependent && '-fxdependent' || '' }}
           path: 'runner.server-${{matrix.runtime}}*'
