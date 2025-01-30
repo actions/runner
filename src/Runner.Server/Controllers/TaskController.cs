@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Swashbuckle.AspNetCore.Annotations;
@@ -66,6 +67,12 @@ namespace Runner.Server.Controllers
                 handler.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
                 handler.GetZip(runid, false, false, archivePath.Substring(prefix.Length), true).GetAwaiter().GetResult();
                 return new EmptyResult();
+            }
+            prefix = "embedded://";
+            if(archivePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
+                var embeddedFileProvider = new ManifestEmbeddedFileProvider(Assembly.GetAssembly(type: typeof(Program))!, "wwwroot");
+                var str = embeddedFileProvider.GetFileInfo(archivePath.Substring(prefix.Length)).CreateReadStream();
+                return new FileStreamResult(str, "application/zip") { EnableRangeProcessing = true };
             }
             return new FileStreamResult(System.IO.File.OpenRead(tasksByNameAndVersion[$"{taskid}@{version}"].ArchivePath), "application/zip") { EnableRangeProcessing = true };
         }

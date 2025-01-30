@@ -51,6 +51,7 @@ using Microsoft.OpenApi.Writers;
 using Sdk.Actions;
 using Sdk.Pipelines;
 using ExecutionContext = Sdk.Pipelines.ExecutionContext;
+using Microsoft.Extensions.FileProviders;
 
 namespace Runner.Server.Controllers
 {
@@ -2814,7 +2815,13 @@ namespace Runner.Server.Controllers
                 var tasksByNameAndVersion = new Dictionary<string, TaskMetaData>(getOrCreateTaskCache(null), StringComparer.OrdinalIgnoreCase);
                 state.TasksByNameAndVersion = tasksByNameAndVersion;
                 try {
-                    TaskMetaData.Load(tasksByNameAndVersion, Path.Join(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "wwwroot", "localcheckoutazure.zip"));
+                    if(!string.IsNullOrWhiteSpace(Assembly.GetEntryAssembly().Location)) {
+                        TaskMetaData.Load(tasksByNameAndVersion, Path.Join(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "wwwroot", "localcheckoutazure.zip"));
+                    } else {
+                        var embeddedFileProvider = new ManifestEmbeddedFileProvider(Assembly.GetAssembly(type: typeof(Program))!, "wwwroot");
+                        using var str = embeddedFileProvider.GetFileInfo("localcheckoutazure.zip").CreateReadStream();
+                        TaskMetaData.Load(tasksByNameAndVersion, "embedded://localcheckoutazure.zip", str);
+                    }
                 } catch(Exception ex) {
                     workflowTraceWriter.Error($"Failed to read the localcheckoutazure inbox task: {ex}");
                 }

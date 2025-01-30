@@ -45,7 +45,17 @@ public class TaskMetaData {
     }
 
     public static TaskMetaData Load(Dictionary<string, TaskMetaData> tasksByNameAndVersion, string filePath) {
-        var task = System.IO.Compression.ZipFile.OpenRead(filePath);
+        using (var task = System.IO.Compression.ZipFile.OpenRead(filePath))
+            return Load(tasksByNameAndVersion, filePath, task);
+    }
+
+    public static TaskMetaData Load(Dictionary<string, TaskMetaData> tasksByNameAndVersion, string filePath, Stream zipStream) {
+        using (var task = new System.IO.Compression.ZipArchive(zipStream))
+            return Load(tasksByNameAndVersion, filePath, task);
+    }
+
+    public static TaskMetaData Load(Dictionary<string, TaskMetaData> tasksByNameAndVersion, string filePath, System.IO.Compression.ZipArchive task)
+    {
         using(var stream = task.GetEntry("task.json")?.Open())
         using(var textreader = new StreamReader(stream)) {
             var metaData = JsonConvert.DeserializeObject<TaskMetaData>(textreader.ReadToEnd());
