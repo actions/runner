@@ -1,0 +1,28 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/release-notes/2025/pipelines/sprint-248-update#new-pipeline-expression-functions
+parameters:
+  - name: test
+    type: object
+    default:
+      pool: ManagedDevOpsPool
+  - name: test2
+    type: object
+    default:
+      pool: Azure Devops
+variables:
+  poolToUse: ${{ iif(eq(variables['Build.Reason'], 'PullRequest'), parameters.test2, parameters.test).pool}}
+  poolToUse2: ${{ iif(ne(variables['Build.Reason'], 'PullRequest'), parameters.test2, parameters.test).pool}}
+
+stages:
+- stage: build
+  pool: ${{variables.poolToUse}}
+  jobs:
+  - job:
+    steps:   
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+    - ${{ if ne(variables.poolToUse2, 'Azure Devops') }}:
+      - assert: failure
+    
+    - ${{ if ne(variables.poolToUse, 'ManagedDevOpsPool') }}:
+      - assert: failure
