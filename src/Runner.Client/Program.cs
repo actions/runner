@@ -2002,6 +2002,12 @@ namespace Runner.Client
                                             }
                                         }
                                     }
+                                    if(parameters.Event != "azpipelines") {
+                                        var githubToken = await GhCliAuth.GetToken(null, new TraceWriter(parameters), CancellationToken.None);
+                                        if(githubToken != null) {
+                                            wsecrets.Add($"github_token={githubToken}");
+                                        }
+                                    }
                                     if(parameters.Secrets?.Length > 0) {
                                         for(int i = 0; i < parameters.Secrets.Length; i++ ) {
                                             var e = parameters.Secrets[i];

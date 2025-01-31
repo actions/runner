@@ -389,7 +389,7 @@ namespace Runner.Server.Controllers
                     if (separatorIndex > 0)
                     {
                         string envKey = env.Substring(0, separatorIndex);
-                        string envValue = null;
+                        string envValue = "";
                         if (env.Length > separatorIndex + 1)
                         {
                             envValue = env.Substring(separatorIndex + 1);
