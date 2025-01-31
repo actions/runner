@@ -1952,6 +1952,7 @@
         },
         "variables-0": {
             "mapping": {
+                "properties": {},
                 "loose-key-type": "string",
                 "loose-value-type": "any"
             },
@@ -3610,6 +3611,14 @@
                         "type": "azp-string",
                         "description": "Path of the repository to check out"
                     },
+                    "sparseCheckoutDirectories": {
+                        "type": "azp-string",
+                        "description": "Directories for sparse checkout in cone mode and prioritized over sparseCheckoutPatterns if both properties are provided"
+                    },
+                    "sparseCheckoutPatterns": {
+                        "type": "azp-string",
+                        "description": "Patterns for sparse checkout in non-cone mode that are ignored if sparseCheckoutDirectories is provided"
+                    },
                     "workspaceRepo": {
                         "type": "step-5-workspaceRepo",
                         "description": "Make the repository root directory the default working directory?"
@@ -4281,35 +4290,35 @@
         "task-task-2": {
             "description": "Run a PowerShell script within an Azure environment",
             "string": {
-                "constant": "AzurePowerShell@4",
+                "constant": "AzurePowerShell@5",
                 "ignore-case": true
             }
         },
         "task-task-3": {
             "description": "Run a PowerShell script within an Azure environment",
             "string": {
-                "constant": "AzurePowerShell@5",
+                "constant": "AzurePowerShell@2",
                 "ignore-case": true
             }
         },
         "task-task-4": {
             "description": "Run a PowerShell script within an Azure environment",
             "string": {
-                "constant": "AzurePowerShell@2",
+                "constant": "AzurePowerShell@3",
                 "ignore-case": true
             }
         },
         "task-task-5": {
             "description": "Run a PowerShell script within an Azure environment",
             "string": {
-                "constant": "AzurePowerShell@3",
+                "constant": "AzurePowerShell@1",
                 "ignore-case": true
             }
         },
         "task-task-6": {
             "description": "Run a PowerShell script within an Azure environment",
             "string": {
-                "constant": "AzurePowerShell@1",
+                "constant": "AzurePowerShell@4",
                 "ignore-case": true
             }
         },
@@ -4323,35 +4332,35 @@
         "task-task-8": {
             "description": "Authentication task for the pip client used for installing Python distributions",
             "string": {
-                "constant": "PipAuthenticate@0",
+                "constant": "PipAuthenticate@1",
                 "ignore-case": true
             }
         },
         "task-task-9": {
             "description": "Authentication task for the pip client used for installing Python distributions",
             "string": {
-                "constant": "PipAuthenticate@1",
+                "constant": "PipAuthenticate@0",
                 "ignore-case": true
             }
         },
         "task-task-10": {
             "description": "Build, test, and deploy with Apache Maven",
             "string": {
-                "constant": "Maven@4",
+                "constant": "Maven@2",
                 "ignore-case": true
             }
         },
         "task-task-11": {
             "description": "Build, test, and deploy with Apache Maven",
             "string": {
-                "constant": "Maven@2",
+                "constant": "Maven@3",
                 "ignore-case": true
             }
         },
         "task-task-12": {
             "description": "Build, test, and deploy with Apache Maven",
             "string": {
-                "constant": "Maven@3",
+                "constant": "Maven@4",
                 "ignore-case": true
             }
         },
@@ -4363,16 +4372,16 @@
             }
         },
         "task-task-14": {
-            "description": "Build, test and publish using dotnet core command-line.",
+            "description": "Build, test, package, or publish a dotnet application, or run a custom dotnet command",
             "string": {
-                "constant": "DotNetCoreCLI@0",
+                "constant": "DotNetCoreCLI@2",
                 "ignore-case": true
             }
         },
         "task-task-15": {
-            "description": "Build, test, package, or publish a dotnet application, or run a custom dotnet command",
+            "description": "Build, test and publish using dotnet core command-line.",
             "string": {
-                "constant": "DotNetCoreCLI@2",
+                "constant": "DotNetCoreCLI@0",
                 "ignore-case": true
             }
         },
@@ -4393,7 +4402,7 @@
         "task-task-18": {
             "description": "Deploy to Azure App Service a web, mobile, or API app using Docker, Java, .NET, .NET Core, Node.js, PHP, Python, or Ruby",
             "string": {
-                "constant": "AzureRmWebAppDeployment@4",
+                "constant": "AzureRmWebAppDeployment@3",
                 "ignore-case": true
             }
         },
@@ -4405,16 +4414,16 @@
             }
         },
         "task-task-20": {
-            "description": "Deploy the web project to the AzureRM Web App using Web Deploy",
+            "description": "Deploy to Azure App Service a web, mobile, or API app using Docker, Java, .NET, .NET Core, Node.js, PHP, Python, or Ruby",
             "string": {
-                "constant": "AzureRMWebAppDeployment@1",
+                "constant": "AzureRmWebAppDeployment@4",
                 "ignore-case": true
             }
         },
         "task-task-21": {
-            "description": "Deploy to Azure App Service a web, mobile, or API app using Docker, Java, .NET, .NET Core, Node.js, PHP, Python, or Ruby",
+            "description": "Deploy the web project to the AzureRM Web App using Web Deploy",
             "string": {
-                "constant": "AzureRmWebAppDeployment@3",
+                "constant": "AzureRMWebAppDeployment@1",
                 "ignore-case": true
             }
         },
@@ -4447,7 +4456,7 @@
             }
         },
         "task-task-26": {
-            "description": "[DEPRECATION WARNING! Users are recommended to switch to version 2*.] Publish Cobertura or JaCoCo code coverage results from a build",
+            "description": "Publish Cobertura or JaCoCo code coverage results from a build",
             "string": {
                 "constant": "PublishCodeCoverageResults@1",
                 "ignore-case": true
@@ -4547,21 +4556,21 @@
         "task-task-40": {
             "description": "Build, tag, push, or run Docker images, or run a Docker command",
             "string": {
-                "constant": "Docker@1",
-                "ignore-case": true
-            }
-        },
-        "task-task-41": {
-            "description": "Build, tag, push, or run Docker images, or run a Docker command",
-            "string": {
                 "constant": "Docker@0",
                 "ignore-case": true
             }
         },
-        "task-task-42": {
+        "task-task-41": {
             "description": "Build or push Docker images, login or logout, start or stop containers, or run a Docker command",
             "string": {
                 "constant": "Docker@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-42": {
+            "description": "Build, tag, push, or run Docker images, or run a Docker command",
+            "string": {
+                "constant": "Docker@1",
                 "ignore-case": true
             }
         },
@@ -4582,28 +4591,28 @@
         "task-task-45": {
             "description": "Upload files using FTP",
             "string": {
-                "constant": "FtpUpload@1",
+                "constant": "FtpUpload@2",
                 "ignore-case": true
             }
         },
         "task-task-46": {
             "description": "Upload files using FTP",
             "string": {
-                "constant": "FtpUpload@2",
+                "constant": "FtpUpload@1",
                 "ignore-case": true
             }
         },
         "task-task-47": {
             "description": "Copy files to remote Windows machines",
             "string": {
-                "constant": "WindowsMachineFileCopy@2",
+                "constant": "WindowsMachineFileCopy@1",
                 "ignore-case": true
             }
         },
         "task-task-48": {
             "description": "Copy files to remote Windows machines",
             "string": {
-                "constant": "WindowsMachineFileCopy@1",
+                "constant": "WindowsMachineFileCopy@2",
                 "ignore-case": true
             }
         },
@@ -4699,443 +4708,443 @@
             }
         },
         "task-task-62": {
+            "description": "Download key-values to task variables from Azure App Configuration",
+            "string": {
+                "constant": "AzureAppConfigurationExport@10",
+                "ignore-case": true
+            }
+        },
+        "task-task-63": {
             "description": "Use this task under deploy phase provider to create a resource dynamically",
             "string": {
                 "constant": "ReviewApp@0",
                 "ignore-case": true
             }
         },
-        "task-task-63": {
+        "task-task-64": {
+            "description": "Acquire a specific version of Java from a user-supplied Azure blob or the tool cache and sets JAVA_HOME",
+            "string": {
+                "constant": "JavaToolInstaller@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-65": {
             "description": "Acquire a specific version of Java from a user-supplied Azure blob or the tool cache and sets JAVA_HOME",
             "string": {
                 "constant": "JavaToolInstaller@0",
                 "ignore-case": true
             }
         },
-        "task-task-64": {
+        "task-task-66": {
             "description": "Deploy to Chef environments by editing environment attributes",
             "string": {
                 "constant": "Chef@1",
                 "ignore-case": true
             }
         },
-        "task-task-65": {
-            "description": "Update a function app with .NET, Python, JavaScript, PowerShell, Java based web applications",
-            "string": {
-                "constant": "AzureFunctionApp@2",
-                "ignore-case": true
-            }
-        },
-        "task-task-66": {
+        "task-task-67": {
             "description": "Update a function app with .NET, Python, JavaScript, PowerShell, Java based web applications",
             "string": {
                 "constant": "AzureFunctionApp@1",
                 "ignore-case": true
             }
         },
-        "task-task-67": {
+        "task-task-68": {
+            "description": "Update a function app with .NET, Python, JavaScript, PowerShell, Java based web applications",
+            "string": {
+                "constant": "AzureFunctionApp@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-69": {
             "description": "Don't use this task if you're also using the npm task. Provides npm credentials to an .npmrc file in your repository for the scope of the build. This enables npm task runners like gulp and Grunt to authenticate with private registries.",
             "string": {
                 "constant": "npmAuthenticate@0",
                 "ignore-case": true
             }
         },
-        "task-task-68": {
+        "task-task-70": {
             "description": "Build with MSBuild",
             "string": {
                 "constant": "MSBuild@1",
                 "ignore-case": true
             }
         },
-        "task-task-69": {
+        "task-task-71": {
             "description": "Build a machine image using Packer, which may be used for Azure Virtual machine scale set deployment",
             "string": {
                 "constant": "PackerBuild@0",
                 "ignore-case": true
             }
         },
-        "task-task-70": {
+        "task-task-72": {
             "description": "Build a machine image using Packer, which may be used for Azure Virtual machine scale set deployment",
             "string": {
                 "constant": "PackerBuild@1",
                 "ignore-case": true
             }
         },
-        "task-task-71": {
+        "task-task-73": {
             "description": "Deprecated: use the “NuGet” task instead. It works with the new Tool Installer framework so you can easily use new versions of NuGet without waiting for a task update, provides better support for authenticated feeds outside this organization/collection, and uses NuGet 4 by default.",
             "string": {
                 "constant": "NuGetPackager@0",
                 "ignore-case": true
             }
         },
-        "task-task-72": {
+        "task-task-74": {
+            "description": "Create a snapshot in an Azure App Configuration instance",
+            "string": {
+                "constant": "AzureAppConfigurationSnapshot@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-75": {
             "description": "Install a specified version of Duffle for installing and managing CNAB bundles",
             "string": {
                 "constant": "DuffleInstaller@0",
                 "ignore-case": true
             }
         },
-        "task-task-73": {
+        "task-task-76": {
             "description": "Automatically updates the versions of a packaged Service Fabric application.",
             "string": {
                 "constant": "ServiceFabricUpdateAppVersions@1",
                 "ignore-case": true
             }
         },
-        "task-task-74": {
+        "task-task-77": {
             "description": "Automatically update portions of application and service manifests in a packaged Azure Service Fabric application",
             "string": {
                 "constant": "ServiceFabricUpdateManifests@2",
                 "ignore-case": true
             }
         },
-        "task-task-75": {
+        "task-task-78": {
             "description": "Observe the configured Azure Monitor rules for active alerts",
             "string": {
                 "constant": "AzureMonitor@1",
                 "ignore-case": true
             }
         },
-        "task-task-76": {
+        "task-task-79": {
             "description": "Observe the configured classic Azure Monitor rules for active alerts",
             "string": {
                 "constant": "AzureMonitor@0",
                 "ignore-case": true
             }
         },
-        "task-task-77": {
+        "task-task-80": {
             "description": "Azure Pipepine Task for setting up Notation CLI, sign and verify with Notation",
             "string": {
                 "constant": "Notation@0",
                 "ignore-case": true
             }
         },
-        "task-task-78": {
+        "task-task-81": {
             "description": "Connect or disconnect an Azure virtual machine's network interface to a Load Balancer's back end address pool",
             "string": {
                 "constant": "AzureNLBManagement@1",
                 "ignore-case": true
             }
         },
-        "task-task-79": {
+        "task-task-82": {
             "description": "Run an Apache JMeter load test in the cloud",
             "string": {
                 "constant": "ApacheJMeterLoadTest@1",
                 "ignore-case": true
             }
         },
-        "task-task-80": {
+        "task-task-83": {
             "description": "Build, push or run multi-container Docker applications. Task can be used with Docker or Azure Container registry.",
             "string": {
                 "constant": "DockerCompose@0",
                 "ignore-case": true
             }
         },
-        "task-task-81": {
+        "task-task-84": {
             "description": "Build, push or run multi-container Docker applications. Task can be used with Docker or Azure Container registry.",
             "string": {
                 "constant": "DockerCompose@1",
                 "ignore-case": true
             }
         },
-        "task-task-82": {
+        "task-task-85": {
             "description": "Configure alerts on available metrics for an Azure resource (Deprecated)",
             "string": {
                 "constant": "AzureMonitorAlerts@0",
                 "ignore-case": true
             }
         },
-        "task-task-83": {
+        "task-task-86": {
             "description": "[Deprecated] Test mobile apps with Xamarin Test Cloud using Xamarin.UITest. Instead, use the 'App Center test' task.",
             "string": {
                 "constant": "XamarinTestCloud@1",
                 "ignore-case": true
             }
         },
-        "task-task-84": {
+        "task-task-87": {
             "description": "Deploy an Azure Service Fabric application to a cluster",
             "string": {
                 "constant": "ServiceFabricDeploy@1",
                 "ignore-case": true
             }
         },
-        "task-task-85": {
+        "task-task-88": {
             "description": "Build an Xcode workspace on Mac OS",
             "string": {
                 "constant": "Xcode@2",
                 "ignore-case": true
             }
         },
-        "task-task-86": {
-            "description": "Build an Xcode workspace on Mac OS",
-            "string": {
-                "constant": "Xcode@1",
-                "ignore-case": true
-            }
-        },
-        "task-task-87": {
+        "task-task-89": {
             "description": "Build, test, or archive an Xcode workspace on macOS. Optionally package an app.",
             "string": {
                 "constant": "Xcode@5",
                 "ignore-case": true
             }
         },
-        "task-task-88": {
+        "task-task-90": {
+            "description": "Build an Xcode workspace on Mac OS",
+            "string": {
+                "constant": "Xcode@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-91": {
             "description": "Build an Xcode workspace on macOS",
             "string": {
                 "constant": "Xcode@3",
                 "ignore-case": true
             }
         },
-        "task-task-89": {
+        "task-task-92": {
             "description": "Build, test, or archive an Xcode workspace on macOS. Optionally package an app.",
             "string": {
                 "constant": "Xcode@4",
                 "ignore-case": true
             }
         },
-        "task-task-90": {
+        "task-task-93": {
             "description": "Deprecated: use the “NuGet” task instead. It works with the new Tool Installer framework so you can easily use new versions of NuGet without waiting for a task update, provides better support for authenticated feeds outside this organization/collection, and uses NuGet 4 by default.",
             "string": {
                 "constant": "NuGetPublisher@0",
                 "ignore-case": true
             }
         },
-        "task-task-91": {
+        "task-task-94": {
             "description": "Execute a work item query and check the number of items returned",
             "string": {
                 "constant": "queryWorkItems@0",
                 "ignore-case": true
             }
         },
-        "task-task-92": {
+        "task-task-95": {
             "description": "Deploy containers to Azure App Service",
             "string": {
                 "constant": "AzureWebAppContainer@1",
                 "ignore-case": true
             }
         },
-        "task-task-93": {
+        "task-task-96": {
             "description": "Deploy a SQL Server database using DACPAC or SQL scripts",
             "string": {
                 "constant": "SqlDacpacDeploymentOnMachineGroup@0",
                 "ignore-case": true
             }
         },
-        "task-task-94": {
+        "task-task-97": {
             "description": "Cache files between runs",
             "string": {
                 "constant": "CacheBeta@1",
                 "ignore-case": true
             }
         },
-        "task-task-95": {
-            "description": "Cache files between runs",
-            "string": {
-                "constant": "Cache@2",
-                "ignore-case": true
-            }
-        },
-        "task-task-96": {
+        "task-task-98": {
             "description": "Cache files between runs",
             "string": {
                 "constant": "CacheBeta@0",
                 "ignore-case": true
             }
         },
-        "task-task-97": {
+        "task-task-99": {
+            "description": "Cache files between runs",
+            "string": {
+                "constant": "Cache@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-100": {
             "description": "Build with the CMake cross-platform build system",
             "string": {
                 "constant": "CMake@1",
                 "ignore-case": true
             }
         },
-        "task-task-98": {
+        "task-task-101": {
             "description": "Test mobile app packages with Visual Studio Mobile Center.",
             "string": {
                 "constant": "VSMobileCenterTest@0",
                 "ignore-case": true
             }
         },
-        "task-task-99": {
+        "task-task-102": {
             "description": "Test app packages with Visual Studio App Center",
             "string": {
                 "constant": "AppCenterTest@1",
                 "ignore-case": true
             }
         },
-        "task-task-100": {
+        "task-task-103": {
             "description": "Download a secure file to the agent machine",
             "string": {
                 "constant": "DownloadSecureFile@1",
                 "ignore-case": true
             }
         },
-        "task-task-101": {
+        "task-task-104": {
             "description": "An Azure DevOps Task to build and deploy Azure Container Apps.",
             "string": {
                 "constant": "AzureContainerApps@0",
                 "ignore-case": true
             }
         },
-        "task-task-102": {
+        "task-task-105": {
             "description": "An Azure DevOps Task to build and deploy Azure Container Apps.",
             "string": {
                 "constant": "AzureContainerApps@1",
                 "ignore-case": true
             }
         },
-        "task-task-103": {
+        "task-task-106": {
             "description": "Use the specified version of Ruby from the tool cache, optionally adding it to the PATH",
             "string": {
                 "constant": "UseRubyVersion@0",
                 "ignore-case": true
             }
         },
-        "task-task-104": {
+        "task-task-107": {
             "description": "Run the Grunt JavaScript task runner",
             "string": {
                 "constant": "Grunt@0",
                 "ignore-case": true
             }
         },
-        "task-task-105": {
+        "task-task-108": {
             "description": "Deploy an Azure SQL Database using DACPAC or run scripts using SQLCMD",
             "string": {
                 "constant": "SqlAzureDacpacDeployment@1",
                 "ignore-case": true
             }
         },
-        "task-task-106": {
+        "task-task-109": {
             "description": "Uses container-structure-test (https://github.com/GoogleContainerTools/container-structure-test) to validate the structure of an image based on four categories of tests - command tests, file existence tests, file content tests and metadata tests",
             "string": {
                 "constant": "ContainerStructureTest@0",
                 "ignore-case": true
             }
         },
-        "task-task-107": {
+        "task-task-110": {
             "description": "Deploy using MSDeploy, then create/update websites and app pools",
             "string": {
                 "constant": "IISWebAppDeployment@1",
                 "ignore-case": true
             }
         },
-        "task-task-108": {
+        "task-task-111": {
             "description": "Run a load test in the cloud with Azure Pipelines",
             "string": {
                 "constant": "CloudLoadTest@1",
                 "ignore-case": true
             }
         },
-        "task-task-109": {
+        "task-task-112": {
             "description": "Install Kubectl on agent machine",
             "string": {
                 "constant": "KubectlInstaller@0",
                 "ignore-case": true
             }
         },
-        "task-task-110": {
+        "task-task-113": {
             "description": "Run a command line script using Bash on Linux and macOS and cmd.exe on Windows",
             "string": {
                 "constant": "CmdLine@2",
                 "ignore-case": true
             }
         },
-        "task-task-111": {
+        "task-task-114": {
             "description": "Run a command line with arguments",
             "string": {
                 "constant": "CmdLine@1",
                 "ignore-case": true
             }
         },
-        "task-task-112": {
+        "task-task-115": {
             "description": "Deprecated: use the “NuGet” task instead. It works with the new Tool Installer framework so you can easily use new versions of NuGet without waiting for a task update, provides better support for authenticated feeds outside this organization/collection, and uses NuGet 4 by default.",
             "string": {
                 "constant": "NuGet@0",
                 "ignore-case": true
             }
         },
-        "task-task-113": {
+        "task-task-116": {
             "description": "Container Build Task",
             "string": {
                 "constant": "ContainerBuild@0",
                 "ignore-case": true
             }
         },
-        "task-task-114": {
-            "description": "Restore, pack, or push NuGet packages, or run a NuGet command. Supports NuGet.org and authenticated feeds like Azure Artifacts and MyGet. Uses NuGet.exe and works with .NET Framework apps. For .NET Core and .NET Standard apps, use the .NET Core task.",
-            "string": {
-                "constant": "NuGetCommand@2",
-                "ignore-case": true
-            }
-        },
-        "task-task-115": {
+        "task-task-117": {
             "description": "Installs or restores missing NuGet packages. Use NuGetAuthenticate@0 task for latest capabilities.",
             "string": {
                 "constant": "NuGetInstaller@0",
                 "ignore-case": true
             }
         },
-        "task-task-116": {
+        "task-task-118": {
             "description": "Restores NuGet packages in preparation for a Visual Studio Build step.",
             "string": {
                 "constant": "NuGetRestore@1",
                 "ignore-case": true
             }
         },
-        "task-task-117": {
+        "task-task-119": {
+            "description": "Restore, pack, or push NuGet packages, or run a NuGet command. Supports NuGet.org and authenticated feeds like Azure Artifacts and MyGet. Uses NuGet.exe and works with .NET Framework apps. For .NET Core and .NET Standard apps, use the .NET Core task.",
+            "string": {
+                "constant": "NuGetCommand@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-120": {
             "description": "Delay further execution of a workflow by a fixed time",
             "string": {
                 "constant": "Delay@1",
                 "ignore-case": true
             }
         },
-        "task-task-118": {
-            "description": "Build an iOS app with Xamarin on macOS",
-            "string": {
-                "constant": "XamariniOS@1",
-                "ignore-case": true
-            }
-        },
-        "task-task-119": {
+        "task-task-121": {
             "description": "Build an iOS app with Xamarin on macOS",
             "string": {
                 "constant": "XamariniOS@2",
                 "ignore-case": true
             }
         },
-        "task-task-120": {
-            "description": "Publish test results to Azure Pipelines",
+        "task-task-122": {
+            "description": "Build an iOS app with Xamarin on macOS",
             "string": {
-                "constant": "PublishTestResults@1",
+                "constant": "XamariniOS@1",
                 "ignore-case": true
             }
         },
-        "task-task-121": {
+        "task-task-123": {
             "description": "Publish test results to Azure Pipelines",
             "string": {
                 "constant": "PublishTestResults@2",
                 "ignore-case": true
             }
         },
-        "task-task-122": {
-            "description": "Copy files to Azure Blob Storage or virtual machines",
-            "string": {
-                "constant": "AzureFileCopy@4",
-                "ignore-case": true
-            }
-        },
-        "task-task-123": {
-            "description": "Copy files to Azure Blob Storage or virtual machines",
-            "string": {
-                "constant": "AzureFileCopy@1",
-                "ignore-case": true
-            }
-        },
         "task-task-124": {
-            "description": "Copy files to Azure Blob Storage or virtual machines",
+            "description": "Publish test results to Azure Pipelines",
             "string": {
-                "constant": "AzureFileCopy@5",
+                "constant": "PublishTestResults@1",
                 "ignore-case": true
             }
         },
@@ -5156,900 +5165,942 @@
         "task-task-127": {
             "description": "Copy files to Azure Blob Storage or virtual machines",
             "string": {
-                "constant": "AzureFileCopy@3",
+                "constant": "AzureFileCopy@1",
                 "ignore-case": true
             }
         },
         "task-task-128": {
-            "description": "Index your source code and publish symbols to a file share",
+            "description": "Copy files to Azure Blob Storage or virtual machines",
             "string": {
-                "constant": "PublishSymbols@1",
+                "constant": "AzureFileCopy@5",
                 "ignore-case": true
             }
         },
         "task-task-129": {
+            "description": "Copy files to Azure Blob Storage or virtual machines",
+            "string": {
+                "constant": "AzureFileCopy@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-130": {
+            "description": "Copy files to Azure Blob Storage or virtual machines",
+            "string": {
+                "constant": "AzureFileCopy@4",
+                "ignore-case": true
+            }
+        },
+        "task-task-131": {
             "description": "Index your source code and publish symbols to a file share or Azure Artifacts symbol server",
             "string": {
                 "constant": "PublishSymbols@2",
                 "ignore-case": true
             }
         },
-        "task-task-130": {
+        "task-task-132": {
+            "description": "Index your source code and publish symbols to a file share",
+            "string": {
+                "constant": "PublishSymbols@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-133": {
             "description": "Copy files or build artifacts to a remote machine over SSH",
             "string": {
                 "constant": "CopyFilesOverSSH@0",
                 "ignore-case": true
             }
         },
-        "task-task-131": {
-            "description": "Build using a Gradle wrapper script",
-            "string": {
-                "constant": "Gradle@3",
-                "ignore-case": true
-            }
-        },
-        "task-task-132": {
+        "task-task-134": {
             "description": "Build using a Gradle wrapper script",
             "string": {
                 "constant": "Gradle@2",
                 "ignore-case": true
             }
         },
-        "task-task-133": {
+        "task-task-135": {
+            "description": "Build using a Gradle wrapper script",
+            "string": {
+                "constant": "Gradle@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-136": {
             "description": "Build using a Gradle wrapper script",
             "string": {
                 "constant": "Gradle@1",
                 "ignore-case": true
             }
         },
-        "task-task-134": {
+        "task-task-137": {
             "description": "Run a build using Gradle wrapper",
             "string": {
                 "constant": "Gradle@0",
                 "ignore-case": true
             }
         },
-        "task-task-135": {
-            "description": "Distribute app builds to testers and users via Visual Studio App Center",
-            "string": {
-                "constant": "AppCenterDistribute@2",
-                "ignore-case": true
-            }
-        },
-        "task-task-136": {
+        "task-task-138": {
             "description": "Distribute app builds to testers and users via Visual Studio App Center",
             "string": {
                 "constant": "AppCenterDistribute@1",
                 "ignore-case": true
             }
         },
-        "task-task-137": {
+        "task-task-139": {
+            "description": "Distribute app builds to testers and users via Visual Studio App Center",
+            "string": {
+                "constant": "AppCenterDistribute@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-140": {
             "description": "Distribute app builds to testers and users via Visual Studio App Center",
             "string": {
                 "constant": "AppCenterDistribute@3",
                 "ignore-case": true
             }
         },
-        "task-task-138": {
+        "task-task-141": {
             "description": "Distribute app builds to testers and users via App Center",
             "string": {
                 "constant": "AppCenterDistribute@0",
                 "ignore-case": true
             }
         },
-        "task-task-139": {
+        "task-task-142": {
             "description": "Acquires a specific version of NuGet from the internet or the tools cache and adds it to the PATH. Use this task to change the version of NuGet used in the NuGet tasks.",
             "string": {
                 "constant": "NuGetToolInstaller@0",
                 "ignore-case": true
             }
         },
-        "task-task-140": {
+        "task-task-143": {
             "description": "Acquires a specific version of NuGet from the internet or the tools cache and adds it to the PATH. Use this task to change the version of NuGet used in the NuGet tasks.",
             "string": {
                 "constant": "NuGetToolInstaller@1",
                 "ignore-case": true
             }
         },
-        "task-task-141": {
+        "task-task-144": {
             "description": "Download artifacts produced by a Jenkins job",
             "string": {
                 "constant": "JenkinsDownloadArtifacts@1",
                 "ignore-case": true
             }
         },
-        "task-task-142": {
+        "task-task-145": {
+            "description": "Download artifacts produced by a Jenkins job",
+            "string": {
+                "constant": "JenkinsDownloadArtifacts@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-146": {
             "description": "Update a function app with a Docker container",
             "string": {
                 "constant": "AzureFunctionAppContainer@1",
                 "ignore-case": true
             }
         },
-        "task-task-143": {
+        "task-task-147": {
             "description": "Decrypt a file using OpenSSL",
             "string": {
                 "constant": "DecryptFile@1",
                 "ignore-case": true
             }
         },
-        "task-task-144": {
-            "description": "Deploy, configure, update a Kubernetes cluster in Azure Container Service by running helm commands",
-            "string": {
-                "constant": "HelmDeploy@0",
-                "ignore-case": true
-            }
-        },
-        "task-task-145": {
+        "task-task-148": {
             "description": "Deploy, configure, update a Kubernetes cluster in Azure Container Service by running helm commands",
             "string": {
                 "constant": "HelmDeploy@1",
                 "ignore-case": true
             }
         },
-        "task-task-146": {
+        "task-task-149": {
+            "description": "Deploy, configure, update a Kubernetes cluster in Azure Container Service by running helm commands",
+            "string": {
+                "constant": "HelmDeploy@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-150": {
             "description": "Install an Apple certificate required to build on a macOS agent machine",
             "string": {
                 "constant": "InstallAppleCertificate@2",
                 "ignore-case": true
             }
         },
-        "task-task-147": {
+        "task-task-151": {
             "description": "Install an Apple certificate required to build on a macOS agent",
             "string": {
                 "constant": "InstallAppleCertificate@1",
                 "ignore-case": true
             }
         },
-        "task-task-148": {
+        "task-task-152": {
             "description": "Install an Apple certificate required to build on a macOS agent",
             "string": {
                 "constant": "InstallAppleCertificate@0",
                 "ignore-case": true
             }
         },
-        "task-task-149": {
+        "task-task-153": {
             "description": "Invoke an Azure Function",
             "string": {
                 "constant": "AzureFunction@1",
                 "ignore-case": true
             }
         },
-        "task-task-150": {
+        "task-task-154": {
             "description": "Invoke Azure function as a part of your process.",
             "string": {
                 "constant": "AzureFunction@0",
                 "ignore-case": true
             }
         },
-        "task-task-151": {
+        "task-task-155": {
             "description": "Install Open Policy Agent on agent machine",
             "string": {
                 "constant": "OpenPolicyAgentInstaller@0",
                 "ignore-case": true
             }
         },
-        "task-task-152": {
+        "task-task-156": {
             "description": "Downloads a GitHub Release from a repository",
             "string": {
                 "constant": "DownloadGitHubRelease@0",
                 "ignore-case": true
             }
         },
-        "task-task-153": {
+        "task-task-157": {
             "description": "Run shell commands or a script on a remote machine using SSH",
             "string": {
                 "constant": "SSH@0",
                 "ignore-case": true
             }
         },
-        "task-task-154": {
-            "description": "Publish (upload) a file or directory as a named artifact for the current run",
-            "string": {
-                "constant": "PublishPipelineArtifact@1",
-                "ignore-case": true
-            }
-        },
-        "task-task-155": {
+        "task-task-158": {
             "description": "Publish a local directory or file as a named artifact for the current pipeline",
             "string": {
                 "constant": "PublishPipelineArtifact@0",
                 "ignore-case": true
             }
         },
-        "task-task-156": {
+        "task-task-159": {
+            "description": "Publish (upload) a file or directory as a named artifact for the current run",
+            "string": {
+                "constant": "PublishPipelineArtifact@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-160": {
             "description": "[DEPRECATED] Fetch the Quality Profile from SonarQube to configure the analysis",
             "string": {
                 "constant": "SonarQubePreBuild@1",
                 "ignore-case": true
             }
         },
-        "task-task-157": {
+        "task-task-161": {
             "description": "Download artifacts from a file share, like \\\\share\\drop",
             "string": {
                 "constant": "DownloadFileshareArtifacts@1",
                 "ignore-case": true
             }
         },
-        "task-task-158": {
+        "task-task-162": {
             "description": "Deploy, configure, update a Kubernetes cluster in Azure Container Service by running kubectl commands",
             "string": {
                 "constant": "Kubernetes@0",
                 "ignore-case": true
             }
         },
-        "task-task-159": {
+        "task-task-163": {
             "description": "Deploy, configure, update a Kubernetes cluster in Azure Container Service by running kubectl commands",
             "string": {
                 "constant": "Kubernetes@1",
                 "ignore-case": true
             }
         },
-        "task-task-160": {
+        "task-task-164": {
             "description": "Build and deploy an Azure IoT Edge image",
             "string": {
                 "constant": "AzureIoTEdge@2",
                 "ignore-case": true
             }
         },
-        "task-task-161": {
+        "task-task-165": {
             "description": "Deploy a Docker Compose application to an Azure Service Fabric cluster",
             "string": {
                 "constant": "ServiceFabricComposeDeploy@0",
                 "ignore-case": true
             }
         },
-        "task-task-162": {
+        "task-task-166": {
             "description": "Sign and align Android APK files",
             "string": {
                 "constant": "AndroidSigning@1",
                 "ignore-case": true
             }
         },
-        "task-task-163": {
+        "task-task-167": {
             "description": "Sign and align Android APK files",
             "string": {
                 "constant": "AndroidSigning@2",
                 "ignore-case": true
             }
         },
-        "task-task-164": {
+        "task-task-168": {
             "description": "Sign and align Android APK files",
             "string": {
                 "constant": "AndroidSigning@3",
                 "ignore-case": true
             }
         },
-        "task-task-165": {
-            "description": "Download build and pipeline artifacts",
-            "string": {
-                "constant": "DownloadPipelineArtifact@2",
-                "ignore-case": true
-            }
-        },
-        "task-task-166": {
+        "task-task-169": {
             "description": "Downloads an artifact associated with a pipeline",
             "string": {
                 "constant": "DownloadPipelineArtifact@0",
                 "ignore-case": true
             }
         },
-        "task-task-167": {
+        "task-task-170": {
+            "description": "Download build and pipeline artifacts",
+            "string": {
+                "constant": "DownloadPipelineArtifact@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-171": {
             "description": "Download a named artifact from a pipeline to a local path",
             "string": {
                 "constant": "DownloadPipelineArtifact@1",
                 "ignore-case": true
             }
         },
-        "task-task-168": {
+        "task-task-172": {
             "description": "Use the specified version of Python from the tool cache, optionally adding it to the PATH",
             "string": {
                 "constant": "UsePythonVersion@0",
                 "ignore-case": true
             }
         },
-        "task-task-169": {
+        "task-task-173": {
             "description": "Run a PowerShell script in the context of an Azure Service Fabric cluster connection",
             "string": {
                 "constant": "ServiceFabricPowerShell@1",
                 "ignore-case": true
             }
         },
-        "task-task-170": {
+        "task-task-174": {
+            "description": "Run unit and functional tests (Selenium, Appium, Coded UI test, etc.) using the Visual Studio Test (VsTest) runner. Test frameworks that have a Visual Studio test adapter such as MsTest, xUnit, NUnit, Chutzpah (for JavaScript tests using QUnit, Mocha and Jasmine), etc. can be run. Tests can be distributed on multiple agents using this task (version 2 and later).",
+            "string": {
+                "constant": "VSTest@2",
+                "ignore-case": true
+            }
+        },
+        "task-task-175": {
+            "description": "Run unit and functional tests (Selenium, Appium, Coded UI test, etc.) using the Visual Studio Test (VsTest) runner. Test frameworks that have a Visual Studio test adapter such as MsTest, xUnit, NUnit, Chutzpah (for JavaScript tests using QUnit, Mocha and Jasmine), etc. can be run. Tests can be distributed on multiple agents using this task (version 2 and later).",
+            "string": {
+                "constant": "VSTest@3",
+                "ignore-case": true
+            }
+        },
+        "task-task-176": {
             "description": "Run tests with Visual Studio test runner",
             "string": {
                 "constant": "VSTest@1",
                 "ignore-case": true
             }
         },
-        "task-task-171": {
-            "description": "Run unit and functional tests (Selenium, Appium, Coded UI test, etc.) using the Visual Studio Test (VsTest) runner. Test frameworks that have a Visual Studio test adapter such as MsTest, xUnit, NUnit, Chutzpah (for JavaScript tests using QUnit, Mocha and Jasmine), etc. can be run. Tests can be distributed on multiple agents using this task (version 2).",
-            "string": {
-                "constant": "VSTest@2",
-                "ignore-case": true
-            }
-        },
-        "task-task-172": {
-            "description": "Run unit and functional tests (Selenium, Appium, Coded UI test, etc.) using the Visual Studio Test (VsTest) runner. Test frameworks that have a Visual Studio test adapter such as MsTest, xUnit, NUnit, Chutzpah (for JavaScript tests using QUnit, Mocha and Jasmine), etc. can be run. Tests can be distributed on multiple agents using this task (version 2).",
-            "string": {
-                "constant": "VSTest@3",
-                "ignore-case": true
-            }
-        },
-        "task-task-173": {
-            "description": "[PREVIEW] Pause a pipeline run to wait for manual interaction. Works only with YAML pipelines.",
+        "task-task-177": {
+            "description": "Pause a pipeline run to wait for manual interaction. Works only with YAML pipelines.",
             "string": {
                 "constant": "ManualValidation@1",
                 "ignore-case": true
             }
         },
-        "task-task-174": {
-            "description": "[PREVIEW] Pause a pipeline run to wait for manual interaction. Works only with YAML pipelines.",
+        "task-task-178": {
+            "description": "Pause a pipeline run to wait for manual interaction. Works only with YAML pipelines.",
             "string": {
                 "constant": "ManualValidation@0",
                 "ignore-case": true
             }
         },
-        "task-task-175": {
+        "task-task-179": {
             "description": "Build with Apache Ant",
             "string": {
                 "constant": "Ant@1",
                 "ignore-case": true
             }
         },
-        "task-task-176": {
+        "task-task-180": {
             "description": "Deprecated: Instead, use the 'Visual Studio Test' task to run unit and functional tests",
             "string": {
                 "constant": "DeployVisualStudioTestAgent@2",
                 "ignore-case": true
             }
         },
-        "task-task-177": {
+        "task-task-181": {
             "description": "Deploy and configure Test Agent to run tests on a set of machines",
             "string": {
                 "constant": "DeployVisualStudioTestAgent@1",
                 "ignore-case": true
             }
         },
-        "task-task-178": {
+        "task-task-182": {
             "description": "Create and activate a Conda environment",
             "string": {
                 "constant": "CondaEnvironment@0",
                 "ignore-case": true
             }
         },
-        "task-task-179": {
+        "task-task-183": {
             "description": "This task is deprecated. Use `conda` directly in script to work with Anaconda environments.",
             "string": {
                 "constant": "CondaEnvironment@1",
                 "ignore-case": true
             }
         },
-        "task-task-180": {
+        "task-task-184": {
             "description": "Run a Windows command or batch script and optionally allow it to change the environment",
             "string": {
                 "constant": "BatchScript@1",
                 "ignore-case": true
             }
         },
-        "task-task-181": {
+        "task-task-185": {
             "description": "Install npm packages from GitHub.",
             "string": {
                 "constant": "DownloadGithubNpmPackage@1",
                 "ignore-case": true
             }
         },
-        "task-task-182": {
+        "task-task-186": {
             "description": "Build with MSBuild and set the Visual Studio version property",
             "string": {
                 "constant": "VSBuild@1",
                 "ignore-case": true
             }
         },
-        "task-task-183": {
+        "task-task-187": {
             "description": "Download Azure Key Vault secrets",
             "string": {
                 "constant": "AzureKeyVault@1",
                 "ignore-case": true
             }
         },
-        "task-task-184": {
+        "task-task-188": {
             "description": "Download Azure Key Vault secrets",
             "string": {
                 "constant": "AzureKeyVault@2",
                 "ignore-case": true
             }
         },
-        "task-task-185": {
-            "description": "Acquire a specific version of the .NET Core SDK from the internet or local cache and add it to the PATH",
-            "string": {
-                "constant": "DotNetCoreInstaller@0",
-                "ignore-case": true
-            }
-        },
-        "task-task-186": {
+        "task-task-189": {
             "description": "Acquires a specific version of the .NET Core SDK from the internet or the local cache and adds it to the PATH. Use this task to change the version of .NET Core used in subsequent tasks. Additionally provides proxy support.",
             "string": {
                 "constant": "UseDotNet@2",
                 "ignore-case": true
             }
         },
-        "task-task-187": {
+        "task-task-190": {
+            "description": "Acquire a specific version of the .NET Core SDK from the internet or local cache and add it to the PATH",
+            "string": {
+                "constant": "DotNetCoreInstaller@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-191": {
             "description": "Acquire a specific version of the .NET Core SDK from the internet or local cache and add it to the PATH",
             "string": {
                 "constant": "DotNetCoreInstaller@1",
                 "ignore-case": true
             }
         },
-        "task-task-188": {
+        "task-task-192": {
+            "description": "Push key-values to an Azure App Configuration instance",
+            "string": {
+                "constant": "AzureAppConfigurationImport@10",
+                "ignore-case": true
+            }
+        },
+        "task-task-193": {
             "description": "Start, stop, restart, slot swap, slot delete, install site extensions or enable continuous monitoring for an Azure App Service",
             "string": {
                 "constant": "AzureAppServiceManage@0",
                 "ignore-case": true
             }
         },
-        "task-task-189": {
+        "task-task-194": {
             "description": "Helps to install kubelogin",
             "string": {
                 "constant": "KubeloginInstaller@0",
                 "ignore-case": true
             }
         },
-        "task-task-190": {
+        "task-task-195": {
             "description": "Install Azure Func Core Tools",
             "string": {
                 "constant": "FuncToolsInstaller@0",
                 "ignore-case": true
             }
         },
-        "task-task-191": {
+        "task-task-196": {
             "description": "Replace tokens with variable values in XML or JSON configuration files",
             "string": {
                 "constant": "FileTransform@2",
                 "ignore-case": true
             }
         },
-        "task-task-192": {
+        "task-task-197": {
             "description": "Replace tokens with variable values in XML or JSON configuration files",
             "string": {
                 "constant": "FileTransform@1",
                 "ignore-case": true
             }
         },
-        "task-task-193": {
+        "task-task-198": {
             "description": "Extract a variety of archive and compression files such as .7z, .rar, .tar.gz, and .zip",
             "string": {
                 "constant": "ExtractFiles@1",
                 "ignore-case": true
             }
         },
-        "task-task-194": {
+        "task-task-199": {
             "description": "Build an Android app with Xamarin",
             "string": {
                 "constant": "XamarinAndroid@1",
                 "ignore-case": true
             }
         },
-        "task-task-195": {
+        "task-task-200": {
             "description": "Publish Build artifacts to the server or a file share",
             "string": {
                 "constant": "PublishBuildArtifacts@0",
                 "ignore-case": true
             }
         },
-        "task-task-196": {
+        "task-task-201": {
             "description": "[DEPRECATED] Use the Copy Files task and the Publish Build Artifacts task instead",
             "string": {
                 "constant": "CopyPublishBuildArtifacts@1",
                 "ignore-case": true
             }
         },
-        "task-task-197": {
-            "description": "Download a package from a package management feed in Azure Artifacts",
-            "string": {
-                "constant": "DownloadPackage@1",
-                "ignore-case": true
-            }
-        },
-        "task-task-198": {
+        "task-task-202": {
             "description": "Download a package from a package management feed in Azure Artifacts",
             "string": {
                 "constant": "DownloadPackage@0",
                 "ignore-case": true
             }
         },
-        "task-task-199": {
-            "description": "Deploy, start, stop, delete Azure Resource Groups",
+        "task-task-203": {
+            "description": "Download a package from a package management feed in Azure Artifacts",
             "string": {
-                "constant": "AzureResourceGroupDeployment@1",
+                "constant": "DownloadPackage@1",
                 "ignore-case": true
             }
         },
-        "task-task-200": {
+        "task-task-204": {
             "description": "Deploy an Azure Resource Manager (ARM) template to a resource group and manage virtual machines",
             "string": {
                 "constant": "AzureResourceGroupDeployment@2",
                 "ignore-case": true
             }
         },
-        "task-task-201": {
+        "task-task-205": {
+            "description": "Deploy, start, stop, delete Azure Resource Groups",
+            "string": {
+                "constant": "AzureResourceGroupDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-206": {
             "description": "Deploy an Azure Resource Manager (ARM) template to all the deployment scopes",
             "string": {
                 "constant": "AzureResourceManagerTemplateDeployment@3",
                 "ignore-case": true
             }
         },
-        "task-task-202": {
+        "task-task-207": {
             "description": "Invoke REST API as a part of your process.",
             "string": {
                 "constant": "InvokeRESTAPI@0",
                 "ignore-case": true
             }
         },
-        "task-task-203": {
+        "task-task-208": {
             "description": "Invoke a REST API as a part of your pipeline.",
             "string": {
                 "constant": "InvokeRESTAPI@1",
                 "ignore-case": true
             }
         },
-        "task-task-204": {
-            "description": "Archive files using compression formats such as .7z, .rar, .tar.gz, and .zip.",
-            "string": {
-                "constant": "ArchiveFiles@1",
-                "ignore-case": true
-            }
-        },
-        "task-task-205": {
+        "task-task-209": {
             "description": "Compress files into .7z, .tar.gz, or .zip",
             "string": {
                 "constant": "ArchiveFiles@2",
                 "ignore-case": true
             }
         },
-        "task-task-206": {
+        "task-task-210": {
+            "description": "Archive files using compression formats such as .7z, .rar, .tar.gz, and .zip.",
+            "string": {
+                "constant": "ArchiveFiles@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-211": {
             "description": "Write a comment to your Github entity i.e. issue or a Pull Request (PR)",
             "string": {
                 "constant": "GitHubComment@0",
                 "ignore-case": true
             }
         },
-        "task-task-207": {
+        "task-task-212": {
             "description": "Copy files from a source folder to a target folder using patterns matching file paths (not folder paths)",
             "string": {
                 "constant": "CopyFiles@2",
                 "ignore-case": true
             }
         },
-        "task-task-208": {
+        "task-task-213": {
             "description": "Copy files from source folder to target folder using minimatch patterns (The minimatch patterns will only match file paths, not folder paths)",
             "string": {
                 "constant": "CopyFiles@1",
                 "ignore-case": true
             }
         },
-        "task-task-209": {
+        "task-task-214": {
             "description": "Run your scripts and make changes to your Azure Database for MySQL",
             "string": {
                 "constant": "AzureMysqlDeployment@1",
                 "ignore-case": true
             }
         },
-        "task-task-210": {
-            "description": "Run an npm command. Use NpmAuthenticate@0 task for latest capabilities.",
-            "string": {
-                "constant": "Npm@0",
-                "ignore-case": true
-            }
-        },
-        "task-task-211": {
+        "task-task-215": {
             "description": "Install and publish npm packages, or run an npm command. Supports npmjs.com and authenticated registries like Azure Artifacts.",
             "string": {
                 "constant": "Npm@1",
                 "ignore-case": true
             }
         },
-        "task-task-212": {
+        "task-task-216": {
+            "description": "Run an npm command. Use NpmAuthenticate@0 task for latest capabilities.",
+            "string": {
+                "constant": "Npm@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-217": {
             "description": "[PREVIEW] Build and deploy an Azure Static Web App",
             "string": {
                 "constant": "AzureStaticWebApp@0",
                 "ignore-case": true
             }
         },
-        "task-task-213": {
-            "description": "Finds or downloads and caches the specified version spec of Node.js and adds it to the PATH",
-            "string": {
-                "constant": "NodeTool@0",
-                "ignore-case": true
-            }
-        },
-        "task-task-214": {
+        "task-task-218": {
             "description": "Set up a Node.js environment and add it to the PATH, additionally providing proxy support",
             "string": {
                 "constant": "UseNode@1",
                 "ignore-case": true
             }
         },
-        "task-task-215": {
+        "task-task-219": {
+            "description": "Finds or downloads and caches the specified version spec of Node.js and adds it to the PATH",
+            "string": {
+                "constant": "NodeTool@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-220": {
             "description": "Deploy a SQL Server database using DACPAC",
             "string": {
                 "constant": "SqlServerDacpacDeployment@1",
                 "ignore-case": true
             }
         },
-        "task-task-216": {
+        "task-task-221": {
             "description": "Acquire the test platform from nuget.org or the tool cache. Satisfies the ‘vstest’ demand and can be used for running tests and collecting diagnostic data using the Visual Studio Test task.",
             "string": {
                 "constant": "VisualStudioTestPlatformInstaller@1",
                 "ignore-case": true
             }
         },
-        "task-task-217": {
+        "task-task-222": {
             "description": "Sends a message to Azure Service Bus using a service connection (no agent is required)",
             "string": {
                 "constant": "PublishToAzureServiceBus@1",
                 "ignore-case": true
             }
         },
-        "task-task-218": {
+        "task-task-223": {
             "description": "Sends a message to Azure Service Bus using an Azure Resource Manager service connection (no agent is required)",
             "string": {
                 "constant": "PublishToAzureServiceBus@2",
                 "ignore-case": true
             }
         },
-        "task-task-219": {
+        "task-task-224": {
             "description": "Sends a message to azure service bus using a service connection (no agent required).",
             "string": {
                 "constant": "PublishToAzureServiceBus@0",
                 "ignore-case": true
             }
         },
-        "task-task-220": {
+        "task-task-225": {
             "description": "Use Kubernetes manifest files to deploy to clusters or even bake the manifest files to be used for deployments using Helm charts",
             "string": {
                 "constant": "KubernetesManifest@0",
                 "ignore-case": true
             }
         },
-        "task-task-221": {
+        "task-task-226": {
             "description": "Use Kubernetes manifest files to deploy to clusters or even bake the manifest files to be used for deployments using Helm charts",
             "string": {
                 "constant": "KubernetesManifest@1",
                 "ignore-case": true
             }
         },
-        "task-task-222": {
-            "description": "Download files that were saved as artifacts of a completed build",
-            "string": {
-                "constant": "DownloadBuildArtifacts@1",
-                "ignore-case": true
-            }
-        },
-        "task-task-223": {
+        "task-task-227": {
             "description": "Download files that were saved as artifacts of a completed build",
             "string": {
                 "constant": "DownloadBuildArtifacts@0",
                 "ignore-case": true
             }
         },
-        "task-task-224": {
+        "task-task-228": {
+            "description": "Download files that were saved as artifacts of a completed build",
+            "string": {
+                "constant": "DownloadBuildArtifacts@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-229": {
             "description": "Install CocoaPods dependencies for Swift and Objective-C Cocoa projects",
             "string": {
                 "constant": "CocoaPods@0",
                 "ignore-case": true
             }
         },
-        "task-task-225": {
+        "task-task-230": {
             "description": "Deploy applications to Azure Spring Apps and manage deployments.",
             "string": {
                 "constant": "AzureSpringCloud@0",
                 "ignore-case": true
             }
         },
-        "task-task-226": {
+        "task-task-231": {
             "description": "Deploy an Azure Web App for Linux or Windows",
             "string": {
                 "constant": "AzureWebApp@1",
                 "ignore-case": true
             }
         },
-        "task-task-227": {
+        "task-task-232": {
             "description": "Run Azure CLI commands against an Azure subscription in a Shell script when running on Linux agent or Batch script when running on Windows agent.",
             "string": {
                 "constant": "AzureCLI@1",
                 "ignore-case": true
             }
         },
-        "task-task-228": {
-            "description": "Run Azure CLI commands against an Azure subscription in a PowerShell Core/Shell script when running on Linux agent or PowerShell/PowerShell Core/Batch script when running on Windows agent.",
-            "string": {
-                "constant": "AzureCLI@2",
-                "ignore-case": true
-            }
-        },
-        "task-task-229": {
+        "task-task-233": {
             "description": "Run a Shell or Batch script with Azure CLI commands against an azure subscription",
             "string": {
                 "constant": "AzureCLI@0",
                 "ignore-case": true
             }
         },
-        "task-task-230": {
-            "description": "Create, edit, or delete a GitHub release",
+        "task-task-234": {
+            "description": "Run Azure CLI commands against an Azure subscription in a PowerShell Core/Shell script when running on Linux agent or PowerShell/PowerShell Core/Batch script when running on Windows agent.",
             "string": {
-                "constant": "GitHubRelease@0",
+                "constant": "AzureCLI@2",
                 "ignore-case": true
             }
         },
-        "task-task-231": {
+        "task-task-235": {
             "description": "Create, edit, or delete a GitHub release",
             "string": {
                 "constant": "GitHubRelease@1",
                 "ignore-case": true
             }
         },
-        "task-task-232": {
+        "task-task-236": {
+            "description": "Create, edit, or delete a GitHub release",
+            "string": {
+                "constant": "GitHubRelease@0",
+                "ignore-case": true
+            }
+        },
+        "task-task-237": {
             "description": "Use cURL to upload files with FTP, FTPS, SFTP, HTTP, and more.",
             "string": {
                 "constant": "cURLUploader@1",
                 "ignore-case": true
             }
         },
-        "task-task-233": {
+        "task-task-238": {
             "description": "Use cURL's supported protocols to upload files",
             "string": {
                 "constant": "cURLUploader@2",
                 "ignore-case": true
             }
         },
-        "task-task-234": {
+        "task-task-239": {
             "description": "Update/Add App settings an Azure Web App for Linux or Windows",
             "string": {
                 "constant": "AzureAppServiceSettings@1",
                 "ignore-case": true
             }
         },
-        "task-task-235": {
+        "task-task-240": {
             "description": "Download or publish Universal Packages",
             "string": {
                 "constant": "UniversalPackages@0",
                 "ignore-case": true
             }
         },
-        "task-task-236": {
+        "task-task-241": {
             "description": "Security and compliance assessment for Azure Policy",
             "string": {
                 "constant": "AzurePolicyCheckGate@0",
                 "ignore-case": true
             }
         },
-        "task-task-237": {
+        "task-task-242": {
             "description": "Deploy Azure function to Kubernetes cluster.",
             "string": {
                 "constant": "AzureFunctionOnKubernetes@0",
                 "ignore-case": true
             }
         },
-        "task-task-238": {
+        "task-task-243": {
             "description": "Deploy Azure function to Kubernetes cluster.",
             "string": {
                 "constant": "AzureFunctionOnKubernetes@1",
                 "ignore-case": true
             }
         },
-        "task-task-239": {
+        "task-task-244": {
             "description": "Run a shell script using Bash",
             "string": {
                 "constant": "ShellScript@2",
                 "ignore-case": true
             }
         },
-        "task-task-240": {
+        "task-task-245": {
             "description": "Run a Bash script on macOS, Linux, or Windows",
             "string": {
                 "constant": "Bash@3",
                 "ignore-case": true
             }
         },
-        "task-task-241": {
+        "task-task-246": {
             "description": "Run a shell script using bash",
             "string": {
                 "constant": "ShellScript@1",
                 "ignore-case": true
             }
         },
-        "task-task-242": {
+        "task-task-247": {
             "description": "Publish build artifacts to Azure Pipelines or a Windows file share",
             "string": {
                 "constant": "PublishBuildArtifacts@1",
                 "ignore-case": true
             }
         },
-        "task-task-243": {
+        "task-task-248": {
             "description": "Install an SSH key prior to a build or deployment",
             "string": {
                 "constant": "InstallSSHKey@0",
                 "ignore-case": true
             }
         },
-        "task-task-244": {
+        "task-task-249": {
             "description": "Deploy a virtual machine scale set image",
             "string": {
                 "constant": "AzureVmssDeployment@0",
                 "ignore-case": true
             }
         },
-        "task-task-245": {
+        "task-task-250": {
+            "description": "Deploy a virtual machine scale set image",
+            "string": {
+                "constant": "AzureVmssDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-251": {
             "description": "Create or update Azure App Service using Azure PowerShell",
             "string": {
                 "constant": "AzureWebPowerShellDeployment@1",
                 "ignore-case": true
             }
         },
-        "task-task-246": {
+        "task-task-252": {
             "description": "Authentication task for the conda client",
             "string": {
                 "constant": "CondaAuthenticate@0",
                 "ignore-case": true
             }
         },
-        "task-task-247": {
-            "description": "Deploy an Azure Cloud Service",
-            "string": {
-                "constant": "AzureCloudPowerShellDeployment@1",
-                "ignore-case": true
-            }
-        },
-        "task-task-248": {
+        "task-task-253": {
             "description": "Deploy an Azure Cloud Service",
             "string": {
                 "constant": "AzureCloudPowerShellDeployment@2",
                 "ignore-case": true
             }
         },
-        "task-task-249": {
+        "task-task-254": {
+            "description": "Deploy an Azure Cloud Service",
+            "string": {
+                "constant": "AzureCloudPowerShellDeployment@1",
+                "ignore-case": true
+            }
+        },
+        "task-task-255": {
             "description": "Authentication task for the cargo client used for installing Cargo crates distribution",
             "string": {
                 "constant": "CargoAuthenticate@0",
                 "ignore-case": true
             }
         },
-        "task-task-250": {
+        "task-task-256": {
             "description": "Delete folders, or files matching a pattern",
             "string": {
                 "constant": "DeleteFiles@1",
                 "ignore-case": true
             }
         },
-        "task-task-251": {
+        "task-task-257": {
             "description": "Run the gulp Node.js streaming task-based build system",
             "string": {
                 "constant": "gulp@0",
                 "ignore-case": true
             }
         },
-        "task-task-252": {
+        "task-task-258": {
             "description": "Run the gulp Node.js streaming task-based build system",
             "string": {
                 "constant": "gulp@1",
                 "ignore-case": true
             }
         },
-        "task-task-253": {
+        "task-task-259": {
             "description": "Run a quick web performance test in the cloud with Azure Pipelines",
             "string": {
                 "constant": "QuickPerfTest@1",
                 "ignore-case": true
             }
         },
-        "task-task-254": {
+        "task-task-260": {
             "description": "Create or update websites, web apps, virtual directories, or application pools",
             "string": {
                 "constant": "IISWebAppManagementOnMachineGroup@0",
                 "ignore-case": true
             }
         },
-        "task-task-255": {
+        "task-task-261": {
             "description": "Install Docker CLI on agent machine.",
             "string": {
                 "constant": "DockerInstaller@0",
