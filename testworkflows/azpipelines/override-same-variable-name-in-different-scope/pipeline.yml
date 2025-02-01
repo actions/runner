@@ -1,0 +1,23 @@
+variables:
+  test: val0
+jobs:
+- job: job1
+  variables:
+    test: val1
+  steps:
+  - ${{ if ne(variables['test'], 'val1') }}:
+    - assert: failure
+  - bash: echo $(test)
+- job: job2
+  variables:
+  - name: test
+    value: val2
+  steps:
+  - ${{ if ne(variables['test'], 'val2') }}:
+    - assert: failure
+  - bash: echo $(test)
+- job: job3
+  steps:
+  - ${{ if ne(variables['test'], 'val0') }}:
+    - assert: failure
+  - bash: echo $(test)

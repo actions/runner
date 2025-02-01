@@ -1452,12 +1452,12 @@ namespace Runner.Server.Azure.Devops {
                         if(kv.Value.IsGroup || kv.Value.IsGroupMember) {
                             continue;
                         }
-                        vars.Add(kv.Key, new StringContextData(kv.Value.Value));
+                        vars[kv.Key] = new StringContextData(kv.Value.Value);
                     }
                 }
                 else
                 {
-                    vars.Add(name, new StringContextData(value));
+                    vars[name] = new StringContextData(value);
                 }
             };
             if(strictParametersCheck) {

@@ -398,7 +398,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 var nextValue = await Evaluate(valueDefinition);
  
                 if(mappingDefinition.Get<MappingDefinition>().First().AzureVariableBlock && m_context.ExpressionValues?.TryGetValue("variables", out var varsRaw) == true && varsRaw is DictionaryContextData vars) {
-                    vars.Add(nextKey.ToString(), new StringContextData(nextValue.ToString()));
+                    vars[nextKey.ToString()] = new StringContextData(nextValue.ToString());
                 }
                 mapping.Add(nextKey, nextValue);
             }
