@@ -1,7 +1,13 @@
-### v0.2.8 (Preview)
+### v0.2.8
 - Suppress mapping schema errors while parsing if / each expressions
   - Show errors after evaluating the expressions
-- use the folder button to show the folder picker instead of using the empty string input
+- Show errors of used if / each branches again
+- Support native folder path in settings / prompt
+- Allow to show a folder picker if pressing the folder icon button
+- Ask to save the changed repositories
+- Disable errors for autocomplete, semantic tokens and hover
+- Add support of new sparse checkout fields
+- Add support for iif and trim functions
 
 ### v0.2.7 (Preview)
 - Show errors of used if / each branches again
