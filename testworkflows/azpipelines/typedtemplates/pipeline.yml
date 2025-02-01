@@ -13,3 +13,13 @@ stages:
       - job: A
         steps:
         - script: exit 0
+        # Verify that the stageList input type works without variables context
+        variables:
+          x: test
+      - job: B
+        steps:
+        - script: exit 0
+        # Verify that the stageList input type works without variables context
+        variables:
+        - name: x
+          value: test

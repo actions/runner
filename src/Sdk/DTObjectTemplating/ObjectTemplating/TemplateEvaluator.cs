@@ -142,7 +142,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         var item = await Evaluate(itemDefinition);
 
-                        if(sequenceDefinition.AzureVariableBlock && m_context.ExpressionValues["variables"] is DictionaryContextData vars) {
+                        if(sequenceDefinition.AzureVariableBlock && m_context.ExpressionValues?.TryGetValue("variables", out var varsRaw) == true && varsRaw is DictionaryContextData vars) {
                             var mblock = item.AssertMapping("var");
                             await m_context.EvaluateVariable?.Invoke(m_context, mblock, vars);
                         }
@@ -178,7 +178,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // Legal
                 if (mappingDefinitions.Count > 0)
                 {
-                    bool hasAdoScope = mappingDefinitions.Any(m => m.AzureVariableBlockScope) && m_context.ExpressionValues.ContainsKey("variables");
+                    bool hasAdoScope = mappingDefinitions.Any(m => m.AzureVariableBlockScope) && m_context.ExpressionValues?.ContainsKey("variables") == true;
 
                     DictionaryContextData vars = null;
                     if(hasAdoScope) {
@@ -397,7 +397,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // Add the pair
                 var nextValue = await Evaluate(valueDefinition);
  
-                if(mappingDefinition.Get<MappingDefinition>().First().AzureVariableBlock && m_context.ExpressionValues["variables"] is DictionaryContextData vars) {
+                if(mappingDefinition.Get<MappingDefinition>().First().AzureVariableBlock && m_context.ExpressionValues?.TryGetValue("variables", out var varsRaw) == true && varsRaw is DictionaryContextData vars) {
                     vars.Add(nextKey.ToString(), new StringContextData(nextValue.ToString()));
                 }
                 mapping.Add(nextKey, nextValue);
