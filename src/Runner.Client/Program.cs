@@ -877,7 +877,7 @@ namespace Runner.Client
                 {
                     var reporoot = repositoryAndRef == null ? Path.GetFullPath(handle.Directory ?? ".") : (from r in handle.LocalRepositories where MatchRepository(r, repositoryAndRef) select Path.GetFullPath(r.Substring($"{repositoryAndRef}=".Length))).LastOrDefault();
                     if(string.IsNullOrEmpty(reporoot)) {
-                        return null;
+                        return Task.FromResult<string>(null);
                     }
                     return File.ReadAllTextAsync(Path.Join(reporoot, path), Encoding.UTF8);
                 }
