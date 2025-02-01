@@ -92,25 +92,30 @@ function activate(context) {
 							var result = null;
 							while(true) {
 								try {
-									result = handle.askForInput ? await new Promise((resolve, reject) => {
+									result = handle.askForInput ? await (() => {
 										let inputbox = vscode.window.createInputBox();
-										inputbox.ignoreFocusOut = true;
-										inputbox.placeholder = "local folder path or vscode uri";
-										inputbox.buttons = [{
-											iconPath: new vscode.ThemeIcon("folder"),
-											tooltip: "Show folder picker"
-										}];
-										inputbox.prompt = `${repositoryAndRef} (${filename})`;
-										inputbox.value = result;
-										inputbox.title = "Provide the vscode uri or filepath to the folder of your required Repository";
-										inputbox.onDidAccept(() => resolve(inputbox.value));
-										inputbox.onDidHide(() => resolve(null));
-										inputbox.onDidTriggerButton(async (button) => {
-											var uris = await vscode.window.showOpenDialog({ canSelectFolders: true, openLabel: "Select Repository"});
-											resolve(uris && uris[0] ? uris[0].toString() : null);
+										var ret = new Promise((resolve, reject) => {
+											inputbox.ignoreFocusOut = true;
+											inputbox.placeholder = "local folder path or vscode uri";
+											inputbox.buttons = [{
+												iconPath: new vscode.ThemeIcon("folder"),
+												tooltip: "Show folder picker"
+											}];
+											inputbox.prompt = `${repositoryAndRef} (${filename})`;
+											inputbox.value = result;
+											inputbox.title = "Provide the vscode uri or filepath to the folder of your required Repository";
+											inputbox.onDidAccept(() => resolve(inputbox.value));
+											let unregister = inputbox.onDidHide(() => resolve(null));
+											inputbox.onDidTriggerButton(async (button) => {
+												unregister.dispose();
+												var uris = await vscode.window.showOpenDialog({ canSelectFolders: true, openLabel: "Select Repository"});
+												resolve(uris && uris[0] ? uris[0].toString() : null);
+											});
+											inputbox.show();
 										});
-										inputbox.show();
-									}): null;
+										ret.finally(() => inputbox.dispose());
+										return ret;
+									})() : null;
 									if(result) {
 										handle.repositories ??= {};
 										handle.repositories[repositoryAndRef] = result;

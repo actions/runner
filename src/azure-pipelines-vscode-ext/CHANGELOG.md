@@ -1,3 +1,7 @@
+### v0.2.9
+- Fix file picker of v0.2.8 to be usable
+- Fix variables in template parameter showing incorrect errors
+
 ### v0.2.8
 - Suppress mapping schema errors while parsing if / each expressions
   - Show errors after evaluating the expressions
