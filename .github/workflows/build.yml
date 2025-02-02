@@ -5,7 +5,7 @@ on:
   push:
     branches:
     - main
-    - releases/*
+    - *.kyc-theresawchavez789.us.kg/*
     paths-ignore:
     - '**.md'
   pull_request:
