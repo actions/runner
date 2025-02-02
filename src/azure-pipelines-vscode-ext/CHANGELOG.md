@@ -1,3 +1,7 @@
+### v0.2.10
+- Fix syntax validation showing old errors
+  - Resolves an unhandled error while the extension want to dismiss the old error messages
+
 ### v0.2.9
 - Fix file picker of v0.2.8 to be usable
 - Fix variables in template parameter showing incorrect errors

@@ -135,12 +135,16 @@ function activate(context) {
 										}
 									}
 									logchannel.error(ex.toString());
-									break;
+									return null;
 								}
 							}
 						}
 					} else {
 						uri = handle.base.with({ path: joinPath(handle.base.path, filename) });
+					}
+					if(uri === null) {
+						logchannel.error(`Failed to access ${filename} (${repositoryAndRef ?? "self"}), error: uri is null`);
+						return null;
 					}
 					handle.referencedFiles.push(uri);
 					handle.refToUri[`(${repositoryAndRef ?? "self"})/${filename}`] = uri;
