@@ -70,7 +70,8 @@ namespace GitHub.Runner.Common
 
         protected async Task RetryRequest(Func<Task> func,
             CancellationToken cancellationToken,
-            int maxRetryAttemptsCount = 5
+            int maxRetryAttemptsCount = 5,
+            Func<Exception, bool> shouldRetry = null
         )
         {
             async Task<Unit> wrappedFunc()
@@ -78,7 +79,7 @@ namespace GitHub.Runner.Common
                 await func();
                 return Unit.Value;
             }
-            await RetryRequest<Unit>(wrappedFunc, cancellationToken, maxRetryAttemptsCount);
+            await RetryRequest<Unit>(wrappedFunc, cancellationToken, maxRetryAttemptsCount, shouldRetry);
         }
 
         protected async Task<T> RetryRequest<T>(Func<Task<T>> func,

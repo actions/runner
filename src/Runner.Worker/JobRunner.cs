@@ -321,6 +321,13 @@ namespace GitHub.Runner.Worker
                     await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, default);
                     return result;
                 }
+                catch (TaskOrchestrationJobNotFoundException ex)
+                {
+                    Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
+                    Trace.Error(ex);
+                    exceptions.Add(ex);
+                    break;
+                }
                 catch (Exception ex)
                 {
                     Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
