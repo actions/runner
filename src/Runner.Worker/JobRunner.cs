@@ -318,8 +318,29 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, default);
+                    if (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.SkipRetryCompleteJobUponKnownErrors) ?? false)
+                    {
+                        await runServer.CompleteJob2Async(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, default);
+                    }
+                    else
+                    {
+                        await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, default);
+                    }
                     return result;
+                }
+                catch (VssUnauthorizedException ex) when (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.SkipRetryCompleteJobUponKnownErrors) ?? false)
+                {
+                    Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
+                    Trace.Error(ex);
+                    exceptions.Add(ex);
+                    break;
+                }
+                catch (TaskOrchestrationJobNotFoundException ex) when (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.SkipRetryCompleteJobUponKnownErrors) ?? false)
+                {
+                    Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
+                    Trace.Error(ex);
+                    exceptions.Add(ex);
+                    break;
                 }
                 catch (Exception ex)
                 {
