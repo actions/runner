@@ -36,20 +36,23 @@ namespace GitHub.Runner.Common.Tests.Listener
             _configurationStore = new Mock<IConfigurationStore>();
         }
 
-        private Pipelines.AgentJobRequestMessage CreateJobRequestMessage()
+        private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string billingOwnerId = null)
         {
             TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = null;
             Guid jobId = Guid.NewGuid();
             var result = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "someJob", "someJob", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
             result.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+            result.BillingOwnerId = billingOwnerId;
             return result;
         }
 
-        [Fact]
+        [Theory]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DispatchesJobRequest()
+        [InlineData(null)]
+        [InlineData("billingOwnerId")]
+        public async void DispatchesJobRequest(string billingOwnerId)
         {
             //Arrange
             using (var hc = new TestHostContext(this))
@@ -65,7 +68,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 jobDispatcher.Initialize(hc);
 
                 var ts = new CancellationTokenSource();
-                Pipelines.AgentJobRequestMessage message = CreateJobRequestMessage();
+                Pipelines.AgentJobRequestMessage message = CreateJobRequestMessage(billingOwnerId);
                 string strMessage = JsonUtility.ToString(message);
 
                 _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, It.IsAny<CancellationToken>()))

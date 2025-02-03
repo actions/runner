@@ -32,5 +32,8 @@ namespace GitHub.Actions.RunService.WebApi
 
         [DataMember(Name = "environmentUrl", EmitDefaultValue = false)]
         public string EnvironmentUrl { get; set; }
+
+        [DataMember(Name = "billingOwnerId", EmitDefaultValue = false)]
+        public string BillingOwnerId { get; set; }
     }
 }
