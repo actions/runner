@@ -1,4 +1,4 @@
-﻿{
+{
     "definitions": {
         "action-root": {
             "description": "Action file",
@@ -103,7 +103,11 @@
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
-                    "steps": "composite-steps"
+                    "steps": "composite-steps",
+                    "defaults": {
+                        "type": "composite-defaults",
+                        "required": false
+                    }
                 }
             }
         },
@@ -133,7 +137,7 @@
                     "working-directory": "string-steps-context",
                     "shell": {
                         "type": "string-steps-context",
-                        "required": true
+                        "required": false
                     }
                 }
             }
@@ -268,6 +272,35 @@
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "string"
             }
+        },
+        "composite-defaults": {
+          "mapping": {
+            "properties": {
+              "run": "composite-defaults-run"
+            }
+          }
+        },
+        "composite-defaults-run": {
+          "context": [
+            "inputs",
+            "github",
+            "strategy",
+            "matrix",
+            "needs",
+            "env"
+          ],
+          "mapping": {
+            "properties": {
+                "shell": {
+                    "type": "non-empty-string",
+                    "required": false
+                },
+                "working-directory": {
+                    "type": "non-empty-string",
+                    "required": false
+                }
+            }
+          }
         }
     }
 }
