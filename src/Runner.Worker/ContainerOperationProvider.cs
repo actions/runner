@@ -297,15 +297,28 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(githubContext, nameof(githubContext));
             var workingDirectory = githubContext["workspace"] as StringContextData;
             ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
-            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
+
+            var directories = new List<String> {
+                WellKnownDirectory.Work,
+                WellKnownDirectory.Temp,
+                WellKnownDirectory.Actions,
+                WellKnownDirectory.Tools,
+            };
+
+            foreach (var d in directories)
+            {
+                var dir = HostContext.GetDirectory(d);
+                // Not creating the host path for a volume is an undocumented bug
+                // in Docker and is not portable with other container toolkits.
+                Directory.CreateDirectory(dir);
+                container.MountVolumes.Add(new MountVolume(dir, container.TranslateToContainerPath(dir)));
+            }
+
 #if OS_WINDOWS
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
 #else
             container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
 #endif
-            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
-            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
-            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
 
             var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
             Directory.CreateDirectory(tempHomeDirectory);
