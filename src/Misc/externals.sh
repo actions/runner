@@ -172,6 +172,7 @@ fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-arm64.tar.gz" node20 fix_nested_dir
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-arm64.tar.gz" node20_alpine
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
