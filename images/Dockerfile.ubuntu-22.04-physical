@@ -10,27 +10,84 @@ ARG DOCKER_COMPOSE_VERSION=v2.23.0
 ARG DUMB_INIT_VERSION=1.2.5
 ARG RUNNER_USER_UID=1001
 ARG DOCKER_GROUP_GID=121
+# Python arguments
+ARG PYTHON_VERSION="3.12"
 # Android arguments
-ARG CMD_LINE_VERSION=11076708_latest
+ARG CMD_LINE_VERSION=9477386_latest
 # All versions of NDK to be installed.
 ARG ANDROID_NDK_LIST="21.1.6352462;26.3.11579264"
 # The NDK version being used to build release product.
 ARG ANDROID_NDK_DEFAULT="21.1.6352462"
+# Node arguments
+ARG NODE_VERSION="v20.15.0"
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai \
+    DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update -y \
     && apt-get install -y software-properties-common \
     && add-apt-repository -y ppa:git-core/ppa \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
-    curl \
+    lsb-release \
     ca-certificates \
+    wget \
+    software-properties-common \
+    gnupg \
+    apt-transport-https \
+    wget \
+    g++ \
+    gcc \
+    gdb \
+    xxd \
+    libc++abi-dev \
+    libc++-dev \
+    ssh \
+    libssl-dev \
+    sshpass \
     git \
-    jq \
-    sudo \
+    git-lfs \
+    autoconf \
+    automake \
+    make \
+    cmake \
+    pkg-config \
+    python$PYTHON_VERSION \
+    python3-pip \
+    libffi-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    liblzma-dev \
     unzip \
     zip \
+    openjdk-11-jdk \
+    telnet \
+    libreadline-dev \
+    libncurses5 \
+    curl \
+    vim \
+    lsof \
+    swig \
+    net-tools \
+    netcat-traditional \
+    default-libmysqlclient-dev \
+    qemu-kvm \
+    systemd \
+    tzdata \
+    locales \
+    flex \
+    bison \
+    lldb \
+    libunwind8 \
+    jq \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
+
+# 设置JAVA_HOME环境变量
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+# 将Java的bin目录添加到PATH中
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Download latest git-lfs version
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
@@ -77,6 +134,7 @@ RUN cd "$RUNNER_ASSETS_DIR" \
     && unzip ./runner-container-hooks.zip -d ./k8s \
     && rm -f runner-container-hooks.zip
 
+# Add docker
 RUN set -vx; \
     export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && if [ "$ARCH" = "arm64" ]; then export ARCH=aarch64 ; fi \
@@ -96,36 +154,58 @@ RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && which docker-compose \
     && docker compose version
 
+# Update PIP (Python's package manager)
+RUN python3 -m pip install --upgrade pip
+
+# Add the Python "User Script Directory" to the PATH
+ENV PATH="${PATH}:${HOME}/.local/bin/"
+
+# Set PYTHON_VERSION as the default Python interpreter
+RUN update-alternatives --install /usr/bin/python3 python /usr/bin/python$PYTHON_VERSION 1
+RUN update-alternatives --set python /usr/bin/python$PYTHON_VERSION
+
+USER runner
+
 # Add the Android sdk,ndk,avd
-ENV ANDROID_HOME /root/Android/SDK/
+ENV ANDROID_HOME ${HOME}/Android/SDK
+ENV ANDROID_NDK $ANDROID_HOME/ndk/$ANDROID_NDK_DEFAULT
+# A legacy NDK21 argument to be deprecated.
+ENV ANDROID_NDK_21 $ANDROID_NDK
 
 # Install sdkmanager command line tool
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-${CMD_LINE_VERSION}.zip -P /tmp && \
-    mkdir -p $ANDROID_HOME && \
-    unzip -d $ANDROID_HOME /tmp/commandlinetools-linux-${CMD_LINE_VERSION}.zip && \
-    rm /tmp/commandlinetools-linux-${CMD_LINE_VERSION}.zip
+RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-${CMD_LINE_VERSION}.zip -P /tmp
+RUN mkdir -p $ANDROID_HOME
+RUN unzip -d $ANDROID_HOME /tmp/commandlinetools-linux-${CMD_LINE_VERSION}.zip
+RUN rm /tmp/commandlinetools-linux-${CMD_LINE_VERSION}.zip
+ENV PATH $PATH:$ANDROID_HOME/cmdline-tools/bin
 
-ENV PATH $PATH:$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/share/clang:$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin:$ANDROID_HOME/cmdline-tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/emulator
+ENV PATH $PATH:$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/share/clang:$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/emulator
+
 
 # Accept license
 RUN yes | sdkmanager --licenses --sdk_root=$ANDROID_HOME
 # Install android sdk
 RUN sdkmanager --sdk_root=$ANDROID_HOME --install \
-    "system-images;android-28;google_apis;x86"
+    "system-images;android-28;google_apis;x86" \
+    "platforms;android-30" \
+    "build-tools;29.0.1" \
+    "platform-tools"
 # Install android ndk
 RUN echo $ANDROID_NDK_LIST | awk -F ';' '{ for(i=1; i<=NF; i++) print $i }' \
     | while read -r substring; do sdkmanager --sdk_root=$ANDROID_HOME --install "ndk;$substring"; done
-ENV ANDROID_NDK $ANDROID_HOME/ndk/$ANDROID_NDK_DEFAULT
-# A legacy NDK21 argument to be deprecated.
-ENV ANDROID_NDK_21 $ANDROID_NDK
 # Setup avd
 RUN avdmanager --verbose create avd --force --name "Nexus_5_API_28" \
       --package "system-images;android-28;google_apis;x86" \
       --force -d "Nexus 5"
 
-
-
+USER root
+ENV ImageOS=ubuntu22
 RUN echo "PATH=${PATH}" > /etc/environment \
     && echo "ImageOS=${ImageOS}" >> /etc/environment
+
+RUN ln -s $ANDROID_HOME $ANDROID_HOME/SDK
+
+# Add runner to rdma group because of /dev/kvm
+RUN usermod -aG rdma runner
 
 USER runner
