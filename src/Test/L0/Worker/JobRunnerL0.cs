@@ -175,5 +175,33 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task AddsWarningAnnotationWhenInterruptedFileExists()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var message = GetMessage();
+                var interruptedFilePath = "/opt/runs-on/hooks/interrupted";
+
+                // Create the interrupted file
+                System.IO.File.WriteAllText(interruptedFilePath, "test");
+
+                try
+                {
+                    await _jobRunner.RunAsync(message, _tokenSource.Token);
+
+                    // Verify that a warning annotation was added
+                    _jobEc.Verify(x => x.AddIssue(It.Is<Issue>(issue => issue.Type == IssueType.Warning && issue.Message.Contains(interruptedFilePath)), It.IsAny<ExecutionContextLogOptions>()), Times.Once);
+                }
+                finally
+                {
+                    // Clean up the interrupted file
+                    System.IO.File.Delete(interruptedFilePath);
+                }
+            }
+        }
     }
 }

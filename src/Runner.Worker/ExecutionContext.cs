@@ -123,6 +123,9 @@ namespace GitHub.Runner.Worker
         void UpdateGlobalStepsContext();
 
         void WriteWebhookPayload();
+
+        // AddWarningAnnotation method
+        void AddWarningAnnotation(string message);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -1083,7 +1086,7 @@ namespace GitHub.Runner.Worker
 
                 // Output
                 owners = removedMatchers.Select(x => $"'{x.Owner}'");
-                var joinedOwners = string.Join(", ", owners);
+                var joinedOwners = string.join(", ", owners);
                 // todo: loc
                 this.Debug($"Removed matchers: {joinedOwners}");
             }
@@ -1172,6 +1175,12 @@ namespace GitHub.Runner.Worker
                 File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
                 SetGitHubContext("event_path", workflowFile);
             }
+        }
+
+        public void AddWarningAnnotation(string message)
+        {
+            var issue = new Issue() { Type = IssueType.Warning, Message = message };
+            AddIssue(issue, ExecutionContextLogOptions.Default);
         }
 
         private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string displayName, string refName, int? order, bool embedded = false)

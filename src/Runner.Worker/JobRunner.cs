@@ -245,6 +245,24 @@ namespace GitHub.Runner.Worker
 
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");
 
+                // Continuously monitor the file system for the presence of the file
+                string interruptedFilePath = "/opt/runs-on/hooks/interrupted";
+                var fileWatcher = new FileSystemWatcher(Path.GetDirectoryName(interruptedFilePath))
+                {
+                    Filter = Path.GetFileName(interruptedFilePath),
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite
+                };
+
+                fileWatcher.Created += (sender, e) =>
+                {
+                    if (e.FullPath == interruptedFilePath)
+                    {
+                        jobContext.AddWarningAnnotation($"File '{interruptedFilePath}' appeared on the filesystem.");
+                    }
+                };
+
+                fileWatcher.EnableRaisingEvents = true;
+
                 Trace.Info("Completing the job execution context.");
                 return await CompleteJobAsync(server, jobContext, message);
             }
