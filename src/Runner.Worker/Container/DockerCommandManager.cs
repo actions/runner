@@ -101,6 +101,10 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
         {
+            if(Environment.GetEnvironmentVariable("RUNNER_CONTAINER_SKIP_PULL") == "1") {
+                context.Output($"Skipping docker pull {image} as RUNNER_CONTAINER_SKIP_PULL is set to 1");
+                return 0;
+            }
             string extraopts = "";
             if(ClientVersion >= new Version(1, 32) && ServerVersion >= new Version(1, 32))
             {
