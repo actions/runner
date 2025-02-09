@@ -9,6 +9,7 @@ using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.Expressions2.Tokens;
 using System.IO;
 using Runner.Server.Azure.Devops;
+using GitHub.DistributedTask.Expressions2;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
@@ -795,7 +796,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     // Check for error
                     if (ex != null)
                     {
-                        m_context.Error(token, ex);
+                        if(ex is ParseException pex && pex.Kind != ParseExceptionKind.UnrecognizedFunction && pex.Kind != ParseExceptionKind.UnrecognizedNamedValue) {
+                            using var _ = m_context.SkopedErrorLevel(m_context.FatalErrors);
+                            m_context.Error(token, ex);
+                        } else {
+                            m_context.Error(token, ex);
+                        }
                         return token;
                     }
 

@@ -1,0 +1,5 @@
+# ExpectedException: TemplateValidationException
+# ExpectedErrorMessage: Unexpected symbol: '+'
+steps:
+- ${{ if false }}:
+  - ${{ 3 + 4 }}

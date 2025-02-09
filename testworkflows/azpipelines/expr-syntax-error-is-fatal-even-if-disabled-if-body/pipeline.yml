@@ -1,0 +1,6 @@
+# ExpectedException: TemplateValidationException
+# ExpectedErrorMessage: Unexpected symbol: '+'
+steps:
+- ${{ if false }}:
+  - ${{ if and(3 + 4) }}:
+    - bash: none
