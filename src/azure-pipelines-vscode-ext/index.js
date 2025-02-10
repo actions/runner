@@ -863,6 +863,8 @@ function activate(context) {
 						vscode.commands.executeCommand(statusbar.command.command, null, syntaxChecks, obj).then(_finally, (err) => {
 							_finally();
 						});
+					} else {
+						defcollection.clear();
 					}
 				} else {
 					if(vscode.window.activeTextEditor && vscode.window.activeTextEditor.document) {
