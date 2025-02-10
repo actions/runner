@@ -11,7 +11,7 @@ set -u
 # This is causing it to fail
 set -o pipefail
 
-# Use in the the functions: eval $invocation
+# Use in the functions: eval $invocation
 invocation='say_verbose "Calling: ${yellow:-}${FUNCNAME[0]} ${green:-}$*${normal:-}"'
 
 # standard output may be used as a return value in the functions
