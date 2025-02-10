@@ -23,7 +23,7 @@ This feature is mainly intended for self hosted runner administrators.
   - `ACTIONS_RUNNER_HOOK_JOB_STARTED`
   - `ACTIONS_RUNNER_HOOK_JOB_COMPLETED`
 
-You can set these variables to the **absolute** path of a a `.sh` or `.ps1` file.
+You can set these variables to the **absolute** path of a `.sh` or `.ps1` file.
 
 We will execute `pwsh` (fallback to `powershell`) or `bash` (fallback to `sh`) as appropriate.
 - `.sh` files will execute with the args `-e {pathtofile}`

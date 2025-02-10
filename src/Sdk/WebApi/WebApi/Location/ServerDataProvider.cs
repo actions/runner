@@ -677,7 +677,7 @@ namespace GitHub.Services.WebApi.Location
             Int32 lastChangeId = m_locationDataCacheManager.GetLastChangeId();
 
             // If we have -1 then that means we have no disk cache yet or it means that we recently hit an exception trying to reload
-            // the the cache from disk (see Exception catch block in EnsureDiskCacheLoaded).
+            // the cache from disk (see Exception catch block in EnsureDiskCacheLoaded).
             // Either way, we cannot make a call to the server with -1 and pass None.
             // If we do, the resulting payload (which would have ClientCacheFresh=false but include no ServiceDefinitions)
             // would leave the in-memory cache in an inconsistent state
