@@ -18,6 +18,7 @@ namespace GitHub.Runner.Common
     public enum WellKnownConfigFile
     {
         Runner,
+        MigratedRunner,
         Credentials,
         MigratedCredentials,
         RSACredentials,
