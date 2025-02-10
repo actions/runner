@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.WebApi
             }
 
             /// <summary>
-            /// The url to connect to to poll for messages
+            /// The url to connect to poll for messages
             /// </summary> 
             [JsonProperty("server_url")]
             public string ServerUrl
