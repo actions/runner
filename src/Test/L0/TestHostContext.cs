@@ -256,10 +256,22 @@ namespace GitHub.Runner.Common.Tests
                         ".agent");
                     break;
 
+                case WellKnownConfigFile.MigratedRunner:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".agent_migrated");
+                    break;
+
                 case WellKnownConfigFile.Credentials:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
                         ".credentials");
+                    break;
+
+                case WellKnownConfigFile.MigratedCredentials:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".credentials_migrated");
                     break;
 
                 case WellKnownConfigFile.RSACredentials:

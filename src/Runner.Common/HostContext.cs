@@ -343,6 +343,12 @@ namespace GitHub.Runner.Common
                         ".runner");
                     break;
 
+                case WellKnownConfigFile.MigratedRunner:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".runner_migrated");
+                    break;
+
                 case WellKnownConfigFile.Credentials:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
