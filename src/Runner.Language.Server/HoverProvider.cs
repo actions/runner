@@ -68,6 +68,7 @@ public class HoverProvider : IHoverHandler
             RawMapping = true
         };
         GitHub.DistributedTask.ObjectTemplating.Schema.TemplateSchema? schema = null;
+        bool azurePipelines = false;
         try {
             var isWorkflow = request.TextDocument.Uri.Path.Contains("/.github/workflows/");
             if(isWorkflow || request.TextDocument.Uri.Path.Contains("/action.yml") || request.TextDocument.Uri.Path.Contains("/action.yaml")) {
@@ -89,6 +90,7 @@ public class HoverProvider : IHoverHandler
                 TemplateReader.Read(templateContext, isWorkflow ? "workflow-root" : "action-root", yamlObjectReader, fileId, out _);
                 schema = templateContext.Schema;
             } else {
+                azurePipelines = true;
                 schema = AzureDevops.LoadSchema();
                 var template = await AzureDevops.ParseTemplate(context, currentFileName, this.data.Schema[request.TextDocument.Uri], true);
                 _ = template;
@@ -105,7 +107,7 @@ public class HoverProvider : IHoverHandler
 
             var i = last.Tokens.IndexOf(tkn);
 
-            var desc = ActionsDescriptions.LoadDescriptions();
+            var desc = azurePipelines ? PipelinesDescriptions.LoadDescriptions() : ActionsDescriptions.LoadDescriptions();
             
             return new Hover { Range = new OmniSharp.Extensions.LanguageServer.Protocol.Models.Range(new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(row - 1, column - 1 - (last.Index - tkn.Index)), new OmniSharp.Extensions.LanguageServer.Protocol.Models.Position(row - 1, column - 1 - (last.Index - tkn.Index) + tkn.RawValue.Length)),
                 Contents = new MarkedStringsOrMarkupContent(new MarkupContent() { Kind = MarkupKind.Markdown, Value = 
