@@ -109,6 +109,12 @@
     },
     "xor": {
       "description": "* Evaluates `True` if exactly one parameter is `True`\n* Min parameters: 2. Max parameters: 2\n* Casts parameters to Boolean for evaluation\n* Example: `xor(True, False)` (returns True)"
+    },
+    "iif": {
+      "description": "* Returns the second parameter if the first parameter evaluates to `True`, and the third parameter otherwise\n* Min parameters: 3. Max parameters: 3\n* The first parameter must be a condition\n* Example: `iif(eq(variables['Build.Reason'], 'PullRequest'), 'ManagedDevOpsPool', 'Azure Pipelines')` returns 'ManagedDevOpsPool' when the pipeline runs in response to a PR."
+    },
+    "trim": {
+      "description": "* Returns the parameter without leading and trailing white spaces\n* Min parameters: 1. Max parameters: 1\n* Example: `trim('  variable  ') ` returns 'variable'"
     }
   }
 }
