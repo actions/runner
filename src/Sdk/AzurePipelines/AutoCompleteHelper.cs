@@ -340,6 +340,31 @@ namespace Runner.Server.Azure.Devops
             }
             var candidates = mapping.Properties.Where(p => (bestMatch.Token as MappingToken)?.FirstOrDefault(e => e.Key?.ToString() == p.Key).Key == null);
             var hasFirstProperties = candidates.Any(c => c.Value.FirstProperty);
+            var mappingToken = bestMatch.Token as MappingToken;
+            var curKey = !flowStyle ? mappingToken?.Select(kv => kv.Key).Where(k => k.Line == row).LastOrDefault() as LiteralToken : null;
+
+            var range = !flowStyle && mappingToken != null ? new InsertReplaceRange {
+                Replacing = new Range {
+                    Start = new Position {
+                        Line = row - 1,
+                        Character = bestMatch.Token.Column.Value - 1
+                    },
+                    End = new Position {
+                        Line = row - 1,
+                        Character = curKey != null ? bestMatch.Token.Column.Value - 1 + curKey.RawData.Length : column - 1
+                    }
+                },
+                Inserting = new Range {
+                    Start = new Position {
+                        Line = row - 1,
+                        Character = bestMatch.Token.Column.Value - 1
+                    },
+                    End = new Position {
+                        Line = row - 1,
+                        Character = column - 1
+                    }
+                }
+            } : null;
             foreach(var (k, desc) in candidates.Where(c => !hasFirstProperties || c.Value.FirstProperty).Select(p => {
                 var nested = schema.GetDefinition(p.Value.Type);
                 return (p.Key, p.Value.Description ?? nested?.Description);
@@ -351,7 +376,8 @@ namespace Runner.Server.Azure.Devops
                     InsertText = new SnippedString { Value = k + ":$0" },
                     Documentation = desc == null ? null : new MarkdownString {
                         Value = desc
-                    }
+                    },
+                    Range = range
                 };
             }
             if(bestMatch.AllowedContext?.Length > 0) {
@@ -361,32 +387,37 @@ namespace Runner.Server.Azure.Devops
                         Label = new CompletionItemLabel {
                             Label = "${{ insert }}",
                         },
-                        InsertText = new SnippedString { Value = "${{ insert }}:$0" }
+                        InsertText = new SnippedString { Value = "${{ insert }}:$0" },
+                        Range = range
                     };
                     if(adoDirectives) {
                         yield return new CompletionItem {
                             Label = new CompletionItemLabel {
                                 Label = "${{ if _ }}",
                             },
-                            InsertText = new SnippedString { Value = "${{ if $1 }}:$0" }
+                            InsertText = new SnippedString { Value = "${{ if $1 }}:$0" },
+                            Range = range
                         };
                         yield return new CompletionItem {
                             Label = new CompletionItemLabel {
                                 Label = "${{ elseif _ }}",
                             },
-                            InsertText = new SnippedString { Value = "${{ elseif $1 }}:$0" }
+                            InsertText = new SnippedString { Value = "${{ elseif $1 }}:$0" },
+                            Range = range
                         };
                         yield return new CompletionItem {
                             Label = new CompletionItemLabel {
                                 Label = "${{ else }}",
                             },
-                            InsertText = new SnippedString { Value = "${{ else }}:$0" }
+                            InsertText = new SnippedString { Value = "${{ else }}:$0" },
+                            Range = range
                         };
                         yield return new CompletionItem {
                             Label = new CompletionItemLabel {
                                 Label = "${{ each _ in _ }}",
                             },
-                            InsertText = new SnippedString { Value = "${{ each $1 in $2 }}:$0" }
+                            InsertText = new SnippedString { Value = "${{ each $1 in $2 }}:$0" },
+                            Range = range
                         };
                     }
                 } else {
