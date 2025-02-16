@@ -5285,18 +5285,29 @@ namespace Runner.Server.Controllers
                         InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                     } else {
                         Action _queueJob = () => {
-                            using(var scope = _provider.CreateScope()) {
-                                var queueService = scope.ServiceProvider.GetService<IQueueService>();
+                            try {
+                                using(var scope = _provider.CreateScope()) {
+                                    var queueService = scope.ServiceProvider.GetService<IQueueService>();
 
-                                if(queueService != null) {
-                                    job.SessionId = Guid.NewGuid();
-                                    queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), job.CancelRequest.Token, new string[0]);
-                                } else {
-                                    Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
-
-                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
-                                    queue.Writer.WriteAsync(job);
+                                    if(queueService != null) {
+                                        job.SessionId = Guid.NewGuid();
+                                        queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), job.CancelRequest.Token, new string[0]);
+                                    } else
+                                    {
+                                        queueJob(runsOnMap, job);
+                                    }
                                 }
+                            } catch(ObjectDisposedException) {
+                                // The scope has been disposed, might happen due to rerunning jobs
+                                queueJob(runsOnMap, job);
+                            }
+
+                            static void queueJob(HashSet<string> runsOnMap, Job job)
+                            {
+                                Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
+                                queue.Writer.WriteAsync(job);
                             }
                         };
                         if(string.IsNullOrEmpty(group)) {
@@ -5821,19 +5832,29 @@ namespace Runner.Server.Controllers
                         InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = result ?? TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                     } else {
                         Action _queueJob = () => {
-                            using(var scope = _provider.CreateScope()) {
+                            try {
+                                using(var scope = _provider.CreateScope()) {
+                                    var queueService = scope.ServiceProvider.GetService<IQueueService>();
 
-                                var queueService = scope.ServiceProvider.GetService<IQueueService>();
-
-                                if(queueService != null) {
-                                    job.SessionId = Guid.NewGuid();
-                                    queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), job.CancelRequest.Token, new string[0]);
-                                } else {
-                                    Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
-
-                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
-                                    queue.Writer.WriteAsync(job);
+                                    if(queueService != null) {
+                                        job.SessionId = Guid.NewGuid();
+                                        queueService.PickJob(job.message.Invoke(this, this.ServerUrl + "/"), job.CancelRequest.Token, new string[0]);
+                                    } else
+                                    {
+                                        queueJob(runsOnMap, job);
+                                    }
                                 }
+                            } catch(ObjectDisposedException) {
+                                // The scope has been disposed, might happen due to rerunning jobs
+                                queueJob(runsOnMap, job);
+                            }
+
+                            static void queueJob(HashSet<string> runsOnMap, Job job)
+                            {
+                                Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string> { $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
+                                queue.Writer.WriteAsync(job);
                             }
                         };
                         if(string.IsNullOrEmpty(group)) {
