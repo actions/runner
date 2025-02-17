@@ -24,7 +24,7 @@ jobs:
 
       - name: Compute image version
         id: image
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7.0.1
         env:
           RUNNER_VERSION: ${{ github.event.inputs.runnerVersion }}
         with:
