@@ -8,7 +8,7 @@ ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
 ARG DOCKER_VERSION=27.5.1
 ARG BUILDX_VERSION=0.20.1
 
-RUN apt update -y && apt install curl unzip -y
+RUN apt update -y && apt install curl unzip zstd -y
 
 WORKDIR /actions-runner
 RUN export RUNNER_ARCH=${TARGETARCH} \
