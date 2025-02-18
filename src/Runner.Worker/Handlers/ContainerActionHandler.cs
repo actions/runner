@@ -190,7 +190,13 @@ namespace GitHub.Runner.Worker.Handlers
             var tempWorkflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
             ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));
 
-            container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
+            string socket = "/var/run/docker.sock";
+            if(System.Environment.GetEnvironmentVariable("DOCKER_HOST") != null){
+                string tempEnv = System.Environment.GetEnvironmentVariable("DOCKER_HOST");
+                socket = tempEnv.Split("unix://")[1];
+                ExecutionContext.Debug($"{DateTime.UtcNow:u}: Custom Docker host found. Using {socket}");
+            }
+            container.MountVolumes.Add(new MountVolume(socket, "/var/run/docker.sock"));
             container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
             container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
             container.MountVolumes.Add(new MountVolume(tempFileCommandDirectory, "/github/file_commands"));
