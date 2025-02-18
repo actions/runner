@@ -1,6 +1,6 @@
 #!/bin/bash
 
 SECONDS=0
-while [[ $SECONDS != $1 ]]; do
+while [[ $SECONDS -lt $1 ]]; do
     :
 done
