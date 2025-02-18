@@ -1,11 +1,11 @@
-﻿using GitHub.DistributedTask.WebApi;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Services.WebApi;
-using GitHub.Services.Common;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Common
 {
@@ -50,7 +50,10 @@ namespace GitHub.Runner.Common
         Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, bool includeToken, CancellationToken cancellationToken);
 
         // agent update
-        Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace);
+        Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace, CancellationToken cancellationToken = default);
+
+        // runner config refresh
+        Task<string> RefreshRunnerConfigAsync(int agentId, string configType, string encodedRunnerConfig, CancellationToken cancellationToken);
     }
 
     public sealed class RunnerServer : RunnerService, IRunnerServer
@@ -315,10 +318,17 @@ namespace GitHub.Runner.Common
             return _genericTaskAgentClient.GetPackageAsync(packageType, platform, version, includeToken, cancellationToken: cancellationToken);
         }
 
-        public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace)
+        public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, ulong agentId, string currentState, string trace, CancellationToken cancellationToken = default)
         {
             CheckConnection(RunnerConnectionType.Generic);
-            return _genericTaskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState, trace);
+            return _genericTaskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState, trace, cancellationToken: cancellationToken);
+        }
+
+        // runner config refresh
+        public Task<string> RefreshRunnerConfigAsync(int agentId, string configType, string encodedRunnerConfig, CancellationToken cancellationToken)
+        {
+            CheckConnection(RunnerConnectionType.Generic);
+            return _genericTaskAgentClient.RefreshRunnerConfigAsync(agentId, configType, encodedRunnerConfig, cancellationToken: cancellationToken);
         }
     }
 }
