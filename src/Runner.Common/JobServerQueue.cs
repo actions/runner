@@ -96,6 +96,8 @@ namespace GitHub.Runner.Common
 
         private bool _resultsClientInitiated = false;
         private bool _enableTelemetry = false;
+        private bool _webconsole_queue_all;
+
         private delegate Task ResultsFileUploadHandler(ResultsUploadFileInfo file);
 
         public override void Initialize(IHostContext hostContext)
@@ -120,6 +122,7 @@ namespace GitHub.Runner.Common
             // This code is usually wrapped by an instance of IExecutionContext which isn't available here.
             jobRequest.Variables.TryGetValue("system.github.results_endpoint", out VariableValue resultsEndpointVariable);
             var resultsReceiverEndpoint = resultsEndpointVariable?.Value;
+            _webconsole_queue_all = jobRequest.Variables.TryGetValue("system.runner.server.webconsole_queue_all", out VariableValue queueAll) && bool.TryParse(queueAll.Value, out bool b) ? b : false;
 
             if (serviceEndPoint?.Authorization != null &&
                 serviceEndPoint.Authorization.Parameters.TryGetValue("AccessToken", out var accessToken) &&
@@ -239,10 +242,10 @@ namespace GitHub.Runner.Common
             // We only process 500 lines of the queue everytime.
             // If the queue is backing up due to slow Http request or flood of output from step,
             // we will drop the output to avoid extra memory consumption from the runner since the live console feed is best effort.
-            if (!string.IsNullOrEmpty(line) && _webConsoleLineQueue.Count < _webConsoleLineQueueSizeLimit)
+            if (!string.IsNullOrEmpty(line) && (_webConsoleLineQueue.Count < _webConsoleLineQueueSizeLimit || _webconsole_queue_all))
             {
                 Trace.Verbose("Enqueue web console line queue: {0}", line);
-                if (line.Length > 1024)
+                if (line.Length > 1024 && !_webconsole_queue_all)
                 {
                     Trace.Verbose("Web console line is more than 1024 chars, truncate to first 1024 chars");
                     line = $"{line.Substring(0, 1024)}...";
