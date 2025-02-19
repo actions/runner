@@ -124,10 +124,19 @@ namespace Runner.Server.Controllers
                         ActionDownloadInfo defDownloadInfo = null;
                         foreach(var downloadUrl in downloadUrls) {
                             try {
-                                var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, ResolvedNameWithOwner = item.NameWithOwner, ResolvedSha = item.Ref };
+                                // : is otherwise put on the filesystem and windows forbids it
+                                var sanitizedNameWithOwner = item.NameWithOwner;//.Replace("://", "__");
+                                var downloadinfo = new ActionDownloadInfo() {NameWithOwner = sanitizedNameWithOwner, Ref = item.Ref, ResolvedNameWithOwner = sanitizedNameWithOwner, ResolvedSha = item.Ref };
                                 // Allow access to the original action
                                 if(islocalcheckout && item.NameWithOwner == localcheckout && item.Ref.StartsWith(BuildConstants.Source.CommitHash)) {
                                     item.Ref = item.Ref.Substring(BuildConstants.Source.CommitHash.Length);
+                                }
+                                if(item.NameWithOwner.StartsWith("http~//") || item.NameWithOwner.StartsWith("https~//")) {
+                                    downloadinfo.TarballUrl = item.NameWithOwner.Replace('~', ':') + "/archive/" + item.Ref + ".tar.gz";
+                                    downloadinfo.ZipballUrl = item.NameWithOwner.Replace('~', ':') + "/archive/" + item.Ref + ".zip";
+                                    downloadinfo.Authentication = new ActionDownloadAuthentication() { Token = "dummy-token" };
+                                    actions[name] = downloadinfo;
+                                    break;
                                 }
                                 downloadinfo.TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, item.Ref);
                                 downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, item.Ref);

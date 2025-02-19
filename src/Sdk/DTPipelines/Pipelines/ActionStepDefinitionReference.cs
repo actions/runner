@@ -79,6 +79,7 @@ namespace GitHub.DistributedTask.Pipelines
             this.Ref = referenceToClone.Ref;
             this.RepositoryType = referenceToClone.RepositoryType;
             this.Path = referenceToClone.Path;
+            this.Token = referenceToClone.Token;
         }
 
         [DataMember(EmitDefaultValue = false)]
@@ -119,6 +120,16 @@ namespace GitHub.DistributedTask.Pipelines
         /// </summary>
         [DataMember(EmitDefaultValue = false)]
         public string Path
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// For Gitea Basic Auth Token
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public string Token
         {
             get;
             set;

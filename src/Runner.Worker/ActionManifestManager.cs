@@ -328,6 +328,8 @@ namespace GitHub.Runner.Worker
             if(executionContext.Global.Variables.GetBoolean("system.runner.server.FailInvalidActionsIfExpression") == true) {
                 flags |= ExpressionFlags.FailInvalidActionsIfExpression;
             }
+            // For Gitea Actions
+            var absoluteActions = executionContext.Global.Variables.GetBoolean("system.runner.server.absolute_actions") == true;
             var result = new TemplateContext
             {
                 Flags = flags,
@@ -339,6 +341,7 @@ namespace GitHub.Runner.Worker
                     maxBytes: 10 * 1024 * 1024),
                 Schema = schema,
                 TraceWriter = executionContext.ToTemplateTraceWriter(),
+                AbsoluteActions = absoluteActions,
             };
 
             // Expression values from execution context

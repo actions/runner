@@ -637,6 +637,8 @@ namespace Runner.Server.Controllers
             if(context.HasFeature("system.runner.server.FailInvalidActionsIfExpression")) {
                 flags |= ExpressionFlags.FailInvalidActionsIfExpression;
             }
+            // For Gitea Actions
+            var absoluteActions = context.HasFeature("system.runner.server.absolute_actions");
             var templateContext = new TemplateContext() {
                 Flags = flags,
                 CancellationToken = CancellationToken.None,
@@ -646,7 +648,8 @@ namespace Runner.Server.Controllers
                     maxEvents: 1000000,
                     maxBytes: 10 * 1024 * 1024),
                 TraceWriter = traceWriter,
-                Schema = PipelineTemplateSchemaFactory.GetSchema()
+                Schema = PipelineTemplateSchemaFactory.GetSchema(),
+                AbsoluteActions = absoluteActions,
             };
             if(context.FeatureToggles.TryGetValue("system.runner.server.workflow_schema", out var workflow_schema)) {
                 var objectReader = new JsonObjectReader(null, workflow_schema);

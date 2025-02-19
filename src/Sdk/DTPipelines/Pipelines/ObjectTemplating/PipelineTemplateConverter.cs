@@ -563,6 +563,29 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     var usesSegments = uses.Value.Split('@');
                     var pathSegments = usesSegments[0].Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
                     var gitRef = usesSegments.Length == 2 ? usesSegments[1] : String.Empty;
+                    string token = null;
+                    if(usesSegments.Length >= 2 && usesSegments.Length <= 3 && context.AbsoluteActions)
+                    {
+                        foreach (var proto in new [] {"http://", "https://"})
+                        {
+                            if (usesSegments[0].StartsWith(proto))
+                            {
+                                // Includes basic auth
+                                if (usesSegments.Length == 3)
+                                {
+                                    usesSegments = new string[] { string.Join("@", usesSegments.Take(2)), usesSegments[2] };
+                                    // Remove auth part and extract the token for loading
+                                    var absoluteUrl = new Uri(usesSegments[0]);
+                                    usesSegments[0] = absoluteUrl.GetComponents(UriComponents.AbsoluteUri & ~UriComponents.UserInfo, UriFormat.UriEscaped);
+                                    token = string.Join(":", absoluteUrl.UserInfo?.Split(':').Skip(1));
+                                    gitRef = usesSegments[1];
+                                }
+                                pathSegments = usesSegments[0].Substring(proto.Length).Split('/');
+                                pathSegments = pathSegments.Skip(2).Prepend((proto + string.Join("/", pathSegments.Take(2))).Replace(':', '~')).ToArray();
+                                break;
+                            }
+                        }
+                    }
 
                     if (usesSegments.Length != 2 ||
                         pathSegments.Length < 2 ||
@@ -584,6 +607,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             Name = repositoryName,
                             Ref = gitRef,
                             Path = directoryPath,
+                            Token = token,
                         };
                     }
                 }

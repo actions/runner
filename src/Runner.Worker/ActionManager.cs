@@ -205,6 +205,11 @@ namespace GitHub.Runner.Worker
                         throw new Exception($"Missing download info for {lookupKey}");
                     }
 
+                    if (action.Reference is Pipelines.RepositoryPathReference repoAction && repoAction.Token != null)
+                    {
+                        downloadInfo.Authentication = new ActionDownloadAuthentication { Token = repoAction.Token };
+                    }
+
                     await DownloadRepositoryActionAsync(executionContext, downloadInfo);
                 }
 

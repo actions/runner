@@ -33,6 +33,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
     public sealed class TemplateContext
     {
         public ExpressionFlags Flags { get; set; }
+        public bool AbsoluteActions { get; set; }
         internal CancellationToken CancellationToken { get; set; }
 
         public int? Column { get; set; }
