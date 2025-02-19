@@ -154,7 +154,10 @@ namespace GitHub.Runner.Worker.Handlers
                     var gitHubContext = step.ExecutionContext.ExpressionValues["github"] as GitHubContext;
                     ArgUtil.NotNull(gitHubContext, nameof(gitHubContext));
                     gitHubContext = gitHubContext.ShallowCopy();
-                    step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
+                    foreach (var prefix in gitHubContext.Prefixes)
+                    {
+                        step.ExecutionContext.ExpressionValues[prefix] = gitHubContext;
+                    }
 
                     // Set GITHUB_ACTION_PATH
                     step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);

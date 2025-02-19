@@ -865,7 +865,7 @@ namespace GitHub.Runner.Worker
             var base64EncodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
             HostContext.SecretMasker.AddValue(base64EncodedToken);
             var githubJob = Global.Variables.Get("system.github.job");
-            var githubContext = new GitHubContext();
+            var githubContext = new GitHubContext(Global.Variables.Get("system.runner.server.github_prefixes")?.Split(","));
             githubContext["token"] = githubAccessToken;
             if (!string.IsNullOrEmpty(githubJob))
             {
@@ -876,8 +876,10 @@ namespace GitHub.Runner.Worker
             {
                 githubContext[pair.Key] = pair.Value;
             }
-            ExpressionValues["github"] = githubContext;
-
+            foreach (var prefix in githubContext.Prefixes)
+            {
+                ExpressionValues[prefix] = githubContext;
+            }
             // Prepend Path
             Global.PrependPath = new List<string>();
 

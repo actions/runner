@@ -6,6 +6,10 @@ namespace GitHub.Runner.Worker
 {
     public sealed class GitHubContext : DictionaryContextData, IEnvironmentContextData
     {
+        public GitHubContext(string[] prefixes = null) {
+            Prefixes = prefixes ?? ["github"];
+        }
+
         private readonly HashSet<string> _contextEnvAllowlist = new(StringComparer.OrdinalIgnoreCase)
         {
             "action_path",
@@ -47,19 +51,24 @@ namespace GitHub.Runner.Worker
             "workspace"
         };
 
+        public string[] Prefixes { get; }
+
         public IEnumerable<KeyValuePair<string, string>> GetRuntimeEnvironmentVariables()
         {
             foreach (var data in this)
             {
                 if (_contextEnvAllowlist.Contains(data.Key))
                 {
-                    if (data.Value is StringContextData value)
+                    foreach (var prefix in Prefixes)
                     {
-                        yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", value);
-                    }
-                    else if (data.Value is BooleanContextData booleanValue)
-                    {
-                        yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", booleanValue.ToString());
+                        if (data.Value is StringContextData value)
+                        {
+                            yield return new KeyValuePair<string, string>($"{prefix.ToUpperInvariant()}_{data.Key.ToUpperInvariant()}", value);
+                        }
+                        else if (data.Value is BooleanContextData booleanValue)
+                        {
+                            yield return new KeyValuePair<string, string>($"{prefix.ToUpperInvariant()}_{data.Key.ToUpperInvariant()}", booleanValue.ToString());
+                        }
                     }
                 }
             }
@@ -67,7 +76,7 @@ namespace GitHub.Runner.Worker
 
         public GitHubContext ShallowCopy()
         {
-            var copy = new GitHubContext();
+            var copy = new GitHubContext(Prefixes);
 
             foreach (var pair in this)
             {
