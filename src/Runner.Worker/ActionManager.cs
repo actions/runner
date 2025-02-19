@@ -440,6 +440,13 @@ namespace GitHub.Runner.Worker
                         Trace.Info($"Action node.js file: {nodeAction.Script}.");
                         Trace.Info($"Action post node.js file: {nodeAction.Post ?? "N/A"}.");
                     }
+                    else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Go)
+                    {
+                        var nodeAction = definition.Data.Execution as GoActionExecutionData;
+                        Trace.Info($"Action pre go file: {nodeAction.Pre ?? "N/A"}.");
+                        Trace.Info($"Action go file: {nodeAction.Main}.");
+                        Trace.Info($"Action post go file: {nodeAction.Post ?? "N/A"}.");
+                    }
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Plugin)
                     {
                         var pluginAction = definition.Data.Execution as PluginActionExecutionData;
@@ -1203,6 +1210,7 @@ namespace GitHub.Runner.Worker
         Plugin,
         Script,
         Composite,
+        Go,
     }
 
     public sealed class ContainerActionExecutionData : ActionExecutionData
@@ -1239,6 +1247,20 @@ namespace GitHub.Runner.Worker
         public string Post { get; set; }
 
         public string NodeVersion { get; set; }
+    }
+
+    public sealed class GoActionExecutionData : ActionExecutionData
+    {
+        public override ActionExecutionType ExecutionType => ActionExecutionType.Go;
+
+        public override bool HasPre => !string.IsNullOrEmpty(Pre);
+        public override bool HasPost => !string.IsNullOrEmpty(Post);
+
+        public string Main { get; set; }
+
+        public string Pre { get; set; }
+
+        public string Post { get; set; }
     }
 
     public sealed class PluginActionExecutionData : ActionExecutionData

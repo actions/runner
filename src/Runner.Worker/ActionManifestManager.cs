@@ -498,6 +498,24 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
+                else if (string.Equals(usingToken.Value, "go", StringComparison.OrdinalIgnoreCase) && executionContext.Global.Variables.GetBoolean("system.runner.server.go_actions") == true)
+                {
+                    if (string.IsNullOrEmpty(mainToken?.Value))
+                    {
+                        throw new ArgumentNullException($"You are using a Go Action but there is not an entry Go file provided in {fileRelativePath}.");
+                    }
+                    else
+                    {
+                        return new GoActionExecutionData()
+                        {
+                            Main = mainToken.Value,
+                            Pre = preToken?.Value,
+                            InitCondition = preIfToken?.Value ?? "always()",
+                            Post = postToken?.Value,
+                            CleanupCondition = postIfToken?.Value ?? "always()"
+                        };
+                    }
+                }
                 else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase))
                 {
                     if (steps == null)

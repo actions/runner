@@ -72,6 +72,13 @@ namespace GitHub.Runner.Worker.Handlers
 
                 (handler as INodeScriptActionHandler).Data = nodeData;
             }
+            else if (data.ExecutionType == ActionExecutionType.Go)
+            {
+                handler = HostContext.CreateService<IGoActionHandler>();
+                var goData = data as GoActionExecutionData;
+
+                (handler as IGoActionHandler).Data = goData;
+            }
             else if (data.ExecutionType == ActionExecutionType.Script)
             {
                 handler = HostContext.CreateService<IScriptHandler>();
