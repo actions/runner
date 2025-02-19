@@ -578,29 +578,31 @@ namespace GitHub.Runner.Worker
 
         private async Task AssertCompatibleOS(IExecutionContext executionContext)
         {
-            // Check whether we are inside a container.
-            // Our container feature requires to map working directory from host to the container.
-            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
-            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                // service CExecSvc is Container Execution Agent.
-                ServiceController[] scServices = ServiceController.GetServices();
-                if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
-                {
-                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-                }
-            } else {
-                IEnumerable<string> initProcessCgroup = null;
-                try
-                {
-                    initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-                }
-                catch
-                {
-                    // This fails on macOS
-                }
-                if (initProcessCgroup != null && initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
-                {
-                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+            if ((executionContext.Global.Variables.GetBoolean("system.runner.server.allow_dind") ?? false) == false) {
+                // Check whether we are inside a container.
+                // Our container feature requires to map working directory from host to the container.
+                // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    // service CExecSvc is Container Execution Agent.
+                    ServiceController[] scServices = ServiceController.GetServices();
+                    if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
+                    {
+                        throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                    }
+                } else {
+                    IEnumerable<string> initProcessCgroup = null;
+                    try
+                    {
+                        initProcessCgroup = File.ReadLines("/proc/1/cgroup");
+                    }
+                    catch
+                    {
+                        // This fails on macOS
+                    }
+                    if (initProcessCgroup != null && initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+                    {
+                        throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                    }
                 }
             }
 
