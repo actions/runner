@@ -18,6 +18,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Runner.Server.Models;
+using Runner.Server.Services;
 
 namespace Runner.Server.Controllers
 {
@@ -28,32 +29,25 @@ namespace Runner.Server.Controllers
     {
 
         private IMemoryCache _cache;
+        private readonly WebConsoleLogService _webConsoleLogService;
 
-        public TimeLineWebConsoleLogController(IMemoryCache cache, IConfiguration conf) : base(conf)
+        public TimeLineWebConsoleLogController(IMemoryCache cache, IConfiguration conf, WebConsoleLogService webConsoleLogService) : base(conf)
         {
             _cache = cache;
+            _webConsoleLogService = webConsoleLogService;
         }
 
         [HttpGet("{timelineId}/{recordId}")]
         public IEnumerable<TimelineRecordLogLine> GetLogLines(Guid timelineId, Guid recordId)
         {
-            if(TimelineController.dict.TryGetValue(timelineId, out var rec) && rec.Item2.TryGetValue(recordId, out var value)) {
-                return from line in value where line != null select line;
-            }
-            return null;
+            return _webConsoleLogService.GetLogLines(timelineId, recordId);
         }
 
         [HttpGet("{timelineId}")]
         public ConcurrentDictionary<Guid, List<TimelineRecordLogLine>> GetLogLines(Guid timelineId)
         {
-            if(TimelineController.dict.TryGetValue(timelineId, out var rec)) {
-                return rec.Item2;
-            }
-            return null;
+            return _webConsoleLogService.GetLogLines(timelineId);
         }
-
-        public delegate void LogFeedEvent(object sender, Guid timelineId, Guid recordId, TimelineRecordFeedLinesWrapper record);
-        public static event LogFeedEvent logfeed;
 
         [HttpGet]
         public IActionResult Message([FromQuery] Guid timelineId, [FromQuery] long[] runid)
@@ -64,17 +58,17 @@ namespace Runner.Server.Controllers
                 await using(var writer = new StreamWriter(stream) { NewLine = "\n" } ) {
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
-                    LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
-                        (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
+                    WebConsoleLogService.LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
                         Job job;
-                        if (timelineId == timelineId2 || timelineId == Guid.Empty && (runid.Length == 0 || TimelineController.dict.TryGetValue(timelineId2, out val) && val.Item1.Any() && _cache.TryGetValue(val.Item1[0].Id, out job) && runid.Contains(job.runid))) {
+                        TimelineRecord record1;
+                        if (timelineId == timelineId2 || timelineId == Guid.Empty && (runid.Length == 0 || (record1 = _webConsoleLogService.GetTimeLine(timelineId2)?.FirstOrDefault()) != null && _cache.TryGetValue(record1.Id, out job) && runid.Contains(job.runid))) {
                             chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = (timelineId2, timeline) => {
-                        (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
                         Job job;
-                        if(timelineId == timelineId2 || timelineId == Guid.Empty && (runid.Length == 0 || TimelineController.dict.TryGetValue(timelineId2, out val) && val.Item1.Any() && _cache.TryGetValue(val.Item1[0].Id, out job) && runid.Contains(job.runid))) {
+                        TimelineRecord record2;
+                        if(timelineId == timelineId2 || timelineId == Guid.Empty && (runid.Length == 0 || (record2 = _webConsoleLogService.GetTimeLine(timelineId2)?.FirstOrDefault()) != null && _cache.TryGetValue(record2.Id, out job) && runid.Contains(job.runid))) {
                             chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
@@ -111,7 +105,7 @@ namespace Runner.Server.Controllers
 
                         }
                     }, requestAborted);
-                    logfeed += handler;
+                    _webConsoleLogService.LogFeed += handler;
                     TimelineController.TimeLineUpdate += handler2;
                     MessageController.OnRepoDownload += rd;
                     FinishJobController.OnJobCompleted += completed;
@@ -121,7 +115,7 @@ namespace Runner.Server.Controllers
                     } catch(OperationCanceledException) {
 
                     } finally {
-                        logfeed -= handler;
+                        _webConsoleLogService.LogFeed -= handler;
                         TimelineController.TimeLineUpdate -= handler2;
                         MessageController.OnRepoDownload -= rd;
                         FinishJobController.OnJobCompleted -= completed;
@@ -129,16 +123,6 @@ namespace Runner.Server.Controllers
                     }
                 }
             }, "text/event-stream");
-        }
-
-        public static void AppendTimelineRecordFeed(TimelineRecordFeedLinesWrapper record, Guid timelineId, Guid recordId) {
-            logfeed?.Invoke(null, timelineId, recordId, record);
-            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) timeline;
-            timeline = TimelineController.dict.GetOrAdd(timelineId, g => (new List<TimelineRecord>(), new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()));
-            timeline.Item2.AddOrUpdate(record.StepId, t => record.Value.Select((s, i) => new TimelineRecordLogLine(s, null)).ToList(), (g, t) => {
-                t.AddRange(record.Value.Select((s) => new TimelineRecordLogLine(s, null)));
-                return t;
-            });
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/{timelineId}/{recordId}")]
@@ -150,7 +134,7 @@ namespace Runner.Server.Controllers
             var nl = record.Value.SelectMany(lines => regex.Split(lines)).ToList();
             record.Value.Clear();
             record.Value.AddRange(nl);
-            Task.Run(() => AppendTimelineRecordFeed(record, timelineId, recordId));
+            Task.Run(() => _webConsoleLogService.AppendTimelineRecordFeed(record, timelineId, recordId));
             return Ok();
         }
 
@@ -181,7 +165,7 @@ namespace Runner.Server.Controllers
                             var regex = new Regex("\r?\n");
                             var nl = livelogfeed.Value.SelectMany(lines => regex.Split(lines)).ToList();
                             var record = new TimelineRecordFeedLinesWrapper(livelogfeed.StepId, nl);
-                            AppendTimelineRecordFeed(record, timelineId, livelogfeed.StepId);
+                            _webConsoleLogService.AppendTimelineRecordFeed(record, timelineId, livelogfeed.StepId);
                         }
                     }
                 } finally {

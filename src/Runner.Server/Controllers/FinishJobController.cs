@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Runner.Server.Services;
 
 namespace Runner.Server.Controllers
 {
@@ -22,21 +23,19 @@ namespace Runner.Server.Controllers
     {
         private IMemoryCache _cache;
         private SqLiteDb _context;
+        private WebConsoleLogService _webConsoleLogService;
 
-        public FinishJobController(IMemoryCache cache, SqLiteDb context, IConfiguration conf) : base(conf)
+        public FinishJobController(IMemoryCache cache, SqLiteDb context, IConfiguration conf, WebConsoleLogService webConsoleLogService) : base(conf)
         {
             _cache = cache;
             _context = context;
+            _webConsoleLogService = webConsoleLogService;
         }
 
         public delegate void JobCompleted(JobCompletedEvent jobCompletedEvent);
-        public delegate void JobAssigned(JobAssignedEvent jobAssignedEvent);
-        public delegate void JobStarted(JobStartedEvent jobStartedEvent);
 
         public static event JobCompleted OnJobCompleted;
         public static event JobCompleted OnJobCompletedAfter;
-        public static event JobAssigned OnJobAssigned;
-        public static event JobStarted OnJobStarted;
 
         internal void InvokeJobCompleted(JobCompletedEvent ev) {
             try {
@@ -64,7 +63,7 @@ namespace Runner.Server.Controllers
                         }
                         MessageController.UpdateJob(this, job);
                         _context.SaveChanges();
-                        new TimelineController(_context, Configuration).SyncLiveLogsToDb(job.TimeLineId);
+                        _webConsoleLogService.SyncLiveLogsToDb(job.TimeLineId);
                     }
                 }
             } finally {
@@ -85,12 +84,6 @@ namespace Runner.Server.Controllers
         {
             if (jevent is JobCompletedEvent ev) {
                 InvokeJobCompleted(ev);
-                return Ok();
-            } else if (jevent is JobAssignedEvent a) {
-                Task.Run(() => OnJobAssigned?.Invoke(a));
-                return Ok();
-            } else if(jevent is JobStartedEvent s) {
-                Task.Run(() => OnJobStarted?.Invoke(s));
                 return Ok();
             }
             return NotFound();

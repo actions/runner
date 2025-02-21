@@ -43,6 +43,7 @@ using Microsoft.Net.Http.Headers;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using GitHub.Services.WebApi;
 using Swashbuckle.AspNetCore.Newtonsoft;
+using Runner.Server.Services;
 
 namespace Runner.Server
 {
@@ -129,6 +130,7 @@ namespace Runner.Server
             if(!useSqlite) {
                 services.AddHostedService<CleanUpArtifactsAndCache>();
             }
+            services.AddSingleton<WebConsoleLogService>();
             Action<DbContextOptionsBuilder> optionsAction = conf => {
                 if(useSqlite) {
                     conf.UseSqlite(sqlitecon);
@@ -208,16 +210,6 @@ namespace Runner.Server
                 };
             });
 
-            // auth.AddNegotiate(opts => {
-            //     // opts.Events.OnChallenge += async (Microsoft.AspNetCore.Authentication.Negotiate.ChallengeContext chp) => {
-                    
-            //     //     await Task.CompletedTask;
-            //     //     // chp.HandleResponse();
-            //     //     // chp.Properties.
-            //     // };
-            //     // //opts.Events.OnAuthenticated
-            // });
-
             services.AddAuthorization(options => {
 
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -243,10 +235,6 @@ namespace Runner.Server
                             return jwt;
                         }
                     };
-                    // options.Events.OnTokenValidated = async ctx => {
-                    //     ctx.Principal
-                    // };
-                    // options.SecurityTokenValidator = new Validator();
                     options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                     options.Authority = Configuration["Authority"];
                     options.SignedOutRedirectUri = "https://localhost";
@@ -377,8 +365,6 @@ namespace Runner.Server
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Runner.Server v1"));
             }
 
-            // app.UseHttpsRedirection();
-
             app.UseRouting();
 
             app.UseCors(MyAllowSpecificOrigins);
@@ -395,7 +381,7 @@ namespace Runner.Server
             var defaultWebUIView = Configuration.GetSection("Runner.Server")?.GetValue<string>("DefaultWebUIView");
             if(!string.IsNullOrEmpty(defaultWebUIView)) {
                 var rewriteOptions = new RewriteOptions();
-                rewriteOptions.Rules.Add(new AllWorlflowsRedirect(defaultWebUIView));
+                rewriteOptions.Rules.Add(new AllWorklflowsRedirect(defaultWebUIView));
                 app.UseRewriter(rewriteOptions);
             }
 
@@ -426,9 +412,9 @@ namespace Runner.Server
         }
     }
 
-    internal class AllWorlflowsRedirect : IRule
+    internal class AllWorklflowsRedirect : IRule
     {
-        public AllWorlflowsRedirect(string defaultWebUIView) {
+        public AllWorklflowsRedirect(string defaultWebUIView) {
             DefaultWebUIView = defaultWebUIView;
         }
 

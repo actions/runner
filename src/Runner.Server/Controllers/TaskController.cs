@@ -62,7 +62,7 @@ namespace Runner.Server.Controllers
             var archivePath = tasksByNameAndVersion[$"{taskid}@{version}"].ArchivePath;
             var prefix = "localtaskzip://";
             if(archivePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
-                var handler = new MessageController(Configuration, cache, null, null);
+                var handler = new MessageController(Configuration, cache, null, null, null);
                 handler.ControllerContext = ControllerContext;
                 handler.HttpContext.Response.GetTypedHeaders().ContentType = new Microsoft.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
                 handler.GetZip(runid, false, false, archivePath.Substring(prefix.Length), true).GetAwaiter().GetResult();

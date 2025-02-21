@@ -52,6 +52,7 @@ using Sdk.Actions;
 using Sdk.Pipelines;
 using ExecutionContext = Sdk.Pipelines.ExecutionContext;
 using Microsoft.Extensions.FileProviders;
+using Runner.Server.Services;
 
 namespace Runner.Server.Controllers
 {
@@ -66,6 +67,7 @@ namespace Runner.Server.Controllers
         private IMemoryCache _cache;
         private SqLiteDb _context;
         private IServiceProvider _provider;
+        private WebConsoleLogService _webConsoleLogService;
         private ISchedulerFactory factory;
         private string GITHUB_TOKEN;
         private string GITHUB_TOKEN_READ_ONLY;
@@ -97,7 +99,7 @@ namespace Runner.Server.Controllers
         private string OnQueueJobProgram { get; }
         private string OnQueueJobArgs { get; }
         private MessageController Clone() {
-            var nc = new MessageController(Configuration, _cache, new SqLiteDb(_context.Options), _provider, factory);
+            var nc = new MessageController(Configuration, _cache, new SqLiteDb(_context.Options), _provider, _webConsoleLogService, factory);
             // We have no access to the HttpContext in the clone
             nc.ServerUrl = ServerUrl;
             return nc;
@@ -111,8 +113,8 @@ namespace Runner.Server.Controllers
         public class QuartzScheduleWorkflowJob : IJob
         {
             private MessageController controller;
-            public QuartzScheduleWorkflowJob(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, IServiceProvider provider, ISchedulerFactory factory = null) {
-                controller = new MessageController(configuration, memoryCache, context, provider, factory);
+            public QuartzScheduleWorkflowJob(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, IServiceProvider provider, WebConsoleLogService webConsoleLogService, ISchedulerFactory factory = null) {
+                controller = new MessageController(configuration, memoryCache, context, provider, webConsoleLogService, factory);
             }
 
             public async Task Execute(IJobExecutionContext context)
@@ -126,7 +128,7 @@ namespace Runner.Server.Controllers
             }
         }
 
-        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, IServiceProvider provider, ISchedulerFactory factory = null) : base(configuration)
+        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context, IServiceProvider provider, WebConsoleLogService webConsoleLogService, ISchedulerFactory factory = null) : base(configuration)
         {
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<string>("GitServerUrl") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<string>("GitApiServerUrl") ?? "";
@@ -161,6 +163,7 @@ namespace Runner.Server.Controllers
             _cache = memoryCache;
             _context = context;
             _provider = provider;
+            _webConsoleLogService = webConsoleLogService;
             this.factory = factory;
         }
 
@@ -711,17 +714,14 @@ namespace Runner.Server.Controllers
         private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null, ISecretsProvider secretsProvider = null, List<TemplateToken> parentEnv = null) {
             attempt = _context.Set<WorkflowRunAttempt>().Find(attempt.Id);
             _context.Entry(attempt).Reference(a => a.WorkflowRun).Load();
-            if(secretsProvider == null) {
-                secretsProvider = new DefaultSecretsProvider(Configuration);
-            }
+            secretsProvider ??= new DefaultSecretsProvider(Configuration);
             bool asyncProcessing = false;
             Guid workflowTimelineId = callingJob?.TimelineId ?? attempt.TimeLineId;
             if(workflowTimelineId == Guid.Empty) {
                 workflowTimelineId = Guid.NewGuid();
                 attempt.TimeLineId = workflowTimelineId;
                 _context.SaveChanges();
-                var records = new List<TimelineRecord>{ new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath, RefName = fileRelativePath, RecordType = "workflow" } };
-                TimelineController.dict[workflowTimelineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
+                _webConsoleLogService.CreateNewRecord(workflowTimelineId, new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath, RefName = fileRelativePath, RecordType = "workflow" });
             }
             Guid workflowRecordId = callingJob?.RecordId ?? attempt.TimeLineId;
             if(workflowTimelineId == attempt.TimeLineId) {
@@ -729,10 +729,9 @@ namespace Runner.Server.Controllers
                 initializingJobs.TryAdd(workflowTimelineId, new Job() { JobId = workflowTimelineId, TimeLineId = workflowTimelineId, runid = runid, workflowname = fileRelativePath } );
                 if(attempt.Attempt > 1) {
                     workflowRecordId = Guid.NewGuid();
-                    TimelineController.dict[workflowTimelineId] = (new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}", RecordType = "workflow" } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                    UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
+                    UpdateTimeLine(_webConsoleLogService.CreateNewRecord(workflowTimelineId, new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}", RecordType = "workflow" }));
                 } else {
-                    UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
+                    UpdateTimeLine(workflowTimelineId, _webConsoleLogService.GetTimeLine(workflowTimelineId));
                 }
             }
             Action finishWorkflow = () => {
@@ -745,7 +744,7 @@ namespace Runner.Server.Controllers
                 }
             };
             var workflowTraceWriter = new TraceWriter2(line => {
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
+                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
             }, Verbosity);
             workflowTraceWriter.Info($"Initialize Workflow Run {runid}");
             string event_name = e;
@@ -1665,15 +1664,15 @@ namespace Runner.Server.Controllers
                                     var jid = jobitem.Id;
                                     jobitem.TimelineId = Guid.NewGuid();
                                     var jobrecord = new TimelineRecord{ Id = jobitem.Id, Name = jobitem.name, RefName = jobitem.name, RecordType = "job" };
-                                    TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                                    var jobTraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
+                                    var jobtlUpdate = _webConsoleLogService.CreateNewRecord(jobitem.TimelineId, jobrecord);
+                                    var jobTraceWriter = new TraceWriter2(line => _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
                                     var jobNameToken = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value).FirstOrDefault();
                                     var _jobdisplayname = (jobNameToken?.ToString() ?? jobitem.name)?.PrefixJobNameIfNotNull(callingJob?.Name);
                                     jobrecord.Name = _jobdisplayname;
                                     jobitem.DisplayName = _jobdisplayname;
                                     // For Runner.Client to show the workflowname
                                     initializingJobs.TryAdd(jobitem.Id, new Job() { JobId = jobitem.Id, TimeLineId = jobitem.TimelineId, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, RequestId = jobitem.RequestId } );
-                                    UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
+                                    UpdateTimeLine(jobtlUpdate);
                                     jobTraceWriter.Info("{0}", $"Evaluate if");
                                     var ifexpr = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "if" select r).FirstOrDefault().Value;
                                     var translateConditionCtx = CreateTemplateContext(jobTraceWriter, workflowContext);
@@ -1935,8 +1934,7 @@ namespace Runner.Server.Controllers
                                                     next.TimelineId = Guid.NewGuid();
                                                     // For Runner.Client to show the workflowname
                                                     initializingJobs.TryAdd(next.Id, new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, runid = runid, RequestId = next.RequestId } );
-                                                    TimelineController.dict[next.TimelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = next.Id, Name = _prejobdisplayname } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                                                    UpdateTimeLine(next.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[next.TimelineId].Item1));
+                                                    UpdateTimeLine(_webConsoleLogService.CreateNewRecord(next.TimelineId, new TimelineRecord{ Id = next.Id, Name = _prejobdisplayname }));
                                                 }
                                                 Func<Func<bool, Job>> failJob = () => {
                                                     var _job = new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, repo = repository_name, WorkflowRunAttempt = attempt, runid = runid, RequestId = next.RequestId };
@@ -1945,9 +1943,9 @@ namespace Runner.Server.Controllers
                                                     return cancel => _job;
                                                 };
                                                 try {
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Prepare Job for execution" }), next.TimelineId, next.Id);
+                                                    _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Prepare Job for execution" }), next.TimelineId, next.Id);
                                                     var matrixJobTraceWriter = new TraceWriter2(line => {
-                                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ line }), next.TimelineId, next.Id);
+                                                        _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ line }), next.TimelineId, next.Id);
                                                     });
                                                     jobitem.Childs?.Add(next);
                                                     if(matrixIf) {
@@ -1967,7 +1965,7 @@ namespace Runner.Server.Controllers
                                                         }
                                                     }
                                                     next.NoStatusCheck = usesJob;
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job name" }), next.TimelineId, next.Id);
+                                                    _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job name" }), next.TimelineId, next.Id);
                                                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                                                     var _jobdisplayname = _prejobdisplayname;
                                                     if(jobNameToken != null && !(jobNameToken is StringToken)) {
@@ -1978,7 +1976,7 @@ namespace Runner.Server.Controllers
                                                     next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
                                                     return queueJob(matrixJobTraceWriter, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                                 } catch(Exception ex) {
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
+                                                    _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
                                                     return failJob();
                                                 }
                                             };
@@ -1996,7 +1994,7 @@ namespace Runner.Server.Controllers
                                             Action<string> cancelAll = message => {
                                                 foreach (var _j in scheduled) {
                                                     if(!string.IsNullOrEmpty(message)) {
-                                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(_j.JobId, new List<string>{ message }), _j.TimeLineId, _j.JobId);
+                                                        _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(_j.JobId, new List<string>{ message }), _j.TimeLineId, _j.JobId);
                                                     }
                                                     _j.CancelRequest?.Cancel();
                                                     if(_j.SessionId == Guid.Empty) {
@@ -2509,7 +2507,7 @@ namespace Runner.Server.Controllers
                     }
                 }
             } catch(Exception ex) {
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, ex.Message.Split('\n').ToList()), workflowTimelineId, workflowRecordId);
+                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, ex.Message.Split('\n').ToList()), workflowTimelineId, workflowRecordId);
                 if(callingJob != null) {
                     callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                 } else {
@@ -2558,17 +2556,14 @@ namespace Runner.Server.Controllers
         private HookResponse AzureDevopsMain(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null, ISecretsProvider secretsProvider = null, string[] taskNames = null) {
             attempt = _context.Set<WorkflowRunAttempt>().Find(attempt.Id);
             _context.Entry(attempt).Reference(a => a.WorkflowRun).Load();
-            if(secretsProvider == null) {
-                secretsProvider = new DefaultSecretsProvider(Configuration);
-            }
+            secretsProvider ??= new DefaultSecretsProvider(Configuration);
             bool asyncProcessing = false;
             Guid workflowTimelineId = callingJob?.TimelineId ?? attempt.TimeLineId;
             if(workflowTimelineId == Guid.Empty) {
                 workflowTimelineId = Guid.NewGuid();
                 attempt.TimeLineId = workflowTimelineId;
                 _context.SaveChanges();
-                var records = new List<TimelineRecord>{ new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath } };
-                TimelineController.dict[workflowTimelineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
+                _webConsoleLogService.CreateNewRecord(workflowTimelineId, new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath, RefName = fileRelativePath, RecordType = "workflow" });
             }
             Guid workflowRecordId = callingJob?.RecordId ?? attempt.TimeLineId;
             if(workflowTimelineId == attempt.TimeLineId) {
@@ -2576,10 +2571,9 @@ namespace Runner.Server.Controllers
                 initializingJobs.TryAdd(workflowTimelineId, new Job() { JobId = workflowTimelineId, TimeLineId = workflowTimelineId, runid = runid } );
                 if(attempt.Attempt > 1) {
                     workflowRecordId = Guid.NewGuid();
-                    TimelineController.dict[workflowTimelineId] = (new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}" } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                    UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}" } }));
+                    UpdateTimeLine(_webConsoleLogService.CreateNewRecord(workflowTimelineId, new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}", RecordType = "workflow" }));
                 } else {
-                    UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[workflowTimelineId].Item1));
+                    UpdateTimeLine(workflowTimelineId, _webConsoleLogService.GetTimeLine(workflowTimelineId));
                 }
             }
             Action finishWorkflow = () => {
@@ -2592,7 +2586,7 @@ namespace Runner.Server.Controllers
                 }
             };
             var workflowTraceWriter = new TraceWriter2(line => {
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
+                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
             }, Verbosity);
             workflowTraceWriter.Info($"Initialize Workflow Run {runid}");
             string event_name = e;
@@ -3168,14 +3162,14 @@ namespace Runner.Server.Controllers
                                 var jid = jobitem.Id;
                                 jobitem.TimelineId = Guid.NewGuid();
                                 var jobrecord = new TimelineRecord{ Id = jobitem.Id, Name = jobitem.name };
-                                TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                                var jobTraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
+                                var jobtlUpdate = _webConsoleLogService.CreateNewRecord(jobitem.TimelineId, jobrecord);
+                                var jobTraceWriter = new TraceWriter2(line => _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
                                 var _jobdisplayname = (job.DisplayName ?? jobitem.name)?.PrefixJobNameIfNotNull(stage.DisplayName ?? stage.Name);
                                 jobrecord.Name = _jobdisplayname;
                                 jobitem.DisplayName = _jobdisplayname;
                                 // For Runner.Client to show the workflowname
                                 initializingJobs.TryAdd(jobitem.Id, new Job() { JobId = jobitem.Id, TimeLineId = jobitem.TimelineId, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, RequestId = jobitem.RequestId } );
-                                UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
+                                UpdateTimeLine(jobtlUpdate);
                                 jobTraceWriter.Info("{0}", $"Evaluate if");
                                 var ifexpr = job.Condition;
                                 var condition = new BasicExpressionToken(null, null, null, string.IsNullOrEmpty(ifexpr) ? "succeeded()" : ifexpr);
@@ -3627,8 +3621,7 @@ namespace Runner.Server.Controllers
                                                 next.TimelineId = Guid.NewGuid();
                                                 // For Runner.Client to show the workflowname
                                                 initializingJobs.TryAdd(next.Id, new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, runid = runid, RequestId = next.RequestId } );
-                                                TimelineController.dict[next.TimelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = next.Id, Name = _prejobdisplayname } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                                                UpdateTimeLine(next.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[next.TimelineId].Item1));
+                                                UpdateTimeLine(_webConsoleLogService.CreateNewRecord(next.TimelineId, new TimelineRecord{ Id = next.Id, Name = _prejobdisplayname }));
                                             }
                                             Func<Func<TaskResult?, Job>> failJob = () => {
                                                 var _job = new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, repo = repository_name, WorkflowRunAttempt = attempt, runid = runid, RequestId = next.RequestId };
@@ -3637,9 +3630,9 @@ namespace Runner.Server.Controllers
                                                 return cancel => _job;
                                             };
                                             try {
-                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Prepare Job for execution" }), next.TimelineId, next.Id);
+                                                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Prepare Job for execution" }), next.TimelineId, next.Id);
                                                 var matrixJobTraceWriter = new TraceWriter2(line => {
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ line }), next.TimelineId, next.Id);
+                                                    _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ line }), next.TimelineId, next.Id);
                                                 });
                                                 jobitem.Childs?.Add(next);
                                                 var _jobdisplayname = _prejobdisplayname;
@@ -3697,7 +3690,7 @@ namespace Runner.Server.Controllers
                                                 }
                                                 return queueAzureJob(matrixJobTraceWriter, _jobdisplayname, job, pipeline, svariables, matrixjobEval, env, jcontextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new string[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, stage.Name, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                             } catch(Exception ex) {
-                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
+                                                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
                                                 return failJob();
                                             }
                                         };
@@ -3715,7 +3708,7 @@ namespace Runner.Server.Controllers
                                         Action<string> cancelAll = message => {
                                             foreach (var _j in scheduled) {
                                                 if(!string.IsNullOrEmpty(message)) {
-                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(_j.JobId, new List<string>{ message }), _j.TimeLineId, _j.JobId);
+                                                    _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(_j.JobId, new List<string>{ message }), _j.TimeLineId, _j.JobId);
                                                 }
                                                 _j.CancelRequest?.Cancel();
                                                 if(_j.SessionId == Guid.Empty) {
@@ -4143,6 +4136,7 @@ namespace Runner.Server.Controllers
                         } else {
                             WorkflowStates.Remove(runid, out _);
                             workflowevent?.Invoke(evargs);
+                            attempt.Status = Status.Completed;
                             attempt.Result = evargs.Success ? TaskResult.Succeeded : TaskResult.Failed;
                             UpdateWorkflowRun(attempt, repository_name);
                             _context.SaveChanges();
@@ -4357,7 +4351,7 @@ namespace Runner.Server.Controllers
                     }
                 }
             } catch(Exception ex) {
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, ex.Message.Split('\n').ToList()), workflowTimelineId, workflowRecordId);
+                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, ex.Message.Split('\n').ToList()), workflowTimelineId, workflowRecordId);
                 if(callingJob != null) {
                     callingJob.Workflowfinish.Invoke(callingJob, new WorkflowEventArgs { runid = runid, Success = false });
                 } else {
@@ -4730,15 +4724,15 @@ namespace Runner.Server.Controllers
                         vars[kv.Key] = new StringContextData(kv.Value);
                     }
                 }
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job continueOnError" }), ji.TimelineId, ji.Id);
+                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job continueOnError" }), ji.TimelineId, ji.Id);
                 templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                 ji.ContinueOnError = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, null, true)?.AssertBoolean($"jobs.{name}.continue-on-error be a boolean").Value).FirstOrDefault() ?? false;
                 templateContext.Errors.Check();
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job timeoutMinutes" }), ji.TimelineId, ji.Id);
+                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job timeoutMinutes" }), ji.TimelineId, ji.Id);
                 templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                 var timeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true)?.AssertNumber($"jobs.{name}.timeout-minutes be a number").Value).Append(360).First() ?? 360;
                 templateContext.Errors.Check();
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job cancelTimeoutMinutes" }), ji.TimelineId, ji.Id);
+                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(ji.Id, new List<string>{ $"Evaluate job cancelTimeoutMinutes" }), ji.TimelineId, ji.Id);
                 templateContext = CreateTemplateContext(matrixJobTraceWriter, workflowContext, contextData);
                 var cancelTimeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, null, true)?.AssertNumber($"jobs.{name}.cancel-timeout-minutes be a number").Value).Append(5).First() ?? 5;
                 templateContext.Errors.Check();
@@ -4850,7 +4844,7 @@ namespace Runner.Server.Controllers
                                             }
                                         });
                                     }
-                                    new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
+                                    clone.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                 }, Id = name.PrefixJobIdIfNotNull(parentId), ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, WorkflowRunName = workflowContext.WorkflowRunName, WorkflowFileName = workflowContext.FileName, Permissions = jobPermissions != null ? calculatedPermissions : null /* If permissions are unspecified by the caller you can elevate id-token: write in a reusabe workflow */, ProvidedInputs = rawWith == null || rawWith.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawWith.AssertMapping($"jobs.{ji.name}.with") select entry.Key.AssertString("jobs.{ji.name}.with mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), ProvidedSecrets = inheritSecrets ? null : rawSecrets == null || rawSecrets.Type == TokenType.Null ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToHashSet(StringComparer.OrdinalIgnoreCase), WorkflowPath = filename, WorkflowRef = calledWorkflowRef, WorkflowRepo = calledWorkflowRepo, WorkflowSha = sha, Depth = (callingJob?.Depth ?? 0) + 1, JobConcurrency = jobConcurrency, Matrix = CallingJob.ChildMatrix(callingJob?.Matrix, contextData["matrix"])};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/", StringComparison.OrdinalIgnoreCase))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value.Where(val => (val.MatrixContextData[callingJob?.Depth ?? 0]?.ToTemplateToken() ?? new NullToken(null, null, null)).DeepEquals(contextData["matrix"]?.ToTemplateToken() ?? new NullToken(null, null, null))).ToList(), StringComparer.OrdinalIgnoreCase);
                                 var sjob = TryParseJobSelector(selectedJob, out var cjob, out _, out var cselector) && string.Equals(name, cjob, StringComparison.OrdinalIgnoreCase) ? cselector : null;
@@ -5305,11 +5299,11 @@ namespace Runner.Server.Controllers
                                 queueJob(runsOnMap, job);
                             }
 
-                            static void queueJob(HashSet<string> runsOnMap, Job job)
+                            void queueJob(HashSet<string> runsOnMap, Job job)
                             {
                                 Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
 
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
+                                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
                                 queue.Writer.WriteAsync(job);
                             }
                         };
@@ -5331,7 +5325,7 @@ namespace Runner.Server.Controllers
                                     };
                                     centry.Run = () => {
                                         if(job.CancelRequest.IsCancellationRequested) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
+                                            _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
                                             finish();
                                         } else {
                                             FinishJobController.OnJobCompleted += evdata => {
@@ -5343,7 +5337,7 @@ namespace Runner.Server.Controllers
                                         }
                                     };
                                     centry.CancelPending = () => {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
+                                        _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
                                         job.CancelRequest.Cancel();
                                         clone.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                         clone._context.Dispose();
@@ -5351,7 +5345,7 @@ namespace Runner.Server.Controllers
                                     centry.CancelRunning = cancelInProgress => {
                                         if(job.SessionId != Guid.Empty) {
                                             if(cancelInProgress) {
-                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was in progress in the concurrency group: {group}" }), job.TimeLineId, job.JobId);
+                                                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was in progress in the concurrency group: {group}" }), job.TimeLineId, job.JobId);
                                                 job.CancelRequest.Cancel();
                                             }
                                             // Keep Job running, since the cancelInProgress is false
@@ -5360,7 +5354,7 @@ namespace Runner.Server.Controllers
                                             clone.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                         }
                                     };
-                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Adding Job to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}" }), job.TimeLineId, job.JobId);
+                                    _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Adding Job to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}" }), job.TimeLineId, job.JobId);
                                     cgroup.PushEntry(centry, cancelInprogress);
                                 }
                                 break;
@@ -5852,11 +5846,11 @@ namespace Runner.Server.Controllers
                                 queueJob(runsOnMap, job);
                             }
 
-                            static void queueJob(HashSet<string> runsOnMap, Job job)
+                            void queueJob(HashSet<string> runsOnMap, Job job)
                             {
                                 Channel<Job> queue = jobqueueAzure.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
 
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string> { $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
+                                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string> { $"Queued Job: {job.name} for queue {string.Join(",", runsOnMap)}" }), job.TimeLineId, job.JobId);
                                 queue.Writer.WriteAsync(job);
                             }
                         };
@@ -5878,7 +5872,7 @@ namespace Runner.Server.Controllers
                                     };
                                     centry.Run = () => {
                                         if(job.CancelRequest.IsCancellationRequested) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
+                                            _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
                                             finish();
                                         } else {
                                             FinishJobController.OnJobCompleted += evdata => {
@@ -5890,7 +5884,7 @@ namespace Runner.Server.Controllers
                                         }
                                     };
                                     centry.CancelPending = () => {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
+                                        _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
                                         job.CancelRequest.Cancel();
                                         clone.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                         clone._context.Dispose();
@@ -5898,7 +5892,7 @@ namespace Runner.Server.Controllers
                                     centry.CancelRunning = cancelInProgress => {
                                         if(job.SessionId != Guid.Empty) {
                                             if(cancelInProgress) {
-                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was in progress in the concurrency group: {group}" }), job.TimeLineId, job.JobId);
+                                                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was in progress in the concurrency group: {group}" }), job.TimeLineId, job.JobId);
                                                 job.CancelRequest.Cancel();
                                             }
                                             // Keep Job running, since the cancelInProgress is false
@@ -5907,7 +5901,7 @@ namespace Runner.Server.Controllers
                                             clone.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                         }
                                     };
-                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Adding Job to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}" }), job.TimeLineId, job.JobId);
+                                    _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Adding Job to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}" }), job.TimeLineId, job.JobId);
                                     cgroup.PushEntry(centry, cancelInprogress);
                                 }
                                 break;
@@ -6142,20 +6136,20 @@ namespace Runner.Server.Controllers
                     {
                         session.JobAccepted = false;
                         agentlabels = queues[i].Key;
-                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Read Job from Queue: {req.name} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
+                        _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Read Job from Queue: {req.name} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
                         _context.Attach(req);
                         req.SessionId = sessionId;
                         _context.SaveChanges();
                         if (req.CancelRequest.IsCancellationRequested)
                         {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Cancelled Job: {req.name} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
+                            _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Cancelled Job: {req.name} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
                             InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                             return NoContent();
                         }
                         var q = queues[i].Value;
                         session.DropMessage = reason =>
                         {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Requeued Job: {req.name} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}: {reason}" }), req.TimeLineId, req.JobId);
+                            _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Requeued Job: {req.name} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}: {reason}" }), req.TimeLineId, req.JobId);
                             q.Writer.WriteAsync(req);
                             session.Job = null;
                             session.JobTimer?.Stop();
@@ -6167,7 +6161,7 @@ namespace Runner.Server.Controllers
                         if (req.message == null)
                         {
                             Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Failed Job: {req.name} for queue {string.Join(",", agentlabels)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
+                            _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Failed Job: {req.name} for queue {string.Join(",", agentlabels)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
                             return NoContent();
                         }
                         // Use Uri to enshure that a host only ServerUrl has a leading `/`, the actions cache api assumes the it ends with a slash
@@ -6175,7 +6169,7 @@ namespace Runner.Server.Controllers
                         if (res == null)
                         {
                             Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Failed Job: {req.name} for queue {string.Join(",", agentlabels)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
+                            _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Failed Job: {req.name} for queue {string.Join(",", agentlabels)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
                             InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Failed, RequestId = req.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                             return NoContent();
                         }
@@ -6218,13 +6212,13 @@ namespace Runner.Server.Controllers
                                 session.Job = null;
                                 session.DropMessage = null;
                                 session.JobTimer.Stop();
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Cancelled Job (2): {req.name} for queue {string.Join(",", agentlabels)} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
+                                _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Cancelled Job (2): {req.name} for queue {string.Join(",", agentlabels)} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
                                 InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase) });
                                 return NoContent();
                                 //return NoContent();
                             }
                             HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Send Job to Runner: {req.name} for queue {string.Join(",", agentlabels)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
+                            _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Send Job to Runner: {req.name} for queue {string.Join(",", agentlabels)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", agentlabels)}" }), req.TimeLineId, req.JobId);
                             // Attempt to mitigate an actions/runner bug, where the runner doesn't send a jobcompleted event if we cancel to early
                             // Reduced from 5 to 2 seconds
                             session.DoNotCancelBefore = DateTime.UtcNow.AddSeconds(2);
@@ -6235,7 +6229,7 @@ namespace Runner.Server.Controllers
                     {
                         try
                         {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Error while sending message (inner area): {ex.Message}" }), req.TimeLineId, req.JobId);
+                            _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Error while sending message (inner area): {ex.Message}" }), req.TimeLineId, req.JobId);
                         }
                         catch
                         {
@@ -6256,7 +6250,7 @@ namespace Runner.Server.Controllers
                 {
                     try
                     {
-                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Error while sending message (outer area): {ex.Message}" }), req.TimeLineId, req.JobId);
+                        _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Error while sending message (outer area): {ex.Message}" }), req.TimeLineId, req.JobId);
                     }
                     catch
                     {
@@ -6704,7 +6698,7 @@ namespace Runner.Server.Controllers
             using(var reader = new StreamReader(eventFile.OpenReadStream())) {
                 string text = await reader.ReadToEndAsync();
                 var obj_ = JObject.Parse(text);
-                obj = new KeyValuePair<GiteaHook, JObject>(JsonConvert.DeserializeObject<GiteaHook>(text), obj_);
+                obj = new KeyValuePair<GiteaHook, JObject>(obj_.ToObject<GiteaHook>(), obj_);
             }
 
             var workflow = (from f in form.Files where f.Name != "event" && !(f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets" || f.FileName.EndsWith(".vars") && f.Name == "actions-environment-variables") select new KeyValuePair<string, string>(f.FileName, new StreamReader(f.OpenReadStream()).ReadToEnd())).ToArray();
@@ -6740,41 +6734,44 @@ namespace Runner.Server.Controllers
                     List<long> runid = new List<long>();
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,string>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
+                    var serializerSettings = new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}};
                     Func<Job, Task> updateJob = async jobInstance => {
                         if(jobCache.TryAdd(jobInstance.JobId, jobInstance)) {
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job", JsonConvert.SerializeObject(jobInstance, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job", JsonConvert.SerializeObject(jobInstance, serializerSettings)));
                         } else {
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job_update", JsonConvert.SerializeObject(jobInstance, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("job_update", JsonConvert.SerializeObject(jobInstance, serializerSettings)));
                         }
                     };
-                    TimeLineWebConsoleLogController.LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
-                        if (TimelineController.dict.TryGetValue(timelineId2, out var val) && val.Item1.Any() && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
+                    WebConsoleLogService.LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
+                        var timeline = _webConsoleLogService.GetTimeLine(timelineId2);
+                        if (timeline?.Any() == true && (_cache.TryGetValue(timeline[0].Id, out Job job) || initializingJobs.TryGetValue(timeline[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, serializerSettings)));
                         } else if(sendLostLogEvents) {
                             // For debugging purposes of missing logs in Runner.Client
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("log_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, serializerSettings)));
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = async (timelineId2, timeline) => {
-                        if(TimelineController.dict.TryGetValue(timelineId2, out var val) && val.Item1.Any() && (_cache.TryGetValue(val.Item1[0].Id, out Job job) || initializingJobs.TryGetValue(val.Item1[0].Id, out job)) && runid.Contains(job.runid)) {
+                        var timeline2 = _webConsoleLogService.GetTimeLine(timelineId2);
+                        if(timeline2?.Any() == true && (_cache.TryGetValue(timeline2[0].Id, out Job job) || initializingJobs.TryGetValue(timeline2[0].Id, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, serializerSettings)));
                         } else if(sendLostLogEvents) {
                             // For debugging purposes of missing logs in Runner.Client
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("timeline_lost", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, serializerSettings)));
                         }
                     };
                     MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules, repository, format, path) => {
                         if(runid.Contains(_runid)) {
-                            chwriter.WriteAsync(new KeyValuePair<string, string>("repodownload", JsonConvert.SerializeObject(new { url, submodules, nestedSubmodules, repository, format, path }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            chwriter.WriteAsync(new KeyValuePair<string, string>("repodownload", JsonConvert.SerializeObject(new { url, submodules, nestedSubmodules, repository, format, path }, serializerSettings)));
                         }
                     };
 
                     FinishJobController.JobCompleted completed = async (ev) => {
                         if((_cache.TryGetValue(ev.JobId, out Job job) || initializingJobs.TryGetValue(ev.JobId, out job)) && runid.Contains(job.runid)) {
                             await updateJob(job);
-                            await chwriter.WriteAsync(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(ev, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            await chwriter.WriteAsync(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(ev, serializerSettings)));
                         }
                     };
 
@@ -6783,7 +6780,7 @@ namespace Runner.Server.Controllers
                             if(runid.Remove(workflow_.runid)) {
                                 var empty = runid.Count == 0;
                                 Action delay = async () => {
-                                    await chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(workflow_, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                                    await chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(workflow_, serializerSettings)));
                                     if(empty) {
                                         // await Task.Delay(100);
                                         await chwriter.WriteAsync(new KeyValuePair<string, string>(null, null));
@@ -6811,7 +6808,7 @@ namespace Runner.Server.Controllers
 
                         }
                     }, requestAborted);
-                    TimeLineWebConsoleLogController.logfeed += handler;
+                    _webConsoleLogService.LogFeed += handler;
                     TimelineController.TimeLineUpdate += handler2;
                     MessageController.OnRepoDownload += rd;
                     FinishJobController.OnJobCompleted += completed;
@@ -6825,7 +6822,7 @@ namespace Runner.Server.Controllers
                                 if(response.skipped || response.failed) {
                                     runid.Remove(response.run_id);
                                     if(response.failed) {
-                                        chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(new WorkflowEventArgs() { runid = response.run_id, Success = false }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                                        chwriter.WriteAsync(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(new WorkflowEventArgs() { runid = response.run_id, Success = false }, serializerSettings)));
                                     }
                                 }
                             }
@@ -6840,12 +6837,12 @@ namespace Runner.Server.Controllers
                     } catch(OperationCanceledException) {
 
                     } finally {
-                        TimeLineWebConsoleLogController.logfeed -= handler;
+                        _webConsoleLogService.LogFeed -= handler;
                         TimelineController.TimeLineUpdate -= handler2;
                         MessageController.OnRepoDownload -= rd;
                         FinishJobController.OnJobCompleted -= completed;
                         MessageController.workflowevent -= onworkflow;
-                    }                    
+                    }
                 }
             }, "text/event-stream");
         }
@@ -7342,15 +7339,19 @@ namespace Runner.Server.Controllers
         }
 
         private void InvokeJobCompleted(JobCompletedEvent ev) {
-            new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(ev);
+            new FinishJobController(_cache, _context, Configuration, _webConsoleLogService).InvokeJobCompleted(ev);
         }
 
-        private Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch, bool outOfSyncTimeLineUpdate = false) {
+        private Task<List<TimelineRecord>> UpdateTimeLine(Guid timelineId, List<TimelineRecord> patch, bool outOfSyncTimeLineUpdate = false) {
             return new TimelineController(_context, Configuration).UpdateTimeLine(timelineId, patch, outOfSyncTimeLineUpdate);
         }
 
+        private Task<List<TimelineRecord>> UpdateTimeLine((Guid, List<TimelineRecord>) pair, bool outOfSyncTimeLineUpdate = false) {
+            return new TimelineController(_context, Configuration).UpdateTimeLine(pair.Item1, pair.Item2, outOfSyncTimeLineUpdate);
+        }
+
         private void SyncLiveLogsToDb(Guid timelineId) {
-            new TimelineController(_context, Configuration).SyncLiveLogsToDb(timelineId);
+            _webConsoleLogService.SyncLiveLogsToDb(timelineId);
         }
 
         private void DeleteAgent(int poolId, ulong agentId) {
