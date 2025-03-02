@@ -53,6 +53,7 @@ using Sdk.Pipelines;
 using ExecutionContext = Sdk.Pipelines.ExecutionContext;
 using Microsoft.Extensions.FileProviders;
 using Runner.Server.Services;
+using static Runner.Server.Services.SecretHelper;
 
 namespace Runner.Server.Controllers
 {
@@ -103,11 +104,6 @@ namespace Runner.Server.Controllers
             // We have no access to the HttpContext in the clone
             nc.ServerUrl = ServerUrl;
             return nc;
-        }
-
-        private class Secret {
-            public string Name {get;set;}
-            public string Value {get;set;}
         }
 
         public class QuartzScheduleWorkflowJob : IJob
@@ -264,79 +260,6 @@ namespace Runner.Server.Controllers
             Skipped = 4,
         }
 
-        private class TraceWriter2 : GitHub.DistributedTask.ObjectTemplating.ITraceWriter, GitHub.DistributedTask.Expressions2.ITraceWriter
-        {
-            private Action<string> callback;
-            private Regex regex;
-            private int verbosity;
-            public TraceWriter2(Action<string> callback, int verbosity = 0) {
-                this.callback = callback;
-                regex = new Regex("\r?\n");
-                this.verbosity = verbosity;
-            }
-
-            public void Callback(string lines) {
-                foreach(var line in regex.Split(lines)) {
-                    callback(line);
-                }
-            }
-
-            public void Error(string format, params object[] args)
-            {
-                if(args?.Length == 1 && args[0] is Exception ex) {
-                    Callback(string.Format("{0} {1}", format, ex.Message));
-                    return;
-                }
-                try {
-                    Callback(args?.Length > 0 ? string.Format(format, args) : format);
-                } catch {
-                    Callback(format);
-                }
-            }
-
-            public void Info(string format, params object[] args)
-            {
-                if(verbosity <= 2) {
-                    try {
-                        Callback(args?.Length > 0 ? string.Format(format, args) : format);
-                    } catch {
-                        Callback(format);
-                    }
-                }
-            }
-
-            public void Info(string message)
-            {
-                if(verbosity <= 2) {
-                    Callback(message);
-                }
-            }
-            public void Verbose(string format, params object[] args)
-            {
-                if(verbosity <= 1) {
-                    try {
-                        Callback(args?.Length > 0 ? string.Format(format, args) : format);
-                    } catch {
-                        Callback(format);
-                    }
-                }
-            }
-
-            public void Verbose(string message)
-            {
-                if(verbosity <= 1) {
-                    Callback(message);
-                }
-            }
-
-            public void Trace(string message)
-            {
-                if(verbosity <= 0) {
-                    Callback(message);
-                }
-            }
-        }
-
         KeyValuePair<string, WorkflowPattern>[] CompilePatterns(SequenceToken sequence) {
             return (from item in sequence select new KeyValuePair<string, WorkflowPattern>(item.AssertString("pattern").Value, new WorkflowPattern(item.AssertString("pattern").Value))).ToArray();
         }
@@ -433,11 +356,6 @@ namespace Runner.Server.Controllers
             public string TargetUrl {get;set;}
         }
 
-        public class WorkflowState {
-            public CancellationTokenSource Cancel;
-            public CancellationTokenSource ForceCancel;
-            public Dictionary<string, TaskMetaData> TasksByNameAndVersion;
-        }
         public static ConcurrentDictionary<long, WorkflowState> WorkflowStates = new ConcurrentDictionary<long, WorkflowState>();
         private class ConcurrencyEntry {
             public Action<bool> CancelRunning {get;set;}
@@ -568,26 +486,6 @@ namespace Runner.Server.Controllers
             }
         }
 
-        private class WorkflowContext {
-            public CancellationToken CancellationToken {get;set;}
-            public CancellationToken? ForceCancellationToken {get;set;}
-            public IList<string> FileTable { get; set; }
-            public string FileName { get; set; }
-            public string WorkflowRunName { get;set; }
-            public JObject EventPayload { get; set; }
-            public HashSet<string> ReferencedWorkflows { get; } = new HashSet<string>();
-            public IDictionary<string, string> FeatureToggles { get; set; }
-            public ExpressionFlags Flags { get; internal set; }
-
-            public WorkflowState WorkflowState { get; set; }
-
-            public Runner.Server.Azure.Devops.Context AzContext { get; set; }
-
-            public bool HasFeature(string name, bool def = false) {
-                return FeatureToggles.TryGetValue(name, out var anchors) ? string.Equals(anchors, "true", StringComparison.OrdinalIgnoreCase) : def;
-            }
-        }
-
         private class CallingJob {
             public string Id {get;set;}
             public Guid TimelineId {get;set;}
@@ -621,61 +519,6 @@ namespace Runner.Server.Controllers
                 matrices.Add(matrix);
                 return matrices;
             }
-        }
-
-        private static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, WorkflowContext context, DictionaryContextData contextData = null, ExecutionContext exctx = null) {
-            ExpressionFlags flags = ExpressionFlags.None;
-            if(context.HasFeature("system.runner.server.extendedFunctions")) {
-                flags |= ExpressionFlags.ExtendedFunctions;
-            }
-            if(context.HasFeature("system.runner.server.extendedDirectives")) {
-                flags |= ExpressionFlags.ExtendedDirectives;
-            }
-            if(context.HasFeature("system.runner.server.allowAnyForInsert")) {
-                flags |= ExpressionFlags.AllowAnyForInsert;
-            }
-            if(context.HasFeature("system.runner.server.FixInvalidActionsIfExpression")) {
-                flags |= ExpressionFlags.FixInvalidActionsIfExpression;
-            }
-            if(context.HasFeature("system.runner.server.FailInvalidActionsIfExpression")) {
-                flags |= ExpressionFlags.FailInvalidActionsIfExpression;
-            }
-            // For Gitea Actions
-            var absoluteActions = context.HasFeature("system.runner.server.absolute_actions");
-            var templateContext = new TemplateContext() {
-                Flags = flags,
-                CancellationToken = CancellationToken.None,
-                Errors = new TemplateValidationErrors(10, 500),
-                Memory = new TemplateMemory(
-                    maxDepth: 100,
-                    maxEvents: 1000000,
-                    maxBytes: 10 * 1024 * 1024),
-                TraceWriter = traceWriter,
-                Schema = PipelineTemplateSchemaFactory.GetSchema(),
-                AbsoluteActions = absoluteActions,
-            };
-            if(context.FeatureToggles.TryGetValue("system.runner.server.workflow_schema", out var workflow_schema)) {
-                var objectReader = new JsonObjectReader(null, workflow_schema);
-                templateContext.Schema = TemplateSchema.Load(objectReader);
-            }
-            if(exctx != null) {
-                templateContext.State[nameof(ExecutionContext)] = exctx;
-                templateContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
-                templateContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
-                templateContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, Int32.MaxValue));
-                templateContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, Int32.MaxValue));
-            }
-            if(contextData != null) {
-                foreach (var pair in contextData) {
-                    templateContext.ExpressionValues[pair.Key] = pair.Value;
-                }
-            }
-            if(context.FileTable != null) {
-                foreach(var fileName in context.FileTable) {
-                    templateContext.GetFileId(fileName);
-                }
-            }
-            return templateContext;
         }
 
         private static bool TryParseJobSelector(string selectedJob, out string jobname, out string matrix, out string child) {
@@ -4817,7 +4660,7 @@ namespace Runner.Server.Controllers
                                 templateContext.Errors.Check();
                                 // Inherit secrets: https://github.com/github/docs/blob/5ffcd4d90f2529fbe383b51edb3a39db4a1528de/content/actions/using-workflows/reusing-workflows.md#using-inputs-and-secrets-in-a-reusable-workflow
                                 bool inheritSecrets = rawSecrets?.Type == TokenType.String && rawSecrets.AssertString($"jobs.{name}.secrets").Value == "inherit";
-                                var reuseableSecretsProvider = inheritSecrets ? secretsProvider : new ReusableWorkflowSecretsProvider(ji, secretsProvider, rawSecrets?.AssertMapping($"jobs.{name}.secrets"), contextData, workflowContext, environment);
+                                var reuseableSecretsProvider = inheritSecrets ? secretsProvider : new ReusableWorkflowSecretsProvider(name, secretsProvider, rawSecrets?.AssertMapping($"jobs.{name}.secrets"), contextData, workflowContext, environment);
                                 // Based on https://github.com/actions/runner/issues/1976#issuecomment-1172940227, dispatchInputs are merged into the workflow_call inputs context
                                 var dispatchInputs = MergedInputs ? callingJob?.DispatchInputs ?? contextData["inputs"]?.AssertDictionary("") ?? new DictionaryContextData() : new DictionaryContextData();
                                 var mergedInputs = dispatchInputs.Clone().AssertDictionary("");
@@ -5937,17 +5780,6 @@ namespace Runner.Server.Controllers
         private static ConcurrentDictionary<HashSet<string>, Channel<Job>> jobqueueAzure = new ConcurrentDictionary<HashSet<string>, Channel<Job>>(new EqualityComparer());
         private static int id = 0;
 
-        // private string Decrypt(byte[] key, byte[] iv, byte[] message) {
-        //     using (var aes = Aes.Create())
-        //     using (var decryptor = aes.CreateDecryptor(key, iv))
-        //     using (var body = new MemoryStream(message))
-        //     using (var cryptoStream = new CryptoStream(body, decryptor, CryptoStreamMode.Read))
-        //     using (var bodyReader = new StreamReader(cryptoStream, Encoding.UTF8))
-        //     {
-        //        return bodyReader.ReadToEnd();
-        //     }
-        // }
-
         public static ConcurrentDictionary<Session, Session> sessions = new ConcurrentDictionary<Session, Session>();
         public delegate void RepoDownload(long runid, string url, bool submodules, bool nestedSubmodules, string repository, string format, string path);
 
@@ -6485,202 +6317,6 @@ namespace Runner.Server.Controllers
                 }
             }
             return Ok();
-        }
-
-        private interface ISecretsProvider {
-            IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null);
-            IDictionary<string, string> GetVariablesForEnvironment(string name = null);
-            IDictionary<string, string> GetReservedSecrets();
-        }
-
-        private static bool IsReservedVariable(string v) {
-            var pattern = new Regex("^[a-zA-Z_][a-zA-Z_0-9]*$");
-            return !pattern.IsMatch(v) || v.StartsWith("GITHUB_", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsActionsDebugVariable(string v) {
-            return string.Equals(v, "ACTIONS_STEP_DEBUG", StringComparison.OrdinalIgnoreCase) || string.Equals(v, "ACTIONS_RUNNER_DEBUG", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static IDictionary<string, string> WithReservedSecrets(IDictionary<string, string> dict, IDictionary<string, string> reservedsecrets) {
-            var ret = dict == null ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) : new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
-            if(reservedsecrets != null) {
-                foreach(var kv in reservedsecrets) {
-                    if(IsReservedVariable(kv.Key) || /* Allow overriding them while calling reusable workflows */ !ret.ContainsKey(kv.Key) && IsActionsDebugVariable(kv.Key)) {
-                        ret[kv.Key] = kv.Value;
-                    }
-                }
-            }
-            return ret;
-        }
-
-        private class ScheduleSecretsProvider : ISecretsProvider
-        {
-            public IDictionary<string, IDictionary<string, string>> SecretsEnvironments { get; set; }
-            public IDictionary<string, IDictionary<string, string>> VarEnvironments { get; set; }
-            public IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null)
-            {
-                return (SecretsEnvironments.TryGetValue("", out var def) ? def : null).Merge(name != null && SecretsEnvironments.TryGetValue(name, out var val) ? val : null);
-            }
-
-            public IDictionary<string, string> GetReservedSecrets()
-            {
-                return WithReservedSecrets(null, SecretsEnvironments.TryGetValue("", out var def) ? def : null);
-            }
-
-            public IDictionary<string, string> GetVariablesForEnvironment(string name = null)
-            {
-                return (VarEnvironments.TryGetValue("", out var def) ? def : null).Merge(name != null && VarEnvironments.TryGetValue(name, out var val) ? val : null);
-            }
-        }
-
-        private class DefaultSecretsProvider : ISecretsProvider
-        {
-            private Dictionary<string, Dictionary<string, string>> SecretsEnvironments { get; set; }
-            private Dictionary<string, Dictionary<string, string>> VarEnvironments { get; set; }
-            public DefaultSecretsProvider(IConfiguration configuration) {
-                var secenvs = (configuration.GetSection("Runner.Server:Environments").Get<Dictionary<string, Dictionary<string, string>>>() ?? new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase)).ToArray();
-                SecretsEnvironments = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-                foreach(var secenv in secenvs) {
-                    SecretsEnvironments[secenv.Key] = new Dictionary<string, string>(secenv.Value, StringComparer.OrdinalIgnoreCase);
-                }
-                var globalSecrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();                
-                if(!SecretsEnvironments.ContainsKey("")) {
-                    SecretsEnvironments[""] = globalSecrets.ToDictionary(sec => sec.Name, sec => sec.Value, StringComparer.OrdinalIgnoreCase);
-                }
-                var varenvs = (configuration.GetSection("Runner.Server:VarEnvironments").Get<Dictionary<string, Dictionary<string, string>>>() ?? new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase)).ToArray();
-                VarEnvironments = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-                foreach(var varenv in varenvs) {
-                    VarEnvironments[varenv.Key] = new Dictionary<string, string>(varenv.Value, StringComparer.OrdinalIgnoreCase);
-                }
-
-            }
-            public IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null)
-            {
-                return (SecretsEnvironments.TryGetValue("", out var def) ? def : null).Merge(name != null && SecretsEnvironments.TryGetValue(name, out var val) ? val : null);
-            }
-
-            public IDictionary<string, string> GetReservedSecrets()
-            {
-                return WithReservedSecrets(null, SecretsEnvironments.TryGetValue("", out var def) ? def : null);
-            }
-
-            public IDictionary<string, string> GetVariablesForEnvironment(string name = null)
-            {
-                return (VarEnvironments.TryGetValue("", out var def) ? def : null).Merge(name != null && VarEnvironments.TryGetValue(name, out var val) ? val : null);
-            }
-        }
-
-        private class ReusableWorkflowSecretsProvider : ISecretsProvider
-        {
-            private ISecretsProvider parent;
-            private TemplateToken secretsMapping;
-            private DictionaryContextData contextData;
-            private JobItem ji;
-            private WorkflowContext workflowContext;
-            private List<TemplateToken> environment;
-
-            public ReusableWorkflowSecretsProvider(JobItem ji, ISecretsProvider parent, TemplateToken secretsMapping, DictionaryContextData contextData, WorkflowContext workflowContext, List<TemplateToken> environment){
-                this.parent = parent;
-                this.secretsMapping = secretsMapping;
-                this.contextData = contextData;
-                this.ji = ji;
-                this.workflowContext = workflowContext;
-                this.environment = environment;
-            }
-            public IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null)
-            {
-                var parentSecrets = parent.GetSecretsForEnvironment(traceWriter, name);
-                traceWriter.Info("{0}", $"Evaluating Secrets of {ji.name} for environment '{name?.Replace("'","''")}'");
-                SecretMasker masker = new SecretMasker();
-                var linesplitter = new Regex("\r?\n");
-                foreach(var variable in parentSecrets) {
-                    if(!String.IsNullOrEmpty(variable.Value)) {
-                        masker.AddValue(variable.Value);
-                        if(variable.Value.Contains('\r') || variable.Value.Contains('\n')) {
-                            foreach(var line in linesplitter.Split(variable.Value)) {
-                                masker.AddValue(line);
-                            }
-                        }
-                    }
-                }
-                masker.AddValueEncoder(ValueEncoders.Base64StringEscape);
-                masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
-                masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
-                masker.AddValueEncoder(ValueEncoders.CommandLineArgumentEscape);
-                masker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
-                masker.AddValueEncoder(ValueEncoders.JsonStringEscape);
-                masker.AddValueEncoder(ValueEncoders.UriDataEscape);
-                masker.AddValueEncoder(ValueEncoders.XmlDataEscape);
-                masker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
-                masker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
-                masker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
-                var secureTraceWriter = new TraceWriter2(line => {
-                    traceWriter.Info("{0}", masker.MaskSecrets(line));
-                });
-                var result = new DictionaryContextData();
-                foreach (var variable in parentSecrets) {
-                    result[variable.Key] = new StringContextData(variable.Value);
-                }
-                var jobEnvCtx = new DictionaryContextData();
-                foreach(var envBlock in environment) {
-                    var envTemplateContext = CreateTemplateContext(secureTraceWriter, workflowContext, contextData);
-                    envTemplateContext.ExpressionValues["env"] = jobEnvCtx;
-                    envTemplateContext.ExpressionValues["secrets"] = result;
-                    var cEnv = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(envTemplateContext, "job-env", envBlock, 0, null, true);
-                    // Best effort, don't check for errors
-                    // templateContext.Errors.Check();
-                    // Best effort, make global env available this is not available on github actions
-                    if(cEnv is MappingToken genvToken) {
-                        foreach(var kv in genvToken) {
-                            if(kv.Key is StringToken key && kv.Value is StringToken val) {
-                                jobEnvCtx[key.Value] = new StringContextData(val.Value);
-                            }
-                        }
-                    }
-                }
-                var templateContext = CreateTemplateContext(secureTraceWriter, workflowContext, contextData);
-                templateContext.ExpressionValues["env"] = jobEnvCtx;
-                templateContext.ExpressionValues["secrets"] = result;
-                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, templateContext.Schema.Definitions.ContainsKey("job-secrets") ? "job-secrets" : "workflow-job-secrets-mapping", secretsMapping, 0, null, true)?.AssertMapping($"jobs.{name}.secrets") : null;
-                templateContext.Errors.Check();
-                IDictionary<string, string> ret = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                if(evalSec != null) {
-                    foreach(var entry in evalSec) {
-                        ret[entry.Key.AssertString($"jobs.{ji.name}.secrets mapping key").Value] = entry.Value.AssertString($"jobs.{ji.name}.secrets mapping value").Value;
-                    }
-                }
-                return WithReservedSecrets(ret, parentSecrets);
-            }
-
-            public IDictionary<string, string> GetReservedSecrets()
-            {
-                return parent.GetReservedSecrets();
-            }
-
-            public IDictionary<string, string> GetVariablesForEnvironment(string name = null)
-            {
-                return parent.GetVariablesForEnvironment(name);
-            }
-        }
-        
-        private class AzurePipelinesVariablesProvider : IVariablesProvider
-        {
-            private ISecretsProvider parent;
-            private IDictionary<string, string> rootVars;
-
-            public AzurePipelinesVariablesProvider(ISecretsProvider parent, IDictionary<string, string> rootVars){
-                this.parent = parent;
-                this.rootVars = rootVars;
-            }
-        
-            public IDictionary<string, string> GetVariablesForEnvironment(string name = null)
-            {
-                if(string.IsNullOrEmpty(name)) {
-                    return rootVars;
-                }
-                return parent.GetVariablesForEnvironment(name);
-            }
         }
 
         [HttpPost("schedule2")]
