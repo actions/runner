@@ -4372,7 +4372,7 @@ namespace Runner.Server.Controllers
 
         private static int reqId = 0;
 
-        private class shared2 {
+        private class SharedFileUpload {
             public CancellationTokenSource Token;
             public string Content;
         }
@@ -4380,7 +4380,7 @@ namespace Runner.Server.Controllers
         [HttpDelete("fileup/{id}")]
         [HttpPost("fileup/{id}")]
         public async Task UploadFile(Guid id) {
-            var sh = _cache.Get<shared2>(id);
+            var sh = _cache.Get<SharedFileUpload>(id);
             if(string.Equals(Request.Method, "Post", StringComparison.OrdinalIgnoreCase)) {
                 using(var reader = new StreamReader(Request.Body, Encoding.UTF8)) {
                     sh.Content = await reader.ReadToEndAsync();
@@ -4390,7 +4390,7 @@ namespace Runner.Server.Controllers
         }
 
         internal async Task<string> GetFile(long runid, string path, string repository = null) {
-            var sh = new shared2();
+            var sh = new SharedFileUpload();
             sh.Token = new CancellationTokenSource(20 * 1000);
             Guid id = Guid.NewGuid();
             _cache.Set(id, sh);
@@ -4408,7 +4408,7 @@ namespace Runner.Server.Controllers
         [HttpDelete("exists/{id}")]
         [HttpPost("exists/{id}")]
         public void UpRepoExists(Guid id) {
-            var sh = _cache.Get<shared2>(id);
+            var sh = _cache.Get<SharedFileUpload>(id);
             if(string.Equals(Request.Method, "Post", StringComparison.OrdinalIgnoreCase)) {
                 sh.Content = "ok";
             }
@@ -4416,7 +4416,7 @@ namespace Runner.Server.Controllers
         }
 
         internal async Task<bool> RepoExists(long runid, string repository = null) {
-            var sh = new shared2();
+            var sh = new SharedFileUpload();
             sh.Token = new CancellationTokenSource(20 * 1000);
             Guid id = Guid.NewGuid();
             _cache.Set(id, sh);
@@ -4426,7 +4426,7 @@ namespace Runner.Server.Controllers
             return sh.Content != null;
         }
 
-        private class shared {
+        private class SharedRepoCopy {
             public Channel<Task> Channel;
             public HttpResponse response;
         }
@@ -4434,7 +4434,7 @@ namespace Runner.Server.Controllers
         [HttpPost("multipartup/{id}")]
         [HttpDelete("multipartup/{id}")]
         public async Task UploadMulti(Guid id) {
-            var sh = _cache.Get<shared>(id);
+            var sh = _cache.Get<SharedRepoCopy>(id);
             Task task;
             if(string.Equals(Request.Method, "Post", StringComparison.OrdinalIgnoreCase)) {
                 var type = Request.Headers["Content-Type"].First();
@@ -4452,7 +4452,7 @@ namespace Runner.Server.Controllers
         [HttpGet("multipart/{runid}")]
         public async Task GetMulti(long runid, [FromQuery] bool submodules, [FromQuery] bool nestedSubmodules, [FromQuery] string repositoryAndRef) {
             var channel = Channel.CreateBounded<Task>(1);
-            var sh = new shared();
+            var sh = new SharedRepoCopy();
             sh.Channel = channel;
             Guid id = Guid.NewGuid();
             _cache.Set(id, sh);
@@ -4466,7 +4466,7 @@ namespace Runner.Server.Controllers
         [HttpPost("zipup/{id}")]
         [HttpDelete("zipup/{id}")]
         public async Task UploadZip(Guid id) {
-            var sh = _cache.Get<shared>(id);
+            var sh = _cache.Get<SharedRepoCopy>(id);
             Task task;
             if(string.Equals(Request.Method, "Post", StringComparison.OrdinalIgnoreCase)) {
                 task = Request.Body.CopyToAsync(sh.response.Body);
@@ -4481,7 +4481,7 @@ namespace Runner.Server.Controllers
         [HttpGet("zipdown/{runid}")]
         public async Task GetZip(long runid, [FromQuery] bool submodules, [FromQuery] bool nestedSubmodules, [FromQuery] string repositoryAndRef, [FromQuery] bool noChildDir) {
             var channel = Channel.CreateBounded<Task>(1);
-            var sh = new shared();
+            var sh = new SharedRepoCopy();
             sh.Channel = channel;
             Guid id = Guid.NewGuid();
             _cache.Set(id, sh);
@@ -4495,7 +4495,7 @@ namespace Runner.Server.Controllers
         [HttpPost("tarup/{id}")]
         [HttpDelete("tarup/{id}")]
         public async Task UploadTar(Guid id) {
-            var sh = _cache.Get<shared>(id);
+            var sh = _cache.Get<SharedRepoCopy>(id);
             Task task;
             if(string.Equals(Request.Method, "Post", StringComparison.OrdinalIgnoreCase)) {
                 task = Request.Body.CopyToAsync(sh.response.Body);
@@ -4510,7 +4510,7 @@ namespace Runner.Server.Controllers
         [HttpGet("tardown/{runid}")]
         public async Task GetTar(long runid, [FromQuery] bool submodules, [FromQuery] bool nestedSubmodules, [FromQuery] string repositoryAndRef) {
             var channel = Channel.CreateBounded<Task>(1);
-            var sh = new shared();
+            var sh = new SharedRepoCopy();
             sh.Channel = channel;
             Guid id = Guid.NewGuid();
             _cache.Set(id, sh);
