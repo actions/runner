@@ -20,15 +20,21 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 # Wait for docker to start
 if [ ! -z "$RUNNER_WAIT_FOR_DOCKER_IN_SECONDS" ]; then
+    RUNNER_WAIT_FOR_DOCKER_SUCCESS=false
     if [ "$RUNNER_WAIT_FOR_DOCKER_IN_SECONDS" -gt 0 ]; then
         echo "Waiting for docker to be ready."
         for i in $(seq "$RUNNER_WAIT_FOR_DOCKER_IN_SECONDS"); do
             if docker ps > /dev/null 2>&1; then
                 echo "Docker is ready."
+                RUNNER_WAIT_FOR_DOCKER_SUCCESS=true
                 break
             fi
             "$DIR"/safe_sleep.sh 1
         done
+    fi
+    if [[ ! -z "$RUNNER_WAIT_FOR_DOCKER_EXIT_ON_FAILURE" && $RUNNER_WAIT_FOR_DOCKER_SUCCESS == false ]]; then
+        echo "Docker is not ready, exiting..."
+        exit 1
     fi
 fi
 
