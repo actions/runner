@@ -1,3 +1,11 @@
+### v0.2.11 (Preview)
+- add iif and trim docs
+  - Now auto complete and hover should show correct content
+- fix links to docs and variables text
+- hide directive auto complete within one (block style)
+- Report Expr Syntax Errors as Fatal again in if / each body
+- clear errors if disable-auto-syntax-check is on
+
 ### v0.2.10
 - Fix syntax validation showing old errors
   - Resolves an unhandled error while the extension want to dismiss the old error messages
