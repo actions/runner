@@ -1,0 +1,12 @@
+trigger: none
+
+variables:
+- template: variable-template-with-parameters.yml
+  parameters:
+    objectVariableName: myVariable
+    objectVariableValue:
+      x: "1"
+      y: "2"
+      
+steps:
+- pwsh: exit 0
