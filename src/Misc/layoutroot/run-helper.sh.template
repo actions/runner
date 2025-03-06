@@ -35,11 +35,11 @@ if [ ! -z "$RUNNER_WAIT_FOR_DOCKER_IN_SECONDS" ]; then
     if [[ $RUNNER_WAIT_FOR_DOCKER_SUCCESS == false ]]; then
         echo "Docker is not ready after $RUNNER_WAIT_FOR_DOCKER_IN_SECONDS seconds"
 
-        if [[ $RUNNER_WAIT_FOR_DOCKER_EXIT_ON_FAILURE == true ]]; then
+        if [[ ! -z "$RUNNER_WAIT_FOR_DOCKER_EXIT_ON_FAILURE" ]]; then
             echo "Respecting RUNNER_WAIT_FOR_DOCKER_EXIT_ON_FAILURE, exiting..."
             exit 1
         else
-            echo "RUNNER_WAIT_FOR_DOCKER_EXIT_ON_FAILURE not true, continuing anyways..."
+            echo "RUNNER_WAIT_FOR_DOCKER_EXIT_ON_FAILURE not set, continuing anyways..."
         fi
     fi
 fi
