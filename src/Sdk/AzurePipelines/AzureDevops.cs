@@ -175,7 +175,7 @@ namespace Runner.Server.Azure.Devops {
                     }
                     else if (template != null)
                     {
-                        var evalp = parameters != null && staticVarCtx != null ? await TemplateEvaluator.EvaluateAsync(staticVarCtx, "workflow-value", parameters, 0, parameters.FileId) : null;
+                        var evalp = parameters != null && staticVarCtx != null ? await TemplateEvaluator.EvaluateAsync(staticVarCtx, "workflow-value", parameters, 0, parameters.FileId) : parameters;
                         var file = await ReadTemplate(context, template, evalp != null ? evalp.AssertMapping("param").ToDictionary(kv => kv.Key.AssertString("").Value, kv => kv.Value) : null, "variable-template-root");
                         await ParseVariables(context.ChildContext(file, template), vars, (from e in file where e.Key.AssertString("").Value == "variables" select e.Value).First(), staticVarCtx);
                     }

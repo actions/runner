@@ -1,0 +1,11 @@
+# pipeline.yml
+variables:
+- template: variable-template-with-parameters.yml
+  parameters:
+    objectVariableName: myVariable
+    objectVariableValue: magic value
+      
+steps:
+- pwsh: exit 0
+- ${{ if ne(variables.myVariable, '"magic value"') }}:
+  - assert: This should not happen

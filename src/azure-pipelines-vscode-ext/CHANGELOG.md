@@ -1,3 +1,6 @@
+### v0.2.12 (Preview)
+- fix broken parameter passing in variable template
+
 ### v0.2.11 (Preview)
 - add iif and trim docs
   - Now auto complete and hover should show correct content

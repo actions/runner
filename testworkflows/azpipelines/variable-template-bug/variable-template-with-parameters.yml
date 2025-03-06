@@ -1,0 +1,12 @@
+# template.yml
+parameters:
+- name: objectVariableName
+  type: string
+
+- name: objectVariableValue
+  type: object
+  default: {}
+
+variables:
+- name: ${{ parameters.objectVariableName }}
+  value: ${{ convertToJson( parameters.objectVariableValue ) }}
