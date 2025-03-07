@@ -2730,29 +2730,37 @@ namespace Runner.Server.Controllers
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                 };
                 var startTime = DateTimeOffset.Now;
+                if(string.IsNullOrEmpty(pipeline.Name)) {
+                    pipeline.Name = "$(Date:yyyyMMdd).$(Rev:r)";
+                }
                 if(!string.IsNullOrEmpty(pipeline.Name)) {
                     var macroexpr = new Regex("\\$\\(([^)]+)\\)");
                     Func<string, int, string> evalMacro = null;
                     evalMacro = (macro, depth) => {
                         return macroexpr.Replace(macro, v => {
                             var keyFormat = v.Groups[1].Value.Split(":", 2);
+                            var format = keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? null : keyFormat[1];
                             switch(keyFormat[0].ToLower()) {
                                 case "date":
-                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "yyyyMMdd" : keyFormat[1]);
+                                return startTime.ToString(format == null ? "yyyyMMdd" : keyFormat[1]);
                                 case "year":
-                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "yyyy" : keyFormat[1]);
+                                return startTime.ToString(format == null ? "yyyy" : keyFormat[1]);
                                 case "seconds":
-                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "s" : keyFormat[1]);
+                                return startTime.ToString(format == null ? "s" : keyFormat[1]);
                                 case "minutes":
-                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "m" : keyFormat[1]);
+                                return startTime.ToString(format == null ? "m" : keyFormat[1]);
                                 case "hours":
-                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "H" : keyFormat[1]);
+                                return startTime.ToString(format == null ? "H" : keyFormat[1]);
                                 case "dayOfmonth":
-                                return startTime.ToString(keyFormat.Length == 1 || string.IsNullOrEmpty(keyFormat[1]) ? "d" : keyFormat[1]);
+                                return startTime.ToString(format == null ? "d" : keyFormat[1]);
                                 case "dayofyear":
                                 return startTime.DayOfYear.ToString();
                                 case "rev":
-                                return "0";
+                                // Fake revision
+                                // r => 1
+                                // rr => 01
+                                // rrr => 001
+                                return string.Join(string.Empty, Enumerable.Repeat('0', Math.Max((format?.Length ?? 1) - 1, 0))) + "1";
                             }
                             // check for cli/rootVariables variables first
                             if(rootVariables.TryGetValue(keyFormat[0], out var strval)) {
@@ -3124,7 +3132,7 @@ namespace Runner.Server.Controllers
                                     variables.Add("system.runner.lowdiskspacethreshold", new VariableValue("100", false)); // actions/runner warns if free space is less than 100MB
                                     // For actions/upload-artifact@v1, actions/download-artifact@v1
                                     variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
-                                    variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
+                                    variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(pipeline.Name, false));
                                     variables["system"] = new VariableValue("build", false);
                                     variables["System.HostType"] = new VariableValue("build", false);
                                     variables["System.servertype"] = new VariableValue("Hosted", false);
