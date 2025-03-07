@@ -21,7 +21,7 @@ namespace Runner.Server.Azure.Devops
         public string TimeoutInMinutes { get; set; }
         public string CancelTimeoutInMinutes { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
-        private Dictionary<string, VariableValue> variablesMetaData;
+        private IEnumerable<TemplateToken> rawVariables;
         public Dictionary<string, Container> Services { get; set; }
         public List<TaskStep> Steps { get; set; }
         public TemplateToken TemplateContext { get; set; }
@@ -143,10 +143,9 @@ namespace Runner.Server.Azure.Devops
                         CancelTimeoutInMinutes = kv.Value.AssertLiteralString("cancelTimeoutInMinutes");
                     break;
                     case "variables":
-                        variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                        await AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
-                        Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
-                        variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
+                        Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                        AzureDevops.ParseVariables(Variables, kv.Value, context.VariablesProvider);
+                        rawVariables = AzureDevops.NormalizeVariableDefinition(kv.Value);
                     break;
                     case "services":
                         Services = kv.Value.AssertMapping("services").ToDictionary(mv => mv.Key.AssertLiteralString("services"), mv => new Container().Parse(mv.Value));
@@ -292,20 +291,10 @@ namespace Runner.Server.Azure.Devops
             if(Strategy != null) {
                 job["strategy"] = Strategy.ToContextData();
             }
-            if(variablesMetaData != null) {
+            if(rawVariables != null) {
                 var vars = new ArrayContextData();
-                foreach(var v in variablesMetaData) {
-                    var varmap = new DictionaryContextData();
-                    vars.Add(varmap);
-                    if(v.Value.IsGroup) {
-                        varmap["group"] = new StringContextData(v.Value.Value);
-                    } else {
-                        varmap["name"] = new StringContextData(v.Key);
-                        varmap["value"] = new StringContextData(v.Value.Value);
-                        if(v.Value.IsReadonly) {
-                            varmap["readonly"] = new StringContextData("true");
-                        }
-                    }
+                foreach(var v in rawVariables) {
+                    vars.Add(v.ToContextData());
                 }
                 job["variables"] = vars;
             }

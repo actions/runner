@@ -144,7 +144,15 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
                         if(sequenceDefinition.AzureVariableBlock && m_context.ExpressionValues?.TryGetValue("variables", out var varsRaw) == true && varsRaw is DictionaryContextData vars) {
                             var mblock = item.AssertMapping("var");
-                            await m_context.EvaluateVariable?.Invoke(m_context, mblock, vars);
+                            var replacements = await m_context.EvaluateVariable?.Invoke(m_context, mblock, vars);
+                            if (replacements != null)
+                            {
+                                foreach (var aitem in replacements)
+                                {
+                                    sequence.Add(aitem);
+                                }
+                                continue;
+                            }
                         }
                         sequence.Add(item);
                     }

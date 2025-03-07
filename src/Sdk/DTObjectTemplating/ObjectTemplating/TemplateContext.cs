@@ -43,7 +43,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
         public int LastRow { get; set; } = 1;
         public int LastColumn { get; set; } = 1;
 
-        public Func<TemplateContext, MappingToken, DictionaryContextData, Task> EvaluateVariable { get; set; }
+        public Func<TemplateContext, MappingToken, DictionaryContextData, Task<IEnumerable<TemplateToken>>> EvaluateVariable { get; set; }
 
         public SkipErrorDisposable SkopedErrorLevel(TemplateValidationErrors skipError = null) {
             m_fatal_errors ??= Errors;

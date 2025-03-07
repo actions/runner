@@ -16,7 +16,7 @@ namespace Runner.Server.Azure.Devops
         public string Condition { get; set; }
         public List<Job> Jobs { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
-        private Dictionary<string, VariableValue> variablesMetaData;
+        private IEnumerable<TemplateToken> rawVariables;
         public TemplateToken TemplateContext { get; set; }
         public Dictionary<string, Azure.Devops.Stage> Dependencies { get; set; }
         public Pool Pool { get; set; }
@@ -45,10 +45,9 @@ namespace Runner.Server.Azure.Devops
                         Condition = kv.Value.AssertLiteralString("condition");
                     break;
                     case "variables":
-                        variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                        await AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
-                        Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
-                        variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
+                        Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                        AzureDevops.ParseVariables(Variables, kv.Value, context.VariablesProvider);
+                        rawVariables = AzureDevops.NormalizeVariableDefinition(kv.Value);
                     break;
                     case "jobs":
                         Jobs = new List<Job>();
@@ -144,20 +143,10 @@ namespace Runner.Server.Azure.Devops
                 }
                 stage["dependsOn"] = dependsOn;
             }
-            if(variablesMetaData != null) {
+            if(rawVariables != null) {
                 var vars = new ArrayContextData();
-                foreach(var v in variablesMetaData) {
-                    var varmap = new DictionaryContextData();
-                    vars.Add(varmap);
-                    if(v.Value.IsGroup) {
-                        varmap["group"] = new StringContextData(v.Value.Value);
-                    } else {
-                        varmap["name"] = new StringContextData(v.Key);
-                        varmap["value"] = new StringContextData(v.Value.Value);
-                        if(v.Value.IsReadonly) {
-                            varmap["readonly"] = new StringContextData("true");
-                        }
-                    }
+                foreach(var v in rawVariables) {
+                    vars.Add(v.ToContextData());
                 }
                 stage["variables"] = vars;
             }

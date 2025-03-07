@@ -43,21 +43,6 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-        // MetaInfo for reserializing group references
-        [IgnoreDataMember]
-        public Boolean IsGroup
-        {
-            get;
-            set;
-        }
-
-        [IgnoreDataMember]
-        public Boolean IsGroupMember
-        {
-            get;
-            set;
-        }
-
         public static implicit operator VariableValue(String value)
         {
             return new VariableValue(value, false);

@@ -19,7 +19,7 @@ namespace Runner.Server.Azure.Devops
         public string Name { get; set; }
         public List<Stage> Stages { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
-        private Dictionary<string, VariableValue> variablesMetaData;
+        private IEnumerable<TemplateToken> rawVariables;
         public Dictionary<string, Container> ContainerResources { get; set; }
         public Dictionary<string, TemplateToken> OtherResources { get; set; }
         public TemplateToken Trigger { get; set; }
@@ -42,10 +42,9 @@ namespace Runner.Server.Azure.Devops
                     case "parameters":
                         break;
                     case "variables":
-                        variablesMetaData = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-                        await AzureDevops.ParseVariables(context, variablesMetaData, kv.Value);
-                        Variables = variablesMetaData.Where(metaData => !metaData.Value.IsGroup).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
-                        variablesMetaData = variablesMetaData.Where(metaData => !metaData.Value.IsGroupMember).ToDictionary(metaData => metaData.Key, metaData => metaData.Value, StringComparer.OrdinalIgnoreCase);
+                        Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
+                        AzureDevops.ParseVariables(Variables, kv.Value, context.VariablesProvider);
+                        rawVariables = AzureDevops.NormalizeVariableDefinition(kv.Value);
                     break;
                     case "extends":
                         var ext = kv.Value.AssertMapping("extends");
@@ -172,7 +171,7 @@ namespace Runner.Server.Azure.Devops
                 if(parent.Variables != null) {
                     if (Variables == null) {
                         Variables = parent.Variables;
-                        variablesMetaData = parent.variablesMetaData;
+                        rawVariables = parent.rawVariables;
                     } else {
                         // emulate the error message provided by Azure Pipelines
                         throw new NotSupportedException("__built-in-schema.yml (Line: 40, Col:11): 'variables' is already defined");
@@ -187,20 +186,10 @@ namespace Runner.Server.Azure.Devops
             if(!string.IsNullOrEmpty(Name)) {
                 pipeline["name"] = new StringContextData(Name);
             }
-            if(variablesMetaData != null) {
+            if(rawVariables != null) {
                 var vars = new ArrayContextData();
-                foreach(var v in variablesMetaData) {
-                    var varmap = new DictionaryContextData();
-                    vars.Add(varmap);
-                    if(v.Value.IsGroup) {
-                        varmap["group"] = new StringContextData(v.Value.Value);
-                    } else {
-                        varmap["name"] = new StringContextData(v.Key);
-                        varmap["value"] = new StringContextData(v.Value.Value);
-                        if(v.Value.IsReadonly) {
-                            varmap["readonly"] = new StringContextData("true");
-                        }
-                    }
+                foreach(var v in rawVariables) {
+                    vars.Add(v.ToContextData());
                 }
                 pipeline["variables"] = vars;
             }
