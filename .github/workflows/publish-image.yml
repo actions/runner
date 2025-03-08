@@ -64,7 +64,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           build-args: |
             RUNNER_VERSION=${{ steps.image.outputs.version }}
-          load: true
+          push: true
           labels: |
             org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
             org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
