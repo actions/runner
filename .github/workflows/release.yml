@@ -309,6 +309,7 @@ jobs:
             const runnerVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '')
             console.log(`Using runner version ${runnerVersion}`)
             core.setOutput('version', runnerVersion);
+
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v3
 
