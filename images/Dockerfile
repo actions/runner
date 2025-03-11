@@ -6,6 +6,7 @@ ARG TARGETARCH
 ARG RUNNER_VERSION
 ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
 ARG DOCKER_VERSION=27.5.1
+ARG DOCKER_COMPOSE_VERSION=v2.33.1
 ARG BUILDX_VERSION=0.20.1
 
 RUN apt update -y && apt install curl unzip -y
@@ -31,6 +32,13 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+
+RUN export RUNNER_ARCH=${TARGETARCH} \
+    && if [ "$RUNNER_ARCH" = "arm64" ]; then export RUNNER_ARCH=aarch64 ; fi \
+    && if [ "$RUNNER_ARCH" = "amd64" ] || [ "$RUNNER_ARCH" = "i386" ]; then export RUNNER_ARCH=x86_64 ; fi \
+    && mkdir -p /usr/local/lib/docker/cli-plugins \
+    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-linux-${RUNNER_ARCH} \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy
 
@@ -61,6 +69,9 @@ WORKDIR /home/runner
 
 COPY --chown=runner:docker --from=build /actions-runner .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+COPY --from=build /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+
+RUN ln -s /usr/local/lib/docker/cli-plugins/docker-compose /usr/bin/docker-compose
 
 RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
 
