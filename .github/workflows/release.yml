@@ -216,7 +216,7 @@ jobs:
 
     # Upload release assets (full runner packages)
     - name: Upload Release Asset (win-x64)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -226,7 +226,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (win-arm64)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -236,7 +236,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-x64)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -246,7 +246,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (osx-x64)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -256,7 +256,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (osx-arm64)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -266,7 +266,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -276,7 +276,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm64)
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
