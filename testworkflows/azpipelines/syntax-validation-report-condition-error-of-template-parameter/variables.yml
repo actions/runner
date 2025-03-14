@@ -1,0 +1,6 @@
+parameters:
+- name: step
+  type: step
+variables:
+- name: step
+  value: ${{ convertToJson(parameters.step) }}

@@ -1,5 +1,6 @@
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace Runner.Server.Azure.Devops
 {
@@ -66,6 +67,19 @@ namespace Runner.Server.Azure.Devops
             var pline = await new Pipeline().Parse(context.ChildContext(evaluatedRoot, fileRelativePath), evaluatedRoot);
             pline.CheckPipelineForRuntimeFailure();
             return pline;
+        }
+
+        public TemplateToken ValidateSyntax(string fileRelativePath)
+        {
+            return ValidateSyntaxAsync(fileRelativePath).GetAwaiter().GetResult();
+        }
+
+        public async Task<TemplateToken> ValidateSyntaxAsync(string fileRelativePath)
+        {
+            Context context = GetContext();
+
+            var (_, tkn) = await AzureDevops.ParseTemplate(context, fileRelativePath, null, checks: true);
+            return tkn;
         }
     }
 }

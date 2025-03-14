@@ -1,0 +1,12 @@
+# ExpectedException: TemplateValidationException
+# ExpectedMessage: invalid-parameter
+stages:
+- template: tmpl.yml
+  parameters:
+    stages:
+    - stage: A
+      jobs:
+      - job: A
+        steps:
+        - script: exit 0
+    invalid-parameter: this-should-fail

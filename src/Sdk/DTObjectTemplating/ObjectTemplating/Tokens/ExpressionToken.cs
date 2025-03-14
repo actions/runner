@@ -68,8 +68,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             ExpressionNode root = null;
             try
             {
-                root = new ExpressionParser() { Flags = flags }.CreateTree(expression, null, namedValues, functions) as ExpressionNode;
-
+                var parser = new ExpressionParser() { Flags = flags };
+                root = parser.CreateTree(expression, null, namedValues, functions) as ExpressionNode;
                 result = true;
                 ex = null;
             }

@@ -1,0 +1,12 @@
+# ValidateSyntax: true
+# ExpectedException: TemplateValidationException
+# ExpectedMessage: Unrecognized named-value: 'error'
+
+variables:
+- template: variables.yml
+  parameters:
+    step:
+      checkout: self
+      condition: error
+steps:
+- bash: echo ok

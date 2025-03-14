@@ -370,7 +370,7 @@ namespace Runner.Server.Azure.Devops {
                 case "pool":
                 case "secureFile":
                 case "serviceConnection":
-                return val == null ? null : val.ToContextData();
+                return val?.ToContextData();
                 case "legacyObject":
                 return val == null ? null : ConvertAllScalarsToString(val).ToContextData();
                 case "boolean":
@@ -686,7 +686,7 @@ namespace Runner.Server.Azure.Devops {
             var errorTemplateFileName = $"({finalRepository ?? "self"})/{finalFileName}";
             context.FileTable ??= new List<string>();
             context.FileTable.Add(errorTemplateFileName);
-            var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
+            var templateContext = CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags);
             if(context.Column != 0 && context.Row != 0) {
                 templateContext.AutoCompleteMatches = context.AutoCompleteMatches ??= new List<AutoCompleteEntry>();
                 templateContext.Column = context.Column;
@@ -1252,8 +1252,7 @@ namespace Runner.Server.Azure.Devops {
                 }
             }
 
-
-            var templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags, contextData);
+            var templateContext = CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), context.FileTable, context.Flags, contextData);
             var fileId = templateContext.GetFileId(errorTemplateFileName);
 
             var strictParametersCheck = false;
@@ -1348,7 +1347,7 @@ namespace Runner.Server.Azure.Devops {
                 dict[param.Key] = param.Value;
             }
 
-            templateContext = AzureDevops.CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
+            templateContext = CreateTemplateContext(context.TraceWriter ?? new EmptyTraceWriter(), templateContext.GetFileTable().ToArray(), context.Flags, contextData);
             templateContext.EvaluateVariable = async (tcontext, mapping, vars) => {
                 string template = null;
                 TemplateToken parameters = null;

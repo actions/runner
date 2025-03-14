@@ -69,6 +69,7 @@ namespace Runner.Server.Azure.Devops
                     result = new TestWorkflow(workingDir, fileName)
                     {
                         Name = parser.Name,
+                        ValidateSyntax = parser.ValidateSyntax,
                         LocalRepository = parser.LocalRepository,
                         ExpectedException = parser.ExpectedException,
                         ExpectedErrorMessage = parser.ExpectedError
@@ -87,18 +88,20 @@ namespace Runner.Server.Azure.Devops
         class TestWorkflowParser
         {
             public string? Name { get; private set; }
+            public bool ValidateSyntax { get; private set; }
             public Type? ExpectedException { get; private set; }
             public string? ExpectedError { get; private set; }
             public string[] LocalRepository { get; private set; }
 
             public bool HasMeta()
             {
-                return Name != null || ExpectedException != null | ExpectedError != null | LocalRepository?.Length > 0;
+                return Name != null || ValidateSyntax || ExpectedException != null || ExpectedError != null || LocalRepository?.Length > 0;
             }
 
             public TestWorkflowParser(string content)
             {
                 Name = GetMeta(content, "Name")[0];
+                ValidateSyntax = GetMeta(content, "ValidateSyntax")[0] == "true";
                 ExpectedError = GetMeta(content, "ExpectedErrorMessage")[0];
                 ExpectedException = LoadType(GetMeta(content, "ExpectedException")[0]);
                 LocalRepository = GetMeta(content, "LocalRepository").Where(i => i != null).Cast<string>().ToArray();

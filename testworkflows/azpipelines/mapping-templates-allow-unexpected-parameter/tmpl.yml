@@ -1,0 +1,6 @@
+parameters:
+  - name: stages
+    type: stageList
+    default: []
+stages:
+  - ${{ parameters.stages }}

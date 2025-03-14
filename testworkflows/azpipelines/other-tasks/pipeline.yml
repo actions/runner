@@ -1,0 +1,10 @@
+resources:
+  containers:
+    - container: my_container
+      image: ubuntu:latest
+steps:
+- download: current
+- downloadBuild: current
+- getPackage: current
+- publish: current
+- reviewApp: current

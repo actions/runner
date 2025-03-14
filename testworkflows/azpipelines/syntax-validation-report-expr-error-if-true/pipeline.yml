@@ -1,0 +1,7 @@
+# ValidateSyntax: true
+# ExpectedException: TemplateValidationException
+# ExpectedMessage: Unexpected symbol: 'h'
+
+steps:
+  - ${{ if true }}:
+    -  IsNull: ${{ replace h(coalesce(parameters.y, parameters.y), '''', '''''') }}

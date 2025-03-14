@@ -45,7 +45,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         public Func<TemplateContext, MappingToken, DictionaryContextData, Task<IEnumerable<TemplateToken>>> EvaluateVariable { get; set; }
 
-        public SkipErrorDisposable SkopedErrorLevel(TemplateValidationErrors skipError = null) {
+        public SkipErrorDisposable ScopedErrorLevel(TemplateValidationErrors skipError = null) {
             m_fatal_errors ??= Errors;
             return new SkipErrorDisposable(this, skipError);
         }
@@ -81,10 +81,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
         {
             get
             {
-                if (m_fatal_errors == null)
-                {
-                    m_fatal_errors = new TemplateValidationErrors();
-                }
+                m_fatal_errors ??= Errors;
 
                 return m_fatal_errors;
             }

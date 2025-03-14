@@ -1,0 +1,10 @@
+parameters:
+- name: items
+  type: string
+  default: opt1
+  values:
+  - opt1
+  - opt2
+  - opt3
+steps:
+- script: echo Test

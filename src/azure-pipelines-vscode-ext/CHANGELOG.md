@@ -1,3 +1,6 @@
+### v0.2.13
+- add more tests
+
 ### v0.2.12 (Preview)
 - fix broken parameter passing in variable template
 

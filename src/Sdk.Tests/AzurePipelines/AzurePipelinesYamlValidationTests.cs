@@ -24,7 +24,16 @@ namespace Runner.Server.Azure.Devops
             }
 
             // act
-            var act = new Action(() => Context.Evaluate(workflow.File).ToYaml());
+            var act = new Action(() => {
+                if (workflow.ValidateSyntax)
+                {
+                    Context.ValidateSyntax(workflow.File);
+                }
+                else
+                {
+                    Context.Evaluate(workflow.File).ToYaml();
+                }
+            });
 
             // assert
             if (workflow.ExpectedException != null)

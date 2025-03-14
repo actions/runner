@@ -1,0 +1,28 @@
+resources:
+  containers:
+    - container: my_container
+      image: ubuntu:latest
+steps:
+- script: echo Test
+  target:
+    container: my_container
+- script: echo Test
+  target:
+    commands: restricted
+- script: echo Test
+  target:
+    commands: any
+- script: echo Test
+  target:
+    commands: restricted
+    container: my_container
+- script: echo Test
+  target: my_container
+- script: echo Test
+  target:
+    settableVariables: none
+- script: echo Test
+  target:
+    settableVariables:
+    - var1
+    - var2

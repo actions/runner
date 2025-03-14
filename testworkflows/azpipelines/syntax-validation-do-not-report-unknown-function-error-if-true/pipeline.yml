@@ -1,0 +1,5 @@
+# ValidateSyntax: true
+
+steps:
+  - ${{ if true }}:
+    -  IsNull: ${{ unknown.test }}

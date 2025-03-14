@@ -34,7 +34,13 @@ namespace GitHub.DistributedTask.Expressions2
         {
             var context = new ParseContext(expression, trace, namedValues, functions, flags: Flags);
             context.Trace.Info($"Parsing expression: <{expression}>");
-            return CreateTree(context);
+            var node = CreateTree(context);
+            // Syntax is valid, now report context names
+            if (context.UnrecognizedError != null)
+            {
+                throw context.UnrecognizedError;
+            }
+            return node;
         }
 
         public IExpressionNode ValidateSyntax(
@@ -136,7 +142,9 @@ namespace GitHub.DistributedTask.Expressions2
                     }
                     else
                     {
-                        throw new ParseException(ParseExceptionKind.UnrecognizedFunction, context.Token, context.Expression);
+                        node = new NoOperation();
+                        node.Name = function;
+                        context.UnrecognizedError ??= new ParseException(ParseExceptionKind.UnrecognizedFunction, context.Token, context.Expression);
                     }
                     break;
 
@@ -156,7 +164,9 @@ namespace GitHub.DistributedTask.Expressions2
                     }
                     else
                     {
-                        throw new ParseException(ParseExceptionKind.UnrecognizedNamedValue, context.Token, context.Expression);
+                        node = new NoOperationNamedValue();
+                        node.Name = name;
+                        context.UnrecognizedError ??= new ParseException(ParseExceptionKind.UnrecognizedNamedValue, context.Token, context.Expression);
                     }
                     break;
 
@@ -442,6 +452,7 @@ namespace GitHub.DistributedTask.Expressions2
             public readonly ITraceWriter Trace;
             public Token Token;
             public Token LastToken;
+            public Exception UnrecognizedError;
 
             public ParseContext(
                 String expression,

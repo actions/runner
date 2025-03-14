@@ -1,0 +1,6 @@
+parameters:
+  stages: []
+stages:
+- ${{ parameters.stages }}
+- ${{ if ne(parameters['invalid-parameter'], 'this-should-be-ok') }}:
+  - assert: invalid-parameter is missing

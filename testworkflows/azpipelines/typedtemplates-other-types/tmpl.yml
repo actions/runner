@@ -1,0 +1,65 @@
+parameters:
+- name: stages
+  type: object
+  default: []
+- name: b1
+  type: boolean
+  default: false
+- name: legObj
+  type: legacyObject
+  default:
+    b: true
+- name: step
+  type: step
+  default:
+    script: echo Test
+- name: steps
+  type: stepList
+  default:
+  - script: echo Test
+- name: job
+  type: job
+  default:
+    job: job1
+    steps:
+    - script: echo Test
+- name: jobs
+  type: jobList
+  default:
+  - job: job1
+    steps:
+    - script: echo Test
+- name: deployment
+  type: deployment
+  default:
+    deployment: job1
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo Test
+- name: deployments
+  type: deploymentList
+  default:
+  - deployment: job1
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo Test
+- name: container
+  type: container
+  default:
+    container: ub0
+    image: ubuntu:latest
+- name: containers
+  type: containerList
+  default:
+  - container: ub0
+    image: ubuntu:latest
+  - container: ub1
+    image: ubuntu:18.04
+stages:
+- ${{ parameters.stages }}
+- ${{ if ne(converttojson(parameters.legObj.b), '"true"') }}:
+  - assert: failure

@@ -35,6 +35,11 @@ namespace Runner.Server.Azure.Devops
         public string? Name { get; set; }
 
         /// <summary>
+        /// Validate Syntax without without evaluating
+        /// </summary>
+        public bool ValidateSyntax { get; set; }
+
+        /// <summary>
         /// Additional repository information needed for workflow
         /// </summary>
         public string[] LocalRepository { get; set; }
@@ -58,6 +63,7 @@ namespace Runner.Server.Azure.Devops
         public void Deserialize(IXunitSerializationInfo info)
         {
             Name = info.GetValue<string>(nameof(Name));
+            ValidateSyntax = info.GetValue<bool>(nameof(ValidateSyntax));
             WorkingDirectory = info.GetValue<string>(nameof(WorkingDirectory));
             File = info.GetValue<string>(nameof(File));
             LocalRepository = info.GetValue<string?>(nameof(LocalRepository))?.Split(";") ?? Array.Empty<string>();
@@ -75,6 +81,7 @@ namespace Runner.Server.Azure.Devops
         public void Serialize(IXunitSerializationInfo info)
         {
             info.AddValue(nameof(Name), Name);
+            info.AddValue(nameof(ValidateSyntax), ValidateSyntax);
             info.AddValue(nameof(WorkingDirectory), WorkingDirectory);
             info.AddValue(nameof(File), File);
             info.AddValue(nameof(LocalRepository), LocalRepository?.Length > 0 ? string.Join(";", LocalRepository) : null);

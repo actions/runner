@@ -245,7 +245,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
                             def.AllowedContext = definition.AllowedContext.Append(eachexp.Variable).ToArray();
                             var parentSeq = m_schema.Get<SequenceDefinition>(definition.Parent).FirstOrDefault();
-                            using var _ = m_context.SkopedErrorLevel(eachexp.Errors ??= new TemplateValidationErrors());
+                            using var _ = m_context.ScopedErrorLevel(eachexp.Errors ??= new TemplateValidationErrors());
                             if(m_context.AutoCompleteMatches != null && parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
@@ -257,7 +257,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         } else if(nextKeyScalar is ConditionalExpressionToken conditional) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(definition) : new DefinitionInfo(definition, "any");
                             var parentSeq = m_schema.Get<SequenceDefinition>(definition.Parent).FirstOrDefault();
-                            using var _ = m_context.SkopedErrorLevel(conditional.Errors ??= new TemplateValidationErrors());
+                            using var _ = m_context.ScopedErrorLevel(conditional.Errors ??= new TemplateValidationErrors());
                             if(m_context.AutoCompleteMatches != null && parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
@@ -419,7 +419,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(mappingDefinition) : new DefinitionInfo(mappingDefinition, "any");
                             def.AllowedContext = valueDefinition.AllowedContext.Append(eachexp.Variable).ToArray();
                             var parentSeq = m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).FirstOrDefault();
-                            using var _ = m_context.SkopedErrorLevel(eachexp.Errors ??= new TemplateValidationErrors());
+                            using var _ = m_context.ScopedErrorLevel(eachexp.Errors ??= new TemplateValidationErrors());
                             if(m_context.AutoCompleteMatches != null && parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
@@ -431,7 +431,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                         } else if(nextKeyScalar is ConditionalExpressionToken conditional) {
                             var def = m_context.AutoCompleteMatches != null ? new DefinitionInfo(mappingDefinition) : new DefinitionInfo(mappingDefinition, "any");
                             var parentSeq = m_schema.Get<SequenceDefinition>(mappingDefinition.Parent).FirstOrDefault();
-                            using var _ = m_context.SkopedErrorLevel(conditional.Errors ??= new TemplateValidationErrors());
+                            using var _ = m_context.ScopedErrorLevel(conditional.Errors ??= new TemplateValidationErrors());
                             if(m_context.AutoCompleteMatches != null && parentSeq != null) {
                                 var oneOf = new OneOfDefinition();
                                 oneOf.OneOf.Add(m_schema.Definitions.First(kv => kv.Value == parentSeq).Key);
@@ -562,7 +562,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             ref ScalarToken scalar,
             DefinitionInfo definition)
         {
-            using var _ = m_context.SkopedErrorLevel(m_context.FatalErrors);
+            using var _ = m_context.ScopedErrorLevel(m_context.FatalErrors ??= m_context.Errors);
             switch (scalar.Type)
             {
                 case TokenType.Null:
@@ -797,7 +797,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     if (ex != null)
                     {
                         if(ex is ParseException pex && pex.Kind != ParseExceptionKind.UnrecognizedFunction && pex.Kind != ParseExceptionKind.UnrecognizedNamedValue) {
-                            using var _ = m_context.SkopedErrorLevel(m_context.FatalErrors);
+                            using var _ = m_context.ScopedErrorLevel(m_context.FatalErrors ??= m_context.Errors);
                             m_context.Error(token, ex);
                         } else {
                             m_context.Error(token, ex);
