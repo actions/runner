@@ -360,7 +360,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private IMessageListener GetMesageListener(RunnerSettings settings)
+        private IMessageListener GetMessageListener(RunnerSettings settings)
         {
             if (settings.UseV2Flow)
             {
@@ -379,7 +379,7 @@ namespace GitHub.Runner.Listener
             try
             {
                 Trace.Info(nameof(RunAsync));
-                _listener = GetMesageListener(settings);
+                _listener = GetMessageListener(settings);
                 CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
                 if (createSessionResult == CreateSessionResult.SessionConflict)
                 {
