@@ -16,6 +16,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         private readonly RunnerSettings _settings;
         private readonly Mock<IConfigurationManager> _config;
         private readonly Mock<IBrokerServer> _brokerServer;
+        private readonly Mock<IRunnerServer> _runnerServer;
         private readonly Mock<ICredentialManager> _credMgr;
         private Mock<IConfigurationStore> _store;
 
@@ -28,6 +29,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             _credMgr = new Mock<ICredentialManager>();
             _store = new Mock<IConfigurationStore>();
             _brokerServer = new Mock<IBrokerServer>();
+            _runnerServer = new Mock<IRunnerServer>();
         }
 
         [Fact]
@@ -75,6 +77,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.SetSingleton<IBrokerServer>(_brokerServer.Object);
+            tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             return tc;
         }
     }
