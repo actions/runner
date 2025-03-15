@@ -25,7 +25,11 @@ namespace Runner.Server.Azure.Devops
 
             // act
             var act = new Action(() => {
-                if (workflow.ValidateSyntax)
+                if (workflow.AutoCompletion?.Length > 0)
+                {
+                    Context.AutoComplete(workflow.File, workflow.Row, workflow.Column, workflow.AutoCompletion);
+                }
+                else if (workflow.ValidateSyntax)
                 {
                     Context.ValidateSyntax(workflow.File);
                 }

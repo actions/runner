@@ -72,7 +72,10 @@ namespace Runner.Server.Azure.Devops
                         ValidateSyntax = parser.ValidateSyntax,
                         LocalRepository = parser.LocalRepository,
                         ExpectedException = parser.ExpectedException,
-                        ExpectedErrorMessage = parser.ExpectedError
+                        ExpectedErrorMessage = parser.ExpectedError,
+                        Column = parser.Column,
+                        Row = parser.Row,
+                        AutoCompletion = parser.AutoCompletion
                     };
 
                     return true;
@@ -92,6 +95,9 @@ namespace Runner.Server.Azure.Devops
             public Type? ExpectedException { get; private set; }
             public string? ExpectedError { get; private set; }
             public string[] LocalRepository { get; private set; }
+            public long? Row { get; private set; }
+            public long? Column { get; private set; }
+            public string[] AutoCompletion { get; private set; }
 
             public bool HasMeta()
             {
@@ -105,6 +111,9 @@ namespace Runner.Server.Azure.Devops
                 ExpectedError = GetMeta(content, "ExpectedErrorMessage")[0];
                 ExpectedException = LoadType(GetMeta(content, "ExpectedException")[0]);
                 LocalRepository = GetMeta(content, "LocalRepository").Where(i => i != null).Cast<string>().ToArray();
+                Row = long.TryParse(GetMeta(content, "Row")[0], out var row) ? row : (long?)null;
+                Column = long.TryParse(GetMeta(content, "Column")[0], out var column) ? column : (long?)null;
+                AutoCompletion = GetMeta(content, "AutoCompletion").Where(i => i != null).Cast<string>().ToArray();
             }
 
             private static string?[] GetMeta(string content, string name)

@@ -16,6 +16,7 @@ namespace Runner.Server.Azure.Devops
             WorkingDirectory = workingDirectory;
             File = file.Replace(@"\", "/");
             LocalRepository = Array.Empty<string>();
+            AutoCompletion = Array.Empty<string>();
         }
 
         /// <summary>
@@ -53,6 +54,21 @@ namespace Runner.Server.Azure.Devops
         /// Expected Exception Message for YAML Parsing scenario
         /// </summary>
         public string? ExpectedErrorMessage { get; set; } 
+
+        /// <summary>
+        /// Row
+        /// </summary>
+        public long? Row { get; set; }
+
+        /// <summary>
+        /// Column
+        /// </summary>
+        public long? Column { get; set; }
+
+        /// <summary>
+        /// Expected Autocompletions
+        /// </summary>
+        public string[] AutoCompletion { get; set; }
         #endregion
 
         #region IXUnitSerializable
@@ -73,6 +89,9 @@ namespace Runner.Server.Azure.Devops
             {
                 ExpectedException = Type.GetType(exceptionType, false);
             }
+            Row = info.GetValue<long?>(nameof(Row));
+            Column = info.GetValue<long?>(nameof(Column));
+            AutoCompletion = info.GetValue<string?>(nameof(AutoCompletion))?.Split(";") ?? Array.Empty<string>();
         }
 
         /// <summary>
@@ -87,7 +106,10 @@ namespace Runner.Server.Azure.Devops
             info.AddValue(nameof(LocalRepository), LocalRepository?.Length > 0 ? string.Join(";", LocalRepository) : null);
             info.AddValue(nameof(ExpectedException), $"{ExpectedException?.FullName},{ExpectedException?.Assembly.GetName().Name}");
             info.AddValue(nameof(ExpectedErrorMessage), ExpectedErrorMessage);
-        } 
+            info.AddValue(nameof(Row), Row);
+            info.AddValue(nameof(Column), Column);
+            info.AddValue(nameof(AutoCompletion), AutoCompletion?.Length > 0 ? string.Join(";", AutoCompletion) : null);
+        }
         #endregion
 
         /// <summary>

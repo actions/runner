@@ -700,6 +700,14 @@ function activate(context) {
 							if(item.insertText && item.insertText.value) {
 								item.insertText = new vscode.SnippetString(item.insertText.value)
 							}
+							if(item.range) {
+								if(item.range.inserting) {
+									item.range.inserting = new vscode.Range(new vscode.Position(item.range.inserting.start.line, item.range.inserting.start.character), new vscode.Position(item.range.inserting.end.line, item.range.inserting.end.character))
+								}
+								if(item.range.replacing) {
+									item.range.replacing = new vscode.Range(new vscode.Position(item.range.replacing.start.line, item.range.replacing.start.character), new vscode.Position(item.range.replacing.end.line, item.range.replacing.end.character))
+								}
+							}
 							if(item.documentation) {
 								item.documentation = new vscode.MarkdownString(item.documentation.value, item.supportThemeIcons)
 							}

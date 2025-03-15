@@ -81,5 +81,35 @@ namespace Runner.Server.Azure.Devops
             var (_, tkn) = await AzureDevops.ParseTemplate(context, fileRelativePath, null, checks: true);
             return tkn;
         }
+
+        public void AutoComplete(string file, long? row, long? column, string[] autoCompletion)
+        {
+            AutoCompleteAsync(file, row, column, autoCompletion).GetAwaiter().GetResult();
+        }
+
+        public async Task AutoCompleteAsync(string file, long? row, long? column, string[] autoCompletion)
+        {
+            Context context = GetContext();
+            context.Row = (int)(row ?? 0);
+            context.Column = (int)(column ?? 0);
+            context.RawMapping = true;
+            context.AutoCompleteMatches = new List<AutoCompleteEntry>();
+            try
+            {
+                await AzureDevops.ParseTemplate(context, file, null, checks: true);
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
+            var list = AutoCompletetionHelper.CollectCompletions(context.Column, context.Row, context, AzureDevops.LoadSchema());
+            foreach (var item in autoCompletion)
+            {
+                if (!list.Any(x => x.Label?.Label == item))
+                { 
+                    throw new Exception($"Expected AutoCompletion '{item}' not found in " + string.Join(", ", list.Select(x => x.Label?.Label)));
+                }
+            }
+        }
     }
 }

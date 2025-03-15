@@ -1,3 +1,8 @@
+### v0.2.14
+- fix auto complete regression for block mappings
+- add auto completion tests for debugging purposes
+- fix error of Unrecognized function
+
 ### v0.2.13
 - add more tests
 - fix syntax error not reported outside of if
