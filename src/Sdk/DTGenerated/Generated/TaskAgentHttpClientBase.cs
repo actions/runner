@@ -23,8 +23,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Net.Http.Formatting;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.Common;
@@ -826,6 +826,37 @@ namespace GitHub.DistributedTask.WebApi
                 queryParameters: queryParams,
                 userState: userState,
                 cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// [Preview API]
+        /// </summary>
+        /// <param name="agentId"></param>
+        /// <param name="configType"></param>
+        /// <param name="encodedRunnerConfig"></param>
+        /// <param name="userState"></param>
+        /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public virtual Task<string> RefreshRunnerConfigAsync(
+            int agentId,
+            string configType,
+            string encodedRunnerConfig,
+            object userState = null,
+            CancellationToken cancellationToken = default)
+        {
+            HttpMethod httpMethod = new HttpMethod("POST");
+            Guid locationId = new Guid("13b5d709-74aa-470b-a8e9-bf9f3ded3f18");
+            object routeValues = new { agentId = agentId, configType = configType };
+            HttpContent content = new ObjectContent<string>(encodedRunnerConfig, new VssJsonMediaTypeFormatter(true));
+
+            return SendAsync<string>(
+                httpMethod,
+                locationId,
+                routeValues: routeValues,
+                version: new ApiResourceVersion(6.0, 1),
+                userState: userState,
+                cancellationToken: cancellationToken,
+                content: content);
         }
     }
 }
