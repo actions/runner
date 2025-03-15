@@ -769,6 +769,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     // Check if not closed
                     if (endExpression < startExpression)
                     {
+                        using var _ = m_context.ScopedErrorLevel(m_context.FatalErrors ??= m_context.Errors);
                         m_context.Error(token, TemplateStrings.ExpressionNotClosed());
                         if(completion == null) {
                             return token;

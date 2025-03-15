@@ -1,0 +1,11 @@
+parameters:
+- name: left
+  type: boolean
+  default: true
+- name: right
+  type: boolean
+  default: true
+
+steps:
+- ${{ if not(or(parameters.left, parameters.right)) }}:
+  - assert: failure

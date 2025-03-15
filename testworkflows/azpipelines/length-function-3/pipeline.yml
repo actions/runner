@@ -1,0 +1,11 @@
+parameters:
+- name: list
+  type: object
+  default:
+  - one
+  - two
+  - three
+
+steps:
+- ${{ if ne(length(parameters.list), 3) }}:
+  - assert: failure

@@ -1,5 +1,8 @@
 ### v0.2.13
 - add more tests
+- fix syntax error not reported outside of if
+- prefer expression syntax error over named value errors
+  - those are reported in not taken branches
 
 ### v0.2.12 (Preview)
 - fix broken parameter passing in variable template

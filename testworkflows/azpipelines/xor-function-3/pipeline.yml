@@ -1,0 +1,11 @@
+parameters:
+- name: left
+  type: boolean
+  default: true
+- name: right
+  type: boolean
+  default: true
+
+steps:
+- ${{ if xor(parameters.left, parameters.right) }}:
+  - assert: failure

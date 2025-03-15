@@ -1,0 +1,8 @@
+parameters:
+- name: status
+  type: string
+  default: somethingelse
+
+steps:
+- ${{ if not(notin(parameters.status, 'success', 'failure')) }}:
+  - assert: failure
