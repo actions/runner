@@ -1,0 +1,4 @@
+# ExpectedException: TemplateValidationException
+# ExpectedErrorMessage: Unrecognized named-value: 'nothing'.
+steps:
+- bash: ${{ nothing }}

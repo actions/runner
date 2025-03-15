@@ -360,7 +360,7 @@ namespace GitHub.DistributedTask.Expressions2
 
             // Check min/max parameter count
             TryGetFunctionInfo(context, function.Name, out var functionInfo);
-            if (functionInfo == null && context.AllowUnknownKeywords)
+            if (functionInfo == null)
             {
                 // Don't check min/max
             }
