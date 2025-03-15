@@ -35,7 +35,7 @@ if [[ "$DEV_CONFIG" == "Release" ]]; then
 fi
 
 CURRENT_PLATFORM="windows"
-if [[ ($(uname) == "Linux") || ($(uname) == "Darwin") ]]; then
+if [[ ($(uname) == "Linux") || ($(uname) == "Darwin") || ($(uname) == "FreeBSD")]]; then
     CURRENT_PLATFORM=$(uname | awk '{print tolower($0)}')
 fi
 
@@ -64,6 +64,8 @@ elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
             arm64) RUNTIME_ID="osx-arm64";;
         esac
     fi
+elif [[ "$CURRENT_PLATFORM" == 'freebsd' ]]; then
+    RUNTIME_ID='freebsd-x64'
 fi
 
 if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
@@ -183,7 +185,7 @@ function package ()
 
     pushd "$PACKAGE_DIR" > /dev/null
 
-    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
+    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") || ("$CURRENT_PLATFORM" == "freebsd")]]; then
         tar_name="${runner_pkg_name}.tar.gz"
         echo "Creating $tar_name in ${LAYOUT_DIR}"
         tar -czf "${tar_name}" -C "${LAYOUT_DIR}" .
@@ -218,6 +220,10 @@ if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTN
         sdkinstallwindow_path=${DOTNETSDK_INSTALLDIR:1}
         sdkinstallwindow_path=${sdkinstallwindow_path:0:1}:${sdkinstallwindow_path:1}
         $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "& \"./Misc/dotnet-install.ps1\" -Version ${DOTNETSDK_VERSION} -InstallDir \"${sdkinstallwindow_path}\" -NoPath; exit \$LastExitCode;" || checkRC dotnet-install.ps1
+    # FIXME: binary for freebsd is not on https://dotnetcli.azureedge.net
+    elif [[ ("$CURRENT_PLATFORM" == "freebsd") ]]; then
+        echo "Skip installing dotnet, use system dotnet"
+        command -v dotnet
     else
         bash ./Misc/dotnet-install.sh --version ${DOTNETSDK_VERSION} --install-dir "${DOTNETSDK_INSTALLDIR}" --no-path || checkRC dotnet-install.sh
     fi
