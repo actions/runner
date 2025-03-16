@@ -7,7 +7,7 @@ namespace GitHub.Runner.Worker
     public sealed class GitHubContext : DictionaryContextData, IEnvironmentContextData
     {
         public GitHubContext(string[] prefixes = null) {
-            Prefixes = prefixes ?? ["github"];
+            Prefixes = prefixes ?? new [] { "github" };
         }
 
         private readonly HashSet<string> _contextEnvAllowlist = new(StringComparer.OrdinalIgnoreCase)
