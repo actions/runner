@@ -1,13 +1,13 @@
 # Source: https://github.com/dotnet/dotnet-docker
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy as build
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy AS build
 
 ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
 ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
-ARG DOCKER_VERSION=27.5.1
+ARG DOCKER_VERSION=28.0.1
 ARG DOCKER_COMPOSE_VERSION=v2.33.1
-ARG BUILDX_VERSION=0.20.1
+ARG BUILDX_VERSION=0.21.2
 
 RUN apt update -y && apt install curl unzip -y
 

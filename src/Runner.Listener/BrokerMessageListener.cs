@@ -9,9 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
@@ -27,6 +27,7 @@ namespace GitHub.Runner.Listener
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
         private TaskAgentSession _session;
+        private IRunnerServer _runnerServer;
         private IBrokerServer _brokerServer;
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new();
         private bool _accessTokenRevoked = false;
@@ -40,6 +41,7 @@ namespace GitHub.Runner.Listener
             base.Initialize(hostContext);
 
             _term = HostContext.GetService<ITerminal>();
+            _runnerServer = HostContext.GetService<IRunnerServer>();
             _brokerServer = HostContext.GetService<IBrokerServer>();
         }
 
@@ -50,7 +52,8 @@ namespace GitHub.Runner.Listener
             // Settings
             var configManager = HostContext.GetService<IConfigurationManager>();
             _settings = configManager.LoadSettings();
-            var serverUrl = _settings.ServerUrlV2;
+            var serverUrlV2 = _settings.ServerUrlV2;
+            var serverUrl = _settings.ServerUrl;
             Trace.Info(_settings);
 
             if (string.IsNullOrEmpty(_settings.ServerUrlV2))
@@ -84,8 +87,16 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     Trace.Info("Connecting to the Broker Server...");
-                    await _brokerServer.ConnectAsync(new Uri(serverUrl), _creds);
+                    await _brokerServer.ConnectAsync(new Uri(serverUrlV2), _creds);
                     Trace.Info("VssConnection created");
+
+                    if (!string.IsNullOrEmpty(serverUrl) &&
+                        !string.Equals(serverUrl, serverUrlV2, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Trace.Info("Connecting to the Runner server...");
+                        await _runnerServer.ConnectAsync(new Uri(serverUrl), _creds);
+                        Trace.Info("VssConnection created");
+                    }
 
                     _term.WriteLine();
                     _term.WriteSuccessMessage("Connected to GitHub");
@@ -131,7 +142,7 @@ namespace GitHub.Runner.Listener
                         // Check whether we get 401 because the runner registration already removed by the service.
                         // If the runner registration get deleted, we can't exchange oauth token.
                         Trace.Error("Test oauth app registration.");
-                        var oauthTokenProvider = new VssOAuthTokenProvider(vssOAuthCred, new Uri(serverUrl));
+                        var oauthTokenProvider = new VssOAuthTokenProvider(vssOAuthCred, new Uri(serverUrlV2));
                         var authError = await oauthTokenProvider.ValidateCredentialAsync(token);
                         if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
