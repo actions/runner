@@ -249,6 +249,11 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Runner OAuth token has been revoked. Unable to pull message.");
                     throw;
                 }
+                catch (HostedRunnerDeprovisionedException)
+                {
+                    Trace.Info("Hosted runner has been deprovisioned.");
+                    throw;
+                }
                 catch (AccessDeniedException e) when (e.ErrorCode == 1)
                 {
                     throw;

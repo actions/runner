@@ -93,7 +93,7 @@ namespace GitHub.Runner.Common
 
         public bool ShouldRetryException(Exception ex)
         {
-            if (ex is AccessDeniedException || ex is RunnerNotFoundException)
+            if (ex is AccessDeniedException || ex is RunnerNotFoundException || ex is HostedRunnerDeprovisionedException)
             {
                 return false;
             }

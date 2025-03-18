@@ -697,6 +697,10 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Info("Runner OAuth token has been revoked. Shutting down.");
             }
+            catch (HostedRunnerDeprovisionedException)
+            {
+                Trace.Info("Hosted runner has been deprovisioned. Shutting down.");
+            }
 
             return Constants.Runner.ReturnCode.Success;
         }
