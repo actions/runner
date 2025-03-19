@@ -84,6 +84,7 @@ namespace GitHub.Runner.Listener
             if (string.IsNullOrEmpty(encodedConfig))
             {
                 await ReportTelemetryAsync("Failed to get encoded runner settings.");
+                return;
             }
 
             // exchange the encoded runner settings with the service
@@ -138,6 +139,21 @@ namespace GitHub.Runner.Listener
             if (string.IsNullOrEmpty(encodedConfig))
             {
                 await ReportTelemetryAsync("Failed to get encoded credentials.");
+                return;
+            }
+
+            CredentialData currentCred = _store.GetCredentials();
+            if (currentCred == null)
+            {
+                await ReportTelemetryAsync("Failed to get current credentials.");
+                return;
+            }
+
+            // we only support refreshing OAuth credentials which is used by self-hosted runners.
+            if (currentCred.Scheme != Constants.Configuration.OAuth)
+            {
+                await ReportTelemetryAsync($"Not supported credential scheme '{currentCred.Scheme}'.");
+                return;
             }
 
             // exchange the encoded runner credentials with the service
