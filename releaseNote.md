@@ -1,23 +1,36 @@
 ## What's Changed
-* Fix name of generated of artifact builds from GitHub workflow for arm artifacts by @satmandu in https://github.com/actions/runner/pull/3568
-* Ignore error when fail to report worker crash. by @TingluoHuang in https://github.com/actions/runner/pull/3588
-* Fix null ref in 'OnEventWritten()' by @TingluoHuang in https://github.com/actions/runner/pull/3593
-* Send stepNumber for annotation to run-service by @TingluoHuang in https://github.com/actions/runner/pull/3614
-* Enable nuget audit. by @TingluoHuang in https://github.com/actions/runner/pull/3615
-* Update dotnet install script. by @TingluoHuang in https://github.com/actions/runner/pull/3659
-* Print immutable action package details in set up job logs by @heavymachinery in https://github.com/actions/runner/pull/3645
-* Update dotnet sdk to latest version @8.0.405 by @github-actions in https://github.com/actions/runner/pull/3666
-* Upgrade `buildx` from `0.18.0` to `0.19.3` (critical CVE) by @MPV in https://github.com/actions/runner/pull/3647
-* Upgrade `docker` from `27.3.1` to `27.4.1` by @MPV in https://github.com/actions/runner/pull/3648
-* Bump Microsoft.NET.Test.Sdk from 17.8.0 to 17.12.0 in /src by @dependabot in https://github.com/actions/runner/pull/3584
-* Bump docker/setup-buildx-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3564
-* Bump github/codeql-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3555
-* Bump Moq from 4.20.70 to 4.20.72 in /src by @dependabot in https://github.com/actions/runner/pull/3672
+* Bump docker/login-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3673
+* Bump actions/stale from 8 to 9 by @dependabot in https://github.com/actions/runner/pull/3554
+* Bump docker/build-push-action from 3 to 6 by @dependabot in https://github.com/actions/runner/pull/3674
+* update node version from 20.18.0 -> 20.18.2 by @aiqiaoy in https://github.com/actions/runner/pull/3682
+* Pass BillingOwnerId through Acquire/Complete calls by @luketomlinson in https://github.com/actions/runner/pull/3689
+* Do not retry CompleteJobAsync for known non-retryable errors by @ericsciple in https://github.com/actions/runner/pull/3696
+* Update dotnet sdk to latest version @8.0.406 by @github-actions in https://github.com/actions/runner/pull/3712
+* Update Dockerfile with new docker and buildx versions by @thboop in https://github.com/actions/runner/pull/3680
+* chore: remove redundant words by @finaltrip in https://github.com/actions/runner/pull/3705
+* fix: actions feedback link is incorrect by @Yaminyam in https://github.com/actions/runner/pull/3165
+* Bump actions/github-script from 0.3.0 to 7.0.1 by @dependabot in https://github.com/actions/runner/pull/3557
+* Docker container provenance by @paveliak in https://github.com/actions/runner/pull/3736
+* Add request-id to http eventsource trace. by @TingluoHuang in https://github.com/actions/runner/pull/3740
+* Update Bocker and Buildx version to mitigate images scanners alerts by @Blizter in https://github.com/actions/runner/pull/3750
+* Fix typo, add invariant culture to timestamp for workflow log reporting by @GhadimiR in https://github.com/actions/runner/pull/3749
+* Create vssconnection to actions service when URL provided. by @TingluoHuang in https://github.com/actions/runner/pull/3751
+* Housekeeping: Update npm packages and node version by @thboop in https://github.com/actions/runner/pull/3752
+* Improve the out-of-date warning message. by @tecimovic in https://github.com/actions/runner/pull/3595
+* Update dotnet sdk to latest version @8.0.407 by @github-actions in https://github.com/actions/runner/pull/3753
+* Exit hosted runner cleanly during deprovisioning. by @TingluoHuang in https://github.com/actions/runner/pull/3755
+* Send annotation title to run-service. by @TingluoHuang in https://github.com/actions/runner/pull/3757
+* Allow server enforce runner settings. by @TingluoHuang in https://github.com/actions/runner/pull/3758
+* Support refresh runner configs with pipelines service. by @TingluoHuang in https://github.com/actions/runner/pull/3706
 
 ## New Contributors
-* @satmandu made their first contribution in https://github.com/actions/runner/pull/3568
+* @finaltrip made their first contribution in https://github.com/actions/runner/pull/3705
+* @Yaminyam made their first contribution in https://github.com/actions/runner/pull/3165
+* @Blizter made their first contribution in https://github.com/actions/runner/pull/3750
+* @GhadimiR made their first contribution in https://github.com/actions/runner/pull/3749
+* @tecimovic made their first contribution in https://github.com/actions/runner/pull/3595
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.321.0...v2.322.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.322.0...v2.323.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
