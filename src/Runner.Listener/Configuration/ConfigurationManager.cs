@@ -404,6 +404,20 @@ namespace GitHub.Runner.Listener.Configuration
                 }
             }
 
+            // allow the server to override the serverUrlV2 and useV2Flow
+            if (agent.Properties.TryGetValue("ServerUrlV2", out string serverUrlV2) &&
+                !string.IsNullOrEmpty(serverUrlV2))
+            {
+                Trace.Info($"Service enforced serverUrlV2: {serverUrlV2}");
+                runnerSettings.ServerUrlV2 = serverUrlV2;
+            }
+
+            if (agent.Properties.TryGetValue("UseV2Flow", out bool useV2Flow) && useV2Flow)
+            {
+                Trace.Info($"Service enforced useV2Flow: {useV2Flow}");
+                runnerSettings.UseV2Flow = useV2Flow;
+            }
+
             _term.WriteSection("Runner settings");
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
