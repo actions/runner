@@ -115,9 +115,14 @@ If you get an error like:
 ```
 Error: No runner is registered for the requested runs-on labels: [ubuntu-latest], please register and run a self-hosted runner with at least these labels...
 ```
+or this one for Azure Pipelines:
+```
+No agent is registered for the requested capabilities: [ubuntu-latest], please register and run a self-hosted runner with at least these capabilities
+```
 
-Then you will need to add one of the following cli options, replace `ubuntu-latest` with the content between `runs-on labels: [` The labels here without spaces `]`
+Then you will need to add one of the following cli options, replace `ubuntu-latest` with the content between `runs-on labels: [` The labels here without spaces `]` or `pool: vmImage: <capability name without spaces>` for Azure Pipelines
 - to run it on your local machine e.g. `-P ubuntu-latest=-self-hosted`, `-P self-hosted,linux,mylabel=-self-hosted`
+- to run it on your local machine with Azure Pipelines e.g. `-P ubuntu-latest=-`
 - to run it in a docker container e.g. `-P ubuntu-latest=catthehacker/ubuntu:act-latest`, `-P self-hosted,linux,mylabel=catthehacker/ubuntu:act-latest`
   For more docker images refer to https://github.com/nektos/act#runners
 
