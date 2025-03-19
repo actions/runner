@@ -533,7 +533,8 @@ namespace GitHub.Runner.Listener
             }
             else if (ex is TaskAgentPoolNotFoundException ||
                      ex is AccessDeniedException ||
-                     ex is VssUnauthorizedException)
+                     ex is VssUnauthorizedException ||
+                     (ex is VssOAuthTokenRequestException oauthEx && oauthEx.Error != "server_error"))
             {
                 Trace.Info($"Non-retriable exception: {ex.Message}");
                 return false;

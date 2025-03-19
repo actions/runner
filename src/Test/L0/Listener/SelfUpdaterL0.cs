@@ -107,8 +107,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.EnqueueInstance<IProcessInvoker>(p3);
                     updater.Initialize(hc);
 
-                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, ulong a, string s, string t) =>
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                                 .Callback((int p, ulong a, string s, string t, CancellationToken token) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -168,8 +168,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.200.0", true, It.IsAny<CancellationToken>()))
                              .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.200.0"), DownloadUrl = _packageUrl }));
 
-                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, ulong a, string s, string t) =>
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                                 .Callback((int p, ulong a, string s, string t, CancellationToken token) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -220,8 +220,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.EnqueueInstance<IProcessInvoker>(p3);
                     updater.Initialize(hc);
 
-                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, ulong a, string s, string t) =>
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                                 .Callback((int p, ulong a, string s, string t, CancellationToken token) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
@@ -273,8 +273,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.EnqueueInstance<IProcessInvoker>(p3);
                     updater.Initialize(hc);
 
-                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                                 .Callback((int p, ulong a, string s, string t) =>
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                                 .Callback((int p, ulong a, string s, string t, CancellationToken token) =>
                                  {
                                      hc.GetTrace().Info(t);
                                  })
