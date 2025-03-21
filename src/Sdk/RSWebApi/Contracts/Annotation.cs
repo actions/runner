@@ -11,6 +11,9 @@ namespace Sdk.RSWebApi.Contracts
         [DataMember(Name = "message", EmitDefaultValue = false)]
         public string Message;
 
+        [DataMember(Name = "title", EmitDefaultValue = false)]
+        public string Title;
+
         [DataMember(Name = "rawDetails", EmitDefaultValue = false)]
         public string RawDetails;
 

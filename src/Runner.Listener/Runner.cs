@@ -635,6 +635,17 @@ namespace GitHub.Runner.Listener
                                 Trace.Info("Received ForceTokenRefreshMessage");
                                 await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
                             }
+                            else if (string.Equals(message.MessageType, RunnerRefreshConfigMessage.MessageType))
+                            {
+                                var runnerRefreshConfigMessage = JsonUtility.FromString<RunnerRefreshConfigMessage>(message.Body);
+                                Trace.Info($"Received RunnerRefreshConfigMessage for '{runnerRefreshConfigMessage.ConfigType}' config file");
+                                var configUpdater = HostContext.GetService<IRunnerConfigUpdater>();
+                                await configUpdater.UpdateRunnerConfigAsync(
+                                    runnerQualifiedId: runnerRefreshConfigMessage.RunnerQualifiedId,
+                                    configType: runnerRefreshConfigMessage.ConfigType,
+                                    serviceType: runnerRefreshConfigMessage.ServiceType,
+                                    configRefreshUrl: runnerRefreshConfigMessage.ConfigRefreshUrl);
+                            }
                             else
                             {
                                 Trace.Error($"Received message {message.MessageId} with unsupported message type {message.MessageType}.");
@@ -696,6 +707,10 @@ namespace GitHub.Runner.Listener
             catch (TaskAgentAccessTokenExpiredException)
             {
                 Trace.Info("Runner OAuth token has been revoked. Shutting down.");
+            }
+            catch (HostedRunnerDeprovisionedException)
+            {
+                Trace.Info("Hosted runner has been deprovisioned. Shutting down.");
             }
 
             return Constants.Runner.ReturnCode.Success;
