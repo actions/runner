@@ -62,7 +62,7 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: linux-arm64
-          os: ubuntu-latest
+          os: ubuntu-24.04-arm
           devScript: ./dev.sh
 
         - runtime: linux-arm
