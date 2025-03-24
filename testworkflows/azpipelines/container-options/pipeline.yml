@@ -1,0 +1,22 @@
+jobs:
+- job: ContainerJob
+  container:
+    image: ubuntu:latest
+    options: '--privileged --network host'
+    volumes:
+      - /data/shared:/mnt/shared
+      - /var/log:/mnt/logs:ro
+    env:
+      MY_ENV_VAR: "value"
+      ANOTHER_VAR: "1234"
+  steps:
+  - script: |
+      echo "Container Options: Running with privileged mode and host network."
+    displayName: Print Options Message
+  - script: echo "Mounted Volumes:"
+    displayName: Print Volumes Message
+  - script: cat /mnt/shared/example.txt || echo "Shared data is read-write."
+  - script: cat /mnt/logs/example.log || echo "Logs are mounted as read-only."
+  - script: |
+      echo "Environment Variables: $MY_ENV_VAR, $ANOTHER_VAR"
+    displayName: Print Environment Variables

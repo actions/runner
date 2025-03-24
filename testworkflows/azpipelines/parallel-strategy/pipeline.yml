@@ -1,0 +1,6 @@
+jobs:
+- job: SliceItFourWays
+  strategy:
+    parallel: 4
+  steps:
+  - script: echo This job is sliced into four parallel jobs.

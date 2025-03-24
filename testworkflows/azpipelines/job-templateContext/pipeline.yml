@@ -1,0 +1,11 @@
+trigger:
+- main
+
+jobs:
+- template: job-template.yml
+  parameters:
+    job:
+      job: "BuildJob"
+      templateContext:
+        environment: "Production"
+        appVersion: "2.0.1"

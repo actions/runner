@@ -1,0 +1,14 @@
+parameters:
+- name: job
+  type: job
+
+jobs:
+- job: ${{ parameters.job.jobName }}
+  displayName: Running ${{ parameters.job.jobName }}
+  steps:
+  - script: |
+      echo "Environment: ${{ parameters.job.templateContext.environment }}"
+    displayName: Show Environment
+  - script: |
+      echo "App Version: ${{ parameters.job.templateContext.appVersion }}"
+    displayName: Show App Version

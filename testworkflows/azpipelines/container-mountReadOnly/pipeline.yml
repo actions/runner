@@ -1,0 +1,12 @@
+jobs:
+- job: ContainerJob
+  container:
+    image: ubuntu:latest
+    mountReadOnly:
+      work: false
+      externals: true
+      tools: false
+      tasks: false
+  steps:
+  - script: echo "Mounting the externals directory as read-only."
+    displayName: Validate Read-Only Mount

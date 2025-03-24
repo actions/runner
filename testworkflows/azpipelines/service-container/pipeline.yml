@@ -1,0 +1,19 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: ExampleJob
+  displayName: Job using a service
+  services:
+    redis:
+      image: redis
+      ports:
+      - 6379:6379
+  steps:
+  - script: |
+      echo "Connecting to Redis service"
+      redis-cli ping
+    displayName: Test Redis Service

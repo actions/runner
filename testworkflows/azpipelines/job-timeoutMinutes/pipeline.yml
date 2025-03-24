@@ -1,0 +1,13 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: Build
+  displayName: A job with a timeout
+  timeoutInMinutes: 15
+  steps:
+  - script: echo "This job will timeout if it runs longer than 15 minutes."
+    displayName: Print message

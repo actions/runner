@@ -1,0 +1,12 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: Build
+  displayName: Build job
+  steps:
+  - script: echo "Running on the 'ubuntu-latest' image"
+    displayName: Print message

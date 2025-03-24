@@ -1,0 +1,15 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: ExampleJob
+  displayName: A job with cancel timeout
+  cancelTimeoutInMinutes: 5
+  steps:
+  - script: |
+      echo "This job has a cancellation timeout."
+      sleep 600
+    displayName: Simulate a long-running task

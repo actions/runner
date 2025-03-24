@@ -1,0 +1,14 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: Build
+  displayName: Clean workspace before the build
+  workspace:
+    clean: all
+  steps:
+  - script: echo "Workspace cleaned. Starting build."
+    displayName: Print message

@@ -1,0 +1,14 @@
+resources: # Resources used by the pipeline
+  repositories: # List of repositories used by the pipeline
+  - repository: FabrikamTools # Repository reference to FabrikamTools
+    type: git
+    name: Fabrikam/FabrikamTools # Repository name
+    ref: refs/heads/main # Branch name
+    endpoint: FabrikamTools # Service connection name
+jobs:
+- job:
+  uses:
+    repositories: # List of referenced repositories
+    - FabrikamTools # Repository reference to FabrikamTools
+  steps:
+  - script: echo Success

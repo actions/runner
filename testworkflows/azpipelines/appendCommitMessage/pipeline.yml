@@ -1,0 +1,18 @@
+trigger:
+- main
+
+pr:
+  branches:
+    include:
+    - main
+
+name: $(Build.DefinitionName)-$(Year:yyyy).$(Month).$(DayOfMonth)
+
+appendCommitMessageToRunName: true
+
+jobs:
+- job: ExampleJob
+  displayName: A job using AppendCommitMessageToRunName
+  steps:
+  - script: echo "This run name will include the commit message if triggered by a commit."
+    displayName: Print message

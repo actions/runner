@@ -1,0 +1,15 @@
+# File: template-file.yml
+parameters:
+- name: stageSet
+  type: stageList
+
+stages:
+- ${{ each stageItem in parameters.stageSet }}:
+  - stage: ${{ stageItem.stage }}
+    jobs:
+    - job: ExampleJob
+      steps:
+      - script: |
+          echo "Environment: ${{ stageItem.templateContext.environment }}"
+      - script: |
+          echo "Build Number: ${{ stageItem.templateContext.buildNumber }}"

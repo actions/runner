@@ -1,0 +1,16 @@
+# File: azure-pipelines.yml
+trigger:
+- main
+
+extends:
+  template: template-file.yml
+  parameters:
+    stageSet:
+      - stage: BuildStage
+        templateContext:
+          environment: "Development"
+          buildNumber: "12345"
+      - stage: DeployStage
+        templateContext:
+          environment: "Production"
+          buildNumber: "12346"

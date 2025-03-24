@@ -1,0 +1,35 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema/jobs-deployment-strategy-rolling?view=azure-pipelines#examples
+jobs: 
+- deployment: VMDeploy
+  displayName: web
+  environment:
+    name: smarthotel-dev
+    resourceType: VirtualMachine
+  strategy:
+    rolling:
+      maxParallel: 5  #for percentages, mention as x%
+      preDeploy:
+        steps:
+        - download: current
+          artifact: drop
+        - script: echo initialize, cleanup, backup, install certs
+      deploy:
+        steps:
+        - task: IISWebAppDeploymentOnMachineGroup@0
+          displayName: 'Deploy application to Website'
+          inputs:
+            WebSiteName: 'Default Web Site'
+            Package: '$(Pipeline.Workspace)/drop/**/*.zip'
+      routeTraffic:
+        steps:
+        - script: echo routing traffic
+      postRouteTraffic:
+        steps:
+        - script: echo health check post-route traffic
+      on:
+        failure:
+          steps:
+          - script: echo Restore from backup! This is on failure
+        success:
+          steps:
+          - script: echo Notify! This is on success

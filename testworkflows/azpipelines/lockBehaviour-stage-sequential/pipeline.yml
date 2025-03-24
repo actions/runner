@@ -1,0 +1,7 @@
+stages:
+- stage: Deploy
+  lockBehavior: sequential
+  jobs:
+  - job: DeployJob
+    steps:
+    - script: echo "Deploying with sequential lock behavior"

@@ -1,0 +1,15 @@
+trigger:
+- main
+
+pool:
+  name: 'MyAgentPool'
+  demands:
+    - npm
+    - Agent.OS -equals Windows_NT
+
+jobs:
+- job: ExampleJob
+  displayName: A job with pool demands
+  steps:
+  - script: echo "This job runs only if the demands are met."
+    displayName: Print message

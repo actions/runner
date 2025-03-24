@@ -1,0 +1,33 @@
+# src: https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema/jobs-deployment-strategy-canary?view=azure-pipelines#examples
+jobs: 
+- deployment: 
+  environment: smarthotel-dev.bookings
+  pool: 
+    name: smarthotel-devPool
+  strategy:                  
+    canary:      
+      increments: [10,20]  
+      preDeploy:                                     
+        steps:           
+        - script: initialize, cleanup....   
+      deploy:             
+        steps: 
+        - script: echo deploy updates... 
+        - task: KubernetesManifest@0 
+          inputs: 
+            action: $(strategy.action)
+            namespace: 'default' 
+            strategy: $(strategy.name) 
+            percentage: $(strategy.increment) 
+            manifests: 'manifest.yml' 
+      postRouteTraffic: 
+        pool: server 
+        steps:           
+        - script: echo monitor application health...   
+      on: 
+        failure: 
+          steps: 
+          - script: echo clean-up, rollback...   
+        success: 
+          steps: 
+          - script: echo checks passed, notify...

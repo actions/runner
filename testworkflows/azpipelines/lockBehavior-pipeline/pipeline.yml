@@ -1,0 +1,14 @@
+trigger:
+- main
+
+lockBehavior: sequential
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: ExampleJob
+  displayName: A job with lockBehavior at the pipeline level
+  steps:
+  - script: echo "This job runs sequentially due to pipeline-level lockBehavior."
+    displayName: Print message

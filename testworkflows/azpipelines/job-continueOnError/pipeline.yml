@@ -1,0 +1,21 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: FirstJob
+  displayName: A job that continues on error
+  continueOnError: true
+  steps:
+  - script: echo "This job might fail, but the pipeline will continue."
+    displayName: Step 1
+  - script: exit 1
+    displayName: Simulate an error
+
+- job: SecondJob
+  displayName: A subsequent job
+  steps:
+  - script: echo "This job runs regardless of the outcome of FirstJob."
+    displayName: Step 1
