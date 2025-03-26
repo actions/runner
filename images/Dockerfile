@@ -8,7 +8,11 @@ ARG RUNNER_CONTAINER_HOOKS_VERSION=0.7.0
 ARG DOCKER_VERSION=28.3.0
 ARG BUILDX_VERSION=0.25.0
 
-RUN apt update -y && apt install curl unzip -y
+RUN apt update -y \
+    && apt upgrade -y \
+    && apt install curl unzip -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /actions-runner
 RUN export RUNNER_ARCH=${TARGETARCH} \
@@ -41,13 +45,23 @@ ENV ImageOS=ubuntu22
 
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip \
+    && apt upgrade -y \
+    && apt-get install -y --no-install-recommends \
+            curl \
+            gpg-agent \
+            lsb-release \
+            jq \
+            software-properties-common \
+            sudo \
+            unzip \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
 RUN add-apt-repository ppa:git-core/ppa \
     && apt update -y \
     && apt install -y git \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
