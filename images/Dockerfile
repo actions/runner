@@ -1,5 +1,5 @@
-# Source: https://github.com/dotnet/dotnet-docker
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy AS build
+ARG BASE_IMAGE=ubuntu:24.04
+FROM ${BASE_IMAGE} AS build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -36,12 +36,12 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy
+FROM ${BASE_IMAGE} AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
-ENV ImageOS=ubuntu22
+ENV ImageOS=ubuntu24
 
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
@@ -49,11 +49,16 @@ RUN apt update -y \
     && apt-get install -y --no-install-recommends \
             curl \
             gpg-agent \
+            libkrb5-3 \
+            libssl3 \
+            liblttng-ust1 \
+            libicu74 \
             lsb-release \
             jq \
             software-properties-common \
             sudo \
             unzip \
+            zlib1g \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
