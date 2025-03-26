@@ -1,5 +1,4 @@
-# Source: https://github.com/dotnet/dotnet-docker
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy AS build
+FROM ubuntu:24.04 AS build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -36,7 +35,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
@@ -49,11 +48,16 @@ RUN apt update -y \
     && apt-get install -y --no-install-recommends \
             curl \
             gpg-agent \
+            libkrb5-3 \
+            libssl3 \
+            liblttng-ust1 \
+            libicu74 \
             lsb-release \
             jq \
             software-properties-common \
             sudo \
             unzip \
+            zlib1g \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
