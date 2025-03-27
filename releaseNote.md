@@ -1,30 +1,36 @@
 ## What's Changed
-
-* Fix release workflow to use distinct artifact names by @ericsciple in https://github.com/actions/runner/pull/3485
-* Update dotnet sdk to latest version @6.0.425 by @github-actions in https://github.com/actions/runner/pull/3433
-* add ref and type to job completion in run service by @yaananth in https://github.com/actions/runner/pull/3492
-* Remove Broker Migration Message logging by @luketomlinson in https://github.com/actions/runner/pull/3493
-* Bump dotnet SDK to dotnet 8. by @TingluoHuang in https://github.com/actions/runner/pull/3500
-* Remove dotnet8 compatibility test. by @TingluoHuang in https://github.com/actions/runner/pull/3502
-* Remove node16 from the runner. by @TingluoHuang in https://github.com/actions/runner/pull/3503
-* send action name for run service by @yaananth in https://github.com/actions/runner/pull/3520
-* Handle runner not found by @ericsciple in https://github.com/actions/runner/pull/3536
-* Publish job telemetry to run-service. by @TingluoHuang in https://github.com/actions/runner/pull/3545
-* Fetch repo-level runner groups from API in v2 flow by @lucavallin in https://github.com/actions/runner/pull/3546
-* Allow runner to check service connection in background. by @TingluoHuang in https://github.com/actions/runner/pull/3542
-* Expose ENV for cache service v2. by @TingluoHuang in https://github.com/actions/runner/pull/3548
-* Update runner docker image. by @TingluoHuang in https://github.com/actions/runner/pull/3511
-* Bump Azure.Storage.Blobs from 12.19.1 to 12.23.0 in /src by @dependabot in https://github.com/actions/runner/pull/3549
-* fix dotnet-upgrade.yml to print right version by @TingluoHuang in https://github.com/actions/runner/pull/3550
-* Update dotnet sdk to latest version @8.0.404 by @github-actions in https://github.com/actions/runner/pull/3552
-* Configure dependabot to check github-actions updates by @Goooler in https://github.com/actions/runner/pull/3333
-* Bump actions/checkout from 3 to 4 by @dependabot in https://github.com/actions/runner/pull/3556
+* Bump docker/login-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3673
+* Bump actions/stale from 8 to 9 by @dependabot in https://github.com/actions/runner/pull/3554
+* Bump docker/build-push-action from 3 to 6 by @dependabot in https://github.com/actions/runner/pull/3674
+* update node version from 20.18.0 -> 20.18.2 by @aiqiaoy in https://github.com/actions/runner/pull/3682
+* Pass BillingOwnerId through Acquire/Complete calls by @luketomlinson in https://github.com/actions/runner/pull/3689
+* Do not retry CompleteJobAsync for known non-retryable errors by @ericsciple in https://github.com/actions/runner/pull/3696
+* Update dotnet sdk to latest version @8.0.406 by @github-actions in https://github.com/actions/runner/pull/3712
+* Update Dockerfile with new docker and buildx versions by @thboop in https://github.com/actions/runner/pull/3680
+* chore: remove redundant words by @finaltrip in https://github.com/actions/runner/pull/3705
+* fix: actions feedback link is incorrect by @Yaminyam in https://github.com/actions/runner/pull/3165
+* Bump actions/github-script from 0.3.0 to 7.0.1 by @dependabot in https://github.com/actions/runner/pull/3557
+* Docker container provenance by @paveliak in https://github.com/actions/runner/pull/3736
+* Add request-id to http eventsource trace. by @TingluoHuang in https://github.com/actions/runner/pull/3740
+* Update Bocker and Buildx version to mitigate images scanners alerts by @Blizter in https://github.com/actions/runner/pull/3750
+* Fix typo, add invariant culture to timestamp for workflow log reporting by @GhadimiR in https://github.com/actions/runner/pull/3749
+* Create vssconnection to actions service when URL provided. by @TingluoHuang in https://github.com/actions/runner/pull/3751
+* Housekeeping: Update npm packages and node version by @thboop in https://github.com/actions/runner/pull/3752
+* Improve the out-of-date warning message. by @tecimovic in https://github.com/actions/runner/pull/3595
+* Update dotnet sdk to latest version @8.0.407 by @github-actions in https://github.com/actions/runner/pull/3753
+* Exit hosted runner cleanly during deprovisioning. by @TingluoHuang in https://github.com/actions/runner/pull/3755
+* Send annotation title to run-service. by @TingluoHuang in https://github.com/actions/runner/pull/3757
+* Allow server enforce runner settings. by @TingluoHuang in https://github.com/actions/runner/pull/3758
+* Support refresh runner configs with pipelines service. by @TingluoHuang in https://github.com/actions/runner/pull/3706
 
 ## New Contributors
-* @lucavallin made their first contribution in https://github.com/actions/runner/pull/3546
-* @Goooler made their first contribution in https://github.com/actions/runner/pull/3333
+* @finaltrip made their first contribution in https://github.com/actions/runner/pull/3705
+* @Yaminyam made their first contribution in https://github.com/actions/runner/pull/3165
+* @Blizter made their first contribution in https://github.com/actions/runner/pull/3750
+* @GhadimiR made their first contribution in https://github.com/actions/runner/pull/3749
+* @tecimovic made their first contribution in https://github.com/actions/runner/pull/3595
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.320.0...v2.321.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.322.0...v2.323.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.

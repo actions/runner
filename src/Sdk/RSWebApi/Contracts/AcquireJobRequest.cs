@@ -10,5 +10,8 @@ namespace GitHub.Actions.RunService.WebApi
 
         [DataMember(Name = "runnerOS", EmitDefaultValue = false)]
         public string RunnerOS { get; set; }
+
+        [DataMember(Name = "billingOwnerId", EmitDefaultValue = false)]
+        public string BillingOwnerId { get; set; }
     }
 }

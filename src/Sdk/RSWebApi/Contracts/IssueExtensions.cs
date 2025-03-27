@@ -23,6 +23,7 @@ namespace Sdk.RSWebApi.Contracts
             var endColumnNumber = GetAnnotationNumber(issue, RunIssueKeys.EndColumn) ?? columnNumber;
             var logLineNumber = GetAnnotationNumber(issue, RunIssueKeys.LogLineNumber) ?? 0;
             var stepNumber = GetAnnotationNumber(issue, RunIssueKeys.StepNumber) ?? 0;
+            var title = GetAnnotationField(issue, RunIssueKeys.Title);
 
             if (path == null && lineNumber == 0 && logLineNumber != 0)
             {
@@ -34,6 +35,7 @@ namespace Sdk.RSWebApi.Contracts
             {
                 Level = annotationLevel,
                 Message = issueMessage,
+                Title = title,
                 Path = path,
                 StartLine = lineNumber,
                 EndLine = endLineNumber,

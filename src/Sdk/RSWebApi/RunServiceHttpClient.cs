@@ -71,13 +71,15 @@ namespace GitHub.Actions.RunService.WebApi
             Uri requestUri,
             string messageId,
             string runnerOS,
+            string billingOwnerId,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
             var payload = new AcquireJobRequest
             {
                 JobMessageId = messageId,
-                RunnerOS = runnerOS
+                RunnerOS = runnerOS,
+                BillingOwnerId = billingOwnerId,
             };
 
             requestUri = new Uri(requestUri, "acquirejob");
@@ -128,6 +130,7 @@ namespace GitHub.Actions.RunService.WebApi
             IList<Annotation> jobAnnotations,
             string environmentUrl,
             IList<Telemetry> telemetry,
+            string billingOwnerId,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
@@ -141,6 +144,7 @@ namespace GitHub.Actions.RunService.WebApi
                 Annotations = jobAnnotations,
                 EnvironmentUrl = environmentUrl,
                 Telemetry = telemetry,
+                BillingOwnerId = billingOwnerId,
             };
 
             requestUri = new Uri(requestUri, "completejob");
@@ -249,11 +253,12 @@ namespace GitHub.Actions.RunService.WebApi
             return false;
         }
 
-        private static string Truncate(string errorBody)
+        internal static string Truncate(string errorBody)
         {
-            if (errorBody.Length > 100)
+            const int maxLength = 200;
+            if (errorBody.Length > maxLength)
             {
-                return errorBody.Substring(0, 100) + "[truncated]";
+                return errorBody.Substring(0, maxLength) + "[truncated]";
             }
 
             return errorBody;

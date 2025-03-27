@@ -16,7 +16,7 @@ jobs:
     # Make sure ./releaseVersion match ./src/runnerversion
     # Query GitHub release ensure version is not used
     - name: Check version
-      uses: actions/github-script@0.3.0
+      uses: actions/github-script@v7.0.1
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
@@ -172,7 +172,7 @@ jobs:
     # Create ReleaseNote file
     - name: Create ReleaseNote
       id: releaseNote
-      uses: actions/github-script@0.3.0
+      uses: actions/github-script@v7.0.1
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
@@ -291,6 +291,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
@@ -300,7 +302,7 @@ jobs:
 
       - name: Compute image version
         id: image
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7.0.1
         with:
           script: |
             const fs = require('fs');
@@ -309,10 +311,10 @@ jobs:
             core.setOutput('version', runnerVersion);
 
       - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Log into registry ${{ env.REGISTRY }}
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -320,7 +322,7 @@ jobs:
 
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: ./images
           platforms: |
@@ -336,3 +338,10 @@ jobs:
             org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
             org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
             org.opencontainers.image.licenses=MIT
+
+      - name: Generate attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-and-push.outputs.digest }}
+          push-to-registry: true
