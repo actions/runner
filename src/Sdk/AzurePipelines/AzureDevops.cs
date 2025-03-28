@@ -467,6 +467,15 @@ namespace Runner.Server.Azure.Devops {
                     containers.Add(cr.Value.ToContextData(cr.Key));
                 }
                 return containers;
+                case "stringList":
+                if(val == null) {
+                    return new ArrayContextData();
+                }
+                var stringList = new ArrayContextData();
+                foreach(var cr in val.AssertSequence("cres")) {
+                    stringList.Add(new StringContextData(assertValues(cr.AssertLiteralString("string"))));
+                }
+                return stringList;
                 default:
                 throw new Exception($"{GitHub.DistributedTask.ObjectTemplating.Tokens.TemplateTokenExtensions.GetAssertPrefix(type)}This parameter type is not supported: " + type);
             }
@@ -857,6 +866,9 @@ namespace Runner.Server.Azure.Devops {
                                 case "string":
                                     fdef = "string";
                                     break;
+                                case "stringList":
+                                    fdef = "stringList";
+                                break;
                             }
                             if (fdef != null && val != null)
                             {
@@ -996,6 +1008,9 @@ namespace Runner.Server.Azure.Devops {
                                 break;
                             case "string":
                                 fdef = "string";
+                                break;
+                            case "stringList":
+                                fdef = "stringList";
                                 break;
                         }
                         if (fdef != null && val != null)

@@ -96,6 +96,11 @@
         "azp-string": {
             "string": {}
         },
+        "stringList": {
+            "sequence": {
+                "item-type": "string"
+            }
+        },
         "azp-sequence": {
             "sequence": {
                 "item-type": "azp-any"
@@ -1237,6 +1242,11 @@
                 "pattern": "^string$"
             }
         },
+        "templateParameterType-15": {
+            "string": {
+                "pattern": "^stringList$"
+            }
+        },
         "templateParameterType": {
             "one-of": [
                 "templateParameterType-0",
@@ -1253,7 +1263,8 @@
                 "templateParameterType-11",
                 "templateParameterType-12",
                 "templateParameterType-13",
-                "templateParameterType-14"
+                "templateParameterType-14",
+                "templateParameterType-15"
             ]
         },
         "pipelineTemplateParameters": {
@@ -1380,6 +1391,11 @@
                 "pattern": "^string$"
             }
         },
+        "pipelineTemplateParameterType-19": {
+            "string": {
+                "pattern": "^stringList$"
+            }
+        },
         "pipelineTemplateParameterType": {
             "one-of": [
                 "pipelineTemplateParameterType-0",
@@ -1400,7 +1416,8 @@
                 "pipelineTemplateParameterType-15",
                 "pipelineTemplateParameterType-16",
                 "pipelineTemplateParameterType-17",
-                "pipelineTemplateParameterType-18"
+                "pipelineTemplateParameterType-18",
+                "pipelineTemplateParameterType-19"
             ]
         },
         "schedules": {

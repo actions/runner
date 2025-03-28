@@ -1,0 +1,29 @@
+trigger:
+- main
+
+parameters:
+  - name: choices
+    type: stringList
+    default: 
+      - option1
+      - option2
+      - option3
+    values:
+      - option1
+      - option2
+      - option3
+      - option4
+
+stages:
+- stage: Build
+  displayName: Build Stage
+  jobs:
+  - job: BuildJob
+    displayName: Build Job
+    steps:
+    - script: |
+        echo "Selected choices:"
+        for choice in ${{ join(' ', parameters.choices) }} ; do
+          echo $choice
+        done
+      displayName: Print Selected Choices
