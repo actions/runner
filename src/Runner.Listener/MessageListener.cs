@@ -55,6 +55,7 @@ namespace GitHub.Runner.Listener
         private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
+        private VssCredentials _legacyCreds;
 
         private bool _isBrokerSession = false;
 
@@ -80,7 +81,8 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            _creds = _credMgr.LoadCredentials();
+            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: true);
+            _legacyCreds = _credMgr.LoadCredentials(allowAuthUrlV2: false);
 
             var agent = new TaskAgentReference
             {
@@ -103,7 +105,7 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     Trace.Info("Connecting to the Runner Server...");
-                    await _runnerServer.ConnectAsync(new Uri(serverUrl), _creds);
+                    await _runnerServer.ConnectAsync(new Uri(serverUrl), _legacyCreds);
                     Trace.Info("VssConnection created");
 
                     _term.WriteLine();
@@ -180,6 +182,10 @@ namespace GitHub.Runner.Listener
                         }
                         return CreateSessionResult.Failure;
                     }
+
+                    Trace.Info("Disable migration mode for 10 minutes.");
+                    HostContext.DisableMigrationWithBackoff(TimeSpan.FromMinutes(10));
+                    _creds = _credMgr.LoadCredentials(allowAuthUrlV2: true);
 
                     if (!encounteringError) //print the message only on the first error
                     {
@@ -355,6 +361,11 @@ namespace GitHub.Runner.Listener
                             encounteringError = true;
                         }
 
+                        Trace.Info("Disable migration mode for 10 minutes.");
+                        HostContext.DisableMigrationWithBackoff(TimeSpan.FromMinutes(10));
+                        await RefreshListenerTokenAsync();
+
+
                         // re-create VssConnection before next retry
                         await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
 
@@ -415,6 +426,8 @@ namespace GitHub.Runner.Listener
         public async Task RefreshListenerTokenAsync()
         {
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
+
+            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: true);
             await _brokerServer.ForceRefreshConnection(_creds);
         }
 

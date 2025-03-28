@@ -26,6 +26,7 @@ namespace GitHub.Runner.Listener
         private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
+        private VssCredentials _legacyCreds;
         private TaskAgentSession _session;
         private IRunnerServer _runnerServer;
         private IBrokerServer _brokerServer;
@@ -35,7 +36,8 @@ namespace GitHub.Runner.Listener
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
-
+        private bool _needRecreateSessionConnection = false;
+        private bool _needRecreateGetMessagesConnection = false;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -45,6 +47,15 @@ namespace GitHub.Runner.Listener
             _runnerServer = HostContext.GetService<IRunnerServer>();
             _brokerServer = HostContext.GetService<IBrokerServer>();
             _credMgr = HostContext.GetService<ICredentialManager>();
+
+            hostContext.MigrationChanged += OnMigrationStateChanged;
+        }
+
+        private void OnMigrationStateChanged(object sender, MigrationEventArgs e)
+        {
+            Trace.Info($"Migration state change because of {e.Source}. Reload cred and connection.");
+            _needRecreateSessionConnection = true;
+            _needRecreateGetMessagesConnection = true;
         }
 
         public async Task<CreateSessionResult> CreateSessionAsync(CancellationToken token)
@@ -65,7 +76,8 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            _creds = _credMgr.LoadCredentials();
+            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: true);
+            _legacyCreds = _credMgr.LoadCredentials(allowAuthUrlV2: false);
 
             var agent = new TaskAgentReference
             {
@@ -85,6 +97,13 @@ namespace GitHub.Runner.Listener
             {
                 token.ThrowIfCancellationRequested();
                 Trace.Info($"Attempt to create session.");
+                if (_needRecreateSessionConnection)
+                {
+                    Trace.Info($"Recreate connection during creating session because of migration state change.");
+                    await RefreshBrokerConnectionAsync();
+                    _needRecreateSessionConnection = false;
+                }
+
                 try
                 {
                     Trace.Info("Connecting to the Broker Server...");
@@ -95,7 +114,7 @@ namespace GitHub.Runner.Listener
                         !string.Equals(serverUrl, serverUrlV2, StringComparison.OrdinalIgnoreCase))
                     {
                         Trace.Info("Connecting to the Runner server...");
-                        await _runnerServer.ConnectAsync(new Uri(serverUrl), _creds);
+                        await _runnerServer.ConnectAsync(new Uri(serverUrl), _legacyCreds);
                         Trace.Info("VssConnection created");
                     }
 
@@ -162,6 +181,9 @@ namespace GitHub.Runner.Listener
                         return CreateSessionResult.Failure;
                     }
 
+                    Trace.Info("Disable migration mode for 10 minutes.");
+                    HostContext.DisableMigrationWithBackoff(TimeSpan.FromMinutes(10));
+
                     if (!encounteringError) //print the message only on the first error
                     {
                         _term.WriteError($"{DateTime.UtcNow:u}: Runner connect error: {ex.Message}. Retrying until reconnected.");
@@ -216,6 +238,13 @@ namespace GitHub.Runner.Listener
 
             while (true)
             {
+                if (_needRecreateGetMessagesConnection)
+                {
+                    Trace.Info($"Recreate connection during creating session because of migration state change.");
+                    await RefreshBrokerConnectionAsync();
+                    _needRecreateGetMessagesConnection = false;
+                }
+
                 TaskAgentMessage message = null;
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
@@ -274,6 +303,9 @@ namespace GitHub.Runner.Listener
                     }
                     else
                     {
+                        Trace.Info("Disable migration mode for 10 minutes.");
+                        HostContext.DisableMigrationWithBackoff(TimeSpan.FromMinutes(10));
+
                         continuousError++;
                         //retry after a random backoff to avoid service throttling
                         //in case of there is a service error happened and all agents get kicked off of the long poll and all agent try to reconnect back at the same time.
@@ -434,7 +466,7 @@ namespace GitHub.Runner.Listener
         private async Task RefreshBrokerConnectionAsync()
         {
             Trace.Info("Reload credentials.");
-            _creds = _credMgr.LoadCredentials();
+            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: true);
             await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), _creds);
             Trace.Info("Connection to Broker Server recreated.");
         }

@@ -1,16 +1,16 @@
-﻿using GitHub.Runner.Common.Util;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Net.Http.Headers;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.Loader;
-using System.Reflection;
-using System.Collections.Generic;
 using GitHub.DistributedTask.Logging;
-using System.Net.Http.Headers;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common.Tests
@@ -31,6 +31,7 @@ namespace GitHub.Runner.Common.Tests
         private StartupType _startupType;
         public event EventHandler Unloading;
         public event EventHandler<DelayEventArgs> Delaying;
+        public event EventHandler<MigrationEventArgs> MigrationChanged;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
         public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
@@ -91,6 +92,8 @@ namespace GitHub.Runner.Common.Tests
         public List<ProductInfoHeaderValue> UserAgents => new() { new ProductInfoHeaderValue("L0Test", "0.0") };
 
         public RunnerWebProxy WebProxy => new();
+
+        public bool AllowMigration => false;
 
         public async Task Delay(TimeSpan delay, CancellationToken token)
         {
@@ -386,6 +389,11 @@ namespace GitHub.Runner.Common.Tests
         public void LoadDefaultUserAgents()
         {
             return;
+        }
+
+        public void DisableMigrationWithBackoff(TimeSpan backoff, [CallerMemberName] string callerName = "")
+        {
+            MigrationChanged(this, null);
         }
     }
 

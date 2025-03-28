@@ -127,7 +127,7 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
                     credProvider = GetCredentialProvider(command, runnerSettings.ServerUrl);
-                    creds = credProvider.GetVssCredentials(HostContext);
+                    creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
                     Trace.Info("legacy vss cred retrieved");
                 }
                 else
@@ -384,7 +384,7 @@ namespace GitHub.Runner.Listener.Configuration
             if (!runnerSettings.UseV2Flow)
             {
                 var credMgr = HostContext.GetService<ICredentialManager>();
-                VssCredentials credential = credMgr.LoadCredentials();
+                VssCredentials credential = credMgr.LoadCredentials(allowAuthUrlV2: false);
                 try
                 {
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
@@ -519,7 +519,7 @@ namespace GitHub.Runner.Listener.Configuration
                     if (string.IsNullOrEmpty(settings.GitHubUrl))
                     {
                         var credProvider = GetCredentialProvider(command, settings.ServerUrl);
-                        creds = credProvider.GetVssCredentials(HostContext);
+                        creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
                         Trace.Info("legacy vss cred retrieved");
                     }
                     else

@@ -570,12 +570,13 @@ namespace GitHub.Runner.Listener
 
                                     // Create connection
                                     var credMgr = HostContext.GetService<ICredentialManager>();
-                                    var creds = credMgr.LoadCredentials();
+                                    var legacyCreds = credMgr.LoadCredentials(allowAuthUrlV2: false);
+                                    var creds = credMgr.LoadCredentials(allowAuthUrlV2: true);
 
                                     if (string.IsNullOrEmpty(messageRef.RunServiceUrl))
                                     {
                                         var actionsRunServer = HostContext.CreateService<IActionsRunServer>();
-                                        await actionsRunServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+                                        await actionsRunServer.ConnectAsync(new Uri(settings.ServerUrl), legacyCreds);
                                         jobRequestMessage = await actionsRunServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
                                     }
                                     else

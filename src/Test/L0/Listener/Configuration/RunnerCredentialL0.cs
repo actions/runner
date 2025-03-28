@@ -8,7 +8,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
     public class TestRunnerCredential : CredentialProvider
     {
         public TestRunnerCredential() : base("TEST") { }
-        public override VssCredentials GetVssCredentials(IHostContext context)
+        public override VssCredentials GetVssCredentials(IHostContext context, bool allowAuthUrlV2)
         {
             Tracing trace = context.GetTrace("OuthAccessToken");
             trace.Info("GetVssCredentials()");

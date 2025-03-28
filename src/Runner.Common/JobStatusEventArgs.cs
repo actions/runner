@@ -11,4 +11,13 @@ namespace GitHub.Runner.Common
         }
         public TaskAgentStatus Status { get; private set; }
     }
+
+    public class MigrationEventArgs : EventArgs
+    {
+        public MigrationEventArgs(string source)
+        {
+            this.Source = source;
+        }
+        public string Source { get; private set; }
+    }
 }

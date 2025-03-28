@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,6 +38,10 @@ namespace GitHub.Runner.Common
         void ShutdownRunner(ShutdownReason reason);
         void WritePerfCounter(string counter);
         void LoadDefaultUserAgents();
+
+        bool AllowMigration { get; }
+        void DisableMigrationWithBackoff(TimeSpan backoff, [CallerMemberName] string callerName = "");
+        event EventHandler<MigrationEventArgs> MigrationChanged;
     }
 
     public enum StartupType
@@ -48,6 +53,10 @@ namespace GitHub.Runner.Common
 
     public sealed class HostContext : EventListener, IObserver<DiagnosticListener>, IObserver<KeyValuePair<string, object>>, IHostContext, IDisposable
     {
+        private readonly ManualResetEventSlim _allowMigration = new ManualResetEventSlim(true);
+        private readonly object _migrationBackoffLock = new object();
+        private CancellationTokenSource _migrationDeferTaskCancellationTokenSource = new CancellationTokenSource();
+        private DateTime _deferredMigrationTime = DateTime.UtcNow;
         private const int _defaultLogPageSize = 8;  //MB
         private static int _defaultLogRetentionDays = 30;
         private static int[] _vssHttpMethodEventIds = new int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 24 };
@@ -71,11 +80,13 @@ namespace GitHub.Runner.Common
         private string _hostType = string.Empty;
 
         public event EventHandler Unloading;
+        public event EventHandler<MigrationEventArgs> MigrationChanged;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
         public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
         public List<ProductInfoHeaderValue> UserAgents => _userAgents;
         public RunnerWebProxy WebProxy => _webProxy;
+        public bool AllowMigration => _allowMigration.IsSet;
         public HostContext(string hostType, string logFile = null)
         {
             // Validate args.
@@ -205,6 +216,50 @@ namespace GitHub.Runner.Common
             }
 
             LoadDefaultUserAgents();
+
+            _ = MigrationBackoffResetTimerAsync(TimeSpan.FromMinutes(1), _migrationDeferTaskCancellationTokenSource.Token);
+        }
+
+        private async Task MigrationBackoffResetTimerAsync(TimeSpan refreshTime, CancellationToken token)
+        {
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    _trace.Verbose($"Migration backoff timer is set to expire at {_deferredMigrationTime}. AllowMigration is set to {_allowMigration.IsSet}.");
+                    await Task.Delay(refreshTime, token);
+                    if (!_allowMigration.IsSet && DateTime.UtcNow > _deferredMigrationTime)
+                    {
+                        _trace.Info($"Migration backoff timer expired. Allowing migration.");
+                        _allowMigration.Set();
+                        MigrationChanged(this, new MigrationEventArgs("ResetTimer"));
+                    }
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Task was cancelled, exit the loop.
+            }
+            catch (Exception ex)
+            {
+                _trace.Info("Error in migration backoff reset timer.");
+                _trace.Error(ex);
+            }
+        }
+
+        public void DisableMigrationWithBackoff(TimeSpan backoff, [CallerMemberName] string callerName = "")
+        {
+            _allowMigration.Reset();
+
+            // defer migration for a while
+            lock (_migrationBackoffLock)
+            {
+                _deferredMigrationTime = DateTime.UtcNow.Add(backoff);
+            }
+
+            _trace.Info($"Disabled migration until {_deferredMigrationTime}.");
+
+            MigrationChanged(this, new MigrationEventArgs(callerName));
         }
 
         public void LoadDefaultUserAgents()
@@ -549,6 +604,11 @@ namespace GitHub.Runner.Common
                     _loadContext.Unloading -= LoadContext_Unloading;
                     _loadContext = null;
                 }
+
+                _migrationDeferTaskCancellationTokenSource?.Cancel();
+                _migrationDeferTaskCancellationTokenSource?.Dispose();
+                _migrationDeferTaskCancellationTokenSource = null;
+
                 _httpTraceSubscription?.Dispose();
                 _diagListenerSubscription?.Dispose();
                 _traceManager?.Dispose();
