@@ -29,6 +29,7 @@ namespace GitHub.Runner.Listener
         private TaskAgentSession _session;
         private IRunnerServer _runnerServer;
         private IBrokerServer _brokerServer;
+        private ICredentialManager _credMgr;
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new();
         private bool _accessTokenRevoked = false;
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
@@ -43,6 +44,7 @@ namespace GitHub.Runner.Listener
             _term = HostContext.GetService<ITerminal>();
             _runnerServer = HostContext.GetService<IRunnerServer>();
             _brokerServer = HostContext.GetService<IBrokerServer>();
+            _credMgr = HostContext.GetService<ICredentialManager>();
         }
 
         public async Task<CreateSessionResult> CreateSessionAsync(CancellationToken token)
@@ -63,8 +65,7 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            _creds = credMgr.LoadCredentials();
+            _creds = _credMgr.LoadCredentials();
 
             var agent = new TaskAgentReference
             {
@@ -329,7 +330,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task RefreshListenerTokenAsync(CancellationToken cancellationToken)
+        public async Task RefreshListenerTokenAsync()
         {
             await RefreshBrokerConnectionAsync();
         }
@@ -432,17 +433,10 @@ namespace GitHub.Runner.Listener
 
         private async Task RefreshBrokerConnectionAsync()
         {
-            var configManager = HostContext.GetService<IConfigurationManager>();
-            _settings = configManager.LoadSettings();
-
-            if (string.IsNullOrEmpty(_settings.ServerUrlV2))
-            {
-                throw new InvalidOperationException("ServerUrlV2 is not set");
-            }
-
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            VssCredentials creds = credMgr.LoadCredentials();
-            await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), creds);
+            Trace.Info("Reload credentials.");
+            _creds = _credMgr.LoadCredentials();
+            await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), _creds);
+            Trace.Info("Connection to Broker Server recreated.");
         }
     }
 }

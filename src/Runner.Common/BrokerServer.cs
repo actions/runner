@@ -88,7 +88,12 @@ namespace GitHub.Runner.Common
 
         public Task ForceRefreshConnection(VssCredentials credentials)
         {
-            return ConnectAsync(_brokerUri, credentials);
+            if (!string.IsNullOrEmpty(_brokerUri?.AbsoluteUri))
+            {
+                return ConnectAsync(_brokerUri, credentials);
+            }
+
+            return Task.CompletedTask;
         }
 
         public bool ShouldRetryException(Exception ex)

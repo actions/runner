@@ -33,7 +33,7 @@ namespace GitHub.Runner.Listener
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
 
-        Task RefreshListenerTokenAsync(CancellationToken token);
+        Task RefreshListenerTokenAsync();
         void OnJobStatus(object sender, JobStatusEventArgs e);
     }
 
@@ -44,6 +44,7 @@ namespace GitHub.Runner.Listener
         private ITerminal _term;
         private IRunnerServer _runnerServer;
         private IBrokerServer _brokerServer;
+        private ICredentialManager _credMgr;
         private TaskAgentSession _session;
         private TimeSpan _getNextMessageRetryInterval;
         private bool _accessTokenRevoked = false;
@@ -64,6 +65,7 @@ namespace GitHub.Runner.Listener
             _term = HostContext.GetService<ITerminal>();
             _runnerServer = HostContext.GetService<IRunnerServer>();
             _brokerServer = hostContext.GetService<IBrokerServer>();
+            _credMgr = hostContext.GetService<ICredentialManager>();
         }
 
         public async Task<CreateSessionResult> CreateSessionAsync(CancellationToken token)
@@ -78,8 +80,7 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            _creds = credMgr.LoadCredentials();
+            _creds = _credMgr.LoadCredentials();
 
             var agent = new TaskAgentReference
             {
@@ -411,7 +412,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task RefreshListenerTokenAsync(CancellationToken cancellationToken)
+        public async Task RefreshListenerTokenAsync()
         {
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
             await _brokerServer.ForceRefreshConnection(_creds);

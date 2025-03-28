@@ -633,7 +633,7 @@ namespace GitHub.Runner.Listener
                             else if (string.Equals(message.MessageType, TaskAgentMessageTypes.ForceTokenRefresh))
                             {
                                 Trace.Info("Received ForceTokenRefreshMessage");
-                                await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
+                                await _listener.RefreshListenerTokenAsync();
                             }
                             else if (string.Equals(message.MessageType, RunnerRefreshConfigMessage.MessageType))
                             {
