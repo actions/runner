@@ -7,6 +7,7 @@ using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi.RawClient;
 
@@ -92,7 +93,7 @@ namespace GitHub.Runner.Common
 
         public bool ShouldRetryException(Exception ex)
         {
-            if (ex is AccessDeniedException ade)
+            if (ex is AccessDeniedException || ex is RunnerNotFoundException || ex is HostedRunnerDeprovisionedException)
             {
                 return false;
             }

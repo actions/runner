@@ -1,17 +1,36 @@
 ## What's Changed
+* Bump docker/login-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3673
+* Bump actions/stale from 8 to 9 by @dependabot in https://github.com/actions/runner/pull/3554
+* Bump docker/build-push-action from 3 to 6 by @dependabot in https://github.com/actions/runner/pull/3674
+* update node version from 20.18.0 -> 20.18.2 by @aiqiaoy in https://github.com/actions/runner/pull/3682
+* Pass BillingOwnerId through Acquire/Complete calls by @luketomlinson in https://github.com/actions/runner/pull/3689
+* Do not retry CompleteJobAsync for known non-retryable errors by @ericsciple in https://github.com/actions/runner/pull/3696
+* Update dotnet sdk to latest version @8.0.406 by @github-actions in https://github.com/actions/runner/pull/3712
+* Update Dockerfile with new docker and buildx versions by @thboop in https://github.com/actions/runner/pull/3680
+* chore: remove redundant words by @finaltrip in https://github.com/actions/runner/pull/3705
+* fix: actions feedback link is incorrect by @Yaminyam in https://github.com/actions/runner/pull/3165
+* Bump actions/github-script from 0.3.0 to 7.0.1 by @dependabot in https://github.com/actions/runner/pull/3557
+* Docker container provenance by @paveliak in https://github.com/actions/runner/pull/3736
+* Add request-id to http eventsource trace. by @TingluoHuang in https://github.com/actions/runner/pull/3740
+* Update Bocker and Buildx version to mitigate images scanners alerts by @Blizter in https://github.com/actions/runner/pull/3750
+* Fix typo, add invariant culture to timestamp for workflow log reporting by @GhadimiR in https://github.com/actions/runner/pull/3749
+* Create vssconnection to actions service when URL provided. by @TingluoHuang in https://github.com/actions/runner/pull/3751
+* Housekeeping: Update npm packages and node version by @thboop in https://github.com/actions/runner/pull/3752
+* Improve the out-of-date warning message. by @tecimovic in https://github.com/actions/runner/pull/3595
+* Update dotnet sdk to latest version @8.0.407 by @github-actions in https://github.com/actions/runner/pull/3753
+* Exit hosted runner cleanly during deprovisioning. by @TingluoHuang in https://github.com/actions/runner/pull/3755
+* Send annotation title to run-service. by @TingluoHuang in https://github.com/actions/runner/pull/3757
+* Allow server enforce runner settings. by @TingluoHuang in https://github.com/actions/runner/pull/3758
+* Support refresh runner configs with pipelines service. by @TingluoHuang in https://github.com/actions/runner/pull/3706
 
-- Adding Snapshot additional mapping tokens https://github.com/actions/runner/pull/3468
-- Create launch httpclient using the right handler and setting https://github.com/actions/runner/pull/3476
-- Fix missing default user-agent for jitconfig runner https://github.com/actions/runner/pull/3473
-- Cleanup back-compat code for interpreting Run Service status codes https://github.com/actions/runner/pull/3456
-- Add runner or worker to the useragent https://github.com/actions/runner/pull/3457
-- Handle Error Body in Responses from Broker https://github.com/actions/runner/pull/3454
-- Fix issues for composite actions (Run Service flow) https://github.com/actions/runner/pull/3446
-- Trace GitHub RequestId to log https://github.com/actions/runner/pull/3442
-- Add `jq`, `git`, `unzip` and `curl` to default packages installed https://github.com/actions/runner/pull/3056
-- Add pid to user-agent and session owner https://github.com/actions/runner/pull/3432
+## New Contributors
+* @finaltrip made their first contribution in https://github.com/actions/runner/pull/3705
+* @Yaminyam made their first contribution in https://github.com/actions/runner/pull/3165
+* @Blizter made their first contribution in https://github.com/actions/runner/pull/3750
+* @GhadimiR made their first contribution in https://github.com/actions/runner/pull/3749
+* @tecimovic made their first contribution in https://github.com/actions/runner/pull/3595
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.319.1...v2.320.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.322.0...v2.323.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
@@ -33,9 +52,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
 ```
 
-## [Pre-release] Windows arm64
-
-**Warning:** Windows arm64 runners are currently in preview status and use [unofficial versions of nodejs](https://unofficial-builds.nodejs.org/). They are not intended for production workflows.
+## Windows arm64
 
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 

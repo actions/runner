@@ -15,7 +15,7 @@ jobs:
       DOTNET_CURRENT_MAJOR_MINOR_VERSION: ${{ steps.fetch_current_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Get current major minor version
         id: fetch_current_version
         shell: bash
@@ -51,7 +51,7 @@ jobs:
         run: echo "::error links::feature/dotnet-sdk-upgrade${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }} https://github.com/actions/runner/tree/feature/dotnet-sdk-upgrade${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}::Branch feature/dotnetsdk-upgrade/${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }} already exists. Please take a look and delete that branch if you wish to recreate"
       - name: Create a warning annotation if no need to update
         if: ${{ steps.fetch_latest_version.outputs.SHOULD_UPDATE == 0 && steps.fetch_latest_version.outputs.BRANCH_EXISTS == 0 }}
-        run: echo "::warning ::Latest DotNet SDK patch is ${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}, and we are on ${{ steps.fetch_latest_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_PATCH_VERSION }}. No need to update"
+        run: echo "::warning ::Latest DotNet SDK patch is ${{ steps.fetch_latest_version.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}, and we are on ${{ steps.fetch_current_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_PATCH_VERSION }}. No need to update"
       - name: Update patch version
         if: ${{ steps.fetch_latest_version.outputs.SHOULD_UPDATE == 1 && steps.fetch_latest_version.outputs.BRANCH_EXISTS == 0 }}
         shell: bash
@@ -89,7 +89,7 @@ jobs:
     if: ${{ needs.dotnet-update.outputs.SHOULD_UPDATE == 1 && needs.dotnet-update.outputs.BRANCH_EXISTS == 0 }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         ref: feature/dotnetsdk-upgrade/${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
     - name: Create Pull Request

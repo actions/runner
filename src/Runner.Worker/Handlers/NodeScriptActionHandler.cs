@@ -72,6 +72,11 @@ namespace GitHub.Runner.Worker.Handlers
                 Environment["ACTIONS_RESULTS_URL"] = resultsUrl;
             }
 
+            if (ExecutionContext.Global.Variables.GetBoolean("actions_uses_cache_service_v2") ?? false)
+            {
+                Environment["ACTIONS_CACHE_SERVICE_V2"] = bool.TrueString;
+            }
+
             // Resolve the target script.
             string target = null;
             if (stage == ActionRunStage.Main)

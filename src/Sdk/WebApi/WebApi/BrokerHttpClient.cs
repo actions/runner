@@ -115,11 +115,15 @@ namespace GitHub.Actions.RunService.WebApi
             {
                 switch (brokerError.ErrorKind)
                 {
+                    case BrokerErrorKind.RunnerNotFound:
+                        throw new RunnerNotFoundException(brokerError.Message);
                     case BrokerErrorKind.RunnerVersionTooOld:
                         throw new AccessDeniedException(brokerError.Message)
                         {
                             ErrorCode = 1
                         };
+                    case BrokerErrorKind.HostedRunnerDeprovisioned:
+                        throw new HostedRunnerDeprovisionedException(brokerError.Message);
                     default:
                         break;
                 }

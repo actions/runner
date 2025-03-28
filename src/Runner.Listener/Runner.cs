@@ -360,7 +360,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private IMessageListener GetMesageListener(RunnerSettings settings)
+        private IMessageListener GetMessageListener(RunnerSettings settings)
         {
             if (settings.UseV2Flow)
             {
@@ -379,7 +379,7 @@ namespace GitHub.Runner.Listener
             try
             {
                 Trace.Info(nameof(RunAsync));
-                _listener = GetMesageListener(settings);
+                _listener = GetMessageListener(settings);
                 CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
                 if (createSessionResult == CreateSessionResult.SessionConflict)
                 {
@@ -584,7 +584,7 @@ namespace GitHub.Runner.Listener
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), creds);
                                         try
                                         {
-                                            jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                            jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageRef.BillingOwnerId, messageQueueLoopTokenSource.Token);
                                             _acquireJobThrottler.Reset();
                                         }
                                         catch (Exception ex) when (
@@ -634,6 +634,17 @@ namespace GitHub.Runner.Listener
                             {
                                 Trace.Info("Received ForceTokenRefreshMessage");
                                 await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
+                            }
+                            else if (string.Equals(message.MessageType, RunnerRefreshConfigMessage.MessageType))
+                            {
+                                var runnerRefreshConfigMessage = JsonUtility.FromString<RunnerRefreshConfigMessage>(message.Body);
+                                Trace.Info($"Received RunnerRefreshConfigMessage for '{runnerRefreshConfigMessage.ConfigType}' config file");
+                                var configUpdater = HostContext.GetService<IRunnerConfigUpdater>();
+                                await configUpdater.UpdateRunnerConfigAsync(
+                                    runnerQualifiedId: runnerRefreshConfigMessage.RunnerQualifiedId,
+                                    configType: runnerRefreshConfigMessage.ConfigType,
+                                    serviceType: runnerRefreshConfigMessage.ServiceType,
+                                    configRefreshUrl: runnerRefreshConfigMessage.ConfigRefreshUrl);
                             }
                             else
                             {
@@ -696,6 +707,10 @@ namespace GitHub.Runner.Listener
             catch (TaskAgentAccessTokenExpiredException)
             {
                 Trace.Info("Runner OAuth token has been revoked. Shutting down.");
+            }
+            catch (HostedRunnerDeprovisionedException)
+            {
+                Trace.Info("Hosted runner has been deprovisioned. Shutting down.");
             }
 
             return Constants.Runner.ReturnCode.Success;
