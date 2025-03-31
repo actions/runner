@@ -1,0 +1,32 @@
+resources:
+  repositories:
+  - repository: az
+    name: az/fork
+    ref: main
+    type: github
+
+jobs:
+- deployment: A
+  environment: staging
+  strategy:
+    runOnce:
+      preDeploy:
+        steps:
+        - checkout: self
+        - pwsh: |
+            if (Test-Path "pipeline.yml") {
+              echo "Success: File exists"
+            } else {
+              echo "Failure: File does not exist"
+              exit 1;
+            }
+      deploy:
+        steps:
+        - checkout: az
+        - pwsh: |
+            if (Test-Path "runoncedeploycheckout/pipeline.yml") {
+              echo "Success: File exists"
+            } else {
+              echo "Failure: File does not exist"
+              exit 1;
+            }
