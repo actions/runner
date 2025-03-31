@@ -65,7 +65,7 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false);
+            _creds = _credMgr.LoadCredentials();
 
             var agent = new TaskAgentReference
             {
@@ -434,7 +434,7 @@ namespace GitHub.Runner.Listener
         private async Task RefreshBrokerConnectionAsync()
         {
             Trace.Info("Reload credentials.");
-            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false); // TODO: change to `true` in the next PR.
+            _creds = _credMgr.LoadCredentials();
             await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), _creds);
             Trace.Info("Connection to Broker Server recreated.");
         }

@@ -80,7 +80,7 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false);
+            _creds = _credMgr.LoadCredentials();
 
             var agent = new TaskAgentReference
             {
@@ -415,7 +415,6 @@ namespace GitHub.Runner.Listener
         public async Task RefreshListenerTokenAsync()
         {
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
-            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false); // TODO: change to `true` in next PR
             await _brokerServer.ForceRefreshConnection(_creds);
         }
 
