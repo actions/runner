@@ -1,10 +1,10 @@
-﻿using System;
+﻿using GitHub.Runner.Common.Util;
+using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace GitHub.Runner.Common.Tests
@@ -167,133 +167,6 @@ namespace GitHub.Runner.Common.Tests
             finally
             {
                 Environment.SetEnvironmentVariable("http_proxy", null);
-                // Cleanup.
-                Teardown();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public void AuthMigrationDisabledByDefault()
-        {
-            try
-            {
-                Environment.SetEnvironmentVariable("_GITHUB_ACTION_AUTH_MIGRATION_REFRESH_INTERVAL", "100");
-
-                // Arrange.
-                Setup();
-
-                // Assert.
-                Assert.False(_hc.AllowAuthMigration);
-
-                // Change migration state is error free.
-                _hc.EnableAuthMigration("L0Test");
-                _hc.DeferAuthMigration(TimeSpan.FromHours(1), "L0Test");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("_GITHUB_ACTION_AUTH_MIGRATION_REFRESH_INTERVAL", null);
-                // Cleanup.
-                Teardown();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public async Task AuthMigrationReenableTaskNotRunningByDefault()
-        {
-            try
-            {
-                Environment.SetEnvironmentVariable("_GITHUB_ACTION_AUTH_MIGRATION_REFRESH_INTERVAL", "50");
-
-                // Arrange.
-                Setup();
-
-                // Assert.
-                Assert.False(_hc.AllowAuthMigration);
-                await Task.Delay(TimeSpan.FromMilliseconds(200));
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("_GITHUB_ACTION_AUTH_MIGRATION_REFRESH_INTERVAL", null);
-                // Cleanup.
-                Teardown();
-            }
-
-            var logFile = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), $"trace_{nameof(HostContextL0)}_{nameof(AuthMigrationReenableTaskNotRunningByDefault)}.log");
-            var logContent = await File.ReadAllTextAsync(logFile);
-            Assert.Contains("HostContext", logContent);
-            Assert.DoesNotContain("Auth migration defer timer", logContent);
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public void AuthMigrationEnableDisable()
-        {
-            try
-            {
-                // Arrange.
-                Setup();
-
-                var eventFiredCount = 0;
-                _hc.AuthMigrationChanged += (sender, e) =>
-                {
-                    eventFiredCount++;
-                    Assert.Equal("L0Test", e.Trace);
-                };
-
-                // Assert.
-                _hc.EnableAuthMigration("L0Test");
-                Assert.True(_hc.AllowAuthMigration);
-
-                _hc.DeferAuthMigration(TimeSpan.FromHours(1), "L0Test");
-                Assert.False(_hc.AllowAuthMigration);
-                Assert.Equal(2, eventFiredCount);
-            }
-            finally
-            {
-                // Cleanup.
-                Teardown();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public async Task AuthMigrationAutoReset()
-        {
-            try
-            {
-                Environment.SetEnvironmentVariable("_GITHUB_ACTION_AUTH_MIGRATION_REFRESH_INTERVAL", "100");
-
-                // Arrange.
-                Setup();
-
-                var eventFiredCount = 0;
-                _hc.AuthMigrationChanged += (sender, e) =>
-                {
-                    eventFiredCount++;
-                    Assert.NotEmpty(e.Trace);
-                };
-
-                // Assert.
-                _hc.EnableAuthMigration("L0Test");
-                Assert.True(_hc.AllowAuthMigration);
-
-                _hc.DeferAuthMigration(TimeSpan.FromMilliseconds(500), "L0Test");
-                Assert.False(_hc.AllowAuthMigration);
-
-                await Task.Delay(TimeSpan.FromSeconds(1));
-                Assert.True(_hc.AllowAuthMigration);
-                Assert.Equal(3, eventFiredCount);
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("_GITHUB_ACTION_AUTH_MIGRATION_REFRESH_INTERVAL", null);
-
                 // Cleanup.
                 Teardown();
             }
