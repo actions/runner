@@ -570,7 +570,7 @@ namespace GitHub.Runner.Listener
 
                                     // Create connection
                                     var credMgr = HostContext.GetService<ICredentialManager>();
-                                    var creds = credMgr.LoadCredentials();
+                                    var creds = credMgr.LoadCredentials(allowAuthUrlV2: false);
 
                                     if (string.IsNullOrEmpty(messageRef.RunServiceUrl))
                                     {
