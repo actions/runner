@@ -1,0 +1,15 @@
+trigger: none
+
+stages:
+- stage: build
+  jobs:
+  - job:
+    steps:
+    - task: NuGetCommand@2
+      displayName: 'NuGet restore'
+      inputs:
+        feedsToUse: config
+        nugetConfigPath: nuget.config
+      condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    - script: echo Skipped on non-Windows
+      condition: ne( variables['Agent.OS'], 'Windows_NT' )

@@ -3135,7 +3135,7 @@ namespace Runner.Server.Controllers
                                     variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(pipeline.Name, false));
                                     variables["system"] = new VariableValue("build", false);
                                     variables["System.HostType"] = new VariableValue("build", false);
-                                    variables["System.servertype"] = new VariableValue("Hosted", false);
+                                    variables["System.ServerType"] = new VariableValue("OnPremises", false);
                                     variables["system.culture"] = new VariableValue("en-US", false);
                                     variables["System.CollectionId"] = new VariableValue(Guid.Empty.ToString(), false);
                                     variables["system.teamProject"] = new VariableValue("runner.server", false);

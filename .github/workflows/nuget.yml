@@ -190,6 +190,7 @@ jobs:
         Runner.Client --event azpipelines -C testworkflows/azpipelines/cross-repo-relative-paths/repo1 -W testworkflows/azpipelines/cross-repo-relative-paths/repo1/pipeline.yml --local-repository central/shared@main=testworkflows/azpipelines/cross-repo-relative-paths/repo2
         Runner.Client --event azpipelines -C testworkflows/azpipelines/extend-variables -W testworkflows/azpipelines/extend-variables/pipeline.yml
         Runner.Client --event azpipelines -C testworkflows/azpipelines/runoncedeploycheckout -W testworkflows/azpipelines/runoncedeploycheckout/pipeline.yml --local-repository az/fork@main=testworkflows/azpipelines
+        Runner.Client --event azpipelines -C testworkflows/azpipelines/nuget-restore-task -W testworkflows/azpipelines/nuget-restore-task/pipeline.yml
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows') && !job.container
       run: |
