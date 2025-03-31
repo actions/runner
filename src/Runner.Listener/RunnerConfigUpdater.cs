@@ -197,6 +197,16 @@ namespace GitHub.Runner.Listener
                     await ReportTelemetryAsync($"Credential clientId in refreshed config '{refreshedClientId ?? "Empty"}' does not match the current credential clientId '{clientId}'.");
                     return;
                 }
+
+                //  make sure the credential authorizationUrl in the refreshed config match the current credential authorizationUrl for OAuth auth scheme
+                var authorizationUrl = _credData.Data.GetValueOrDefault("authorizationUrl", null);
+                var refreshedAuthorizationUrl = refreshedCredConfig.Data.GetValueOrDefault("authorizationUrl", null);
+                if (authorizationUrl != refreshedAuthorizationUrl)
+                {
+                    Trace.Error($"Credential authorizationUrl in refreshed config '{refreshedAuthorizationUrl ?? "Empty"}' does not match the current credential authorizationUrl '{authorizationUrl}'.");
+                    await ReportTelemetryAsync($"Credential authorizationUrl in refreshed config '{refreshedAuthorizationUrl ?? "Empty"}' does not match the current credential authorizationUrl '{authorizationUrl}'.");
+                    return;
+                }
             }
 
             // save the refreshed runner credentials as a separate file
