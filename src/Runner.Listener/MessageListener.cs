@@ -56,8 +56,6 @@ namespace GitHub.Runner.Listener
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
 
-        private bool _isBrokerSession = false;
-
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -114,16 +112,6 @@ namespace GitHub.Runner.Listener
                                                         _settings.PoolId,
                                                         taskAgentSession,
                                                         token);
-
-                    if (_session.BrokerMigrationMessage != null)
-                    {
-                        Trace.Info("Runner session is in migration mode: Creating Broker session with BrokerBaseUrl: {0}", _session.BrokerMigrationMessage.BrokerBaseUrl);
-
-                        await _brokerServer.UpdateConnectionIfNeeded(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
-                        _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
-                        _isBrokerSession = true;
-                    }
-
                     Trace.Info($"Session created.");
                     if (encounteringError)
                     {
@@ -202,11 +190,6 @@ namespace GitHub.Runner.Listener
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
                         await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
-
-                        if (_isBrokerSession)
-                        {
-                            await _brokerServer.DeleteSessionAsync(ts.Token);
-                        }
                     }
                 }
                 else
