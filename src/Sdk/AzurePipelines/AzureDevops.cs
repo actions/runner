@@ -1326,7 +1326,7 @@ namespace Runner.Server.Azure.Devops {
                         continue;
                     }
                     var defCtxData = def == null ? null : await ConvertValue(context, def, type, values);
-                    if (cparameters?.TryGetValue(name, out var value) == true || def == null && (value = await (context.RequiredParametersProvider?.GetRequiredParameter(name) ?? Task.FromResult<TemplateToken>(null))) != null)
+                    if (cparameters?.TryGetValue(name, out var value) == true)
                     {
                         parametersData[name] = await ConvertValue(context, value, type, values);
                     }
@@ -1334,9 +1334,27 @@ namespace Runner.Server.Azure.Devops {
                     {
                         if (def == null) // handle missing required parameter
                         {
-                            templateContext.Error(mparam, $"A value for the '{name}' parameter must be provided.");
+                            value = null;
+                            if(context.RequiredParametersProvider != null) {
+                                var stype = type.AssertLiteralString("parameters.*.type");
+                                while(true) {
+                                    try {
+                                        value = await context.RequiredParametersProvider.GetRequiredParameter(name, stype, values == null || values is NullToken ? null : values.AssertSequence("parameters.*.values").Select(s => s.AssertLiteralString("parameters.*.values.*")));
+                                        if(value != null) {
+                                            parametersData[name] = await ConvertValue(context, value, type, values);
+                                        }
+                                        break;
+                                    } catch(Exception ex) {
+                                        await context.RequiredParametersProvider.ReportInvalidParameterValue(name, stype, $"Cannot convert provided value for for the '{name}' parameter: {ex.Message}");
+                                    }
+                                };
+                            }
+                            if(!parametersData.ContainsKey(name)) {
+                                templateContext.Error(mparam, $"A value for the '{name}' parameter must be provided.");
+                            }
+                        } else {
+                            parametersData[name] = defCtxData;
                         }
-                        parametersData[name] = defCtxData;
                     }
                 }
 

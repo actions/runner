@@ -328,9 +328,15 @@
 		"semanticTokenScopes": [
 			{
 				"scopes": {
-					"constant.defaultLibrary": ["constant.language"],
-					"constant.numeric": ["constant.numeric"],
-					"punctuation": ["meta.embedded"]
+					"constant.defaultLibrary": [
+						"constant.language"
+					],
+					"constant.numeric": [
+						"constant.numeric"
+					],
+					"punctuation": [
+						"meta.embedded"
+					]
 				}
 			}
 		]
@@ -348,6 +354,7 @@
 		"@vscode/debugadapter": "^1.64.0",
 		"@vscode/debugprotocol": "^1.64.0",
 		"js-yaml": "^4.1.0",
+		"jsonc-parser": "^3.3.1",
 		"ts-loader": "^9.5.0",
 		"url": "^0.11.3",
 		"vscode-languageclient": "^9.0.1"

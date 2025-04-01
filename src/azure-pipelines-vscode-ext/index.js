@@ -3,6 +3,7 @@ import { basePaths, customImports } from "./config.js"
 import { AzurePipelinesDebugSession } from "./azure-pipelines-debug";
 import { integer, Position } from "vscode-languageclient";
 import jsYaml from "js-yaml";
+import { applyEdits, modify } from "jsonc-parser";
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -200,16 +201,59 @@ function activate(context) {
 						break;
 				}
 			},
-			requestRequiredParameter: async (handle, name) => {
+			requestRequiredParameter: async (handle, name, type, values) => {
 				if(!handle.askForInput) {
 					return;
 				}
-				return handle.parameters[name] = await vscode.window.showInputBox({
-					ignoreFocusOut: true,
-					placeHolder: "value",
-					prompt: name,
-					title: "Provide required Variables in yaml notation"
-				})
+				if(type === "boolean") {
+					values ??= ["true", "false"];
+				}
+				var value = undefined;
+				var acceptYAML = false;
+				if(values && values.length) {
+					value = await vscode.window.showQuickPick(values, {
+						canPickMany: type.endsWith("List"),
+						placeHolder: "value",
+						prompt: name,
+						ignoreFocusOut: true,
+						title: "Select the required Parameter " + name + " of Type " + type
+					});
+				} else {
+					switch(type) {
+						case "stringList":
+						case "legacyObject":
+						case "object":
+						case "step":
+						case "stepList":
+						case "job":
+						case "jobList":
+						case "deployment":
+						case "deploymentList":
+						case "stage":
+						case "stageList":
+						case "container":
+						case "containerList":
+							acceptYAML = true;
+							break;
+					}
+					value = await vscode.window.showInputBox({
+						ignoreFocusOut: true,
+						placeHolder: "value",
+						prompt: name,
+						title: "Provide required Parameter " + name + " of Type " + type + (acceptYAML ?  " in YAML notation" : "as free text"),
+					});
+				}
+				if(value === undefined) {
+					value = null;
+					handle.stopTask = true;
+					return null;
+				}
+				if(!acceptYAML) {
+					value = JSON.stringify(value)
+				}
+				handle.customConfig ??= {};
+				handle.customConfig.parameters ??= {};
+				return handle.customConfig.parameters[name] = handle.parameters[name] = value;
 			},
 			error: async (handle, message) => {
 				await handle.error(message);
@@ -491,6 +535,57 @@ function activate(context) {
 						config.repositories.push(`${key}=${handle.customConfig.repositories[key]}`);
 					}
 					await config.update("repositories", config.repositories, target);
+				}
+			})().catch(() => {});
+		}
+		// Ask for saving as new custom Task of this extension
+		if(handle.customConfig?.parameters && handle.base) {
+			var workspaceFolder = vscode.workspace.getWorkspaceFolder(handle.base);
+			await (async () => {
+				if(workspaceFolder) {
+					var tasks = await vscode.workspace.fs.readFile(workspaceFolder.uri.with({ path: joinPath(workspaceFolder.uri.path, ".vscode/tasks.json") })).catch(() => null);
+					if(tasks) {
+						tasks = new TextDecoder().decode(tasks);
+					} else {
+						tasks = JSON.stringify({ version: "2.0.0", tasks: [] }, null, 4);
+					}
+				}
+				var result = await vscode.window.showQuickPick(["No",  "Add to .vscode/tasks.json"], { placeHolder: "Remember chosen required Parameters in a new VSCode Task?", ignoreFocusOut: true });
+				if(result === "Add to .vscode/tasks.json") {
+					try {
+						var convertedParam = {};
+						for(var name in handle.customConfig.parameters) {
+							try {
+								var yml = handle.customConfig.parameters[name];
+								var js = runtime.BINDING.bind_static_method("[ext-core] MyClass:YAMLToJson")(yml);
+								convertedParam[name] = JSON.parse(js);
+							} catch(ex) {
+								console.log(ex);
+							}
+						}
+						var existingTasks = await vscode.tasks.fetchTasks();
+						// Generate a unique label
+						var label = `${validate ? "Validate" : "Expand"} Pipeline ${handle.filename}`;
+						var i = 0;
+						while(existingTasks.find(t => t.name === label)) {
+							label = `${handle.filename} (${++i})`;
+						}
+
+						var nTasks = applyEdits(tasks, modify(tasks, ["tasks", -1], {
+							"type": "azure-pipelines-vscode-ext",
+							"label": label,
+							"program": "${workspaceFolder}/" + handle.filename,
+							"repositories": {},
+							"parameters": convertedParam,
+							"variables": {},
+							"preview": !validate,
+							"watch": true
+						}, { formattingOptions: { insertSpaces: true, tabSize: 4 }, isArrayInsertion: true }));
+						await vscode.workspace.fs.createDirectory(workspaceFolder.uri.with({ path: joinPath(workspaceFolder.uri.path, ".vscode") }));
+						await vscode.workspace.fs.writeFile(workspaceFolder.uri.with({ path: joinPath(workspaceFolder.uri.path, ".vscode/tasks.json") }), new TextEncoder().encode(nTasks));
+					} catch {
+						
+					}
 				}
 			})().catch(() => {});
 		}
@@ -933,7 +1028,6 @@ function activate(context) {
 		};
 		var requestReOpen = true;
 		var documentClosed = true;
-		var assumeIsOpen = false;
 		var doc = null;
 		var uri = vscode.Uri.from({
 			scheme: "azure-pipelines-vscode-ext",

@@ -78,7 +78,7 @@ const nodeExtensionConfig = {
     libraryTarget: 'commonjs',
   },
   resolve: {
-    mainFields: ['main'], // look for `browser` entry point in imported node modules
+    mainFields: ['module', 'main'], // look for `browser` entry point in imported node modules
     extensions: ['.ts', '.js'], // support ts-files and js-files
   },
   // experiments: {
