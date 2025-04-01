@@ -67,7 +67,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -127,7 +127,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedBrokerSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -177,7 +177,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -237,7 +237,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedBrokerSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -301,7 +301,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -382,7 +382,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -484,7 +484,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
 
                 var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
                 originalCred.Data["authorizationUrl"] = "https://s.server";
@@ -533,7 +533,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 

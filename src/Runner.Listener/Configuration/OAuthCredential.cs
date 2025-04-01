@@ -22,10 +22,18 @@ namespace GitHub.Runner.Listener.Configuration
             // Nothing to verify here
         }
 
-        public override VssCredentials GetVssCredentials(IHostContext context)
+        public override VssCredentials GetVssCredentials(IHostContext context, bool allowAuthUrlV2)
         {
             var clientId = this.CredentialData.Data.GetValueOrDefault("clientId", null);
             var authorizationUrl = this.CredentialData.Data.GetValueOrDefault("authorizationUrl", null);
+            var authorizationUrlV2 = this.CredentialData.Data.GetValueOrDefault("authorizationUrlV2", null);
+
+            if (allowAuthUrlV2 &&
+                !string.IsNullOrEmpty(authorizationUrlV2) &&
+                context.AllowAuthMigration)
+            {
+                authorizationUrl = authorizationUrlV2;
+            }
 
             // For back compat with .credential file that doesn't has 'oauthEndpointUrl' section
             var oauthEndpointUrl = this.CredentialData.Data.GetValueOrDefault("oauthEndpointUrl", authorizationUrl);
