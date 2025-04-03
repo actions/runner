@@ -32,7 +32,6 @@ namespace GitHub.Runner.Listener
         private bool _inConfigStage;
         private ManualResetEvent _completedCommand = new(false);
         private IRunnerServer _runnerServer;
-        private RunnerSettings _runnerSettings;
 
         // <summary>
         // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
@@ -52,7 +51,7 @@ namespace GitHub.Runner.Listener
         {
             base.Initialize(hostContext);
             _term = HostContext.GetService<ITerminal>();
-            _acquireJobThrottler = HostContext.GetService<IErrorThrottler>();
+            _acquireJobThrottler = HostContext.CreateService<IErrorThrottler>();
             _runnerServer = HostContext.GetService<IRunnerServer>();
         }
 
@@ -255,7 +254,7 @@ namespace GitHub.Runner.Listener
                     }
                 }
 
-                _runnerSettings = configManager.LoadSettings();
+                RunnerSettings settings = configManager.LoadSettings();
 
                 var store = HostContext.GetService<IConfigurationStore>();
                 bool configuredAsService = store.IsServiceConfigured();
@@ -304,7 +303,7 @@ namespace GitHub.Runner.Listener
                     }
 
                     // Run the runner interactively or as service
-                    return await RunAsync(_runnerSettings, command.RunOnce || _runnerSettings.Ephemeral);
+                    return await RunAsync(settings, command.RunOnce || settings.Ephemeral);
                 }
                 else
                 {

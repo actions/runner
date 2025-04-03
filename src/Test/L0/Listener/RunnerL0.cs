@@ -69,7 +69,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                hc.SetSingleton<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
@@ -178,7 +178,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, args);
 
@@ -211,7 +211,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, new[] { "run" });
 
@@ -249,7 +249,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                hc.SetSingleton<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
@@ -346,7 +346,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                hc.SetSingleton<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
@@ -448,7 +448,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<ISelfUpdater>(_updater.Object);
-                hc.SetSingleton<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
@@ -533,7 +533,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, new[] { "remove", "--local" });
 
