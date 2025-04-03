@@ -265,11 +265,11 @@ namespace GitHub.Runner.Worker.Handlers
         private string CheckPlatformForAlpineContainer(IExecutionContext executionContext, string preferredVersion)
         {
             string nodeExternal = preferredVersion;
-            if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
+            if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64) && !Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
             {
                 var os = Constants.Runner.Platform.ToString();
                 var arch = Constants.Runner.PlatformArchitecture.ToString();
-                var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
+                var msg = $"JavaScript Actions in Alpine containers are only supported on x64 and arm64 Linux runners. Detected {os} {arch}";
                 throw new NotSupportedException(msg);
             }
             nodeExternal = $"{preferredVersion}_alpine";
