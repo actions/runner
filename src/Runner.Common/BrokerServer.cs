@@ -37,6 +37,7 @@ namespace GitHub.Runner.Common
 
         public async Task ConnectAsync(Uri serverUri, VssCredentials credentials)
         {
+            Trace.Entering();
             _brokerUri = serverUri;
 
             _connection = VssUtil.CreateRawConnection(serverUri, credentials);

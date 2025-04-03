@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,6 +30,8 @@ namespace GitHub.Runner.Listener
         private ITerminal _term;
         private bool _inConfigStage;
         private ManualResetEvent _completedCommand = new(false);
+        private IRunnerServer _runnerServer;
+        private RunnerSettings _runnerSettings;
 
         // <summary>
         // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
@@ -50,7 +51,8 @@ namespace GitHub.Runner.Listener
         {
             base.Initialize(hostContext);
             _term = HostContext.GetService<ITerminal>();
-            _acquireJobThrottler = HostContext.CreateService<IErrorThrottler>();
+            _acquireJobThrottler = HostContext.GetService<IErrorThrottler>();
+            _runnerServer = HostContext.GetService<IRunnerServer>();
         }
 
         public async Task<int> ExecuteCommand(CommandSettings command)
@@ -252,7 +254,7 @@ namespace GitHub.Runner.Listener
                     }
                 }
 
-                RunnerSettings settings = configManager.LoadSettings();
+                _runnerSettings = configManager.LoadSettings();
 
                 var store = HostContext.GetService<IConfigurationStore>();
                 bool configuredAsService = store.IsServiceConfigured();
@@ -301,7 +303,7 @@ namespace GitHub.Runner.Listener
                     }
 
                     // Run the runner interactively or as service
-                    return await RunAsync(settings, command.RunOnce || settings.Ephemeral);
+                    return await RunAsync(_runnerSettings, command.RunOnce || _runnerSettings.Ephemeral);
                 }
                 else
                 {
