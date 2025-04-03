@@ -18,8 +18,6 @@ namespace GitHub.Runner.Common.Tests.Listener
         private readonly Mock<IBrokerServer> _brokerServer;
         private readonly Mock<IRunnerServer> _runnerServer;
         private readonly Mock<ICredentialManager> _credMgr;
-        private Mock<IConfigurationStore> _store;
-
 
         public BrokerMessageListenerL0()
         {
@@ -27,7 +25,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             _config = new Mock<IConfigurationManager>();
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
             _credMgr = new Mock<ICredentialManager>();
-            _store = new Mock<IConfigurationStore>();
             _brokerServer = new Mock<IBrokerServer>();
             _runnerServer = new Mock<IRunnerServer>();
         }
@@ -35,7 +32,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreatesSession()
+        public async Task CreatesSession()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -50,9 +47,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
-                _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
-                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
 
                 // Act.
                 BrokerMessageListener listener = new();
@@ -75,7 +70,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             TestHostContext tc = new(this, testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
-            tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.SetSingleton<IBrokerServer>(_brokerServer.Object);
             tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             return tc;

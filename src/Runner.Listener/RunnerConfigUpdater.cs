@@ -197,11 +197,31 @@ namespace GitHub.Runner.Listener
                     await ReportTelemetryAsync($"Credential clientId in refreshed config '{refreshedClientId ?? "Empty"}' does not match the current credential clientId '{clientId}'.");
                     return;
                 }
+
+                //  make sure the credential authorizationUrl in the refreshed config match the current credential authorizationUrl for OAuth auth scheme
+                var authorizationUrl = _credData.Data.GetValueOrDefault("authorizationUrl", null);
+                var refreshedAuthorizationUrl = refreshedCredConfig.Data.GetValueOrDefault("authorizationUrl", null);
+                if (authorizationUrl != refreshedAuthorizationUrl)
+                {
+                    Trace.Error($"Credential authorizationUrl in refreshed config '{refreshedAuthorizationUrl ?? "Empty"}' does not match the current credential authorizationUrl '{authorizationUrl}'.");
+                    await ReportTelemetryAsync($"Credential authorizationUrl in refreshed config '{refreshedAuthorizationUrl ?? "Empty"}' does not match the current credential authorizationUrl '{authorizationUrl}'.");
+                    return;
+                }
             }
 
             // save the refreshed runner credentials as a separate file
             _store.SaveMigratedCredential(refreshedCredConfig);
-            await ReportTelemetryAsync("Runner credentials updated successfully.");
+
+            if (refreshedCredConfig.Data.ContainsKey("authorizationUrlV2"))
+            {
+                HostContext.EnableAuthMigration("Credential file updated");
+                await ReportTelemetryAsync("Runner credentials updated successfully. Auth migration is enabled.");
+            }
+            else
+            {
+                HostContext.DeferAuthMigration(TimeSpan.FromDays(365), "Credential file does not contain authorizationUrlV2");
+                await ReportTelemetryAsync("Runner credentials updated successfully. Auth migration is disabled.");
+            }
         }
 
         private async Task<bool> VerifyRunnerQualifiedId(string runnerQualifiedId)

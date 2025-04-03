@@ -33,7 +33,7 @@ namespace GitHub.Runner.Listener
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
 
-        Task RefreshListenerTokenAsync(CancellationToken token);
+        Task RefreshListenerTokenAsync();
         void OnJobStatus(object sender, JobStatusEventArgs e);
     }
 
@@ -44,6 +44,7 @@ namespace GitHub.Runner.Listener
         private ITerminal _term;
         private IRunnerServer _runnerServer;
         private IBrokerServer _brokerServer;
+        private ICredentialManager _credMgr;
         private TaskAgentSession _session;
         private TimeSpan _getNextMessageRetryInterval;
         private bool _accessTokenRevoked = false;
@@ -55,8 +56,6 @@ namespace GitHub.Runner.Listener
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
 
-        private bool _isBrokerSession = false;
-
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -64,6 +63,7 @@ namespace GitHub.Runner.Listener
             _term = HostContext.GetService<ITerminal>();
             _runnerServer = HostContext.GetService<IRunnerServer>();
             _brokerServer = hostContext.GetService<IBrokerServer>();
+            _credMgr = hostContext.GetService<ICredentialManager>();
         }
 
         public async Task<CreateSessionResult> CreateSessionAsync(CancellationToken token)
@@ -78,8 +78,7 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            _creds = credMgr.LoadCredentials();
+            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false);
 
             var agent = new TaskAgentReference
             {
@@ -113,16 +112,6 @@ namespace GitHub.Runner.Listener
                                                         _settings.PoolId,
                                                         taskAgentSession,
                                                         token);
-
-                    if (_session.BrokerMigrationMessage != null)
-                    {
-                        Trace.Info("Runner session is in migration mode: Creating Broker session with BrokerBaseUrl: {0}", _session.BrokerMigrationMessage.BrokerBaseUrl);
-
-                        await _brokerServer.UpdateConnectionIfNeeded(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
-                        _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
-                        _isBrokerSession = true;
-                    }
-
                     Trace.Info($"Session created.");
                     if (encounteringError)
                     {
@@ -201,11 +190,6 @@ namespace GitHub.Runner.Listener
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
                         await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
-
-                        if (_isBrokerSession)
-                        {
-                            await _brokerServer.DeleteSessionAsync(ts.Token);
-                        }
                     }
                 }
                 else
@@ -260,7 +244,6 @@ namespace GitHub.Runner.Listener
 
                     // Decrypt the message body if the session is using encryption
                     message = DecryptMessage(message);
-
 
                     if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                     {
@@ -321,6 +304,10 @@ namespace GitHub.Runner.Listener
                 {
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
+
+                    // clear out potential message for broker migration,
+                    // in case the exception is thrown from get message from broker-listener.
+                    message = null;
 
                     // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
                     if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
@@ -411,9 +398,10 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task RefreshListenerTokenAsync(CancellationToken cancellationToken)
+        public async Task RefreshListenerTokenAsync()
         {
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
+            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false); // TODO: change to `true` in next PR
             await _brokerServer.ForceRefreshConnection(_creds);
         }
 

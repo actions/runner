@@ -31,6 +31,7 @@ namespace GitHub.Runner.Listener
         private ITerminal _term;
         private bool _inConfigStage;
         private ManualResetEvent _completedCommand = new(false);
+        private IRunnerServer _runnerServer;
 
         // <summary>
         // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
@@ -51,6 +52,7 @@ namespace GitHub.Runner.Listener
             base.Initialize(hostContext);
             _term = HostContext.GetService<ITerminal>();
             _acquireJobThrottler = HostContext.CreateService<IErrorThrottler>();
+            _runnerServer = HostContext.GetService<IRunnerServer>();
         }
 
         public async Task<int> ExecuteCommand(CommandSettings command)
@@ -570,7 +572,7 @@ namespace GitHub.Runner.Listener
 
                                     // Create connection
                                     var credMgr = HostContext.GetService<ICredentialManager>();
-                                    var creds = credMgr.LoadCredentials();
+                                    var creds = credMgr.LoadCredentials(allowAuthUrlV2: false);
 
                                     if (string.IsNullOrEmpty(messageRef.RunServiceUrl))
                                     {
@@ -633,7 +635,7 @@ namespace GitHub.Runner.Listener
                             else if (string.Equals(message.MessageType, TaskAgentMessageTypes.ForceTokenRefresh))
                             {
                                 Trace.Info("Received ForceTokenRefreshMessage");
-                                await _listener.RefreshListenerTokenAsync(messageQueueLoopTokenSource.Token);
+                                await _listener.RefreshListenerTokenAsync();
                             }
                             else if (string.Equals(message.MessageType, RunnerRefreshConfigMessage.MessageType))
                             {

@@ -51,7 +51,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreatesSession()
+        public async Task CreatesSession()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -67,7 +67,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -95,69 +95,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreatesSessionWithBrokerMigration()
-        {
-            using (TestHostContext tc = CreateTestContext())
-            using (var tokenSource = new CancellationTokenSource())
-            {
-                Tracing trace = tc.GetTrace();
-
-                // Arrange.
-                var expectedSession = new TaskAgentSession()
-                {
-                    OwnerName = "legacy",
-                    BrokerMigrationMessage = new BrokerMigrationMessage(new Uri("https://broker.actions.github.com"))
-                };
-
-                var expectedBrokerSession = new TaskAgentSession()
-                {
-                    OwnerName = "broker"
-                };
-
-                _runnerServer
-                    .Setup(x => x.CreateAgentSessionAsync(
-                        _settings.PoolId,
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token))
-                    .Returns(Task.FromResult(expectedSession));
-
-                _brokerServer
-                    .Setup(x => x.CreateSessionAsync(
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token))
-                    .Returns(Task.FromResult(expectedBrokerSession));
-
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
-                _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
-                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
-
-                // Act.
-                MessageListener listener = new();
-                listener.Initialize(tc);
-
-                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
-                trace.Info("result: {0}", result);
-
-                // Assert.
-                Assert.Equal(CreateSessionResult.Success, result);
-
-                _runnerServer
-                    .Verify(x => x.CreateAgentSessionAsync(
-                        _settings.PoolId,
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token), Times.Once());
-
-                _brokerServer
-                    .Verify(x => x.CreateSessionAsync(
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token), Times.Once());
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Runner")]
-        public async void DeleteSession()
+        public async Task DeleteSession()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -177,7 +115,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -204,84 +142,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void DeleteSessionWithBrokerMigration()
-        {
-            using (TestHostContext tc = CreateTestContext())
-            using (var tokenSource = new CancellationTokenSource())
-            {
-                Tracing trace = tc.GetTrace();
-
-                // Arrange.
-                var expectedSession = new TaskAgentSession()
-                {
-                    OwnerName = "legacy",
-                    BrokerMigrationMessage = new BrokerMigrationMessage(new Uri("https://broker.actions.github.com"))
-                };
-
-                var expectedBrokerSession = new TaskAgentSession()
-                {
-                    SessionId = Guid.NewGuid(),
-                    OwnerName = "broker"
-                };
-
-                _runnerServer
-                    .Setup(x => x.CreateAgentSessionAsync(
-                        _settings.PoolId,
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token))
-                    .Returns(Task.FromResult(expectedSession));
-
-                _brokerServer
-                    .Setup(x => x.CreateSessionAsync(
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token))
-                    .Returns(Task.FromResult(expectedBrokerSession));
-
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
-                _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
-                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
-
-                // Act.
-                MessageListener listener = new();
-                listener.Initialize(tc);
-
-                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
-                trace.Info("result: {0}", result);
-
-                Assert.Equal(CreateSessionResult.Success, result);
-
-                _runnerServer
-                    .Verify(x => x.CreateAgentSessionAsync(
-                        _settings.PoolId,
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token), Times.Once());
-
-                _brokerServer
-                    .Verify(x => x.CreateSessionAsync(
-                        It.Is<TaskAgentSession>(y => y != null),
-                        tokenSource.Token), Times.Once());
-
-                _brokerServer
-                    .Setup(x => x.DeleteSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.CompletedTask);
-
-                // Act.
-                await listener.DeleteSessionAsync();
-
-
-                //Assert
-                _runnerServer
-                    .Verify(x => x.DeleteAgentSessionAsync(
-                        _settings.PoolId, expectedBrokerSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
-                _brokerServer
-                    .Verify(x => x.DeleteSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Runner")]
-        public async void GetNextMessage()
+        public async Task GetNextMessage()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -301,7 +162,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -362,7 +223,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void GetNextMessageWithBrokerMigration()
+        public async Task GetNextMessageWithBrokerMigration()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -382,7 +243,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
@@ -468,7 +329,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithOriginalCredential()
+        public async Task CreateSessionWithOriginalCredential()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -484,7 +345,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
 
                 var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
                 originalCred.Data["authorizationUrl"] = "https://s.server";
@@ -513,7 +374,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void SkipDeleteSession_WhenGetNextMessageGetTaskAgentAccessTokenExpiredException()
+        public async Task SkipDeleteSession_WhenGetNextMessageGetTaskAgentAccessTokenExpiredException()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -533,7 +394,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
                 _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
