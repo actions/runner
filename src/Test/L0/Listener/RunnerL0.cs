@@ -1,13 +1,13 @@
-﻿using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Listener;
-using GitHub.Runner.Listener.Configuration;
-using Moq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Xunit;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Listener;
+using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.WebApi;
+using Moq;
+using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Listener
@@ -57,7 +57,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         //process 2 new job messages, and one cancel message
-        public async void TestRunAsync()
+        public async Task TestRunAsync()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -169,7 +169,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [MemberData(nameof(RunAsServiceTestData))]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestExecuteCommandForRunAsService(string[] args, bool configureAsService, Times expectedTimes)
+        public async Task TestExecuteCommandForRunAsService(string[] args, bool configureAsService, Times expectedTimes)
         {
             using (var hc = new TestHostContext(this))
             {
@@ -177,6 +177,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, args);
@@ -201,7 +202,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestMachineProvisionerCLI()
+        public async Task TestMachineProvisionerCLI()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -209,6 +210,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, new[] { "run" });
@@ -235,7 +237,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestRunOnce()
+        public async Task TestRunOnce()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -332,7 +334,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestRunOnceOnlyTakeOneJobMessage()
+        public async Task TestRunOnceOnlyTakeOneJobMessage()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -433,7 +435,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestRunOnceHandleUpdateMessage()
+        public async Task TestRunOnceHandleUpdateMessage()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -523,13 +525,14 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void TestRemoveLocalRunnerConfig()
+        public async Task TestRemoveLocalRunnerConfig()
         {
             using (var hc = new TestHostContext(this))
             {
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
                 hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
 
                 var command = new CommandSettings(hc, new[] { "remove", "--local" });

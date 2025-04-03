@@ -103,8 +103,8 @@ namespace GitHub.Runner.Common.Tests
                 handler(this, new DelayEventArgs(delay, token));
             }
 
-            // Delay zero
-            await Task.Delay(TimeSpan.Zero);
+            // Delay 10ms
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
         }
 
         public T CreateService<T>() where T : class, IRunnerService

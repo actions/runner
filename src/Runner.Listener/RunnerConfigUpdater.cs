@@ -211,7 +211,17 @@ namespace GitHub.Runner.Listener
 
             // save the refreshed runner credentials as a separate file
             _store.SaveMigratedCredential(refreshedCredConfig);
-            await ReportTelemetryAsync("Runner credentials updated successfully.");
+
+            if (refreshedCredConfig.Data.ContainsKey("authorizationUrlV2"))
+            {
+                HostContext.EnableAuthMigration("Credential file updated");
+                await ReportTelemetryAsync("Runner credentials updated successfully. Auth migration is enabled.");
+            }
+            else
+            {
+                HostContext.DeferAuthMigration(TimeSpan.FromDays(365), "Credential file does not contain authorizationUrlV2");
+                await ReportTelemetryAsync("Runner credentials updated successfully. Auth migration is disabled.");
+            }
         }
 
         private async Task<bool> VerifyRunnerQualifiedId(string runnerQualifiedId)

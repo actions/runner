@@ -31,6 +31,7 @@ namespace GitHub.Runner.Listener
         private ITerminal _term;
         private bool _inConfigStage;
         private ManualResetEvent _completedCommand = new(false);
+        private IRunnerServer _runnerServer;
 
         // <summary>
         // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
@@ -51,6 +52,7 @@ namespace GitHub.Runner.Listener
             base.Initialize(hostContext);
             _term = HostContext.GetService<ITerminal>();
             _acquireJobThrottler = HostContext.CreateService<IErrorThrottler>();
+            _runnerServer = HostContext.GetService<IRunnerServer>();
         }
 
         public async Task<int> ExecuteCommand(CommandSettings command)

@@ -245,7 +245,6 @@ namespace GitHub.Runner.Listener
                     // Decrypt the message body if the session is using encryption
                     message = DecryptMessage(message);
 
-
                     if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                     {
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
@@ -305,6 +304,10 @@ namespace GitHub.Runner.Listener
                 {
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
+
+                    // clear out potential message for broker migration,
+                    // in case the exception is thrown from get message from broker-listener.
+                    message = null;
 
                     // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
                     if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
