@@ -166,6 +166,21 @@ namespace GitHub.Services.WebApi
                 }
             }
 
+            public override JWTAlgorithm SignatureAlgorithm
+            {
+                get
+                {
+                    if (m_signaturePadding == RSASignaturePadding.Pss)
+                    {
+                        return JWTAlgorithm.PS256;
+                    }
+                    else
+                    {
+                        return base.SignatureAlgorithm;
+                    }
+                }
+            }
+
             protected override Byte[] GetSignature(Byte[] input)
             {
                 using (var rsa = m_factory())
