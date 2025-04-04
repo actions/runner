@@ -36,13 +36,19 @@ function print_rhel6errormessage()
     echo "https://github.com/dotnet/core/blob/master/Documentation/build-and-install-rhel6-prerequisites.md"
 }
 
-if [ -e /etc/os-release ]
+# As per https://www.freedesktop.org/software/systemd/man/latest/os-release.html
+# Snippet licensed under:
+# # SPDX-License-Identifier: MIT-0
+test -e /etc/os-release && os_release='/etc/os-release' || os_release='/usr/lib/os-release'
+. "${os_release}"
+
+if [ -e ${os_release} ]
 then
     echo "--------OS Information--------"
-    cat /etc/os-release
+    cat ${os_release}
     echo "------------------------------"
 
-    if [ -e /etc/debian_version ]
+    if [ "${ID:-linux}" = "debian" ] || [ "${ID_LIKE#*debian*}" != "${ID_LIKE}" ];
     then
         echo "The current OS is Debian based"
         echo "--------Debian Version--------"
@@ -117,16 +123,14 @@ then
             print_errormessage
             exit 1
         fi
-    elif [ -e /etc/redhat-release ]
+    elif [ "${ID:-linux}" = "fedora" ] || [ "${ID_LIKE#*fedora*}" != "${ID_LIKE}" ];
     then
-        echo "The current OS is Fedora based"
-        echo "--Fedora/RHEL/CentOS Version--"
-        cat /etc/redhat-release
-        echo "------------------------------"
+        echo "The current OS is: ${PRETTY_NAME}, which is like Fedora"
+        test -e /etc/redhat-release && (echo "------------------------------"; cat /etc/redhat-release; echo "------------------------------")
 
         # use dnf on fedora
         # use yum on centos and rhel
-        if [ -e /etc/fedora-release ]
+        if [ "${ID}" != "centos" ] && [ "${ID}" != "rhel" ];
         then
             command -v dnf
             if [ $? -eq 0 ]
