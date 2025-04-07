@@ -99,14 +99,20 @@ namespace GitHub.Runner.Listener.Configuration
         [DataMember(Name = "legacy_url")]
         public string LegacyUrl { get; set; }
 
+        [DataMember(Name = "legacy_token")]
+        public string LegacyToken { get; set; }
+
         public VssCredentials ToVssCredentials()
         {
             ArgUtil.NotNullOrEmpty(TokenSchema, nameof(TokenSchema));
             ArgUtil.NotNullOrEmpty(Token, nameof(Token));
 
+            var hasLegacyToken = !string.IsNullOrEmpty(LegacyToken);
+            var token = hasLegacyToken ? LegacyToken : Token;
+
             if (string.Equals(TokenSchema, "OAuthAccessToken", StringComparison.OrdinalIgnoreCase))
             {
-                return new VssCredentials(new VssOAuthAccessTokenCredential(Token), CredentialPromptType.DoNotPrompt);
+                return new VssCredentials(new VssOAuthAccessTokenCredential(token), CredentialPromptType.DoNotPrompt);
             }
             else
             {
