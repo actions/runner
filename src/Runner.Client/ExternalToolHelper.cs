@@ -181,7 +181,7 @@ namespace Runner.Client
             if(!File.Exists(file)) {
                 Console.WriteLine($"{file} executable not found locally");
                 // Note use the vsts package, because container operations have node6 hardcoded as trampoline
-                Func<string, string, string> AURL = azagent ? (arch, ext) => $"https://vstsagentpackage.azureedge.net/agent/{version}/vsts-agent-{arch}-{version}.{ext}" : (arch, ext) => $"https://github.com/actions/runner/releases/download/v{version}/actions-runner-{arch}-{version}.{ext}";
+                Func<string, string, string> AURL = azagent ? (arch, ext) => $"https://download.agent.dev.azure.com/agent/{version}/vsts-agent-{arch}-{version}.{ext}" : (arch, ext) => $"https://github.com/actions/runner/releases/download/v{version}/actions-runner-{arch}-{version}.{ext}";
                 var _tools = new Dictionary<string, Func<string, Task>> {
                     { "windows/386", dest => DownloadTool(parameters, AURL("win-x86", "zip"), dest, token, unwrap: false)},
                     { "windows/amd64", dest => DownloadTool(parameters, AURL("win-x64", "zip"), dest, token, unwrap: false)},
