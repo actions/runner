@@ -96,6 +96,9 @@ namespace GitHub.Runner.Listener.Configuration
         [DataMember(Name = "use_v2_flow")]
         public bool UseV2Flow { get; set; }
 
+        [DataMember(Name = "legacy_url")]
+        public string LegacyUrl { get; set; }
+
         public VssCredentials ToVssCredentials()
         {
             ArgUtil.NotNullOrEmpty(TokenSchema, nameof(TokenSchema));

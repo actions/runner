@@ -135,7 +135,7 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerSettings.GitHubUrl = inputUrl;
                     registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
-                    runnerSettings.ServerUrl = authResult.TenantUrl;
+                    runnerSettings.ServerUrl = authResult.LegacyUrl ?? authResult.TenantUrl;
                     runnerSettings.UseV2Flow = authResult.UseV2Flow;
                     Trace.Info($"Using V2 flow: {runnerSettings.UseV2Flow}");
                     creds = authResult.ToVssCredentials();
