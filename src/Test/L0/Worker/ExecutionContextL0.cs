@@ -595,6 +595,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 jobContext.JobContext.Status = ActionResult.Success;
                 Assert.Equal(jobContext.JobContext["status"].ToString(), jobContext.JobContext["status"].ToString().ToLowerInvariant());
+
+                jobContext.JobContext.CheckRunID = 123456789;
+                Assert.Equal(jobContext.JobContext["check_run_id"], jobContext.JobContext["check_run_id"]);
             }
         }
 
