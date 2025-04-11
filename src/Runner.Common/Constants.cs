@@ -161,7 +161,6 @@ namespace GitHub.Runner.Common
             {
                 public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
                 public static readonly string LogTemplateErrorsAsDebugMessages = "DistributedTask.LogTemplateErrorsAsDebugMessages";
-                public static readonly string SkipRetryCompleteJobUponKnownErrors = "actions_skip_retry_complete_job_upon_known_errors";
                 public static readonly string UseContainerPathForTemplate = "DistributedTask.UseContainerPathForTemplate";
                 public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks";
             }
