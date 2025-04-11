@@ -268,7 +268,7 @@ namespace GitHub.Runner.Common
                 }
             }
 
-            _trace.Info($"Enable auth migration at {_deferredAuthMigrationTime.ToString("O")}.");
+            _trace.Info($"Enable auth migration at {DateTime.UtcNow.ToString("O")}.");
             AuthMigrationChanged?.Invoke(this, new AuthMigrationEventArgs(trace));
         }
 

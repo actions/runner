@@ -983,5 +983,98 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.False(hc.AllowAuthMigration);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunnerEnableAuthMigrationByDefault()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                //Arrange
+                var runner = new Runner.Listener.Runner();
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+
+                runner.Initialize(hc);
+                var settings = new RunnerSettings
+                {
+                    PoolId = 43242,
+                    AgentId = 5678,
+                    Ephemeral = true,
+                    ServerUrl = "https://github.com",
+                };
+
+                var message1 = new TaskAgentMessage()
+                {
+                    Body = JsonUtility.ToString(new RunnerJobRequestRef() { BillingOwnerId = "github", RunnerRequestId = "999", RunServiceUrl = "https://run-service.com" }),
+                    MessageId = 4234,
+                    MessageType = JobRequestMessageTypes.RunnerJobRequest
+                };
+
+                var messages = new Queue<TaskAgentMessage>();
+                messages.Enqueue(message1);
+                messages.Enqueue(message1);
+                _updater.Setup(x => x.SelfUpdate(It.IsAny<AgentRefreshMessage>(), It.IsAny<IJobDispatcher>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                        .Returns(Task.FromResult(true));
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(settings);
+                _configurationManager.Setup(x => x.IsConfigured())
+                    .Returns(true);
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Failure));
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                    .Callback(() =>
+                    {
+
+                    });
+
+                var throwError = true;
+                _runServer.Setup(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()))
+                    .Returns(() =>
+                    {
+                        if (throwError)
+                        {
+                            Assert.True(hc.AllowAuthMigration);
+                            throwError = false;
+                            throw new NotSupportedException("some error");
+                        }
+
+                        return Task.FromResult(CreateJobRequestMessage("test"));
+                    });
+
+                _credentialManager.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+
+                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+
+                var credData = new CredentialData()
+                {
+                    Scheme = Constants.Configuration.OAuth,
+                };
+                credData.Data["ClientId"] = "testClientId";
+                credData.Data["AuthUrl"] = "https://github.com";
+                credData.Data["EnableAuthMigrationByDefault"] = "true";
+                _configStore.Setup(x => x.GetCredentials()).Returns(credData);
+
+                Assert.False(hc.AllowAuthMigration);
+
+                //Act
+                var command = new CommandSettings(hc, new string[] { "run" });
+                var returnCode = await runner.ExecuteCommand(command);
+
+                //Assert
+                Assert.Equal(Constants.Runner.ReturnCode.TerminatedError, returnCode);
+
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+
+                Assert.True(hc.AllowAuthMigration);
+            }
+        }
     }
 }
