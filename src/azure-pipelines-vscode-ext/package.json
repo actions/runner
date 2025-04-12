@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.2.14",
+	"version": "0.3.1",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -41,6 +41,10 @@
 				"command": "azure-pipelines-vscode-ext.expandAzurePipeline",
 				"title": "Expand Azure Pipeline",
 				"shortTitle": "Expand"
+			},
+			{
+				"command": "azure-pipelines-vscode-ext.copyTaskAsCommand",
+				"title": "Copy Linter Task as Cli Command for use in CI or debugging"
 			}
 		],
 		"menus": {
@@ -148,6 +152,12 @@
 						"default": false,
 						"scope": "window",
 						"description": "Enable currently slow hover content in this web extension"
+					},
+					"azure-pipelines-vscode-ext.create-task-log-files": {
+						"type": "boolean",
+						"default": false,
+						"scope": "window",
+						"description": "Create task log files in VSCode Output Section to inspect the whole task log"
 					}
 				}
 			}
@@ -357,6 +367,7 @@
 		"jsonc-parser": "^3.3.1",
 		"ts-loader": "^9.5.0",
 		"url": "^0.11.3",
-		"vscode-languageclient": "^9.0.1"
+		"vscode-languageclient": "^9.0.1",
+		"vscode-variables": "^1.0.1"
 	}
 }

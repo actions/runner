@@ -184,6 +184,21 @@ stages:
           }'
 ```
 
+### Run the Linter Task using a custom keybind
+
+Follow https://code.visualstudio.com/docs/configure/keybindings#_advanced-customization then use this as example
+```json
+[
+    {
+        "key": "ctrl+cmd+g",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Expand Pipeline demo2/pipeline.yml"
+    }
+]
+```
+
+`Expand Pipeline demo2/pipeline.yml` is an example label of the task in your `.vscode/tasks.json` file.
+
 ## Pro
 - Make changes in multiple dependent template files and show a live preview
 - Everything is done locally and works offline

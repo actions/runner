@@ -1,7 +1,16 @@
-### v0.2.14
+### v0.3.1
+- fix -q flag had no space between cli command and hypen
+
+### v0.3.0 (Preview)
 - fix auto complete regression for block mappings
 - add auto completion tests for debugging purposes
-- fix error of Unrecognized function
+- fix error message of Unrecognized function
+- add `Copy Linter Task as Cli Command for use in CI or debugging` Command to get a Runner.Client CLI style command
+- add `create-task-log-files` Setting to create an Output Log file in Outputs for new Tasks e.g. handy for Issue reports or debugging
+- save new Tasks after providing inputs
+- support stringList parameter type
+- prefer multiple choice and plain text prompt over a YAML string input
+  - Symbols like `*`, `&`, `'` and `"` are no longer interpreted 
 
 ### v0.2.13
 - add more tests

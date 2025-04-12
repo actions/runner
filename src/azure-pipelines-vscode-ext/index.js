@@ -4,6 +4,40 @@ import { AzurePipelinesDebugSession } from "./azure-pipelines-debug";
 import { integer, Position } from "vscode-languageclient";
 import jsYaml from "js-yaml";
 import { applyEdits, modify } from "jsonc-parser";
+import vsVars from "vscode-variables";
+
+function joinPath(l, r) {
+	return l ? l + "/" + r : r;
+}
+
+function cliQuote(str) {
+	if(str.includes(" ") || str.includes("$") || str.includes("\t") || str.includes("\n") || str.includes("\r") || str.includes('"')) {
+		return `'${str.replace(/'/g, "'\\''")}'`;
+	}
+	return str;
+}
+
+async function locateExternalRepoUrl(rawbase, filename) {
+	try {
+		var base = vscode.Uri.parse(rawbase, true);
+		var stat = await vscode.workspace.fs.stat(base);
+		if(stat.type === vscode.FileType.Directory) {
+			return base.with({ path: joinPath(base.path, filename) });
+		}
+	} catch {
+
+	}
+	try {
+		var base = vscode.Uri.file(rawbase);
+		var stat = await vscode.workspace.fs.stat(base);
+		if(stat.type === vscode.FileType.Directory) {
+			return base.with({ path: joinPath(base.path, filename) });
+		}
+	} catch {
+
+	}
+	throw Error(`Cannot locate: ${rawbase}`);
+}
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -25,28 +59,6 @@ function activate(context) {
 			return virtualFiles[uri.path];
 		}
 	});
-	var joinPath = (l, r) => l ? l + "/" + r : r;
-	var locateExternalRepoUrl = async (rawbase, filename) => {
-		try {
-			var base = vscode.Uri.parse(rawbase, true);
-			var stat = await vscode.workspace.fs.stat(base);
-			if(stat.type === vscode.FileType.Directory) {
-				return base.with({ path: joinPath(base.path, filename) });
-			}
-		} catch {
-
-		}
-		try {
-			var base = vscode.Uri.file(rawbase);
-			var stat = await vscode.workspace.fs.stat(base);
-			if(stat.type === vscode.FileType.Directory) {
-				return base.with({ path: joinPath(base.path, filename) });
-			}
-		} catch {
-
-		}
-		throw Error(`Cannot locate: ${rawbase}`);
-	};
 	var loadingPromise = null;
 	var runtimePromise = () => loadingPromise ??= vscode.window.withProgress({
 		location: vscode.ProgressLocation.Notification,
@@ -326,69 +338,7 @@ function activate(context) {
 		}
 
 		var runtime = await runtimePromise();
-		var base = null;
-
-		var skipCurrentEditor = false;
-		var filename = null
-		if(fspathname) {
-			skipCurrentEditor = true;
-			var uris = [vscode.Uri.parse(fspathname), vscode.Uri.file(fspathname)];
-			for(var current of uris) {
-				var rbase = vscode.workspace.getWorkspaceFolder(current);
-				var name = vscode.workspace.asRelativePath(current, false);
-				if(rbase && name) {
-					base = rbase.uri;
-					filename = name;
-					break;
-				}
-			}
-			if(filename == null) {
-				for(var workspace of (vscode.workspace.workspaceFolders || [])) {
-					// Normalize
-					var nativepathname = vscode.Uri.file(fspathname).fsPath;
-					if(nativepathname.startsWith(workspace.uri.fsPath)) {
-						base = workspace.uri;
-						filename = vscode.workspace.asRelativePath(workspace.uri.with({path: joinPath(workspace.uri.path, nativepathname.substring(workspace.uri.fsPath.length).replace(/[\\\/]+/g, "/"))}), false);
-						break;
-					}
-				}
-			}
-			if(filename == null) {
-				// untitled uris will land here
-				var current = vscode.Uri.parse(fspathname);
-				for(var workspace of (vscode.workspace.workspaceFolders || [])) {
-					var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
-					if(workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
-						base = workspace.uri;
-						filename = current.path.substring(workspacePath.length);
-						break;
-					}
-				}
-				var li = current.path.lastIndexOf("/");
-				base ??= current.with({ path: current.path.substring(0, li)});
-				filename ??= current.path.substring(li + 1);
-				try {
-					await vscode.workspace.fs.stat(current);
-				} catch {
-					// untitled uris cannot be read by readFile
-					skipCurrentEditor = false;
-				}
-			}
-		} else {
-			filename = null;
-			var current = textEditor.document.uri;
-			for(var workspace of (vscode.workspace.workspaceFolders || [])) {
-				var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
-				if(workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
-					base = workspace.uri;
-					filename = current.path.substring(workspacePath.length);
-					break;
-				}
-			}
-			var li = current.path.lastIndexOf("/");
-			base ??= current.with({ path: current.path.substring(0, li)});
-			filename ??= current.path.substring(li + 1);
-		}
+		var { name, base, skipCurrentEditor, filename } = await locatePipeline(fspathname, name, textEditor);
 		var handle = { hasErrors: false, base: base, skipCurrentEditor: skipCurrentEditor, textEditor: textEditor, filename: filename, repositories: repositories, parameters: parameters, error: (async jsonex => {
 			if(autocompletelist?.disableErrors) {
 				return;
@@ -688,6 +638,23 @@ function activate(context) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.expandAzurePipeline', () => expandAzurePipelineCommand()));
 
 	context.subscriptions.push(vscode.commands.registerCommand('extension.validateAzurePipeline', () => validateAzurePipelineCommand()));
+
+	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.copyTaskAsCommand', () => {
+		vscode.tasks.fetchTasks({ type: "azure-pipelines-vscode-ext"  }).then(tasks =>
+			vscode.window.showQuickPick(tasks.filter(t => t.definition.program).map(t => t.name), { placeHolder: "Select Task to copy as Runner.Client Command" }).then(async name => {
+				if(name) {
+					var task = tasks.find(t => t.name === name);
+					if(task) {
+						var { filename } = await locatePipeline(vsVars(task.definition.program), null, null);
+						let quiet = task.definition.preview ? " -q" : "";
+						await vscode.env.clipboard.writeText(`Runner.Client azexpand${quiet} -W ${cliQuote(filename)} ${task.definition.parameters ? Object.entries(task.definition.parameters).reduce((p, c) => `${p} --input ${cliQuote(`${c[0]}=${typeof c[1] === 'object' ? JSON.stringify(c[1]) : c[1]}`)}`, "") : ""}${task.definition.variables ? Object.entries(task.definition.variables).reduce((p, c) => `${p} --var ${cliQuote(`${c[0]}=${c[1]}'`)}`, "") : ""}${task.definition.repositories ? Object.entries(task.definition.repositories).reduce((p, c) => `${p} --local-repository ${cliQuote(`${c[0]}=${c[1]}`)}`, "") : ""}`);
+						await vscode.window.showInformationMessage("Copied to clipboard");
+						return;
+					}
+				}
+				await vscode.window.showErrorMessage("No Task selected");
+			}).catch(err => vscode.window.showErrorMessage(err.toString())));
+	}));
 
 	var statusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 	context.subscriptions.push(statusbar);
@@ -1026,6 +993,19 @@ function activate(context) {
 			warn: message => writeEmitter.fire("\x1b[33m[warn]" + message.replace(/\r?\n/g, "\r\n") + "\x1b[0m\r\n"),
 			error: message => writeEmitter.fire("\x1b[31m[error]" + message.replace(/\r?\n/g, "\r\n") + "\x1b[0m\r\n"),
 		};
+		let config = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
+		if(config.get("create-task-log-files")) {
+			let taskChannel = vscode.window.createOutputChannel(self.name, { log: true });
+			self.disposables.push(taskChannel);
+			for(var t in task) {
+				let type = t;
+				let org = task[type];
+				task[type] = message => {
+					taskChannel[type](message);
+					org(message);
+				}
+			}
+		}
 		var requestReOpen = true;
 		var documentClosed = true;
 		var doc = null;
@@ -1205,6 +1185,73 @@ function activate(context) {
 				);
 		}
 	}));
+}
+
+async function locatePipeline(fspathname, name, textEditor) {
+	var base = null;
+
+	var skipCurrentEditor = false;
+	var filename = null;
+	if (fspathname) {
+		skipCurrentEditor = true;
+		var uris = [vscode.Uri.parse(fspathname), vscode.Uri.file(fspathname)];
+		for (var current of uris) {
+			var rbase = vscode.workspace.getWorkspaceFolder(current);
+			var name = vscode.workspace.asRelativePath(current, false);
+			if (rbase && name) {
+				base = rbase.uri;
+				filename = name;
+				break;
+			}
+		}
+		if (filename == null) {
+			for (var workspace of (vscode.workspace.workspaceFolders || [])) {
+				// Normalize
+				var nativepathname = vscode.Uri.file(fspathname).fsPath;
+				if (nativepathname.startsWith(workspace.uri.fsPath)) {
+					base = workspace.uri;
+					filename = vscode.workspace.asRelativePath(workspace.uri.with({ path: joinPath(workspace.uri.path, nativepathname.substring(workspace.uri.fsPath.length).replace(/[\\\/]+/g, "/")) }), false);
+					break;
+				}
+			}
+		}
+		if (filename == null) {
+			// untitled uris will land here
+			var current = vscode.Uri.parse(fspathname);
+			for (var workspace of (vscode.workspace.workspaceFolders || [])) {
+				var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
+				if (workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
+					base = workspace.uri;
+					filename = current.path.substring(workspacePath.length);
+					break;
+				}
+			}
+			var li = current.path.lastIndexOf("/");
+			base ??= current.with({ path: current.path.substring(0, li) });
+			filename ??= current.path.substring(li + 1);
+			try {
+				await vscode.workspace.fs.stat(current);
+			} catch {
+				// untitled uris cannot be read by readFile
+				skipCurrentEditor = false;
+			}
+		}
+	} else if(textEditor !== null) {
+		filename = null;
+		var current = textEditor.document.uri;
+		for (var workspace of (vscode.workspace.workspaceFolders || [])) {
+			var workspacePath = workspace.uri.path.replace(/\/*$/, "/");
+			if (workspace.uri.scheme === current.scheme && workspace.uri.authority === current.authority && current.path.startsWith(workspacePath)) {
+				base = workspace.uri;
+				filename = current.path.substring(workspacePath.length);
+				break;
+			}
+		}
+		var li = current.path.lastIndexOf("/");
+		base ??= current.with({ path: current.path.substring(0, li) });
+		filename ??= current.path.substring(li + 1);
+	}
+	return { name, base, skipCurrentEditor, filename };
 }
 
 // this method is called when your extension is deactivated
