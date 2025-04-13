@@ -1,5 +1,7 @@
-### v0.3.1
+### v0.3.1 (Preview)
 - fix -q flag had no space between cli command and hypen
+- rename command of v0.3.1 to `Copy Azure Pipeline Linter Task as Cli Command for use in CI or debugging`
+- use common method to merge settings and input parameters
 
 ### v0.3.0 (Preview)
 - fix auto complete regression for block mappings

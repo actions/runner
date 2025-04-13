@@ -44,7 +44,7 @@
 			},
 			{
 				"command": "azure-pipelines-vscode-ext.copyTaskAsCommand",
-				"title": "Copy Linter Task as Cli Command for use in CI or debugging"
+				"title": "Copy Azure Pipeline Linter Task as Cli Command for use in CI or debugging"
 			}
 		],
 		"menus": {

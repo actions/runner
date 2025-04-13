@@ -300,42 +300,7 @@ function activate(context) {
 			await vscode.window.showErrorMessage("No active TextEditor");
 			return;
 		}
-		var oldConf = vscode.workspace.getConfiguration("azure-pipelines");
-		var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
-		var repositories = {};
-		for(var repo of [...(oldConf.repositories ?? []), ...(conf.repositories ?? [])]) {
-			var line = repo.split("=");
-			var name = line.shift();
-			repositories[name] = line.join("=");
-		}
-		if(repos) {
-			for(var name in repos) {
-				repositories[name] = repos[name];
-			}
-		}
-		var variables = {};
-		for(var repo of [...(oldConf.variables ?? []), ...(conf.variables ?? [])]) {
-			var line = repo.split("=");
-			var name = line.shift();
-			variables[name] = line.join("=");
-		}
-		if(vars) {
-			for(var name in vars) {
-				variables[name] = vars[name];
-			}
-		}
-		var parameters = {};
-		if(params) {
-			for(var name in params) {
-				parameters[name] = JSON.stringify(params[name]);
-			}
-		} else {
-			for(var repo of [...(oldConf.parameters ?? []), ...(conf.parameters ?? [])]) {
-				var line = repo.split("=");
-				var name = line.shift();
-				parameters[name] = line.join("=");
-			}
-		}
+		var { repositories, parameters, variables } = mergeParameter(repos, vars, params);
 
 		var runtime = await runtimePromise();
 		var { name, base, skipCurrentEditor, filename } = await locatePipeline(fspathname, name, textEditor);
@@ -646,8 +611,17 @@ function activate(context) {
 					var task = tasks.find(t => t.name === name);
 					if(task) {
 						var { filename } = await locatePipeline(vsVars(task.definition.program), null, null);
-						let quiet = task.definition.preview ? " -q" : "";
-						await vscode.env.clipboard.writeText(`Runner.Client azexpand${quiet} -W ${cliQuote(filename)} ${task.definition.parameters ? Object.entries(task.definition.parameters).reduce((p, c) => `${p} --input ${cliQuote(`${c[0]}=${typeof c[1] === 'object' ? JSON.stringify(c[1]) : c[1]}`)}`, "") : ""}${task.definition.variables ? Object.entries(task.definition.variables).reduce((p, c) => `${p} --var ${cliQuote(`${c[0]}=${c[1]}'`)}`, "") : ""}${task.definition.repositories ? Object.entries(task.definition.repositories).reduce((p, c) => `${p} --local-repository ${cliQuote(`${c[0]}=${c[1]}`)}`, "") : ""}`);
+						let flags = task.definition.preview ? " -q" : "";
+						var { repositories, parameters, variables } = mergeParameter(task.definition.repositories, task.definition.variables, task.definition.parameters);
+						if(repositories) {
+							for(var repo in repositories) {
+								if(repositories[repo] !== null) {
+									let targetUrl = await locateExternalRepoUrl(repositories[repo], "");
+									flags += ` --local-repository ${cliQuote(`${repo}=${targetUrl.fsPath}`)}`;
+								}
+							}
+						}
+						await vscode.env.clipboard.writeText(`Runner.Client azexpand -W ${cliQuote(filename)} ${parameters ? Object.entries(parameters).reduce((p, c) => `${p} --input ${cliQuote(`${c[0]}=${typeof c[1] === 'object' ? JSON.stringify(c[1]) : c[1]}`)}`, "") : ""}${variables ? Object.entries(variables).reduce((p, c) => `${p} --var ${cliQuote(`${c[0]}=${c[1]}'`)}`, "") : ""}${flags}`);
 						await vscode.window.showInformationMessage("Copied to clipboard");
 						return;
 					}
@@ -1185,6 +1159,46 @@ function activate(context) {
 				);
 		}
 	}));
+}
+
+function mergeParameter(repos, vars, params) {
+	var oldConf = vscode.workspace.getConfiguration("azure-pipelines");
+	var conf = vscode.workspace.getConfiguration("azure-pipelines-vscode-ext");
+	var repositories = {};
+	for (var repo of [...(oldConf.repositories ?? []), ...(conf.repositories ?? [])]) {
+		var line = repo.split("=");
+		var name = line.shift();
+		repositories[name] = line.join("=");
+	}
+	if (repos) {
+		for (var name in repos) {
+			repositories[name] = repos[name];
+		}
+	}
+	var variables = {};
+	for (var repo of [...(oldConf.variables ?? []), ...(conf.variables ?? [])]) {
+		var line = repo.split("=");
+		var name = line.shift();
+		variables[name] = line.join("=");
+	}
+	if (vars) {
+		for (var name in vars) {
+			variables[name] = vars[name];
+		}
+	}
+	var parameters = {};
+	if (params) {
+		for (var name in params) {
+			parameters[name] = JSON.stringify(params[name]);
+		}
+	} else {
+		for (var repo of [...(oldConf.parameters ?? []), ...(conf.parameters ?? [])]) {
+			var line = repo.split("=");
+			var name = line.shift();
+			parameters[name] = line.join("=");
+		}
+	}
+	return { repositories, parameters, variables };
 }
 
 async function locatePipeline(fspathname, name, textEditor) {
