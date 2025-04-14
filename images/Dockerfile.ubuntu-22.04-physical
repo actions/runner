@@ -1,29 +1,9 @@
-FROM ubuntu:22.04
-
-ARG TARGETPLATFORM
-ARG RUNNER_VERSION
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
-# Docker and Docker Compose arguments
-ARG CHANNEL=stable
-ARG DOCKER_VERSION=24.0.7
-ARG DOCKER_COMPOSE_VERSION=v2.23.0
-ARG DUMB_INIT_VERSION=1.2.5
-ARG RUNNER_USER_UID=1001
-ARG DOCKER_GROUP_GID=121
-# Python arguments
-ARG PYTHON_VERSION="3.12"
-# Android arguments
-ARG CMD_LINE_VERSION=9477386_latest
-# All versions of NDK to be installed.
-ARG ANDROID_NDK_LIST="21.1.6352462;26.3.11579264"
-# The NDK version being used to build release product.
-ARG ANDROID_NDK_DEFAULT="21.1.6352462"
-# Node arguments
-ARG NODE_VERSION="v20.15.0"
+FROM ubuntu:22.04@sha256:d80997daaa3811b175119350d84305e1ec9129e1799bba0bd1e3120da3ff52c3
 
 ENV TZ=Asia/Shanghai \
     DEBIAN_FRONTEND=noninteractive
 
+ARG PYTHON_VERSION="3.12"
 RUN apt-get update -y \
     && apt-get install -y software-properties-common \
     && add-apt-repository -y ppa:git-core/ppa \
@@ -84,15 +64,15 @@ RUN apt-get update -y \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# 设置JAVA_HOME环境变量
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
-# 将Java的bin目录添加到PATH中
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Download latest git-lfs version
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
     apt-get install -y --no-install-recommends git-lfs
 
+ARG RUNNER_USER_UID=1001
+ARG DOCKER_GROUP_GID=121
 RUN adduser --disabled-password --gecos "" --uid $RUNNER_USER_UID runner \
     && groupadd docker --gid $DOCKER_GROUP_GID \
     && usermod -aG sudo runner \
@@ -103,6 +83,11 @@ RUN adduser --disabled-password --gecos "" --uid $RUNNER_USER_UID runner \
 ENV HOME=/home/runner
 WORKDIR /home/runner
 
+ARG RUNNER_VERSION
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
+ARG DUMB_INIT_VERSION=1.2.5
+
+ARG TARGETPLATFORM
 RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && if [ "$ARCH" = "arm64" ]; then export ARCH=aarch64 ; fi \
     && if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "i386" ]; then export ARCH=x86_64 ; fi \
@@ -134,15 +119,23 @@ RUN cd "$RUNNER_ASSETS_DIR" \
     && unzip ./runner-container-hooks.zip -d ./k8s \
     && rm -f runner-container-hooks.zip
 
-# Add docker
+# Docker Buildx and Docker Compose
+ARG CHANNEL=stable
+ARG DOCKER_VERSION=24.0.7
+ARG DOCKER_COMPOSE_VERSION=v2.23.0
+ARG BUILDX_VERSION=0.21.0
 RUN set -vx; \
     export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
-    && if [ "$ARCH" = "arm64" ]; then export ARCH=aarch64 ; fi \
-    && if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "i386" ]; then export ARCH=x86_64 ; fi \
-    && curl -fLo docker.tgz https://download.docker.com/linux/static/${CHANNEL}/${ARCH}/docker-${DOCKER_VERSION}.tgz \
+    && if [ "$ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 && export BUILDX_ARCH=arm64 ; fi \
+    && if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "i386" ]; then export DOCKER_ARCH=x86_64 && export BUILDX_ARCH=amd64; fi \
+    && curl -fLo docker.tgz https://download.docker.com/linux/static/${CHANNEL}/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
     && tar zxvf docker.tgz \
-    && install -o root -g root -m 755 docker/docker /usr/bin/docker \
-    && rm -rf docker docker.tgz
+    && install -o root -g root -m 755 docker/* /usr/bin/ \
+    && rm -rf docker docker.tgz \
+    && mkdir -p /usr/local/lib/docker/cli-plugins \
+    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
+        "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${BUILDX_ARCH}" \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && if [ "$ARCH" = "arm64" ]; then export ARCH=aarch64 ; fi \
@@ -167,12 +160,17 @@ RUN update-alternatives --set python /usr/bin/python$PYTHON_VERSION
 USER runner
 
 # Add the Android sdk,ndk,avd
+# All versions of NDK to be installed.
+ARG ANDROID_NDK_LIST="21.1.6352462;26.3.11579264"
+# The NDK version being used to build release product.
+ARG ANDROID_NDK_DEFAULT="21.1.6352462"
 ENV ANDROID_HOME ${HOME}/Android/SDK
 ENV ANDROID_NDK $ANDROID_HOME/ndk/$ANDROID_NDK_DEFAULT
 # A legacy NDK21 argument to be deprecated.
 ENV ANDROID_NDK_21 $ANDROID_NDK
 
 # Install sdkmanager command line tool
+ARG CMD_LINE_VERSION=9477386_latest
 RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-${CMD_LINE_VERSION}.zip -P /tmp
 RUN mkdir -p $ANDROID_HOME
 RUN unzip -d $ANDROID_HOME /tmp/commandlinetools-linux-${CMD_LINE_VERSION}.zip
