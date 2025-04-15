@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 
@@ -57,22 +57,19 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public NumberContextData CheckRunID
+        public double? CheckRunId
         {
             get
             {
-                if (this.TryGetValue("check_run_id", out var check_run_id) && check_run_id is NumberContextData checkRunID)
+                if (this.TryGetValue("check_run_id", out var value) && value is NumberContextData number)
                 {
-                    return checkRunID;
+                    return number.Value;
                 }
-                else
-                {
-                    return null;
-                }
+                return null;
             }
             set
             {
-                this["check_run_id"] = new NumberContextData(value);
+                this["check_run_id"] = new NumberContextData(value.Value);
             }
         }
     }
