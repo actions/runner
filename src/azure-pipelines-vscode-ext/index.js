@@ -1,13 +1,13 @@
 const vscode = require('vscode');
 import { basePaths, customImports } from "./config.js"
 import { AzurePipelinesDebugSession } from "./azure-pipelines-debug";
-import { integer, Position } from "vscode-languageclient";
+import { integer } from "vscode-languageclient";
 import jsYaml from "js-yaml";
 import { applyEdits, modify } from "jsonc-parser";
 import vsVars from "vscode-variables";
 
 function joinPath(l, r) {
-	return l ? l + "/" + r : r;
+	return l ? l.replace(/\/+$/g, '') + "/" + r.replace(/^\/+/g, '') : r;
 }
 
 function cliQuote(str) {
@@ -621,7 +621,7 @@ function activate(context) {
 								}
 							}
 						}
-						await vscode.env.clipboard.writeText(`Runner.Client azexpand -W ${cliQuote(filename)} ${parameters ? Object.entries(parameters).reduce((p, c) => `${p} --input ${cliQuote(`${c[0]}=${typeof c[1] === 'object' ? JSON.stringify(c[1]) : c[1]}`)}`, "") : ""}${variables ? Object.entries(variables).reduce((p, c) => `${p} --var ${cliQuote(`${c[0]}=${c[1]}'`)}`, "") : ""}${flags}`);
+						await vscode.env.clipboard.writeText(`Runner.Client azexpand -W ${cliQuote(filename)}${parameters ? Object.entries(parameters).reduce((p, c) => `${p} --input ${cliQuote(`${c[0]}=${typeof c[1] === 'object' ? JSON.stringify(c[1]) : c[1]}`)}`, "") : ""}${variables ? Object.entries(variables).reduce((p, c) => `${p} --var ${cliQuote(`${c[0]}=${c[1]}'`)}`, "") : ""}${flags}`);
 						await vscode.window.showInformationMessage("Copied to clipboard");
 						return;
 					}

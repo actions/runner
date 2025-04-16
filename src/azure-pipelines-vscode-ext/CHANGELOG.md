@@ -1,3 +1,7 @@
+### v0.3.1
+- remove additional space caused by export task as Cli Command
+- fix saving a single untitled pipeline file from browser broke syntax checker due to invalid uri joining
+
 ### v0.3.1 (Preview)
 - fix -q flag had no space between cli command and hypen
 - rename command of v0.3.1 to `Copy Azure Pipeline Linter Task as Cli Command for use in CI or debugging`

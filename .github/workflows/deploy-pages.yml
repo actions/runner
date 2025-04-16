@@ -43,6 +43,9 @@ jobs:
           node_modules/.bin/vsce pack -o azure-pipelines-vscode-ext.vsix
           node_modules/.bin/vsce pack --pre-release -o azure-pipelines-vscode-ext-pre-release.vsix
         working-directory: src/azure-pipelines-vscode-ext
+      - name: Run azure-pipelines-vscode-ext Tests
+        run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || ''}}npm test
+        working-directory: src/azure-pipelines-vscode-ext      
       - name: Build runner-server-vscode
         run: |
           npm install

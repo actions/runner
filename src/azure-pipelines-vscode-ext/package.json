@@ -8,7 +8,7 @@
 		"Programming Languages"
 	],
 	"icon": "pipeline-rocket.png",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"publisher": "christopherhx",
 	"repository": "https://github.com/ChristopherHX/runner.server",
 	"engines": {
@@ -352,12 +352,18 @@
 		]
 	},
 	"scripts": {
-		"build": "dotnet build ext-core -c Release -o build && npx webpack"
+		"build": "dotnet build ext-core -c Release -o build && npx webpack",
+		"test": "npm run build && node ./test/runTest.js"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.73.0",
 		"@vscode/vsce": "^3.1.0",
-		"webpack-cli": "^5.1.4"
+		"webpack-cli": "^5.1.4",
+		"mocha": "^10.0.0",
+		"@types/mocha": "^10.0.0",
+		"@types/node": "^20.0.0",
+		"typescript": "^5.0.0",
+		"@vscode/test-electron": "^2.0.0"
 	},
 	"license": "MIT",
 	"dependencies": {
