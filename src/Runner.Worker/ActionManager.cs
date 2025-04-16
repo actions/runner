@@ -1298,6 +1298,7 @@ namespace GitHub.Runner.Worker
         public List<Pipelines.ActionStep> Steps { get; set; }
         public Stack<Pipelines.ActionStep> PostSteps { get; set; }
         public MappingToken Outputs { get; set; }
+        public MappingToken CompositeDefaults { get; set; }
     }
 
     public abstract class ActionExecutionData
