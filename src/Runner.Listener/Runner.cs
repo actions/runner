@@ -309,6 +309,15 @@ namespace GitHub.Runner.Listener
                         _term.WriteLine("https://docs.github.com/en/actions/hosting-your-own-runners/autoscaling-with-self-hosted-runners#using-ephemeral-runners-for-autoscaling", ConsoleColor.Yellow);
                     }
 
+                    var cred = store.GetCredentials();
+                    if (cred != null &&
+                        cred.Scheme == Constants.Configuration.OAuth &&
+                        cred.Data.ContainsKey("EnableAuthMigrationByDefault"))
+                    {
+                        Trace.Info("Enable auth migration by default.");
+                        HostContext.EnableAuthMigration("EnableAuthMigrationByDefault");
+                    }
+
                     // Run the runner interactively or as service
                     return await RunAsync(settings, command.RunOnce || settings.Ephemeral);
                 }
