@@ -250,6 +250,42 @@ Two problem matchers can be used:
 }
 ```
 
+#### Default from path
+
+The problem matcher can specify a `fromPath` property at the top level, which applies when a specific pattern doesn't provide a value for `fromPath`. This is useful for tools that don't include project file information in their output.
+
+For example, given the following compiler output that doesn't include project file information:
+
+```
+ClassLibrary.cs(16,24): warning CS0612: 'ClassLibrary.Helpers.MyHelper.Name' is obsolete
+```
+
+A problem matcher with a default from path can be used:
+
+```json
+{
+    "problemMatcher": [
+        {
+            "owner": "csc-minimal",
+            "fromPath": "ClassLibrary/ClassLibrary.csproj",
+            "pattern": [
+                {
+                    "regexp": "^(.+)\\((\\d+),(\\d+)\\): (error|warning) (.+): (.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "code": 5,
+                    "message": 6
+                }
+            ]
+        }
+    ]
+}
+```
+
+This ensures that the file is rooted to the correct path when there's not enough information in the error messages to extract a `fromPath`.
+
 #### Mitigate regular expression denial of service (ReDos)
 
 If a matcher exceeds a 1 second timeout when processing a line, retry up to two three times total.
