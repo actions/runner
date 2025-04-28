@@ -87,10 +87,11 @@ then
             if [ $fail -ne 0 ]
             then
                 shift
-                if [ -n "$1" ]
+                if [ -z "$1" ]
                 then
-                    apt_get_with_fallbacks "$@"
+                    return $fail
                 fi
+                apt_get_with_fallbacks "$@"
             fi
         }
 
