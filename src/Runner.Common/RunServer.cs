@@ -94,7 +94,9 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             return RetryRequest<RenewJobResponse>(
-                async () => await _runServiceHttpClient.RenewJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken);
+                async () => await _runServiceHttpClient.RenewJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken,
+                shouldRetry: ex =>
+                    ex is not TaskOrchestrationJobNotFoundException);   // HTTP status 404
         }
     }
 }
