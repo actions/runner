@@ -1328,33 +1328,34 @@ namespace Runner.Server.Azure.Devops {
                     var defCtxData = def == null ? null : await ConvertValue(context, def, type, values);
                     if (cparameters?.TryGetValue(name, out var value) == true)
                     {
-                        parametersData[name] = await ConvertValue(context, value, type, values);
-                    }
-                    else
-                    {
-                        if (def == null) // handle missing required parameter
-                        {
-                            value = null;
-                            if(context.RequiredParametersProvider != null) {
-                                var stype = type.AssertLiteralString("parameters.*.type");
-                                while(true) {
-                                    try {
-                                        value = await context.RequiredParametersProvider.GetRequiredParameter(name, stype, values == null || values is NullToken ? null : values.AssertSequence("parameters.*.values").Select(s => s.AssertLiteralString("parameters.*.values.*")));
-                                        if(value != null) {
-                                            parametersData[name] = await ConvertValue(context, value, type, values);
-                                        }
-                                        break;
-                                    } catch(Exception ex) {
-                                        await context.RequiredParametersProvider.ReportInvalidParameterValue(name, stype, $"Cannot convert provided value for for the '{name}' parameter: {ex.Message}");
-                                    }
-                                };
-                            }
-                            if(!parametersData.ContainsKey(name)) {
-                                templateContext.Error(mparam, $"A value for the '{name}' parameter must be provided.");
-                            }
-                        } else {
-                            parametersData[name] = defCtxData;
+                        try {
+                            parametersData[name] = await ConvertValue(context, value, type, values);
+                            continue;
+                        } catch (Exception ex) when(context.ParametersProvider != null) {
+                            var stype = type.AssertLiteralString("parameters.*.type");
+                            await context.ParametersProvider.ReportInvalidParameterValue(name, stype, $"Cannot convert provided value for for the '{name}' parameter: {ex.Message}");
                         }
+                    }
+                    value = null;
+                    if(context.ParametersProvider != null) {
+                        var stype = type.AssertLiteralString("parameters.*.type");
+                        while(true) {
+                            try {
+                                value = await context.ParametersProvider.GetParameter(name, stype, values == null || values is NullToken ? null : values.AssertSequence("parameters.*.values").Select(s => s.AssertLiteralString("parameters.*.values.*")), def);
+                                if(value != null) {
+                                    parametersData[name] = await ConvertValue(context, value, type, values);
+                                }
+                                break;
+                            } catch(Exception ex) {
+                                await context.ParametersProvider.ReportInvalidParameterValue(name, stype, $"Cannot convert provided value for for the '{name}' parameter: {ex.Message}");
+                            }
+                        };
+                    }
+                    if(value == null && def != null) {
+                        parametersData[name] = defCtxData;
+                    }
+                    if(!parametersData.ContainsKey(name)) {
+                        templateContext.Error(mparam, $"A value for the '{name}' parameter must be provided.");
                     }
                 }
 
@@ -1363,6 +1364,10 @@ namespace Runner.Server.Azure.Devops {
                     foreach (var unexpectedParameter in cparameters.Where(kv => !parametersData.ContainsKey(kv.Key)))
                     {
                         templateContext.Error(unexpectedParameter.Value ?? parameters, $"Unexpected parameter '{unexpectedParameter.Key}'");
+                        if(context.ParametersProvider != null)
+                        {
+                            await context.ParametersProvider.ReportInvalidParameterValue(unexpectedParameter.Key, null, $"Unexpected parameter '{unexpectedParameter.Key}'");
+                        }
                     }
                 }
             }

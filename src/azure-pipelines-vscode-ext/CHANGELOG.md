@@ -1,6 +1,12 @@
-### v0.3.1
+### v0.3.2 (Preview)
 - remove additional space caused by export task as Cli Command
 - fix saving a single untitled pipeline file from browser broke syntax checker due to invalid uri joining
+- ask for all parameters
+  - dismissing the input of a value with default / selecting the default will follow changes to the default value of the pipeline
+- the task stops now
+  - if you change the type of a parameter while the task is in watch mode and your own input is not applicable
+  - if you add a required parameter
+- allow to copy the default validate and expand task as Cli Command
 
 ### v0.3.1 (Preview)
 - fix -q flag had no space between cli command and hypen

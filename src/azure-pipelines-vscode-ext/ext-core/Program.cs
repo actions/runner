@@ -89,7 +89,7 @@ public partial class MyClass {
             FileProvider = new MyFileProvider(handle),
             TraceWriter = new TraceWriter(handle),
             Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
-            RequiredParametersProvider = new RequiredParametersProvider(handle),
+            ParametersProvider = new ParametersProvider(handle),
             VariablesProvider = new VariablesProvider { Variables = JsonConvert.DeserializeObject<Dictionary<string, string>>(variables) }
         };
         string yaml = null;
@@ -136,7 +136,7 @@ public partial class MyClass {
             FileProvider = new MyFileProvider(handle),
             TraceWriter = new TraceWriter(handle),
             Flags = GitHub.DistributedTask.Expressions2.ExpressionFlags.DTExpressionsV1 | GitHub.DistributedTask.Expressions2.ExpressionFlags.ExtendedDirectives,
-            RequiredParametersProvider = new RequiredParametersProvider(handle),
+            ParametersProvider = new ParametersProvider(handle),
             VariablesProvider = new VariablesProvider { Variables = new Dictionary<string, string>() },
             Column = column,
             Row = row,

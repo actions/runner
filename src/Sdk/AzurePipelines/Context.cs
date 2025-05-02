@@ -16,7 +16,7 @@ namespace Runner.Server.Azure.Devops
         public Dictionary<string, string> Repositories { get; set; }
 
         public ITaskByNameAndVersionProvider TaskByNameAndVersion { get; set; }
-        public IRequiredParametersProvider RequiredParametersProvider { get; set; }
+        public IParametersProvider ParametersProvider { get; set; }
         public List<string> FileTable { get; set; } = new List<string>();
         public int Column { get; internal set; }
         public int Row { get; internal set; }
@@ -34,7 +34,7 @@ namespace Runner.Server.Azure.Devops
                 Repositories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             }
             var childContext = Clone();
-            childContext.RequiredParametersProvider = null;
+            childContext.ParametersProvider = null;
             childContext.AutoCompleteMatches = null;
             childContext.Column = 0;
             childContext.Row = 0;

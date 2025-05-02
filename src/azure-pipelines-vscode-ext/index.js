@@ -213,8 +213,16 @@ function activate(context) {
 						break;
 				}
 			},
-			requestRequiredParameter: async (handle, name, type, values) => {
+			requestParameter: async (handle, name, type, values, def) => {
+				if(type === null) {
+            		// implementation detail to stop the task for removed parameters
+					handle.stopTask = true;
+					return;
+				}
 				if(!handle.askForInput) {
+					if(!def || name in handle.parameters) {
+						handle.stopTask = true;
+					}
 					return;
 				}
 				if(type === "boolean") {
@@ -222,14 +230,23 @@ function activate(context) {
 				}
 				var value = undefined;
 				var acceptYAML = false;
+				var prefix = def ? "" : "required "; 
 				if(values && values.length) {
+					var pdef = def ? JSON.parse(def) : undefined;
+					if(pdef != undefined) {
+						values = values.filter(v => v !== pdef.toString());
+						values.unshift(pdef.toString());
+					}
 					value = await vscode.window.showQuickPick(values, {
 						canPickMany: type.endsWith("List"),
-						placeHolder: "value",
+						placeHolder: def || "value",
 						prompt: name,
 						ignoreFocusOut: true,
-						title: "Select the required Parameter " + name + " of Type " + type
+						title: "Select the " + prefix + "Parameter " + name + " of Type " + type
 					});
+					if(def && value === def) {
+						value = undefined;
+					}
 				} else {
 					switch(type) {
 						case "stringList":
@@ -248,16 +265,23 @@ function activate(context) {
 							acceptYAML = true;
 							break;
 					}
+					let rawValue = def ? acceptYAML ? def : JSON.parse(def).toString() : undefined;
 					value = await vscode.window.showInputBox({
 						ignoreFocusOut: true,
-						placeHolder: "value",
+						placeHolder: rawValue || "value",
 						prompt: name,
-						title: "Provide required Parameter " + name + " of Type " + type + (acceptYAML ?  " in YAML notation" : "as free text"),
+						value: rawValue,
+						title: "Provide " + prefix + "Parameter " + name + " of Type " + type + (acceptYAML ?  " in YAML notation" : "as free text"),
 					});
+					if(def && value === rawValue) {
+						value = undefined;
+					}
 				}
 				if(value === undefined) {
 					value = null;
-					handle.stopTask = true;
+					if(!def || name in handle.parameters) {
+						handle.stopTask = true;
+					}
 					return null;
 				}
 				if(!acceptYAML) {
@@ -521,6 +545,9 @@ function activate(context) {
 				}
 				state.parameters = rawparams;
 			}
+			if(handle.stopTask) {
+				state.stopTask = true;
+			}
         }
 
 		if(result || syntaxOnly) {
@@ -544,37 +571,43 @@ function activate(context) {
 		}
 	};
 
+	let createExpandTask = () => new vscode.Task(
+		{
+			type: "azure-pipelines-vscode-ext",
+			program: vscode.window.activeTextEditor?.document?.uri?.toString(),
+			watch: true,
+			preview: true,
+			autoClosePreview: true
+		},
+		vscode.TaskScope.Workspace,
+		"Azure Pipeline Preview (watch)",
+		"azure-pipelines",
+		executor,
+		null
+	);
+
 	var expandAzurePipelineCommand = () => {
 		return vscode.tasks.executeTask(
-			new vscode.Task({
-					type: "azure-pipelines-vscode-ext",
-					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
-					watch: true,
-					preview: true,
-					autoClosePreview: true
-				},
-				vscode.TaskScope.Workspace,
-				"Azure Pipeline Preview (watch)",
-				"azure-pipelines",
-				executor,
-				null
-			)
+			createExpandTask()
 		);
 	}
 
+	let createValidateTask = () => new vscode.Task(
+		{
+			type: "azure-pipelines-vscode-ext",
+			program: vscode.window.activeTextEditor?.document?.uri?.toString(),
+			watch: true,
+		},
+		vscode.TaskScope.Workspace,
+		"Azure Pipeline Validate (watch)",
+		"azure-pipelines",
+		executor,
+		null
+	);
+
 	var validateAzurePipelineCommand = () => {
 		return vscode.tasks.executeTask(
-			new vscode.Task({
-					type: "azure-pipelines-vscode-ext",
-					program: vscode.window.activeTextEditor?.document?.uri?.toString(),
-					watch: true,
-				},
-				vscode.TaskScope.Workspace,
-				"Azure Pipeline Validate (watch)",
-				"azure-pipelines",
-				executor,
-				null
-			)
+			createValidateTask()
 		);
 	}
 
@@ -605,8 +638,9 @@ function activate(context) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.validateAzurePipeline', () => validateAzurePipelineCommand()));
 
 	context.subscriptions.push(vscode.commands.registerCommand('azure-pipelines-vscode-ext.copyTaskAsCommand', () => {
-		vscode.tasks.fetchTasks({ type: "azure-pipelines-vscode-ext"  }).then(tasks =>
-			vscode.window.showQuickPick(tasks.filter(t => t.definition.program).map(t => t.name), { placeHolder: "Select Task to copy as Runner.Client Command" }).then(async name => {
+		vscode.tasks.fetchTasks({ type: "azure-pipelines-vscode-ext"  }).then(tasks => {
+			tasks.unshift(createValidateTask(), createExpandTask())
+			return vscode.window.showQuickPick(tasks.filter(t => t.definition.program).map(t => t.name), { placeHolder: "Select Task to copy as Runner.Client Command" }).then(async name => {
 				if(name) {
 					var task = tasks.find(t => t.name === name);
 					if(task) {
@@ -627,7 +661,8 @@ function activate(context) {
 					}
 				}
 				await vscode.window.showErrorMessage("No Task selected");
-			}).catch(err => vscode.window.showErrorMessage(err.toString())));
+			}).catch(err => vscode.window.showErrorMessage(err.toString()));
+		});
 	}));
 
 	var statusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
@@ -1091,7 +1126,10 @@ function activate(context) {
                         setTimeout(resolve, 1);
                     });
 					inProgress = false;
-					if(!args.watch) {
+					if(self?.stopTask) {
+						task.info("Parameters changed, please re-run the task when done");
+					}
+					if(!args.watch || self?.stopTask) {
 						close();
 					}
 					if(waiting) {

@@ -9,8 +9,8 @@ public static partial class Interop {
     internal static partial Task Sleep(int time);
     [JSImport("log", "extension.js")]
     internal static partial void Log(JSObject handle, int type, string message);
-    [JSImport("requestRequiredParameter", "extension.js")]
-    internal static partial Task<string> RequestRequiredParameter(JSObject handle, string name, string type, string[] values);
+    [JSImport("requestParameter", "extension.js")]
+    internal static partial Task<string> RequestParameter(JSObject handle, string name, string type, string[] values, string defaultValue);
     [JSImport("error", "extension.js")]
     internal static partial Task Error(JSObject handle, string message);
     [JSImport("autocompletelist", "extension.js")]
