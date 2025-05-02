@@ -37,6 +37,8 @@ namespace GitHub.Runner.Listener
         private readonly object _authMigrationTelemetryLock = new();
         private IRunnerServer _runnerServer;
         private CancellationTokenSource _authMigrationTelemetryTokenSource = new();
+        private bool _runnerExiting = false;
+        private bool _hasTerminationGracePeriod = false;
 
         // <summary>
         // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
@@ -309,6 +311,12 @@ namespace GitHub.Runner.Listener
                         _term.WriteLine("https://docs.github.com/en/actions/hosting-your-own-runners/autoscaling-with-self-hosted-runners#using-ephemeral-runners-for-autoscaling", ConsoleColor.Yellow);
                     }
 
+                    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Variables.Agent.ActionsTerminationGracePeriodSeconds)))
+                    {
+                        _hasTerminationGracePeriod = true;
+                        Trace.Verbose($"Runner has termination grace period set");
+                    }
+
                     var cred = store.GetCredentials();
                     if (cred != null &&
                         cred.Scheme == Constants.Configuration.OAuth &&
@@ -339,9 +347,10 @@ namespace GitHub.Runner.Listener
 
         private void Runner_Unloading(object sender, EventArgs e)
         {
+            _runnerExiting = true;
             if ((!_inConfigStage) && (!HostContext.RunnerShutdownToken.IsCancellationRequested))
             {
-                HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
+                HostContext.ShutdownRunner(ShutdownReason.UserCancelled, GetShutdownDelay());
                 _completedCommand.WaitOne(Constants.Runner.ExitOnUnloadTimeout);
             }
         }
@@ -349,6 +358,7 @@ namespace GitHub.Runner.Listener
         private void CtrlCHandler(object sender, EventArgs e)
         {
             _term.WriteLine("Exiting...");
+            _runnerExiting = true;
             if (_inConfigStage)
             {
                 HostContext.Dispose();
@@ -371,12 +381,24 @@ namespace GitHub.Runner.Listener
                         reason = ShutdownReason.UserCancelled;
                     }
 
-                    HostContext.ShutdownRunner(reason);
+                    HostContext.ShutdownRunner(reason, GetShutdownDelay());
                 }
                 else
                 {
-                    HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
+                    HostContext.ShutdownRunner(ShutdownReason.UserCancelled, GetShutdownDelay());
                 }
+            }
+        }
+
+        private void HandleJobStatusEvent(object sender, JobStatusEventArgs e)
+        {
+            if (_hasTerminationGracePeriod &&
+                e != null &&
+                e.Status != TaskAgentStatus.Busy &&
+                _runnerExiting)
+            {
+                Trace.Info("Runner is no longer busy, shutting down.");
+                HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
             }
         }
 
@@ -430,9 +452,13 @@ namespace GitHub.Runner.Listener
                     bool autoUpdateInProgress = false;
                     Task<bool> selfUpdateTask = null;
                     bool runOnceJobReceived = false;
-                    jobDispatcher = HostContext.CreateService<IJobDispatcher>();
+                    jobDispatcher = HostContext.GetService<IJobDispatcher>();
 
                     jobDispatcher.JobStatus += _listener.OnJobStatus;
+                    if (_hasTerminationGracePeriod)
+                    {
+                        jobDispatcher.JobStatus += HandleJobStatusEvent;
+                    }
 
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
@@ -703,6 +729,10 @@ namespace GitHub.Runner.Listener
                 {
                     if (jobDispatcher != null)
                     {
+                        if (_hasTerminationGracePeriod)
+                        {
+                            jobDispatcher.JobStatus -= HandleJobStatusEvent;
+                        }
                         jobDispatcher.JobStatus -= _listener.OnJobStatus;
                         await jobDispatcher.ShutdownAsync();
                     }
@@ -808,6 +838,34 @@ namespace GitHub.Runner.Listener
                     }
                 }
             }
+        }
+
+        private TimeSpan GetShutdownDelay()
+        {
+            TimeSpan delay = TimeSpan.Zero;
+            if (_hasTerminationGracePeriod)
+            {
+                var jobDispatcher = HostContext.GetService<IJobDispatcher>();
+                if (jobDispatcher.Busy)
+                {
+                    Trace.Info("Runner is busy, checking for grace period.");
+                    var delayEnv = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ActionsTerminationGracePeriodSeconds);
+                    if (!string.IsNullOrEmpty(delayEnv) &&
+                        int.TryParse(delayEnv, out int delaySeconds) &&
+                        delaySeconds > 0 &&
+                        delaySeconds < 60 * 60) // 1 hour
+                    {
+                        Trace.Info($"Waiting for {delaySeconds} seconds before shutting down.");
+                        delay = TimeSpan.FromSeconds(delaySeconds);
+                    }
+                }
+                else
+                {
+                    Trace.Verbose("Runner is not busy, no grace period.");
+                }
+            }
+
+            return delay;
         }
 
         private void PrintUsage(CommandSettings command)

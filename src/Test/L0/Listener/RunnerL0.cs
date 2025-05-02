@@ -126,7 +126,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     });
 
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                hc.SetSingleton<IJobDispatcher>(_jobDispatcher.Object);
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
@@ -309,7 +309,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     });
 
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                hc.SetSingleton<IJobDispatcher>(_jobDispatcher.Object);
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
@@ -413,7 +413,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     });
 
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                hc.SetSingleton<IJobDispatcher>(_jobDispatcher.Object);
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
@@ -503,7 +503,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     });
 
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                hc.SetSingleton<IJobDispatcher>(_jobDispatcher.Object);
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
@@ -578,7 +578,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
                 hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                hc.SetSingleton<IJobDispatcher>(_jobDispatcher.Object);
 
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
@@ -679,7 +679,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
                 hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
                 hc.EnqueueInstance<IActionsRunServer>(_actionsRunServer.Object);
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                hc.SetSingleton<IJobDispatcher>(_jobDispatcher.Object);
 
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
@@ -780,7 +780,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
                 hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
                 hc.EnqueueInstance<IRunServer>(_runServer.Object);
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                hc.SetSingleton<IJobDispatcher>(_jobDispatcher.Object);
 
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
@@ -880,7 +880,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<ISelfUpdater>(_updater.Object);
                 hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
                 hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                hc.SetSingleton<IJobDispatcher>(_jobDispatcher.Object);
                 hc.EnqueueInstance<IRunServer>(_runServer.Object);
                 hc.EnqueueInstance<IRunServer>(_runServer.Object);
 
