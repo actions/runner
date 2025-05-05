@@ -141,7 +141,9 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
-                    if (ex is VssOAuthTokenRequestException vssOAuthEx && _credsV2.Federated is VssOAuthCredential vssOAuthCred)
+                    if (!HostContext.AllowAuthMigration &&
+                        ex is VssOAuthTokenRequestException vssOAuthEx &&
+                        _credsV2.Federated is VssOAuthCredential vssOAuthCred)
                     {
                         // "invalid_client" means the runner registration has been deleted from the server.
                         if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
@@ -162,7 +164,8 @@ namespace GitHub.Runner.Listener
                         }
                     }
 
-                    if (!IsSessionCreationExceptionRetriable(ex))
+                    if (!HostContext.AllowAuthMigration &&
+                        !IsSessionCreationExceptionRetriable(ex))
                     {
                         _term.WriteError($"Failed to create session. {ex.Message}");
                         if (ex is TaskAgentSessionConflictException)
@@ -283,11 +286,11 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Hosted runner has been deprovisioned.");
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.ErrorCode == 1)
+                catch (AccessDeniedException e) when (e.ErrorCode == 1 && !HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
-                catch (RunnerNotFoundException)
+                catch (RunnerNotFoundException) when (!HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
@@ -296,7 +299,8 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
 
-                    if (!IsGetNextMessageExceptionRetriable(ex))
+                    if (!HostContext.AllowAuthMigration &&
+                        !IsGetNextMessageExceptionRetriable(ex))
                     {
                         throw new NonRetryableException("Get next message failed with non-retryable error.", ex);
                     }
