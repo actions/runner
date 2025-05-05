@@ -315,11 +315,11 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Hosted runner has been deprovisioned.");
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.ErrorCode == 1)
+                catch (AccessDeniedException e) when (e.ErrorCode == 1 && !HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
-                catch (RunnerNotFoundException)
+                catch (RunnerNotFoundException) when (!HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
@@ -333,11 +333,14 @@ namespace GitHub.Runner.Listener
                     message = null;
 
                     // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
-                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
+                    if (!HostContext.AllowAuthMigration &&
+                        ex is TaskAgentSessionExpiredException &&
+                        !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
                     {
                         Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
                     }
-                    else if (!IsGetNextMessageExceptionRetriable(ex))
+                    else if (!HostContext.AllowAuthMigration &&
+                            !IsGetNextMessageExceptionRetriable(ex))
                     {
                         throw;
                     }
