@@ -57,7 +57,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public double? CheckRunID
+        public double? CheckRunId
         {
             get
             {

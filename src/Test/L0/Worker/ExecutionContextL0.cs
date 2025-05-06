@@ -1171,7 +1171,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void InitializeJob_HydratesJobContextWithCheckRunID()
+        public void InitializeJob_HydratesJobContextWithCheckRunId()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -1199,7 +1199,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert
                 Assert.NotNull(ec.JobContext);
-                Assert.Equal(123456, ec.JobContext.CheckRunID);
+                Assert.Equal(123456, ec.JobContext.CheckRunId);
             }
         }
 
@@ -1207,7 +1207,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void InitializeJob_HydratesJobContextWithCheckRunID_FeatureFlagDisabled()
+        public void InitializeJob_HydratesJobContextWithCheckRunId_FeatureFlagDisabled()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -1235,7 +1235,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert
                 Assert.NotNull(ec.JobContext);
-                Assert.Null(ec.JobContext.CheckRunID); // with the feature flag disabled we should not have added a CheckRunID to the JobContext
+                Assert.Null(ec.JobContext.CheckRunId); // with the feature flag disabled we should not have added a CheckRunId to the JobContext
             }
         }
 

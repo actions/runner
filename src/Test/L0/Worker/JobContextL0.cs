@@ -8,31 +8,31 @@ namespace GitHub.Runner.Common.Tests.Worker
     public class JobContextL0
     {
         [Fact]
-        public void CheckRunID_SetAndGet_WorksCorrectly()
+        public void CheckRunId_SetAndGet_WorksCorrectly()
         {
             var ctx = new JobContext();
-            ctx.CheckRunID = 12345;
-            Assert.Equal(12345, ctx.CheckRunID);
+            ctx.CheckRunId = 12345;
+            Assert.Equal(12345, ctx.CheckRunId);
             Assert.True(ctx.TryGetValue("check_run_id", out var value));
             Assert.IsType<NumberContextData>(value);
             Assert.Equal(12345, ((NumberContextData)value).Value);
         }
 
         [Fact]
-        public void CheckRunID_NotSet_ReturnsNull()
+        public void CheckRunId_NotSet_ReturnsNull()
         {
             var ctx = new JobContext();
-            Assert.Null(ctx.CheckRunID);
+            Assert.Null(ctx.CheckRunId);
             Assert.False(ctx.TryGetValue("check_run_id", out var value));
         }
 
         [Fact]
-        public void CheckRunID_SetNull_RemovesKey()
+        public void CheckRunId_SetNull_RemovesKey()
         {
             var ctx = new JobContext();
-            ctx.CheckRunID = 12345;
-            ctx.CheckRunID = null;
-            Assert.Null(ctx.CheckRunID);
+            ctx.CheckRunId = 12345;
+            ctx.CheckRunId = null;
+            Assert.Null(ctx.CheckRunId);
         }
     }
 }
