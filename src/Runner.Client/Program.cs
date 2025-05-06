@@ -284,7 +284,8 @@ namespace Runner.Client
             try {
                 int attempt = 1;
                 while(!source.IsCancellationRequested) {
-                    try {
+                    try
+                    {
                         var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
                         EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) =>
                         {
@@ -298,62 +299,56 @@ namespace Runner.Client
 
                         var systemEnv = System.Environment.GetEnvironmentVariables();
                         var runnerEnv = new Dictionary<string, string>();
-                        foreach(var e in systemEnv.Keys) {
+                        foreach (var e in systemEnv.Keys)
+                        {
                             runnerEnv[e as string] = systemEnv[e] as string;
                         }
                         runnerEnv["RUNNER_SERVER_CONFIG_ROOT"] = tmpdir;
                         runnerEnv["GHARUN_CHANGE_PROCESS_GROUP"] = "1";
-                        if(!parameters.NoSharedToolcache && Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") == null) {
-                            runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "tool_cache");
-                        }
-                        if(parameters.ContainerDaemonSocket != null) {
-                            runnerEnv["RUNNER_CONTAINER_DAEMON_SOCKET"] = parameters.ContainerDaemonSocket;
-                        }
-                        if(parameters.ContainerPlatform != null) {
-                            runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.ContainerPlatform;
-                        }
-                        if(parameters.Privileged) {
-                            runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
-                        }
-                        if(parameters.Userns != null) {
-                            runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.Userns;
-                        }
-                        if(parameters.KeepContainer) {
-                            runnerEnv["RUNNER_CONTAINER_KEEP"] = "1";
-                        }
+                        ParameterToRunnerEnv(parameters, runnerEnv);
 
                         var arguments = $"configure --name {agentname} --unattended --url {parameters.Server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host --work w";
-                        if(!string.IsNullOrWhiteSpace(binpath)) {
+                        if (!string.IsNullOrWhiteSpace(binpath))
+                        {
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                             arguments = $"\"{runner}\" {arguments}";
 #endif
                         }
-                        
+
                         var code = await inv.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, CancellationTokenSource.CreateLinkedTokenSource(source.Token, new CancellationTokenSource(60 * 1000).Token).Token);
-                        int execAttempt = 1;                    
-                        while(true) {
-                            try {
+                        int execAttempt = 1;
+                        while (true)
+                        {
+                            try
+                            {
                                 var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters));
-                                if(parameters.Verbose) {
+                                if (parameters.Verbose)
+                                {
                                     runnerlistener.OutputDataReceived += _out;
                                     runnerlistener.ErrorDataReceived += _out;
                                 }
-                                
+
                                 var runToken = CancellationTokenSource.CreateLinkedTokenSource(source.Token);
-                                using(var timer = new Timer(obj => {
+                                using (var timer = new Timer(obj =>
+                                {
                                     runToken.Cancel();
-                                }, null, 60 * 1000, -1)) {
-                                    runnerlistener.OutputDataReceived += (s, e) => {
-                                        if(e.Data.Contains("Listening for Jobs")) {
+                                }, null, 60 * 1000, -1))
+                                {
+                                    runnerlistener.OutputDataReceived += (s, e) =>
+                                    {
+                                        if (e.Data.Contains("Listening for Jobs"))
+                                        {
                                             timer.Change(-1, -1);
                                             workerchannel.Writer.WriteAsync(true);
                                         }
                                     };
-                                    if(source.IsCancellationRequested) {
+                                    if (source.IsCancellationRequested)
+                                    {
                                         return 1;
                                     }
                                     arguments = $"run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}";
-                                    if(!string.IsNullOrWhiteSpace(binpath)) {
+                                    if (!string.IsNullOrWhiteSpace(binpath))
+                                    {
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                                         arguments = $"\"{runner}\" {arguments}";
 #endif
@@ -361,21 +356,33 @@ namespace Runner.Client
                                     await runnerlistener.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, runToken.Token);
                                     break;
                                 }
-                            } catch {
-                                if(execAttempt++ <= 3) {
+                            }
+                            catch
+                            {
+                                if (execAttempt++ <= 3)
+                                {
                                     await Task.Delay(500);
-                                } else {
+                                }
+                                else
+                                {
                                     WriteLogMessage(parameters, "error", "Failed to start actions runner after 3 attempts");
                                     int delattempt = 1;
-                                    while(true) {
-                                        try {
+                                    while (true)
+                                    {
+                                        try
+                                        {
                                             Directory.Delete(tmpdir, true);
                                             break;
-                                        } catch {
-                                            if(delattempt++ >= 3) {
+                                        }
+                                        catch
+                                        {
+                                            if (delattempt++ >= 3)
+                                            {
                                                 WriteLogMessage(parameters, "error", $"Failed to cleanup {tmpdir} after 3 attempts");
                                                 break;
-                                            } else {
+                                            }
+                                            else
+                                            {
                                                 await Task.Delay(500);
                                             }
                                         }
@@ -385,7 +392,8 @@ namespace Runner.Client
                             }
                         }
                         break;
-                    } catch {
+                    }
+                    catch {
                         if(attempt++ <= 3) {
                             await Task.Delay(500);
                         } else {
@@ -440,6 +448,34 @@ namespace Runner.Client
                 }
             }
             return 0;
+        }
+
+        private static void ParameterToRunnerEnv(Parameters parameters, Dictionary<string, string> runnerEnv)
+        {
+            if (!parameters.NoSharedToolcache && Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") == null)
+            {
+                runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "tool_cache");
+            }
+            if (parameters.ContainerDaemonSocket != null)
+            {
+                runnerEnv["RUNNER_CONTAINER_DAEMON_SOCKET"] = parameters.ContainerDaemonSocket;
+            }
+            if (parameters.ContainerPlatform != null)
+            {
+                runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.ContainerPlatform;
+            }
+            if (parameters.Privileged)
+            {
+                runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
+            }
+            if (parameters.Userns != null)
+            {
+                runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.Userns;
+            }
+            if (parameters.KeepContainer)
+            {
+                runnerEnv["RUNNER_CONTAINER_KEEP"] = "1";
+            }
         }
 
         private static void WriteLogMessage(Parameters parameters, string level, string msg)
@@ -1549,7 +1585,9 @@ namespace Runner.Client
                                                     .ConfigureServices(services => {
                                                         if(parameters.Parallel > 0 && !parameters.LegacyRunner) {
                                                             if(string.IsNullOrEmpty(parameters.RunnerPath)) {
-                                                                services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory, parameters.Parallel.Value), ServiceLifetime.Singleton));
+                                                                Dictionary<string, string> env = new Dictionary<string, string>();
+                                                                ParameterToRunnerEnv(parameters, env);
+                                                                services.Add(new ServiceDescriptor(typeof(IQueueService), p => new QueueService(parameters.RunnerDirectory, parameters.Parallel.Value, parameters.KeepRunnerDirectory, env), ServiceLifetime.Singleton));
                                                             } else {
                                                                 services.Add(new ServiceDescriptor(typeof(IQueueService), p => new ExternalQueueService(parameters), ServiceLifetime.Singleton));
                                                             }

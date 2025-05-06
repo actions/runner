@@ -14,7 +14,6 @@ namespace Runner.Client
     {
         private class ExternalQueueService : Runner.Server.IQueueService, IRunnerServer
         {
-            private string customConfigDir;
             private Parameters parameters;
             private SemaphoreSlim semaphore;
 
@@ -118,7 +117,6 @@ namespace Runner.Client
                     File.WriteAllText(Path.Join(tmpdir, ".runner"), "{\"isHostedServer\": false, \"agentName\": \"my-runner\", \"workFolder\": \"_work\"}");
                     var ctx = new HostContext("EXTERNALRUNNERCLIENT", customConfigDir: tmpdir);
                     ctx.PutService<IRunnerServer>(this);
-                    ctx.PutService<ExternalQueueService>(this);
                     ctx.PutService<ITerminal>(new Terminal());
                     ctx.PutServiceFactory<IProcessInvoker, WrapProcService>();
                     var dispatcher = new GitHub.Runner.Listener.JobDispatcher();
@@ -126,10 +124,12 @@ namespace Runner.Client
                     dispatcher.Run(message, true);
                     await dispatcher.WaitAsync(token);
                     await dispatcher.ShutdownAsync();
-                    try {
-                        Directory.Delete(tmpdir, true);
-                    } catch {
-
+                    if(parameters.KeepRunnerDirectory == false) {
+                        try {
+                            Directory.Delete(tmpdir, true);
+                        } catch {
+                            
+                        }
                     }
                 } finally {
                     semaphore.Release();

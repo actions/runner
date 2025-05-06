@@ -14,14 +14,18 @@ namespace Runner.Client
     {
         private class QueueService : Runner.Server.IQueueService, IRunnerServer
         {
+            private readonly bool keepRunnerDirectory;
+            public readonly Dictionary<string, string> env;
             private string customConfigDir;
 
             private SemaphoreSlim semaphore;
 
-            public QueueService(string customConfigDir, int parallel)
+            public QueueService(string customConfigDir, int parallel, bool keepRunnerDirectory, Dictionary<string, string> env)
             {
+                this.keepRunnerDirectory = keepRunnerDirectory;
                 this.customConfigDir = customConfigDir;
                 semaphore = new SemaphoreSlim(parallel, parallel);
+                this.env = env;
             }
 
             public Task<TaskAgent> AddAgentAsync(int agentPoolId, TaskAgent agent)
@@ -121,10 +125,12 @@ namespace Runner.Client
                     dispatcher.Run(message, true);
                     await dispatcher.WaitAsync(token);
                     await dispatcher.ShutdownAsync();
-                    try {
-                        Directory.Delete(tmpdir, true);
-                    } catch {
+                    if(keepRunnerDirectory == false) {
+                        try {
+                            Directory.Delete(tmpdir, true);
+                        } catch {
 
+                        }
                     }
                 } finally {
                     semaphore.Release();

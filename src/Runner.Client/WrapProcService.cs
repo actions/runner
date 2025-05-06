@@ -69,8 +69,8 @@ namespace Runner.Client
 
             public Task<int> ExecuteAsync(string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, bool requireExitCodeZero, Encoding outputEncoding, bool killProcessOnCancel, Channel<string> redirectStandardIn, bool inheritConsoleHandler, bool keepStandardInOpen, bool highPriorityProcess, CancellationToken cancellationToken)
             {
-                try {
-                    var queue = _context.GetService<ExternalQueueService>();
+                var server = _context.GetService<IRunnerServer>();
+                if(server is ExternalQueueService queue) {
                     int i = arguments.IndexOf("spawnclient");
                     if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
                     {
@@ -93,25 +93,30 @@ namespace Runner.Client
                     } else {
                         return org.ExecuteAsync(workingDirectory, Path.Join(_context.GetDirectory(WellKnownDirectory.ConfigRoot), "bin", $"{queue.Prefix}.Worker{queue.Suffix}"), i == -1 ? arguments : arguments.Substring(i), environment, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
                     }
-                } catch {}
-                if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
-                {
-                    var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                    if(string.IsNullOrWhiteSpace(binpath)) {
-                        arguments = $"spawn \"{fileName}\" {arguments}";
-                        fileName = Environment.ProcessPath;
-                    } else {
-#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                        arguments = $"\"{Path.Join(binpath, "Runner.Client.dll")}\" spawn \"{fileName}\" {arguments}";
-                        fileName = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
-#else
-                        arguments = $"spawn \"{fileName}\" {arguments}";
-                        fileName = Path.Join(binpath, $"Runner.Client{IOUtil.ExeExtension}");
-#endif
-                    }
-                    return org.ExecuteAsync(workingDirectory, fileName, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", _context.GetDirectory(WellKnownDirectory.ConfigRoot)} }, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
                 }
-                return org.ExecuteAsync(workingDirectory, fileName, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", _context.GetDirectory(WellKnownDirectory.ConfigRoot)} }, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
+                if(server is QueueService queueService) {
+                    var env = new Dictionary<string, string>(queueService.env ?? new Dictionary<string, string>());
+                    env["RUNNER_SERVER_CONFIG_ROOT"] = _context.GetDirectory(WellKnownDirectory.ConfigRoot);
+                    if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+                    {
+                        var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                        if(string.IsNullOrWhiteSpace(binpath)) {
+                            arguments = $"spawn \"{fileName}\" {arguments}";
+                            fileName = Environment.ProcessPath;
+                        } else {
+    #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                            arguments = $"\"{Path.Join(binpath, "Runner.Client.dll")}\" spawn \"{fileName}\" {arguments}";
+                            fileName = Sdk.Utils.DotNetMuxer.MuxerPath ?? WhichUtil.Which("dotnet", true);
+    #else
+                            arguments = $"spawn \"{fileName}\" {arguments}";
+                            fileName = Path.Join(binpath, $"Runner.Client{IOUtil.ExeExtension}");
+    #endif
+                        }
+                        return org.ExecuteAsync(workingDirectory, fileName, arguments, env, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
+                    }
+                    return org.ExecuteAsync(workingDirectory, fileName, arguments, env, requireExitCodeZero, outputEncoding, killProcessOnCancel, redirectStandardIn, inheritConsoleHandler, keepStandardInOpen, highPriorityProcess, cancellationToken);
+                }
+                return Task.FromException<int>(new NotImplementedException($"WrapProcService.ExecuteAsync not implemented for {server.GetType()}"));
             }
 
             public void Initialize(IHostContext context)
