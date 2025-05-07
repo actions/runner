@@ -865,7 +865,7 @@ namespace GitHub.Runner.Listener
                                         var v2Claim = v2Claims.FirstOrDefault(c => c.Type.ToLowerInvariant() == claim);
                                         if (v2Claim?.Value != baselineClaim.Value)
                                         {
-                                            Trace.Info($"Token Claim mismatch between to issuer. Expected: {baselineClaim.Type}:{baselineClaim.Value}. Actual: {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
+                                            Trace.Info($"Token Claim mismatch between two issuers. Expected: {baselineClaim.Type}:{baselineClaim.Value}. Actual: {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
                                             HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), $"Expected claim {baselineClaim.Type}:{baselineClaim.Value} does not match {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
                                             break;
                                         }
