@@ -339,7 +339,7 @@ namespace GitHub.Runner.Common.Tests
             return _traceManager[name];
         }
 
-        public void ShutdownRunner(ShutdownReason reason)
+        public void ShutdownRunner(ShutdownReason reason, TimeSpan delay = default)
         {
             ArgUtil.NotNull(reason, nameof(reason));
             RunnerShutdownReason = reason;

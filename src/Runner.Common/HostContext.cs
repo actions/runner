@@ -34,7 +34,7 @@ namespace GitHub.Runner.Common
         T GetService<T>() where T : class, IRunnerService;
         void SetDefaultCulture(string name);
         event EventHandler Unloading;
-        void ShutdownRunner(ShutdownReason reason);
+        void ShutdownRunner(ShutdownReason reason, TimeSpan delay = default);
         void WritePerfCounter(string counter);
         void LoadDefaultUserAgents();
 
@@ -74,6 +74,8 @@ namespace GitHub.Runner.Common
         private string _perfFile;
         private RunnerWebProxy _webProxy = new();
         private string _hostType = string.Empty;
+        private ShutdownReason _shutdownReason = ShutdownReason.UserCancelled;
+        private int _shutdownReasonSet = 0;
 
         // disable auth migration by default
         private readonly ManualResetEventSlim _allowAuthMigration = new ManualResetEventSlim(false);
@@ -85,7 +87,7 @@ namespace GitHub.Runner.Common
         public event EventHandler Unloading;
         public event EventHandler<AuthMigrationEventArgs> AuthMigrationChanged;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
-        public ShutdownReason RunnerShutdownReason { get; private set; }
+        public ShutdownReason RunnerShutdownReason => _shutdownReason;
         public ISecretMasker SecretMasker => _secretMasker;
         public List<ProductInfoHeaderValue> UserAgents => _userAgents;
         public RunnerWebProxy WebProxy => _webProxy;
@@ -573,12 +575,28 @@ namespace GitHub.Runner.Common
         }
 
 
-        public void ShutdownRunner(ShutdownReason reason)
+        public void ShutdownRunner(ShutdownReason reason, TimeSpan delay = default)
         {
             ArgUtil.NotNull(reason, nameof(reason));
-            _trace.Info($"Runner will be shutdown for {reason.ToString()}");
-            RunnerShutdownReason = reason;
-            _runnerShutdownTokenSource.Cancel();
+            _trace.Info($"Runner will be shutdown for {reason.ToString()} after {delay.TotalSeconds} seconds.");
+            if (Interlocked.CompareExchange(ref _shutdownReasonSet, 1, 0) == 0)
+            {
+                // Set the shutdown reason only if it hasn't been set before.
+                _shutdownReason = reason;
+            }
+            else
+            {
+                _trace.Verbose($"Runner shutdown reason already set to {_shutdownReason.ToString()}.");
+            }
+
+            if (delay.TotalSeconds == 0)
+            {
+                _runnerShutdownTokenSource.Cancel();
+            }
+            else
+            {
+                _runnerShutdownTokenSource.CancelAfter(delay);
+            }
         }
 
         public override void Dispose()

@@ -258,6 +258,7 @@ namespace GitHub.Runner.Common
                 public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
                 public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";
                 public static readonly string ActionArchiveCacheDirectory = "ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE";
+                public static readonly string ActionsTerminationGracePeriodSeconds = "ACTIONS_RUNNER_TERMINATION_GRACE_PERIOD_SECONDS";
             }
 
             public static class System
