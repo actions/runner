@@ -858,7 +858,7 @@ namespace GitHub.Runner.Listener
 
                                 foreach (var claim in expectedClaims)
                                 {
-                                    // if baseline has the claim, v2 should have it too with exactlly same value.
+                                    // if baseline has the claim, v2 should have it too with exactly same value.
                                     if (baselineClaims.FirstOrDefault(c => c.Type.ToLowerInvariant() == claim) is Claim baselineClaim &&
                                         !string.IsNullOrEmpty(baselineClaim?.Value))
                                     {
