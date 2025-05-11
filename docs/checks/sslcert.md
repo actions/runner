@@ -37,14 +37,14 @@ To let the runner trusts your CA certificate, you will need to:
 1. Save your SSL certificate chain which includes the root CA and all intermediate CAs into a `.pem` file.
 2. Use `OpenSSL` to convert `.pem` file to a proper format for different OS, here is some [doc with sample commands](https://www.sslshopper.com/ssl-converter.html)
 3. Trust CA on different OS:
-    - Windows: https://docs.microsoft.com/en-us/skype-sdk/sdn/articles/installing-the-trusted-root-certificate
-    - macOS: ![trust ca cert](./../res/macOStrustCA.gif)
+    - [Windows](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/trusted-root-certification-authorities-certificate-store)
+    - [macOS]([url](https://support.apple.com/guide/keychain-access/add-certificates-to-a-keychain-kyca2431/mac))
     - Linux: Refer to the distribution documentation
-      1. RedHat: https://www.redhat.com/sysadmin/ca-certificates-cli
-      2. Ubuntu: http://manpages.ubuntu.com/manpages/focal/man8/update-ca-certificates.8.html
-      3. Google search: "trust ca certificate on [linux distribution]"
+      1. [RedHat](https://www.redhat.com/sysadmin/ca-certificates-cli)
+      2. [Ubuntu]([url](https://manpages.ubuntu.com/manpages/jammy/man8/update-ca-certificates.8.html))
+      3. [Google search](https://www.google.com/search?q=trust+ca+certificate+on+%3Clinux+distribution%3E): `trust ca certificate on <linux distribution>`
       4. If all approaches failed, set environment variable `SSL_CERT_FILE` to the CA bundle `.pem` file we get.
-    > To verify cert gets installed properly on Linux, you can try use `curl -v https://sitewithsslissue.com` and `pwsh -Command \"Invoke-WebRequest -Uri https://sitewithsslissue.com\"`
+    > To verify cert gets installed properly on Linux/macOS and Windows respectively, you can try use `curl -v https://sitewithsslissue.com` and `pwsh -Command \"Invoke-WebRequest -Uri https://sitewithsslissue.com\"`
 
 ### Trust CA certificate for Git CLI
 
