@@ -731,9 +731,17 @@ namespace GitHub.Runner.Listener
                                     serviceType: runnerRefreshConfigMessage.ServiceType,
                                     configRefreshUrl: runnerRefreshConfigMessage.ConfigRefreshUrl);
 
-                                // Set flag to restart session and break out of the message loop
-                                restartSession = true;
-                                messageQueueLoopTokenSource.Cancel();
+                                // Set flag to restart session and break out of the message loop only if ConfigType is "runner"
+                                if (string.Equals(runnerRefreshConfigMessage.ConfigType, "runner", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Trace.Info("Runner configuration was updated. Restarting session to apply changes.");
+                                    restartSession = true;
+                                    messageQueueLoopTokenSource.Cancel();
+                                }
+                                else
+                                {
+                                    Trace.Info($"No session restart needed for config type: {runnerRefreshConfigMessage.ConfigType}");
+                                }
                             }
                             else
                             {
