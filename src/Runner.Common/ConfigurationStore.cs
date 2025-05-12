@@ -116,6 +116,7 @@ namespace GitHub.Runner.Common
         bool IsConfigured();
         bool IsServiceConfigured();
         bool HasCredentials();
+        bool IsMigratedConfigured();
         CredentialData GetCredentials();
         CredentialData GetMigratedCredentials();
         RunnerSettings GetSettings();
@@ -196,6 +197,14 @@ namespace GitHub.Runner.Common
             bool serviceConfigured = new FileInfo(_serviceConfigFilePath).Exists;
             Trace.Info($"IsServiceConfigured: {serviceConfigured}");
             return serviceConfigured;
+        }
+
+        public bool IsMigratedConfigured()
+        {
+            Trace.Info("IsMigratedConfigured()");
+            bool configured = new FileInfo(_migratedConfigFilePath).Exists;
+            Trace.Info("IsMigratedConfigured: {0}", configured);
+            return configured;
         }
 
         public CredentialData GetCredentials()

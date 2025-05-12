@@ -155,6 +155,10 @@ namespace GitHub.Runner.Common
                 public const int RunnerUpdating = 3;
                 public const int RunOnceRunnerUpdating = 4;
                 public const int SessionConflict = 5;
+                // Temporary error code to indicate that the runner configuration has been refreshed
+                // and the runner should be restarted. This is a temporary code and will be removed in the future after
+                // the runner is migrated to runner admin.
+                public const int RunnerConfigurationRefreshed = 6;
             }
 
             public static class Features
