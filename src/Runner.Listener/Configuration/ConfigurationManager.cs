@@ -25,6 +25,7 @@ namespace GitHub.Runner.Listener.Configuration
         Task UnconfigureAsync(CommandSettings command);
         void DeleteLocalRunnerConfig();
         RunnerSettings LoadSettings();
+        RunnerSettings LoadMigratedSettings();
     }
 
     public sealed class ConfigurationManager : RunnerService, IConfigurationManager
@@ -62,6 +63,22 @@ namespace GitHub.Runner.Listener.Configuration
 
             RunnerSettings settings = _store.GetSettings();
             Trace.Info("Settings Loaded");
+
+            return settings;
+        }
+
+        public RunnerSettings LoadMigratedSettings()
+        {
+            Trace.Info(nameof(LoadMigratedSettings));
+            
+            // Check if migrated settings file exists
+            if (!_store.IsMigratedConfigured())
+            {
+                throw new NonRetryableException("No migrated configuration found.");
+            }
+
+            RunnerSettings settings = _store.GetMigratedSettings();
+            Trace.Info("Migrated Settings Loaded");
 
             return settings;
         }

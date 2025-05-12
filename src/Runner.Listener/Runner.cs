@@ -387,12 +387,12 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private IMessageListener GetMessageListener(RunnerSettings settings)
+        private IMessageListener GetMessageListener(RunnerSettings settings, bool isMigratedSettings = false)
         {
             if (settings.UseV2Flow)
             {
                 Trace.Info($"Using BrokerMessageListener");
-                var brokerListener = new BrokerMessageListener();
+                var brokerListener = new BrokerMessageListener(settings, isMigratedSettings);
                 brokerListener.Initialize(HostContext);
                 return brokerListener;
             }
@@ -406,15 +406,65 @@ namespace GitHub.Runner.Listener
             try
             {
                 Trace.Info(nameof(RunAsync));
-                _listener = GetMessageListener(settings);
-                CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
-                if (createSessionResult == CreateSessionResult.SessionConflict)
+                
+                // First try using migrated settings if available
+                var configManager = HostContext.GetService<IConfigurationManager>();
+                RunnerSettings migratedSettings = null;
+                
+                try 
                 {
-                    return Constants.Runner.ReturnCode.SessionConflict;
+                    migratedSettings = configManager.LoadMigratedSettings();
+                    Trace.Info("Loaded migrated settings from .runner_migrated file");
+                    Trace.Info(migratedSettings);
                 }
-                else if (createSessionResult == CreateSessionResult.Failure)
+                catch (Exception ex)
                 {
-                    return Constants.Runner.ReturnCode.TerminatedError;
+                    // If migrated settings file doesn't exist or can't be loaded, we'll use the provided settings
+                    Trace.Info($"Failed to load migrated settings: {ex.Message}");
+                }
+                
+                bool usedMigratedSettings = false;
+                
+                if (migratedSettings != null)
+                {
+                    // Try to create session with migrated settings first
+                    Trace.Info("Attempting to create session using migrated settings");
+                    _listener = GetMessageListener(migratedSettings, isMigratedSettings: true);
+                    
+                    try
+                    {
+                        CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
+                        if (createSessionResult == CreateSessionResult.Success)
+                        {
+                            Trace.Info("Successfully created session with migrated settings");
+                            settings = migratedSettings; // Use migrated settings for the rest of the process
+                            usedMigratedSettings = true;
+                        }
+                        else
+                        {
+                            Trace.Warning($"Failed to create session with migrated settings: {createSessionResult}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error($"Exception when creating session with migrated settings: {ex}");
+                    }
+                }
+                
+                // If migrated settings weren't used or session creation failed, use original settings
+                if (!usedMigratedSettings)
+                {
+                    Trace.Info("Falling back to original .runner settings");
+                    _listener = GetMessageListener(settings);
+                    CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
+                    if (createSessionResult == CreateSessionResult.SessionConflict)
+                    {
+                        return Constants.Runner.ReturnCode.SessionConflict;
+                    }
+                    else if (createSessionResult == CreateSessionResult.Failure)
+                    {
+                        return Constants.Runner.ReturnCode.TerminatedError;
+                    }
                 }
 
                 HostContext.WritePerfCounter("SessionCreated");
@@ -428,6 +478,7 @@ namespace GitHub.Runner.Listener
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
                 bool skipSessionDeletion = false;
+                bool restartSession = false; // Flag to indicate session restart
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -679,6 +730,10 @@ namespace GitHub.Runner.Listener
                                     configType: runnerRefreshConfigMessage.ConfigType,
                                     serviceType: runnerRefreshConfigMessage.ServiceType,
                                     configRefreshUrl: runnerRefreshConfigMessage.ConfigRefreshUrl);
+
+                                // Set flag to restart session and break out of the message loop
+                                restartSession = true;
+                                messageQueueLoopTokenSource.Cancel();
                             }
                             else
                             {
@@ -733,9 +788,16 @@ namespace GitHub.Runner.Listener
 
                     if (settings.Ephemeral && runOnceJobCompleted)
                     {
-                        var configManager = HostContext.GetService<IConfigurationManager>();
                         configManager.DeleteLocalRunnerConfig();
                     }
+                }
+
+                // After cleanup, check if we need to restart the session
+                if (restartSession)
+                {
+                    Trace.Info("Restarting runner session after config update...");
+                    RunnerSettings newSettings = configManager.LoadSettings();
+                    return await RunAsync(newSettings, runOnce);
                 }
             }
             catch (TaskAgentAccessTokenExpiredException)
