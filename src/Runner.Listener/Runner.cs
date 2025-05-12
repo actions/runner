@@ -479,6 +479,7 @@ namespace GitHub.Runner.Listener
                 bool runOnceJobCompleted = false;
                 bool skipSessionDeletion = false;
                 bool restartSession = false; // Flag to indicate session restart
+                bool restartSessionPending = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -494,6 +495,15 @@ namespace GitHub.Runner.Listener
 
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
+                        // Check if we need to restart the session and can do so (job dispatcher not busy)
+                        if (restartSessionPending && !jobDispatcher.Busy)
+                        {
+                            Trace.Info("Pending session restart detected and job dispatcher is not busy. Restarting session now.");
+                            messageQueueLoopTokenSource.Cancel();
+                            restartSession = true;
+                            break;
+                        }
+                        
                         TaskAgentMessage message = null;
                         bool skipMessageDeletion = false;
                         try
@@ -731,12 +741,11 @@ namespace GitHub.Runner.Listener
                                     serviceType: runnerRefreshConfigMessage.ServiceType,
                                     configRefreshUrl: runnerRefreshConfigMessage.ConfigRefreshUrl);
 
-                                // Set flag to restart session and break out of the message loop only if ConfigType is "runner"
+                                // Set flag to schedule session restart if ConfigType is "runner"
                                 if (string.Equals(runnerRefreshConfigMessage.ConfigType, "runner", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    Trace.Info("Runner configuration was updated. Restarting session to apply changes.");
-                                    restartSession = true;
-                                    messageQueueLoopTokenSource.Cancel();
+                                    Trace.Info("Runner configuration was updated. Session restart has been scheduled");
+                                    restartSessionPending = true;
                                 }
                                 else
                                 {
