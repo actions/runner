@@ -155,6 +155,7 @@ namespace GitHub.Runner.Common
                 public const int RunnerUpdating = 3;
                 public const int RunOnceRunnerUpdating = 4;
                 public const int SessionConflict = 5;
+                public const int RunnerConfigurationRefreshed = 6;
             }
 
             public static class Features

@@ -325,7 +325,7 @@ namespace GitHub.Runner.Listener
                     }
 
                     // Run the runner interactively or as service
-                    return await RunAsync(settings, command.RunOnce || settings.Ephemeral);
+                    return await ExecuteRunnerAsync(settings, command.RunOnce || settings.Ephemeral);
                 }
                 else
                 {
@@ -796,8 +796,7 @@ namespace GitHub.Runner.Listener
                 if (restartSession)
                 {
                     Trace.Info("Restarting runner session after config update...");
-                    RunnerSettings newSettings = configManager.LoadSettings();
-                    return await RunAsync(newSettings, runOnce);
+                    return Constants.Runner.ReturnCode.RunnerConfigurationRefreshed;
                 }
             }
             catch (TaskAgentAccessTokenExpiredException)
@@ -810,6 +809,28 @@ namespace GitHub.Runner.Listener
             }
 
             return Constants.Runner.ReturnCode.Success;
+        }
+
+        private async Task<int> ExecuteRunnerAsync(RunnerSettings settings, bool runOnce)
+        {
+            int returnCode = Constants.Runner.ReturnCode.Success;
+            bool restart = false;
+            do
+            {
+                restart = false;
+                returnCode = await RunAsync(settings, runOnce);
+                
+                if (returnCode == Constants.Runner.ReturnCode.RunnerConfigurationRefreshed)
+                {
+                    Trace.Info("Runner configuration was refreshed, restarting session...");
+                    // Reload settings in case they changed
+                    var configManager = HostContext.GetService<IConfigurationManager>();
+                    settings = configManager.LoadSettings();
+                    restart = true;
+                }
+            } while (restart);
+
+            return returnCode;
         }
 
         private void HandleAuthMigrationChanged(object sender, AuthMigrationEventArgs e)
