@@ -91,6 +91,7 @@ namespace GitHub.Services.Launch.Client
                 TarballUrl = actionDownloadInfoResponse.TarUrl,
                 Ref = actionDownloadInfoResponse.Version,
                 ZipballUrl = actionDownloadInfoResponse.ZipUrl,
+                PackageDetails = ToServerData(actionDownloadInfoResponse.PackageDetails)
             };
         }
 
@@ -105,6 +106,21 @@ namespace GitHub.Services.Launch.Client
             {
                 ExpiresAt = actionDownloadAuthenticationResponse.ExpiresAt,
                 Token = actionDownloadAuthenticationResponse.Token
+            };
+        }
+
+
+        private static ActionDownloadPackageDetails? ToServerData(ActionDownloadPackageDetailsResponse? actionDownloadPackageDetails)
+        {
+            if (actionDownloadPackageDetails == null)
+            {
+                return null;
+            }
+
+            return new ActionDownloadPackageDetails
+            {
+                Version = actionDownloadPackageDetails.Version,
+                ManifestDigest = actionDownloadPackageDetails.ManifestDigest
             };
         }
 

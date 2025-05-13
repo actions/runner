@@ -896,5 +896,173 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("not-working", match.Message);
             Assert.Equal("my-project.proj", match.FromPath);
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Matcher_SinglePattern_DefaultFromPath()
+        {
+            var config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""fromPath"": ""subdir/default-project.csproj"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^file:(.+) line:(.+) column:(.+) severity:(.+) code:(.+) message:(.+)$"",
+          ""file"": 1,
+          ""line"": 2,
+          ""column"": 3,
+          ""severity"": 4,
+          ""code"": 5,
+          ""message"": 6
+        }
+      ]
+    }
+  ]
+}
+");
+            config.Validate();
+            var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
+
+            var match = matcher.Match("file:my-file.cs line:123 column:45 severity:real-bad code:uh-oh message:not-working");
+            Assert.Equal("my-file.cs", match.File);
+            Assert.Equal("123", match.Line);
+            Assert.Equal("45", match.Column);
+            Assert.Equal("real-bad", match.Severity);
+            Assert.Equal("uh-oh", match.Code);
+            Assert.Equal("not-working", match.Message);
+            Assert.Equal("subdir/default-project.csproj", match.FromPath);
+
+            // Test that a pattern-specific fromPath overrides the default
+            config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""fromPath"": ""subdir/default-project.csproj"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^file:(.+) line:(.+) column:(.+) severity:(.+) code:(.+) message:(.+) fromPath:(.+)$"",
+          ""file"": 1,
+          ""line"": 2,
+          ""column"": 3,
+          ""severity"": 4,
+          ""code"": 5,
+          ""message"": 6,
+          ""fromPath"": 7
+        }
+      ]
+    }
+  ]
+}
+");
+            config.Validate();
+            matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
+
+            match = matcher.Match("file:my-file.cs line:123 column:45 severity:real-bad code:uh-oh message:not-working fromPath:my-project.proj");
+            Assert.Equal("my-file.cs", match.File);
+            Assert.Equal("123", match.Line);
+            Assert.Equal("45", match.Column);
+            Assert.Equal("real-bad", match.Severity);
+            Assert.Equal("uh-oh", match.Code);
+            Assert.Equal("not-working", match.Message);
+            Assert.Equal("my-project.proj", match.FromPath);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Matcher_MultiplePatterns_DefaultFromPath()
+        {
+            var config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""fromPath"": ""subdir/default-project.csproj"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^file:(.+)$"",
+          ""file"": 1,
+        },
+        {
+          ""regexp"": ""^severity:(.+)$"",
+          ""severity"": 1
+        },
+        {
+          ""regexp"": ""^line:(.+) column:(.+) code:(.+) message:(.+)$"",
+          ""line"": 1,
+          ""column"": 2,
+          ""code"": 3,
+          ""message"": 4
+        }
+      ]
+    }
+  ]
+}
+");
+            config.Validate();
+            var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
+
+            var match = matcher.Match("file:my-file.cs");
+            Assert.Null(match);
+            match = matcher.Match("severity:real-bad");
+            Assert.Null(match);
+            match = matcher.Match("line:123 column:45 code:uh-oh message:not-working");
+            Assert.Equal("my-file.cs", match.File);
+            Assert.Equal("123", match.Line);
+            Assert.Equal("45", match.Column);
+            Assert.Equal("real-bad", match.Severity);
+            Assert.Equal("uh-oh", match.Code);
+            Assert.Equal("not-working", match.Message);
+            Assert.Equal("subdir/default-project.csproj", match.FromPath);
+
+            // Test that pattern-specific fromPath overrides the default
+            config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""fromPath"": ""subdir/default-project.csproj"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^file:(.+) fromPath:(.+)$"",
+          ""file"": 1,
+          ""fromPath"": 2
+        },
+        {
+          ""regexp"": ""^severity:(.+)$"",
+          ""severity"": 1
+        },
+        {
+          ""regexp"": ""^line:(.+) column:(.+) code:(.+) message:(.+)$"",
+          ""line"": 1,
+          ""column"": 2,
+          ""code"": 3,
+          ""message"": 4
+        }
+      ]
+    }
+  ]
+}
+");
+            config.Validate();
+            matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
+
+            match = matcher.Match("file:my-file.cs fromPath:my-project.proj");
+            Assert.Null(match);
+            match = matcher.Match("severity:real-bad");
+            Assert.Null(match);
+            match = matcher.Match("line:123 column:45 code:uh-oh message:not-working");
+            Assert.Equal("my-file.cs", match.File);
+            Assert.Equal("123", match.Line);
+            Assert.Equal("45", match.Column);
+            Assert.Equal("real-bad", match.Severity);
+            Assert.Equal("uh-oh", match.Code);
+            Assert.Equal("not-working", match.Message);
+            Assert.Equal("my-project.proj", match.FromPath);
+        }
     }
 }

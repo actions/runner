@@ -33,7 +33,7 @@ namespace GitHub.Runner.Listener
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
 
-        Task RefreshListenerTokenAsync(CancellationToken token);
+        Task RefreshListenerTokenAsync();
         void OnJobStatus(object sender, JobStatusEventArgs e);
     }
 
@@ -44,6 +44,7 @@ namespace GitHub.Runner.Listener
         private ITerminal _term;
         private IRunnerServer _runnerServer;
         private IBrokerServer _brokerServer;
+        private ICredentialManager _credMgr;
         private TaskAgentSession _session;
         private TimeSpan _getNextMessageRetryInterval;
         private bool _accessTokenRevoked = false;
@@ -54,8 +55,9 @@ namespace GitHub.Runner.Listener
         private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
-
-        private bool _isBrokerSession = false;
+        private VssCredentials _credsV2;
+        private bool _needRefreshCredsV2 = false;
+        private bool _handlerInitialized = false;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -64,6 +66,7 @@ namespace GitHub.Runner.Listener
             _term = HostContext.GetService<ITerminal>();
             _runnerServer = HostContext.GetService<IRunnerServer>();
             _brokerServer = hostContext.GetService<IBrokerServer>();
+            _credMgr = hostContext.GetService<ICredentialManager>();
         }
 
         public async Task<CreateSessionResult> CreateSessionAsync(CancellationToken token)
@@ -78,8 +81,7 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            _creds = credMgr.LoadCredentials();
+            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false);
 
             var agent = new TaskAgentReference
             {
@@ -113,22 +115,19 @@ namespace GitHub.Runner.Listener
                                                         _settings.PoolId,
                                                         taskAgentSession,
                                                         token);
-
-                    if (_session.BrokerMigrationMessage != null)
-                    {
-                        Trace.Info("Runner session is in migration mode: Creating Broker session with BrokerBaseUrl: {0}", _session.BrokerMigrationMessage.BrokerBaseUrl);
-
-                        await _brokerServer.UpdateConnectionIfNeeded(_session.BrokerMigrationMessage.BrokerBaseUrl, _creds);
-                        _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
-                        _isBrokerSession = true;
-                    }
-
                     Trace.Info($"Session created.");
                     if (encounteringError)
                     {
                         _term.WriteLine($"{DateTime.UtcNow:u}: Runner reconnected.");
                         _sessionCreationExceptionTracker.Clear();
                         encounteringError = false;
+                    }
+
+                    if (!_handlerInitialized)
+                    {
+                        Trace.Info("Registering AuthMigrationChanged event handler.");
+                        HostContext.AuthMigrationChanged += HandleAuthMigrationChanged;
+                        _handlerInitialized = true;
                     }
 
                     return CreateSessionResult.Success;
@@ -196,16 +195,16 @@ namespace GitHub.Runner.Listener
         {
             if (_session != null && _session.SessionId != Guid.Empty)
             {
+                if (_handlerInitialized)
+                {
+                    HostContext.AuthMigrationChanged -= HandleAuthMigrationChanged;
+                }
+
                 if (!_accessTokenRevoked)
                 {
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
                         await _runnerServer.DeleteAgentSessionAsync(_settings.PoolId, _session.SessionId, ts.Token);
-
-                        if (_isBrokerSession)
-                        {
-                            await _brokerServer.DeleteSessionAsync(ts.Token);
-                        }
                     }
                 }
                 else
@@ -261,12 +260,19 @@ namespace GitHub.Runner.Listener
                     // Decrypt the message body if the session is using encryption
                     message = DecryptMessage(message);
 
-
                     if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                     {
                         var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
 
-                        await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _creds);
+                        _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
+                        await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _credsV2);
+                        if (_needRefreshCredsV2)
+                        {
+                            Trace.Info("Refreshing credentials for V2.");
+                            await _brokerServer.ForceRefreshConnection(_credsV2);
+                            _needRefreshCredsV2 = false;
+                        }
+
                         message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
                                                                         runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
@@ -304,11 +310,16 @@ namespace GitHub.Runner.Listener
                     _accessTokenRevoked = true;
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.ErrorCode == 1)
+                catch (HostedRunnerDeprovisionedException)
+                {
+                    Trace.Info("Hosted runner has been deprovisioned.");
+                    throw;
+                }
+                catch (AccessDeniedException e) when (e.ErrorCode == 1 && !HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
-                catch (RunnerNotFoundException)
+                catch (RunnerNotFoundException) when (!HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
@@ -317,12 +328,19 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
 
+                    // clear out potential message for broker migration,
+                    // in case the exception is thrown from get message from broker-listener.
+                    message = null;
+
                     // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
-                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
+                    if (!HostContext.AllowAuthMigration &&
+                        ex is TaskAgentSessionExpiredException &&
+                        !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
                     {
                         Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
                     }
-                    else if (!IsGetNextMessageExceptionRetriable(ex))
+                    else if (!HostContext.AllowAuthMigration &&
+                            !IsGetNextMessageExceptionRetriable(ex))
                     {
                         throw;
                     }
@@ -347,6 +365,12 @@ namespace GitHub.Runner.Listener
                             //print error only on the first consecutive error
                             _term.WriteError($"{DateTime.UtcNow:u}: Runner connect error: {ex.Message}. Retrying until reconnected.");
                             encounteringError = true;
+                        }
+
+                        if (HostContext.AllowAuthMigration)
+                        {
+                            Trace.Info("Disable migration mode for 60 minutes.");
+                            HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), $"Get next message failed with exception: {ex}");
                         }
 
                         // re-create VssConnection before next retry
@@ -406,10 +430,11 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task RefreshListenerTokenAsync(CancellationToken cancellationToken)
+        public async Task RefreshListenerTokenAsync()
         {
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
-            await _brokerServer.ForceRefreshConnection(_creds);
+            _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
+            await _brokerServer.ForceRefreshConnection(_credsV2);
         }
 
         private TaskAgentMessage DecryptMessage(TaskAgentMessage message)
@@ -528,7 +553,8 @@ namespace GitHub.Runner.Listener
             }
             else if (ex is TaskAgentPoolNotFoundException ||
                      ex is AccessDeniedException ||
-                     ex is VssUnauthorizedException)
+                     ex is VssUnauthorizedException ||
+                     (ex is VssOAuthTokenRequestException oauthEx && oauthEx.Error != "server_error"))
             {
                 Trace.Info($"Non-retriable exception: {ex.Message}");
                 return false;
@@ -538,6 +564,12 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Retriable exception: {ex.Message}");
                 return true;
             }
+        }
+
+        private void HandleAuthMigrationChanged(object sender, EventArgs e)
+        {
+            Trace.Info($"Auth migration changed. Current allow auth migration state: {HostContext.AllowAuthMigration}");
+            _needRefreshCredsV2 = true;
         }
     }
 }

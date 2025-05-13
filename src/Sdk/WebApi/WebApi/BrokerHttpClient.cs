@@ -122,6 +122,8 @@ namespace GitHub.Actions.RunService.WebApi
                         {
                             ErrorCode = 1
                         };
+                    case BrokerErrorKind.HostedRunnerDeprovisioned:
+                        throw new HostedRunnerDeprovisionedException(brokerError.Message);
                     default:
                         break;
                 }
