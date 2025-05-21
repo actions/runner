@@ -20,9 +20,14 @@
             "required": true
           },
           "permissions": "permissions",
-          "concurrency": "workflow-concurrency"
+          "concurrency": "workflow-concurrency",
+          "description": "workflow-description"
         }
       }
+    },
+
+    "workflow-description": {
+      "string": {}
     },
 
     "workflow-defaults": {
@@ -413,7 +418,8 @@
           "pull-requests": "non-empty-string",
           "repository-projects": "non-empty-string",
           "security-events": "non-empty-string",
-          "statuses": "non-empty-string"
+          "statuses": "non-empty-string",
+          "models": "non-empty-string"
         }
       }
     },
