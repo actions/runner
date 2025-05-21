@@ -37,6 +37,7 @@ namespace GitHub.Runner.Common
 
         public async Task ConnectAsync(Uri serverUri, VssCredentials credentials)
         {
+            Trace.Entering();
             _brokerUri = serverUri;
 
             _connection = VssUtil.CreateRawConnection(serverUri, credentials);
@@ -88,7 +89,12 @@ namespace GitHub.Runner.Common
 
         public Task ForceRefreshConnection(VssCredentials credentials)
         {
-            return ConnectAsync(_brokerUri, credentials);
+            if (!string.IsNullOrEmpty(_brokerUri?.AbsoluteUri))
+            {
+                return ConnectAsync(_brokerUri, credentials);
+            }
+
+            return Task.CompletedTask;
         }
 
         public bool ShouldRetryException(Exception ex)

@@ -1,13 +1,13 @@
 using System;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Runner.Listener;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Tests;
+using GitHub.Runner.Listener;
 using GitHub.Runner.Sdk;
 using Moq;
 using Xunit;
-using System.Threading;
-using GitHub.Runner.Common.Tests;
-using System.Text;
 
 namespace GitHub.Runner.Tests.Listener
 {
@@ -210,9 +210,9 @@ namespace GitHub.Runner.Tests.Listener
                 var encodedConfig = Convert.ToBase64String(Encoding.UTF8.GetBytes(StringUtil.ConvertToJson(credData)));
                 _runnerServer.Setup(x => x.RefreshRunnerConfigAsync(It.IsAny<int>(), It.Is<string>(s => s == "credentials"), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(encodedConfig);
 
-
                 var _runnerConfigUpdater = new RunnerConfigUpdater();
                 _runnerConfigUpdater.Initialize(hc);
+                hc.EnableAuthMigration("L0Test");
 
                 var validRunnerQualifiedId = "valid/runner/qualifiedid/1";
                 var configType = "credentials";
@@ -226,6 +226,7 @@ namespace GitHub.Runner.Tests.Listener
                 _runnerServer.Verify(x => x.RefreshRunnerConfigAsync(1, "credentials", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
                 _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("Runner credentials updated successfully")), It.IsAny<CancellationToken>()), Times.Once);
                 _configurationStore.Verify(x => x.SaveMigratedCredential(It.IsAny<CredentialData>()), Times.Once);
+                Assert.False(hc.AllowAuthMigration);
             }
         }
 
@@ -306,7 +307,7 @@ namespace GitHub.Runner.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async Task UpdateRunnerConfigAsync_RefreshRunnerCredetialsFailure_ShouldReportTelemetry()
+        public async Task UpdateRunnerConfigAsync_RefreshRunnerCredentialsFailure_ShouldReportTelemetry()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -513,6 +514,56 @@ namespace GitHub.Runner.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
+        public async Task UpdateRunnerConfigAsync_RefreshOAuthCredentialsWithDifferentAuthUrl_ShouldReportTelemetry()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+
+                // Arrange
+                var setting = new RunnerSettings { AgentId = 1, AgentName = "agent1" };
+                _configurationStore.Setup(x => x.GetSettings()).Returns(setting);
+                var credData = new CredentialData
+                {
+                    Scheme = "OAuth"
+                };
+                credData.Data.Add("clientId", "12345");
+                credData.Data.Add("authorizationUrl", "http://example.com/");
+                _configurationStore.Setup(x => x.GetCredentials()).Returns(credData);
+
+                IOUtil.SaveObject(setting, hc.GetConfigFile(WellKnownConfigFile.Runner));
+                IOUtil.SaveObject(credData, hc.GetConfigFile(WellKnownConfigFile.Credentials));
+
+                var differentCredData = new CredentialData
+                {
+                    Scheme = "OAuth"
+                };
+                differentCredData.Data.Add("clientId", "12345");
+                differentCredData.Data.Add("authorizationUrl", "http://example2.com/");
+                var encodedConfig = Convert.ToBase64String(Encoding.UTF8.GetBytes(StringUtil.ConvertToJson(differentCredData)));
+                _runnerServer.Setup(x => x.RefreshRunnerConfigAsync(It.IsAny<int>(), It.Is<string>(s => s == "credentials"), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(encodedConfig);
+
+                var _runnerConfigUpdater = new RunnerConfigUpdater();
+                _runnerConfigUpdater.Initialize(hc);
+
+                var validRunnerQualifiedId = "valid/runner/qualifiedid/1";
+                var configType = "credentials";
+                var serviceType = "pipelines";
+                var configRefreshUrl = "http://example.com";
+
+                // Act
+                await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+
+                // Assert
+                _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("Credential authorizationUrl in refreshed config")), It.IsAny<CancellationToken>()), Times.Once);
+                _configurationStore.Verify(x => x.SaveMigratedCredential(It.IsAny<CredentialData>()), Times.Never);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
         public async Task UpdateRunnerConfigAsync_UnsupportedServiceType_ShouldReportTelemetry()
         {
             using (var hc = new TestHostContext(this))
@@ -573,6 +624,54 @@ namespace GitHub.Runner.Tests.Listener
                 _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>((s) => s.Contains("Runner admin service is not supported")), It.IsAny<CancellationToken>()), Times.Once);
                 _runnerServer.Verify(x => x.RefreshRunnerConfigAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
                 _configurationStore.Verify(x => x.SaveMigratedSettings(It.IsAny<RunnerSettings>()), Times.Never);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task UpdateRunnerConfigAsync_UpdateRunnerCredentials_EnableDisableAuthMigration()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+
+                // Arrange
+                var setting = new RunnerSettings { AgentId = 1, AgentName = "agent1" };
+                _configurationStore.Setup(x => x.GetSettings()).Returns(setting);
+                var credData = new CredentialData
+                {
+                    Scheme = "OAuth"
+                };
+                credData.Data.Add("ClientId", "12345");
+                credData.Data.Add("AuthorizationUrl", "https://example.com");
+                credData.Data.Add("AuthorizationUrlV2", "https://example2.com");
+                _configurationStore.Setup(x => x.GetCredentials()).Returns(credData);
+
+                IOUtil.SaveObject(setting, hc.GetConfigFile(WellKnownConfigFile.Runner));
+                IOUtil.SaveObject(credData, hc.GetConfigFile(WellKnownConfigFile.Credentials));
+
+                var encodedConfig = Convert.ToBase64String(Encoding.UTF8.GetBytes(StringUtil.ConvertToJson(credData)));
+                _runnerServer.Setup(x => x.RefreshRunnerConfigAsync(It.IsAny<int>(), It.Is<string>(s => s == "credentials"), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(encodedConfig);
+
+                var _runnerConfigUpdater = new RunnerConfigUpdater();
+                _runnerConfigUpdater.Initialize(hc);
+                Assert.False(hc.AllowAuthMigration);
+
+                var validRunnerQualifiedId = "valid/runner/qualifiedid/1";
+                var configType = "credentials";
+                var serviceType = "pipelines";
+                var configRefreshUrl = "http://example.com";
+
+                // Act
+                await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+
+                // Assert
+                _runnerServer.Verify(x => x.RefreshRunnerConfigAsync(1, "credentials", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+                _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("Runner credentials updated successfully")), It.IsAny<CancellationToken>()), Times.Once);
+                _configurationStore.Verify(x => x.SaveMigratedCredential(It.IsAny<CredentialData>()), Times.Once);
+                Assert.True(hc.AllowAuthMigration);
             }
         }
     }

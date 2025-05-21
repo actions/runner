@@ -25,6 +25,7 @@ namespace GitHub.Runner.Listener.Configuration
         Task UnconfigureAsync(CommandSettings command);
         void DeleteLocalRunnerConfig();
         RunnerSettings LoadSettings();
+        RunnerSettings LoadMigratedSettings();
     }
 
     public sealed class ConfigurationManager : RunnerService, IConfigurationManager
@@ -62,6 +63,22 @@ namespace GitHub.Runner.Listener.Configuration
 
             RunnerSettings settings = _store.GetSettings();
             Trace.Info("Settings Loaded");
+
+            return settings;
+        }
+
+        public RunnerSettings LoadMigratedSettings()
+        {
+            Trace.Info(nameof(LoadMigratedSettings));
+            
+            // Check if migrated settings file exists
+            if (!_store.IsMigratedConfigured())
+            {
+                throw new NonRetryableException("No migrated configuration found.");
+            }
+
+            RunnerSettings settings = _store.GetMigratedSettings();
+            Trace.Info("Migrated Settings Loaded");
 
             return settings;
         }
@@ -127,7 +144,7 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
                     credProvider = GetCredentialProvider(command, runnerSettings.ServerUrl);
-                    creds = credProvider.GetVssCredentials(HostContext);
+                    creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
                     Trace.Info("legacy vss cred retrieved");
                 }
                 else
@@ -366,7 +383,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
                         { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
-                        { "requireFipsCryptography", agent.Properties.GetValue("RequireFipsCryptography", false).ToString() }
+                        { "requireFipsCryptography", agent.Properties.GetValue("RequireFipsCryptography", true).ToString() }
                     },
                 };
 
@@ -384,7 +401,7 @@ namespace GitHub.Runner.Listener.Configuration
             if (!runnerSettings.UseV2Flow)
             {
                 var credMgr = HostContext.GetService<ICredentialManager>();
-                VssCredentials credential = credMgr.LoadCredentials();
+                VssCredentials credential = credMgr.LoadCredentials(allowAuthUrlV2: false);
                 try
                 {
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
@@ -519,7 +536,7 @@ namespace GitHub.Runner.Listener.Configuration
                     if (string.IsNullOrEmpty(settings.GitHubUrl))
                     {
                         var credProvider = GetCredentialProvider(command, settings.ServerUrl);
-                        creds = credProvider.GetVssCredentials(HostContext);
+                        creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
                         Trace.Info("legacy vss cred retrieved");
                     }
                     else

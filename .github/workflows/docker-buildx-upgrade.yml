@@ -1,0 +1,144 @@
+name: "Docker/Buildx Version Upgrade"
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Run every Monday at midnight
+  workflow_dispatch:      # Allow manual triggering
+
+jobs:
+  check-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      DOCKER_SHOULD_UPDATE: ${{ steps.check_docker_version.outputs.SHOULD_UPDATE }}
+      DOCKER_LATEST_VERSION: ${{ steps.check_docker_version.outputs.LATEST_VERSION }}
+      DOCKER_CURRENT_VERSION: ${{ steps.check_docker_version.outputs.CURRENT_VERSION }}
+      BUILDX_SHOULD_UPDATE: ${{ steps.check_buildx_version.outputs.SHOULD_UPDATE }}
+      BUILDX_LATEST_VERSION: ${{ steps.check_buildx_version.outputs.LATEST_VERSION }}
+      BUILDX_CURRENT_VERSION: ${{ steps.check_buildx_version.outputs.CURRENT_VERSION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Docker version
+        id: check_docker_version
+        shell: bash
+        run: |
+          # Extract current Docker version from Dockerfile
+          current_version=$(grep "ARG DOCKER_VERSION=" ./images/Dockerfile | cut -d'=' -f2)
+
+          # Fetch latest Docker Engine version from Docker's download site
+          # This gets the latest Linux static binary version which matches what's used in the Dockerfile
+          latest_version=$(curl -s https://download.docker.com/linux/static/stable/x86_64/ | grep -o 'docker-[0-9]*\.[0-9]*\.[0-9]*\.tgz' | sort -V | tail -n 1 | sed 's/docker-\(.*\)\.tgz/\1/')
+
+          # Extra check to ensure we got a valid version
+          if [[ ! $latest_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Failed to retrieve a valid Docker version"
+            exit 1
+          fi
+          
+          should_update=0
+          [ "$current_version" != "$latest_version" ] && should_update=1
+
+          echo "CURRENT_VERSION=${current_version}" >> $GITHUB_OUTPUT
+          echo "LATEST_VERSION=${latest_version}" >> $GITHUB_OUTPUT
+          echo "SHOULD_UPDATE=${should_update}" >> $GITHUB_OUTPUT
+
+      - name: Check Buildx version
+        id: check_buildx_version
+        shell: bash
+        run: |
+          # Extract current Buildx version from Dockerfile
+          current_version=$(grep "ARG BUILDX_VERSION=" ./images/Dockerfile | cut -d'=' -f2)
+
+          # Fetch latest Buildx version
+          latest_version=$(curl -s https://api.github.com/repos/docker/buildx/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+
+          should_update=0
+          [ "$current_version" != "$latest_version" ] && should_update=1
+
+          echo "CURRENT_VERSION=${current_version}" >> $GITHUB_OUTPUT
+          echo "LATEST_VERSION=${latest_version}" >> $GITHUB_OUTPUT
+          echo "SHOULD_UPDATE=${should_update}" >> $GITHUB_OUTPUT
+
+      - name: Create annotations for versions
+        run: |
+          docker_should_update="${{ steps.check_docker_version.outputs.SHOULD_UPDATE }}"
+          buildx_should_update="${{ steps.check_buildx_version.outputs.SHOULD_UPDATE }}"
+          
+          # Show annotation if only Docker needs update
+          if [[ "$docker_should_update" == "1" && "$buildx_should_update" == "0" ]]; then
+            echo "::warning ::Docker version (${{ steps.check_docker_version.outputs.LATEST_VERSION }}) needs update but Buildx is current. Only updating when both need updates."
+          fi
+          
+          # Show annotation if only Buildx needs update
+          if [[ "$docker_should_update" == "0" && "$buildx_should_update" == "1" ]]; then
+            echo "::warning ::Buildx version (${{ steps.check_buildx_version.outputs.LATEST_VERSION }}) needs update but Docker is current. Only updating when both need updates."
+          fi
+          
+          # Show annotation when both are current
+          if [[ "$docker_should_update" == "0" && "$buildx_should_update" == "0" ]]; then
+            echo "::warning ::Latest Docker version is ${{ steps.check_docker_version.outputs.LATEST_VERSION }} and Buildx version is ${{ steps.check_buildx_version.outputs.LATEST_VERSION }}. No updates needed."
+          fi
+
+  update-versions:
+    permissions:
+      pull-requests: write
+      contents: write
+    needs: [check-versions]
+    if: ${{ needs.check-versions.outputs.DOCKER_SHOULD_UPDATE == 1 && needs.check-versions.outputs.BUILDX_SHOULD_UPDATE == 1 }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Update Docker version
+        shell: bash
+        run: |
+          latest_version="${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }}"
+          current_version="${{ needs.check-versions.outputs.DOCKER_CURRENT_VERSION }}"
+          
+          # Update version in Dockerfile
+          sed -i "s/ARG DOCKER_VERSION=$current_version/ARG DOCKER_VERSION=$latest_version/g" ./images/Dockerfile
+      
+      - name: Update Buildx version
+        shell: bash
+        run: |
+          latest_version="${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+          current_version="${{ needs.check-versions.outputs.BUILDX_CURRENT_VERSION }}"
+          
+          # Update version in Dockerfile
+          sed -i "s/ARG BUILDX_VERSION=$current_version/ARG BUILDX_VERSION=$latest_version/g" ./images/Dockerfile
+      
+      - name: Commit changes and create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Setup branch and commit information
+          branch_name="feature/docker-buildx-upgrade"
+          commit_message="Upgrade Docker to v${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }} and Buildx to v${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+          pr_title="Update Docker to v${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }} and Buildx to v${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+          
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "<41898282+github-actions[bot]@users.noreply.github.com>"
+
+          # Create branch or switch to it if it exists
+          if git show-ref --quiet refs/remotes/origin/$branch_name; then
+            git fetch origin
+            git checkout -B "$branch_name" origin/$branch_name
+          else
+            git checkout -b "$branch_name"
+          fi
+          
+          # Commit and push changes
+          git commit -a -m "$commit_message"
+          git push --force origin "$branch_name"
+          
+          # Create PR
+          pr_body="Upgrades Docker version from ${{ needs.check-versions.outputs.DOCKER_CURRENT_VERSION }} to ${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }} and Docker Buildx version from ${{ needs.check-versions.outputs.BUILDX_CURRENT_VERSION }} to ${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}.\n\n"
+          pr_body+="Release notes: https://docs.docker.com/engine/release-notes/\n\n"
+          pr_body+="---\n\nAutogenerated by [Docker/Buildx Version Upgrade Workflow](https://github.com/actions/runner/blob/main/.github/workflows/docker-buildx-upgrade.yml)"
+          
+          gh pr create -B main -H "$branch_name" \
+            --title "$pr_title" \
+            --body "$pr_body"

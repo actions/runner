@@ -1,16 +1,15 @@
-﻿using GitHub.Runner.Common.Util;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Net.Http.Headers;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.Loader;
-using System.Reflection;
-using System.Collections.Generic;
 using GitHub.DistributedTask.Logging;
-using System.Net.Http.Headers;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common.Tests
@@ -31,6 +30,7 @@ namespace GitHub.Runner.Common.Tests
         private StartupType _startupType;
         public event EventHandler Unloading;
         public event EventHandler<DelayEventArgs> Delaying;
+        public event EventHandler<AuthMigrationEventArgs> AuthMigrationChanged;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
         public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
@@ -92,6 +92,8 @@ namespace GitHub.Runner.Common.Tests
 
         public RunnerWebProxy WebProxy => new();
 
+        public bool AllowAuthMigration { get; set; }
+
         public async Task Delay(TimeSpan delay, CancellationToken token)
         {
             // Event callback
@@ -101,8 +103,8 @@ namespace GitHub.Runner.Common.Tests
                 handler(this, new DelayEventArgs(delay, token));
             }
 
-            // Delay zero
-            await Task.Delay(TimeSpan.Zero);
+            // Delay 10ms
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
         }
 
         public T CreateService<T>() where T : class, IRunnerService
@@ -386,6 +388,18 @@ namespace GitHub.Runner.Common.Tests
         public void LoadDefaultUserAgents()
         {
             return;
+        }
+
+        public void EnableAuthMigration(string trace)
+        {
+            AllowAuthMigration = true;
+            AuthMigrationChanged?.Invoke(this, new AuthMigrationEventArgs(trace));
+        }
+
+        public void DeferAuthMigration(TimeSpan deferred, string trace)
+        {
+            AllowAuthMigration = false;
+            AuthMigrationChanged?.Invoke(this, new AuthMigrationEventArgs(trace));
         }
     }
 

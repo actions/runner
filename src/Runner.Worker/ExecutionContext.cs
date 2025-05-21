@@ -862,7 +862,21 @@ namespace GitHub.Runner.Worker
 
             ExpressionValues["secrets"] = Global.Variables.ToSecretsContext();
             ExpressionValues["runner"] = new RunnerContext();
-            ExpressionValues["job"] = new JobContext();
+
+            Trace.Info("Initializing Job context");
+            var jobContext = new JobContext();
+            if (Global.Variables.GetBoolean(Constants.Runner.Features.AddCheckRunIdToJobContext) ?? false)
+            {
+                ExpressionValues.TryGetValue("job", out var jobDictionary);
+                if (jobDictionary != null)
+                {
+                    foreach (var pair in jobDictionary.AssertDictionary("job"))
+                    {
+                        jobContext[pair.Key] = pair.Value;
+                    }
+                }
+            }
+            ExpressionValues["job"] = jobContext;
 
             Trace.Info("Initialize GitHub context");
             var githubAccessToken = new StringContextData(Global.Variables.Get("system.github.token"));

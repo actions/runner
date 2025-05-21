@@ -25,7 +25,10 @@ namespace GitHub.Services.WebApi.Jwt
         HS256,
 
         [EnumMember]
-        RS256
+        RS256,
+
+        [EnumMember]
+        PS256,
     }
 
     //JsonWebToken is marked as DataContract so
@@ -286,6 +289,7 @@ namespace GitHub.Services.WebApi.Jwt
             {
                 case JWTAlgorithm.HS256:
                 case JWTAlgorithm.RS256:
+                case JWTAlgorithm.PS256:
                     return signingCredentials.SignData(bytes);
 
                 default:

@@ -13,7 +13,7 @@ namespace GitHub.Runner.Listener.Configuration
     public interface ICredentialManager : IRunnerService
     {
         ICredentialProvider GetCredentialProvider(string credType);
-        VssCredentials LoadCredentials();
+        VssCredentials LoadCredentials(bool allowAuthUrlV2);
     }
 
     public class CredentialManager : RunnerService, ICredentialManager
@@ -40,7 +40,7 @@ namespace GitHub.Runner.Listener.Configuration
             return creds;
         }
 
-        public VssCredentials LoadCredentials()
+        public VssCredentials LoadCredentials(bool allowAuthUrlV2)
         {
             IConfigurationStore store = HostContext.GetService<IConfigurationStore>();
 
@@ -51,21 +51,16 @@ namespace GitHub.Runner.Listener.Configuration
 
             CredentialData credData = store.GetCredentials();
             var migratedCred = store.GetMigratedCredentials();
-            if (migratedCred != null)
+            if (migratedCred != null &&
+                migratedCred.Scheme == Constants.Configuration.OAuth)
             {
                 credData = migratedCred;
-
-                // Re-write .credentials with Token URL
-                store.SaveCredential(credData);
-
-                // Delete .credentials_migrated
-                store.DeleteMigratedCredential();
             }
 
             ICredentialProvider credProv = GetCredentialProvider(credData.Scheme);
             credProv.CredentialData = credData;
 
-            VssCredentials creds = credProv.GetVssCredentials(HostContext);
+            VssCredentials creds = credProv.GetVssCredentials(HostContext, allowAuthUrlV2);
 
             return creds;
         }
