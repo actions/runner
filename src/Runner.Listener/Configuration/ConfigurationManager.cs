@@ -70,7 +70,7 @@ namespace GitHub.Runner.Listener.Configuration
         public RunnerSettings LoadMigratedSettings()
         {
             Trace.Info(nameof(LoadMigratedSettings));
-            
+
             // Check if migrated settings file exists
             if (!_store.IsMigratedConfigured())
             {
@@ -386,6 +386,14 @@ namespace GitHub.Runner.Listener.Configuration
                         { "requireFipsCryptography", agent.Properties.GetValue("RequireFipsCryptography", true).ToString() }
                     },
                 };
+
+                if (agent.Properties.GetValue("EnableAuthMigrationByDefault", false) &&
+                    agent.Properties.TryGetValue<string>("AuthorizationUrlV2", out var authUrlV2) &&
+                    !string.IsNullOrEmpty(authUrlV2))
+                {
+                    credentialData.Data["enableAuthMigrationByDefault"] = "true";
+                    credentialData.Data["authorizationUrlV2"] = authUrlV2;
+                }
 
                 // Save the negotiated OAuth credential data
                 _store.SaveCredential(credentialData);
