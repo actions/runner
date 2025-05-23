@@ -8,7 +8,7 @@ if [[ -n "$BASH_VERSINFO" && "${BASH_VERSINFO[0]}" -ge 4 ]]; then
     # Bash has no sleep builtin, but read with a timeout can behave in same way.
     read -rt "$1" <> <(:) || :
 fi
-# Fall back to busy wait;
+# Fallback to busy wait.
 while [[ $SECONDS -lt $1 ]]; do
     echo bar
     :
