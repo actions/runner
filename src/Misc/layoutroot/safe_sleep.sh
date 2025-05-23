@@ -1,6 +1,15 @@
 #!/bin/bash
 
 SECONDS=0
-while [[ $SECONDS != $1 ]]; do
+
+# Bash 4.0 and above supports read.
+if [[ -n "$BASH_VERSINFO" && "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+    echo foo
+    # Bash has no sleep builtin, but read with a timeout can behave in same way.
+    read -rt "$1" <> <(:) || :
+fi
+# Fall back to busy wait;
+while [[ $SECONDS -lt $1 ]]; do
+    echo bar
     :
 done
