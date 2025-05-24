@@ -318,24 +318,17 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    if (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.SkipRetryCompleteJobUponKnownErrors) ?? false)
-                    {
-                        await runServer.CompleteJob2Async(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, default);
-                    }
-                    else
-                    {
-                        await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, default);
-                    }
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, default);
                     return result;
                 }
-                catch (VssUnauthorizedException ex) when (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.SkipRetryCompleteJobUponKnownErrors) ?? false)
+                catch (VssUnauthorizedException ex)
                 {
                     Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
                     Trace.Error(ex);
                     exceptions.Add(ex);
                     break;
                 }
-                catch (TaskOrchestrationJobNotFoundException ex) when (jobContext.Global.Variables.GetBoolean(Constants.Runner.Features.SkipRetryCompleteJobUponKnownErrors) ?? false)
+                catch (TaskOrchestrationJobNotFoundException ex)
                 {
                     Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
                     Trace.Error(ex);
@@ -532,7 +525,7 @@ namespace GitHub.Runner.Worker
 
                     if (result == TaskResult.Failed && warnOnFailedJob)
                     {
-                        jobContext.Warning($"This job failure may be caused by using an out of date self-hosted runner. You are currently using runner version {currentVersion}. Please update to the latest version {serverPackages[0].Version}");
+                        jobContext.Warning($"This job failure may be caused by using an out of date version of GitHub runner on your self-hosted runner. You are currently using GitHub runner version {currentVersion}. Please update to the latest version {serverPackages[0].Version}");
                     }
                     else if (warnOnOldRunnerVersion)
                     {

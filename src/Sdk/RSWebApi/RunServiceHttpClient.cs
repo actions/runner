@@ -253,11 +253,12 @@ namespace GitHub.Actions.RunService.WebApi
             return false;
         }
 
-        private static string Truncate(string errorBody)
+        internal static string Truncate(string errorBody)
         {
-            if (errorBody.Length > 100)
+            const int maxLength = 200;
+            if (errorBody.Length > maxLength)
             {
-                return errorBody.Substring(0, 100) + "[truncated]";
+                return errorBody.Substring(0, maxLength) + "[truncated]";
             }
 
             return errorBody;

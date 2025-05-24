@@ -1168,6 +1168,77 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_HydratesJobContextWithCheckRunId()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message and make sure the feature flag is enabled
+                var variables = new Dictionary<string, VariableValue>()
+                {
+                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("true"),
+                };
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: Add check_run_id to the job context
+                var jobContext = new Pipelines.ContextData.DictionaryContextData();
+                jobContext["check_run_id"] = new NumberContextData(123456);
+                jobRequest.ContextData["job"] = jobContext;
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert
+                Assert.NotNull(ec.JobContext);
+                Assert.Equal(123456, ec.JobContext.CheckRunId);
+            }
+        }
+
+        // TODO: this test can be deleted when `AddCheckRunIdToJobContext` is fully rolled out
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_HydratesJobContextWithCheckRunId_FeatureFlagDisabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message and make sure the feature flag is disabled
+                var variables = new Dictionary<string, VariableValue>()
+                {
+                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("false"),
+                };
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: Add check_run_id to the job context
+                var jobContext = new Pipelines.ContextData.DictionaryContextData();
+                jobContext["check_run_id"] = new NumberContextData(123456);
+                jobRequest.ContextData["job"] = jobContext;
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert
+                Assert.NotNull(ec.JobContext);
+                Assert.Null(ec.JobContext.CheckRunId); // with the feature flag disabled we should not have added a CheckRunId to the JobContext
+            }
+        }
+
         private bool ExpressionValuesAssertEqual(DictionaryContextData expect, DictionaryContextData actual)
         {
             foreach (var key in expect.Keys.ToList())
