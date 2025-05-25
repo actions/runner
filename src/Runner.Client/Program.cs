@@ -1956,7 +1956,7 @@ namespace Runner.Client
                                     }
                                     return 0;
                                 } catch (Exception except) {
-                                    WriteLogMessage(parameters, "error", $"Exception: {except.Message}, {except.StackTrace}");
+                                    WriteLogMessageException(parameters, except);
                                     return 1;
                                 } finally {
                                     cancelWorkflow = null;
@@ -2714,7 +2714,7 @@ namespace Runner.Client
                                 }
                                 return hasErrors ? 1 : 0;
                             } catch (Exception except) {
-                                WriteLogMessage(parameters, "error", $"Exception: {except.Message}, {except.StackTrace}");
+                                WriteLogMessageException(parameters, except);
                                 return 1;
                             } finally {
                                 cancelWorkflow = null;
@@ -2891,6 +2891,18 @@ namespace Runner.Client
             cargs.AddRange(args);
             // Parse the incoming args and invoke the handler
             return rootCommand.InvokeAsync(args.Length == 1 && args[0] == "--version" ? args : cargs.ToArray()).Result;
+        }
+
+        private static void WriteLogMessageException(Parameters parameters, Exception except)
+        {
+            if (parameters.Verbose)
+            {
+                WriteLogMessage(parameters, "error", $"Exception: {except.Message}, {except.StackTrace}");
+            }
+            else
+            {
+                WriteLogMessage(parameters, "error", $"Exception: {except.Message}");
+            }
         }
 
         private static async Task<(Dictionary<string, Dictionary<string, string>>, Dictionary<string, Dictionary<string, string>>)> ReadSecretsAndVariables(Parameters parameters)
