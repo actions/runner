@@ -108,7 +108,7 @@ jobs:
     - name: Install
       run: |
         dotnet tool install -g Runner.Client --add-source src/Runner.Client/nupkg --version ${{needs.package.outputs.version}}
-        # Make shure to have Runner.Client in path in job container
+        # Make sure to have Runner.Client in path in job container
         echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
     - name: Test
       run: |

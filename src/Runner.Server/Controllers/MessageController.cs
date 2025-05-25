@@ -4998,7 +4998,7 @@ namespace Runner.Server.Controllers
                         }
                         resources.Endpoints.Add(systemVssConnection);
 
-                        // Enshure secrets.github_token is available in the runner
+                        // Ensure secrets.github_token is available in the runner
                         VariableValue github_token = new VariableValue(GITHUB_TOKEN_NONE, true);
                         if(calculatedPermissions.TryGetValue("contents", out var contents)) {
                             switch(contents) {
@@ -6014,7 +6014,7 @@ namespace Runner.Server.Controllers
                             _webConsoleLogService.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string> { $"Failed Job: {req.name} for queue {string.Join(",", agentlabels)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
                             return NoContent();
                         }
-                        // Use Uri to enshure that a host only ServerUrl has a leading `/`, the actions cache api assumes the it ends with a slash
+                        // Use Uri to ensure that a host only ServerUrl has a leading `/`, the actions cache api assumes the it ends with a slash
                         var res = req.message.Invoke(this, new Uri(new Uri(ServerUrl), "./").ToString());
                         if (res == null)
                         {
