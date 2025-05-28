@@ -67,6 +67,9 @@ namespace GitHub.Services.Launch.Client
             }
             else if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
+                // Here we want to add a message so customers don't think it's a rate limit scoped to them
+                // Ideally this would be 500 but the runner retries 500s, which we don't want to do when we're being rate limited
+                // See: https://github.com/github/ecosystem-api/issues/4084
                 throw new NonRetryableActionDownloadInfoException(responseError + " (GitHub has reached an internal rate limit, please try again later)");
             }
             else
