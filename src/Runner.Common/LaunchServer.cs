@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common
     {
         void InitializeLaunchClient(Uri uri, string token);
 
-        Task<ActionDownloadInfoCollection> ResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken);
+        Task<ActionDownloadInfoCollection> ResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken, bool displayHelpfulActionsDownloadErrors);
     }
 
     public sealed class LaunchServer : RunnerService, ILaunchServer
@@ -42,12 +42,16 @@ namespace GitHub.Runner.Common
         }
 
         public Task<ActionDownloadInfoCollection> ResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, bool displayHelpfulActionsDownloadErrors)
         {
             if (_launchClient != null)
             {
-                return _launchClient.GetResolveActionsDownloadInfoAsync(planId, jobId, actionReferenceList,
-                    cancellationToken: cancellationToken);
+                if (!displayHelpfulActionsDownloadErrors)
+                {
+                    return _launchClient.GetResolveActionsDownloadInfoAsync(planId, jobId, actionReferenceList,
+                        cancellationToken: cancellationToken);
+                }
+                return _launchClient.GetResolveActionsDownloadInfoAsyncV2(planId, jobId, actionReferenceList, cancellationToken);
             }
 
             throw new InvalidOperationException("Launch client is not initialized.");

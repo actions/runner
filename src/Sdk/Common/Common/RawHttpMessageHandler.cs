@@ -106,6 +106,18 @@ namespace GitHub.Services.Common
         {
             VssTraceActivity traceActivity = VssTraceActivity.Current;
 
+            if (!m_appliedServerCertificateValidationCallbackToTransportHandler &&
+                            request.RequestUri.Scheme == "https")
+            {
+                HttpClientHandler httpClientHandler = m_transportHandler as HttpClientHandler;
+                if (httpClientHandler != null &&
+                    this.Settings.ServerCertificateValidationCallback != null)
+                {
+                    httpClientHandler.ServerCertificateCustomValidationCallback = this.Settings.ServerCertificateValidationCallback;
+                }
+                m_appliedServerCertificateValidationCallbackToTransportHandler = true;
+            }
+
             lock (m_thisLock)
             {
                 // Ensure that we attempt to use the most appropriate authentication mechanism by default.
@@ -291,6 +303,7 @@ namespace GitHub.Services.Common
             }
         }
 
+        private bool m_appliedServerCertificateValidationCallbackToTransportHandler;
         private readonly HttpMessageHandler m_transportHandler;
         private HttpMessageInvoker m_messageInvoker;
         private CredentialWrapper m_credentialWrapper;

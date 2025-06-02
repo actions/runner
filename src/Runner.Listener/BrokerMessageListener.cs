@@ -26,6 +26,7 @@ namespace GitHub.Runner.Listener
         private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
+        private VssCredentials _credsV2;
         private TaskAgentSession _session;
         private IRunnerServer _runnerServer;
         private IBrokerServer _brokerServer;
@@ -35,7 +36,21 @@ namespace GitHub.Runner.Listener
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
+        private bool _needRefreshCredsV2 = false;
+        private bool _handlerInitialized = false;
+        private bool _isMigratedSettings = false;
+        private const int _maxMigratedSettingsRetries = 3;
+        private int _migratedSettingsRetryCount = 0;
 
+        public BrokerMessageListener()
+        {
+        }
+
+        public BrokerMessageListener(RunnerSettings settings, bool isMigratedSettings = false)
+        {
+            _settings = settings;
+            _isMigratedSettings = isMigratedSettings;
+        }
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -51,9 +66,22 @@ namespace GitHub.Runner.Listener
         {
             Trace.Entering();
 
-            // Settings
-            var configManager = HostContext.GetService<IConfigurationManager>();
-            _settings = configManager.LoadSettings();
+            // Load settings if not provided through constructor
+            if (_settings == null)
+            {
+                var configManager = HostContext.GetService<IConfigurationManager>();
+                _settings = configManager.LoadSettings();
+                Trace.Info("Settings loaded from config manager");
+            }
+            else
+            {
+                Trace.Info("Using provided settings");
+                if (_isMigratedSettings)
+                {
+                    Trace.Info("Using migrated settings from .runner_migrated");
+                }
+            }
+
             var serverUrlV2 = _settings.ServerUrlV2;
             var serverUrl = _settings.ServerUrl;
             Trace.Info(_settings);
@@ -88,7 +116,8 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     Trace.Info("Connecting to the Broker Server...");
-                    await _brokerServer.ConnectAsync(new Uri(serverUrlV2), _creds);
+                    _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
+                    await _brokerServer.ConnectAsync(new Uri(serverUrlV2), _credsV2);
                     Trace.Info("VssConnection created");
 
                     if (!string.IsNullOrEmpty(serverUrl) &&
@@ -113,6 +142,13 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                     }
 
+                    if (!_handlerInitialized)
+                    {
+                        // Register event handler for auth migration state change
+                        HostContext.AuthMigrationChanged += HandleAuthMigrationChanged;
+                        _handlerInitialized = true;
+                    }
+
                     return CreateSessionResult.Success;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -131,7 +167,22 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
-                    if (ex is VssOAuthTokenRequestException vssOAuthEx && _creds.Federated is VssOAuthCredential vssOAuthCred)
+                    // If using migrated settings, limit the number of retries before returning failure
+                    if (_isMigratedSettings)
+                    {
+                        _migratedSettingsRetryCount++;
+                        Trace.Warning($"Migrated settings retry {_migratedSettingsRetryCount} of {_maxMigratedSettingsRetries}");
+                        
+                        if (_migratedSettingsRetryCount >= _maxMigratedSettingsRetries)
+                        {
+                            Trace.Warning("Reached maximum retry attempts for migrated settings. Returning failure to try default settings.");
+                            return CreateSessionResult.Failure;
+                        }
+                    }
+
+                    if (!HostContext.AllowAuthMigration &&
+                        ex is VssOAuthTokenRequestException vssOAuthEx &&
+                        _credsV2.Federated is VssOAuthCredential vssOAuthCred)
                     {
                         // "invalid_client" means the runner registration has been deleted from the server.
                         if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
@@ -152,7 +203,8 @@ namespace GitHub.Runner.Listener
                         }
                     }
 
-                    if (!IsSessionCreationExceptionRetriable(ex))
+                    if (!HostContext.AllowAuthMigration &&
+                        !IsSessionCreationExceptionRetriable(ex))
                     {
                         _term.WriteError($"Failed to create session. {ex.Message}");
                         if (ex is TaskAgentSessionConflictException)
@@ -160,6 +212,12 @@ namespace GitHub.Runner.Listener
                             return CreateSessionResult.SessionConflict;
                         }
                         return CreateSessionResult.Failure;
+                    }
+
+                    if (HostContext.AllowAuthMigration)
+                    {
+                        Trace.Info("Disable migration mode for 60 minutes.");
+                        HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), $"Session creation failed with exception: {ex}");
                     }
 
                     if (!encounteringError) //print the message only on the first error
@@ -178,6 +236,11 @@ namespace GitHub.Runner.Listener
         {
             if (_session != null && _session.SessionId != Guid.Empty)
             {
+                if (_handlerInitialized)
+                {
+                    HostContext.AuthMigrationChanged -= HandleAuthMigrationChanged;
+                }
+
                 if (!_accessTokenRevoked)
                 {
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
@@ -220,6 +283,13 @@ namespace GitHub.Runner.Listener
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
                 {
+                    if (_needRefreshCredsV2)
+                    {
+                        Trace.Info("Refreshing broker connection.");
+                        await RefreshBrokerConnectionAsync();
+                        _needRefreshCredsV2 = false;
+                    }
+
                     message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
                                                                         runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
@@ -255,11 +325,11 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Hosted runner has been deprovisioned.");
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.ErrorCode == 1)
+                catch (AccessDeniedException e) when (e.ErrorCode == 1 && !HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
-                catch (RunnerNotFoundException)
+                catch (RunnerNotFoundException) when (!HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
@@ -268,7 +338,8 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
 
-                    if (!IsGetNextMessageExceptionRetriable(ex))
+                    if (!HostContext.AllowAuthMigration &&
+                        !IsGetNextMessageExceptionRetriable(ex))
                     {
                         throw new NonRetryableException("Get next message failed with non-retryable error.", ex);
                     }
@@ -297,6 +368,12 @@ namespace GitHub.Runner.Listener
                             //print error only on the first consecutive error
                             _term.WriteError($"{DateTime.UtcNow:u}: Runner connect error: {ex.Message}. Retrying until reconnected.");
                             encounteringError = true;
+                        }
+
+                        if (HostContext.AllowAuthMigration)
+                        {
+                            Trace.Info("Disable migration mode for 60 minutes.");
+                            HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), $"Get next message failed with exception: {ex}");
                         }
 
                         // re-create VssConnection before next retry
@@ -434,9 +511,15 @@ namespace GitHub.Runner.Listener
         private async Task RefreshBrokerConnectionAsync()
         {
             Trace.Info("Reload credentials.");
-            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false); // TODO: change to `true` in the next PR.
-            await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), _creds);
+            _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
+            await _brokerServer.ConnectAsync(new Uri(_settings.ServerUrlV2), _credsV2);
             Trace.Info("Connection to Broker Server recreated.");
+        }
+
+        private void HandleAuthMigrationChanged(object sender, EventArgs e)
+        {
+            Trace.Info($"Auth migration changed. Current allow auth migration state: {HostContext.AllowAuthMigration}");
+            _needRefreshCredsV2 = true;
         }
     }
 }
