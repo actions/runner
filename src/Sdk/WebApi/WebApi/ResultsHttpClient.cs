@@ -520,8 +520,8 @@ namespace GitHub.Services.Results.Client
                 Number = r.Order.GetValueOrDefault(),
                 Name = r.Name,
                 Status = ConvertStateToStatus(r.State.GetValueOrDefault()),
-                StartedAt = r.StartTime?.ToString(Constants.TimestampFormat),
-                CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat),
+                StartedAt = r.StartTime?.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture),
+                CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture),
                 Conclusion = ConvertResultToConclusion(r.Result)
             };
         }
