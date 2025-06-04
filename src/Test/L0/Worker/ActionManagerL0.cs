@@ -2411,8 +2411,8 @@ runs:
                 });
 
             _launchServer = new Mock<ILaunchServer>();
-            _launchServer.Setup(x => x.ResolveActionsDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
-                .Returns((Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+            _launchServer.Setup(x => x.ResolveActionsDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+                .Returns((Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken, bool displayHelpfulActionsDownloadErrors) =>
                 {
                     var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
                     foreach (var action in actions.Actions)
