@@ -1,36 +1,13 @@
 ## What's Changed
-* Bump docker/login-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3673
-* Bump actions/stale from 8 to 9 by @dependabot in https://github.com/actions/runner/pull/3554
-* Bump docker/build-push-action from 3 to 6 by @dependabot in https://github.com/actions/runner/pull/3674
-* update node version from 20.18.0 -> 20.18.2 by @aiqiaoy in https://github.com/actions/runner/pull/3682
-* Pass BillingOwnerId through Acquire/Complete calls by @luketomlinson in https://github.com/actions/runner/pull/3689
-* Do not retry CompleteJobAsync for known non-retryable errors by @ericsciple in https://github.com/actions/runner/pull/3696
-* Update dotnet sdk to latest version @8.0.406 by @github-actions in https://github.com/actions/runner/pull/3712
-* Update Dockerfile with new docker and buildx versions by @thboop in https://github.com/actions/runner/pull/3680
-* chore: remove redundant words by @finaltrip in https://github.com/actions/runner/pull/3705
-* fix: actions feedback link is incorrect by @Yaminyam in https://github.com/actions/runner/pull/3165
-* Bump actions/github-script from 0.3.0 to 7.0.1 by @dependabot in https://github.com/actions/runner/pull/3557
-* Docker container provenance by @paveliak in https://github.com/actions/runner/pull/3736
-* Add request-id to http eventsource trace. by @TingluoHuang in https://github.com/actions/runner/pull/3740
-* Update Bocker and Buildx version to mitigate images scanners alerts by @Blizter in https://github.com/actions/runner/pull/3750
-* Fix typo, add invariant culture to timestamp for workflow log reporting by @GhadimiR in https://github.com/actions/runner/pull/3749
-* Create vssconnection to actions service when URL provided. by @TingluoHuang in https://github.com/actions/runner/pull/3751
-* Housekeeping: Update npm packages and node version by @thboop in https://github.com/actions/runner/pull/3752
-* Improve the out-of-date warning message. by @tecimovic in https://github.com/actions/runner/pull/3595
-* Update dotnet sdk to latest version @8.0.407 by @github-actions in https://github.com/actions/runner/pull/3753
-* Exit hosted runner cleanly during deprovisioning. by @TingluoHuang in https://github.com/actions/runner/pull/3755
-* Send annotation title to run-service. by @TingluoHuang in https://github.com/actions/runner/pull/3757
-* Allow server enforce runner settings. by @TingluoHuang in https://github.com/actions/runner/pull/3758
-* Support refresh runner configs with pipelines service. by @TingluoHuang in https://github.com/actions/runner/pull/3706
+* Create schedule workflow to upgrade docker and buildx version. by @TingluoHuang in https://github.com/actions/runner/pull/3859
+* Update dotnet sdk to latest version @8.0.409 by @github-actions in https://github.com/actions/runner/pull/3860
+* Allow runner to use authv2 during config. by @TingluoHuang in https://github.com/actions/runner/pull/3866
+* show helpful error message when resolving actions directly with launch by @aiqiaoy in https://github.com/actions/runner/pull/3874
+* Update dotnet sdk to latest version @8.0.410 by @github-actions in https://github.com/actions/runner/pull/3871
+* Update Docker to v28.2.1 and Buildx to v0.24.0 by @github-actions in https://github.com/actions/runner/pull/3881
+* Allow NO_SSL_VERIFY in RawHttpMessageHandler. by @TingluoHuang in https://github.com/actions/runner/pull/3883
 
-## New Contributors
-* @finaltrip made their first contribution in https://github.com/actions/runner/pull/3705
-* @Yaminyam made their first contribution in https://github.com/actions/runner/pull/3165
-* @Blizter made their first contribution in https://github.com/actions/runner/pull/3750
-* @GhadimiR made their first contribution in https://github.com/actions/runner/pull/3749
-* @tecimovic made their first contribution in https://github.com/actions/runner/pull/3595
-
-**Full Changelog**: https://github.com/actions/runner/compare/v2.322.0...v2.323.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.324.0...v2.325.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.

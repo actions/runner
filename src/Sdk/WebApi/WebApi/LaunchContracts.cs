@@ -29,7 +29,7 @@ namespace GitHub.Services.Launch.Contracts
     {
         [DataMember(EmitDefaultValue = false, Name = "authentication")]
         public ActionDownloadAuthenticationResponse Authentication { get; set; }
-        
+
         [DataMember(EmitDefaultValue = false, Name = "package_details")]
         public ActionDownloadPackageDetailsResponse PackageDetails { get; set; }
 
@@ -64,7 +64,7 @@ namespace GitHub.Services.Launch.Contracts
 
 
     [DataContract]
-    public class ActionDownloadPackageDetailsResponse 
+    public class ActionDownloadPackageDetailsResponse
     {
         [DataMember(EmitDefaultValue = false, Name = "version")]
         public string Version { get; set; }
@@ -80,5 +80,26 @@ namespace GitHub.Services.Launch.Contracts
         /// <remarks>The key is the full name of the action plus version, e.g. "actions/checkout@v2".</remarks>
         [DataMember(EmitDefaultValue = false, Name = "actions")]
         public IDictionary<string, ActionDownloadInfoResponse> Actions { get; set; }
+    }
+
+    [DataContract]
+    public class ActionDownloadResolutionError
+    {
+        /// <summary>
+        /// The error message associated with the action download error.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false, Name = "message")]
+        public string Message { get; set; }
+    }
+
+    [DataContract]
+    public class ActionDownloadResolutionErrorCollection
+    {
+        /// <summary>
+        /// A mapping of action specifications to their download errors.
+        /// <remarks>The key is the full name of the action plus version, e.g. "actions/checkout@v2".</remarks>
+        /// </summary>
+        [DataMember(EmitDefaultValue = false, Name = "errors")]
+        public IDictionary<string, ActionDownloadResolutionError> Errors { get; set; }
     }
 }
