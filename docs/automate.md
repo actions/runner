@@ -3,7 +3,7 @@
 
 ## Export PAT
 
-Before running any of these sample scripts, create a GitHub PAT and export it before running the script
+Before running any of these sample scripts, create a [GitHub PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) and export it before running the script
 
 ```bash
 export RUNNER_CFG_PAT=yourPAT
