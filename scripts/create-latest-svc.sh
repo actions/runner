@@ -129,7 +129,7 @@ if [[ "$runner_scope" == *\/* ]]; then
     orgs_or_repos="repos"
 fi
 
-export RUNNER_TOKEN=$(curl -s -X POST ${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
+export RUNNER_TOKEN=$(curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${RUNNER_CFG_PAT}" -H "X-GitHub-Api-Version: 2022-11-28" https://${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token | jq -r '.token'
 
 if [ "null" == "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi
 
