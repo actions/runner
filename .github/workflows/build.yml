@@ -41,7 +41,7 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
-          os: windows-2019
+          os: windows-latest
           devScript: ./dev
 
         - runtime: win-arm64
