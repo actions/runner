@@ -1,0 +1,16 @@
+# deploy-template.yml
+parameters:
+  - name: deployJob
+    type: deployment
+    default:
+      deployment:
+      environment: ABC
+
+jobs:
+  - job: validate_environment
+    displayName: 'Validate environment inline name'
+    steps:
+      - ${{ if not(contains(parameters.deployJob.environment.name, 'ABC')) }}:
+          - assert: Missing name 'ABC' in deploymentJob.environment.name
+      - ${{ else }}:
+          - script: ok

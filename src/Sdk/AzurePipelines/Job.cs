@@ -33,6 +33,9 @@ namespace Runner.Server.Azure.Devops
         public string[] UsesRepositories { get; set; }
         public string[] UsesPools { get; set; }
         public string WorkspaceClean { get; set; }
+        public string EnvironmentResourceName { get; private set; }
+        public string EnvironmentResourceId { get; private set; }
+        public string EnvironmentTags { get; private set; }
 
         public async Task<Job> Parse(Context context, TemplateToken source, bool skipRootCheck = false) {
             var jobToken = source.AssertMapping("job-root");
@@ -164,14 +167,25 @@ namespace Runner.Server.Azure.Devops
                         if(kv.Value is LiteralToken envstkn) {
                             EnvironmentName = envstkn.ToString();
                         } else {
-                            foreach(var envm in kv.Value.AssertMapping("environment")) {
-                                switch(envm.Key.ToString()) {
+                            foreach (var envm in kv.Value.AssertMapping("environment"))
+                            {
+                                switch (envm.Key.ToString())
+                                {
                                     case "name":
-                                        EnvironmentName = envm.Value.ToString();
-                                    break;
+                                        EnvironmentName = envm.Value.AssertLiteralString("name");
+                                        break;
+                                    case "resourceName":
+                                        EnvironmentResourceName = envm.Value.AssertLiteralString("resourceName");
+                                        break;
+                                    case "resourceId":
+                                        EnvironmentResourceId = envm.Value.AssertLiteralString("resourceId");
+                                        break;
                                     case "resourceType":
-                                        EnvironmentResourceType = envm.Value.ToString();
-                                    break;
+                                        EnvironmentResourceType = envm.Value.AssertLiteralString("resourceType");
+                                        break;
+                                    case "tags":
+                                        EnvironmentTags = envm.Value.AssertLiteralString("tags");
+                                        break;
                                 }
                             }
                         }
@@ -308,15 +322,29 @@ namespace Runner.Server.Azure.Devops
                     job["steps"] = steps;
                 }
             } else {
-                if(EnvironmentName != null) {
-                    if(EnvironmentResourceType != null) {
-                        var envm = new DictionaryContextData();
+                if(EnvironmentName != null || EnvironmentResourceType != null || EnvironmentResourceName != null || EnvironmentResourceId != null || EnvironmentTags != null) {
+                    var envm = new DictionaryContextData();
+                    if (EnvironmentName != null)
+                    {
                         envm["name"] = new StringContextData(EnvironmentName);
-                        envm["resourceType"] = new StringContextData(EnvironmentResourceType);
-                        job["environment"] = envm;
-                    } else {
-                        job["environment"] = new StringContextData(EnvironmentName);
                     }
+                    if (EnvironmentResourceName != null)
+                    {
+                        envm["resourceName"] = new StringContextData(EnvironmentResourceName);
+                    }
+                    if(EnvironmentResourceId != null)
+                    {
+                        envm["resourceId"] = new StringContextData(EnvironmentResourceId);
+                    }
+                    if(EnvironmentResourceType != null)
+                    {
+                        envm["resourceType"] = new StringContextData(EnvironmentResourceType);
+                    }
+                    if (EnvironmentTags != null)
+                    {
+                        envm["tags"] = new StringContextData(EnvironmentTags);
+                    }
+                    job["environment"] = envm;
                 }
             }
             if(Pool != null) {
