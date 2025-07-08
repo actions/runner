@@ -92,6 +92,13 @@ namespace GitHub.Runner.Worker.Handlers
             }
             ExecutionContext.StepTelemetry.Type = "composite";
 
+            // save job defaults run to be restored after the composite run
+            IDictionary<string, string> jobDefaultsRun = new Dictionary<string, string>();
+            if (ExecutionContext.Global.JobDefaults.ContainsKey("run"))
+            {
+                jobDefaultsRun = ExecutionContext.Global.JobDefaults["run"];
+            }
+
             try
             {
                 // Inputs of the composite step
@@ -162,6 +169,26 @@ namespace GitHub.Runner.Worker.Handlers
                     embeddedSteps.Add(step);
                 }
 
+                ExecutionContext.Global.CompositeDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["run"] = new Dictionary<string, string>(),
+                };
+
+                if (Data.CompositeDefaults != null && Data.CompositeDefaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var defaultsToken = Data.CompositeDefaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
+                    var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+                    var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsToken.Value, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+
+                    foreach (var pair in jobDefaults)
+                    {
+                        if (!string.IsNullOrEmpty(pair.Value))
+                        {
+                            ExecutionContext.Global.CompositeDefaults["run"][pair.Key] = pair.Value;
+                        }
+                    }
+                }
+
                 // Run embedded steps
                 await RunStepsAsync(embeddedSteps, stage);
 
@@ -176,6 +203,10 @@ namespace GitHub.Runner.Worker.Handlers
                 Trace.Error($"Caught exception from composite steps {nameof(CompositeActionHandler)}: {ex}");
                 ExecutionContext.Error(ex);
                 ExecutionContext.Result = TaskResult.Failed;
+            }
+            finally
+            {
+                ExecutionContext.Global.CompositeDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             }
         }
 
