@@ -188,5 +188,6 @@ if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-armv7l.tar.gz" node20 fix_nested_dir
     # Node.js 24 doesn't provide official armv7l builds
     # Using Node 20 as a fallback for Node 24 on linux-arm
+    mkdir -p "$LAYOUT_DIR/externals/node24" || checkRC 'mkdir'
     ln -sf ../node20 "$LAYOUT_DIR/externals/node24"
 fi
