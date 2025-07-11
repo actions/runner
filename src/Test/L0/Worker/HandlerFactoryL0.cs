@@ -33,6 +33,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [InlineData("node12", "node20")]
         [InlineData("node16", "node20")]
         [InlineData("node20", "node20")]
+        [InlineData("node24", "node24")]
         public void IsNodeVersionUpgraded(string inputVersion, string expectedVersion)
         {
             using (TestHostContext hc = CreateTestContext())
