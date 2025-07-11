@@ -4,7 +4,11 @@ PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
 NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
-# When you update Node versions you must also create a new release of alpine_nodejs at that updated version.
+    acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-x64.tar.gz" node20 fix_nested_dir
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.gz" node24 fix_nested_dir
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-alpine-x64.tar.gz" node24_alpine "" optional
+finew release of alpine_nodejs at that updated version.
 # Follow the instructions here: https://github.com/actions/alpine_nodejs?tab=readme-ov-file#getting-started
 NODE20_VERSION="20.19.3"
 NODE24_VERSION="24.4.0"
@@ -34,6 +38,7 @@ function acquireExternalTool() {
     local download_source=$1 # E.g. https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe
     local target_dir="$LAYOUT_DIR/externals/$2" # E.g. $LAYOUT_DIR/externals/vswhere
     local fix_nested_dir=$3 # Flag that indicates whether to move nested contents up one directory.
+    local optional_tool=$4 # Flag that indicates if this tool is optional and we should continue on error
 
     # Extract the portion of the URL after the protocol. E.g. github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe
     local relative_url="${download_source#*://}"
@@ -68,33 +73,58 @@ function acquireExternalTool() {
             #      --retry 3   Retries transient errors 3 times (timeouts, 5xx)
             if [[ "$(printf '%s\n' "7.71.0" "$CURL_VERSION" | sort -V | head -n1)" != "7.71.0" ]]; then
                 # Curl version is less than or equal to 7.71.0, skipping retry-all-errors flag
-                 curl -fSL --retry 3 -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
+                 curl -fSL --retry 3 -o "$partial_target" "$download_source" 2>"${download_target}_download.log"
+                 local curl_exit_code=$?
+                 if [ $curl_exit_code -ne 0 ]; then
+                     if [ "$optional_tool" == "optional" ]; then
+                         echo "Failed: curl failed with return code $curl_exit_code. This tool is optional, continuing."
+                     else
+                         checkRC 'curl'
+                     fi
+                 fi
             else
                 # Curl version is greater than 7.71.0, running curl with --retry-all-errors flag
-                 curl -fSL --retry 3 --retry-all-errors -o "$partial_target" "$download_source" 2>"${download_target}_download.log" || checkRC 'curl'
+                 curl -fSL --retry 3 --retry-all-errors -o "$partial_target" "$download_source" 2>"${download_target}_download.log"
+                 local curl_exit_code=$?
+                 if [ $curl_exit_code -ne 0 ]; then
+                     if [ "$optional_tool" == "optional" ]; then
+                         echo "Failed: curl failed with return code $curl_exit_code. This tool is optional, continuing."
+                     else
+                         checkRC 'curl'
+                     fi
+                 fi
             fi
 
-            # Move the partial file to the download target.
-            mv "$partial_target" "$download_target" || checkRC 'mv'
+            # Only move the partial file to the download target if curl succeeded
+            if [ $curl_exit_code -eq 0 ]; then
+                # Move the partial file to the download target.
+                mv "$partial_target" "$download_target" || checkRC 'mv'
 
-            # Extract to current directory
-            # Ensure we can extract those files
-            # We might use them during dev.sh
-            if [[ "$download_basename" == *.zip ]]; then
-                # Extract the zip.
-                echo "Testing zip"
-                unzip "$download_target" -d "$download_dir" > /dev/null
-                local rc=$?
-                if [[ $rc -ne 0 && $rc -ne 1 ]]; then
-                    failed "unzip failed with return code $rc"
+                # Extract to current directory
+                # Ensure we can extract those files
+                # We might use them during dev.sh
+                if [[ "$download_basename" == *.zip ]]; then
+                    # Extract the zip.
+                    echo "Testing zip"
+                    unzip "$download_target" -d "$download_dir" > /dev/null
+                    local rc=$?
+                    if [[ $rc -ne 0 && $rc -ne 1 ]]; then
+                        failed "unzip failed with return code $rc"
+                    fi
+                elif [[ "$download_basename" == *.tar.gz ]]; then
+                    # Extract the tar gz.
+                    echo "Testing tar gz"
+                    tar xzf "$download_target" -C "$download_dir" > /dev/null || checkRC 'tar'
                 fi
-            elif [[ "$download_basename" == *.tar.gz ]]; then
-                # Extract the tar gz.
-                echo "Testing tar gz"
-                tar xzf "$download_target" -C "$download_dir" > /dev/null || checkRC 'tar'
             fi
         fi
     else
+        # Check if the download exists
+        if [ ! -f "$download_target" ] && [ "$optional_tool" == "optional" ]; then
+            echo "Download for $download_source not found. This tool is optional, continuing."
+            return 0
+        fi
+        
         # Extract to layout.
         mkdir -p "$target_dir" || checkRC 'mkdir'
         local nested_dir=""
@@ -174,9 +204,9 @@ fi
 # Download the external tools for Linux PACKAGERUNTIMEs.
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-x64.tar.gz" node20 fix_nested_dir
-    acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine optional
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.gz" node24 fix_nested_dir
-    acquireExternalTool "$NODE_ALPINE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-alpine-x64.tar.gz" node24_alpine
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-alpine-x64.tar.gz" node24_alpine optional
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
