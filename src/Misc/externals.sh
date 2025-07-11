@@ -176,8 +176,7 @@ if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-x64.tar.gz" node20 fix_nested_dir
     acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.gz" node24 fix_nested_dir
-    # Use v24.3.0 for alpine as it's the latest available in actions/alpine_nodejs
-    acquireExternalTool "$NODE_ALPINE_URL/v24.3.0/node-v24.3.0-alpine-x64.tar.gz" node24_alpine
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-alpine-x64.tar.gz" node24_alpine
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
@@ -187,8 +186,4 @@ fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-armv7l.tar.gz" node20 fix_nested_dir
-    # Node.js 24 doesn't provide official armv7l builds
-    # Using Node 20 as a fallback for Node 24 on linux-arm
-    mkdir -p "$LAYOUT_DIR/externals/node24" || checkRC 'mkdir'
-    ln -sf ../node20 "$LAYOUT_DIR/externals/node24"
 fi
