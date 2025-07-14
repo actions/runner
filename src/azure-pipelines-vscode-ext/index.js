@@ -214,13 +214,21 @@ function activate(context) {
 				}
 			},
 			requestParameter: async (handle, name, type, values, def) => {
+				let isRequired = def === null || def === undefined || def === "null";
+				if(isRequired) {
+					def = null;
+				}
 				if(type === null) {
+					if(handle.askForInput && handle?.customConfig?.parameters && name in handle.customConfig.parameters) {
+						delete handle.customConfig.parameters[name];
+						delete handle.parameters[name];
+					}
             		// implementation detail to stop the task for removed parameters
 					handle.stopTask = true;
 					return;
 				}
 				if(!handle.askForInput) {
-					if(!def || name in handle.parameters) {
+					if(isRequired || name in handle.parameters) {
 						handle.stopTask = true;
 					}
 					return;
@@ -230,7 +238,7 @@ function activate(context) {
 				}
 				var value = undefined;
 				var acceptYAML = false;
-				var prefix = def ? "" : "required "; 
+				var prefix = !isRequired ? "" : "required "; 
 				if(values && values.length) {
 					var pdef = def ? JSON.parse(def) : undefined;
 					if(pdef != undefined) {
@@ -239,10 +247,10 @@ function activate(context) {
 					}
 					value = await vscode.window.showQuickPick(values, {
 						canPickMany: type.endsWith("List"),
-						placeHolder: def || "value",
+						placeHolder: pdef || "value",
 						prompt: name,
 						ignoreFocusOut: true,
-						title: "Select the " + prefix + "Parameter " + name + " of Type " + type
+						title: `Select the ${prefix}Parameter '${name}' of Type '${type}'`
 					});
 					if(def && value === def) {
 						value = undefined;
@@ -271,7 +279,7 @@ function activate(context) {
 						placeHolder: rawValue || "value",
 						prompt: name,
 						value: rawValue,
-						title: "Provide " + prefix + "Parameter " + name + " of Type " + type + (acceptYAML ?  " in YAML notation" : "as free text"),
+						title: `Provide ${prefix}Parameter '${name}' of Type '${type}'${acceptYAML ? " in YAML notation" : "as free text"}`,
 					});
 					if(def && value === rawValue) {
 						value = undefined;
@@ -1126,14 +1134,22 @@ function activate(context) {
                         setTimeout(resolve, 1);
                     });
 					inProgress = false;
+					askForInput = false;
 					if(self?.stopTask) {
-						task.info("Parameters changed, please re-run the task when done");
+						task.warn("Parameters changed, please rerun the task when done");
+						let rerun = "Update and Rerun";
+						if(await vscode.window.showWarningMessage("Pipeline Parameters changed", rerun) === rerun) {
+							self.stopTask = false;
+							askForInput = true;
+							waiting = true;
+							self.collection.clear();
+						}
 					}
 					if(!args.watch || self?.stopTask) {
 						close();
 					}
 					if(waiting) {
-						run();
+						run(askForInput);
 					}
 				};
 				run(true);
