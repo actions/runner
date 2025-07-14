@@ -52,7 +52,7 @@ jobs:
 
           # Generate unique version using existing major.minor
           NEW_VERSION=$(node -p "
-            require('./package.json').version.replace(/\.\d+$/, '.${{ github.run_id }}')
+            require('./package.json').version.replace(/\.\d+$/, '.${{ github.run_number }}')
           ")
 
           # Update package.json version
