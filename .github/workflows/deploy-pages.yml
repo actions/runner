@@ -34,16 +34,18 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - name: Setup YamlDotnetFork
         run: |
           git clone https://github.com/ChristopherHX/runner-server-lsp-YamlDotNet YamlDotNet
           echo "YAML_DOTNET_FORK_PATH=$PWD/YamlDotNet/YamlDotNet/YamlDotNet.csproj" >> $GITHUB_ENV
       - name: Build ExpandAzurePipelines
         run: dotnet publish src/ExpandAzurePipelines -c Release --output out
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
       - name: Build azure-pipelines-vscode-ext
+        if: |
+          !cancelled()
         run: |
           npm install
           dotnet workload install wasm-tools
@@ -61,6 +63,9 @@ jobs:
           # Create vsix for artifact
           node_modules/.bin/vsce pack --pre-release -o azure-pipelines-vscode-ext-pre-release.vsix
         working-directory: src/azure-pipelines-vscode-ext
+      - name: Run azure-pipelines-vscode-ext Tests
+        run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || ''}}npm test
+        working-directory: src/azure-pipelines-vscode-ext
       - name: Publish Pre-Release VS Marketplace
         env:
           HAS_VSCE_TOKEN: ${{ secrets.VSCE_TOKEN && '1' || '' }}
@@ -77,12 +82,11 @@ jobs:
           !contains(github.event_name, 'pull') && env.HAS_OVSX_TOKEN
         run: |
           echo "Publishing Pre-Release"
-          npx --yes publish --skip-duplicate azure-pipelines-vscode-ext${{ (github.event_name != 'workflow_dispatch' || inputs.pre-release) && '-pre-release' || '' }}.vsix -p ${{ secrets.OVSX_TOKEN }}
+          npx --yes ovsx publish --skip-duplicate azure-pipelines-vscode-ext${{ (github.event_name != 'workflow_dispatch' || inputs.pre-release) && '-pre-release' || '' }}.vsix -p ${{ secrets.OVSX_TOKEN }}
         working-directory: src/azure-pipelines-vscode-ext
-      - name: Run azure-pipelines-vscode-ext Tests
-        run: ${{ runner.os == 'Linux' && 'xvfb-run -a ' || ''}}npm test
-        working-directory: src/azure-pipelines-vscode-ext      
       - name: Build runner-server-vscode
+        if: |
+          !cancelled()
         run: |
           npm install
           npm run build
@@ -90,6 +94,8 @@ jobs:
           node_modules/.bin/vsce pack --pre-release -o runner-server-vscode-pre-release.vsix
         working-directory: src/runner-server-vscode
       - name: Build runner-server-web-vscode
+        if: |
+          !cancelled()
         run: |
           npm install
           dotnet workload install wasm-tools
@@ -98,6 +104,8 @@ jobs:
           node_modules/.bin/vsce pack --pre-release -o runner-server-web-vscode-pre-release.vsix
         working-directory: src/runner-server-web-vscode
       - name: Make layout
+        if: |
+          !cancelled()
         run: |
           mkdir webapp
           mv out/wwwroot webapp/ExpandAzurePipelines
@@ -112,16 +120,22 @@ jobs:
           mv src/runner-server-web-vscode/*.vsix webapp/runner-server-web-vscode/
       - name: Upload vsix
         uses: actions/upload-artifact@v4
+        if: |
+          !cancelled()
         with:
           name: azure-pipelines-vscode-ext-pre-release
           path: webapp/azure-pipelines-vscode-ext/azure-pipelines-vscode-ext-pre-release.vsix
       - name: Upload vsix runner-server
         uses: actions/upload-artifact@v4
+        if: |
+          !cancelled()
         with:
           name: runner-server-vscode-pre-release
           path: webapp/runner-server-vscode/runner-server-vscode-pre-release.vsix
       - name: Upload vsix runner-server-web
         uses: actions/upload-artifact@v4
+        if: |
+          !cancelled()
         with:
           name: runner-server-web-vscode-pre-release
           path: webapp/runner-server-web-vscode/runner-server-web-vscode-pre-release.vsix
