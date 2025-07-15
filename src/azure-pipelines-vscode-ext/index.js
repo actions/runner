@@ -1133,7 +1133,6 @@ function activate(context) {
 					await new Promise((resolve) => {
                         setTimeout(resolve, 1);
                     });
-					inProgress = false;
 					askForInput = false;
 					if(self?.stopTask) {
 						task.warn("Parameters changed, please rerun the task when done");
@@ -1148,6 +1147,7 @@ function activate(context) {
 					if(!args.watch || self?.stopTask) {
 						close();
 					}
+					inProgress = false;
 					if(waiting) {
 						run(askForInput);
 					}
