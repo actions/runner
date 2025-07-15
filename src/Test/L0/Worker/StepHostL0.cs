@@ -175,6 +175,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 sh.Initialize(hc);
                 sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
 
+                // Enable Node 24 feature flag
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.UseNode24, "true");
+
                 _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
                     .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
                     {
@@ -201,6 +204,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var sh = new ContainerStepHost();
                 sh.Initialize(hc);
                 sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+
+                // Enable Node 24 feature flag
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.UseNode24, "true");
 
                 _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
                     .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
