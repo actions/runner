@@ -29,7 +29,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             // Test the NodeCompatibilityChecker directly
             string preferredVersion = "node24";
-            string result = NodeCompatibilityChecker.CheckNodeVersionForArm32(_ec.Object, preferredVersion);
+            string result = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(_ec.Object, preferredVersion);
 
             // On ARM32 Linux, we should fall back to node20
             bool isArm32 = RuntimeInformation.ProcessArchitecture == Architecture.Arm ||
@@ -54,7 +54,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         public void CheckNodeVersionForArm32_PassThroughNonNode24Versions()
         {
             string preferredVersion = "node20";
-            string result = NodeCompatibilityChecker.CheckNodeVersionForArm32(_ec.Object, preferredVersion);
+            string result = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(_ec.Object, preferredVersion);
 
             // Should never modify the version for non-node24 inputs
             Assert.Equal("node20", result);

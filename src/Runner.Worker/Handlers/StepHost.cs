@@ -24,7 +24,7 @@ namespace GitHub.Runner.Worker.Handlers
         /// <param name="executionContext">The execution context for logging</param>
         /// <param name="preferredVersion">The preferred Node version</param>
         /// <returns>The adjusted Node version</returns>
-        public static string CheckNodeVersionForArm32(IExecutionContext executionContext, string preferredVersion)
+        public static string CheckNodeVersionForLinusArm32(IExecutionContext executionContext, string preferredVersion)
         {
             if (preferredVersion != null && preferredVersion.StartsWith("node24", StringComparison.OrdinalIgnoreCase))
             {
@@ -93,7 +93,7 @@ namespace GitHub.Runner.Worker.Handlers
         public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
             // Check if Node24 is requested but we're on ARM32 Linux
-            string adjustedVersion = NodeCompatibilityChecker.CheckNodeVersionForArm32(executionContext, preferredVersion);
+            string adjustedVersion = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(executionContext, preferredVersion);
             return Task.FromResult(adjustedVersion);
         }
 
@@ -172,7 +172,7 @@ namespace GitHub.Runner.Worker.Handlers
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
             // If Node24 is requested but we're on ARM32, fall back to Node20 with a warning
-            preferredVersion = NodeCompatibilityChecker.CheckNodeVersionForArm32(executionContext, preferredVersion);
+            preferredVersion = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(executionContext, preferredVersion);
 
             string nodeExternal = preferredVersion;
 
@@ -301,7 +301,7 @@ namespace GitHub.Runner.Worker.Handlers
         private string CheckPlatformForAlpineContainer(IExecutionContext executionContext, string preferredVersion)
         {
             // Handle ARM32 architecture specifically for node24
-            preferredVersion = NodeCompatibilityChecker.CheckNodeVersionForArm32(executionContext, preferredVersion);
+            preferredVersion = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(executionContext, preferredVersion);
 
             string nodeExternal = preferredVersion;
 
