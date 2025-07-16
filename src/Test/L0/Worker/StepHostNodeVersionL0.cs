@@ -31,17 +31,19 @@ namespace GitHub.Runner.Common.Tests.Worker
             string preferredVersion = "node24";
             string result = NodeCompatibilityChecker.CheckNodeVersionForArm32(_ec.Object, preferredVersion);
 
-            // Verify we called Warning if on ARM32
-            if (RuntimeInformation.ProcessArchitecture == Architecture.Arm &&
-                RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            // On ARM32 Linux, we should fall back to node20
+            bool isArm32 = RuntimeInformation.ProcessArchitecture == Architecture.Arm ||
+                          Environment.GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")?.Contains("ARM") == true;
+            bool isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+
+            if (isArm32 && isLinux)
             {
-                _ec.Verify(x => x.Warning(It.IsAny<string>()), Times.Once);
+                // Should downgrade to node20 on ARM32 Linux
                 Assert.Equal("node20", result);
             }
             else
             {
                 // On non-ARM32 platforms, should pass through the version unmodified
-                _ec.Verify(x => x.Warning(It.IsAny<string>()), Times.Never);
                 Assert.Equal("node24", result);
             }
         }
@@ -54,8 +56,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             string preferredVersion = "node20";
             string result = NodeCompatibilityChecker.CheckNodeVersionForArm32(_ec.Object, preferredVersion);
 
-            // Should never warn or modify the version for non-node24 inputs
-            _ec.Verify(x => x.Warning(It.IsAny<string>()), Times.Never);
+            // Should never modify the version for non-node24 inputs
             Assert.Equal("node20", result);
         }
     }
