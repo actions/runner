@@ -42,7 +42,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var hf = new HandlerFactory();
                 hf.Initialize(hc);
 
-                // Server Feature Flag
+                // Setup variables
                 var variables = new Dictionary<string, VariableValue>();
                 Variables serverVariables = new(hc, variables);
 
@@ -73,14 +73,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(expectedVersion, handler.Data.NodeVersion);
             }
         }
-        
-        [Theory]
+
+      
+
+        [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        [InlineData("node12", "node20")]
-        [InlineData("node16", "node20")]
-        [InlineData("node24", "node24")]
-        public void NodeVersionWithFeatureFlagEnabled(string inputVersion, string expectedVersion)
+        public void Node24ExplicitlyRequested_HonoredByDefault()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -88,186 +87,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var hf = new HandlerFactory();
                 hf.Initialize(hc);
 
-                // Server Feature Flag - enable Node 24
-                var variables = new Dictionary<string, VariableValue>
-                {
-                    { Constants.Runner.Features.UseNode24, new VariableValue("true") }
-                };
-                Variables serverVariables = new(hc, variables);
-
-                // Workflow opt-out
-                var workflowVariables = new Dictionary<string, string>();
-
-                _ec.Setup(x => x.Global).Returns(new GlobalContext()
-                {
-                    Variables = serverVariables,
-                    EnvironmentVariables = workflowVariables
-                });
-
-                // Act.
-                var data = new NodeJSActionExecutionData();
-                data.NodeVersion = inputVersion;
-                var handler = hf.Create(
-                    _ec.Object,
-                    new ScriptReference(),
-                    new Mock<IStepHost>().Object,
-                    data,
-                    new Dictionary<string, string>(),
-                    new Dictionary<string, string>(),
-                    new Variables(hc, new Dictionary<string, VariableValue>()), "", new List<JobExtensionRunner>()
-                ) as INodeScriptActionHandler;
-
-                // Assert.
-                Assert.Equal(expectedVersion, handler.Data.NodeVersion);
-            }
-        }
-        
-        [Theory]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        [InlineData("runner_usenode24", "true")]
-        [InlineData("RUNNER_USENODE24", "true")]
-        [InlineData("runner_usenode24", "1")]
-        [InlineData("RUNNER_USENODE24", "1")]
-        public void NodeVersionWithEnvironmentVariableEnabled(string envVarName, string envVarValue)
-        {
-            try
-            {
-                // Set the environment variable for testing
-                Environment.SetEnvironmentVariable(envVarName, envVarValue);
-                
-                using (TestHostContext hc = CreateTestContext())
-                {
-                    // Arrange.
-                    var hf = new HandlerFactory();
-                    hf.Initialize(hc);
-
-                    // Server Feature Flag - NOT set in variables
-                    var variables = new Dictionary<string, VariableValue>();
-                    Variables serverVariables = new(hc, variables);
-
-                    // Workflow variables
-                    var workflowVariables = new Dictionary<string, string>();
-
-                    _ec.Setup(x => x.Global).Returns(new GlobalContext()
-                    {
-                        Variables = serverVariables,
-                        EnvironmentVariables = workflowVariables
-                    });
-
-                    // Act - Test with one Node version to verify the behavior
-                    var inputVersion = "node16"; // Use node16 as a representative case
-                    
-                    // Make sure we have a handler instance to use
-                    var nodeHandler = new Mock<INodeScriptActionHandler>();
-                    nodeHandler.SetupAllProperties();
-                    hc.EnqueueInstance(nodeHandler.Object);
-                    
-                    var data = new NodeJSActionExecutionData();
-                    data.NodeVersion = inputVersion;
-                    var handler = hf.Create(
-                        _ec.Object,
-                        new ScriptReference(),
-                        new Mock<IStepHost>().Object,
-                        data,
-                        new Dictionary<string, string>(),
-                        new Dictionary<string, string>(),
-                        new Variables(hc, new Dictionary<string, VariableValue>()), 
-                        "", 
-                        new List<JobExtensionRunner>()
-                    ) as INodeScriptActionHandler;
-
-                    string expectedVersion = "node20";
-                    
-                    // Assert - should use Node 24
-                    Assert.Equal(expectedVersion, handler.Data.NodeVersion);
-                }
-            }
-            finally
-            {
-                // Clean up the environment variable after the test
-                Environment.SetEnvironmentVariable(envVarName, null);
-            }
-        }
-        
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void NodeVersionWithFeatureFlagNameEnvironmentVariableEnabled()
-        {
-            try
-            {
-                // Use the actual feature flag name from constants
-                string envVarName = Constants.Runner.Features.UseNode24;
-                Environment.SetEnvironmentVariable(envVarName, "true");
-                
-                using (TestHostContext hc = CreateTestContext())
-                {
-                    // Arrange.
-                    var hf = new HandlerFactory();
-                    hf.Initialize(hc);
-
-                    // Server Feature Flag - NOT set in variables
-                    var variables = new Dictionary<string, VariableValue>();
-                    Variables serverVariables = new(hc, variables);
-
-                    // Workflow variables
-                    var workflowVariables = new Dictionary<string, string>();
-
-                    _ec.Setup(x => x.Global).Returns(new GlobalContext()
-                    {
-                        Variables = serverVariables,
-                        EnvironmentVariables = workflowVariables
-                    });
-
-                    // Act - Test with one Node version to verify the behavior
-                    var inputVersion = "node16"; // Use node16 as a representative case
-                    
-                    // Make sure we have a handler instance to use
-                    var nodeHandler = new Mock<INodeScriptActionHandler>();
-                    nodeHandler.SetupAllProperties();
-                    hc.EnqueueInstance(nodeHandler.Object);
-                    
-                    var data = new NodeJSActionExecutionData();
-                    data.NodeVersion = inputVersion;
-                    var handler = hf.Create(
-                        _ec.Object,
-                        new ScriptReference(),
-                        new Mock<IStepHost>().Object,
-                        data,
-                        new Dictionary<string, string>(),
-                        new Dictionary<string, string>(),
-                        new Variables(hc, new Dictionary<string, VariableValue>()), 
-                        "", 
-                        new List<JobExtensionRunner>()
-                    ) as INodeScriptActionHandler;
-
-                    string expectedVersion = "node20";
-                    
-                    // Assert - should use Node 24 since the env variable doesn't affect this
-                    Assert.Equal(expectedVersion, handler.Data.NodeVersion);
-                }
-            }
-            finally
-            {
-                // Clean up the environment variable after the test
-                Environment.SetEnvironmentVariable(Constants.Runner.Features.UseNode24, null);
-            }
-        }
-        
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void Node24ExplicitlyRequested_DoNotDowngradeWhenFeatureFlagOff()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-
-                var hf = new HandlerFactory();
-                hf.Initialize(hc);
-
-                // Server Feature Flag - feature flag NOT set
+                // Basic variables setup
                 var variables = new Dictionary<string, VariableValue>();
                 Variables serverVariables = new(hc, variables);
 
@@ -287,12 +107,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                     data,
                     new Dictionary<string, string>(),
                     new Dictionary<string, string>(),
-                    new Variables(hc, new Dictionary<string, VariableValue>()), 
-                    "", 
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
                     new List<JobExtensionRunner>()
                 ) as INodeScriptActionHandler;
 
-                // Assert - should be still node24 because the feature flag is just for internal node versions
+                // Assert - should be node24 as requested
                 Assert.Equal("node24", handler.Data.NodeVersion);
             }
         }
