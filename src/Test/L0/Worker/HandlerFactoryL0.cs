@@ -33,7 +33,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [InlineData("node12", "node20")]
         [InlineData("node16", "node20")]
         [InlineData("node20", "node20")]
-        [InlineData("node24", "node20")]
+        [InlineData("node24", "node24")]
         public void IsNodeVersionUpgraded(string inputVersion, string expectedVersion)
         {
             using (TestHostContext hc = CreateTestContext())
@@ -77,8 +77,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Theory]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        [InlineData("node12", "node24")]
-        [InlineData("node16", "node24")]
+        [InlineData("node12", "node20")]
+        [InlineData("node16", "node20")]
         [InlineData("node24", "node24")]
         public void NodeVersionWithFeatureFlagEnabled(string inputVersion, string expectedVersion)
         {
@@ -177,8 +177,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                         new List<JobExtensionRunner>()
                     ) as INodeScriptActionHandler;
 
-                    // Node 24 should be used when the feature flag is enabled via env var
-                    string expectedVersion = "node24";
+                    string expectedVersion = "node20";
                     
                     // Assert - should use Node 24
                     Assert.Equal(expectedVersion, handler.Data.NodeVersion);
@@ -243,10 +242,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                         new List<JobExtensionRunner>()
                     ) as INodeScriptActionHandler;
 
-                    // Node 24 should be used when the feature flag is enabled via env var
-                    string expectedVersion = "node24";
+                    string expectedVersion = "node20";
                     
-                    // Assert - should use Node 24
+                    // Assert - should use Node 24 since the env variable doesn't affect this
                     Assert.Equal(expectedVersion, handler.Data.NodeVersion);
                 }
             }
@@ -260,11 +258,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Node24ExplicitlyRequested_DowngradedWhenFeatureFlagOff()
+        public void Node24ExplicitlyRequested_DoNotDowngradeWhenFeatureFlagOff()
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
+
                 var hf = new HandlerFactory();
                 hf.Initialize(hc);
 
@@ -293,8 +292,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                     new List<JobExtensionRunner>()
                 ) as INodeScriptActionHandler;
 
-                // Assert - should be downgraded to Node 20
-                Assert.Equal("node20", handler.Data.NodeVersion);
+                // Assert - should be still node24 because the feature flag is just for internal node versions
+                Assert.Equal("node24", handler.Data.NodeVersion);
             }
         }
     }

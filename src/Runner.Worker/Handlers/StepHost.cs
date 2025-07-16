@@ -60,16 +60,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            if (string.Equals(preferredVersion, "node24", StringComparison.OrdinalIgnoreCase))
-            {
-                var useNode24 = FeatureManager.IsNode24Enabled(executionContext.Global.Variables);
-                if (!useNode24)
-                {
-                    executionContext.Warning($"Action requested Node 24 runtime, but feature flag '{Constants.Runner.Features.UseNode24}' is not enabled. You can enable it with the RUNNER_USENODE24 environment variable. Using Node 20 instead.");
-                    return Task.FromResult<string>("node20");
-                }
-            }
-            
             return Task.FromResult<string>(preferredVersion);
         }
 
@@ -147,17 +137,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            // Enforce feature flag check for node24 requests
-            if (string.Equals(preferredVersion, "node24", StringComparison.OrdinalIgnoreCase))
-            {
-                var useNode24 = FeatureManager.IsNode24Enabled(executionContext.Global.Variables);
-                if (!useNode24)
-                {
-                    executionContext.Warning($"Action requested Node 24 runtime, but feature flag '{Constants.Runner.Features.UseNode24}' is not enabled. You can enable it with the RUNNER_USENODE24 environment variable. Using Node 20 instead.");
-                    preferredVersion = "node20";
-                }
-            }
-
             // Optimistically use the default
             string nodeExternal = preferredVersion;
 

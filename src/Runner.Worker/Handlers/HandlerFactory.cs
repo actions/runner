@@ -57,22 +57,11 @@ namespace GitHub.Runner.Worker.Handlers
                 handler = HostContext.CreateService<INodeScriptActionHandler>();
                 var nodeData = data as NodeJSActionExecutionData;
 
-                if (string.Equals(nodeData.NodeVersion, "node24", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    var useNode24 = FeatureManager.IsNode24Enabled(executionContext.Global.Variables);
-                    if (!useNode24)
-                    {
-                        executionContext.Warning($"Action requested Node 24 runtime, but feature flag '{Constants.Runner.Features.UseNode24}' is not enabled. You can enable it with the RUNNER_USENODE24 environment variable. Using Node 20 instead.");
-                        nodeData.NodeVersion = "node20";
-                    }
-                }
                 // With node12 EoL in 04/2022 and node16 EoL in 09/23, we want to execute all JS actions using node20
-                // unless the Node 24 feature flag is enabled
-                else if (string.Equals(nodeData.NodeVersion, "node12", StringComparison.InvariantCultureIgnoreCase) ||
+                if (string.Equals(nodeData.NodeVersion, "node12", StringComparison.InvariantCultureIgnoreCase) ||
                     string.Equals(nodeData.NodeVersion, "node16", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    var useNode24 = FeatureManager.IsNode24Enabled(executionContext.Global.Variables);
-                    nodeData.NodeVersion = useNode24 ? "node24" : "node20";
+                    nodeData.NodeVersion = "node20";
                 }
 
                 (handler as INodeScriptActionHandler).Data = nodeData;
