@@ -13,36 +13,6 @@ using System.Runtime.InteropServices;
 
 namespace GitHub.Runner.Worker.Handlers
 {
-    /// <summary>
-    /// Helper class for node version compatibility checks
-    /// </summary>
-    public static class NodeCompatibilityChecker
-    {
-        /// <summary>
-        /// Checks if Node24 is requested but running on ARM32 Linux, and falls back to Node20 with a warning.
-        /// </summary>
-        /// <param name="executionContext">The execution context for logging</param>
-        /// <param name="preferredVersion">The preferred Node version</param>
-        /// <returns>The adjusted Node version</returns>
-        public static string CheckNodeVersionForLinusArm32(IExecutionContext executionContext, string preferredVersion)
-        {
-            if (preferredVersion != null && preferredVersion.StartsWith("node24", StringComparison.OrdinalIgnoreCase))
-            {
-                bool isArm32 = RuntimeInformation.ProcessArchitecture == Architecture.Arm ||
-                              Environment.GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")?.Contains("ARM") == true;
-                bool isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
-
-                if (isArm32 && isLinux)
-                {
-                    executionContext.Warning($"Node 24 is not supported on Linux ARM32 platforms. Falling back to Node 20.");
-                    return "node20";
-                }
-            }
-
-            return preferredVersion;
-        }
-    }
-
     public interface IStepHost : IRunnerService
     {
         event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
@@ -78,7 +48,6 @@ namespace GitHub.Runner.Worker.Handlers
     }
 
 
-
     public sealed class DefaultStepHost : RunnerService, IDefaultStepHost
     {
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
@@ -89,12 +58,16 @@ namespace GitHub.Runner.Worker.Handlers
             return path;
         }
 
-
         public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            // Check if Node24 is requested but we're on ARM32 Linux
-            string adjustedVersion = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(executionContext, preferredVersion);
-            return Task.FromResult(adjustedVersion);
+            // Use NodeUtil to check if Node24 is requested but we're on ARM32 Linux
+            var (nodeVersion, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
+            if (!string.IsNullOrEmpty(warningMessage))
+            {
+                executionContext.Warning(warningMessage);
+            }
+            
+            return Task.FromResult(nodeVersion);
         }
 
         public async Task<int> ExecuteAsync(IExecutionContext context,
@@ -171,10 +144,12 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            // If Node24 is requested but we're on ARM32, fall back to Node20 with a warning
-            preferredVersion = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(executionContext, preferredVersion);
-
-            string nodeExternal = preferredVersion;
+            // Use NodeUtil to check if Node24 is requested but we're on ARM32 Linux
+            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
+            if (!string.IsNullOrEmpty(warningMessage))
+            {
+                executionContext.Warning(warningMessage);
+            }
 
             if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
@@ -300,10 +275,12 @@ namespace GitHub.Runner.Worker.Handlers
 
         private string CheckPlatformForAlpineContainer(IExecutionContext executionContext, string preferredVersion)
         {
-            // Handle ARM32 architecture specifically for node24
-            preferredVersion = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(executionContext, preferredVersion);
-
-            string nodeExternal = preferredVersion;
+            // Use NodeUtil to check if Node24 is requested but we're on ARM32 Linux
+            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
+            if (!string.IsNullOrEmpty(warningMessage))
+            {
+                executionContext.Warning(warningMessage);
+            }
 
             // Check for Alpine container compatibility
             if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
@@ -313,7 +290,6 @@ namespace GitHub.Runner.Worker.Handlers
                 var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
                 throw new NotSupportedException(msg);
             }
-
             nodeExternal = $"{preferredVersion}_alpine";
             executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
             return nodeExternal;

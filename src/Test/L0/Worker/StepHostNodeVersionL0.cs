@@ -27,9 +27,9 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void CheckNodeVersionForArm32_Node24OnArm32Linux()
         {
-            // Test the NodeCompatibilityChecker directly
+            // Test via NodeUtil directly
             string preferredVersion = "node24";
-            string result = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(_ec.Object, preferredVersion);
+            var (nodeVersion, warningMessage) = GitHub.Runner.Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
 
             // On ARM32 Linux, we should fall back to node20
             bool isArm32 = RuntimeInformation.ProcessArchitecture == Architecture.Arm ||
@@ -39,12 +39,15 @@ namespace GitHub.Runner.Common.Tests.Worker
             if (isArm32 && isLinux)
             {
                 // Should downgrade to node20 on ARM32 Linux
-                Assert.Equal("node20", result);
+                Assert.Equal("node20", nodeVersion);
+                Assert.NotNull(warningMessage);
+                Assert.Contains("Node 24 is not supported on Linux ARM32 platforms", warningMessage);
             }
             else
             {
                 // On non-ARM32 platforms, should pass through the version unmodified
-                Assert.Equal("node24", result);
+                Assert.Equal("node24", nodeVersion);
+                Assert.Null(warningMessage);
             }
         }
 
@@ -54,10 +57,11 @@ namespace GitHub.Runner.Common.Tests.Worker
         public void CheckNodeVersionForArm32_PassThroughNonNode24Versions()
         {
             string preferredVersion = "node20";
-            string result = NodeCompatibilityChecker.CheckNodeVersionForLinusArm32(_ec.Object, preferredVersion);
+            var (nodeVersion, warningMessage) = GitHub.Runner.Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
 
             // Should never modify the version for non-node24 inputs
-            Assert.Equal("node20", result);
+            Assert.Equal("node20", nodeVersion);
+            Assert.Null(warningMessage);
         }
     }
 }

@@ -18,5 +18,23 @@ namespace GitHub.Runner.Common.Util
             }
             return _defaultNodeVersion;
         }
+
+        /// <summary>
+        /// Checks if Node24 is requested but running on ARM32 Linux, and determines if fallback is needed.
+        /// </summary>
+        /// <param name="preferredVersion">The preferred Node version</param>
+        /// <returns>A tuple containing the adjusted node version and an optional warning message</returns>
+        public static (string nodeVersion, string warningMessage) CheckNodeVersionForLinuxArm32(string preferredVersion)
+        {
+            if (!string.IsNullOrEmpty(preferredVersion) && preferredVersion.StartsWith("node24", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm) && Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+                {
+                    return ("node20", "Node 24 is not supported on Linux ARM32 platforms. Falling back to Node 20.");
+                }
+            }
+
+            return (preferredVersion, null);
+        }
     }
 }
