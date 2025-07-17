@@ -26,7 +26,7 @@ namespace GitHub.Runner.Common.Util
         /// <returns>A tuple containing the adjusted node version and an optional warning message</returns>
         public static (string nodeVersion, string warningMessage) CheckNodeVersionForLinuxArm32(string preferredVersion)
         {
-            if (!string.IsNullOrEmpty(preferredVersion) && preferredVersion.StartsWith("node24", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(preferredVersion, "node24", StringComparison.OrdinalIgnoreCase))
             {
                 if (Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm) && Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
                 {

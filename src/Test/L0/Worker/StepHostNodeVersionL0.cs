@@ -1,12 +1,8 @@
-﻿using GitHub.Runner.Common.Tests;
-using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Container;
+﻿using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
 using Moq;
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace GitHub.Runner.Common.Tests.Worker
@@ -29,7 +25,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             // Test via NodeUtil directly
             string preferredVersion = "node24";
-            var (nodeVersion, warningMessage) = GitHub.Runner.Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
+            var (nodeVersion, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
 
             // On ARM32 Linux, we should fall back to node20
             bool isArm32 = RuntimeInformation.ProcessArchitecture == Architecture.Arm ||
@@ -57,7 +53,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         public void CheckNodeVersionForArm32_PassThroughNonNode24Versions()
         {
             string preferredVersion = "node20";
-            var (nodeVersion, warningMessage) = GitHub.Runner.Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
+            var (nodeVersion, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
 
             // Should never modify the version for non-node24 inputs
             Assert.Equal("node20", nodeVersion);

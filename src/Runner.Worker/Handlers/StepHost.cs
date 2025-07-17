@@ -9,7 +9,6 @@ using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Worker.Container.ContainerHooks;
 using System.Threading.Channels;
-using System.Runtime.InteropServices;
 
 namespace GitHub.Runner.Worker.Handlers
 {
