@@ -1,6 +1,5 @@
 ﻿using System;
 using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker
 {
