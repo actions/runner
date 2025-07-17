@@ -47,7 +47,6 @@ namespace GitHub.Runner.Worker.Handlers
     {
     }
 
-
     public sealed class DefaultStepHost : RunnerService, IDefaultStepHost
     {
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
