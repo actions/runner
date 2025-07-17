@@ -50,12 +50,10 @@ namespace GitHub.Runner.Worker
             if (message.Variables.TryGetValue(Constants.Variables.System.OrchestrationId, out VariableValue orchestrationId) &&
                 !string.IsNullOrEmpty(orchestrationId.Value))
             {
-                HostContext.LoadDefaultUserAgents();
-                
                 if (!HostContext.UserAgents.Any(x => string.Equals(x.Product?.Name, "OrchestrationId", StringComparison.OrdinalIgnoreCase)))
                 {
                     // make the orchestration id the first item in the user-agent header to avoid get truncated in server log.
-                    HostContext.UserAgents?.Insert(0, new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
+                    HostContext.UserAgents.Insert(0, new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
                 }
 
                 // make sure orchestration id is in the user-agent header.
