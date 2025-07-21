@@ -170,6 +170,21 @@ namespace GitHub.Runner.Common
                 public static readonly string AddCheckRunIdToJobContext = "actions_add_check_run_id_to_job_context";
                 public static readonly string DisplayHelpfulActionsDownloadErrors = "actions_display_helpful_actions_download_errors";
             }
+            
+            // Node version migration related constants
+            public static class NodeMigration
+            {
+                // Node versions
+                public static readonly string Node20 = "node20";
+                public static readonly string Node24 = "node24";
+                
+                // Environment variables for controlling node version selection
+                public static readonly string ForceNode24Variable = "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24";
+                public static readonly string AllowUnsecureNodeVersionVariable = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
+                
+                // Cutover date: April 30, 2026 - after this date Node 24 becomes the default
+                public static readonly DateTime Node24CutoverDate = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc);
+            }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
             public static readonly Guid TelemetryRecordId = new Guid("11111111-1111-1111-1111-111111111111");

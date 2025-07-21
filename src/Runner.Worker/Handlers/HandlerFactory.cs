@@ -58,10 +58,25 @@ namespace GitHub.Runner.Worker.Handlers
                 var nodeData = data as NodeJSActionExecutionData;
 
                 // With node12 EoL in 04/2022 and node16 EoL in 09/23, we want to execute all JS actions using node20
+                // With node20 EoL approaching, we're preparing to migrate to node24
                 if (string.Equals(nodeData.NodeVersion, "node12", StringComparison.InvariantCultureIgnoreCase) ||
                     string.Equals(nodeData.NodeVersion, "node16", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    nodeData.NodeVersion = "node20";
+                    nodeData.NodeVersion = Common.Constants.Runner.NodeMigration.Node20;
+                }
+                
+                // Check if node20 was explicitly specified in the action
+                // We don't modify if node24 was explicitly specified
+                if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    nodeData.NodeVersion = NodeUtil.DetermineActionsNodeVersion(environment);
+                    var (finalNodeVersion, warningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeData.NodeVersion);
+                    nodeData.NodeVersion = finalNodeVersion;
+                    
+                    if (!string.IsNullOrEmpty(warningMessage))
+                    {
+                        executionContext.Warning(warningMessage);
+                    }
                 }
 
                 (handler as INodeScriptActionHandler).Data = nodeData;
