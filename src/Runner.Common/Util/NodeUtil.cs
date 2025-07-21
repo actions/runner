@@ -44,8 +44,13 @@ namespace GitHub.Runner.Common.Util
             }
             
             // Phase 3: If require Node 24 flag is enabled, always use Node 24 regardless of environment variables
+            // Unless allowUnsecureNode is set (highest precedence)
             if (requireNode24)
             {
+                if (allowUnsecureNode)
+                {
+                    return (Constants.Runner.NodeMigration.Node20, warningMessage);
+                }
                 return (Constants.Runner.NodeMigration.Node24, warningMessage);
             }
             
@@ -63,6 +68,8 @@ namespace GitHub.Runner.Common.Util
                     return (Constants.Runner.NodeMigration.Node20, warningMessage);
                 }
                 
+                // The forceNode24 check is redundant here since the default is already Node24,
+                // but we're keeping it for code clarity
                 return (Constants.Runner.NodeMigration.Node24, warningMessage);
             }
             
@@ -100,11 +107,9 @@ namespace GitHub.Runner.Common.Util
         /// <returns>True if the variable is set to "true" in either environment</returns>
         private static bool IsEnvironmentVariableTrue(string variableName, IDictionary<string, string> workflowEnvironment)
         {
-            if (workflowEnvironment != null && 
-                workflowEnvironment.TryGetValue(variableName, out string workflowValue) && 
-                string.Equals(workflowValue, "true", StringComparison.OrdinalIgnoreCase))
+            if (workflowEnvironment != null && workflowEnvironment.TryGetValue(variableName, out string workflowValue))
             {
-                return true;
+                return string.Equals(workflowValue, "true", StringComparison.OrdinalIgnoreCase);
             }
             
             string systemValue = Environment.GetEnvironmentVariable(variableName);
