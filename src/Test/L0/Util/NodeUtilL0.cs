@@ -8,52 +8,43 @@ namespace GitHub.Runner.Common.Tests.Util
 {
     public class NodeUtilL0
     {
-        // We're testing the logic rather than the actual implementation due to DateTime.UtcNow constraints
+        // We're testing the logic with feature flags
         [Theory]
-        [InlineData(false, false, false, "node20")] // Before cutover, no flags, default node20
-        [InlineData(false, false, true, "node20")]  // Before cutover, allow unsecure (redundant)
-        [InlineData(false, true, false, "node24")]  // Before cutover, force node24
-        [InlineData(false, true, true, "node24")]   // Before cutover, both flags (force node24 takes precedence)
-        [InlineData(true, false, false, "node24")]  // After cutover, no flags, default node24
-        [InlineData(true, false, true, "node20")]   // After cutover, allow unsecure
-        [InlineData(true, true, false, "node24")]   // After cutover, force node24 (redundant)
-        [InlineData(true, true, true, "node20")]    // After cutover, both flags (allow unsecure takes precedence)
-        public void TestNodeVersionLogic(bool isAfterCutover, bool forceNode24, bool allowUnsecureNode, string expectedVersion)
+        [InlineData(false, false, false, false, "node20", false)] // Phase 1: No env vars
+        [InlineData(false, false, false, true, "node20", false)]  // Phase 1: Allow unsecure (redundant)
+        [InlineData(false, false, true, false, "node24", false)]  // Phase 1: Force node24
+        [InlineData(false, false, true, true, "node20", true)]    // Phase 1: Both flags (use phase default + warning)
+        [InlineData(false, true, false, false, "node24", false)]  // Phase 2: No env vars
+        [InlineData(false, true, false, true, "node20", false)]   // Phase 2: Allow unsecure
+        [InlineData(false, true, true, false, "node24", false)]   // Phase 2: Force node24 (redundant)
+        [InlineData(false, true, true, true, "node24", true)]     // Phase 2: Both flags (use phase default + warning)
+        [InlineData(true, false, false, false, "node24", false)]  // Phase 3: Always Node 24 regardless of env vars
+        [InlineData(true, false, false, true, "node24", false)]   // Phase 3: Always Node 24 regardless of env vars
+        [InlineData(true, false, true, false, "node24", false)]   // Phase 3: Always Node 24 regardless of env vars
+        [InlineData(true, false, true, true, "node24", true)]     // Phase 3: Always Node 24 regardless of env vars + warning
+        public void TestNodeVersionLogic(bool requireNode24, bool useNode24ByDefault, bool forceNode24, bool allowUnsecureNode, string expectedVersion, bool expectWarning)
         {
             try
             {
                 Environment.SetEnvironmentVariable(Constants.Runner.NodeMigration.ForceNode24Variable, forceNode24 ? "true" : null);
                 Environment.SetEnvironmentVariable(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable, allowUnsecureNode ? "true" : null);
 
-                string result;
+                // Call the actual method
+                var (actualVersion, warningMessage) = NodeUtil.DetermineActionsNodeVersion(null, useNode24ByDefault, requireNode24);
                 
-                if (isAfterCutover)
+                // Assert
+                Assert.Equal(expectedVersion, actualVersion);
+                
+                if (expectWarning)
                 {
-                    // After cutover date (Constants.Runner.NodeMigration.Node24DefaultCutoverDate)
-                    if (allowUnsecureNode)
-                    {
-                        result = Constants.Runner.NodeMigration.Node20;
-                    }
-                    else
-                    {
-                        result = Constants.Runner.NodeMigration.Node24;
-                    }
+                    Assert.NotNull(warningMessage);
+                    Assert.Contains("Both", warningMessage);
+                    Assert.Contains("are set to true", warningMessage);
                 }
                 else
                 {
-                    // Before cutover date (Constants.Runner.NodeMigration.Node24DefaultCutoverDate)
-                    if (forceNode24)
-                    {
-                        result = Constants.Runner.NodeMigration.Node24;
-                    }
-                    else
-                    {
-                        result = Constants.Runner.NodeMigration.Node20;
-                    }
+                    Assert.Null(warningMessage);
                 }
-
-                // Assert
-                Assert.Equal(expectedVersion, result);
             }
             finally
             {
@@ -64,23 +55,28 @@ namespace GitHub.Runner.Common.Tests.Util
         }
         
         [Theory]
-        [InlineData(false, false, false, false, "node20")] // System env: none, Workflow env: none
-        [InlineData(false, true, false, false, "node24")]  // System env: force node24, Workflow env: none
-        [InlineData(false, false, false, true, "node20")]  // System env: none, Workflow env: allow unsecure
-        [InlineData(false, false, true, false, "node24")]  // System env: none, Workflow env: force node24
-        [InlineData(true, false, false, true, "node20")]   // System env: none, Workflow env: allow unsecure (after cutover)
-        [InlineData(true, false, true, false, "node24")]   // System env: none, Workflow env: force node24 (redundant after cutover)
-        [InlineData(false, true, false, true, "node24")]   // System env: force node24, Workflow env: allow unsecure (before cutover)
-        [InlineData(true, false, true, true, "node20")]    // System env: none, Workflow env: both flags (allow unsecure takes precedence after cutover)
-        public void TestNodeVersionLogicWithWorkflowEnvironment(bool isAfterCutover, 
-            bool systemForceNode24, bool workflowForceNode24, 
-            bool workflowAllowUnsecure, string expectedVersion)
+        [InlineData(false, false, false, false, false, true, "node20", false)]   // Phase 1: System env: none, Workflow env: allow=true
+        [InlineData(false, false, true, false, false, false, "node24", false)]   // Phase 1: System env: force node24, Workflow env: none
+        [InlineData(false, true, false, false, true, false, "node24", false)]    // Phase 1: System env: none, Workflow env: force node24
+        [InlineData(false, true, false, false, false, true, "node20", false)]    // Phase 1: System env: none, Workflow env: allow unsecure
+        [InlineData(false, false, false, false, true, true, "node20", true)]     // Phase 1: System env: none, Workflow env: both (phase default + warning)
+        [InlineData(true, false, false, false, false, false, "node24", false)]   // Phase 2: System env: none, Workflow env: none
+        [InlineData(true, false, false, true, false, false, "node24", false)]    // Phase 2: System env: force node24, Workflow env: none
+        [InlineData(true, false, false, false, false, true, "node20", false)]    // Phase 2: System env: none, Workflow env: allow unsecure
+        [InlineData(true, false, true, false, false, true, "node20", false)]     // Phase 2: System env: force node24, Workflow env: allow unsecure
+        [InlineData(true, false, false, false, true, true, "node24", true)]      // Phase 2: System env: none, Workflow env: both (phase default + warning)
+        public void TestNodeVersionLogicWithWorkflowEnvironment(bool useNode24ByDefault, bool requireNode24,
+            bool systemForceNode24, bool systemAllowUnsecure,
+            bool workflowForceNode24, bool workflowAllowUnsecure, 
+            string expectedVersion, bool expectWarning)
         {
             try
             {
+                // Set system environment variables
                 Environment.SetEnvironmentVariable(Constants.Runner.NodeMigration.ForceNode24Variable, systemForceNode24 ? "true" : null);
-                Environment.SetEnvironmentVariable(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable, null); // We'll only use workflow for this
+                Environment.SetEnvironmentVariable(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable, systemAllowUnsecure ? "true" : null);
                 
+                // Set workflow environment variables
                 var workflowEnv = new Dictionary<string, string>();
                 if (workflowForceNode24)
                 {
@@ -92,27 +88,20 @@ namespace GitHub.Runner.Common.Tests.Util
                 }
                 
                 // Call the actual method with our test parameters
-                string result = NodeUtil.DetermineActionsNodeVersion(workflowEnv);
+                var (actualVersion, warningMessage) = NodeUtil.DetermineActionsNodeVersion(workflowEnv, useNode24ByDefault, requireNode24);
                 
-                // For the after cutover scenario, we'll simulate the behavior by testing against our expected outcomes
-                if (isAfterCutover)
+                // Assert
+                Assert.Equal(expectedVersion, actualVersion);
+                
+                if (expectWarning)
                 {
-                    // We simulate the logic for after cutover date
-                    bool allowUnsecure = workflowAllowUnsecure; // Workflow env takes precedence
-                    
-                    if (allowUnsecure)
-                    {
-                        Assert.Equal(Constants.Runner.NodeMigration.Node20, expectedVersion);
-                    }
-                    else 
-                    {
-                        Assert.Equal(Constants.Runner.NodeMigration.Node24, expectedVersion);
-                    }
+                    Assert.NotNull(warningMessage);
+                    Assert.Contains("Both", warningMessage);
+                    Assert.Contains("are set to true", warningMessage);
                 }
                 else
                 {
-                    // We're testing the logic directly
-                    Assert.Equal(expectedVersion, result);
+                    Assert.Null(warningMessage);
                 }
             }
             finally

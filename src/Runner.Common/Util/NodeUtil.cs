@@ -24,25 +24,55 @@ namespace GitHub.Runner.Common.Util
         /// Determines the appropriate Node version for Actions to use
         /// </summary>
         /// <param name="workflowEnvironment">Optional dictionary containing workflow-level environment variables</param>
-        /// <returns>The Node version to use (node20 or node24)</returns>
-        public static string DetermineActionsNodeVersion(IDictionary<string, string> workflowEnvironment = null)
+        /// <param name="useNode24ByDefault">Feature flag indicating if Node 24 should be the default</param>
+        /// <param name="requireNode24">Feature flag indicating if Node 24 is required</param>
+        /// <param name="warningCallback">Optional callback for emitting warnings</param>
+        /// <returns>The Node version to use (node20 or node24) and warning message if both env vars are set</returns>
+        public static (string nodeVersion, string warningMessage) DetermineActionsNodeVersion(
+            IDictionary<string, string> workflowEnvironment = null,
+            bool useNode24ByDefault = false,
+            bool requireNode24 = false)
         {
-            if (DateTime.UtcNow >= Constants.Runner.NodeMigration.Node24CutoverDate)
+            bool forceNode24 = IsEnvironmentVariableTrue(Constants.Runner.NodeMigration.ForceNode24Variable, workflowEnvironment);
+            bool allowUnsecureNode = IsEnvironmentVariableTrue(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable, workflowEnvironment);
+            
+            string warningMessage = null;
+            if (forceNode24 && allowUnsecureNode)
             {
-                if (IsEnvironmentVariableTrue(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable, workflowEnvironment))
+                string defaultVersion = useNode24ByDefault ? Constants.Runner.NodeMigration.Node24 : Constants.Runner.NodeMigration.Node20;
+                warningMessage = $"Both {Constants.Runner.NodeMigration.ForceNode24Variable} and {Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable} environment variables are set to true. This is likely a configuration error. Using the default Node version: {defaultVersion}.";
+            }
+            
+            // Phase 3: If require Node 24 flag is enabled, always use Node 24 regardless of environment variables
+            if (requireNode24)
+            {
+                return (Constants.Runner.NodeMigration.Node24, warningMessage);
+            }
+            
+            // If both environment variables are set, use the default for the current phase
+            if (forceNode24 && allowUnsecureNode)
+            {
+                return (useNode24ByDefault ? Constants.Runner.NodeMigration.Node24 : Constants.Runner.NodeMigration.Node20, warningMessage);
+            }
+            
+            // Phase 2: If Node 24 is the default (flag enabled)
+            if (useNode24ByDefault)
+            {
+                if (allowUnsecureNode)
                 {
-                    return Constants.Runner.NodeMigration.Node20;
+                    return (Constants.Runner.NodeMigration.Node20, warningMessage);
                 }
                 
-                return Constants.Runner.NodeMigration.Node24;
+                return (Constants.Runner.NodeMigration.Node24, warningMessage);
             }
             
-            if (IsEnvironmentVariableTrue(Constants.Runner.NodeMigration.ForceNode24Variable, workflowEnvironment))
+            // Phase 1: Node 20 is the default
+            if (forceNode24)
             {
-                return Constants.Runner.NodeMigration.Node24;
+                return (Constants.Runner.NodeMigration.Node24, warningMessage);
             }
             
-            return Constants.Runner.NodeMigration.Node20;
+            return (Constants.Runner.NodeMigration.Node20, warningMessage);
         }
 
         /// <summary>

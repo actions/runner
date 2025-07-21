@@ -69,13 +69,21 @@ namespace GitHub.Runner.Worker.Handlers
                 // We don't modify if node24 was explicitly specified
                 if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    nodeData.NodeVersion = NodeUtil.DetermineActionsNodeVersion(environment);
-                    var (finalNodeVersion, warningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeData.NodeVersion);
+                    bool useNode24ByDefault = FeatureManager.IsFeatureEnabled(executionContext.Global.Variables, Constants.Runner.NodeMigration.UseNode24ByDefaultFlag);
+                    bool requireNode24 = FeatureManager.IsFeatureEnabled(executionContext.Global.Variables, Constants.Runner.NodeMigration.RequireNode24Flag);
+                    
+                    var (nodeVersion, configWarningMessage) = NodeUtil.DetermineActionsNodeVersion(environment, useNode24ByDefault, requireNode24);
+                    var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeVersion);
                     nodeData.NodeVersion = finalNodeVersion;
                     
-                    if (!string.IsNullOrEmpty(warningMessage))
+                    if (!string.IsNullOrEmpty(configWarningMessage))
                     {
-                        executionContext.Warning(warningMessage);
+                        executionContext.Warning(configWarningMessage);
+                    }
+                    
+                    if (!string.IsNullOrEmpty(platformWarningMessage))
+                    {
+                        executionContext.Warning(platformWarningMessage);
                     }
                 }
 

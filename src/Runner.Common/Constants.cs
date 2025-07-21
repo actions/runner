@@ -182,8 +182,9 @@ namespace GitHub.Runner.Common
                 public static readonly string ForceNode24Variable = "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24";
                 public static readonly string AllowUnsecureNodeVersionVariable = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
                 
-                // Cutover date: April 30, 2026 - after this date Node 24 becomes the default
-                public static readonly DateTime Node24CutoverDate = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc);
+                // Feature flags for controlling the migration phases
+                public static readonly string UseNode24ByDefaultFlag = "actions.runner.usenode24bydefault";
+                public static readonly string RequireNode24Flag = "actions.runner.requirenode24";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
