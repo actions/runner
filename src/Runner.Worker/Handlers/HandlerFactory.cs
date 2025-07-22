@@ -85,6 +85,14 @@ namespace GitHub.Runner.Worker.Handlers
                     {
                         executionContext.Warning(platformWarningMessage);
                     }
+                    
+                    // Show information about Node 24 migration in Phase 2
+                    if (useNode24ByDefault && !requireNode24 && string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string infoMessage = "Node 20 is being deprecated. This workflow is running with Node 24 by default. " +
+                                             "If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable.";
+                        executionContext.Output(infoMessage);
+                    }
                 }
 
                 (handler as INodeScriptActionHandler).Data = nodeData;
