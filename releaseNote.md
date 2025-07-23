@@ -1,15 +1,13 @@
 ## What's Changed
-* runner timestamps invariant by @GhadimiR in https://github.com/actions/runner/pull/3888
-* Update README.md by @nebuk89 in https://github.com/actions/runner/pull/3898
-* Update dotnet sdk to latest version @8.0.411 by @github-actions in https://github.com/actions/runner/pull/3911
-* Update Docker to v28.2.2 and Buildx to v0.25.0 by @github-actions in https://github.com/actions/runner/pull/3918
-* Bump windows service app to dotnet 4.7 by @TingluoHuang in https://github.com/actions/runner/pull/3926
-* Upgrade node.js to latest version. by @TingluoHuang in https://github.com/actions/runner/pull/3935
+* Try add orchestrationid into user-agent using token claim. by @TingluoHuang in https://github.com/actions/runner/pull/3945
+* Fix null reference exception in user agent handling by @salmanmkc in https://github.com/actions/runner/pull/3946
+* Runner Support for executing Node24 Actions by @salmanmkc in https://github.com/actions/runner/pull/3940
+* Update dotnet sdk to latest version @8.0.412 by @github-actions[bot] in https://github.com/actions/runner/pull/3941
 
 ## New Contributors
-* @nebuk89 made their first contribution in https://github.com/actions/runner/pull/3898
+* @salmanmkc made their first contribution in https://github.com/actions/runner/pull/3946
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.325.0...v2.326.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.326.0...v2.327.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
