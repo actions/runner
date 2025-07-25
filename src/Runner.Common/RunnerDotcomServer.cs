@@ -103,10 +103,10 @@ namespace GitHub.Runner.Common
             return await RetryRequest<DistributedTask.WebApi.Runner>(githubApiUrl, githubToken, RequestType.Post, 3, "Failed to add agent", body);
         }
 
-        private async Task<DistributedTask.WebApi.Runner> DeleteRunnerAsync(string githubUrl, string githubToken, ulong runnerId)
+        public async Task DeleteRunnerAsync(string githubUrl, string githubToken, ulong runnerId)
         {
             var githubApiUrl = $"{GetEntityUrl(githubUrl)}/runners/{runnerId}";
-            return await RetryRequest<DistributedTask.WebApi.Runner>(githubApiUrl, githubToken, RequestType.Delete, 3, "Failed to add agent");
+            await RetryRequest<DistributedTask.WebApi.Runner>(githubApiUrl, githubToken, RequestType.Delete, 3, "Failed to delete agent");
         }
 
         private async Task<T> RetryRequest<T>(string githubApiUrl, string githubToken, RequestType requestType, int maxRetryAttemptsCount = 5, string errorMessage = null, StringContent body = null)

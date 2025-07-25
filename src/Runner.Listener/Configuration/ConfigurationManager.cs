@@ -537,60 +537,56 @@ namespace GitHub.Runner.Listener.Configuration
                 if (isConfigured && hasCredentials)
                 {
                     RunnerSettings settings = _store.GetSettings();
-                    var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                    // Get the credentials
-                    VssCredentials creds = null;
-                    if (string.IsNullOrEmpty(settings.GitHubUrl))
+                    if (settings.UseV2Flow)
                     {
-                        var credProvider = GetCredentialProvider(command, settings.ServerUrl);
-                        creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
-                        Trace.Info("legacy vss cred retrieved");
-                    }
-                    else
-                    {
+                        if (string.IsNullOrEmpty(settings.GitHubUrl))
+                        {
+                            throw new InvalidOperationException("GitHub URL is not set. Cannot remove runner from the server.");
+                        }
+
                         var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
                         GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
-                        creds = authResult.ToVssCredentials();
-                        Trace.Info("cred retrieved via GitHub auth");
+                        await _dotcomServer.DeleteRunnerAsync(settings.GitHubUrl, authResult.Token, settings.AgentId);
                     }
-
-
-                    if (runnerSettings.UseV2Flow)
+                    else
                     {
-                        await _dotcomServer.
-                        var runner = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
-                        runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+                        var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                        agent.Id = runner.Id;
-                        agent.Authorization = new TaskAgentAuthorization()
+                        // Get the credentials
+                        VssCredentials creds = null;
+                        if (string.IsNullOrEmpty(settings.GitHubUrl))
                         {
-                            AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
-                            ClientId = new Guid(runner.RunnerAuthorization.ClientId)
-                        };
-                    }
-                    else
-                    {
-                        agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
+                            var credProvider = GetCredentialProvider(command, settings.ServerUrl);
+                            creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
+                            Trace.Info("legacy vss cred retrieved");
+                        }
+                        else
+                        {
+                            var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
+                            GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
+                            creds = authResult.ToVssCredentials();
+                            Trace.Info("cred retrieved via GitHub auth");
+                        }
+
+                        // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+                        await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+
+                        var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
+                        Trace.Verbose("Returns {0} agents", agents.Count);
+                        TaskAgent agent = agents.FirstOrDefault();
+                        if (agent == null)
+                        {
+                            _term.WriteLine("Does not exist. Skipping " + currentAction);
+                        }
+                        else
+                        {
+                            await _runnerServer.DeleteAgentAsync(settings.AgentId);
+                        }
                     }
 
-                    // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-
-                    var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
-                    Trace.Verbose("Returns {0} agents", agents.Count);
-                    TaskAgent agent = agents.FirstOrDefault();
-                    if (agent == null)
-                    {
-                        _term.WriteLine("Does not exist. Skipping " + currentAction);
-                    }
-                    else
-                    {
-                        await _runnerServer.DeleteAgentAsync(settings.AgentId);
-
-                        _term.WriteLine();
-                        _term.WriteSuccessMessage("Runner removed successfully");
-                    }
+                    _term.WriteLine();
+                    _term.WriteSuccessMessage("Runner removed successfully");
                 }
                 else
                 {
