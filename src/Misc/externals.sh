@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 PACKAGERUNTIME=$1
 PRECACHE=$2
 
