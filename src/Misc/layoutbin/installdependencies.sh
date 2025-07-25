@@ -102,7 +102,7 @@ then
             exit 1
         fi
 
-        apt_get_with_fallbacks libssl1.1$ libssl1.0.2$ libssl1.0.0$
+        apt_get_with_fallbacks libssl3t64 libssl1.1$ libssl1.0.2$ libssl1.0.0$
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"
@@ -110,7 +110,7 @@ then
             exit 1
         fi
 
-        apt_get_with_fallbacks libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52
+        apt_get_with_fallbacks libicu74 libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"
