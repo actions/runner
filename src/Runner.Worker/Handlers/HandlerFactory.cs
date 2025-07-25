@@ -58,33 +58,10 @@ namespace GitHub.Runner.Worker.Handlers
                 var nodeData = data as NodeJSActionExecutionData;
 
                 // With node12 EoL in 04/2022 and node16 EoL in 09/23, we want to execute all JS actions using node20
-                // With node20 EoL approaching, we're preparing to migrate to node24
                 if (string.Equals(nodeData.NodeVersion, "node12", StringComparison.InvariantCultureIgnoreCase) ||
                     string.Equals(nodeData.NodeVersion, "node16", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    nodeData.NodeVersion = Common.Constants.Runner.NodeMigration.Node20;
-                }
-                
-                // Check if node20 was explicitly specified in the action
-                // We don't modify if node24 was explicitly specified
-                if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    bool useNode24ByDefault = true;
-                    bool requireNode24 = FeatureManager.IsFeatureEnabled(executionContext.Global.Variables, Constants.Runner.NodeMigration.RequireNode24Flag);
-                    
-                    var (nodeVersion, configWarningMessage) = NodeUtil.DetermineActionsNodeVersion(environment, useNode24ByDefault, requireNode24);
-                    var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeVersion);
-                    nodeData.NodeVersion = finalNodeVersion;
-                    
-                    if (!string.IsNullOrEmpty(configWarningMessage))
-                    {
-                        executionContext.Warning(configWarningMessage);
-                    }
-                    
-                    if (!string.IsNullOrEmpty(platformWarningMessage))
-                    {
-                        executionContext.Warning(platformWarningMessage);
-                    }
+                    nodeData.NodeVersion = "node20";
                 }
 
                 (handler as INodeScriptActionHandler).Data = nodeData;
