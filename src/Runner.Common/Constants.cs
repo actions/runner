@@ -170,6 +170,22 @@ namespace GitHub.Runner.Common
                 public static readonly string AddCheckRunIdToJobContext = "actions_add_check_run_id_to_job_context";
                 public static readonly string DisplayHelpfulActionsDownloadErrors = "actions_display_helpful_actions_download_errors";
             }
+            
+            // Node version migration related constants
+            public static class NodeMigration
+            {
+                // Node versions
+                public static readonly string Node20 = "node20";
+                public static readonly string Node24 = "node24";
+                
+                // Environment variables for controlling node version selection
+                public static readonly string ForceNode24Variable = "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24";
+                public static readonly string AllowUnsecureNodeVersionVariable = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
+                
+                // Feature flags for controlling the migration phases
+                public static readonly string UseNode24ByDefaultFlag = "actions.runner.usenode24bydefault";
+                public static readonly string RequireNode24Flag = "actions.runner.requirenode24";
+            }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
             public static readonly Guid TelemetryRecordId = new Guid("11111111-1111-1111-1111-111111111111");
