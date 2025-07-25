@@ -555,6 +555,25 @@ namespace GitHub.Runner.Listener.Configuration
                         Trace.Info("cred retrieved via GitHub auth");
                     }
 
+
+                    if (runnerSettings.UseV2Flow)
+                    {
+                        await _dotcomServer.
+                        var runner = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
+                        runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+
+                        agent.Id = runner.Id;
+                        agent.Authorization = new TaskAgentAuthorization()
+                        {
+                            AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
+                            ClientId = new Guid(runner.RunnerAuthorization.ClientId)
+                        };
+                    }
+                    else
+                    {
+                        agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
+                    }
+
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
 
