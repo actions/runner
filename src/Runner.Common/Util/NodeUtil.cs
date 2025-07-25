@@ -1,102 +1,39 @@
 ﻿using System;
-using System.Collections.Generic;
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
+using System.Collections.ObjectModel;
 
-namespace GitHub.Runner.Worker.Handlers
+namespace GitHub.Runner.Common.Util
 {
-    [ServiceLocator(Default = typeof(HandlerFactory))]
-    public interface IHandlerFactory : IRunnerService
+    public static class NodeUtil
     {
-        IHandler Create(
-            IExecutionContext executionContext,
-            Pipelines.ActionStepDefinitionReference action,
-            IStepHost stepHost,
-            ActionExecutionData data,
-            Dictionary<string, string> inputs,
-            Dictionary<string, string> environment,
-            Variables runtimeVariables,
-            string actionDirectory,
-            List<JobExtensionRunner> localActionContainerSetupSteps);
-    }
-
-    public sealed class HandlerFactory : RunnerService, IHandlerFactory
-    {
-        public IHandler Create(
-            IExecutionContext executionContext,
-            Pipelines.ActionStepDefinitionReference action,
-            IStepHost stepHost,
-            ActionExecutionData data,
-            Dictionary<string, string> inputs,
-            Dictionary<string, string> environment,
-            Variables runtimeVariables,
-            string actionDirectory,
-            List<JobExtensionRunner> localActionContainerSetupSteps)
+        private const string _defaultNodeVersion = "node20";
+        public static readonly ReadOnlyCollection<string> BuiltInNodeVersions = new(new[] { "node20" });
+        public static string GetInternalNodeVersion()
         {
-            // Validate args.
-            Trace.Entering();
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(stepHost, nameof(stepHost));
-            ArgUtil.NotNull(data, nameof(data));
-            ArgUtil.NotNull(inputs, nameof(inputs));
-            ArgUtil.NotNull(environment, nameof(environment));
-            ArgUtil.NotNull(runtimeVariables, nameof(runtimeVariables));
+            var forcedInternalNodeVersion = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion);
+            var isForcedInternalNodeVersion = !string.IsNullOrEmpty(forcedInternalNodeVersion) && BuiltInNodeVersions.Contains(forcedInternalNodeVersion);
 
-            // Create the handler.
-            IHandler handler;
-            if (data.ExecutionType == ActionExecutionType.Container)
+            if (isForcedInternalNodeVersion)
             {
-                handler = HostContext.CreateService<IContainerActionHandler>();
-                (handler as IContainerActionHandler).Data = data as ContainerActionExecutionData;
+                return forcedInternalNodeVersion;
             }
-            else if (data.ExecutionType == ActionExecutionType.NodeJS)
-            {
-                handler = HostContext.CreateService<INodeScriptActionHandler>();
-                var nodeData = data as NodeJSActionExecutionData;
+            return _defaultNodeVersion;
+        }
 
-                // With node12 EoL in 04/2022 and node16 EoL in 09/23, we want to execute all JS actions using node20
-                if (string.Equals(nodeData.NodeVersion, "node12", StringComparison.InvariantCultureIgnoreCase) ||
-                    string.Equals(nodeData.NodeVersion, "node16", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    nodeData.NodeVersion = "node20";
-                }
-
-                (handler as INodeScriptActionHandler).Data = nodeData;
-            }
-            else if (data.ExecutionType == ActionExecutionType.Script)
+        /// <summary>
+        /// Checks if Node24 is requested but running on ARM32 Linux, and determines if fallback is needed.
+        /// </summary>
+        /// <param name="preferredVersion">The preferred Node version</param>
+        /// <returns>A tuple containing the adjusted node version and an optional warning message</returns>
+        public static (string nodeVersion, string warningMessage) CheckNodeVersionForLinuxArm32(string preferredVersion)
+        {
+            if (string.Equals(preferredVersion, "node24", StringComparison.OrdinalIgnoreCase) &&
+                Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm) &&
+                Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
             {
-                handler = HostContext.CreateService<IScriptHandler>();
-                (handler as IScriptHandler).Data = data as ScriptActionExecutionData;
-            }
-            else if (data.ExecutionType == ActionExecutionType.Plugin)
-            {
-                // Runner plugin
-                handler = HostContext.CreateService<IRunnerPluginHandler>();
-                (handler as IRunnerPluginHandler).Data = data as PluginActionExecutionData;
-            }
-            else if (data.ExecutionType == ActionExecutionType.Composite)
-            {
-                handler = HostContext.CreateService<ICompositeActionHandler>();
-                (handler as ICompositeActionHandler).Data = data as CompositeActionExecutionData;
-            }
-            else
-            {
-                // This should never happen.
-                throw new NotSupportedException(data.ExecutionType.ToString());
+                return ("node20", "Node 24 is not supported on Linux ARM32 platforms. Falling back to Node 20.");
             }
 
-            handler.Action = action;
-            handler.Environment = environment;
-            handler.RuntimeVariables = runtimeVariables;
-            handler.ExecutionContext = executionContext;
-            handler.StepHost = stepHost;
-            handler.Inputs = inputs;
-            handler.ActionDirectory = actionDirectory;
-            handler.LocalActionContainerSetupSteps = localActionContainerSetupSteps;
-            return handler;
+            return (preferredVersion, null);
         }
     }
 }
