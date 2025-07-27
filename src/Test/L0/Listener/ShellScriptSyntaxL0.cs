@@ -199,7 +199,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     
                     // Assert
                     // 1. Check that $restartinteractiverunner is correctly referenced with $ in if condition
-                    Assert.Contains("if [[ \"$currentplatform\" == 'darwin'  && $restartinteractiverunner -eq 0 ]];", template);
+                    Assert.Contains("if [[ \"$currentplatform\" == 'darwin' && $restartinteractiverunner -eq 0 ]];\nthen", template);
                     
                     // 2. Check for proper nesting of if statements for node version checks
                     int nodeVersionCheckLines = 0;
