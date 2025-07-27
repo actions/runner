@@ -337,7 +337,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                     // These flags help validate the syntax without fully executing the script
                     var process = new Process();
                     process.StartInfo.FileName = "cmd.exe";
-                    process.StartInfo.Arguments = $"/c /v:on /f:off /e:on \"{tempUpdatePath}\" echo SyntaxCheckOnly && exit /b 0";
+                    // Use a temporary batch file to check syntax without execution
+                    string tempBatchFile = Path.Combine(tempDir, "syntax_check.cmd");
+                    File.WriteAllText(tempBatchFile, $"@echo off\r\necho SyntaxCheckOnly\r\nexit /b 0");
+                    
+                    process.StartInfo.Arguments = $"/c \"{tempUpdatePath}\" \"{tempBatchFile}\"";
                     process.StartInfo.RedirectStandardError = true;
                     process.StartInfo.RedirectStandardOutput = true;
                     process.StartInfo.UseShellExecute = false;
