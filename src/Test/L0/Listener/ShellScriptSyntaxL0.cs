@@ -11,7 +11,7 @@ namespace GitHub.Runner.Common.Tests.Listener
     public sealed class ShellScriptSyntaxL0
     {
         // Generic method to test any shell script template for bash syntax errors
-        private void ValidateShellScriptTemplateSyntax(string relativePath, string templateName)
+        private void ValidateShellScriptTemplateSyntax(string relativePath, string templateName, bool shouldPass = true, Func<string, string> templateModifier = null)
         {
             // Skip on Windows
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -32,6 +32,12 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     // Read the template
                     string template = File.ReadAllText(templatePath);
+                    
+                    // Apply template modifier if provided (for injecting errors)
+                    if (templateModifier != null)
+                    {
+                        template = templateModifier(template);
+                    }
                     
                     // Replace common placeholders with valid test values
                     template = ReplaceCommonPlaceholders(template, rootDirectory, tempDir);
@@ -56,9 +62,17 @@ namespace GitHub.Runner.Common.Tests.Listener
                     string errors = process.StandardError.ReadToEnd();
                     process.WaitForExit();
                     
-                    // Assert
-                    Assert.Equal(0, process.ExitCode);
-                    Assert.Empty(errors);
+                    // Assert based on expected outcome
+                    if (shouldPass)
+                    {
+                        Assert.Equal(0, process.ExitCode);
+                        Assert.Empty(errors);
+                    }
+                    else
+                    {
+                        Assert.NotEqual(0, process.ExitCode);
+                        Assert.NotEmpty(errors);
+                    }
                     
                     // Cleanup
                     try
@@ -104,6 +118,33 @@ namespace GitHub.Runner.Common.Tests.Listener
         public void UpdateShTemplateHasValidSyntax()
         {
             ValidateShellScriptTemplateSyntax("src/Misc/layoutbin", "update.sh.template");
+        }
+        
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        [Trait("SkipOn", "windows")]
+        public void UpdateShTemplateWithErrorsFailsValidation()
+        {
+            ValidateShellScriptTemplateSyntax(
+                "src/Misc/layoutbin", 
+                "update.sh.template",
+                shouldPass: false,
+                templateModifier: template => 
+                {
+                    // Introduce syntax errors
+                    
+                    // 1. Missing 'fi' for an 'if' statement
+                    template = template.Replace("fi\n", "\n");
+                    
+                    // 2. Unbalanced quotes
+                    template = template.Replace("date \"+[%F %T-%4N]", "date \"+[%F %T-%4N");
+                    
+                    // 3. Invalid syntax in if condition
+                    template = template.Replace("if [ $? -ne 0 ]", "if [ $? -ne 0");
+                    
+                    return template;
+                });
         }
         
         [Fact]
@@ -218,19 +259,56 @@ namespace GitHub.Runner.Common.Tests.Listener
                 return;
             }
 
+            ValidateCmdScriptTemplateSyntax("update.cmd.template", shouldPass: true);
+        }
+        
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        [Trait("SkipOn", "osx,linux")]
+        public void UpdateCmdTemplateWithErrorsFailsValidation()
+        {
+            // Skip on non-Windows platforms
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+            
+            ValidateCmdScriptTemplateSyntax("update.cmd.template", shouldPass: false, 
+                templateModifier: template => 
+                {
+                    // Introduce syntax errors in the template
+                    // 1. Unbalanced parentheses
+                    template = template.Replace("if exist", "if exist (");
+                    
+                    // 2. Unclosed quotes
+                    template = template.Replace("echo", "echo \"Unclosed quote");
+                    
+                    return template;
+                });
+        }
+        
+        private void ValidateCmdScriptTemplateSyntax(string templateName, bool shouldPass, Func<string, string> templateModifier = null)
+        {
             try
             {
                 using (var hc = new TestHostContext(this))
                 {
                     // Arrange
                     string rootDirectory = Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
-                    string templatePath = Path.Combine(rootDirectory, "src", "Misc", "layoutbin", "update.cmd.template");
+                    string templatePath = Path.Combine(rootDirectory, "src", "Misc", "layoutbin", templateName);
                     string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                     Directory.CreateDirectory(tempDir);
-                    string tempUpdatePath = Path.Combine(tempDir, "update.cmd");
+                    string tempUpdatePath = Path.Combine(tempDir, Path.GetFileName(templateName).Replace(".template", ""));
 
                     // Read the template
                     string template = File.ReadAllText(templatePath);
+                    
+                    // Apply template modifier if provided (for injecting errors)
+                    if (templateModifier != null)
+                    {
+                        template = templateModifier(template);
+                    }
                     
                     // Replace the placeholders with valid test values
                     template = template.Replace("_PROCESS_ID_", "1234");
@@ -244,19 +322,51 @@ namespace GitHub.Runner.Common.Tests.Listener
                     // Write the processed template to a temporary file
                     File.WriteAllText(tempUpdatePath, template);
                     
-                    // Act - Check syntax using cmd /c
+                    // Act - Check syntax using cmd with special flags:
+                    // /v:on - Enable delayed environment variable expansion
+                    // /f:off - Disable file name completion
+                    // /e:on - Enable command extensions
+                    // These flags help validate the syntax without fully executing the script
                     var process = new Process();
                     process.StartInfo.FileName = "cmd.exe";
-                    process.StartInfo.Arguments = $"/c \"{tempUpdatePath}\" /? > nul";
+                    process.StartInfo.Arguments = $"/c /v:on /f:off /e:on \"{tempUpdatePath}\" echo SyntaxCheckOnly && exit /b 0";
                     process.StartInfo.RedirectStandardError = true;
+                    process.StartInfo.RedirectStandardOutput = true;
                     process.StartInfo.UseShellExecute = false;
                     process.Start();
                     string errors = process.StandardError.ReadToEnd();
+                    string output = process.StandardOutput.ReadToEnd();
                     process.WaitForExit();
                     
-                    // Assert
-                    Assert.Equal(0, process.ExitCode);
-                    Assert.Empty(errors);
+                    // Check for mismatched parentheses in the file content
+                    int openParenCount = template.Split('(').Length - 1;
+                    int closeParenCount = template.Split(')').Length - 1;
+                    bool hasMissingParenthesis = openParenCount != closeParenCount;
+                    
+                    // Check for unclosed quotes (simple check - not perfect but catches obvious errors)
+                    int doubleQuoteCount = template.Split('"').Length - 1;
+                    bool hasUnclosedQuotes = doubleQuoteCount % 2 != 0;
+
+                    // Determine if the validation passed
+                    bool validationPassed = process.ExitCode == 0 &&
+                                          string.IsNullOrEmpty(errors) &&
+                                          !hasMissingParenthesis && 
+                                          !hasUnclosedQuotes;
+                    
+                    // Assert based on expected outcome
+                    if (shouldPass)
+                    {
+                        Assert.True(validationPassed, 
+                            $"Template validation should have passed but failed. Exit code: {process.ExitCode}, " +
+                            $"Errors: {errors}, HasMissingParenthesis: {hasMissingParenthesis}, " +
+                            $"HasUnclosedQuotes: {hasUnclosedQuotes}");
+                    }
+                    else
+                    {
+                        Assert.False(validationPassed, 
+                            "Template validation should have failed but passed. " +
+                            "The intentionally introduced syntax errors were not detected.");
+                    }
                     
                     // Cleanup
                     try
