@@ -11,7 +11,6 @@ namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class ShellScriptSyntaxL0
     {
-        // Generic method to test any shell script template for bash syntax errors
         private void ValidateShellScriptTemplateSyntax(string relativePath, string templateName, bool shouldPass = true, Func<string, string> templateModifier = null, bool useFullPath = false)
         {
             // Skip on Windows
@@ -46,28 +45,15 @@ namespace GitHub.Runner.Common.Tests.Listener
                     // Read the template
                     string template = File.ReadAllText(templatePath);
                     
-                    // Log debug info
-                    File.WriteAllText(debugLogPath, $"Template file: {templatePath}\n");
-                    File.AppendAllText(debugLogPath, $"Template exists: {File.Exists(templatePath)}\n");
-                    File.AppendAllText(debugLogPath, $"Template size: {template.Length} bytes\n");
-                    
                     // Apply template modifier if provided (for injecting errors)
                     if (templateModifier != null)
                     {
                         template = templateModifier(template);
-                        File.AppendAllText(debugLogPath, $"Template was modified by templateModifier\n");
                     }
                     
                     // Replace common placeholders with valid test values
                     string rootFolder = useFullPath ? Path.GetDirectoryName(templatePath) : Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
                     template = ReplaceCommonPlaceholders(template, rootFolder, tempDir);
-                    File.AppendAllText(debugLogPath, $"Template placeholders replaced\n");
-                    File.AppendAllText(debugLogPath, $"Processed template size: {template.Length} bytes\n");
-                    
-                    // Save a copy of the processed template for debugging
-                    string debugTemplatePath = Path.Combine(tempDir, $"debug_{Path.GetFileNameWithoutExtension(templateName)}.sh");
-                    File.WriteAllText(debugTemplatePath, template);
-                    File.AppendAllText(debugLogPath, $"Debug template saved to: {debugTemplatePath}\n");
                     
                     // Write the processed template to a temporary file
                     File.WriteAllText(tempScriptPath, template);
@@ -87,15 +73,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                     bashCheckProcess.StartInfo.RedirectStandardError = true;
                     bashCheckProcess.StartInfo.UseShellExecute = false;
                     
-                    File.AppendAllText(debugLogPath, $"Running bash check: bash -n {tempScriptPath}\n");
                     bashCheckProcess.Start();
                     string bashCheckOutput = bashCheckProcess.StandardOutput.ReadToEnd();
                     string bashCheckErrors = bashCheckProcess.StandardError.ReadToEnd();
                     bashCheckProcess.WaitForExit();
-                    
-                    File.AppendAllText(debugLogPath, $"Bash check exit code: {bashCheckProcess.ExitCode}\n");
-                    File.AppendAllText(debugLogPath, $"Bash check output: {bashCheckOutput}\n");
-                    File.AppendAllText(debugLogPath, $"Bash check errors: {bashCheckErrors}\n");
                     
                     // Act - Check syntax using bash -n
                     var process = new Process();
@@ -104,23 +85,14 @@ namespace GitHub.Runner.Common.Tests.Listener
                     process.StartInfo.RedirectStandardError = true;
                     process.StartInfo.UseShellExecute = false;
                     
-                    Console.WriteLine($"Executing: bash -n {tempScriptPath}");
-                    File.AppendAllText(debugLogPath, $"Executing main test: bash -n {tempScriptPath}\n");
                     process.Start();
                     string errors = process.StandardError.ReadToEnd();
                     process.WaitForExit();
                     
-                    Console.WriteLine($"Process exited with code: {process.ExitCode}");
-                    File.AppendAllText(debugLogPath, $"Process exit code: {process.ExitCode}\n");
-                    
                     if (!string.IsNullOrEmpty(errors))
                     {
                         Console.WriteLine($"Errors: {errors}");
-                        File.AppendAllText(debugLogPath, $"Errors: {errors}\n");
                     }
-                    
-                    // For debugging only
-                    Console.WriteLine($"Debug log saved at: {debugLogPath}");
                     
                     // Assert based on expected outcome
                     if (shouldPass)
@@ -160,10 +132,8 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        // Helper method to replace common placeholders in shell script templates
         private string ReplaceCommonPlaceholders(string template, string rootDirectory, string tempDir)
         {
-            // Replace common placeholders
             template = template.Replace("_PROCESS_ID_", "1234");
             template = template.Replace("_RUNNER_PROCESS_NAME_", "Runner.Listener");
             template = template.Replace("_ROOT_FOLDER_", rootDirectory);
@@ -186,82 +156,74 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("SkipOn", "windows")]
         public void UpdateShTemplateHasValidSyntax()
         {
-            // Add debugging info
-            Console.WriteLine($"Running on platform: {RuntimeInformation.OSDescription}, Architecture: {RuntimeInformation.OSArchitecture}");
-            
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
             try
             {
                 using (var hc = new TestHostContext(this))
                 {
-                    // First validate with bash -n
                     ValidateShellScriptTemplateSyntax("src/Misc/layoutbin", "update.sh.template");
-                    
-                    // Additional validation with ShellCheck if available
+
                     string rootDirectory = Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
                     string templatePath = Path.Combine(rootDirectory, "src/Misc/layoutbin", "update.sh.template");
                     string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                     Directory.CreateDirectory(tempDir);
                     string tempScriptPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension("update.sh.template"));
-                    
+
                     // Read the template
                     string template = File.ReadAllText(templatePath);
-                    
+
                     // Replace placeholders with valid test values
                     template = ReplaceCommonPlaceholders(template, rootDirectory, tempDir);
-                    
+
                     // Write the processed template to a temporary file
                     File.WriteAllText(tempScriptPath, template);
-                    
+
                     // Make the file executable
                     var chmodProcess = new Process();
                     chmodProcess.StartInfo.FileName = "chmod";
                     chmodProcess.StartInfo.Arguments = $"+x {tempScriptPath}";
                     chmodProcess.Start();
                     chmodProcess.WaitForExit();
-                    
+
                     // Check if ShellCheck is available
                     var shellcheckExistsProcess = new Process();
                     shellcheckExistsProcess.StartInfo.FileName = "which";
                     shellcheckExistsProcess.StartInfo.Arguments = "shellcheck";
                     shellcheckExistsProcess.StartInfo.RedirectStandardOutput = true;
                     shellcheckExistsProcess.StartInfo.UseShellExecute = false;
-                    
+
                     shellcheckExistsProcess.Start();
                     string shellcheckPath = shellcheckExistsProcess.StandardOutput.ReadToEnd().Trim();
                     shellcheckExistsProcess.WaitForExit();
-                    
+
                     if (!string.IsNullOrEmpty(shellcheckPath))
                     {
                         Console.WriteLine("ShellCheck found, performing additional validation");
-                        
-                        // Use ShellCheck to validate the script - exclude style/best practice warnings
-                        // We want to catch actual syntax errors, not style suggestions
+
+                        // Run ShellCheck to validate the script, excluding style warnings
                         var shellcheckProcess = new Process();
                         shellcheckProcess.StartInfo.FileName = "shellcheck";
-                        // Exclude various style warnings that aren't actual syntax errors
-                        // SC2016: Expressions don't expand in single quotes
-                        // SC2086: Double quote to prevent globbing and word splitting
-                        // SC2129: Consider using { cmd1; cmd2; } >> file instead of individual redirects
-                        // SC2181: Check exit code directly with e.g. 'if mycmd;', not indirectly with $?
-                        // SC2094: Make sure not to read and write the same file in the same pipeline
-                        // SC2009: Consider using pgrep instead of grepping ps output
-                        // SC2034: Variable appears unused (false positives common)
+                        // Exclude style warnings - we only care about actual errors
                         shellcheckProcess.StartInfo.Arguments = $"-e SC2016,SC2129,SC2086,SC2181,SC2094,SC2009,SC2034 {tempScriptPath}";
                         shellcheckProcess.StartInfo.RedirectStandardOutput = true;
                         shellcheckProcess.StartInfo.RedirectStandardError = true;
                         shellcheckProcess.StartInfo.UseShellExecute = false;
-                        
+
                         shellcheckProcess.Start();
                         string shellcheckOutput = shellcheckProcess.StandardOutput.ReadToEnd();
                         string shellcheckErrors = shellcheckProcess.StandardError.ReadToEnd();
                         shellcheckProcess.WaitForExit();
-                        
+
                         // If ShellCheck finds errors, fail the test
                         if (shellcheckProcess.ExitCode != 0)
                         {
                             Console.WriteLine($"ShellCheck found syntax errors: {shellcheckOutput}");
                             Console.WriteLine($"ShellCheck errors: {shellcheckErrors}");
-                            
+
                             Assert.Fail($"ShellCheck validation failed with exit code {shellcheckProcess.ExitCode}. Output: {shellcheckOutput}. Errors: {shellcheckErrors}");
                         }
                         else
@@ -273,7 +235,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         Console.WriteLine("ShellCheck not found, skipping additional validation");
                     }
-                    
+
                     // Cleanup
                     try
                     {
@@ -284,18 +246,18 @@ namespace GitHub.Runner.Common.Tests.Listener
                         // Best effort cleanup
                     }
                 }
-                
+
                 // Additional diagnostic information about bash version
                 var bashVersionProcess = new Process();
                 bashVersionProcess.StartInfo.FileName = "bash";
                 bashVersionProcess.StartInfo.Arguments = "--version";
                 bashVersionProcess.StartInfo.RedirectStandardOutput = true;
                 bashVersionProcess.StartInfo.UseShellExecute = false;
-                
+
                 bashVersionProcess.Start();
                 string bashVersion = bashVersionProcess.StandardOutput.ReadToEnd();
                 bashVersionProcess.WaitForExit();
-                
+
                 Console.WriteLine($"Bash version: {bashVersion.Split('\n')[0]}");
             }
             catch (Exception ex)
@@ -303,26 +265,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Console.WriteLine($"Error during test: {ex}");
                 throw;
             }
-        }
-     
-      
-        
-        private void TestSyntaxWithBash(string scriptPath, string errorType, string debugFile)
-        {
-            var process = new Process();
-            process.StartInfo.FileName = "bash";
-            process.StartInfo.Arguments = $"-n {scriptPath}";
-            process.StartInfo.RedirectStandardError = true;
-            process.StartInfo.UseShellExecute = false;
-            
-            process.Start();
-            string errors = process.StandardError.ReadToEnd();
-            process.WaitForExit();
-            
-            File.AppendAllText(debugFile, $"Testing {errorType}:\n");
-            File.AppendAllText(debugFile, $"Exit code: {process.ExitCode}\n");
-            File.AppendAllText(debugFile, $"Errors: {errors}\n");
-            File.AppendAllText(debugFile, $"-----------------------\n");
         }
         
         [Fact]
@@ -698,7 +640,7 @@ if exist file.txt (
             }
         }
         
-        // Helper method to check for unclosed quotes that handles escaped quotes properly
+        // Check for unclosed quotes in script text
         private bool HasUnclosedQuotes(string text)
         {
             bool inQuote = false;
@@ -708,31 +650,27 @@ if exist file.txt (
             {
                 char c = text[i];
                 
-                // Check for escape character (backslash)
                 if (c == '\\')
                 {
-                    isEscaped = !isEscaped; // Toggle escape state
+                    isEscaped = !isEscaped;
                     continue;
                 }
                 
-                // Check for quotes, but only if not escaped
                 if (c == '"' && !isEscaped)
                 {
                     inQuote = !inQuote;
                 }
                 
-                // Reset escape state after non-backslash character
                 if (c != '\\')
                 {
                     isEscaped = false;
                 }
             }
             
-            // If we're still in a quote at the end, there's an unclosed quote
             return inQuote;
         }
         
-        // Helper method to check for balanced parentheses accounting for strings and comments
+        // Check for balanced parentheses in batch scripts
         private bool HasBalancedParentheses(string text)
         {
             int balance = 0;
@@ -744,7 +682,6 @@ if exist file.txt (
             {
                 char c = text[i];
                 
-                // Skip processing if we're in a comment (for batch files, REM or ::)
                 if (inComment)
                 {
                     if (c == '\n' || c == '\r')
@@ -754,7 +691,6 @@ if exist file.txt (
                     continue;
                 }
                 
-                // Check for comment start
                 if (!inQuote && i < text.Length - 1 && c == ':' && text[i+1] == ':')
                 {
                     inComment = true;
@@ -768,20 +704,17 @@ if exist file.txt (
                     continue;
                 }
                 
-                // Check for escape character
                 if (c == '\\')
                 {
                     isEscaped = !isEscaped;
                     continue;
                 }
                 
-                // Check for quote state
                 if (c == '"' && !isEscaped)
                 {
                     inQuote = !inQuote;
                 }
                 
-                // Only count parentheses when not in a quoted string
                 if (!inQuote)
                 {
                     if (c == '(')
@@ -791,7 +724,6 @@ if exist file.txt (
                     else if (c == ')')
                     {
                         balance--;
-                        // Negative balance means we have a closing paren without an opening one
                         if (balance < 0)
                         {
                             return false;
@@ -799,14 +731,12 @@ if exist file.txt (
                     }
                 }
                 
-                // Reset escape state
                 if (c != '\\')
                 {
                     isEscaped = false;
                 }
             }
             
-            // Balanced if we end with zero
             return balance == 0;
         }
 
