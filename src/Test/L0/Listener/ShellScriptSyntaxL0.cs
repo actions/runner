@@ -189,12 +189,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             // Add debugging info
             Console.WriteLine($"Running on platform: {RuntimeInformation.OSDescription}, Architecture: {RuntimeInformation.OSArchitecture}");
             
-            // Skip on Windows
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                return;
-            }
-            
             try
             {
                 using (var hc = new TestHostContext(this))
