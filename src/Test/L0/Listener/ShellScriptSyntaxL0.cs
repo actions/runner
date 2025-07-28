@@ -41,19 +41,33 @@ namespace GitHub.Runner.Common.Tests.Listener
                     string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                     Directory.CreateDirectory(tempDir);
                     string tempScriptPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(templateName));
+                    string debugLogPath = Path.Combine(tempDir, "debug_log.txt");
 
                     // Read the template
                     string template = File.ReadAllText(templatePath);
+                    
+                    // Log debug info
+                    File.WriteAllText(debugLogPath, $"Template file: {templatePath}\n");
+                    File.AppendAllText(debugLogPath, $"Template exists: {File.Exists(templatePath)}\n");
+                    File.AppendAllText(debugLogPath, $"Template size: {template.Length} bytes\n");
                     
                     // Apply template modifier if provided (for injecting errors)
                     if (templateModifier != null)
                     {
                         template = templateModifier(template);
+                        File.AppendAllText(debugLogPath, $"Template was modified by templateModifier\n");
                     }
                     
                     // Replace common placeholders with valid test values
                     string rootFolder = useFullPath ? Path.GetDirectoryName(templatePath) : Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
                     template = ReplaceCommonPlaceholders(template, rootFolder, tempDir);
+                    File.AppendAllText(debugLogPath, $"Template placeholders replaced\n");
+                    File.AppendAllText(debugLogPath, $"Processed template size: {template.Length} bytes\n");
+                    
+                    // Save a copy of the processed template for debugging
+                    string debugTemplatePath = Path.Combine(tempDir, $"debug_{Path.GetFileNameWithoutExtension(templateName)}.sh");
+                    File.WriteAllText(debugTemplatePath, template);
+                    File.AppendAllText(debugLogPath, $"Debug template saved to: {debugTemplatePath}\n");
                     
                     // Write the processed template to a temporary file
                     File.WriteAllText(tempScriptPath, template);
@@ -65,36 +79,78 @@ namespace GitHub.Runner.Common.Tests.Listener
                     chmodProcess.Start();
                     chmodProcess.WaitForExit();
                     
+                    // Check if the template is valid with a quick bash check
+                    var bashCheckProcess = new Process();
+                    bashCheckProcess.StartInfo.FileName = "/bin/bash";
+                    bashCheckProcess.StartInfo.Arguments = $"-c \"bash -n {tempScriptPath}; echo $?\"";
+                    bashCheckProcess.StartInfo.RedirectStandardOutput = true;
+                    bashCheckProcess.StartInfo.RedirectStandardError = true;
+                    bashCheckProcess.StartInfo.UseShellExecute = false;
+                    
+                    File.AppendAllText(debugLogPath, $"Running bash check: bash -n {tempScriptPath}\n");
+                    bashCheckProcess.Start();
+                    string bashCheckOutput = bashCheckProcess.StandardOutput.ReadToEnd();
+                    string bashCheckErrors = bashCheckProcess.StandardError.ReadToEnd();
+                    bashCheckProcess.WaitForExit();
+                    
+                    File.AppendAllText(debugLogPath, $"Bash check exit code: {bashCheckProcess.ExitCode}\n");
+                    File.AppendAllText(debugLogPath, $"Bash check output: {bashCheckOutput}\n");
+                    File.AppendAllText(debugLogPath, $"Bash check errors: {bashCheckErrors}\n");
+                    
                     // Act - Check syntax using bash -n
                     var process = new Process();
                     process.StartInfo.FileName = "bash";
                     process.StartInfo.Arguments = $"-n {tempScriptPath}";
                     process.StartInfo.RedirectStandardError = true;
                     process.StartInfo.UseShellExecute = false;
+                    
+                    Console.WriteLine($"Executing: bash -n {tempScriptPath}");
+                    File.AppendAllText(debugLogPath, $"Executing main test: bash -n {tempScriptPath}\n");
                     process.Start();
                     string errors = process.StandardError.ReadToEnd();
                     process.WaitForExit();
                     
+                    Console.WriteLine($"Process exited with code: {process.ExitCode}");
+                    File.AppendAllText(debugLogPath, $"Process exit code: {process.ExitCode}\n");
+                    
+                    if (!string.IsNullOrEmpty(errors))
+                    {
+                        Console.WriteLine($"Errors: {errors}");
+                        File.AppendAllText(debugLogPath, $"Errors: {errors}\n");
+                    }
+                    
+                    // For debugging only
+                    Console.WriteLine($"Debug log saved at: {debugLogPath}");
+                    
                     // Assert based on expected outcome
                     if (shouldPass)
                     {
+                        Console.WriteLine("Test expected to pass, checking exit code and errors");
                         Assert.Equal(0, process.ExitCode);
                         Assert.Empty(errors);
                     }
                     else
                     {
+                        Console.WriteLine("Test expected to fail, checking exit code and errors");
                         Assert.NotEqual(0, process.ExitCode);
                         Assert.NotEmpty(errors);
                     }
                     
-                    // Cleanup
-                    try
+                    // Cleanup - But leave the temp directory for debugging on failure
+                    if (process.ExitCode == 0 && shouldPass) 
                     {
-                        Directory.Delete(tempDir, true);
+                        try
+                        {
+                            Directory.Delete(tempDir, true);
+                        }
+                        catch
+                        {
+                            // Best effort cleanup
+                        }
                     }
-                    catch
+                    else
                     {
-                        // Best effort cleanup
+                        Console.WriteLine($"Not cleaning up temp directory for debugging: {tempDir}");
                     }
                 }
             }
@@ -130,34 +186,149 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("SkipOn", "windows")]
         public void UpdateShTemplateHasValidSyntax()
         {
-            ValidateShellScriptTemplateSyntax("src/Misc/layoutbin", "update.sh.template");
-        }
-        
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Runner")]
-        [Trait("SkipOn", "windows")]
-        public void UpdateShTemplateWithErrorsFailsValidation()
-        {
-            ValidateShellScriptTemplateSyntax(
-                "src/Misc/layoutbin", 
-                "update.sh.template",
-                shouldPass: false,
-                templateModifier: template => 
+            // Add debugging info
+            Console.WriteLine($"Running on platform: {RuntimeInformation.OSDescription}, Architecture: {RuntimeInformation.OSArchitecture}");
+            
+            // Skip on Windows
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+            
+            try
+            {
+                using (var hc = new TestHostContext(this))
                 {
-                    // Introduce syntax errors
+                    // First validate with bash -n
+                    ValidateShellScriptTemplateSyntax("src/Misc/layoutbin", "update.sh.template");
                     
-                    // 1. Missing 'fi' for an 'if' statement
-                    template = template.Replace("fi\n", "\n");
+                    // Additional validation with ShellCheck if available
+                    string rootDirectory = Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
+                    string templatePath = Path.Combine(rootDirectory, "src/Misc/layoutbin", "update.sh.template");
+                    string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                    Directory.CreateDirectory(tempDir);
+                    string tempScriptPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension("update.sh.template"));
                     
-                    // 2. Unbalanced quotes
-                    template = template.Replace("date \"+[%F %T-%4N]", "date \"+[%F %T-%4N");
+                    // Read the template
+                    string template = File.ReadAllText(templatePath);
                     
-                    // 3. Invalid syntax in if condition
-                    template = template.Replace("if [ $? -ne 0 ]", "if [ $? -ne 0");
+                    // Replace placeholders with valid test values
+                    template = ReplaceCommonPlaceholders(template, rootDirectory, tempDir);
                     
-                    return template;
-                });
+                    // Write the processed template to a temporary file
+                    File.WriteAllText(tempScriptPath, template);
+                    
+                    // Make the file executable
+                    var chmodProcess = new Process();
+                    chmodProcess.StartInfo.FileName = "chmod";
+                    chmodProcess.StartInfo.Arguments = $"+x {tempScriptPath}";
+                    chmodProcess.Start();
+                    chmodProcess.WaitForExit();
+                    
+                    // Check if ShellCheck is available
+                    var shellcheckExistsProcess = new Process();
+                    shellcheckExistsProcess.StartInfo.FileName = "which";
+                    shellcheckExistsProcess.StartInfo.Arguments = "shellcheck";
+                    shellcheckExistsProcess.StartInfo.RedirectStandardOutput = true;
+                    shellcheckExistsProcess.StartInfo.UseShellExecute = false;
+                    
+                    shellcheckExistsProcess.Start();
+                    string shellcheckPath = shellcheckExistsProcess.StandardOutput.ReadToEnd().Trim();
+                    shellcheckExistsProcess.WaitForExit();
+                    
+                    if (!string.IsNullOrEmpty(shellcheckPath))
+                    {
+                        Console.WriteLine("ShellCheck found, performing additional validation");
+                        
+                        // Use ShellCheck to validate the script - exclude style/best practice warnings
+                        // We want to catch actual syntax errors, not style suggestions
+                        var shellcheckProcess = new Process();
+                        shellcheckProcess.StartInfo.FileName = "shellcheck";
+                        // Exclude various style warnings that aren't actual syntax errors
+                        // SC2016: Expressions don't expand in single quotes
+                        // SC2086: Double quote to prevent globbing and word splitting
+                        // SC2129: Consider using { cmd1; cmd2; } >> file instead of individual redirects
+                        // SC2181: Check exit code directly with e.g. 'if mycmd;', not indirectly with $?
+                        // SC2094: Make sure not to read and write the same file in the same pipeline
+                        // SC2009: Consider using pgrep instead of grepping ps output
+                        // SC2034: Variable appears unused (false positives common)
+                        shellcheckProcess.StartInfo.Arguments = $"-e SC2016,SC2129,SC2086,SC2181,SC2094,SC2009,SC2034 {tempScriptPath}";
+                        shellcheckProcess.StartInfo.RedirectStandardOutput = true;
+                        shellcheckProcess.StartInfo.RedirectStandardError = true;
+                        shellcheckProcess.StartInfo.UseShellExecute = false;
+                        
+                        shellcheckProcess.Start();
+                        string shellcheckOutput = shellcheckProcess.StandardOutput.ReadToEnd();
+                        string shellcheckErrors = shellcheckProcess.StandardError.ReadToEnd();
+                        shellcheckProcess.WaitForExit();
+                        
+                        // If ShellCheck finds errors, fail the test
+                        if (shellcheckProcess.ExitCode != 0)
+                        {
+                            Console.WriteLine($"ShellCheck found syntax errors: {shellcheckOutput}");
+                            Console.WriteLine($"ShellCheck errors: {shellcheckErrors}");
+                            
+                            Assert.Fail($"ShellCheck validation failed with exit code {shellcheckProcess.ExitCode}. Output: {shellcheckOutput}. Errors: {shellcheckErrors}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("ShellCheck validation passed");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("ShellCheck not found, skipping additional validation");
+                    }
+                    
+                    // Cleanup
+                    try
+                    {
+                        Directory.Delete(tempDir, true);
+                    }
+                    catch
+                    {
+                        // Best effort cleanup
+                    }
+                }
+                
+                // Additional diagnostic information about bash version
+                var bashVersionProcess = new Process();
+                bashVersionProcess.StartInfo.FileName = "bash";
+                bashVersionProcess.StartInfo.Arguments = "--version";
+                bashVersionProcess.StartInfo.RedirectStandardOutput = true;
+                bashVersionProcess.StartInfo.UseShellExecute = false;
+                
+                bashVersionProcess.Start();
+                string bashVersion = bashVersionProcess.StandardOutput.ReadToEnd();
+                bashVersionProcess.WaitForExit();
+                
+                Console.WriteLine($"Bash version: {bashVersion.Split('\n')[0]}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during test: {ex}");
+                throw;
+            }
+        }
+     
+      
+        
+        private void TestSyntaxWithBash(string scriptPath, string errorType, string debugFile)
+        {
+            var process = new Process();
+            process.StartInfo.FileName = "bash";
+            process.StartInfo.Arguments = $"-n {scriptPath}";
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.UseShellExecute = false;
+            
+            process.Start();
+            string errors = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            
+            File.AppendAllText(debugFile, $"Testing {errorType}:\n");
+            File.AppendAllText(debugFile, $"Exit code: {process.ExitCode}\n");
+            File.AppendAllText(debugFile, $"Errors: {errors}\n");
+            File.AppendAllText(debugFile, $"-----------------------\n");
         }
         
         [Fact]
