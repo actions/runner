@@ -26,7 +26,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                     // Arrange
                     string templatePath;
                     
-                    // If useFullPath is true, the templateName is already the full path
                     if (useFullPath)
                     {
                         templatePath = templateName;
@@ -42,30 +41,24 @@ namespace GitHub.Runner.Common.Tests.Listener
                     string tempScriptPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(templateName));
                     string debugLogPath = Path.Combine(tempDir, "debug_log.txt");
 
-                    // Read the template
                     string template = File.ReadAllText(templatePath);
                     
-                    // Apply template modifier if provided (for injecting errors)
                     if (templateModifier != null)
                     {
                         template = templateModifier(template);
                     }
                     
-                    // Replace common placeholders with valid test values
                     string rootFolder = useFullPath ? Path.GetDirectoryName(templatePath) : Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
                     template = ReplaceCommonPlaceholders(template, rootFolder, tempDir);
                     
-                    // Write the processed template to a temporary file
                     File.WriteAllText(tempScriptPath, template);
-                    
-                    // Make the file executable
+
                     var chmodProcess = new Process();
                     chmodProcess.StartInfo.FileName = "chmod";
                     chmodProcess.StartInfo.Arguments = $"+x {tempScriptPath}";
                     chmodProcess.Start();
                     chmodProcess.WaitForExit();
                     
-                    // Check if the template is valid with a quick bash check
                     var bashCheckProcess = new Process();
                     bashCheckProcess.StartInfo.FileName = "/bin/bash";
                     bashCheckProcess.StartInfo.Arguments = $"-c \"bash -n {tempScriptPath}; echo $?\"";
@@ -173,23 +166,16 @@ namespace GitHub.Runner.Common.Tests.Listener
                     Directory.CreateDirectory(tempDir);
                     string tempScriptPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension("update.sh.template"));
 
-                    // Read the template
                     string template = File.ReadAllText(templatePath);
 
-                    // Replace placeholders with valid test values
                     template = ReplaceCommonPlaceholders(template, rootDirectory, tempDir);
-
-                    // Write the processed template to a temporary file
                     File.WriteAllText(tempScriptPath, template);
-
-                    // Make the file executable
                     var chmodProcess = new Process();
                     chmodProcess.StartInfo.FileName = "chmod";
                     chmodProcess.StartInfo.Arguments = $"+x {tempScriptPath}";
                     chmodProcess.Start();
                     chmodProcess.WaitForExit();
 
-                    // Check if ShellCheck is available
                     var shellcheckExistsProcess = new Process();
                     shellcheckExistsProcess.StartInfo.FileName = "which";
                     shellcheckExistsProcess.StartInfo.Arguments = "shellcheck";
@@ -207,7 +193,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         // Run ShellCheck to validate the script, excluding style warnings
                         var shellcheckProcess = new Process();
                         shellcheckProcess.StartInfo.FileName = "shellcheck";
-                        // Exclude style warnings - we only care about actual errors
                         shellcheckProcess.StartInfo.Arguments = $"-e SC2016,SC2129,SC2086,SC2181,SC2094,SC2009,SC2034 {tempScriptPath}";
                         shellcheckProcess.StartInfo.RedirectStandardOutput = true;
                         shellcheckProcess.StartInfo.RedirectStandardError = true;
@@ -247,7 +232,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                     }
                 }
 
-                // Additional diagnostic information about bash version
                 var bashVersionProcess = new Process();
                 bashVersionProcess.StartInfo.FileName = "bash";
                 bashVersionProcess.StartInfo.Arguments = "--version";
@@ -288,15 +272,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 shouldPass: false,
                 templateModifier: template => 
                 {
-                    // Introduce syntax errors
                     
-                    // 1. Missing 'fi' for an 'if' statement
                     template = template.Replace("fi\n", "\n");
-                    
-                    // 2. Unmatched brackets in case statement
                     template = template.Replace("esac", "");
-                    
-                    // 3. Missing closing quote
                     template = template.Replace("\"$svcuser\"", "\"$svcuser");
                     
                     return template;
@@ -324,15 +302,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 shouldPass: false,
                 templateModifier: template => 
                 {
-                    // Introduce syntax errors
-                    
-                    // 1. Missing done for a for loop
                     template = template.Replace("done\n", "\n");
-                    
-                    // 2. Unbalanced parentheses in function
                     template = template.Replace("function", "function (");
-                    
-                    // 3. Invalid syntax in if condition
                     template = template.Replace("if [ ! -f ", "if ! -f ");
                     
                     return template;
@@ -360,15 +331,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 shouldPass: false,
                 templateModifier: template => 
                 {
-                    // Introduce syntax errors
                     
-                    // 1. Missing closing brace in variable substitution
                     template = template.Replace("${RUNNER_ROOT}", "${RUNNER_ROOT");
-                    
-                    // 2. Unbalanced quotes in string
                     template = template.Replace("\"$@\"", "\"$@");
-                    
-                    // 3. Invalid redirection
                     template = template.Replace("> /dev/null", ">> >>");
                     
                     return template;
@@ -381,15 +346,11 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("SkipOn", "windows")]
         public void ValidateShellScript_MissingTemplate_ThrowsException()
         {
-            // Skip on Windows platforms - more explicit check to ensure it's skipped on all Windows variants
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 return;
             }
             
-            // Test for non-existent template file
-            // The ValidateShellScriptTemplateSyntax method has a try-catch that will catch and wrap FileNotFoundException
-            // so we need to test that it produces the appropriate error message
             try 
             {
                 ValidateShellScriptTemplateSyntax("src/Misc/layoutbin", "non_existent_template.sh.template", shouldPass: true);
@@ -397,7 +358,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
             catch (Exception ex)
             {
-                // Verify the exception message contains information about the missing file
                 Assert.Contains("non_existent_template.sh.template", ex.Message);
                 Assert.Contains("FileNotFoundException", ex.Message);
             }
@@ -409,7 +369,6 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("SkipOn", "windows")]
         public void ValidateShellScript_ComplexScript_ValidatesCorrectly()
         {
-            // Skip on Windows platforms - more explicit check to ensure it's skipped on all Windows variants
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 return;
@@ -453,7 +412,6 @@ exit 0";
             
             try
             {
-                // Test with direct path to our temporary template
                 ValidateShellScriptTemplateSyntax("", templatePath, shouldPass: true, useFullPath: true);
             }
             finally
@@ -491,7 +449,6 @@ exit 0";
         [Trait("SkipOn", "osx,linux")]
         public void UpdateCmdTemplateWithErrorsFailsValidation()
         {
-            // Skip on non-Windows platforms
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 return;
@@ -500,11 +457,7 @@ exit 0";
             ValidateCmdScriptTemplateSyntax("update.cmd.template", shouldPass: false, 
                 templateModifier: template => 
                 {
-                    // Introduce syntax errors in the template
-                    // 1. Unbalanced parentheses
                     template = template.Replace("if exist", "if exist (");
-                    
-                    // 2. Unclosed quotes
                     template = template.Replace("echo", "echo \"Unclosed quote");
                     
                     return template;
@@ -517,22 +470,17 @@ exit 0";
         [Trait("SkipOn", "osx,linux")]
         public void ValidateCmdScript_MissingTemplate_ThrowsFileNotFoundException()
         {
-            // Skip on non-Windows platforms
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 return;
             }
 
-            // For Windows, we need to use a direct try-catch because File.ReadAllText will throw 
-            // FileNotFoundException if file doesn't exist
             try
             {
-                // This should throw a FileNotFoundException right away
                 string rootDirectory = Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
                 string templatePath = Path.Combine(rootDirectory, "src", "Misc", "layoutbin", "non_existent_template.cmd.template");
                 string content = File.ReadAllText(templatePath);
                 
-                // If we get here, the file somehow exists, which should not happen
                 Assert.Fail($"Expected FileNotFoundException was not thrown for {templatePath}");
             }
             catch (FileNotFoundException)
@@ -547,18 +495,15 @@ exit 0";
         [Trait("SkipOn", "osx,linux")]
         public void ValidateCmdScript_ComplexQuoting_ValidatesCorrectly()
         {
-            // Skip on non-Windows platforms
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 return;
             }
             
-            // Create a test template with complex quoting patterns
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDir);
             string templatePath = Path.Combine(tempDir, "complex_quotes.cmd.template");
 
-            // Write a sample template with escaped quotes and nested quotes
             string template = @"@echo off
 echo ""This has ""nested"" quotes""
 echo ""This has an escaped quote: \""test\""""
@@ -571,7 +516,6 @@ if ""quoted condition"" == ""quoted condition"" (
             
             try
             {
-                // Test with direct path to our temporary template
                 ValidateCmdScriptTemplateSyntax(templatePath, shouldPass: true, useFullPath: true);
             }
             finally
@@ -594,18 +538,15 @@ if ""quoted condition"" == ""quoted condition"" (
         [Trait("SkipOn", "osx,linux")]
         public void ValidateCmdScript_ComplexParentheses_ValidatesCorrectly()
         {
-            // Skip on non-Windows platforms
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 return;
             }
             
-            // Create a test template with complex parentheses patterns
             string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDir);
             string templatePath = Path.Combine(tempDir, "complex_parens.cmd.template");
 
-            // Write a sample template with nested parentheses
             string template = @"@echo off
 echo Text with (parentheses)
 echo ""Text with (parentheses inside quotes)""
@@ -623,12 +564,10 @@ if exist file.txt (
             
             try
             {
-                // Test with direct path to our temporary template
                 ValidateCmdScriptTemplateSyntax(templatePath, shouldPass: true, useFullPath: true);
             }
             finally
             {
-                // Clean up
                 try
                 {
                     Directory.Delete(tempDir, true);
@@ -640,7 +579,6 @@ if exist file.txt (
             }
         }
         
-        // Check for unclosed quotes in script text
         private bool HasUnclosedQuotes(string text)
         {
             bool inQuote = false;
@@ -670,7 +608,6 @@ if exist file.txt (
             return inQuote;
         }
         
-        // Check for balanced parentheses in batch scripts
         private bool HasBalancedParentheses(string text)
         {
             int balance = 0;
@@ -749,7 +686,6 @@ if exist file.txt (
                     // Arrange
                     string templatePath;
                     
-                    // If useFullPath is true, the templateName is already the full path
                     if (useFullPath)
                     {
                         templatePath = templateName;
@@ -764,16 +700,13 @@ if exist file.txt (
                     Directory.CreateDirectory(tempDir);
                     string tempUpdatePath = Path.Combine(tempDir, Path.GetFileName(templatePath).Replace(".template", ""));
 
-                    // Read the template
                     string template = File.ReadAllText(templatePath);
                     
-                    // Apply template modifier if provided (for injecting errors)
                     if (templateModifier != null)
                     {
                         template = templateModifier(template);
                     }
                     
-                    // Replace the placeholders with valid test values
                     template = template.Replace("_PROCESS_ID_", "1234");
                     template = template.Replace("_RUNNER_PROCESS_NAME_", "Runner.Listener.exe");
                     string rootFolder = useFullPath ? Path.GetDirectoryName(templatePath) : Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
@@ -783,28 +716,18 @@ if exist file.txt (
                     template = template.Replace("_UPDATE_LOG_", Path.Combine(tempDir, "update.log"));
                     template = template.Replace("_RESTART_INTERACTIVE_RUNNER_", "0");
                     
-                    // Write the processed template to a temporary file
                     File.WriteAllText(tempUpdatePath, template);
                     
-                    // Act - Rather than executing the script directly, we'll create a wrapper script
-                    // that only checks the syntax of our target script
-                    
-                    // For Windows, we'll do two things:
-                    // 1. Use static analysis to check for syntax errors
-                    // 2. Use a simple in-process approach that doesn't require executing external commands
-                    
-                    // Gather output and errors without relying on external process
+                
                     string errors = string.Empty;
                     string output = string.Empty;
                     int exitCode = 0;
                     
                     try 
                     {
-                        // Create a simple temporary batch file that just exits with success
                         string testBatchFile = Path.Combine(tempDir, "test.cmd");
                         File.WriteAllText(testBatchFile, "@echo off\r\nexit /b 0");
                         
-                        // This is much more reliable than trying to run the script directly
                         var process = new Process();
                         process.StartInfo.FileName = "cmd.exe";
                         process.StartInfo.Arguments = $"/c \"cd /d \"{tempDir}\" && echo Script syntax check && exit /b 0\"";
@@ -821,61 +744,44 @@ if exist file.txt (
                     }
                     catch (Exception ex)
                     {
-                        // If process execution fails, capture the error
                         errors = ex.ToString();
                         exitCode = 1;
                     }
                     
-                    // Basic syntax checks (these are supplementary to the execution test)
-                    
-                    // Check for mismatched parentheses using our robust helper method
                     bool hasMissingParenthesis = !HasBalancedParentheses(template);
-                    
-                    // Check for unclosed quotes (robust check to handle escaped quotes and nested quotes)  
                     bool hasUnclosedQuotes = HasUnclosedQuotes(template);
 
-                    // Check if our syntax checker found any problems
                     bool hasOutputErrors = !string.IsNullOrEmpty(errors) || 
                                           output.Contains("syntax error") || 
                                           output.Contains("not recognized") ||
                                           output.Contains("unexpected") ||
                                           output.Contains("Syntax check failed");
                     
-                    // Perform a fallback syntax analysis that doesn't depend on execution
                     bool hasInvalidSyntaxPatterns = false;
                     
-                    // Check for common syntax errors in batch files
                     if (template.Contains("if") && !template.Contains("if "))
                     {
-                        hasInvalidSyntaxPatterns = true; // 'if' without space
+                        hasInvalidSyntaxPatterns = true; 
                     }
                     
                     if (template.Contains("goto") && !template.Contains("goto "))
                     {
-                        hasInvalidSyntaxPatterns = true; // 'goto' without a label
+                        hasInvalidSyntaxPatterns = true;
                     }
                     
-                    // Common batch syntax errors like unclosed blocks
-                    if ((template.Contains("(") && !template.Contains(")")))
+                    if (template.Contains("(") && !template.Contains(")"))
                     {
-                        hasInvalidSyntaxPatterns = true; // Unbalanced parentheses
+                        hasInvalidSyntaxPatterns = true;
                     }
                     
-                    // Determine if the validation passed using multiple checks
-                    // For positive tests (shouldPass=true), we need to pass all checks
-                    // For negative tests (shouldPass=false), we need to fail at least one check
-                    
-                    // For Windows, use a combined approach that relies first on static analysis, 
-                    // then falls back to execution results if possible
                     bool staticAnalysisPassed = !hasMissingParenthesis && 
                                               !hasUnclosedQuotes &&
                                               !hasInvalidSyntaxPatterns;
                                               
-                    bool executionPassed = true; // Default to true in case we can't rely on execution
+                    bool executionPassed = true;
                     
                     try 
                     {
-                        // Only use execution result if the process ran successfully without path errors
                         if (!errors.Contains("filename, directory name, or volume label syntax"))
                         {
                             executionPassed = exitCode == 0 && !hasOutputErrors;
@@ -883,13 +789,11 @@ if exist file.txt (
                     }
                     catch 
                     {
-                        // If anything goes wrong with checking execution, fall back to static analysis
                         executionPassed = true;
                     }
                     
                     bool validationPassed = staticAnalysisPassed && executionPassed;
                     
-                    // Assert based on expected outcome
                     if (shouldPass)
                     {
                         Assert.True(validationPassed, 
