@@ -62,6 +62,8 @@ RUN apt-get update -y \
     libunwind8 \
     jq \
     sudo \
+    iptables \
+    zstd \
     && rm -rf /var/lib/apt/lists/*
 
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
