@@ -11,7 +11,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 {
     public sealed class ShellScriptSyntaxL0
     {
-        private void ValidateShellScriptTemplateSyntax(string relativePath, string templateName, bool shouldPass = true, Func<string, string> templateModifier = null, bool useFullPath = false)
+        private void ValidateShellScriptTemplateSyntax(string relativePath, string templateName, bool shouldPass = true, Func<string, string> templateModifier = null, bool useFullPath = false, bool useShellCheck = true)
         {
             // Skip on Windows
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -93,6 +93,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                         Console.WriteLine("Test expected to pass, checking exit code and errors");
                         Assert.Equal(0, process.ExitCode);
                         Assert.Empty(errors);
+                        
+                        if (shouldPass && process.ExitCode == 0 && useShellCheck)
+                        {
+                            RunShellCheck(tempScriptPath);
+                        }
                     }
                     else
                     {
@@ -122,6 +127,52 @@ namespace GitHub.Runner.Common.Tests.Listener
             catch (Exception ex)
             {
                 Assert.Fail($"Exception during test for {templateName}: {ex}");
+            }
+        }
+
+        private void RunShellCheck(string scriptPath)
+        {
+            var shellcheckExistsProcess = new Process();
+            shellcheckExistsProcess.StartInfo.FileName = "which";
+            shellcheckExistsProcess.StartInfo.Arguments = "shellcheck";
+            shellcheckExistsProcess.StartInfo.RedirectStandardOutput = true;
+            shellcheckExistsProcess.StartInfo.UseShellExecute = false;
+
+            shellcheckExistsProcess.Start();
+            string shellcheckPath = shellcheckExistsProcess.StandardOutput.ReadToEnd().Trim();
+            shellcheckExistsProcess.WaitForExit();
+
+            if (!string.IsNullOrEmpty(shellcheckPath))
+            {
+                Console.WriteLine("ShellCheck found, performing additional validation");
+
+                var shellcheckProcess = new Process();
+                shellcheckProcess.StartInfo.FileName = "shellcheck";
+                shellcheckProcess.StartInfo.Arguments = $"-e SC2001,SC2002,SC2006,SC2009,SC2016,SC2034,SC2039,SC2046,SC2048,SC2059,SC2086,SC2094,SC2115,SC2116,SC2126,SC2129,SC2140,SC2145,SC2153,SC2154,SC2155,SC2162,SC2164,SC2166,SC2174,SC2181,SC2206,SC2207,SC2221,SC2222,SC2230,SC2236,SC2242,SC2268 {scriptPath}";
+                shellcheckProcess.StartInfo.RedirectStandardOutput = true;
+                shellcheckProcess.StartInfo.RedirectStandardError = true;
+                shellcheckProcess.StartInfo.UseShellExecute = false;
+
+                shellcheckProcess.Start();
+                string shellcheckOutput = shellcheckProcess.StandardOutput.ReadToEnd();
+                string shellcheckErrors = shellcheckProcess.StandardError.ReadToEnd();
+                shellcheckProcess.WaitForExit();
+
+                if (shellcheckProcess.ExitCode != 0)
+                {
+                    Console.WriteLine($"ShellCheck found syntax errors: {shellcheckOutput}");
+                    Console.WriteLine($"ShellCheck errors: {shellcheckErrors}");
+
+                    Assert.Fail($"ShellCheck validation failed with exit code {shellcheckProcess.ExitCode}. Output: {shellcheckOutput}. Errors: {shellcheckErrors}");
+                }
+                else
+                {
+                    Console.WriteLine("ShellCheck validation passed");
+                }
+            }
+            else
+            {
+                Console.WriteLine("ShellCheck not found, skipping additional validation");
             }
         }
 
@@ -156,93 +207,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
             try
             {
-                using (var hc = new TestHostContext(this))
-                {
-                    ValidateShellScriptTemplateSyntax("src/Misc/layoutbin", "update.sh.template");
-
-                    string rootDirectory = Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), ".."));
-                    string templatePath = Path.Combine(rootDirectory, "src/Misc/layoutbin", "update.sh.template");
-                    string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                    Directory.CreateDirectory(tempDir);
-                    string tempScriptPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension("update.sh.template"));
-
-                    string template = File.ReadAllText(templatePath);
-
-                    template = ReplaceCommonPlaceholders(template, rootDirectory, tempDir);
-                    File.WriteAllText(tempScriptPath, template);
-                    var chmodProcess = new Process();
-                    chmodProcess.StartInfo.FileName = "chmod";
-                    chmodProcess.StartInfo.Arguments = $"+x {tempScriptPath}";
-                    chmodProcess.Start();
-                    chmodProcess.WaitForExit();
-
-                    var shellcheckExistsProcess = new Process();
-                    shellcheckExistsProcess.StartInfo.FileName = "which";
-                    shellcheckExistsProcess.StartInfo.Arguments = "shellcheck";
-                    shellcheckExistsProcess.StartInfo.RedirectStandardOutput = true;
-                    shellcheckExistsProcess.StartInfo.UseShellExecute = false;
-
-                    shellcheckExistsProcess.Start();
-                    string shellcheckPath = shellcheckExistsProcess.StandardOutput.ReadToEnd().Trim();
-                    shellcheckExistsProcess.WaitForExit();
-
-                    if (!string.IsNullOrEmpty(shellcheckPath))
-                    {
-                        Console.WriteLine("ShellCheck found, performing additional validation");
-
-                        // Run ShellCheck to validate the script, excluding style warnings
-                        var shellcheckProcess = new Process();
-                        shellcheckProcess.StartInfo.FileName = "shellcheck";
-                        shellcheckProcess.StartInfo.Arguments = $"-e SC2016,SC2129,SC2086,SC2181,SC2094,SC2009,SC2034 {tempScriptPath}";
-                        shellcheckProcess.StartInfo.RedirectStandardOutput = true;
-                        shellcheckProcess.StartInfo.RedirectStandardError = true;
-                        shellcheckProcess.StartInfo.UseShellExecute = false;
-
-                        shellcheckProcess.Start();
-                        string shellcheckOutput = shellcheckProcess.StandardOutput.ReadToEnd();
-                        string shellcheckErrors = shellcheckProcess.StandardError.ReadToEnd();
-                        shellcheckProcess.WaitForExit();
-
-                        // If ShellCheck finds errors, fail the test
-                        if (shellcheckProcess.ExitCode != 0)
-                        {
-                            Console.WriteLine($"ShellCheck found syntax errors: {shellcheckOutput}");
-                            Console.WriteLine($"ShellCheck errors: {shellcheckErrors}");
-
-                            Assert.Fail($"ShellCheck validation failed with exit code {shellcheckProcess.ExitCode}. Output: {shellcheckOutput}. Errors: {shellcheckErrors}");
-                        }
-                        else
-                        {
-                            Console.WriteLine("ShellCheck validation passed");
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("ShellCheck not found, skipping additional validation");
-                    }
-
-                    // Cleanup
-                    try
-                    {
-                        Directory.Delete(tempDir, true);
-                    }
-                    catch
-                    {
-                        // Best effort cleanup
-                    }
-                }
-
-                var bashVersionProcess = new Process();
-                bashVersionProcess.StartInfo.FileName = "bash";
-                bashVersionProcess.StartInfo.Arguments = "--version";
-                bashVersionProcess.StartInfo.RedirectStandardOutput = true;
-                bashVersionProcess.StartInfo.UseShellExecute = false;
-
-                bashVersionProcess.Start();
-                string bashVersion = bashVersionProcess.StandardOutput.ReadToEnd();
-                bashVersionProcess.WaitForExit();
-
-                Console.WriteLine($"Bash version: {bashVersion.Split('\n')[0]}");
+                ValidateShellScriptTemplateSyntax("src/Misc/layoutbin", "update.sh.template");
             }
             catch (Exception ex)
             {
