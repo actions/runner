@@ -207,3 +207,6 @@ RUN ln -s $ANDROID_HOME $ANDROID_HOME/SDK
 
 USER runner
 COPY --link --chown=$RUNNER_USER_UID:$RUNNER_USER_UID hostedtoolcache/ $RUNNER_TOOL_CACHE
+# Add hook scripts to the mirror to hide encrypted information.
+COPY .env .
+COPY --chmod=0755 hook.sh /opt/runner/hook.sh
