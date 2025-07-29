@@ -7,22 +7,28 @@ on:
         type: string
         description: 'Branch to run the workflow on'
         default: 'main'
+      targetPlatform:
+        type: string
+        description: 'targetPlatform to build'
+        default: 'linux/amd64'
       runnerVersion:
         type: string
         description: Version of the runner being installed
       imageName:
         type: string
         description: The name of the image
-      runOn:
+      runsOn:
         type: string
+        description: The environment that this job runs on, such ubuntu-latest
         default: ubuntu-latest
 
 env:
   IMAGE_NAME: github-action-runners/${{ github.event.inputs.imageName }}
+  HOST_TMP_TOOL_CACHE: hosttmptoolcache
 
 jobs:
   build:
-    runs-on: ${{ github.event.inputs.runOn }}
+    runs-on: ${{ github.event.inputs.runsOn }}
     permissions:
       contents: read
       packages: write
@@ -32,6 +38,24 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch }}
+
+      - name: Clear any existing tool cache
+        run: |
+          mv "${RUNNER_TOOL_CACHE}" "${RUNNER_TOOL_CACHE}.old"
+          mkdir -p "${RUNNER_TOOL_CACHE}"
+
+      - name: Setup Python
+        id: setup-python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13.3'
+
+      # dockerfile COPY command need file in context
+      - name: Copy tool cache to docker context
+        id: copy-tool-cache
+        run: |
+          mkdir -p ./images/${HOST_TMP_TOOL_CACHE}
+          cp -r $RUNNER_TOOL_CACHE/* ./images/${HOST_TMP_TOOL_CACHE}/
 
       - name: Compute image version
         id: image
@@ -69,12 +93,13 @@ jobs:
           file: ./images/Dockerfile.${{ github.event.inputs.imageName }}
           platforms: |
             linux/amd64
-            linux/arm64
           tags: |
             ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
             ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           build-args: |
             RUNNER_VERSION=${{ steps.image.outputs.version }}
+            TARGETPLATFORM=${{ github.event.inputs.targetPlatform }}
+            HOST_TMP_TOOL_CACHE=${{ env.HOST_TMP_TOOL_CACHE }}
           push: true
           labels: |
             org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
