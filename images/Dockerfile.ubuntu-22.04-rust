@@ -96,6 +96,7 @@ RUN echo "PATH=${PATH}" > /etc/environment \
     && echo "ImageOS=${ImageOS}" >> /etc/environment
 
 USER runner
+COPY --link --chown=$RUNNER_USER_UID:$RUNNER_USER_UID hostedtoolcache/ $RUNNER_TOOL_CACHE
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- --default-toolchain none -y
 ENV PATH="$HOME/.cargo/bin:${PATH}"

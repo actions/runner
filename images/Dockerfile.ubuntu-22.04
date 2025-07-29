@@ -204,3 +204,4 @@ RUN echo "PATH=${PATH}" > /etc/environment \
 RUN ln -s $ANDROID_HOME $ANDROID_HOME/SDK
 
 USER runner
+COPY --link --chown=$RUNNER_USER_UID:$RUNNER_USER_UID hostedtoolcache/ $RUNNER_TOOL_CACHE
