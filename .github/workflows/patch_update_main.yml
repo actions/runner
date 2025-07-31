@@ -1,0 +1,147 @@
+name: Update Runner Patches (Commit-to-Commit)
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'patches/runner-main-sdk8-*.patch'
+      - 'patches/last_processed_commit.txt'
+
+jobs:
+  update-patches:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout your repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Git identity
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+
+    - name: Clone upstream runner repository
+      run: |
+        git clone https://github.com/actions/runner.git upstream-runner
+        cd upstream-runner
+        git checkout main
+
+    - name: Get commits
+      id: get-commits
+      run: |
+        cd upstream-runner
+        # Get latest commit
+        LATEST_COMMIT=$(git rev-parse HEAD)
+        echo "LATEST_COMMIT=$LATEST_COMMIT" >> $GITHUB_OUTPUT
+        echo "LATEST_COMMIT_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        
+        # Get previous processed commit
+        if [ -f ../patches/last_processed_commit.txt ]; then
+          PREVIOUS_COMMIT=$(cat ../patches/last_processed_commit.txt)
+          PREVIOUS_COMMIT_SHORT="${PREVIOUS_COMMIT:0:7}"
+          echo "PREVIOUS_COMMIT=$PREVIOUS_COMMIT" >> $GITHUB_OUTPUT
+          echo "PREVIOUS_COMMIT_SHORT=$PREVIOUS_COMMIT_SHORT" >> $GITHUB_OUTPUT
+        else
+          echo "PREVIOUS_COMMIT=" >> $GITHUB_OUTPUT
+          echo "PREVIOUS_COMMIT_SHORT=" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Check for new commits
+      if: steps.get-commits.outputs.PREVIOUS_COMMIT == steps.get-commits.outputs.LATEST_COMMIT
+      run: |
+        echo "No new commits - skipping"
+        exit 0
+
+    - name: Verify previous commit exists
+      if: steps.get-commits.outputs.PREVIOUS_COMMIT != '' && steps.get-commits.outputs.PREVIOUS_COMMIT != steps.get-commits.outputs.LATEST_COMMIT
+      run: |
+        cd upstream-runner
+        if ! git rev-parse ${{ steps.get-commits.outputs.PREVIOUS_COMMIT }} >/dev/null 2>&1; then
+          echo "Previous commit ${{ steps.get-commits.outputs.PREVIOUS_COMMIT }} not found"
+          exit 1
+        fi
+
+    - name: Process architectures
+      if: steps.get-commits.outputs.PREVIOUS_COMMIT != '' && steps.get-commits.outputs.PREVIOUS_COMMIT != steps.get-commits.outputs.LATEST_COMMIT
+      id: process-arches
+      run: |
+        mkdir -p patches
+        touch successful_arches.txt
+        
+        for arch in ppc64le s390x; do
+          echo "Processing $arch..."
+          cd upstream-runner
+          
+          # Reset to clean state
+          git reset --hard
+          git clean -fd
+          
+          # Check if previous patch exists
+          if [ ! -f "../patches/runner-main-sdk8-$arch.patch" ] || \
+             ! grep -q "${{ steps.get-commits.outputs.PREVIOUS_COMMIT }}" "../patches/runner-main-sdk8-$arch.patch"; then
+            echo "No valid previous patch for $arch"
+            cd ..
+            continue
+          fi
+
+          # Apply previous patch to previous commit
+          git checkout ${{ steps.get-commits.outputs.PREVIOUS_COMMIT }}
+          if ! git apply --check --whitespace=nowarn "../patches/runner-main-sdk8-$arch.patch"; then
+            echo "::warning::Previous patch application failed for $arch"
+            cd ..
+            continue
+          fi
+          git apply --whitespace=nowarn "../patches/runner-main-sdk8-$arch.patch"
+          
+          # Stash changes
+          git stash push -m "patch-$arch"
+          
+          # Apply to latest commit
+          git checkout ${{ steps.get-commits.outputs.LATEST_COMMIT }}
+          if ! git stash apply stash^{/patch-$arch}; then
+            echo "::warning::Stash application failed for $arch on latest commit"
+            git reset --hard
+            git stash drop || true
+            cd ..
+            continue
+          fi
+          
+          # Create new patch
+          git diff --patch --ignore-space-at-eol > "../patches/runner-main-sdk8-$arch.patch"
+          echo "# From upstream commit: ${{ steps.get-commits.outputs.LATEST_COMMIT }}" >> "../patches/runner-main-sdk8-$arch.patch"
+          
+          # Cleanup
+          git reset --hard
+          git stash drop || true
+          cd ..
+          
+          echo "$arch" >> successful_arches.txt
+        done
+
+        # Set output for successful architectures
+        if [ -s successful_arches.txt ]; then
+          echo "successful_arches=$(paste -sd, successful_arches.txt)" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Update commit reference
+      if: steps.process-arches.outputs.successful_arches != ''
+      run: |
+        echo "${{ steps.get-commits.outputs.LATEST_COMMIT }}" > patches/last_processed_commit.txt
+
+    - name: Tidy repo for PR
+      if: steps.process-arches.outputs.successful_arches != ''
+      run: |
+        rm -f successful_arches.txt
+
+    - name: Create pull request
+      uses: canonical/create-pull-request@main
+      if: steps.process-arches.outputs.successful_arches != ''
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "Update patches: ${{ steps.get-commits.outputs.PREVIOUS_COMMIT_SHORT }} → ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }} [${{ steps.process-arches.outputs.successful_arches }}]"
+        branch-name: patch-sync/${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}
+        title: Sync main patch ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}
+        body: Sync main branch patcdh for commit ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}
