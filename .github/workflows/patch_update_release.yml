@@ -145,11 +145,10 @@ jobs:
       run: |
         cd upstream-runner && git checkout ${{ steps.get-tags.outputs.LATEST_TAG }} && cd ..
         cp -r upstream-runner/* .
-        git checkout -- releaseVersion
 
     - name: Create release branch
       if: steps.process-arches.outputs.successful_arches != ''
       run: |
-        cp upstream-runner/releaseVersion .
         git checkout -b releases/${{ steps.get-tags.outputs.LATEST_TAG }}
+        git add . && git commit -m "Create release ${{steps.get-tags.outputs.LATEST_TAG}}"
         git push -u origin releases/${{ steps.get-tags.outputs.LATEST_TAG }}
