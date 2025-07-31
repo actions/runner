@@ -125,12 +125,13 @@ jobs:
       run: |
         echo "${{ steps.get-tags.outputs.LATEST_TAG }}" > patches/last_processed_tag.txt
 
-    - name: Tidy repo for PR
+    # Only commit the patches for release patch sync
+    - name: Prepare repo for PR
       if: steps.process-arches.outputs.successful_arches != ''
       run: |
         rm -f successful_arches.txt
 
-    - name: Create pull request
+    - name: Create pull request to main
       uses: canonical/create-pull-request@main
       if: steps.process-arches.outputs.successful_arches != ''
       with:
@@ -138,4 +139,15 @@ jobs:
         commit-message: "Update release: ${{ steps.get-tags.outputs.PREVIOUS_TAG }} → ${{ steps.get-tags.outputs.LATEST_TAG }} [${{ steps.process-arches.outputs.successful_arches }}]"
         branch-name: patch-release-sync/${{ steps.get-tags.outputs.LATEST_TAG }}
         title: Sync release patch ${{ steps.get-tags.outputs.LATEST_TAG }}
-        body: Sync release branch patcdh for commit ${{ steps.get-tags.outputs.LATEST_TAG }}
+        body: Sync release branch patch for commit ${{ steps.get-tags.outputs.LATEST_TAG }}
+
+    - name: Prepare repo for release
+      run: |
+        cd upstream-runner && git checkout ${{ steps.get-tags.outputs.LATEST_TAG }} && cd ..
+        cp -r upstream-runner/* .
+
+    - name: Create release branch
+      if: steps.process-arches.outputs.successful_arches != ''
+      run: |
+        git checkout -b releases/${{ steps.get-tags.outputs.LATEST_TAG }}
+        git push -u origin releases/${{ steps.get-tags.outputs.LATEST_TAG }}

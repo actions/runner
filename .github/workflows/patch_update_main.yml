@@ -131,10 +131,12 @@ jobs:
       run: |
         echo "${{ steps.get-commits.outputs.LATEST_COMMIT }}" > patches/last_processed_commit.txt
 
-    - name: Tidy repo for PR
+    - name: Prepare repo for PR
       if: steps.process-arches.outputs.successful_arches != ''
       run: |
         rm -f successful_arches.txt
+        cd upstream-runner && git checkout ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }} && cd ..
+        cp -r upstream-runner/* .
 
     - name: Create pull request
       uses: canonical/create-pull-request@main
