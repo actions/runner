@@ -110,7 +110,12 @@ namespace GitHub.Runner.Listener
             {
                 var jwt = JsonWebToken.Create(accessToken);
                 var claims = jwt.ExtractClaims();
-                orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orchid", StringComparison.OrdinalIgnoreCase))?.Value;
+                orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orch_id", StringComparison.OrdinalIgnoreCase))?.Value;
+                if (string.IsNullOrEmpty(orchestrationId))
+                {
+                    orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orchid", StringComparison.OrdinalIgnoreCase))?.Value;
+                }
+
                 if (!string.IsNullOrEmpty(orchestrationId))
                 {
                     Trace.Info($"Pull OrchestrationId {orchestrationId} from JWT claims");
