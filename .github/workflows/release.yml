@@ -234,7 +234,6 @@ jobs:
         asset_name: actions-runner-linux-s390x-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
-
     - uses: mattermost/action-mattermost-notify@master
       if: ${{ failure() }}
       with:
