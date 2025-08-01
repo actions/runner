@@ -17,6 +17,9 @@ on:
       imageName:
         type: string
         description: The name of the image
+      imageTag:
+        type: string
+        description: The tag of the image
       runsOn:
         type: string
         description: The environment that this job runs on, such ubuntu-latest
@@ -95,7 +98,7 @@ jobs:
             linux/amd64
           tags: |
             ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
-            ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.imageTag }}
           build-args: |
             RUNNER_VERSION=${{ steps.image.outputs.version }}
             TARGETPLATFORM=${{ github.event.inputs.targetPlatform }}
