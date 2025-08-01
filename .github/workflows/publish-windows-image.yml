@@ -9,6 +9,9 @@ on:
       imageName:
         type: string
         description: The name of the image
+      imageTag:
+        type: string
+        description: The tag of the image
       runsOn:
         type: string
         description: The environment that this job runs on, such windows-2022
@@ -53,7 +56,7 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Build image
-        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} -f images/Dockerfile.${{ github.event.inputs.imageName }} --build-arg RUNNER_VERSION=${{ github.event.inputs.runnerVersion }} images
+        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.imageTag }} -f images/Dockerfile.${{ github.event.inputs.imageName }} --build-arg RUNNER_VERSION=${{ github.event.inputs.runnerVersion }} images
       - name: Add Tag
         run: docker tag ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
       - name: Push image
