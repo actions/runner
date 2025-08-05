@@ -3,6 +3,8 @@ name: Runner CD
 on:
   workflow_dispatch:
   push:
+    branches:
+    - releases/**
     paths:
     - releaseVersion
 
