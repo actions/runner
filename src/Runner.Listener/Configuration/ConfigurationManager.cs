@@ -538,29 +538,30 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     RunnerSettings settings = _store.GetSettings();
 
-                    GitHubAuthResult authResult = null;
-                    VssCredentials creds;
-                    if (string.IsNullOrEmpty(settings.GitHubUrl))
-                    {
-                        var credProvider = GetCredentialProvider(command, settings.ServerUrl);
-                        creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: settings.UseV2Flow);
-                        Trace.Info("legacy vss cred retrieved");
-                    }
-                    else
+                    if (settings.UseV2Flow)
                     {
                         var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
-                        authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
-                        creds = authResult.ToVssCredentials();
-                        Trace.Info("cred retrieved via GitHub auth");
-                    }
-
-                    if (authResult != null && authResult.UseV2Flow)
-                    {
-                        await _dotcomServer.DeleteRunnerAsync(settings.GitHubUrl, authResult.Token, settings.AgentId);
+                        await _dotcomServer.DeleteRunnerAsync(settings.GitHubUrl, deletionToken, settings.AgentId);
                     }
                     else
                     {
                         var credentialManager = HostContext.GetService<ICredentialManager>();
+
+                        // Get the credentials
+                        VssCredentials creds = null;
+                        if (string.IsNullOrEmpty(settings.GitHubUrl))
+                        {
+                            var credProvider = GetCredentialProvider(command, settings.ServerUrl);
+                            creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
+                            Trace.Info("legacy vss cred retrieved");
+                        }
+                        else
+                        {
+                            var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
+                            GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
+                            creds = authResult.ToVssCredentials();
+                            Trace.Info("cred retrieved via GitHub auth");
+                        }
 
                         // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                         await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
