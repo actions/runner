@@ -1,13 +1,13 @@
 ## What's Changed
-* Create schedule workflow to upgrade docker and buildx version. by @TingluoHuang in https://github.com/actions/runner/pull/3859
-* Update dotnet sdk to latest version @8.0.409 by @github-actions in https://github.com/actions/runner/pull/3860
-* Allow runner to use authv2 during config. by @TingluoHuang in https://github.com/actions/runner/pull/3866
-* show helpful error message when resolving actions directly with launch by @aiqiaoy in https://github.com/actions/runner/pull/3874
-* Update dotnet sdk to latest version @8.0.410 by @github-actions in https://github.com/actions/runner/pull/3871
-* Update Docker to v28.2.1 and Buildx to v0.24.0 by @github-actions in https://github.com/actions/runner/pull/3881
-* Allow NO_SSL_VERIFY in RawHttpMessageHandler. by @TingluoHuang in https://github.com/actions/runner/pull/3883
+* Try add orchestrationid into user-agent using token claim. by @TingluoHuang in https://github.com/actions/runner/pull/3945
+* Fix null reference exception in user agent handling by @salmanmkc in https://github.com/actions/runner/pull/3946
+* Runner Support for executing Node24 Actions by @salmanmkc in https://github.com/actions/runner/pull/3940
+* Update dotnet sdk to latest version @8.0.412 by @github-actions[bot] in https://github.com/actions/runner/pull/3941
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.324.0...v2.325.0
+## New Contributors
+* @salmanmkc made their first contribution in https://github.com/actions/runner/pull/3946
+
+**Full Changelog**: https://github.com/actions/runner/compare/v2.326.0...v2.327.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
