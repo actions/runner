@@ -125,13 +125,22 @@ namespace GitHub.Runner.Common
                     try
                     {
                         HttpResponseMessage response = null;
-                        if (requestType == RequestType.Get)
+                        switch (requestType)
                         {
-                            response = await httpClient.GetAsync(githubApiUrl);
-                        }
-                        else
-                        {
-                            response = await httpClient.PostAsync(githubApiUrl, body);
+                            case RequestType.Get:
+                                response = await httpClient.GetAsync(githubApiUrl);
+                                break;
+                            case RequestType.Post:
+                                response = await httpClient.PostAsync(githubApiUrl, body);
+                                break;
+                            case RequestType.Patch:
+                                response = await httpClient.PatchAsync(githubApiUrl, body);
+                                break;
+                            case RequestType.Delete:
+                                response = await httpClient.DeleteAsync(githubApiUrl);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException(nameof(requestType), requestType, null);
                         }
 
                         if (response != null)
