@@ -5,34 +5,29 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common.Util
 {
-    /// <summary>
-    /// Represents details about an environment variable, including its value and source
-    /// </summary>
-    public class EnvironmentVariableInfo
-    {
-        /// <summary>
-        /// Gets or sets whether the value evaluates to true
-        /// </summary>
-        public bool IsTrue { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether the value came from the workflow environment
-        /// </summary>
-        public bool FromWorkflow { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether the value came from the system environment
-        /// </summary>
-        public bool FromSystem { get; set; }
-
-        /// <summary>
-        /// Gets or sets the raw string value of the environment variable
-        /// </summary>
-        public string RawValue { get; set; }
-    }
-
     public static class NodeUtil
     {
+        /// <summary>
+        /// Represents details about an environment variable, including its value and source
+        /// </summary>
+        private class EnvironmentVariableInfo
+        {
+            /// <summary>
+            /// Gets or sets whether the value evaluates to true
+            /// </summary>
+            public bool IsTrue { get; set; }
+
+            /// <summary>
+            /// Gets or sets whether the value came from the workflow environment
+            /// </summary>
+            public bool FromWorkflow { get; set; }
+
+            /// <summary>
+            /// Gets or sets whether the value came from the system environment
+            /// </summary>
+            public bool FromSystem { get; set; }
+        }
+
         private const string _defaultNodeVersion = "node20";
         public static readonly ReadOnlyCollection<string> BuiltInNodeVersions = new(new[] { "node20" });
         public static string GetInternalNodeVersion()
@@ -146,7 +141,6 @@ namespace GitHub.Runner.Common.Util
             {
                 foundInWorkflow = true;
                 info.FromWorkflow = true;
-                info.RawValue = workflowValue; // Workflow value takes precedence for the raw value
                 info.IsTrue = StringUtil.ConvertToBoolean(workflowValue); // Workflow value takes precedence for the boolean value
             }
 
@@ -159,7 +153,6 @@ namespace GitHub.Runner.Common.Util
             // If not found in workflow, use system values
             if (!foundInWorkflow)
             {
-                info.RawValue = foundInSystem ? systemValue : null;
                 info.IsTrue = StringUtil.ConvertToBoolean(systemValue);
             }
 
