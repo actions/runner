@@ -44,7 +44,7 @@ RUN apt-get update -y \
     openjdk-11-jdk \
     telnet \
     libreadline-dev \
-    libncurses5 \
+    libncurses6 \
     curl \
     vim \
     lsof \
