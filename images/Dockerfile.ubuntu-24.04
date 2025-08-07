@@ -191,7 +191,9 @@ RUN yes | sdkmanager --licenses --sdk_root=$ANDROID_HOME
 RUN sdkmanager --sdk_root=$ANDROID_HOME --install \
     "system-images;android-28;google_apis;x86" \
     "platforms;android-30" \
+    "platforms;android-34" \
     "build-tools;29.0.1" \
+    "build-tools;34.0.0" \
     "platform-tools"
 # Install android ndk
 RUN echo $ANDROID_NDK_LIST | awk -F ';' '{ for(i=1; i<=NF; i++) print $i }' \
