@@ -1,9 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common.Util
 {
+    /// <summary>
+    /// Represents details about an environment variable, including its value and source
+    /// </summary>
+    public class EnvironmentVariableInfo
+    {
+        /// <summary>
+        /// Gets or sets whether the value evaluates to true
+        /// </summary>
+        public bool IsTrue { get; set; }
+        
+        /// <summary>
+        /// Gets or sets whether the value came from the workflow environment
+        /// </summary>
+        public bool FromWorkflow { get; set; }
+        
+        /// <summary>
+        /// Gets or sets whether the value came from the system environment
+        /// </summary>
+        public bool FromSystem { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the raw string value of the environment variable
+        /// </summary>
+        public string RawValue { get; set; }
+    }
+
     public static class NodeUtil
     {
         private const string _defaultNodeVersion = "node20";
@@ -31,10 +58,15 @@ namespace GitHub.Runner.Common.Util
             bool useNode24ByDefault = false,
             bool requireNode24 = false)
         {
-            // Get effective values for the flags, with workflow taking precedence over system
-            bool forceNode24 = IsEnvironmentVariableTrue(Constants.Runner.NodeMigration.ForceNode24Variable, workflowEnvironment);
-            bool allowUnsecureNode = IsEnvironmentVariableTrue(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable, workflowEnvironment);
+            // Get environment variable details with source information
+            var forceNode24Details = GetEnvironmentVariableDetails(
+                Constants.Runner.NodeMigration.ForceNode24Variable, workflowEnvironment);
 
+            var allowUnsecureNodeDetails = GetEnvironmentVariableDetails(
+                Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable, workflowEnvironment);
+
+            bool forceNode24 = forceNode24Details.IsTrue;
+            bool allowUnsecureNode = allowUnsecureNodeDetails.IsTrue;
             string warningMessage = null;
 
             // Phase 3: Always use Node 24 regardless of environment variables
@@ -44,39 +76,18 @@ namespace GitHub.Runner.Common.Util
             }
 
             // Check if both flags are set from the same source
-            bool bothFromWorkflow = false;
-            bool bothFromSystem = false;
-
-            if (workflowEnvironment != null)
-            {
-                bool workflowHasForce = workflowEnvironment.TryGetValue(Constants.Runner.NodeMigration.ForceNode24Variable, out string forceValue) &&
-                                     !string.IsNullOrEmpty(forceValue);
-                bool workflowHasAllow = workflowEnvironment.TryGetValue(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable, out string allowValue) &&
-                                      !string.IsNullOrEmpty(allowValue);
-
-                bothFromWorkflow = workflowHasForce && workflowHasAllow &&
-                                  string.Equals(forceValue, "true", StringComparison.OrdinalIgnoreCase) &&
-                                  string.Equals(allowValue, "true", StringComparison.OrdinalIgnoreCase);
-            }
-
-            // Check if both are set in system and neither is overridden by workflow
-            string sysForce = Environment.GetEnvironmentVariable(Constants.Runner.NodeMigration.ForceNode24Variable);
-            string sysAllow = Environment.GetEnvironmentVariable(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable);
-
-            bool systemHasForce = !string.IsNullOrEmpty(sysForce) && string.Equals(sysForce, "true", StringComparison.OrdinalIgnoreCase);
-            bool systemHasAllow = !string.IsNullOrEmpty(sysAllow) && string.Equals(sysAllow, "true", StringComparison.OrdinalIgnoreCase);
-
-            // Both are set in system and not overridden by workflow
-            bothFromSystem = systemHasForce && systemHasAllow &&
-                           (workflowEnvironment == null ||
-                            (!workflowEnvironment.ContainsKey(Constants.Runner.NodeMigration.ForceNode24Variable) &&
-                             !workflowEnvironment.ContainsKey(Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable)));
-
+            bool bothFromWorkflow = forceNode24Details.IsTrue && allowUnsecureNodeDetails.IsTrue && 
+                                   forceNode24Details.FromWorkflow && allowUnsecureNodeDetails.FromWorkflow;
+            
+            bool bothFromSystem = forceNode24Details.IsTrue && allowUnsecureNodeDetails.IsTrue && 
+                                 forceNode24Details.FromSystem && allowUnsecureNodeDetails.FromSystem;
+            
             // Handle the case when both are set in the same source
             if ((bothFromWorkflow || bothFromSystem) && !requireNode24)
             {
+                string source = bothFromWorkflow ? "workflow" : "system";
                 string defaultVersion = useNode24ByDefault ? Constants.Runner.NodeMigration.Node24 : Constants.Runner.NodeMigration.Node20;
-                warningMessage = $"Both {Constants.Runner.NodeMigration.ForceNode24Variable} and {Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable} environment variables are set to true. This is likely a configuration error. Using the default Node version: {defaultVersion}.";
+                warningMessage = $"Both {Constants.Runner.NodeMigration.ForceNode24Variable} and {Constants.Runner.NodeMigration.AllowUnsecureNodeVersionVariable} environment variables are set to true in the {source} environment. This is likely a configuration error. Using the default Node version: {defaultVersion}.";
                 return (defaultVersion, warningMessage);
             }
 
@@ -87,7 +98,7 @@ namespace GitHub.Runner.Common.Util
                 {
                     return (Constants.Runner.NodeMigration.Node20, null);
                 }
-                
+
                 return (Constants.Runner.NodeMigration.Node24, null);
             }
 
@@ -118,23 +129,41 @@ namespace GitHub.Runner.Common.Util
         }
 
         /// <summary>
-        /// Checks if an environment variable is set to "true" in either the workflow environment or system environment
+        /// Gets detailed information about an environment variable from both workflow and system environments
         /// </summary>
         /// <param name="variableName">The name of the environment variable</param>
         /// <param name="workflowEnvironment">Optional dictionary containing workflow-level environment variables</param>
-        /// <returns>True if the variable is set to "true" in either environment</returns>
-        private static bool IsEnvironmentVariableTrue(string variableName, IDictionary<string, string> workflowEnvironment)
+        /// <returns>An EnvironmentVariableInfo object containing details about the variable from both sources</returns>
+        private static EnvironmentVariableInfo GetEnvironmentVariableDetails(string variableName, IDictionary<string, string> workflowEnvironment)
         {
-            // Workflow environment variables take precedence over system environment variables
-            // If the workflow explicitly sets the value (even to false), we respect that over the system value
-            if (workflowEnvironment != null && workflowEnvironment.TryGetValue(variableName, out string workflowValue))
+            var info = new EnvironmentVariableInfo();
+            
+            // Check workflow environment
+            bool foundInWorkflow = false;
+            string workflowValue = null;
+            
+            if (workflowEnvironment != null && workflowEnvironment.TryGetValue(variableName, out workflowValue))
             {
-                return string.Equals(workflowValue, "true", StringComparison.OrdinalIgnoreCase);
+                foundInWorkflow = true;
+                info.FromWorkflow = true;
+                info.RawValue = workflowValue; // Workflow value takes precedence for the raw value
+                info.IsTrue = StringUtil.ConvertToBoolean(workflowValue); // Workflow value takes precedence for the boolean value
             }
 
-            // Fall back to system environment variable only if workflow doesn't specify this variable
+            // Also check system environment
             string systemValue = Environment.GetEnvironmentVariable(variableName);
-            return string.Equals(systemValue, "true", StringComparison.OrdinalIgnoreCase);
+            bool foundInSystem = !string.IsNullOrEmpty(systemValue);
+            
+            info.FromSystem = foundInSystem;
+            
+            // If not found in workflow, use system values
+            if (!foundInWorkflow)
+            {
+                info.RawValue = foundInSystem ? systemValue : null;
+                info.IsTrue = StringUtil.ConvertToBoolean(systemValue);
+            }
+            
+            return info;
         }
     }
 }
