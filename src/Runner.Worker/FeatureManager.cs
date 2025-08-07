@@ -11,20 +11,5 @@ namespace GitHub.Runner.Worker
             var isContainerHooksPathSet = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath));
             return isContainerHookFeatureFlagSet && isContainerHooksPathSet;
         }
-
-        public static bool IsFeatureEnabled(Variables variables, string featureFlag)
-        {
-            return variables?.GetBoolean(featureFlag) ?? false;
-        }
-
-        public static bool IsUseNode24ByDefaultEnabled(Variables variables)
-        {
-            return IsFeatureEnabled(variables, Constants.Runner.NodeMigration.UseNode24ByDefaultFlag);
-        }
-
-        public static bool IsRequireNode24Enabled(Variables variables)
-        {
-            return IsFeatureEnabled(variables, Constants.Runner.NodeMigration.RequireNode24Flag);
-        }
     }
 }
