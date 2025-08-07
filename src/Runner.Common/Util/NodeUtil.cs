@@ -53,6 +53,12 @@ namespace GitHub.Runner.Common.Util
             bool useNode24ByDefault = false,
             bool requireNode24 = false)
         {
+            // Phase 3: Always use Node 24 regardless of environment variables
+            if (requireNode24)
+            {
+                return (Constants.Runner.NodeMigration.Node24, null);
+            }
+            
             // Get environment variable details with source information
             var forceNode24Details = GetEnvironmentVariableDetails(
                 Constants.Runner.NodeMigration.ForceNode24Variable, workflowEnvironment);
@@ -64,12 +70,6 @@ namespace GitHub.Runner.Common.Util
             bool allowUnsecureNode = allowUnsecureNodeDetails.IsTrue;
             string warningMessage = null;
 
-            // Phase 3: Always use Node 24 regardless of environment variables
-            if (requireNode24)
-            {
-                return (Constants.Runner.NodeMigration.Node24, null);
-            }
-
             // Check if both flags are set from the same source
             bool bothFromWorkflow = forceNode24Details.IsTrue && allowUnsecureNodeDetails.IsTrue &&
                                    forceNode24Details.FromWorkflow && allowUnsecureNodeDetails.FromWorkflow;
@@ -78,7 +78,7 @@ namespace GitHub.Runner.Common.Util
                                  forceNode24Details.FromSystem && allowUnsecureNodeDetails.FromSystem;
 
             // Handle the case when both are set in the same source
-            if ((bothFromWorkflow || bothFromSystem) && !requireNode24)
+            if (bothFromWorkflow || bothFromSystem)
             {
                 string source = bothFromWorkflow ? "workflow" : "system";
                 string defaultVersion = useNode24ByDefault ? Constants.Runner.NodeMigration.Node24 : Constants.Runner.NodeMigration.Node20;
