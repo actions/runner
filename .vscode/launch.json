@@ -40,18 +40,6 @@
             "requireExactSource": false
         },
         {
-            "name": "Remove",
-            "type": "coreclr",
-            "request": "launch",
-            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
-            "args": [
-                "remove"
-            ],
-            "cwd": "${workspaceFolder}/src",
-            "console": "integratedTerminal",
-            "requireExactSource": false
-        },
-        {
             "name": "Debug Worker",
             "type": "coreclr",
             "request": "attach",
