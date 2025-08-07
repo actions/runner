@@ -10,21 +10,16 @@ namespace GitHub.Runner.Common.Tests.Worker
 {
     public class FeatureManagerL0
     {
-        private Variables GetVariables()
-        {
-            var hostContext = new Mock<IHostContext>();
-            return new Variables(hostContext.Object, new Dictionary<string, VariableValue>());
-        }
-
         [Fact]
         public void IsUseNode24ByDefaultEnabled_ReturnsCorrectValue()
         {
             // Arrange
-            var variables = GetVariables();
-            variables.Set(Constants.Runner.NodeMigration.UseNode24ByDefaultFlag, "true");
+            var mockVariables = new Mock<Variables>(MockBehavior.Strict, null, null);
+            mockVariables.Setup(x => x.GetBoolean(Constants.Runner.NodeMigration.UseNode24ByDefaultFlag))
+                .Returns(true);
 
             // Act
-            bool result = FeatureManager.IsUseNode24ByDefaultEnabled(variables);
+            bool result = FeatureManager.IsUseNode24ByDefaultEnabled(mockVariables.Object);
 
             // Assert
             Assert.True(result);
@@ -34,10 +29,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         public void IsUseNode24ByDefaultEnabled_ReturnsFalseWhenNotSet()
         {
             // Arrange
-            var variables = GetVariables();
+            var mockVariables = new Mock<Variables>(MockBehavior.Strict, null, null);
+            mockVariables.Setup(x => x.GetBoolean(Constants.Runner.NodeMigration.UseNode24ByDefaultFlag))
+                .Returns((bool?)null);
 
             // Act
-            bool result = FeatureManager.IsUseNode24ByDefaultEnabled(variables);
+            bool result = FeatureManager.IsUseNode24ByDefaultEnabled(mockVariables.Object);
 
             // Assert
             Assert.False(result);
@@ -57,11 +54,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         public void IsRequireNode24Enabled_ReturnsCorrectValue()
         {
             // Arrange
-            var variables = GetVariables();
-            variables.Set(Constants.Runner.NodeMigration.RequireNode24Flag, "true");
+            var mockVariables = new Mock<Variables>(MockBehavior.Strict, null, null);
+            mockVariables.Setup(x => x.GetBoolean(Constants.Runner.NodeMigration.RequireNode24Flag))
+                .Returns(true);
 
             // Act
-            bool result = FeatureManager.IsRequireNode24Enabled(variables);
+            bool result = FeatureManager.IsRequireNode24Enabled(mockVariables.Object);
 
             // Assert
             Assert.True(result);
@@ -71,10 +69,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         public void IsRequireNode24Enabled_ReturnsFalseWhenNotSet()
         {
             // Arrange
-            var variables = GetVariables();
+            var mockVariables = new Mock<Variables>(MockBehavior.Strict, null, null);
+            mockVariables.Setup(x => x.GetBoolean(Constants.Runner.NodeMigration.RequireNode24Flag))
+                .Returns((bool?)null);
 
             // Act
-            bool result = FeatureManager.IsRequireNode24Enabled(variables);
+            bool result = FeatureManager.IsRequireNode24Enabled(mockVariables.Object);
 
             // Assert
             Assert.False(result);
