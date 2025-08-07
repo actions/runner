@@ -152,9 +152,6 @@ RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && which docker-compose \
     && docker compose version
 
-# Update PIP (Python's package manager)
-RUN python3 -m pip install --upgrade pip
-
 # Add the Python "User Script Directory" to the PATH
 ENV PATH="${PATH}:${HOME}/.local/bin/"
 
