@@ -64,28 +64,28 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     nodeData.NodeVersion = Common.Constants.Runner.NodeMigration.Node20;
                 }
-                
+
                 // Check if node20 was explicitly specified in the action
                 // We don't modify if node24 was explicitly specified
                 if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    bool useNode24ByDefault = FeatureManager.IsFeatureEnabled(executionContext.Global.Variables, Constants.Runner.NodeMigration.UseNode24ByDefaultFlag);
-                    bool requireNode24 = FeatureManager.IsFeatureEnabled(executionContext.Global.Variables, Constants.Runner.NodeMigration.RequireNode24Flag);
-                    
+                    bool useNode24ByDefault = FeatureManager.IsUseNode24ByDefaultEnabled(executionContext.Global.Variables);
+                    bool requireNode24 = FeatureManager.IsRequireNode24Enabled(executionContext.Global.Variables);
+
                     var (nodeVersion, configWarningMessage) = NodeUtil.DetermineActionsNodeVersion(environment, useNode24ByDefault, requireNode24);
                     var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeVersion);
                     nodeData.NodeVersion = finalNodeVersion;
-                    
+
                     if (!string.IsNullOrEmpty(configWarningMessage))
                     {
                         executionContext.Warning(configWarningMessage);
                     }
-                    
+
                     if (!string.IsNullOrEmpty(platformWarningMessage))
                     {
                         executionContext.Warning(platformWarningMessage);
                     }
-                    
+
                     // Show information about Node 24 migration in Phase 2
                     if (useNode24ByDefault && !requireNode24 && string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
                     {

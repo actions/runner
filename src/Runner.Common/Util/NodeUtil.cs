@@ -14,17 +14,17 @@ namespace GitHub.Runner.Common.Util
         /// Gets or sets whether the value evaluates to true
         /// </summary>
         public bool IsTrue { get; set; }
-        
+
         /// <summary>
         /// Gets or sets whether the value came from the workflow environment
         /// </summary>
         public bool FromWorkflow { get; set; }
-        
+
         /// <summary>
         /// Gets or sets whether the value came from the system environment
         /// </summary>
         public bool FromSystem { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the raw string value of the environment variable
         /// </summary>
@@ -76,12 +76,12 @@ namespace GitHub.Runner.Common.Util
             }
 
             // Check if both flags are set from the same source
-            bool bothFromWorkflow = forceNode24Details.IsTrue && allowUnsecureNodeDetails.IsTrue && 
+            bool bothFromWorkflow = forceNode24Details.IsTrue && allowUnsecureNodeDetails.IsTrue &&
                                    forceNode24Details.FromWorkflow && allowUnsecureNodeDetails.FromWorkflow;
-            
-            bool bothFromSystem = forceNode24Details.IsTrue && allowUnsecureNodeDetails.IsTrue && 
+
+            bool bothFromSystem = forceNode24Details.IsTrue && allowUnsecureNodeDetails.IsTrue &&
                                  forceNode24Details.FromSystem && allowUnsecureNodeDetails.FromSystem;
-            
+
             // Handle the case when both are set in the same source
             if ((bothFromWorkflow || bothFromSystem) && !requireNode24)
             {
@@ -137,11 +137,11 @@ namespace GitHub.Runner.Common.Util
         private static EnvironmentVariableInfo GetEnvironmentVariableDetails(string variableName, IDictionary<string, string> workflowEnvironment)
         {
             var info = new EnvironmentVariableInfo();
-            
+
             // Check workflow environment
             bool foundInWorkflow = false;
             string workflowValue = null;
-            
+
             if (workflowEnvironment != null && workflowEnvironment.TryGetValue(variableName, out workflowValue))
             {
                 foundInWorkflow = true;
@@ -153,16 +153,16 @@ namespace GitHub.Runner.Common.Util
             // Also check system environment
             string systemValue = Environment.GetEnvironmentVariable(variableName);
             bool foundInSystem = !string.IsNullOrEmpty(systemValue);
-            
+
             info.FromSystem = foundInSystem;
-            
+
             // If not found in workflow, use system values
             if (!foundInWorkflow)
             {
                 info.RawValue = foundInSystem ? systemValue : null;
                 info.IsTrue = StringUtil.ConvertToBoolean(systemValue);
             }
-            
+
             return info;
         }
     }
