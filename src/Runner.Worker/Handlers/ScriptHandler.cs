@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -68,15 +68,25 @@ namespace GitHub.Runner.Worker.Handlers
             bool validateShellOnHost = !(StepHost is ContainerStepHost);
             string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
             string shell = null;
+
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
-                // TODO: figure out how defaults interact with template later
-                // for now, we won't check job.defaults if we are inside a template.
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (ExecutionContext.Global.CompositeDefaults != null && ExecutionContext.Global.CompositeDefaults.TryGetValue("run", out var runCompositeDefaults))
                 {
-                    runDefaults.TryGetValue("shell", out shell);
+                    if (runCompositeDefaults.TryGetValue("shell", out shell))
+                    {
+                        ExecutionContext.Debug("Overwrite 'shell' base on composite defaults.");
+                    }
+                }
+                else if (ExecutionContext.Global.JobDefaults != null && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                {
+                    if (runDefaults.TryGetValue("shell", out shell))
+                    {
+                        ExecutionContext.Debug("Overwrite 'shell' base on job defaults.");
+                    }
                 }
             }
+
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
@@ -156,7 +166,14 @@ namespace GitHub.Runner.Worker.Handlers
             if (!Inputs.TryGetValue("workingDirectory", out workingDirectory))
             {
                 // Don't use job level working directories for hooks
-                if (IsActionStep && string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (githubContext.ContainsKey("action_path") && ExecutionContext.Global.CompositeDefaults.TryGetValue("run", out var runCompositeDefaults))
+                {
+                    if (runCompositeDefaults.TryGetValue("working-directory", out workingDirectory))
+                    {
+                        ExecutionContext.Debug("Overwrite 'working-directory' base on composite defaults.");
+                    }
+                }
+                else if (IsActionStep && string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("working-directory", out workingDirectory))
                     {
@@ -165,12 +182,23 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
             var workspaceDir = githubContext["workspace"] as StringContextData;
+            if (githubContext.ContainsKey("action_path"))
+            {
+                workspaceDir = githubContext["action_path"] as StringContextData;
+            }
             workingDirectory = Path.Combine(workspaceDir, workingDirectory ?? string.Empty);
 
             string shell = null;
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (githubContext.ContainsKey("action_path") && ExecutionContext.Global.CompositeDefaults.TryGetValue("run", out var runCompositeDefaults))
+                {
+                    if (runCompositeDefaults.TryGetValue("shell", out shell))
+                    {
+                        ExecutionContext.Debug("Overwrite 'shell' base on composite defaults.");
+                    }
+                }
+                else if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("shell", out shell))
                     {
