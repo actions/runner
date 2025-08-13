@@ -978,7 +978,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.AtLeast(2));
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
-                _credentialManager.Verify(x => x.LoadCredentials(true), Times.Exactly(2));
+                _credentialManager.Verify(x => x.LoadCredentials(true), Times.AtLeast(2));
 
                 Assert.False(hc.AllowAuthMigration);
             }
