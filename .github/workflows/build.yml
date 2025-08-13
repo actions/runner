@@ -50,7 +50,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     # Build runner layout
     - name: Build & Layout Release
