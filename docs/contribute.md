@@ -4,6 +4,14 @@ We welcome contributions in the form of issues and pull requests. We view the co
 
 > IMPORTANT: Building your own runner is critical for the dev inner loop process when contributing changes.  However, only runners built and distributed by GitHub (releases) are supported in production.  Be aware that workflows and orchestrations run service side with the runner being a remote process to run steps.  For that reason, the service can pull the runner forward so customizations can be lost.
 
+## Understanding Actions vs Runner
+
+**New to GitHub Actions development?** See [Action Execution Model](action-execution-model.md) to understand the difference between:
+- **Actions** (JavaScript, containers, composite) - Run without compilation
+- **Runner** (this repository) - Compiled C# application that executes actions
+
+For examples of how different action types work, see [Action Execution Examples](examples/action-execution-examples.md).
+
 ## Issues
 
 Log issues for both bugs and enhancement requests.  Logging issues are important for the open community.

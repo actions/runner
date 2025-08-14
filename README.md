@@ -8,6 +8,16 @@
 
 The runner is the application that runs a job from a GitHub Actions workflow. It is used by GitHub Actions in the [hosted virtual environments](https://github.com/actions/virtual-environments), or you can [self-host the runner](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/about-self-hosted-runners) in your own environment.
 
+## Understanding How Actions Work
+
+**New to GitHub Actions development?** The runner (this repository) is compiled C# code that executes actions. Actions themselves typically do NOT require compilation:
+
+- **JavaScript Actions** run source `.js` files directly
+- **Container Actions** use Docker images (pre-built or built from Dockerfile)  
+- **Composite Actions** are YAML step definitions
+
+📖 See [docs/action-execution-model.md](docs/action-execution-model.md) for detailed information and [examples](docs/examples/action-execution-examples.md).
+
 ## Get Started
 
 For more information about installing and using self-hosted runners, see [Adding self-hosted runners](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners) and [Using self-hosted runners in a workflow](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/using-self-hosted-runners-in-a-workflow)
