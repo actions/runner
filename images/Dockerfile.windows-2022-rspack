@@ -69,3 +69,6 @@ RUN git config --global http.sslBackend openssl
 RUN powershell Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Type DWord -Value 1
 
 WORKDIR C:\Users\ContainerAdministrator\runner
+# Setup custom runner hook.
+ENV ACTIONS_RUNNER_HOOK_JOB_STARTED='C:\Users\ContainerAdministrator\runner\misc\hook.ps1'
+COPY hook.ps1 .\misc\hook.ps1
