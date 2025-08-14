@@ -27,4 +27,4 @@ TestResults
 TestLogs
 .DS_Store
 .mono
-**/*.DotSettings.user
+**/*.DotSettings.user/tmp/
