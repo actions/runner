@@ -22,8 +22,10 @@ For more information about installing and using self-hosted runners, see [Adding
 
 ## Documentation and Resources
 
+- 📚 **[Complete Documentation Index](docs/README.md)** - Comprehensive guide to all documentation
 - 📖 **[Contributing Guide](docs/contribute.md)** - Development setup, building, and testing
 - 🔧 **[Automation Scripts](docs/automate.md)** - Automate runner setup and configuration  
+- 🛠️ **[Troubleshooting Guides](docs/checks/README.md)** - Common issues and solutions
 - 🏗️ **[Architecture Decision Records](docs/adrs/README.md)** - Important architectural decisions
 - ⚙️ **Platform Prerequisites:** [Linux](docs/start/envlinux.md) | [Windows](docs/start/envwin.md) | [macOS](docs/start/envosx.md)
 
