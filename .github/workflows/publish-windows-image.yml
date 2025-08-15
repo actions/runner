@@ -15,7 +15,7 @@ on:
       runsOn:
         type: string
         description: The environment that this job runs on, such windows-2022
-        default: windows-2019
+        default: windows-2022
 
 env:
   IMAGE_NAME: github-action-runners/${{ github.event.inputs.imageName }}
