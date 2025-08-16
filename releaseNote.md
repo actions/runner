@@ -1,13 +1,20 @@
 ## What's Changed
-* Try add orchestrationid into user-agent using token claim. by @TingluoHuang in https://github.com/actions/runner/pull/3945
-* Fix null reference exception in user agent handling by @salmanmkc in https://github.com/actions/runner/pull/3946
-* Runner Support for executing Node24 Actions by @salmanmkc in https://github.com/actions/runner/pull/3940
-* Update dotnet sdk to latest version @8.0.412 by @github-actions[bot] in https://github.com/actions/runner/pull/3941
+* Update Docker to v28.3.2 and Buildx to v0.26.1 by @github-actions[bot] in https://github.com/actions/runner/pull/3953
+* Fix if statement structure in update script and variable reference by @salmanmkc in https://github.com/actions/runner/pull/3956
+* Add V2 flow for runner deletion by @Samirat in https://github.com/actions/runner/pull/3954
+* Node 20 -> Node 24 migration feature flagging, opt-in and opt-out environment variables by @salmanmkc in https://github.com/actions/runner/pull/3948
+* Update Node20 and Node24 to latest by @djs-intel in https://github.com/actions/runner/pull/3972
+* Redirect supported OS doc section to current public Docs location by @corycalahan in https://github.com/actions/runner/pull/3979
+* Bump Microsoft.NET.Test.Sdk from 17.13.0 to 17.14.1 by @dependabot[bot] in https://github.com/actions/runner/pull/3975
+* Bump Azure.Storage.Blobs from 12.24.0 to 12.25.0 by @dependabot[bot] in https://github.com/actions/runner/pull/3974
+* Bump actions/download-artifact from 4 to 5 by @dependabot[bot] in https://github.com/actions/runner/pull/3973
+* Bump actions/checkout from 4 to 5 by @dependabot[bot] in https://github.com/actions/runner/pull/3982
 
 ## New Contributors
-* @salmanmkc made their first contribution in https://github.com/actions/runner/pull/3946
+* @Samirat made their first contribution in https://github.com/actions/runner/pull/3954
+* @djs-intel made their first contribution in https://github.com/actions/runner/pull/3972
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.326.0...v2.327.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.327.1...v2.328.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
