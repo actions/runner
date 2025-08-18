@@ -1,4 +1,4 @@
-name: Publish Runner Image
+name: Publish Linux Runner Image
 
 on:
   workflow_dispatch:
@@ -97,7 +97,6 @@ jobs:
           platforms: |
             linux/amd64
           tags: |
-            ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
             ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.imageTag }}
           build-args: |
             RUNNER_VERSION=${{ steps.image.outputs.version }}

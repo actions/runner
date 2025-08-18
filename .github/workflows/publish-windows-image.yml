@@ -55,13 +55,10 @@ jobs:
           registry: ${{ vars.REGISTRY }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+
       - name: Build image
-        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.imageTag }} -f images/Dockerfile.${{ github.event.inputs.imageName }} --build-arg RUNNER_VERSION=${{ github.event.inputs.runnerVersion }} images
-      - name: Add Tag
-        run: docker tag ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }} ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        run: docker build -t ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.imageTag }} -f images/Dockerfile.${{ github.event.inputs.imageName }} --build-arg RUNNER_VERSION=${{ github.event.inputs.runnerVersion }} images
       - name: Push image
         run: |
-          docker push ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image.outputs.version }}
           docker push ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.imageTag }}
     
