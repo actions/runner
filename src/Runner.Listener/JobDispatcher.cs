@@ -372,7 +372,14 @@ namespace GitHub.Runner.Listener
                 }
 
                 var term = HostContext.GetService<ITerminal>();
-                term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName}");
+
+                var repo = message.Resources.Repositories.FirstOrDefault();
+                string repoUrl = "(no repo)";
+                if (repo != null && repo.Url != null)
+                {
+                    repoUrl = repo.Url.ToString();
+                }
+                term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName}, Repo: {repoUrl}");
 
                 // first job request renew succeed.
                 TaskCompletionSource<int> firstJobRequestRenewed = new();
