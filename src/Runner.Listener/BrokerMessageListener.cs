@@ -23,7 +23,7 @@ namespace GitHub.Runner.Listener
         private RunnerSettings _settings;
         private ITerminal _term;
         private TimeSpan _getNextMessageRetryInterval;
-        private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
+        private TaskAgentStatus _runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
         private VssCredentials _credsV2;
@@ -258,7 +258,7 @@ namespace GitHub.Runner.Listener
         public void OnJobStatus(object sender, JobStatusEventArgs e)
         {
             Trace.Info("Received job status event. JobState: {0}", e.Status);
-            runnerStatus = e.Status;
+            _runnerStatus = e.Status;
             try
             {
                 _getMessagesTokenSource?.Cancel();
@@ -291,7 +291,7 @@ namespace GitHub.Runner.Listener
                     }
 
                     message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
-                                                                        runnerStatus,
+                                                                        _runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
                                                                         VarUtil.OS,
                                                                         VarUtil.OSArchitecture,
@@ -415,6 +415,21 @@ namespace GitHub.Runner.Listener
         public async Task DeleteMessageAsync(TaskAgentMessage message)
         {
             await Task.CompletedTask;
+        }
+
+        public async Task AcknowledgeMessageAsync(string runnerRequestId, CancellationToken cancellationToken)
+        {
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5)); // Short timeout
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+            Trace.Info($"Acknowledging runner request '{runnerRequestId}'.");
+            await _brokerServer.AcknowledgeRunnerRequestAsync(
+                runnerRequestId,
+                _session.SessionId,
+                _runnerStatus,
+                BuildConstants.RunnerPackage.Version,
+                VarUtil.OS,
+                VarUtil.OSArchitecture,
+                linkedCts.Token);
         }
 
         private bool IsGetNextMessageExceptionRetriable(Exception ex)
