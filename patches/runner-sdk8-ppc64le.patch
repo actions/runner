@@ -19,17 +19,19 @@ diff --git a/src/Misc/externals.sh b/src/Misc/externals.sh
 index ca8f6c28..5d06f9be 100755
 --- a/src/Misc/externals.sh
 +++ b/src/Misc/externals.sh
-@@ -187,3 +187,11 @@ fi
+@@ -187,3 +187,13 @@ fi
  if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
      acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-armv7l.tar.gz" node20 fix_nested_dir
  fi
 +
 +if [[ "$PACKAGERUNTIME" == "linux-ppc64le" ]]; then
 +    acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-ppc64le.tar.gz" node20 fix_nested_dir
++    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-ppc64le.tar.gz" node24 fix_nested_dir
 +fi
 +
 +if [[ "$PACKAGERUNTIME" == "linux-s390x" ]]; then
 +    acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-s390x.tar.gz" node20 fix_nested_dir
++    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-s390x.tar.gz" node24 fix_nested_dir
 +fi
 \ No newline at end of file
 diff --git a/src/Misc/layoutroot/config.sh b/src/Misc/layoutroot/config.sh
