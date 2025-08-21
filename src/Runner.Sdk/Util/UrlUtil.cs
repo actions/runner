@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Sdk
 {
@@ -19,6 +20,28 @@ namespace GitHub.Runner.Sdk
                 string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase) ||
                 gitHubUrl.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase) ||
                 gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // For GitHub Enterprise Cloud with data residency, we allow fallback to GitHub.com for Actions resolution
+        public static bool IsGHECDRFallbackToDotcom(UriBuilder gitHubUrl, ActionDownloadInfo downloadInfo)
+        {
+            string pattern = @"^https?:\/\/api\.github\.com\/repos\/[^\/]+\/[^\/]+\/(tar|zip)ball\/[a-zA-Z0-9._\/-]+$";
+#if OS_WINDOWS
+            if (downloadInfo.ZipballUrl != null && !Regex.IsMatch(downloadInfo.ZipballUrl.ToString(), pattern))
+#else
+            if (downloadInfo.TarballUrl != null && !Regex.IsMatch(downloadInfo.TarballUrl.ToString(), pattern))
+#endif
+            {
+                return false;
+            }
+
+            if (gitHubUrl.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase) ||
+                gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         public static Uri GetCredentialEmbeddedUrl(Uri baseUrl, string username, string password)
