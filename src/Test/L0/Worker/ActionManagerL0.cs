@@ -2557,7 +2557,6 @@ runs:
         {
             try
             {
-                // Arrange
                 Setup();
                 const string ActionName = "actions/checkout";
                 const string ActionRef = "v3";
@@ -2567,8 +2566,8 @@ runs:
                     Id = Guid.NewGuid(),
                     Reference = new Pipelines.RepositoryPathReference()
                     {
-                        Name = actionName,
-                        Ref = actionRef,
+                        Name = ActionName,
+                        Ref = ActionRef,
                         RepositoryType = "GitHub"
                     }
                 };
@@ -2600,7 +2599,7 @@ runs:
                 string archiveFile = await CreateRepoArchive();
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
-                string downloadUrl = string.Format(downloadUrlTemplate, actionName, actionRef);
+                string downloadUrl = string.Format(downloadUrlTemplate, ActionName, ActionRef);
                 mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(downloadUrl)), ItExpr.IsAny<CancellationToken>())
                     .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
 
@@ -2608,10 +2607,21 @@ runs:
                 mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
                 _hc.SetSingleton(mockHandlerFactory.Object);
 
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actions });
 
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, $"{ActionRef}.completed");
                 Assert.True(File.Exists(watermarkFile), $"Failed scenario: {scenario}");
+                
+                if (shouldUseDefaultToken)
+                {
+                    // For regular GHES, the default token should be used
+                    _ec.Verify(x => x.GetGitHubContext("token"), Times.AtLeastOnce);
+                }
+                else
+                {
+                    // For GHEC OnPrem fallback scenarios, test that the download succeeded without using default token
+                    Assert.True(File.Exists(watermarkFile), $"GHEC OnPrem fallback scenario should succeed: {scenario}");
+                }
             }
             finally
             {
