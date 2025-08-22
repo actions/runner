@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Http.Headers;
-using System.Text.RegularExpressions;
 
 namespace GitHub.Runner.Sdk
 {
@@ -25,12 +24,30 @@ namespace GitHub.Runner.Sdk
         // For GitHub Enterprise Cloud with data residency, we allow fallback to GitHub.com for Actions resolution
         public static bool IsGHECDRFallbackToDotcom(UriBuilder gitHubUrl, ActionDownloadInfo downloadInfo)
         {
-            string pattern = @"^https?:\/\/api\.github\.com\/repos\/[^\/]+\/[^\/]+\/(tar|zip)ball\/[a-zA-Z0-9._\/-]+$";
 #if OS_WINDOWS
-            if (downloadInfo.ZipballUrl != null && !Regex.IsMatch(downloadInfo.ZipballUrl.ToString(), pattern))
+            var downloadUrl = downloadInfo.ZipballUrl;
 #else
-            if (downloadInfo.TarballUrl != null && !Regex.IsMatch(downloadInfo.TarballUrl.ToString(), pattern))
+            var downloadUrl = downloadInfo.TarballUrl;
 #endif
+            try
+            {
+                var downloadUriBuilder = new UriBuilder(downloadUrl);
+                if (!string.Equals(downloadUriBuilder.Host, "api.github.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+                
+                // Check if the path follows the expected pattern: /repos/{owner}/{repo}/(tar|zip)ball/{ref}
+                var pathSegments = downloadUriBuilder.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (pathSegments.Length < 5 || 
+                    !string.Equals(pathSegments[0], "repos", StringComparison.OrdinalIgnoreCase) ||
+                    (!string.Equals(pathSegments[3], "tarball", StringComparison.OrdinalIgnoreCase) && 
+                        !string.Equals(pathSegments[3], "zipball", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return false;
+                }
+            }
+            catch (UriFormatException)
             {
                 return false;
             }
