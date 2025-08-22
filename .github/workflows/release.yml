@@ -79,7 +79,7 @@ jobs:
     - name: Apply patches
       if: matrix.runtime == 'linux-s390x' || matrix.runtime == 'linux-ppc64le'
       run: |
-        git apply patches/runner-main-sdk8-${{ matrix.patch_tag }}.patch
+        git apply patches/runner-sdk8-${{ matrix.patch_tag }}.patch
 
     - name: Update DotNet required version pin
       run: |
