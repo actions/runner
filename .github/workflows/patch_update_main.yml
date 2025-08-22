@@ -16,6 +16,9 @@ jobs:
     - name: Checkout your repository
       uses: actions/checkout@v4
       with:
+        # 2025-08-22: Using GitHub's Personal Access Token is required to allow automated workflow
+        # triggers (on: pull_request) from Pull Requests issued by this workflow.
+        token: ${{ secrets.PAT }}
         fetch-depth: 0
 
     - name: Set up Git identity
@@ -142,7 +145,9 @@ jobs:
       uses: canonical/create-pull-request@main
       if: steps.process-arches.outputs.successful_arches != ''
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        # 2025-08-22: Using GitHub's Personal Access Token is required to allow automated workflow
+        # triggers (on: pull_request) from Pull Requests issued by this workflow.
+        github-token: ${{ secrets.PAT }}
         commit-message: "Update patches: ${{ steps.get-commits.outputs.PREVIOUS_COMMIT_SHORT }} → ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }} [${{ steps.process-arches.outputs.successful_arches }}]"
         branch-name: patch-sync/${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}
         title: Sync main patch ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}

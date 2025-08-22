@@ -16,6 +16,8 @@ jobs:
     - name: Checkout your repository
       uses: actions/checkout@v4
       with:
+        # 2025-08-22: Using GitHub's Personal Access Token is required to allow automated workflow
+        # triggers (on: pull_request) from Pull Requests issued by this workflow.
         token: ${{ secrets.PAT }}
         fetch-depth: 0
 
@@ -136,7 +138,9 @@ jobs:
       uses: canonical/create-pull-request@main
       if: steps.process-arches.outputs.successful_arches != ''
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        # 2025-08-22: Using GitHub's Personal Access Token is required to allow automated workflow
+        # triggers (on: pull_request) from Pull Requests issued by this workflow.
+        github-token: ${{ secrets.PAT }}
         commit-message: "Update release: ${{ steps.get-tags.outputs.PREVIOUS_TAG }} → ${{ steps.get-tags.outputs.LATEST_TAG }} [${{ steps.process-arches.outputs.successful_arches }}]"
         branch-name: patch-release-sync/${{ steps.get-tags.outputs.LATEST_TAG }}
         title: Sync release patch ${{ steps.get-tags.outputs.LATEST_TAG }}
