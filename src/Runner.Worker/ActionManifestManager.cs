@@ -369,6 +369,7 @@ namespace GitHub.Runner.Worker
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
             var steps = default(List<Pipelines.Step>);
+            var defaultsToken = default(MappingToken);
 
             foreach (var run in runsMapping)
             {
@@ -418,6 +419,9 @@ namespace GitHub.Runner.Worker
                         var stepsToken = run.Value.AssertSequence("steps");
                         steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
                         templateContext.Errors.Check();
+                        break;
+                    case "defaults":
+                        defaultsToken = run.Value.AssertMapping("defaults");
                         break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
@@ -478,14 +482,41 @@ namespace GitHub.Runner.Worker
                     }
                     else
                     {
+                        var compositeActionsExecutionDataSteps = steps.Cast<Pipelines.ActionStep>().ToList();
+                        if (defaultsToken == null)
+                        {
+                            foreach (var step in compositeActionsExecutionDataSteps)
+                            {
+                                if (step.Reference.Type != Pipelines.ActionSourceType.Script)
+                                {
+                                    continue;
+                                }
+                                var mapping = step.Inputs.AssertMapping("inputs");
+                                var foundShell = false;
+                                foreach (var pair in mapping)
+                                {
+                                    // Expression key
+                                    if (pair.Key is StringToken && pair.Key.AssertString("inputs key").Value.Equals("shell"))
+                                    {
+                                        foundShell = true;
+                                        break;
+                                    }
+                                }
+                                if (!foundShell)
+                                {
+                                    throw new TemplateValidationException("Composite action must set the default shell, or the shell parameter in each step is required.");
+                                }
+                            }
+                        }
                         return new CompositeActionExecutionData()
                         {
-                            Steps = steps.Cast<Pipelines.ActionStep>().ToList(),
+                            Steps = compositeActionsExecutionDataSteps,
                             PreSteps = new List<Pipelines.ActionStep>(),
                             PostSteps = new Stack<Pipelines.ActionStep>(),
                             InitCondition = "always()",
                             CleanupCondition = "always()",
-                            Outputs = outputs
+                            Outputs = outputs,
+                            CompositeDefaults = defaultsToken,
                         };
                     }
                 }
