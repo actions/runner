@@ -30,7 +30,13 @@ runWithManualTrap() {
     # Set job control
     set -m
 
-    trap 'kill -INT -$PID' INT TERM
+    signaled=0
+    _trap() {
+      kill -INT -$PID
+      signaled=1
+    }
+
+    trap '_trap' INT TERM
 
     # run the helper process which keep the listener alive
     while :;
@@ -39,6 +45,11 @@ runWithManualTrap() {
         "$DIR"/run-helper.sh $* &
         PID=$!
         wait $PID
+        if [ $signaled -eq 1 ]; then
+          # We must wait again for the child process to finish in order to capture the correct return code.
+          wait $PID
+        fi
+
         returnCode=$?
         if [[ $returnCode -eq 2 ]]; then
             echo "Restarting runner..."
