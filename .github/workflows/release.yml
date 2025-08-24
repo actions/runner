@@ -200,88 +200,23 @@ jobs:
         echo "${{needs.build.outputs.linux-arm-sha}}  actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
         echo "${{needs.build.outputs.linux-arm64-sha}}  actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz" | shasum -a 256 -c
 
-    # Create GitHub release
-    - uses: actions/create-release@master
-      id: createRelease
-      name: Create ${{ steps.releaseNote.outputs.version }} Runner Release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # Create GitHub release with assets using modern approach
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: "v${{ steps.releaseNote.outputs.version }}"
-        release_name: "v${{ steps.releaseNote.outputs.version }}"
+        name: "v${{ steps.releaseNote.outputs.version }}"
         body: |
           ${{ steps.releaseNote.outputs.note }}
-
-    # Upload release assets (full runner packages)
-    - name: Upload Release Asset (win-x64)
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_content_type: application/octet-stream
-
-    - name: Upload Release Asset (win-arm64)
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_content_type: application/octet-stream
-
-    - name: Upload Release Asset (linux-x64)
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_name: actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_content_type: application/octet-stream
-
-    - name: Upload Release Asset (osx-x64)
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_content_type: application/octet-stream
-
-    - name: Upload Release Asset (osx-arm64)
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_name: actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_content_type: application/octet-stream
-
-    - name: Upload Release Asset (linux-arm)
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_name: actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_content_type: application/octet-stream
-
-    - name: Upload Release Asset (linux-arm64)
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_name: actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
-        asset_content_type: application/octet-stream
+        files: |
+          actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+          actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
+          actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+          actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
+          actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
+          actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+          actions-runner-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        token: ${{ secrets.GITHUB_TOKEN }}
 
   publish-image:
     needs: release
