@@ -164,6 +164,7 @@ namespace GitHub.Runner.Worker
                 jobContext.SetRunnerContext("os", VarUtil.OS);
                 jobContext.SetRunnerContext("arch", VarUtil.OSArchitecture);
                 jobContext.SetRunnerContext("name", _runnerSettings.AgentName);
+                jobContext.SetRunnerContext("user_labels", _runnerSettings.UserLabels);
 
                 if (jobContext.Global.Variables.TryGetValue(WellKnownDistributedTaskVariables.RunnerEnvironment, out var runnerEnvironment))
                 {

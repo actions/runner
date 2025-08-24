@@ -10,7 +10,10 @@ namespace GitHub.Runner.Worker
         {
             foreach (var data in this)
             {
-                yield return new KeyValuePair<string, string>($"RUNNER_{data.Key.ToUpperInvariant()}", data.Value as StringContextData);
+                if (data.Value is StringContextData stringData)
+                {
+                    yield return new KeyValuePair<string, string>($"RUNNER_{data.Key.ToUpperInvariant()}", stringData);
+                }
             }
         }
     }
