@@ -41,7 +41,7 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
-          os: windows-2019
+          os: windows-latest
           devScript: ./dev
 
         - runtime: win-arm64
@@ -50,7 +50,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     # Build runner layout
     - name: Build & Layout Release

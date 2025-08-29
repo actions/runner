@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Security.Claims;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,7 +16,9 @@ using GitHub.Runner.Common.Util;
 using GitHub.Runner.Listener.Check;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Sdk;
+using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Jwt;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Listener
@@ -35,8 +38,11 @@ namespace GitHub.Runner.Listener
         private readonly ConcurrentQueue<string> _authMigrationTelemetries = new();
         private Task _authMigrationTelemetryTask;
         private readonly object _authMigrationTelemetryLock = new();
+        private Task _authMigrationClaimsCheckTask;
+        private readonly object _authMigrationClaimsCheckLock = new();
         private IRunnerServer _runnerServer;
         private CancellationTokenSource _authMigrationTelemetryTokenSource = new();
+        private CancellationTokenSource _authMigrationClaimsCheckTokenSource = new();
 
         // <summary>
         // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
@@ -319,7 +325,7 @@ namespace GitHub.Runner.Listener
                     }
 
                     // Run the runner interactively or as service
-                    return await RunAsync(settings, command.RunOnce || settings.Ephemeral);
+                    return await ExecuteRunnerAsync(settings, command.RunOnce || settings.Ephemeral);
                 }
                 else
                 {
@@ -329,6 +335,7 @@ namespace GitHub.Runner.Listener
             }
             finally
             {
+                _authMigrationClaimsCheckTokenSource?.Cancel();
                 _authMigrationTelemetryTokenSource?.Cancel();
                 HostContext.AuthMigrationChanged -= HandleAuthMigrationChanged;
                 _term.CancelKeyPress -= CtrlCHandler;
@@ -380,12 +387,12 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private IMessageListener GetMessageListener(RunnerSettings settings)
+        private IMessageListener GetMessageListener(RunnerSettings settings, bool isMigratedSettings = false)
         {
             if (settings.UseV2Flow)
             {
                 Trace.Info($"Using BrokerMessageListener");
-                var brokerListener = new BrokerMessageListener();
+                var brokerListener = new BrokerMessageListener(settings, isMigratedSettings);
                 brokerListener.Initialize(HostContext);
                 return brokerListener;
             }
@@ -399,15 +406,65 @@ namespace GitHub.Runner.Listener
             try
             {
                 Trace.Info(nameof(RunAsync));
-                _listener = GetMessageListener(settings);
-                CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
-                if (createSessionResult == CreateSessionResult.SessionConflict)
+                
+                // First try using migrated settings if available
+                var configManager = HostContext.GetService<IConfigurationManager>();
+                RunnerSettings migratedSettings = null;
+                
+                try 
                 {
-                    return Constants.Runner.ReturnCode.SessionConflict;
+                    migratedSettings = configManager.LoadMigratedSettings();
+                    Trace.Info("Loaded migrated settings from .runner_migrated file");
+                    Trace.Info(migratedSettings);
                 }
-                else if (createSessionResult == CreateSessionResult.Failure)
+                catch (Exception ex)
                 {
-                    return Constants.Runner.ReturnCode.TerminatedError;
+                    // If migrated settings file doesn't exist or can't be loaded, we'll use the provided settings
+                    Trace.Info($"Failed to load migrated settings: {ex.Message}");
+                }
+                
+                bool usedMigratedSettings = false;
+                
+                if (migratedSettings != null)
+                {
+                    // Try to create session with migrated settings first
+                    Trace.Info("Attempting to create session using migrated settings");
+                    _listener = GetMessageListener(migratedSettings, isMigratedSettings: true);
+                    
+                    try
+                    {
+                        CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
+                        if (createSessionResult == CreateSessionResult.Success)
+                        {
+                            Trace.Info("Successfully created session with migrated settings");
+                            settings = migratedSettings; // Use migrated settings for the rest of the process
+                            usedMigratedSettings = true;
+                        }
+                        else
+                        {
+                            Trace.Warning($"Failed to create session with migrated settings: {createSessionResult}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error($"Exception when creating session with migrated settings: {ex}");
+                    }
+                }
+                
+                // If migrated settings weren't used or session creation failed, use original settings
+                if (!usedMigratedSettings)
+                {
+                    Trace.Info("Falling back to original .runner settings");
+                    _listener = GetMessageListener(settings);
+                    CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
+                    if (createSessionResult == CreateSessionResult.SessionConflict)
+                    {
+                        return Constants.Runner.ReturnCode.SessionConflict;
+                    }
+                    else if (createSessionResult == CreateSessionResult.Failure)
+                    {
+                        return Constants.Runner.ReturnCode.TerminatedError;
+                    }
                 }
 
                 HostContext.WritePerfCounter("SessionCreated");
@@ -421,6 +478,8 @@ namespace GitHub.Runner.Listener
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
                 bool skipSessionDeletion = false;
+                bool restartSession = false; // Flag to indicate session restart
+                bool restartSessionPending = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -436,6 +495,15 @@ namespace GitHub.Runner.Listener
 
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
+                        // Check if we need to restart the session and can do so (job dispatcher not busy)
+                        if (restartSessionPending && !jobDispatcher.Busy)
+                        {
+                            Trace.Info("Pending session restart detected and job dispatcher is not busy. Restarting session now.");
+                            messageQueueLoopTokenSource.Cancel();
+                            restartSession = true;
+                            break;
+                        }
+                        
                         TaskAgentMessage message = null;
                         bool skipMessageDeletion = false;
                         try
@@ -586,22 +654,42 @@ namespace GitHub.Runner.Listener
                                 else
                                 {
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
-                                    Pipelines.AgentJobRequestMessage jobRequestMessage = null;
 
-                                    // Create connection
-                                    var credMgr = HostContext.GetService<ICredentialManager>();
+                                    // Acknowledge (best-effort)
+                                    if (messageRef.ShouldAcknowledge) // Temporary feature flag
+                                    {
+                                        try
+                                        {
+                                            await _listener.AcknowledgeMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Trace.Error($"Best-effort acknowledge failed for request '{messageRef.RunnerRequestId}'");
+                                            Trace.Error(ex);
+                                        }
+                                    }
+
+                                    Pipelines.AgentJobRequestMessage jobRequestMessage = null;
                                     if (string.IsNullOrEmpty(messageRef.RunServiceUrl))
                                     {
+                                        // Connect
+                                        var credMgr = HostContext.GetService<ICredentialManager>();
                                         var creds = credMgr.LoadCredentials(allowAuthUrlV2: false);
                                         var actionsRunServer = HostContext.CreateService<IActionsRunServer>();
                                         await actionsRunServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+
+                                        // Get job message
                                         jobRequestMessage = await actionsRunServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
                                     }
                                     else
                                     {
+                                        // Connect
+                                        var credMgr = HostContext.GetService<ICredentialManager>();
                                         var credsV2 = credMgr.LoadCredentials(allowAuthUrlV2: true);
                                         var runServer = HostContext.CreateService<IRunServer>();
                                         await runServer.ConnectAsync(new Uri(messageRef.RunServiceUrl), credsV2);
+
+                                        // Get job message
                                         try
                                         {
                                             jobRequestMessage = await runServer.GetJobMessageAsync(messageRef.RunnerRequestId, messageRef.BillingOwnerId, messageQueueLoopTokenSource.Token);
@@ -630,7 +718,10 @@ namespace GitHub.Runner.Listener
                                         }
                                     }
 
+                                    // Dispatch
                                     jobDispatcher.Run(jobRequestMessage, runOnce);
+
+                                    // Run once?
                                     if (runOnce)
                                     {
                                         Trace.Info("One time used runner received job message.");
@@ -672,6 +763,17 @@ namespace GitHub.Runner.Listener
                                     configType: runnerRefreshConfigMessage.ConfigType,
                                     serviceType: runnerRefreshConfigMessage.ServiceType,
                                     configRefreshUrl: runnerRefreshConfigMessage.ConfigRefreshUrl);
+
+                                // Set flag to schedule session restart if ConfigType is "runner"
+                                if (string.Equals(runnerRefreshConfigMessage.ConfigType, "runner", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Trace.Info("Runner configuration was updated. Session restart has been scheduled");
+                                    restartSessionPending = true;
+                                }
+                                else
+                                {
+                                    Trace.Info($"No session restart needed for config type: {runnerRefreshConfigMessage.ConfigType}");
+                                }
                             }
                             else
                             {
@@ -726,9 +828,15 @@ namespace GitHub.Runner.Listener
 
                     if (settings.Ephemeral && runOnceJobCompleted)
                     {
-                        var configManager = HostContext.GetService<IConfigurationManager>();
                         configManager.DeleteLocalRunnerConfig();
                     }
+                }
+
+                // After cleanup, check if we need to restart the session
+                if (restartSession)
+                {
+                    Trace.Info("Restarting runner session after config update...");
+                    return Constants.Runner.ReturnCode.RunnerConfigurationRefreshed;
                 }
             }
             catch (TaskAgentAccessTokenExpiredException)
@@ -743,6 +851,28 @@ namespace GitHub.Runner.Listener
             return Constants.Runner.ReturnCode.Success;
         }
 
+        private async Task<int> ExecuteRunnerAsync(RunnerSettings settings, bool runOnce)
+        {
+            int returnCode = Constants.Runner.ReturnCode.Success;
+            bool restart = false;
+            do
+            {
+                restart = false;
+                returnCode = await RunAsync(settings, runOnce);
+                
+                if (returnCode == Constants.Runner.ReturnCode.RunnerConfigurationRefreshed)
+                {
+                    Trace.Info("Runner configuration was refreshed, restarting session...");
+                    // Reload settings in case they changed
+                    var configManager = HostContext.GetService<IConfigurationManager>();
+                    settings = configManager.LoadSettings();
+                    restart = true;
+                }
+            } while (restart);
+
+            return returnCode;
+        }
+
         private void HandleAuthMigrationChanged(object sender, AuthMigrationEventArgs e)
         {
             Trace.Verbose("Handle AuthMigrationChanged in Runner");
@@ -755,6 +885,131 @@ namespace GitHub.Runner.Listener
                 {
                     _authMigrationTelemetryTask = ReportAuthMigrationTelemetryAsync(_authMigrationTelemetryTokenSource.Token);
                 }
+            }
+
+            // only start the claims check task once auth migration is changed (enabled or disabled)
+            lock (_authMigrationClaimsCheckLock)
+            {
+                if (_authMigrationClaimsCheckTask == null)
+                {
+                    _authMigrationClaimsCheckTask = CheckOAuthTokenClaimsAsync(_authMigrationClaimsCheckTokenSource.Token);
+                }
+            }
+        }
+
+        private async Task CheckOAuthTokenClaimsAsync(CancellationToken token)
+        {
+            string[] expectedClaims =
+            [
+                "owner_id",
+                "runner_id",
+                "runner_group_id",
+                "scale_set_id",
+                "is_ephemeral",
+                "labels"
+            ];
+
+            try
+            {
+                var credMgr = HostContext.GetService<ICredentialManager>();
+                while (!token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await HostContext.Delay(TimeSpan.FromMinutes(100), token);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        // Ignore cancellation
+                    }
+
+                    if (token.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    if (!HostContext.AllowAuthMigration)
+                    {
+                        Trace.Info("Skip checking oauth token claims since auth migration is disabled.");
+                        continue;
+                    }
+
+                    var baselineCred = credMgr.LoadCredentials(allowAuthUrlV2: false);
+                    var authV2Cred = credMgr.LoadCredentials(allowAuthUrlV2: true);
+
+                    if (!(baselineCred.Federated is VssOAuthCredential baselineVssOAuthCred) ||
+                        !(authV2Cred.Federated is VssOAuthCredential vssOAuthCredV2) ||
+                        baselineVssOAuthCred == null ||
+                        vssOAuthCredV2 == null)
+                    {
+                        Trace.Info("Skip checking oauth token claims for non-oauth credentials");
+                        continue;
+                    }
+
+                    if (string.Equals(baselineVssOAuthCred.AuthorizationUrl.AbsoluteUri, vssOAuthCredV2.AuthorizationUrl.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Trace.Info("Skip checking oauth token claims for same authorization url");
+                        continue;
+                    }
+
+                    var baselineProvider = baselineVssOAuthCred.GetTokenProvider(baselineVssOAuthCred.AuthorizationUrl);
+                    var v2Provider = vssOAuthCredV2.GetTokenProvider(vssOAuthCredV2.AuthorizationUrl);
+                    try
+                    {
+                        using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                        using (var requestTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutTokenSource.Token))
+                        {
+                            var baselineToken = await baselineProvider.GetTokenAsync(null, requestTokenSource.Token);
+                            var v2Token = await v2Provider.GetTokenAsync(null, requestTokenSource.Token);
+                            if (baselineToken is VssOAuthAccessToken baselineAccessToken &&
+                                v2Token is VssOAuthAccessToken v2AccessToken &&
+                                !string.IsNullOrEmpty(baselineAccessToken.Value) &&
+                                !string.IsNullOrEmpty(v2AccessToken.Value))
+                            {
+                                var baselineJwt = JsonWebToken.Create(baselineAccessToken.Value);
+                                var baselineClaims = baselineJwt.ExtractClaims();
+                                var v2Jwt = JsonWebToken.Create(v2AccessToken.Value);
+                                var v2Claims = v2Jwt.ExtractClaims();
+
+                                // Log extracted claims for debugging
+                                Trace.Verbose($"Baseline token expected claims: {string.Join(", ", baselineClaims
+                                    .Where(c => expectedClaims.Contains(c.Type.ToLowerInvariant()))
+                                    .Select(c => $"{c.Type}:{c.Value}"))}");
+                                Trace.Verbose($"V2 token expected claims: {string.Join(", ", v2Claims
+                                    .Where(c => expectedClaims.Contains(c.Type.ToLowerInvariant()))
+                                    .Select(c => $"{c.Type}:{c.Value}"))}");
+
+                                foreach (var claim in expectedClaims)
+                                {
+                                    // if baseline has the claim, v2 should have it too with exactly same value.
+                                    if (baselineClaims.FirstOrDefault(c => c.Type.ToLowerInvariant() == claim) is Claim baselineClaim &&
+                                        !string.IsNullOrEmpty(baselineClaim?.Value))
+                                    {
+                                        var v2Claim = v2Claims.FirstOrDefault(c => c.Type.ToLowerInvariant() == claim);
+                                        if (v2Claim?.Value != baselineClaim.Value)
+                                        {
+                                            Trace.Info($"Token Claim mismatch between two issuers. Expected: {baselineClaim.Type}:{baselineClaim.Value}. Actual: {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
+                                            HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), $"Expected claim {baselineClaim.Type}:{baselineClaim.Value} does not match {v2Claim?.Type ?? "Empty"}:{v2Claim?.Value ?? "Empty"}");
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                Trace.Info("OAuth token claims check passed.");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error("Failed to fetch and check OAuth token claims.");
+                        Trace.Error(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("Failed to check OAuth token claims in background.");
+                Trace.Error(ex);
             }
         }
 

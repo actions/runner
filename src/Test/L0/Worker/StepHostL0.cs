@@ -162,6 +162,60 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("node20", nodeVersion);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DetermineNode24RuntimeVersionInAlpineContainerAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+
+                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                    .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
+                    {
+                        output.Add("alpine");
+                    })
+                    .ReturnsAsync(0);
+
+                // Act.
+                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node24");
+
+                // Assert.
+                Assert.Equal("node24_alpine", nodeVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DetermineNode24RuntimeVersionInUnknownContainerAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+
+                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                    .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
+                    {
+                        output.Add("github");
+                    })
+                    .ReturnsAsync(0);
+
+                // Act.
+                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node24");
+
+                // Assert.
+                Assert.Equal("node24", nodeVersion);
+            }
+        }
 #endif
     }
 }

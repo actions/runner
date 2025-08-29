@@ -363,6 +363,49 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task CreatesSessionWithProvidedSettings()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = tc.GetTrace();
+
+                // Arrange.
+                var expectedSession = new TaskAgentSession();
+                _brokerServer
+                    .Setup(x => x.CreateSessionAsync(
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(Task.FromResult(expectedSession));
+
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+
+                // Make sure the config is never called when settings are provided
+                _config.Setup(x => x.LoadSettings()).Throws(new InvalidOperationException("Should not be called"));
+
+                // Act.
+                // Use the constructor that accepts settings
+                BrokerMessageListener listener = new(_settings);
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                trace.Info("result: {0}", result);
+
+                // Assert.
+                Assert.Equal(CreateSessionResult.Success, result);
+                _brokerServer
+                   .Verify(x => x.CreateSessionAsync(
+                       It.Is<TaskAgentSession>(y => y != null),
+                       tokenSource.Token), Times.Once());
+                
+                // Verify LoadSettings was never called
+                _config.Verify(x => x.LoadSettings(), Times.Never());
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             TestHostContext tc = new(this, testName);
