@@ -537,41 +537,50 @@ namespace GitHub.Runner.Listener.Configuration
                 if (isConfigured && hasCredentials)
                 {
                     RunnerSettings settings = _store.GetSettings();
-                    var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                    // Get the credentials
-                    VssCredentials creds = null;
-                    if (string.IsNullOrEmpty(settings.GitHubUrl))
-                    {
-                        var credProvider = GetCredentialProvider(command, settings.ServerUrl);
-                        creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
-                        Trace.Info("legacy vss cred retrieved");
-                    }
-                    else
+                    if (settings.UseV2Flow)
                     {
                         var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
-                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
-                        creds = authResult.ToVssCredentials();
-                        Trace.Info("cred retrieved via GitHub auth");
-                    }
-
-                    // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-
-                    var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
-                    Trace.Verbose("Returns {0} agents", agents.Count);
-                    TaskAgent agent = agents.FirstOrDefault();
-                    if (agent == null)
-                    {
-                        _term.WriteLine("Does not exist. Skipping " + currentAction);
+                        await _dotcomServer.DeleteRunnerAsync(settings.GitHubUrl, deletionToken, settings.AgentId);
                     }
                     else
                     {
-                        await _runnerServer.DeleteAgentAsync(settings.AgentId);
+                        var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                        _term.WriteLine();
-                        _term.WriteSuccessMessage("Runner removed successfully");
+                        // Get the credentials
+                        VssCredentials creds = null;
+                        if (string.IsNullOrEmpty(settings.GitHubUrl))
+                        {
+                            var credProvider = GetCredentialProvider(command, settings.ServerUrl);
+                            creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
+                            Trace.Info("legacy vss cred retrieved");
+                        }
+                        else
+                        {
+                            var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
+                            GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
+                            creds = authResult.ToVssCredentials();
+                            Trace.Info("cred retrieved via GitHub auth");
+                        }
+
+                        // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+                        await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+
+                        var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
+                        Trace.Verbose("Returns {0} agents", agents.Count);
+                        TaskAgent agent = agents.FirstOrDefault();
+                        if (agent == null)
+                        {
+                            _term.WriteLine("Does not exist. Skipping " + currentAction);
+                        }
+                        else
+                        {
+                            await _runnerServer.DeleteAgentAsync(settings.AgentId);
+                        }
                     }
+
+                    _term.WriteLine();
+                    _term.WriteSuccessMessage("Runner removed successfully");
                 }
                 else
                 {

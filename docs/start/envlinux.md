@@ -4,7 +4,7 @@
 
 ## Supported Distributions and Versions
 
-Please see "[Supported architectures and operating systems for self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#linux)."
+Please see "[Supported architectures and operating systems for self-hosted runners](https://docs.github.com/en/actions/reference/runners/self-hosted-runners#linux)."
 
 ## Install .Net Core 3.x Linux Dependencies
 

@@ -33,6 +33,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [InlineData("node12", "node20")]
         [InlineData("node16", "node20")]
         [InlineData("node20", "node20")]
+        [InlineData("node24", "node24")]
         public void IsNodeVersionUpgraded(string inputVersion, string expectedVersion)
         {
             using (TestHostContext hc = CreateTestContext())
@@ -41,7 +42,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var hf = new HandlerFactory();
                 hf.Initialize(hc);
 
-                // Server Feature Flag
+                // Setup variables
                 var variables = new Dictionary<string, VariableValue>();
                 Variables serverVariables = new(hc, variables);
 
@@ -70,6 +71,49 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal(expectedVersion, handler.Data.NodeVersion);
+            }
+        }
+
+      
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Node24ExplicitlyRequested_HonoredByDefault()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                // Basic variables setup
+                var variables = new Dictionary<string, VariableValue>();
+                Variables serverVariables = new(hc, variables);
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = new Dictionary<string, string>()
+                });
+
+                // Act - Node 24 explicitly requested in action.yml
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = "node24";
+                var handler = hf.Create(
+                    _ec.Object,
+                    new ScriptReference(),
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
+                    new List<JobExtensionRunner>()
+                ) as INodeScriptActionHandler;
+
+                // Assert - should be node24 as requested
+                Assert.Equal("node24", handler.Data.NodeVersion);
             }
         }
     }
