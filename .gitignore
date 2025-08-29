@@ -26,4 +26,5 @@ _dotnetsdk
 TestResults
 TestLogs
 .DS_Store
+.mono
 **/*.DotSettings.user

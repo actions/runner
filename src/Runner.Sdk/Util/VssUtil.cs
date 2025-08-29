@@ -38,6 +38,7 @@ namespace GitHub.Runner.Sdk
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
             {
                 VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                RawClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
             }
 
             var rawHeaderValues = new List<ProductInfoHeaderValue>();
@@ -83,11 +84,6 @@ namespace GitHub.Runner.Sdk
             {
                 // prefer environment variable
                 settings.SendTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(httpRequestTimeoutSeconds, 100), 1200));
-            }
-
-            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("USE_BROKER_FLOW")))
-            {
-                settings.AllowAutoRedirectForBroker = true;
             }
 
             // Remove Invariant from the list of accepted languages.

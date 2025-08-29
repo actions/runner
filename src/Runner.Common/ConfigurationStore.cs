@@ -116,11 +116,15 @@ namespace GitHub.Runner.Common
         bool IsConfigured();
         bool IsServiceConfigured();
         bool HasCredentials();
+        bool IsMigratedConfigured();
         CredentialData GetCredentials();
         CredentialData GetMigratedCredentials();
         RunnerSettings GetSettings();
+        RunnerSettings GetMigratedSettings();
         void SaveCredential(CredentialData credential);
+        void SaveMigratedCredential(CredentialData credential);
         void SaveSettings(RunnerSettings settings);
+        void SaveMigratedSettings(RunnerSettings settings);
         void DeleteCredential();
         void DeleteMigratedCredential();
         void DeleteSettings();
@@ -130,6 +134,7 @@ namespace GitHub.Runner.Common
     {
         private string _binPath;
         private string _configFilePath;
+        private string _migratedConfigFilePath;
         private string _credFilePath;
         private string _migratedCredFilePath;
         private string _serviceConfigFilePath;
@@ -137,6 +142,7 @@ namespace GitHub.Runner.Common
         private CredentialData _creds;
         private CredentialData _migratedCreds;
         private RunnerSettings _settings;
+        private RunnerSettings _migratedSettings;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -154,6 +160,9 @@ namespace GitHub.Runner.Common
             _configFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Runner);
             Trace.Info("ConfigFilePath: {0}", _configFilePath);
 
+            _migratedConfigFilePath = hostContext.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+            Trace.Info("MigratedConfigFilePath: {0}", _migratedConfigFilePath);
+
             _credFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Credentials);
             Trace.Info("CredFilePath: {0}", _credFilePath);
 
@@ -169,7 +178,7 @@ namespace GitHub.Runner.Common
         public bool HasCredentials()
         {
             Trace.Info("HasCredentials()");
-            bool credsStored = (new FileInfo(_credFilePath)).Exists || (new FileInfo(_migratedCredFilePath)).Exists;
+            bool credsStored = new FileInfo(_credFilePath).Exists || new FileInfo(_migratedCredFilePath).Exists;
             Trace.Info("stored {0}", credsStored);
             return credsStored;
         }
@@ -177,7 +186,7 @@ namespace GitHub.Runner.Common
         public bool IsConfigured()
         {
             Trace.Info("IsConfigured()");
-            bool configured = new FileInfo(_configFilePath).Exists;
+            bool configured = new FileInfo(_configFilePath).Exists || new FileInfo(_migratedConfigFilePath).Exists;
             Trace.Info("IsConfigured: {0}", configured);
             return configured;
         }
@@ -185,9 +194,17 @@ namespace GitHub.Runner.Common
         public bool IsServiceConfigured()
         {
             Trace.Info("IsServiceConfigured()");
-            bool serviceConfigured = (new FileInfo(_serviceConfigFilePath)).Exists;
+            bool serviceConfigured = new FileInfo(_serviceConfigFilePath).Exists;
             Trace.Info($"IsServiceConfigured: {serviceConfigured}");
             return serviceConfigured;
+        }
+
+        public bool IsMigratedConfigured()
+        {
+            Trace.Info("IsMigratedConfigured()");
+            bool configured = new FileInfo(_migratedConfigFilePath).Exists;
+            Trace.Info("IsMigratedConfigured: {0}", configured);
+            return configured;
         }
 
         public CredentialData GetCredentials()
@@ -229,6 +246,25 @@ namespace GitHub.Runner.Common
             return _settings;
         }
 
+        public RunnerSettings GetMigratedSettings()
+        {
+            if (_migratedSettings == null)
+            {
+                RunnerSettings configuredSettings = null;
+                if (File.Exists(_migratedConfigFilePath))
+                {
+                    string json = File.ReadAllText(_migratedConfigFilePath, Encoding.UTF8);
+                    Trace.Info($"Read migrated setting file: {json.Length} chars");
+                    configuredSettings = StringUtil.ConvertFromJson<RunnerSettings>(json);
+                }
+
+                ArgUtil.NotNull(configuredSettings, nameof(configuredSettings));
+                _migratedSettings = configuredSettings;
+            }
+
+            return _migratedSettings;
+        }
+
         public void SaveCredential(CredentialData credential)
         {
             Trace.Info("Saving {0} credential @ {1}", credential.Scheme, _credFilePath);
@@ -242,6 +278,21 @@ namespace GitHub.Runner.Common
             IOUtil.SaveObject(credential, _credFilePath);
             Trace.Info("Credentials Saved.");
             File.SetAttributes(_credFilePath, File.GetAttributes(_credFilePath) | FileAttributes.Hidden);
+        }
+
+        public void SaveMigratedCredential(CredentialData credential)
+        {
+            Trace.Info("Saving {0} migrated credential @ {1}", credential.Scheme, _migratedCredFilePath);
+            if (File.Exists(_migratedCredFilePath))
+            {
+                // Delete existing credential file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete exist runner migrated credential file.");
+                IOUtil.DeleteFile(_migratedCredFilePath);
+            }
+
+            IOUtil.SaveObject(credential, _migratedCredFilePath);
+            Trace.Info("Migrated Credentials Saved.");
+            File.SetAttributes(_migratedCredFilePath, File.GetAttributes(_migratedCredFilePath) | FileAttributes.Hidden);
         }
 
         public void SaveSettings(RunnerSettings settings)
@@ -259,6 +310,21 @@ namespace GitHub.Runner.Common
             File.SetAttributes(_configFilePath, File.GetAttributes(_configFilePath) | FileAttributes.Hidden);
         }
 
+        public void SaveMigratedSettings(RunnerSettings settings)
+        {
+            Trace.Info("Saving runner migrated settings");
+            if (File.Exists(_migratedConfigFilePath))
+            {
+                // Delete existing settings file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete exist runner migrated settings file.");
+                IOUtil.DeleteFile(_migratedConfigFilePath);
+            }
+
+            IOUtil.SaveObject(settings, _migratedConfigFilePath);
+            Trace.Info("Migrated Settings Saved.");
+            File.SetAttributes(_migratedConfigFilePath, File.GetAttributes(_migratedConfigFilePath) | FileAttributes.Hidden);
+        }
+
         public void DeleteCredential()
         {
             IOUtil.Delete(_credFilePath, default(CancellationToken));
@@ -273,6 +339,12 @@ namespace GitHub.Runner.Common
         public void DeleteSettings()
         {
             IOUtil.Delete(_configFilePath, default(CancellationToken));
+            IOUtil.Delete(_migratedConfigFilePath, default(CancellationToken));
+        }
+
+        public void DeleteMigratedSettings()
+        {
+            IOUtil.Delete(_migratedConfigFilePath, default(CancellationToken));
         }
     }
 }

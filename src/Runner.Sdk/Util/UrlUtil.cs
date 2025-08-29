@@ -60,5 +60,15 @@ namespace GitHub.Runner.Sdk
             }
             return string.Empty;
         }
+
+        public static string GetVssRequestId(HttpResponseHeaders headers)
+        {
+            if (headers != null &&
+                headers.TryGetValues("x-vss-e2eid", out var headerValues))
+            {
+                return headerValues.FirstOrDefault();
+            }
+            return string.Empty;
+        }
     }
 }

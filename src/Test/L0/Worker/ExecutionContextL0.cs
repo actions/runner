@@ -29,7 +29,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -106,7 +106,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -162,7 +162,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -216,7 +216,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -271,7 +271,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -322,7 +322,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -373,7 +373,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -471,7 +471,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -555,7 +555,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -610,7 +610,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -653,7 +653,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -677,7 +677,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.InitializeJob(jobRequest, CancellationToken.None);
                 ec.Start();
 
-                ec.StepTelemetry.Type = "node16";
+                ec.StepTelemetry.Type = "node20";
                 ec.StepTelemetry.Action = "actions/checkout";
                 ec.StepTelemetry.Ref = "v2";
                 ec.StepTelemetry.IsEmbedded = false;
@@ -695,7 +695,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal(1, ec.Global.StepsTelemetry.Count);
-                Assert.Equal("node16", ec.Global.StepsTelemetry.Single().Type);
+                Assert.Equal("node20", ec.Global.StepsTelemetry.Single().Type);
                 Assert.Equal("actions/checkout", ec.Global.StepsTelemetry.Single().Action);
                 Assert.Equal("v2", ec.Global.StepsTelemetry.Single().Ref);
                 Assert.Equal(TaskResult.Succeeded, ec.Global.StepsTelemetry.Single().Result);
@@ -717,7 +717,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -746,7 +746,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var embeddedStep = ec.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null, ActionRunStage.Main, isEmbedded: true);
                 embeddedStep.Start();
 
-                embeddedStep.StepTelemetry.Type = "node16";
+                embeddedStep.StepTelemetry.Type = "node20";
                 embeddedStep.StepTelemetry.Action = "actions/checkout";
                 embeddedStep.StepTelemetry.Ref = "v2";
 
@@ -758,7 +758,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal(1, ec.Global.StepsTelemetry.Count);
-                Assert.Equal("node16", ec.Global.StepsTelemetry.Single().Type);
+                Assert.Equal("node20", ec.Global.StepsTelemetry.Single().Type);
                 Assert.Equal("actions/checkout", ec.Global.StepsTelemetry.Single().Action);
                 Assert.Equal("v2", ec.Global.StepsTelemetry.Single().Ref);
                 Assert.Equal(ActionRunStage.Main.ToString(), ec.Global.StepsTelemetry.Single().Stage);
@@ -776,12 +776,88 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
+                // Job request
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var variables = new Dictionary<string, VariableValue>()
+                {
+                    ["RunService.FixEmbeddedIssues"] = new VariableValue("true"),
+                };
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Mocks
+                var pagingLogger = new Mock<IPagingLogger>();
+                var pagingLogger2 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.EnqueueInstance(pagingLogger2.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                // Job context
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+                jobContext.Start();
+
+                // Step 1 context
+                var step1 = jobContext.CreateChild(Guid.NewGuid(), "my_step", "my_step", null, null, ActionRunStage.Main);
+                step1.Start();
+
+                // Embedded step 1a context
+                var embeddedStep1a = step1.CreateEmbeddedChild(null, null, Guid.NewGuid(), ActionRunStage.Main);
+                embeddedStep1a.Start();
+                embeddedStep1a.StepTelemetry.Type = "node20";
+                embeddedStep1a.StepTelemetry.Action = "actions/checkout";
+                embeddedStep1a.StepTelemetry.Ref = "v2";
+                embeddedStep1a.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" }, ExecutionContextLogOptions.Default);
+                embeddedStep1a.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" }, ExecutionContextLogOptions.Default);
+                embeddedStep1a.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" }, ExecutionContextLogOptions.Default);
+                embeddedStep1a.Complete();
+
+                // Embedded step 1b context
+                var embeddedStep1b = step1.CreateEmbeddedChild(null, null, Guid.NewGuid(), ActionRunStage.Main);
+                embeddedStep1b.Start();
+                embeddedStep1b.StepTelemetry.Type = "node20";
+                embeddedStep1b.StepTelemetry.Action = "actions/checkout";
+                embeddedStep1b.StepTelemetry.Ref = "v2";
+                embeddedStep1b.AddIssue(new Issue() { Type = IssueType.Error, Message = "error 2" }, ExecutionContextLogOptions.Default);
+                embeddedStep1b.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning 2" }, ExecutionContextLogOptions.Default);
+                embeddedStep1b.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice 2" }, ExecutionContextLogOptions.Default);
+                embeddedStep1b.Complete();
+
+                step1.Complete();
+
+                // Assert
+                Assert.Equal(3, jobContext.Global.StepsResult.Count);
+                Assert.Equal(0, jobContext.Global.StepsResult[0].Annotations.Count);
+                Assert.Equal(0, jobContext.Global.StepsResult[1].Annotations.Count);
+                Assert.Equal(6, jobContext.Global.StepsResult[2].Annotations.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PublishStepResult_EmbeddedStep_Legacy()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
                 // Arrange: Create a job request message.
                 TaskOrchestrationPlanReference plan = new();
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -807,10 +883,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.InitializeJob(jobRequest, CancellationToken.None);
                 ec.Start();
 
-                var embeddedStep = ec.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null, ActionRunStage.Main, isEmbedded: true);
+                var embeddedStep = ec.CreateEmbeddedChild(null, null, Guid.NewGuid(), ActionRunStage.Main);
                 embeddedStep.Start();
 
-                embeddedStep.StepTelemetry.Type = "node16";
+                embeddedStep.StepTelemetry.Type = "node20";
                 embeddedStep.StepTelemetry.Action = "actions/checkout";
                 embeddedStep.StepTelemetry.Ref = "v2";
 
@@ -969,7 +1045,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -1014,7 +1090,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new TimelineReference();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -1057,7 +1133,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new TimelineReference();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -1089,6 +1165,77 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal("false", jobContext.Global.Variables.Get(Constants.Variables.Actions.StepDebug));
                 Assert.Equal("false", jobContext.Global.Variables.Get(Constants.Variables.Actions.RunnerDebug));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_HydratesJobContextWithCheckRunId()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message and make sure the feature flag is enabled
+                var variables = new Dictionary<string, VariableValue>()
+                {
+                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("true"),
+                };
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: Add check_run_id to the job context
+                var jobContext = new Pipelines.ContextData.DictionaryContextData();
+                jobContext["check_run_id"] = new NumberContextData(123456);
+                jobRequest.ContextData["job"] = jobContext;
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert
+                Assert.NotNull(ec.JobContext);
+                Assert.Equal(123456, ec.JobContext.CheckRunId);
+            }
+        }
+
+        // TODO: this test can be deleted when `AddCheckRunIdToJobContext` is fully rolled out
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_HydratesJobContextWithCheckRunId_FeatureFlagDisabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message and make sure the feature flag is disabled
+                var variables = new Dictionary<string, VariableValue>()
+                {
+                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("false"),
+                };
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: Add check_run_id to the job context
+                var jobContext = new Pipelines.ContextData.DictionaryContextData();
+                jobContext["check_run_id"] = new NumberContextData(123456);
+                jobRequest.ContextData["job"] = jobContext;
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert
+                Assert.NotNull(ec.JobContext);
+                Assert.Null(ec.JobContext.CheckRunId); // with the feature flag disabled we should not have added a CheckRunId to the JobContext
             }
         }
 

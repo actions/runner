@@ -4,16 +4,7 @@
 
 ## Supported Distributions and Versions
 
-x64
-  - Red Hat Enterprise Linux 7+
-  - CentOS 7+
-  - Oracle Linux 7+
-  - Fedora 29+
-  - Debian 9+
-  - Ubuntu 16.04+
-  - Linux Mint 18+
-  - openSUSE 15+
-  - SUSE Enterprise Linux (SLES) 12 SP2+
+Please see "[Supported architectures and operating systems for self-hosted runners](https://docs.github.com/en/actions/reference/runners/self-hosted-runners#linux)."
 
 ## Install .Net Core 3.x Linux Dependencies
 

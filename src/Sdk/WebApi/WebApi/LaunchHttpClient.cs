@@ -2,6 +2,7 @@
 
 using System;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
@@ -32,11 +33,52 @@ namespace GitHub.Services.Launch.Client
         public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsync(Guid planId, Guid jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken)
         {
             var GetResolveActionsDownloadInfoURLEndpoint = new Uri(m_launchServiceUrl, $"/actions/build/{planId.ToString()}/jobs/{jobId.ToString()}/runnerresolve/actions");
-            return ToServerData(await GetLaunchSignedURLResponse<ActionReferenceRequestList, ActionDownloadInfoResponseCollection>(GetResolveActionsDownloadInfoURLEndpoint, ToGitHubData(actionReferenceList), cancellationToken));
+            var response = await GetLaunchSignedURLResponse<ActionReferenceRequestList>(GetResolveActionsDownloadInfoURLEndpoint, ToGitHubData(actionReferenceList), cancellationToken);
+            return ToServerData(await ReadJsonContentAsync<ActionDownloadInfoResponseCollection>(response, cancellationToken));
         }
 
-        // Resolve Actions
-        private async Task<T> GetLaunchSignedURLResponse<R, T>(Uri uri, R request, CancellationToken cancellationToken)
+        public async Task<ActionDownloadInfoCollection> GetResolveActionsDownloadInfoAsyncV2(Guid planId, Guid jobId, ActionReferenceList actionReferenceList, CancellationToken cancellationToken)
+        {
+            var GetResolveActionsDownloadInfoURLEndpoint = new Uri(m_launchServiceUrl, $"/actions/build/{planId.ToString()}/jobs/{jobId.ToString()}/runnerresolve/actions");
+            var response = await GetLaunchSignedURLResponse<ActionReferenceRequestList>(GetResolveActionsDownloadInfoURLEndpoint, ToGitHubData(actionReferenceList), cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Success response - deserialize the action download info
+                return ToServerData(await ReadJsonContentAsync<ActionDownloadInfoResponseCollection>(response, cancellationToken));
+            }
+
+            var responseError = response.ReasonPhrase ?? "";
+            if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+            {
+                // 422 response - unresolvable actions, error details are in the body
+                var errors = await ReadJsonContentAsync<ActionDownloadResolutionErrorCollection>(response, cancellationToken);
+                string combinedErrorMessage;
+                if (errors?.Errors != null && errors.Errors.Any())
+                {
+                    combinedErrorMessage = String.Join(". ", errors.Errors.Select(kvp => kvp.Value.Message));
+                }
+                else
+                {
+                    combinedErrorMessage = responseError;
+                }
+
+                throw new UnresolvableActionDownloadInfoException(combinedErrorMessage);
+            }
+            else if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                // Here we want to add a message so customers don't think it's a rate limit scoped to them
+                // Ideally this would be 500 but the runner retries 500s, which we don't want to do when we're being rate limited
+                // See: https://github.com/github/ecosystem-api/issues/4084
+                throw new NonRetryableActionDownloadInfoException(responseError + " (GitHub has reached an internal rate limit, please try again later)");
+            }
+            else
+            {
+                throw new Exception(responseError);
+            }
+        }
+
+        private async Task<HttpResponseMessage> GetLaunchSignedURLResponse<R>(Uri uri, R request, CancellationToken cancellationToken)
         {
             using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, uri))
             {
@@ -46,10 +88,7 @@ namespace GitHub.Services.Launch.Client
                 using (HttpContent content = new ObjectContent<R>(request, m_formatter))
                 {
                     requestMessage.Content = content;
-                    using (var response = await SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken: cancellationToken))
-                    {
-                        return await ReadJsonContentAsync<T>(response, cancellationToken);
-                    }
+                    return await SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken: cancellationToken);
                 }
             }
         }
@@ -91,6 +130,7 @@ namespace GitHub.Services.Launch.Client
                 TarballUrl = actionDownloadInfoResponse.TarUrl,
                 Ref = actionDownloadInfoResponse.Version,
                 ZipballUrl = actionDownloadInfoResponse.ZipUrl,
+                PackageDetails = ToServerData(actionDownloadInfoResponse.PackageDetails)
             };
         }
 
@@ -105,6 +145,21 @@ namespace GitHub.Services.Launch.Client
             {
                 ExpiresAt = actionDownloadAuthenticationResponse.ExpiresAt,
                 Token = actionDownloadAuthenticationResponse.Token
+            };
+        }
+
+
+        private static ActionDownloadPackageDetails? ToServerData(ActionDownloadPackageDetailsResponse? actionDownloadPackageDetails)
+        {
+            if (actionDownloadPackageDetails == null)
+            {
+                return null;
+            }
+
+            return new ActionDownloadPackageDetails
+            {
+                Version = actionDownloadPackageDetails.Version,
+                ManifestDigest = actionDownloadPackageDetails.ManifestDigest
             };
         }
 

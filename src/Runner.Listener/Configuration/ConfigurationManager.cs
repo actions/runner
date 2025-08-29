@@ -25,6 +25,7 @@ namespace GitHub.Runner.Listener.Configuration
         Task UnconfigureAsync(CommandSettings command);
         void DeleteLocalRunnerConfig();
         RunnerSettings LoadSettings();
+        RunnerSettings LoadMigratedSettings();
     }
 
     public sealed class ConfigurationManager : RunnerService, IConfigurationManager
@@ -62,6 +63,22 @@ namespace GitHub.Runner.Listener.Configuration
 
             RunnerSettings settings = _store.GetSettings();
             Trace.Info("Settings Loaded");
+
+            return settings;
+        }
+
+        public RunnerSettings LoadMigratedSettings()
+        {
+            Trace.Info(nameof(LoadMigratedSettings));
+
+            // Check if migrated settings file exists
+            if (!_store.IsMigratedConfigured())
+            {
+                throw new NonRetryableException("No migrated configuration found.");
+            }
+
+            RunnerSettings settings = _store.GetMigratedSettings();
+            Trace.Info("Migrated Settings Loaded");
 
             return settings;
         }
@@ -127,7 +144,7 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
                     credProvider = GetCredentialProvider(command, runnerSettings.ServerUrl);
-                    creds = credProvider.GetVssCredentials(HostContext);
+                    creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
                     Trace.Info("legacy vss cred retrieved");
                 }
                 else
@@ -366,9 +383,17 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
                         { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
-                        { "requireFipsCryptography", agent.Properties.GetValue("RequireFipsCryptography", false).ToString() }
+                        { "requireFipsCryptography", agent.Properties.GetValue("RequireFipsCryptography", true).ToString() }
                     },
                 };
+
+                if (agent.Properties.GetValue("EnableAuthMigrationByDefault", false) &&
+                    agent.Properties.TryGetValue<string>("AuthorizationUrlV2", out var authUrlV2) &&
+                    !string.IsNullOrEmpty(authUrlV2))
+                {
+                    credentialData.Data["enableAuthMigrationByDefault"] = "true";
+                    credentialData.Data["authorizationUrlV2"] = authUrlV2;
+                }
 
                 // Save the negotiated OAuth credential data
                 _store.SaveCredential(credentialData);
@@ -384,7 +409,7 @@ namespace GitHub.Runner.Listener.Configuration
             if (!runnerSettings.UseV2Flow)
             {
                 var credMgr = HostContext.GetService<ICredentialManager>();
-                VssCredentials credential = credMgr.LoadCredentials();
+                VssCredentials credential = credMgr.LoadCredentials(allowAuthUrlV2: false);
                 try
                 {
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
@@ -402,6 +427,20 @@ namespace GitHub.Runner.Listener.Configuration
                     Trace.Error(ex);
                     throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
                 }
+            }
+
+            // allow the server to override the serverUrlV2 and useV2Flow
+            if (agent.Properties.TryGetValue("ServerUrlV2", out string serverUrlV2) &&
+                !string.IsNullOrEmpty(serverUrlV2))
+            {
+                Trace.Info($"Service enforced serverUrlV2: {serverUrlV2}");
+                runnerSettings.ServerUrlV2 = serverUrlV2;
+            }
+
+            if (agent.Properties.TryGetValue("UseV2Flow", out bool useV2Flow) && useV2Flow)
+            {
+                Trace.Info($"Service enforced useV2Flow: {useV2Flow}");
+                runnerSettings.UseV2Flow = useV2Flow;
             }
 
             _term.WriteSection("Runner settings");
@@ -498,41 +537,50 @@ namespace GitHub.Runner.Listener.Configuration
                 if (isConfigured && hasCredentials)
                 {
                     RunnerSettings settings = _store.GetSettings();
-                    var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                    // Get the credentials
-                    VssCredentials creds = null;
-                    if (string.IsNullOrEmpty(settings.GitHubUrl))
-                    {
-                        var credProvider = GetCredentialProvider(command, settings.ServerUrl);
-                        creds = credProvider.GetVssCredentials(HostContext);
-                        Trace.Info("legacy vss cred retrieved");
-                    }
-                    else
+                    if (settings.UseV2Flow)
                     {
                         var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
-                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
-                        creds = authResult.ToVssCredentials();
-                        Trace.Info("cred retrieved via GitHub auth");
-                    }
-
-                    // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-
-                    var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
-                    Trace.Verbose("Returns {0} agents", agents.Count);
-                    TaskAgent agent = agents.FirstOrDefault();
-                    if (agent == null)
-                    {
-                        _term.WriteLine("Does not exist. Skipping " + currentAction);
+                        await _dotcomServer.DeleteRunnerAsync(settings.GitHubUrl, deletionToken, settings.AgentId);
                     }
                     else
                     {
-                        await _runnerServer.DeleteAgentAsync(settings.AgentId);
+                        var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                        _term.WriteLine();
-                        _term.WriteSuccessMessage("Runner removed successfully");
+                        // Get the credentials
+                        VssCredentials creds = null;
+                        if (string.IsNullOrEmpty(settings.GitHubUrl))
+                        {
+                            var credProvider = GetCredentialProvider(command, settings.ServerUrl);
+                            creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
+                            Trace.Info("legacy vss cred retrieved");
+                        }
+                        else
+                        {
+                            var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
+                            GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
+                            creds = authResult.ToVssCredentials();
+                            Trace.Info("cred retrieved via GitHub auth");
+                        }
+
+                        // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+                        await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+
+                        var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
+                        Trace.Verbose("Returns {0} agents", agents.Count);
+                        TaskAgent agent = agents.FirstOrDefault();
+                        if (agent == null)
+                        {
+                            _term.WriteLine("Does not exist. Skipping " + currentAction);
+                        }
+                        else
+                        {
+                            await _runnerServer.DeleteAgentAsync(settings.AgentId);
+                        }
                     }
+
+                    _term.WriteLine();
+                    _term.WriteSuccessMessage("Runner removed successfully");
                 }
                 else
                 {

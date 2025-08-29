@@ -3,12 +3,11 @@ PACKAGERUNTIME=$1
 PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
-UNOFFICIAL_NODE_URL=https://unofficial-builds.nodejs.org/download/release
 NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
-NODE16_VERSION="16.20.2"
-NODE20_VERSION="20.8.1"
-# used only for win-arm64, remove node16 unofficial version when official version is available
-NODE16_UNOFFICIAL_VERSION="16.20.0"
+# When you update Node versions you must also create a new release of alpine_nodejs at that updated version.
+# Follow the instructions here: https://github.com/actions/alpine_nodejs?tab=readme-ov-file#getting-started
+NODE20_VERSION="20.19.4"
+NODE24_VERSION="24.5.0"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -139,10 +138,10 @@ function acquireExternalTool() {
 
 # Download the external tools only for Windows.
 if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/$PACKAGERUNTIME/node.exe" node16/bin
-    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/$PACKAGERUNTIME/node.lib" node16/bin
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.exe" node20/bin
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.lib" node20/bin
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.exe" node24/bin
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.lib" node24/bin
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
@@ -151,10 +150,10 @@ fi
 # Download the external tools only for Windows.
 if [[ "$PACKAGERUNTIME" == "win-arm64" ]]; then
     # todo: replace these with official release when available
-    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_UNOFFICIAL_VERSION}/$PACKAGERUNTIME/node.exe" node16/bin
-    acquireExternalTool "$UNOFFICIAL_NODE_URL/v${NODE16_UNOFFICIAL_VERSION}/$PACKAGERUNTIME/node.lib" node16/bin
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.exe" node20/bin
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.lib" node20/bin
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.exe" node24/bin
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.lib" node24/bin
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
@@ -162,30 +161,29 @@ fi
 
 # Download the external tools only for OSX.
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-darwin-x64.tar.gz" node16 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-darwin-x64.tar.gz" node20 fix_nested_dir
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-darwin-x64.tar.gz" node24 fix_nested_dir
 fi
 
 if [[ "$PACKAGERUNTIME" == "osx-arm64" ]]; then
     # node.js v12 doesn't support macOS on arm64.
-    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-darwin-arm64.tar.gz" node16 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-darwin-arm64.tar.gz" node20 fix_nested_dir
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-darwin-arm64.tar.gz" node24 fix_nested_dir
 fi
 
 # Download the external tools for Linux PACKAGERUNTIMEs.
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-x64.tar.gz" node16 fix_nested_dir
-    acquireExternalTool "$NODE_ALPINE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-alpine-x64.tar.gz" node16_alpine
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-x64.tar.gz" node20 fix_nested_dir
     acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.gz" node24 fix_nested_dir
+    acquireExternalTool "$NODE_ALPINE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-alpine-x64.tar.gz" node24_alpine
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-arm64.tar.gz" node16 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-arm64.tar.gz" node20 fix_nested_dir
+    acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-arm64.tar.gz" node24 fix_nested_dir
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-armv7l.tar.gz" node16 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-armv7l.tar.gz" node20 fix_nested_dir
 fi

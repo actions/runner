@@ -41,7 +41,7 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
-          os: windows-2019
+          os: windows-latest
           devScript: ./dev
 
         - runtime: win-arm64
@@ -50,7 +50,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
 
     # Build runner layout
     - name: Build & Layout Release
@@ -69,13 +69,13 @@ jobs:
     - name: Package Release
       if: github.event_name != 'pull_request'
       run: |
-        ${{ matrix.devScript }} package Release
+        ${{ matrix.devScript }} package Release ${{ matrix.runtime }}
       working-directory: src
 
     # Upload runner package tar.gz/zip as artifact
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: runner-package-${{ matrix.runtime }}
         path: |
