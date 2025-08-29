@@ -4,7 +4,6 @@
 
 ## Supported Versions
 
-  - macOS High Sierra (10.13) and later versions
-  - x64 and arm64 (Apple Silicon)
+Please see "[Supported architectures and operating systems for self-hosted runners](https://docs.github.com/en/actions/reference/runners/self-hosted-runners#macos)."
 
 ## [More .Net Core Prerequisites Information](https://docs.microsoft.com/en-us/dotnet/core/macos-prerequisites?tabs=netcore30)

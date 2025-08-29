@@ -11,6 +11,9 @@ namespace Sdk.RSWebApi.Contracts
         [DataMember(Name = "message", EmitDefaultValue = false)]
         public string Message;
 
+        [DataMember(Name = "title", EmitDefaultValue = false)]
+        public string Title;
+
         [DataMember(Name = "rawDetails", EmitDefaultValue = false)]
         public string RawDetails;
 
@@ -31,5 +34,8 @@ namespace Sdk.RSWebApi.Contracts
 
         [DataMember(Name = "endColumn", EmitDefaultValue = false)]
         public long EndColumn;
+
+        [DataMember(Name = "stepNumber", EmitDefaultValue = false)]
+        public long StepNumber;
     }
 }

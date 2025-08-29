@@ -123,7 +123,7 @@ fi
 # fix upgrade issue with macOS when running as a service
 attemptedtargetedfix=0
 currentplatform=$(uname | awk '{print tolower($0)}')
-if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
+if [[ "$currentplatform" == 'darwin'  && $restartinteractiverunner -eq 0 ]]; then
     # We needed a fix for https://github.com/actions/runner/issues/743
     # We will recreate the ./externals/nodeXY/bin/node of the past runner version that launched the runnerlistener service
     # Otherwise mac gatekeeper kills the processes we spawn on creation as we are running a process with no backing file
@@ -135,12 +135,23 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     then
         # inspect the open file handles to find the node process
         # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-        nodever="node16"
+        # Try finding node24 first, then fallback to earlier versions if needed
+        nodever="node24"
         path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
-        if [[ $? -ne 0 || -z "$path" ]] # Fallback if RunnerService.js was started with node12
+        if [[ $? -ne 0 || -z "$path" ]] # Fallback if RunnerService.js was started with node20
         then
-            nodever="node12"
+            nodever="node20"
             path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
+            if [[ $? -ne 0 || -z "$path" ]] # Fallback if RunnerService.js was started with node16
+            then
+                nodever="node16"
+                path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
+                if [[ $? -ne 0 || -z "$path" ]] # Fallback if RunnerService.js was started with node12
+                then
+                    nodever="node12"
+                    path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
+                fi
+            fi
         fi
         if [[ $? -eq 0 && -n "$path" ]]
         then
@@ -175,6 +186,19 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
             date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
             date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
         fi
+    fi
+fi
+
+# update runsvc.sh
+if [ -f "$rootfolder/runsvc.sh" ]
+then
+    date "+[%F %T-%4N] Update runsvc.sh" >> "$logfile" 2>&1
+    cat "$rootfolder/bin/runsvc.sh" > "$rootfolder/runsvc.sh"
+    if [ $? -ne 0 ]
+    then
+        date "+[%F %T-%4N] Can't update $rootfolder/runsvc.sh using $rootfolder/bin/runsvc.sh" >> "$logfile" 2>&1
+        mv -fv "$logfile" "$logfile.failed"
+        exit 1
     fi
 fi
 

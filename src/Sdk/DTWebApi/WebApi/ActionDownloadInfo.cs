@@ -10,6 +10,9 @@ namespace GitHub.DistributedTask.WebApi
         public ActionDownloadAuthentication Authentication { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public ActionDownloadPackageDetails PackageDetails { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string NameWithOwner { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
@@ -36,5 +39,15 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public string Token { get; set; }
+    }
+
+    [DataContract]
+    public class ActionDownloadPackageDetails 
+    {
+        [DataMember(EmitDefaultValue = false)]
+        public string Version { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string ManifestDigest { get; set; }
     }
 }

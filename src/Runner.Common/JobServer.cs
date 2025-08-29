@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Security;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -179,6 +180,10 @@ namespace GitHub.Runner.Common
                     userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
                     userAgentValues.AddRange(HostContext.UserAgents);
                     this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+                    {
+                        this._websocketClient.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                    }
 
                     this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
                 }

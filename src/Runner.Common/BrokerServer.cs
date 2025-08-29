@@ -7,6 +7,7 @@ using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi.RawClient;
 
@@ -22,6 +23,8 @@ namespace GitHub.Runner.Common
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
 
+        Task AcknowledgeRunnerRequestAsync(string runnerRequestId, Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, CancellationToken token);
+
         Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials);
 
         Task ForceRefreshConnection(VssCredentials credentials);
@@ -36,6 +39,7 @@ namespace GitHub.Runner.Common
 
         public async Task ConnectAsync(Uri serverUri, VssCredentials credentials)
         {
+            Trace.Entering();
             _brokerUri = serverUri;
 
             _connection = VssUtil.CreateRawConnection(serverUri, credentials);
@@ -65,8 +69,15 @@ namespace GitHub.Runner.Common
             var brokerSession = RetryRequest<TaskAgentMessage>(
                 async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken, shouldRetry: ShouldRetryException);
 
-
             return brokerSession;
+        }
+
+        public async Task AcknowledgeRunnerRequestAsync(string runnerRequestId, Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, CancellationToken cancellationToken)
+        {
+            CheckConnection();
+
+            // No retries
+            await _brokerHttpClient.AcknowledgeRunnerRequestAsync(runnerRequestId, sessionId, version, status, os, architecture, cancellationToken);
         }
 
         public async Task DeleteSessionAsync(CancellationToken cancellationToken)
@@ -87,12 +98,17 @@ namespace GitHub.Runner.Common
 
         public Task ForceRefreshConnection(VssCredentials credentials)
         {
-            return ConnectAsync(_brokerUri, credentials);
+            if (!string.IsNullOrEmpty(_brokerUri?.AbsoluteUri))
+            {
+                return ConnectAsync(_brokerUri, credentials);
+            }
+
+            return Task.CompletedTask;
         }
 
         public bool ShouldRetryException(Exception ex)
         {
-            if (ex is AccessDeniedException ade && ade.ErrorCode == 1)
+            if (ex is AccessDeniedException || ex is RunnerNotFoundException || ex is HostedRunnerDeprovisionedException)
             {
                 return false;
             }
