@@ -23,7 +23,7 @@ namespace GitHub.Runner.Listener
         private RunnerSettings _settings;
         private ITerminal _term;
         private TimeSpan _getNextMessageRetryInterval;
-        private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
+        private TaskAgentStatus _runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
         private VssCredentials _credsV2;
@@ -38,6 +38,19 @@ namespace GitHub.Runner.Listener
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
         private bool _needRefreshCredsV2 = false;
         private bool _handlerInitialized = false;
+        private bool _isMigratedSettings = false;
+        private const int _maxMigratedSettingsRetries = 3;
+        private int _migratedSettingsRetryCount = 0;
+
+        public BrokerMessageListener()
+        {
+        }
+
+        public BrokerMessageListener(RunnerSettings settings, bool isMigratedSettings = false)
+        {
+            _settings = settings;
+            _isMigratedSettings = isMigratedSettings;
+        }
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -53,9 +66,22 @@ namespace GitHub.Runner.Listener
         {
             Trace.Entering();
 
-            // Settings
-            var configManager = HostContext.GetService<IConfigurationManager>();
-            _settings = configManager.LoadSettings();
+            // Load settings if not provided through constructor
+            if (_settings == null)
+            {
+                var configManager = HostContext.GetService<IConfigurationManager>();
+                _settings = configManager.LoadSettings();
+                Trace.Info("Settings loaded from config manager");
+            }
+            else
+            {
+                Trace.Info("Using provided settings");
+                if (_isMigratedSettings)
+                {
+                    Trace.Info("Using migrated settings from .runner_migrated");
+                }
+            }
+
             var serverUrlV2 = _settings.ServerUrlV2;
             var serverUrl = _settings.ServerUrl;
             Trace.Info(_settings);
@@ -141,6 +167,19 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
+                    // If using migrated settings, limit the number of retries before returning failure
+                    if (_isMigratedSettings)
+                    {
+                        _migratedSettingsRetryCount++;
+                        Trace.Warning($"Migrated settings retry {_migratedSettingsRetryCount} of {_maxMigratedSettingsRetries}");
+                        
+                        if (_migratedSettingsRetryCount >= _maxMigratedSettingsRetries)
+                        {
+                            Trace.Warning("Reached maximum retry attempts for migrated settings. Returning failure to try default settings.");
+                            return CreateSessionResult.Failure;
+                        }
+                    }
+
                     if (!HostContext.AllowAuthMigration &&
                         ex is VssOAuthTokenRequestException vssOAuthEx &&
                         _credsV2.Federated is VssOAuthCredential vssOAuthCred)
@@ -219,7 +258,7 @@ namespace GitHub.Runner.Listener
         public void OnJobStatus(object sender, JobStatusEventArgs e)
         {
             Trace.Info("Received job status event. JobState: {0}", e.Status);
-            runnerStatus = e.Status;
+            _runnerStatus = e.Status;
             try
             {
                 _getMessagesTokenSource?.Cancel();
@@ -252,7 +291,7 @@ namespace GitHub.Runner.Listener
                     }
 
                     message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
-                                                                        runnerStatus,
+                                                                        _runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
                                                                         VarUtil.OS,
                                                                         VarUtil.OSArchitecture,
@@ -376,6 +415,21 @@ namespace GitHub.Runner.Listener
         public async Task DeleteMessageAsync(TaskAgentMessage message)
         {
             await Task.CompletedTask;
+        }
+
+        public async Task AcknowledgeMessageAsync(string runnerRequestId, CancellationToken cancellationToken)
+        {
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5)); // Short timeout
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+            Trace.Info($"Acknowledging runner request '{runnerRequestId}'.");
+            await _brokerServer.AcknowledgeRunnerRequestAsync(
+                runnerRequestId,
+                _session.SessionId,
+                _runnerStatus,
+                BuildConstants.RunnerPackage.Version,
+                VarUtil.OS,
+                VarUtil.OSArchitecture,
+                linkedCts.Token);
         }
 
         private bool IsGetNextMessageExceptionRetriable(Exception ex)

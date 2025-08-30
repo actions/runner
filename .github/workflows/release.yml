@@ -11,7 +11,7 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     # Make sure ./releaseVersion match ./src/runnerversion
     # Query GitHub release ensure version is not used
@@ -77,7 +77,7 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
-          os: windows-2019
+          os: windows-latest
           devScript: ./dev
 
         - runtime: win-arm64
@@ -86,7 +86,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     # Build runner layout
     - name: Build & Layout Release
@@ -129,41 +129,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact (win-x64)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: runner-packages-win-x64
         path: ./
     - name: Download Artifact (win-arm64)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: runner-packages-win-arm64
         path: ./
     - name: Download Artifact (osx-x64)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: runner-packages-osx-x64
         path: ./
     - name: Download Artifact (osx-arm64)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: runner-packages-osx-arm64
         path: ./
     - name: Download Artifact (linux-x64)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: runner-packages-linux-x64
         path: ./
     - name: Download Artifact (linux-arm)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: runner-packages-linux-arm
         path: ./
     - name: Download Artifact (linux-arm64)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: runner-packages-linux-arm64
         path: ./
@@ -296,7 +296,7 @@ jobs:
       IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Compute image version
         id: image
@@ -338,7 +338,7 @@ jobs:
             org.opencontainers.image.licenses=MIT
 
       - name: Generate attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build-and-push.outputs.digest }}

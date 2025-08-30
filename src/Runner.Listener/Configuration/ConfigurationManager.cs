@@ -25,6 +25,7 @@ namespace GitHub.Runner.Listener.Configuration
         Task UnconfigureAsync(CommandSettings command);
         void DeleteLocalRunnerConfig();
         RunnerSettings LoadSettings();
+        RunnerSettings LoadMigratedSettings();
     }
 
     public sealed class ConfigurationManager : RunnerService, IConfigurationManager
@@ -62,6 +63,22 @@ namespace GitHub.Runner.Listener.Configuration
 
             RunnerSettings settings = _store.GetSettings();
             Trace.Info("Settings Loaded");
+
+            return settings;
+        }
+
+        public RunnerSettings LoadMigratedSettings()
+        {
+            Trace.Info(nameof(LoadMigratedSettings));
+
+            // Check if migrated settings file exists
+            if (!_store.IsMigratedConfigured())
+            {
+                throw new NonRetryableException("No migrated configuration found.");
+            }
+
+            RunnerSettings settings = _store.GetMigratedSettings();
+            Trace.Info("Migrated Settings Loaded");
 
             return settings;
         }
@@ -370,6 +387,14 @@ namespace GitHub.Runner.Listener.Configuration
                     },
                 };
 
+                if (agent.Properties.GetValue("EnableAuthMigrationByDefault", false) &&
+                    agent.Properties.TryGetValue<string>("AuthorizationUrlV2", out var authUrlV2) &&
+                    !string.IsNullOrEmpty(authUrlV2))
+                {
+                    credentialData.Data["enableAuthMigrationByDefault"] = "true";
+                    credentialData.Data["authorizationUrlV2"] = authUrlV2;
+                }
+
                 // Save the negotiated OAuth credential data
                 _store.SaveCredential(credentialData);
             }
@@ -512,41 +537,50 @@ namespace GitHub.Runner.Listener.Configuration
                 if (isConfigured && hasCredentials)
                 {
                     RunnerSettings settings = _store.GetSettings();
-                    var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                    // Get the credentials
-                    VssCredentials creds = null;
-                    if (string.IsNullOrEmpty(settings.GitHubUrl))
-                    {
-                        var credProvider = GetCredentialProvider(command, settings.ServerUrl);
-                        creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
-                        Trace.Info("legacy vss cred retrieved");
-                    }
-                    else
+                    if (settings.UseV2Flow)
                     {
                         var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
-                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
-                        creds = authResult.ToVssCredentials();
-                        Trace.Info("cred retrieved via GitHub auth");
-                    }
-
-                    // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
-
-                    var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
-                    Trace.Verbose("Returns {0} agents", agents.Count);
-                    TaskAgent agent = agents.FirstOrDefault();
-                    if (agent == null)
-                    {
-                        _term.WriteLine("Does not exist. Skipping " + currentAction);
+                        await _dotcomServer.DeleteRunnerAsync(settings.GitHubUrl, deletionToken, settings.AgentId);
                     }
                     else
                     {
-                        await _runnerServer.DeleteAgentAsync(settings.AgentId);
+                        var credentialManager = HostContext.GetService<ICredentialManager>();
 
-                        _term.WriteLine();
-                        _term.WriteSuccessMessage("Runner removed successfully");
+                        // Get the credentials
+                        VssCredentials creds = null;
+                        if (string.IsNullOrEmpty(settings.GitHubUrl))
+                        {
+                            var credProvider = GetCredentialProvider(command, settings.ServerUrl);
+                            creds = credProvider.GetVssCredentials(HostContext, allowAuthUrlV2: false);
+                            Trace.Info("legacy vss cred retrieved");
+                        }
+                        else
+                        {
+                            var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
+                            GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
+                            creds = authResult.ToVssCredentials();
+                            Trace.Info("cred retrieved via GitHub auth");
+                        }
+
+                        // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+                        await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
+
+                        var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
+                        Trace.Verbose("Returns {0} agents", agents.Count);
+                        TaskAgent agent = agents.FirstOrDefault();
+                        if (agent == null)
+                        {
+                            _term.WriteLine("Does not exist. Skipping " + currentAction);
+                        }
+                        else
+                        {
+                            await _runnerServer.DeleteAgentAsync(settings.AgentId);
+                        }
                     }
+
+                    _term.WriteLine();
+                    _term.WriteSuccessMessage("Runner removed successfully");
                 }
                 else
                 {
