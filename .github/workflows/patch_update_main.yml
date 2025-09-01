@@ -16,15 +16,7 @@ jobs:
     - name: Checkout your repository
       uses: actions/checkout@v4
       with:
-        # 2025-08-22: Using GitHub's Personal Access Token is required to allow automated workflow
-        # triggers (on: pull_request) from Pull Requests issued by this workflow.
-        token: ${{ secrets.PAT }}
         fetch-depth: 0
-
-    - name: Set up Git identity
-      run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
 
     - name: Clone upstream runner repository
       run: |
@@ -141,14 +133,25 @@ jobs:
         cd upstream-runner && git checkout ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }} && cd ..
         cp -r upstream-runner/* .
 
+    - name: Import and configure the GPG key for Platform Engineering bot
+      uses: crazy-max/ghaction-import-gpg@v6
+      with:
+        gpg_private_key: ${{ secrets.PE_BOT_GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.PE_BOT_GPG_PASSPHRASE }}
+        git_config_global: true
+        git_user_signingkey: true
+        git_commit_gpgsign: true
+
     - name: Create pull request
-      uses: canonical/create-pull-request@main
+      uses: peter-evans/create-pull-request@v6
       if: steps.process-arches.outputs.successful_arches != ''
       with:
         # 2025-08-22: Using GitHub's Personal Access Token is required to allow automated workflow
         # triggers (on: pull_request) from Pull Requests issued by this workflow.
-        github-token: ${{ secrets.PAT }}
+        token: ${{ secrets.PE_BOT_PAT }}
         commit-message: "Update patches: ${{ steps.get-commits.outputs.PREVIOUS_COMMIT_SHORT }} → ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }} [${{ steps.process-arches.outputs.successful_arches }}]"
-        branch-name: patch-sync/${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}
+        committer: Platform Engineering Bot <is-devops-team@canonical.com>
+        author: Platform Engineering Bot <is-devops-team@canonical.com>
+        branch: patch-sync/${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}
         title: Sync main patch ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}
         body: Sync main branch patcdh for commit ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }}
