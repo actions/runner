@@ -23,6 +23,8 @@ namespace GitHub.Runner.Common
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
 
+        Task AcknowledgeRunnerRequestAsync(string runnerRequestId, Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, CancellationToken token);
+
         Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials);
 
         Task ForceRefreshConnection(VssCredentials credentials);
@@ -67,8 +69,15 @@ namespace GitHub.Runner.Common
             var brokerSession = RetryRequest<TaskAgentMessage>(
                 async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken, shouldRetry: ShouldRetryException);
 
-
             return brokerSession;
+        }
+
+        public async Task AcknowledgeRunnerRequestAsync(string runnerRequestId, Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, CancellationToken cancellationToken)
+        {
+            CheckConnection();
+
+            // No retries
+            await _brokerHttpClient.AcknowledgeRunnerRequestAsync(runnerRequestId, sessionId, version, status, os, architecture, cancellationToken);
         }
 
         public async Task DeleteSessionAsync(CancellationToken cancellationToken)
