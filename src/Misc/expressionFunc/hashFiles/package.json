@@ -40,11 +40,11 @@
     "@typescript-eslint/parser": "^6.7.2",
     "@vercel/ncc": "^0.38.3",
     "eslint": "^8.47.0",
-    "eslint-plugin-github": "^4.10.0",
+    "eslint-plugin-github": "^4.10.2",
     "eslint-plugin-prettier": "^5.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.0",
     "prettier": "^3.0.3",
-    "typescript": "^5.2.2"
+    "typescript": "^5.9.2"
   }
 }
