@@ -1,0 +1,9 @@
+name: Provide approval for bot PRs
+
+on:
+  pull_request:
+
+jobs:
+  bot_pr_approval:
+    uses: canonical/operator-workflows/.github/workflows/bot_pr_approval.yaml@main
+    secrets: inherit
