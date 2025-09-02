@@ -25,11 +25,22 @@ namespace GitHub.Runner.Sdk
         // For GitHub Enterprise Cloud with data residency, we allow fallback to GitHub.com for Actions resolution
         public static bool IsGHECDRFallbackToDotcom(UriBuilder gitHubUrl, ActionDownloadInfo downloadInfo)
         {
+            if (gitHubUrl == null || downloadInfo == null)
+            {
+                return false;
+            }
+
 #if OS_WINDOWS
             var downloadUrl = downloadInfo.ZipballUrl;
 #else
             var downloadUrl = downloadInfo.TarballUrl;
 #endif
+
+            if (string.IsNullOrEmpty(downloadUrl))
+            {
+                return false;
+            }
+            
             try
             {
                 var downloadUriBuilder = new UriBuilder(downloadUrl);
@@ -53,13 +64,8 @@ namespace GitHub.Runner.Sdk
                 return false;
             }
 
-            if (gitHubUrl.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase) ||
-                gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return false;
+            return gitHubUrl.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase) ||
+                gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase);
         }
 
         public static Uri GetCredentialEmbeddedUrl(Uri baseUrl, string username, string password)

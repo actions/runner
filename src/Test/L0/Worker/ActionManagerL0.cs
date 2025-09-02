@@ -2315,6 +2315,88 @@ runs:
             }
         }
 
+        [Theory]
+        [InlineData("https://company.ghe.com", "https://api.github.com/repos/{0}/tarball/{1}", false, "GHEC OnPrem fallback to dotcom - skips default token")]
+        [InlineData("https://ghes.company.com", "https://ghes.company.com/api/v3/repos/{0}/tarball/{1}", true, "Regular GHES - uses default token")]
+        [InlineData("https://company.ghe.localhost", "https://api.github.com/repos/{0}/tarball/{1}", false, "(tarball) GHEC OnPrem localhost fallback to dotcom - skips default token")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void GetDownloadInfoAsync_DefaultTokenBehavior_BasedOnFallbackScenario(string serverUrl, string downloadUrlTemplate, bool shouldUseDefaultToken, string scenario)
+        {
+            try
+            {
+                Setup();
+                const string ActionName = "actions/checkout";
+                const string ActionRef = "v3";
+                var actions = new Pipelines.ActionStep()
+                {
+                    Name = "action",
+                    Id = Guid.NewGuid(),
+                    Reference = new Pipelines.RepositoryPathReference()
+                    {
+                        Name = ActionName,
+                        Ref = ActionRef,
+                        RepositoryType = "GitHub"
+                    }
+                };
+
+                _ec.Setup(x => x.GetGitHubContext("server_url")).Returns(serverUrl);
+                _ec.Setup(x => x.GetGitHubContext("token")).Returns("default-token");
+
+                _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
+                    .Returns((Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+                    {
+                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                        foreach (var action in actions.Actions)
+                        {
+                            var key = $"{action.NameWithOwner}@{action.Ref}";
+                            result.Actions[key] = new ActionDownloadInfo
+                            {
+                                NameWithOwner = action.NameWithOwner,
+                                Ref = action.Ref,
+                                ResolvedNameWithOwner = action.NameWithOwner,
+                                ResolvedSha = $"{action.Ref}-sha",
+                                TarballUrl = string.Format(downloadUrlTemplate, action.NameWithOwner, action.Ref),
+                                ZipballUrl = string.Format(downloadUrlTemplate.Replace("tarball", "zipball"), action.NameWithOwner, action.Ref),
+                                Authentication = null // No token set - will be tested for default token behavior
+                            };
+                        }
+                        return Task.FromResult(result);
+                    });
+                
+                string archiveFile = await CreateRepoArchive();
+                using var stream = File.OpenRead(archiveFile);
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                string downloadUrl = string.Format(downloadUrlTemplate, ActionName, ActionRef);
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(downloadUrl)), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+
+                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
+                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
+                _hc.SetSingleton(mockHandlerFactory.Object);
+
+                await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actions });
+
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, $"{ActionRef}.completed");
+                Assert.True(File.Exists(watermarkFile), $"Failed scenario: {scenario}");
+                
+                if (shouldUseDefaultToken)
+                {
+                    // For regular GHES, the default token should be used
+                    _ec.Verify(x => x.GetGitHubContext("token"), Times.AtLeastOnce);
+                }
+                else
+                {
+                    // For GHEC OnPrem fallback scenarios, test that the download succeeded without using default token
+                    Assert.True(File.Exists(watermarkFile), $"GHEC OnPrem fallback scenario should succeed: {scenario}");
+                }
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
         {
             directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "main");
@@ -2545,88 +2627,6 @@ runs:
             _actionManager.Initialize(_hc);
 
             Environment.SetEnvironmentVariable("GITHUB_ACTION_DOWNLOAD_NO_BACKOFF", "1");
-        }
-
-        [Theory]
-        [InlineData("https://company.ghe.com", "https://api.github.com/repos/{0}/tarball/{1}", false, "GHEC OnPrem fallback to dotcom - skips default token")]
-        [InlineData("https://ghes.company.com", "https://ghes.company.com/api/v3/repos/{0}/tarball/{1}", true, "Regular GHES - uses default token")]
-        [InlineData("https://company.ghe.localhost", "https://api.github.com/repos/{0}/tarball/{1}", false, "GHEC OnPrem localhost fallback to dotcom - skips default token")]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async void GetDownloadInfoAsync_DefaultTokenBehavior_BasedOnFallbackScenario(string serverUrl, string downloadUrlTemplate, bool shouldUseDefaultToken, string scenario)
-        {
-            try
-            {
-                Setup();
-                const string ActionName = "actions/checkout";
-                const string ActionRef = "v3";
-                var actions = new Pipelines.ActionStep()
-                {
-                    Name = "action",
-                    Id = Guid.NewGuid(),
-                    Reference = new Pipelines.RepositoryPathReference()
-                    {
-                        Name = ActionName,
-                        Ref = ActionRef,
-                        RepositoryType = "GitHub"
-                    }
-                };
-
-                _ec.Setup(x => x.GetGitHubContext("server_url")).Returns(serverUrl);
-                _ec.Setup(x => x.GetGitHubContext("token")).Returns("default-token");
-
-                _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
-                    .Returns((Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
-                    {
-                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
-                        foreach (var action in actions.Actions)
-                        {
-                            var key = $"{action.NameWithOwner}@{action.Ref}";
-                            result.Actions[key] = new ActionDownloadInfo
-                            {
-                                NameWithOwner = action.NameWithOwner,
-                                Ref = action.Ref,
-                                ResolvedNameWithOwner = action.NameWithOwner,
-                                ResolvedSha = $"{action.Ref}-sha",
-                                TarballUrl = string.Format(downloadUrlTemplate, action.NameWithOwner, action.Ref),
-                                ZipballUrl = string.Format(downloadUrlTemplate.Replace("tarball", "zipball"), action.NameWithOwner, action.Ref),
-                                Authentication = null // No token set - will be tested for default token behavior
-                            };
-                        }
-                        return Task.FromResult(result);
-                    });
-                
-                string archiveFile = await CreateRepoArchive();
-                using var stream = File.OpenRead(archiveFile);
-                var mockClientHandler = new Mock<HttpClientHandler>();
-                string downloadUrl = string.Format(downloadUrlTemplate, ActionName, ActionRef);
-                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(downloadUrl)), ItExpr.IsAny<CancellationToken>())
-                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
-
-                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
-                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
-                _hc.SetSingleton(mockHandlerFactory.Object);
-
-                await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actions });
-
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, $"{ActionRef}.completed");
-                Assert.True(File.Exists(watermarkFile), $"Failed scenario: {scenario}");
-                
-                if (shouldUseDefaultToken)
-                {
-                    // For regular GHES, the default token should be used
-                    _ec.Verify(x => x.GetGitHubContext("token"), Times.AtLeastOnce);
-                }
-                else
-                {
-                    // For GHEC OnPrem fallback scenarios, test that the download succeeded without using default token
-                    Assert.True(File.Exists(watermarkFile), $"GHEC OnPrem fallback scenario should succeed: {scenario}");
-                }
-            }
-            finally
-            {
-                Teardown();
-            }
         }
 
         private void Teardown()
