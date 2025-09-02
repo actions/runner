@@ -36,25 +36,6 @@ function print_rhel6errormessage()
     echo "https://github.com/dotnet/core/blob/master/Documentation/build-and-install-rhel6-prerequisites.md"
 }
 
-function install_with_fallbacks() {
-    local install_cmd="$1"
-    shift
-    local packages=("$@")
-    
-    for package in "${packages[@]}"; do
-        echo "Trying to install: $package"
-        if eval "$install_cmd $package"; then
-            echo "Successfully installed: $package"
-            return 0
-        else
-            echo "Failed to install: $package, trying next option..."
-        fi
-    done
-    
-    echo "All installation attempts failed for package alternatives: ${packages[*]}"
-    return 1
-}
-
 if [ -e /etc/os-release ]
 then
     echo "--------OS Information--------"
@@ -69,42 +50,73 @@ then
         echo "------------------------------"
         
         # prefer apt-get over apt
-        if command -v apt-get > /dev/null 2>&1; then
-            apt_get="apt-get"
-        elif command -v apt > /dev/null 2>&1; then
-            apt_get="apt"
+        command -v apt-get
+        if [ $? -eq 0 ]
+        then
+            apt_get=apt-get
         else
-            echo "Found neither 'apt-get' nor 'apt'"
-            print_errormessage
-            exit 1
+            command -v apt
+            if [ $? -eq 0 ]
+            then
+                apt_get=apt
+            else
+                echo "Found neither 'apt-get' nor 'apt'"
+                print_errormessage
+                exit 1
+            fi
         fi
 
-        # Install basic dependencies
         $apt_get update && $apt_get install -y libkrb5-3 zlib1g
-        if [ $? -ne 0 ]; then
-            echo "'$apt_get' failed"
+        if [ $? -ne 0 ]
+        then
+            echo "'$apt_get' failed with exit code '$?'"
             print_errormessage
             exit 1
         fi
 
-        # Install lttng with fallbacks
-        if ! install_with_fallbacks "$apt_get install -y" "liblttng-ust1" "liblttng-ust0"; then
+        apt_get_with_fallbacks() {
+            $apt_get install -y $1
+            fail=$?
+            if [ $fail -eq 0 ]
+            then
+                if [ "${1#"${1%?}"}" = '$' ]; then
+                    dpkg -l "${1%?}" > /dev/null 2> /dev/null
+                    fail=$?
+                fi
+            fi
+            if [ $fail -ne 0 ]
+            then
+                shift
+                if [ -n "$1" ]
+                then
+                    apt_get_with_fallbacks "$@"
+                fi
+            fi
+        }
+
+        apt_get_with_fallbacks liblttng-ust1 liblttng-ust0
+        if [ $? -ne 0 ]
+        then
+            echo "'$apt_get' failed with exit code '$?'"
             print_errormessage
             exit 1
         fi
 
-        # Install SSL with fallbacks  
-        if ! install_with_fallbacks "$apt_get install -y" "libssl1.1" "libssl1.0.2" "libssl1.0.0"; then
+        apt_get_with_fallbacks libssl1.1$ libssl1.0.2$ libssl1.0.0$
+        if [ $? -ne 0 ]
+        then
+            echo "'$apt_get' failed with exit code '$?'"
             print_errormessage
             exit 1
         fi
 
-        # Install ICU with fallbacks
-        if ! install_with_fallbacks "$apt_get install -y" "libicu72" "libicu71" "libicu70" "libicu69" "libicu68" "libicu67" "libicu66" "libicu65" "libicu63" "libicu60" "libicu57" "libicu55" "libicu52"; then
+        apt_get_with_fallbacks libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52
+        if [ $? -ne 0 ]
+        then
+            echo "'$apt_get' failed with exit code '$?'"
             print_errormessage
             exit 1
         fi
-
     elif [ -e /etc/redhat-release ]
     then
         echo "The current OS is Fedora based"
@@ -112,72 +124,87 @@ then
         cat /etc/redhat-release
         echo "------------------------------"
 
-        if [ -e /etc/fedora-release ]; then
-            # Fedora - use dnf
-            if ! command -v dnf > /dev/null 2>&1; then
+        # use dnf on fedora
+        # use yum on centos and rhel
+        if [ -e /etc/fedora-release ]
+        then
+            command -v dnf
+            if [ $? -eq 0 ]
+            then
+                dnf_with_fallbacks() {
+                    dnf install -y $1
+                    fail=$?
+                    if [ $fail -eq 0 ]
+                    then
+                        return 0
+                    fi
+                    if [ $fail -ne 0 ]
+                    then
+                        shift
+                        if [ -n "$1" ]
+                        then
+                            dnf_with_fallbacks "$@"
+                        fi
+                    fi
+                }
+
+                dnf_with_fallbacks lttng-ust1 lttng-ust0
+                if [ $? -ne 0 ]
+                then
+                    echo "'dnf' failed with exit code '$?'"
+                    print_errormessage
+                    exit 1
+                fi
+
+                dnf install -y openssl-libs krb5-libs zlib libicu
+                if [ $? -ne 0 ]
+                then
+                    echo "'dnf' failed with exit code '$?'"
+                    print_errormessage
+                    exit 1
+                fi         
+            else
                 echo "Can not find 'dnf'"
                 print_errormessage
                 exit 1
             fi
-
-            # Install lttng with fallbacks
-            if ! install_with_fallbacks "dnf install -y" "lttng-ust1" "lttng-ust"; then
-                print_errormessage
-                exit 1
-            fi
-
-            # Install other dependencies
-            dnf install -y openssl-libs krb5-libs zlib libicu
-            if [ $? -ne 0 ]; then
-                echo "'dnf' failed"
-                print_errormessage
-                exit 1
-            fi
         else
-            # RHEL/CentOS - use yum
-            if ! command -v yum > /dev/null 2>&1; then
+            command -v yum
+            if [ $? -eq 0 ]
+            then
+                yum install -y lttng-ust openssl-libs krb5-libs zlib libicu
+                if [ $? -ne 0 ]
+                then                    
+                    echo "'yum' failed with exit code '$?'"
+                    print_errormessage
+                    exit 1
+                fi
+            else
                 echo "Can not find 'yum'"
-                print_errormessage
-                exit 1
-            fi
-
-            # Install lttng with fallbacks
-            if ! install_with_fallbacks "yum install -y" "lttng-ust1" "lttng-ust"; then
-                print_errormessage
-                exit 1
-            fi
-
-            # Install other dependencies
-            yum install -y openssl-libs krb5-libs zlib libicu
-            if [ $? -ne 0 ]; then
-                echo "'yum' failed"
                 print_errormessage
                 exit 1
             fi
         fi
     else
-        # we might be on OpenSUSE
+        # we might on OpenSUSE
         OSTYPE=$(grep ID_LIKE /etc/os-release | cut -f2 -d=)
         echo $OSTYPE
-        if echo $OSTYPE | grep -q "suse"; then
+        echo $OSTYPE | grep "suse"
+        if [ $? -eq 0 ]
+        then
             echo "The current OS is SUSE based"
-            
-            if ! command -v zypper > /dev/null 2>&1; then
+            command -v zypper
+            if [ $? -eq 0 ]
+            then
+                zypper -n install lttng-ust libopenssl1_1 krb5 zlib libicu60_2
+                if [ $? -ne 0 ]
+                then
+                    echo "'zypper' failed with exit code '$?'"
+                    print_errormessage
+                    exit 1
+                fi
+            else
                 echo "Can not find 'zypper'"
-                print_errormessage
-                exit 1
-            fi
-
-            # Install lttng with fallbacks
-            if ! install_with_fallbacks "zypper -n install" "lttng-ust1" "lttng-ust"; then
-                print_errormessage
-                exit 1
-            fi
-
-            # Install other dependencies
-            zypper -n install libopenssl1_1 krb5 zlib libicu60_2
-            if [ $? -ne 0 ]; then
-                echo "'zypper' failed"
                 print_errormessage
                 exit 1
             fi
