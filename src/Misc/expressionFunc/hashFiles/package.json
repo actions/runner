@@ -10,7 +10,7 @@
     "lint": "eslint src/**/*.ts",
     "pack": "ncc build -o ../../layoutbin/hashFiles",
     "all": "npm run format && npm run lint && npm run build && npm run pack",
-    "prepare": "cd ../../../../ && husky install"
+    "prepare": "cd ../../../../ && husky"
   },
   "repository": {
     "type": "git",
@@ -45,6 +45,6 @@
     "husky": "^9.1.7",
     "lint-staged": "^15.5.0",
     "prettier": "^3.0.3",
-    "typescript": "^5.2.2"
+    "typescript": "^5.9.2"
   }
 }
