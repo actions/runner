@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Http.Headers;
+using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Sdk
 {
@@ -18,6 +19,52 @@ namespace GitHub.Runner.Sdk
                 string.Equals(gitHubUrl.Host, "www.github.com", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase) ||
                 gitHubUrl.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase) ||
+                gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // For GitHub Enterprise Cloud with data residency, we allow fallback to GitHub.com for Actions resolution
+        public static bool IsGHECDRFallbackToDotcom(UriBuilder gitHubUrl, ActionDownloadInfo downloadInfo)
+        {
+            if (gitHubUrl == null || downloadInfo == null)
+            {
+                return false;
+            }
+
+#if OS_WINDOWS
+            var downloadUrl = downloadInfo.ZipballUrl;
+#else
+            var downloadUrl = downloadInfo.TarballUrl;
+#endif
+
+            if (string.IsNullOrEmpty(downloadUrl))
+            {
+                return false;
+            }
+            
+            try
+            {
+                var downloadUriBuilder = new UriBuilder(downloadUrl);
+                if (!string.Equals(downloadUriBuilder.Host, "api.github.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+                
+                // Check if the path follows the expected pattern: /repos/{owner}/{repo}/(tar|zip)ball/{ref}
+                var pathSegments = downloadUriBuilder.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (pathSegments.Length < 5 || 
+                    !string.Equals(pathSegments[0], "repos", StringComparison.OrdinalIgnoreCase) ||
+                    (!string.Equals(pathSegments[3], "tarball", StringComparison.OrdinalIgnoreCase) && 
+                        !string.Equals(pathSegments[3], "zipball", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return false;
+                }
+            }
+            catch (UriFormatException)
+            {
+                return false;
+            }
+
+            return gitHubUrl.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase) ||
                 gitHubUrl.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase);
         }
 

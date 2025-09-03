@@ -739,13 +739,31 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(actionDownloadInfos.Actions, nameof(actionDownloadInfos.Actions));
             var defaultAccessToken = executionContext.GetGitHubContext("token");
 
+            // Get GitHub URL for OnPrem fallback logic
+            UriBuilder gitHubUrl = null;
+            var serverUrl = executionContext.GetGitHubContext("server_url");
+            if (!string.IsNullOrEmpty(serverUrl))
+            {
+                gitHubUrl = new UriBuilder(serverUrl);
+            }
+            else
+            {
+                // Fallback to runner settings if GitHub context doesn't have server_url
+                var configurationStore = HostContext.GetService<IConfigurationStore>();
+                var runnerSettings = configurationStore.GetSettings();
+                if (!string.IsNullOrEmpty(runnerSettings.GitHubUrl))
+                {
+                    gitHubUrl = new UriBuilder(runnerSettings.GitHubUrl);
+                }
+            }
+
             foreach (var actionDownloadInfo in actionDownloadInfos.Actions.Values)
             {
                 // Add secret
                 HostContext.SecretMasker.AddValue(actionDownloadInfo.Authentication?.Token);
 
-                // Default auth token
-                if (string.IsNullOrEmpty(actionDownloadInfo.Authentication?.Token))
+                // Use default auth token unless falling back from OnPrem
+                if (string.IsNullOrEmpty(actionDownloadInfo.Authentication?.Token) && !UrlUtil.IsGHECDRFallbackToDotcom(gitHubUrl, actionDownloadInfo))
                 {
                     actionDownloadInfo.Authentication = new WebApi.ActionDownloadAuthentication { Token = defaultAccessToken };
                 }
