@@ -131,7 +131,32 @@ then
             command -v dnf
             if [ $? -eq 0 ]
             then
-                dnf install -y lttng-ust openssl-libs krb5-libs zlib libicu
+                dnf_with_fallbacks() {
+                    dnf install -y $1
+                    fail=$?
+                    if [ $fail -eq 0 ]
+                    then
+                        return 0
+                    fi
+                    if [ $fail -ne 0 ]
+                    then
+                        shift
+                        if [ -n "$1" ]
+                        then
+                            dnf_with_fallbacks "$@"
+                        fi
+                    fi
+                }
+
+                dnf_with_fallbacks lttng-ust1 lttng-ust0
+                if [ $? -ne 0 ]
+                then
+                    echo "'dnf' failed with exit code '$?'"
+                    print_errormessage
+                    exit 1
+                fi
+
+                dnf install -y openssl-libs krb5-libs zlib libicu
                 if [ $? -ne 0 ]
                 then
                     echo "'dnf' failed with exit code '$?'"
