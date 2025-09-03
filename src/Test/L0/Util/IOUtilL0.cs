@@ -864,6 +864,46 @@ namespace GitHub.Runner.Common.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+        public void CopyDirectory_CopiesSymlink()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Tracing trace = hc.GetTrace();
+
+                // Arrange: Create a directory with a file.
+                string directory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
+                string destination = Path.Combine(hc.GetDirectory(WellKnownDirectory.Bin), Path.GetRandomFileName());
+                string file = Path.Combine(directory, "some file");
+                string fileLink = Path.Combine(directory, "some file link");
+                string destinationLink = Path.Combine(destination, "some file link");
+                try
+                {
+                    Directory.CreateDirectory(directory);
+                    File.WriteAllText(path: file, contents: "some contents");
+                    File.CreateSymbolicLink(path: fileLink, pathToTarget: "some file");
+
+                    // Act.
+                    IOUtil.CopyDirectory(directory, destination, CancellationToken.None);
+
+                    // Assert.
+                    Assert.True(Directory.Exists(destination));
+                    Assert.True(File.Exists(destinationLink));
+                    Assert.Equal("some file", new FileInfo(destinationLink).LinkTarget);
+                }
+                finally
+                {
+                    // Cleanup.
+                    if (Directory.Exists(directory))
+                    {
+                        Directory.Delete(directory, recursive: true);
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
         public void ValidateExecutePermission_DoesNotExceedFailsafe()
         {
             using (TestHostContext hc = new(this))
