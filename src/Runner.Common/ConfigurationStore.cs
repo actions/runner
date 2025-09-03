@@ -54,6 +54,9 @@ namespace GitHub.Runner.Common
         public bool UseV2Flow { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public bool UseRunnerAdminFlow { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string ServerUrlV2 { get; set; }
 
         [IgnoreDataMember]
