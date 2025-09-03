@@ -169,6 +169,7 @@ namespace GitHub.Runner.Common
                 public static readonly string AllowRunnerContainerHooks = "DistributedTask.AllowRunnerContainerHooks";
                 public static readonly string AddCheckRunIdToJobContext = "actions_add_check_run_id_to_job_context";
                 public static readonly string DisplayHelpfulActionsDownloadErrors = "actions_display_helpful_actions_download_errors";
+                public static readonly string ContainerActionRunnerTemp = "actions_container_action_runner_temp";
             }
             
             // Node version migration related constants
