@@ -153,8 +153,8 @@ namespace GitHub.Runner.Listener.Configuration
                     registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
-                    runnerSettings.UseV2Flow = authResult.UseV2Flow;
-                    Trace.Info($"Using V2 flow: {runnerSettings.UseV2Flow}");
+                    runnerSettings.UseRunnerAdminFlow = authResult.UseRunnerAdminFlow;
+                    Trace.Info($"Using runner-admin flow: {runnerSettings.UseRunnerAdminFlow}");
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
                 }
@@ -211,7 +211,7 @@ namespace GitHub.Runner.Listener.Configuration
             string poolName = null;
             TaskAgentPool agentPool = null;
             List<TaskAgentPool> agentPools;
-            if (runnerSettings.UseV2Flow)
+            if (runnerSettings.UseRunnerAdminFlow)
             {
                 agentPools = await _dotcomServer.GetRunnerGroupsAsync(runnerSettings.GitHubUrl, registerToken);
             }
@@ -259,7 +259,7 @@ namespace GitHub.Runner.Listener.Configuration
                 var userLabels = command.GetLabels();
                 _term.WriteLine();
                 List<TaskAgent> agents;
-                if (runnerSettings.UseV2Flow)
+                if (runnerSettings.UseRunnerAdminFlow)
                 {
                     agents = await _dotcomServer.GetRunnerByNameAsync(runnerSettings.GitHubUrl, registerToken, runnerSettings.AgentName);
                 }
@@ -280,7 +280,7 @@ namespace GitHub.Runner.Listener.Configuration
 
                         try
                         {
-                            if (runnerSettings.UseV2Flow)
+                            if (runnerSettings.UseRunnerAdminFlow)
                             {
                                 var runner = await _dotcomServer.ReplaceRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
                                 runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
@@ -330,7 +330,7 @@ namespace GitHub.Runner.Listener.Configuration
 
                     try
                     {
-                        if (runnerSettings.UseV2Flow)
+                        if (runnerSettings.UseRunnerAdminFlow)
                         {
                             var runner = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
                             runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
@@ -400,13 +400,26 @@ namespace GitHub.Runner.Listener.Configuration
             }
             else
             {
-
                 throw new NotSupportedException("Message queue listen OAuth token.");
+            }
+
+            // allow the server to override the serverUrlV2 and useV2Flow
+            if (agent.Properties.TryGetValue("ServerUrlV2", out string serverUrlV2) &&
+                !string.IsNullOrEmpty(serverUrlV2))
+            {
+                Trace.Info($"Service enforced serverUrlV2: {serverUrlV2}");
+                runnerSettings.ServerUrlV2 = serverUrlV2;
+            }
+
+            if (agent.Properties.TryGetValue("UseV2Flow", out bool useV2Flow) && useV2Flow)
+            {
+                Trace.Info($"Service enforced useV2Flow: {useV2Flow}");
+                runnerSettings.UseV2Flow = useV2Flow;
             }
 
             // Testing agent connection, detect any potential connection issue, like local clock skew that cause OAuth token expired.
 
-            if (!runnerSettings.UseV2Flow)
+            if (!runnerSettings.UseV2Flow && !runnerSettings.UseRunnerAdminFlow)
             {
                 var credMgr = HostContext.GetService<ICredentialManager>();
                 VssCredentials credential = credMgr.LoadCredentials(allowAuthUrlV2: false);
@@ -427,20 +440,6 @@ namespace GitHub.Runner.Listener.Configuration
                     Trace.Error(ex);
                     throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
                 }
-            }
-
-            // allow the server to override the serverUrlV2 and useV2Flow
-            if (agent.Properties.TryGetValue("ServerUrlV2", out string serverUrlV2) &&
-                !string.IsNullOrEmpty(serverUrlV2))
-            {
-                Trace.Info($"Service enforced serverUrlV2: {serverUrlV2}");
-                runnerSettings.ServerUrlV2 = serverUrlV2;
-            }
-
-            if (agent.Properties.TryGetValue("UseV2Flow", out bool useV2Flow) && useV2Flow)
-            {
-                Trace.Info($"Service enforced useV2Flow: {useV2Flow}");
-                runnerSettings.UseV2Flow = useV2Flow;
             }
 
             _term.WriteSection("Runner settings");
@@ -538,7 +537,7 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     RunnerSettings settings = _store.GetSettings();
 
-                    if (settings.UseV2Flow)
+                    if (settings.UseRunnerAdminFlow)
                     {
                         var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
                         await _dotcomServer.DeleteRunnerAsync(settings.GitHubUrl, deletionToken, settings.AgentId);
