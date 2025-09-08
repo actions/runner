@@ -1,0 +1,27 @@
+name: Auto Update Node Version
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly, every Monday
+  workflow_dispatch:
+
+jobs:
+  update-node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Get latest Node version
+        id: node-version
+        run: |
+          LATEST_NODE=$(curl -s https://raw.githubusercontent.com/actions/node-versions/main/versions-manifest.json | jq -r '.[0].version')
+          echo "latest_node=$LATEST_NODE" >> $GITHUB_OUTPUT
+      - name: Update externals.sh
+        run: |
+          sed -i "s/^NODE_VERSION=.*/NODE_VERSION=${{ steps.node-version.outputs.latest_node }}/" src/Misc/externals.sh
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: update Node version to ${{ steps.node-version.outputs.latest_node }}"
+          branch: chore/update-node
+          title: "chore: update Node version to ${{ steps.node-version.outputs.latest_node }}"
+          labels: dependency
