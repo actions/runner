@@ -132,28 +132,43 @@ jobs:
             
             cd src/Misc/expressionFunc/hashFiles
             npm install --silent
-            AUDIT_OUTPUT=$(npm audit --json 2>/dev/null || echo '{"metadata":{"vulnerabilities":{"total":0}}}')
-            VULN_COUNT=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.total // 0')
             
-            # Ensure VULN_COUNT is a number
-            VULN_COUNT=$(echo "$VULN_COUNT" | grep -o '[0-9]*' | head -1)
-            VULN_COUNT=${VULN_COUNT:-0}
+            AUDIT_OUTPUT=""
+            AUDIT_EXIT_CODE=0
+            # Run npm audit and capture output and exit code
+            if ! AUDIT_OUTPUT=$(npm audit --json 2>&1); then
+              AUDIT_EXIT_CODE=$?
+            fi
             
-            NPM_STATUS="✅ no vulnerabilities"
-            if [ "$VULN_COUNT" -gt 0 ] 2>/dev/null; then
-              NPM_STATUS="⚠️ $VULN_COUNT vulnerabilities found"
+            # Check if output is valid JSON
+            if echo "$AUDIT_OUTPUT" | jq . >/dev/null 2>&1; then
+              VULN_COUNT=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.total // 0')
+              # Ensure VULN_COUNT is a number
+              VULN_COUNT=$(echo "$VULN_COUNT" | grep -o '[0-9]*' | head -1)
+              VULN_COUNT=${VULN_COUNT:-0}
               
-              # Get vulnerability details
-              HIGH_VULNS=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.high // 0')
-              CRITICAL_VULNS=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.critical // 0')
-              
-              echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
-              echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-              echo "| Critical | $CRITICAL_VULNS |" >> $GITHUB_STEP_SUMMARY
-              echo "| High | $HIGH_VULNS |" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
+              NPM_STATUS="✅ no vulnerabilities"
+              if [ "$VULN_COUNT" -gt 0 ] 2>/dev/null; then
+                NPM_STATUS="⚠️ $VULN_COUNT vulnerabilities found"
+                
+                # Get vulnerability details
+                HIGH_VULNS=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.high // 0')
+                CRITICAL_VULNS=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.critical // 0')
+                
+                echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+                echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+                echo "| Critical | $CRITICAL_VULNS |" >> $GITHUB_STEP_SUMMARY
+                echo "| High | $HIGH_VULNS |" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "No npm vulnerabilities found ✅" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
             else
-              echo "No npm vulnerabilities found ✅" >> $GITHUB_STEP_SUMMARY
+              NPM_STATUS="❌ npm audit failed"
+              echo "npm audit failed to run or returned invalid JSON ❌" >> $GITHUB_STEP_SUMMARY
+              echo "Exit code: $AUDIT_EXIT_CODE" >> $GITHUB_STEP_SUMMARY
+              echo "Output: $AUDIT_OUTPUT" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
             fi
             
