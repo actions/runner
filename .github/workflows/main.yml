@@ -1,0 +1,23 @@
+name: NPM Audit Fix
+
+on:
+  schedule:
+    - cron: '0 7 * * 1' # Weekly
+  workflow_dispatch:
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install
+      - run: npm audit fix || true
+      - name: Check for changes and PR
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: npm audit fix"
+          branch: chore/npm-audit-fix
+          create_branch: true
+          push_options: '--set-upstream'
+          commit_user_name: github-actions
+          commit_user_email: github-actions@github.com
