@@ -20,7 +20,7 @@ jobs:
         working-directory: src/Misc/expressionFunc/hashFiles
         run: |
           npm install
-          npm audit fix
+          npm audit fix --force
           
       - name: Create PR if changes exist
         env:
@@ -46,7 +46,7 @@ jobs:
           This update addresses npm security advisories and ensures dependencies are secure and up-to-date.
           
           **Changes made:**
-          - Applied `npm audit fix` to resolve security vulnerabilities
+          - Applied `npm audit fix --force` to resolve security vulnerabilities
           - Updated package-lock.json with security patches
           
           **Next steps:**
