@@ -12,32 +12,49 @@ This document outlines the automated dependency management process for the GitHu
 
 ## Automated Workflows
 
-### 1. Node.js Version Updates
+**Note**: These workflows are implemented across separate PRs for easier review and independent deployment. Each workflow includes comprehensive error handling and security-focused vulnerability detection.
+
+### 1. Foundation Labels
+- **Workflow**: `.github/workflows/setup-labels.yml` (PR #4024)
+- **Purpose**: Creates consistent dependency labels for all automation workflows
+- **Labels**: `dependency`, `security`, `typescript`, `needs-manual-review`
+- **Prerequisite**: Must be merged before other workflows for proper labeling
+
+### 2. Node.js Version Updates
 - **Workflow**: `.github/workflows/node-upgrade.yml`
 - **Schedule**: Mondays at 6:00 AM UTC
 - **Purpose**: Updates Node.js 20 and 24 versions in `src/Misc/externals.sh`
 - **Source**: [actions/node-versions](https://github.com/actions/node-versions)
+- **Priority**: First (NPM depends on current Node.js versions)
 
-### 2. NPM Security Audit
-- **Workflow**: `.github/workflows/npm-upgrade.yml`
+### 3. NPM Security Audit
+- **Workflow**: `.github/workflows/npm-audit-ts-fix.yml`
 - **Schedule**: Mondays at 7:00 AM UTC
-- **Purpose**: Runs `npm audit fix` on hashFiles dependencies
+- **Purpose**: Security vulnerability detection and TypeScript auto-repair
 - **Location**: `src/Misc/expressionFunc/hashFiles/`
+- **Features**: Graduated security response, auto-fix TypeScript compatibility
+- **Dependency**: Runs after Node.js updates for optimal compatibility
 
-### 3. .NET SDK Updates
+### 4. .NET SDK Updates
 - **Workflow**: `.github/workflows/dotnet-upgrade.yml`
-- **Schedule**: Mondays at 12:00 AM UTC
-- **Purpose**: Updates .NET SDK patch versions in `src/global.json`
-
-### 4. Docker/Buildx Updates
-- **Workflow**: `.github/workflows/docker-buildx-upgrade.yml`
-- **Schedule**: Mondays at 12:00 AM UTC
-- **Purpose**: Updates Docker and Docker Buildx versions in `images/Dockerfile`
-
-### 5. Dependency Status Check
-- **Workflow**: `.github/workflows/dependency-check.yml`
 - **Schedule**: Mondays at 8:00 AM UTC
-- **Purpose**: Provides comprehensive status report of all dependencies
+- **Purpose**: Updates .NET SDK and package versions with build validation
+- **Features**: Global.json updates, NuGet package management, compatibility checking
+- **Independence**: Runs independently of Node.js/NPM updates
+
+### 5. Docker/Buildx Updates
+- **Workflow**: `.github/workflows/docker-buildx-upgrade.yml`
+- **Schedule**: Mondays at 9:00 AM UTC  
+- **Purpose**: Updates Docker and Docker Buildx versions with multi-platform validation
+- **Features**: Container security scanning, multi-architecture build testing
+- **Independence**: Runs independently of other dependency updates
+
+### 6. Dependency Monitoring
+- **Workflow**: `.github/workflows/dependency-check.yml`
+- **Schedule**: Mondays at 10:00 AM UTC
+- **Purpose**: Comprehensive status report of all dependencies with security audit
+- **Features**: Multi-dependency checking, npm audit status, build validation
+- **Summary**: Runs last to capture results from all morning dependency updates
 
 ## Release Process Integration
 
@@ -91,11 +108,19 @@ You can manually trigger dependency checks:
 
 ## Dependency Labels
 
-All automated dependency PRs are tagged with the `dependency` label for easy filtering:
-- Node.js updates: `chore/update-node` branch
-- NPM security fixes: `chore/npm-audit-fix` branch  
-- .NET updates: `feature/dotnetsdk-upgrade/*` branch
-- Docker updates: Branch named with versions
+All automated dependency PRs are tagged with labels for easy filtering and management:
+
+### Primary Labels (Created by PR #4024)
+- **`dependency`**: All automated dependency-related PRs
+- **`security`**: Security vulnerability fixes and patches  
+- **`typescript`**: TypeScript compatibility and type definition updates
+- **`needs-manual-review`**: Complex updates requiring human verification
+
+### Workflow-Specific Branches
+- **Node.js updates**: `feature/node-upgrade-*` branches (PR #4026)
+- **NPM security fixes**: `feature/npm-security-*` branches (PR #4027)
+- **NuGet/.NET updates**: `feature/dotnetsdk-upgrade-*` branches (PR #4028)
+- **Docker updates**: `feature/docker-upgrade-*` branches (PR #4029)
 
 ## Special Considerations
 
