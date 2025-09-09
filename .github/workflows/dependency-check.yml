@@ -1,0 +1,211 @@
+name: Dependency Status Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: "Type of dependency check"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - node
+          - dotnet
+          - docker
+          - npm
+  schedule:
+    - cron: "0 8 * * 1" # Weekly on Monday at 8 AM
+
+jobs:
+  dependency-status:
+    runs-on: ubuntu-latest
+    outputs:
+      node20-status: ${{ steps.check-versions.outputs.node20-status }}
+      node24-status: ${{ steps.check-versions.outputs.node24-status }}
+      dotnet-status: ${{ steps.check-versions.outputs.dotnet-status }}
+      docker-status: ${{ steps.check-versions.outputs.docker-status }}
+      buildx-status: ${{ steps.check-versions.outputs.buildx-status }}
+      npm-vulnerabilities: ${{ steps.check-versions.outputs.npm-vulnerabilities }}
+      open-dependency-prs: ${{ steps.check-prs.outputs.open-dependency-prs }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check dependency versions
+        id: check-versions
+        run: |
+          echo "## Dependency Status Report" >> $GITHUB_STEP_SUMMARY
+          echo "Generated on: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check Node versions
+          if [[ "${{ github.event.inputs.check_type }}" == "all" || "${{ github.event.inputs.check_type }}" == "node" ]]; then
+            echo "### Node.js Versions" >> $GITHUB_STEP_SUMMARY
+            
+            VERSIONS_JSON=$(curl -s https://raw.githubusercontent.com/actions/node-versions/main/versions-manifest.json)
+            LATEST_NODE20=$(echo "$VERSIONS_JSON" | jq -r '.[] | select(.version | startswith("20.")) | .version' | head -1)
+            LATEST_NODE24=$(echo "$VERSIONS_JSON" | jq -r '.[] | select(.version | startswith("24.")) | .version' | head -1)
+            
+            CURRENT_NODE20=$(grep "NODE20_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
+            CURRENT_NODE24=$(grep "NODE24_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
+            
+            NODE20_STATUS="✅ up-to-date"
+            NODE24_STATUS="✅ up-to-date"
+            
+            if [ "$CURRENT_NODE20" != "$LATEST_NODE20" ]; then
+              NODE20_STATUS="⚠️ outdated"
+            fi
+            
+            if [ "$CURRENT_NODE24" != "$LATEST_NODE24" ]; then
+              NODE24_STATUS="⚠️ outdated"
+            fi
+            
+            echo "| Version | Current | Latest | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "|---------|---------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Node 20 | $CURRENT_NODE20 | $LATEST_NODE20 | $NODE20_STATUS |" >> $GITHUB_STEP_SUMMARY
+            echo "| Node 24 | $CURRENT_NODE24 | $LATEST_NODE24 | $NODE24_STATUS |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            echo "node20-status=$NODE20_STATUS" >> $GITHUB_OUTPUT
+            echo "node24-status=$NODE24_STATUS" >> $GITHUB_OUTPUT
+          fi
+
+          # Check .NET version
+          if [[ "${{ github.event.inputs.check_type }}" == "all" || "${{ github.event.inputs.check_type }}" == "dotnet" ]]; then
+            echo "### .NET SDK Version" >> $GITHUB_STEP_SUMMARY
+            
+            current_dotnet_version=$(jq -r .sdk.version ./src/global.json)
+            current_major_minor=$(echo "$current_dotnet_version" | cut -d '.' -f 1,2)
+            latest_dotnet_version=$(curl -sb -H "Accept: application/json" "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/$current_major_minor/latest.version")
+            
+            DOTNET_STATUS="✅ up-to-date"
+            if [ "$current_dotnet_version" != "$latest_dotnet_version" ]; then
+              DOTNET_STATUS="⚠️ outdated"
+            fi
+            
+            echo "| Component | Current | Latest | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "|-----------|---------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+            echo "| .NET SDK | $current_dotnet_version | $latest_dotnet_version | $DOTNET_STATUS |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            echo "dotnet-status=$DOTNET_STATUS" >> $GITHUB_OUTPUT
+          fi
+
+          # Check Docker versions
+          if [[ "${{ github.event.inputs.check_type }}" == "all" || "${{ github.event.inputs.check_type }}" == "docker" ]]; then
+            echo "### Docker Versions" >> $GITHUB_STEP_SUMMARY
+            
+            current_docker=$(grep "ARG DOCKER_VERSION=" ./images/Dockerfile | cut -d'=' -f2)
+            current_buildx=$(grep "ARG BUILDX_VERSION=" ./images/Dockerfile | cut -d'=' -f2)
+            
+            latest_docker=$(curl -s https://download.docker.com/linux/static/stable/x86_64/ | grep -o 'docker-[0-9]*\.[0-9]*\.[0-9]*\.tgz' | sort -V | tail -n 1 | sed 's/docker-\(.*\)\.tgz/\1/')
+            latest_buildx=$(curl -s https://api.github.com/repos/docker/buildx/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+            
+            DOCKER_STATUS="✅ up-to-date"
+            BUILDX_STATUS="✅ up-to-date"
+            
+            if [ "$current_docker" != "$latest_docker" ]; then
+              DOCKER_STATUS="⚠️ outdated"
+            fi
+            
+            if [ "$current_buildx" != "$latest_buildx" ]; then
+              BUILDX_STATUS="⚠️ outdated"
+            fi
+            
+            echo "| Component | Current | Latest | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "|-----------|---------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Docker | $current_docker | $latest_docker | $DOCKER_STATUS |" >> $GITHUB_STEP_SUMMARY
+            echo "| Docker Buildx | $current_buildx | $latest_buildx | $BUILDX_STATUS |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            echo "docker-status=$DOCKER_STATUS" >> $GITHUB_OUTPUT
+            echo "buildx-status=$BUILDX_STATUS" >> $GITHUB_OUTPUT
+          fi
+
+          # Check npm vulnerabilities
+          if [[ "${{ github.event.inputs.check_type }}" == "all" || "${{ github.event.inputs.check_type }}" == "npm" ]]; then
+            echo "### NPM Security Audit" >> $GITHUB_STEP_SUMMARY
+            
+            cd src/Misc/expressionFunc/hashFiles
+            npm install --silent
+            
+            AUDIT_OUTPUT=""
+            AUDIT_EXIT_CODE=0
+            # Run npm audit and capture output and exit code
+            if ! AUDIT_OUTPUT=$(npm audit --json 2>&1); then
+              AUDIT_EXIT_CODE=$?
+            fi
+            
+            # Check if output is valid JSON
+            if echo "$AUDIT_OUTPUT" | jq . >/dev/null 2>&1; then
+              VULN_COUNT=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.total // 0')
+              # Ensure VULN_COUNT is a number
+              VULN_COUNT=$(echo "$VULN_COUNT" | grep -o '[0-9]*' | head -1)
+              VULN_COUNT=${VULN_COUNT:-0}
+              
+              NPM_STATUS="✅ no vulnerabilities"
+              if [ "$VULN_COUNT" -gt 0 ] 2>/dev/null; then
+                NPM_STATUS="⚠️ $VULN_COUNT vulnerabilities found"
+                
+                # Get vulnerability details
+                HIGH_VULNS=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.high // 0')
+                CRITICAL_VULNS=$(echo "$AUDIT_OUTPUT" | jq '.metadata.vulnerabilities.critical // 0')
+                
+                echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+                echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+                echo "| Critical | $CRITICAL_VULNS |" >> $GITHUB_STEP_SUMMARY
+                echo "| High | $HIGH_VULNS |" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "No npm vulnerabilities found ✅" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              NPM_STATUS="❌ npm audit failed"
+              echo "npm audit failed to run or returned invalid JSON ❌" >> $GITHUB_STEP_SUMMARY
+              echo "Exit code: $AUDIT_EXIT_CODE" >> $GITHUB_STEP_SUMMARY
+              echo "Output: $AUDIT_OUTPUT" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "npm-vulnerabilities=$NPM_STATUS" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for open dependency PRs
+        id: check-prs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "### Open Dependency PRs" >> $GITHUB_STEP_SUMMARY
+
+          # Get open PRs with dependency label
+          OPEN_PRS=$(gh pr list --label "dependency" --state open --json number,title,url)
+          PR_COUNT=$(echo "$OPEN_PRS" | jq '. | length')
+
+          if [ "$PR_COUNT" -gt 0 ]; then
+            echo "Found $PR_COUNT open dependency PR(s):" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "$OPEN_PRS" | jq -r '.[] | "- [#\(.number)](\(.url)) \(.title)"' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No open dependency PRs found ✅" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "open-dependency-prs=$PR_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Summary
+        run: |
+          echo "### Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Check for open PRs with the \`dependency\` label before releases" >> $GITHUB_STEP_SUMMARY
+          echo "- Review and merge dependency updates regularly" >> $GITHUB_STEP_SUMMARY
+          echo "- Critical vulnerabilities should be addressed immediately" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Automated workflows run weekly to check for updates:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Node.js versions (Mondays at 6 AM)" >> $GITHUB_STEP_SUMMARY
+          echo "- NPM audit fix (Mondays at 7 AM)" >> $GITHUB_STEP_SUMMARY
+          echo "- .NET SDK updates (Mondays at midnight)" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker/Buildx updates (Mondays at midnight)" >> $GITHUB_STEP_SUMMARY
