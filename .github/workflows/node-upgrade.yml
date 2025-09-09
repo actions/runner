@@ -13,12 +13,38 @@ jobs:
       - name: Get latest Node versions
         id: node-versions
         run: |
-          # Get latest versions from the versions manifest
-          VERSIONS_JSON=$(curl -s https://raw.githubusercontent.com/actions/node-versions/main/versions-manifest.json)
+          # Get latest Node.js releases from official GitHub releases
+          echo "Fetching latest Node.js releases..."
+          
+          # Get latest v20.x release
+          LATEST_NODE20=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
+            jq -r '.[] | select(.tag_name | startswith("v20.")) | .tag_name' | \
+            head -1 | sed 's/^v//')
+          
+          # Get latest v24.x release  
+          LATEST_NODE24=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
+            jq -r '.[] | select(.tag_name | startswith("v24.")) | .tag_name' | \
+            head -1 | sed 's/^v//')
 
-          # Get latest v20 and v24 versions
-          LATEST_NODE20=$(echo "$VERSIONS_JSON" | jq -r '.[] | select(.version | startswith("20.")) | .version' | head -1)
-          LATEST_NODE24=$(echo "$VERSIONS_JSON" | jq -r '.[] | select(.version | startswith("24.")) | .version' | head -1)
+          echo "Found Node.js releases: 20=$LATEST_NODE20, 24=$LATEST_NODE24"
+
+          # Verify these versions are available in alpine_nodejs releases
+          echo "Verifying availability in alpine_nodejs..."
+          ALPINE_RELEASES=$(curl -s https://api.github.com/repos/actions/alpine_nodejs/releases | jq -r '.[].tag_name')
+          
+          if ! echo "$ALPINE_RELEASES" | grep -q "^node20-$LATEST_NODE20$"; then
+            echo "Warning: Node 20 version $LATEST_NODE20 not found in alpine_nodejs releases"
+            # Fall back to latest available alpine_nodejs v20 release
+            LATEST_NODE20=$(echo "$ALPINE_RELEASES" | grep "^node20-" | head -1 | sed 's/^node20-//')
+            echo "Using latest available alpine_nodejs Node 20: $LATEST_NODE20"
+          fi
+          
+          if ! echo "$ALPINE_RELEASES" | grep -q "^node24-$LATEST_NODE24$"; then
+            echo "Warning: Node 24 version $LATEST_NODE24 not found in alpine_nodejs releases"
+            # Fall back to latest available alpine_nodejs v24 release
+            LATEST_NODE24=$(echo "$ALPINE_RELEASES" | grep "^node24-" | head -1 | sed 's/^node24-//')
+            echo "Using latest available alpine_nodejs Node 24: $LATEST_NODE24"
+          fi
 
           echo "latest_node20=$LATEST_NODE20" >> $GITHUB_OUTPUT
           echo "latest_node24=$LATEST_NODE24" >> $GITHUB_OUTPUT
