@@ -15,7 +15,7 @@ on:
           - docker
           - npm
   schedule:
-    - cron: "0 8 * * 1" # Weekly on Monday at 8 AM
+    - cron: "0 10 * * 1" # Weekly on Monday at 10 AM UTC (runs after all dependency updates)
 
 jobs:
   dependency-status:
