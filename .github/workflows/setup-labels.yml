@@ -1,0 +1,32 @@
+name: Setup Repository Labels
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create necessary labels
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create dependency label
+          gh label create "dependency" \
+            --description "Dependency updates and security fixes" \
+            --color "0366d6" \
+            --repo ${{ github.repository }} || echo "dependency label already exists"
+          
+          # Create typescript label  
+          gh label create "typescript" \
+            --description "TypeScript related changes" \
+            --color "3178C6" \
+            --repo ${{ github.repository }} || echo "typescript label already exists"
+          
+          # Create needs-manual-review label
+          gh label create "needs-manual-review" \
+            --description "Requires manual review and intervention" \
+            --color "D93F0B" \
+            --repo ${{ github.repository }} || echo "needs-manual-review label already exists"
+          
+          echo "✅ Labels created successfully"
