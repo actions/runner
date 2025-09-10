@@ -21,6 +21,7 @@ jobs:
         run: |
           npm install
           npm audit fix --force
+          npm run all
           
       - name: Create PR if changes exist
         env:
