@@ -17,7 +17,7 @@ This document outlines the automated dependency management process for the GitHu
 ### 1. Foundation Labels
 - **Workflow**: `.github/workflows/setup-labels.yml` (PR #4024)
 - **Purpose**: Creates consistent dependency labels for all automation workflows
-- **Labels**: `dependency`, `security`, `typescript`, `needs-manual-review`
+- **Labels**: `dependencies`, `security`, `typescript`, `needs-manual-review`
 - **Prerequisite**: Must be merged before other workflows for proper labeling
 
 ### 2. Node.js Version Updates
@@ -37,14 +37,14 @@ This document outlines the automated dependency management process for the GitHu
 
 ### 4. .NET SDK Updates
 - **Workflow**: `.github/workflows/dotnet-upgrade.yml`
-- **Schedule**: Mondays at 8:00 AM UTC
+- **Schedule**: Mondays at midnight UTC
 - **Purpose**: Updates .NET SDK and package versions with build validation
 - **Features**: Global.json updates, NuGet package management, compatibility checking
 - **Independence**: Runs independently of Node.js/NPM updates
 
 ### 5. Docker/Buildx Updates
 - **Workflow**: `.github/workflows/docker-buildx-upgrade.yml`
-- **Schedule**: Mondays at 9:00 AM UTC  
+- **Schedule**: Mondays at midnight UTC
 - **Purpose**: Updates Docker and Docker Buildx versions with multi-platform validation
 - **Features**: Container security scanning, multi-architecture build testing
 - **Independence**: Runs independently of other dependency updates
@@ -64,8 +64,14 @@ Before each monthly runner release:
 
 1. **Check Dependency PRs**:
    ```bash
-   # List open dependency PRs
-   gh pr list --label "dependency" --state open
+   # List all open dependency PRs
+   gh pr list --label "dependencies" --state open
+   
+   # List only automated weekly dependency updates
+   gh pr list --label "dependencies-weekly-check" --state open
+   
+   # List only custom dependency automation (not dependabot)
+   gh pr list --label "dependencies-not-dependabot" --state open
    ```
 
 2. **Run Manual Dependency Check**:
@@ -97,7 +103,7 @@ Before each monthly runner release:
 ## Monitoring and Alerts
 
 ### GitHub Actions Workflow Status
-- All dependency workflows create PRs with the `dependency` label
+- All dependency workflows create PRs with the `dependencies` label
 - Failed workflows should be investigated immediately
 - Weekly dependency status reports are generated automatically
 
@@ -110,17 +116,26 @@ You can manually trigger dependency checks:
 
 All automated dependency PRs are tagged with labels for easy filtering and management:
 
-### Primary Labels (Created by PR #4024)
-- **`dependency`**: All automated dependency-related PRs
+### Primary Labels
+- **`dependencies`**: All automated dependency-related PRs
+- **`dependencies-weekly-check`**: Automated weekly dependency updates from scheduled workflows
+- **`dependencies-not-dependabot`**: Custom dependency automation (not created by dependabot)
 - **`security`**: Security vulnerability fixes and patches  
 - **`typescript`**: TypeScript compatibility and type definition updates
 - **`needs-manual-review`**: Complex updates requiring human verification
 
+### Technology-Specific Labels
+- **`node`**: Node.js version updates
+- **`javascript`**: JavaScript runtime and tooling updates
+- **`npm`**: NPM package and security updates
+- **`dotnet`**: .NET SDK and NuGet package updates
+- **`docker`**: Docker and container tooling updates
+
 ### Workflow-Specific Branches
-- **Node.js updates**: `feature/node-upgrade-*` branches (PR #4026)
-- **NPM security fixes**: `feature/npm-security-*` branches (PR #4027)
-- **NuGet/.NET updates**: `feature/dotnetsdk-upgrade-*` branches (PR #4028)
-- **Docker updates**: `feature/docker-upgrade-*` branches (PR #4029)
+- **Node.js updates**: `feature/node-upgrade-*` branches
+- **NPM security fixes**: `feature/npm-security-*` branches
+- **NuGet/.NET updates**: `feature/dotnetsdk-upgrade-*` branches
+- **Docker updates**: `feature/docker-buildx-upgrade` branch
 
 ## Special Considerations
 
