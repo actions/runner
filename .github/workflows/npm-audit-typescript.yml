@@ -220,9 +220,9 @@ jobs:
             fi
             
             # Create PR with appropriate labels
-            labels="dependency,typescript"
+            labels="dependencies,dependencies-not-dependabot,typescript,npm,security"
             if [[ "$build_status" == *"fails"* ]]; then
-              labels="dependency,typescript,needs-manual-review"
+              labels="dependencies,dependencies-not-dependabot,typescript,npm,security,needs-manual-review"
             fi
             
             # Create PR

@@ -159,5 +159,8 @@ jobs:
           # Create PR
           gh pr create -B main -H "$branch_name" \
             --title "$pr_title" \
-            --label "dependency" \
+            --label "dependencies" \
+            --label "dependencies-weekly-check" \
+            --label "dependencies-not-dependabot" \
+            --label "docker" \
             --body-file pr_body.txt
