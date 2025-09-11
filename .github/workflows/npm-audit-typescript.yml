@@ -1,0 +1,235 @@
+name: NPM Audit Fix with TypeScript Auto-Fix
+
+on:
+  workflow_dispatch:
+
+jobs:
+  npm-audit-with-ts-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: NPM install and audit fix with TypeScript auto-repair
+        working-directory: src/Misc/expressionFunc/hashFiles
+        run: |
+          npm install
+
+          # Check for vulnerabilities first
+          echo "Checking for npm vulnerabilities..."
+          if npm audit --audit-level=moderate; then
+            echo "✅ No moderate or higher vulnerabilities found"
+            exit 0
+          fi
+
+          echo "⚠️ Vulnerabilities found, attempting npm audit fix..."
+
+          # Attempt audit fix and capture the result
+          if npm audit fix; then
+            echo "✅ npm audit fix completed successfully"
+            AUDIT_FIX_STATUS="success"
+          else
+            echo "⚠️ npm audit fix failed or had issues"
+            AUDIT_FIX_STATUS="failed"
+            
+            # Try audit fix with --force as a last resort for critical/high vulns only
+            echo "Checking if critical/high vulnerabilities remain..."
+            if ! npm audit --audit-level=high; then
+              echo "🚨 Critical/high vulnerabilities remain, attempting --force fix..."
+              if npm audit fix --force; then
+                echo "⚠️ npm audit fix --force completed (may have breaking changes)"
+                AUDIT_FIX_STATUS="force-fixed"
+              else
+                echo "❌ npm audit fix --force also failed"
+                AUDIT_FIX_STATUS="force-failed"
+              fi
+            else
+              echo "✅ Only moderate/low vulnerabilities remain after failed fix"
+              AUDIT_FIX_STATUS="partial-success"
+            fi
+          fi
+
+          echo "AUDIT_FIX_STATUS=$AUDIT_FIX_STATUS" >> $GITHUB_ENV
+
+          # Try to fix TypeScript issues automatically
+          echo "Attempting to fix TypeScript compatibility issues..."
+
+          # Check if build fails
+          if ! npm run build 2>/dev/null; then
+            echo "Build failed, attempting automated fixes..."
+            
+            # Common fix 1: Update @types/node to latest compatible version
+            echo "Trying to update @types/node to latest version..."
+            npm update @types/node
+            
+            # Common fix 2: If that doesn't work, try installing a specific known-good version
+            if ! npm run build 2>/dev/null; then
+              echo "Trying specific @types/node version..."
+              # Try Node 20 compatible version
+              npm install --save-dev @types/node@^20.0.0
+            fi
+            
+            # Common fix 3: Clear node_modules and reinstall if still failing
+            if ! npm run build 2>/dev/null; then
+              echo "Clearing node_modules and reinstalling..."
+              rm -rf node_modules package-lock.json
+              npm install
+              
+              # Re-run audit fix after clean install if it was successful before
+              if [[ "$AUDIT_FIX_STATUS" == "success" || "$AUDIT_FIX_STATUS" == "force-fixed" ]]; then
+                echo "Re-running npm audit fix after clean install..."
+                npm audit fix || echo "Audit fix failed on second attempt"
+              fi
+            fi
+            
+            # Common fix 4: Try updating TypeScript itself
+            if ! npm run build 2>/dev/null; then
+              echo "Trying to update TypeScript..."
+              npm update typescript
+            fi
+            
+            # Final check
+            if npm run build 2>/dev/null; then
+              echo "✅ Successfully fixed TypeScript issues automatically"
+            else
+              echo "⚠️ Could not automatically fix TypeScript issues"
+            fi
+          else
+            echo "✅ Build passes after audit fix"
+          fi
+
+      - name: Create PR if changes exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: 0 # Disable husky hooks for automated commits
+        run: |
+          # Check if there are any changes
+          if [ -n "$(git status --porcelain)" ]; then
+            # Configure git
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "<41898282+github-actions[bot]@users.noreply.github.com>"
+
+            # Create branch and commit changes
+            branch_name="chore/npm-audit-fix-with-ts-repair"
+            git checkout -b "$branch_name"
+            
+            # Commit with --no-verify to skip husky hooks
+            git commit -a -m "chore: npm audit fix with automated TypeScript compatibility fixes" --no-verify
+            git push --force origin "$branch_name"
+            
+            # Check final build status and gather info about what was changed
+            build_status="✅ Build passes"
+            fixes_applied=""
+            cd src/Misc/expressionFunc/hashFiles
+            
+            # Check what packages were updated
+            if git diff HEAD~1 package.json | grep -q "@types/node"; then
+              fixes_applied+="\n- Updated @types/node version for TypeScript compatibility"
+            fi
+            if git diff HEAD~1 package.json | grep -q "typescript"; then
+              fixes_applied+="\n- Updated TypeScript version"
+            fi
+            if git diff HEAD~1 package-lock.json | grep -q "resolved"; then
+              fixes_applied+="\n- Updated package dependencies via npm audit fix"
+            fi
+            
+            if ! npm run build 2>/dev/null; then
+              build_status="⚠️ Build fails - manual review required"
+            fi
+            cd - > /dev/null
+            
+            # Create enhanced PR body using here-doc for proper formatting
+            audit_status_msg=""
+            case "$AUDIT_FIX_STATUS" in
+              "success")
+                audit_status_msg="✅ **Audit Fix**: Completed successfully"
+                ;;
+              "partial-success")
+                audit_status_msg="⚠️ **Audit Fix**: Partial success (only moderate/low vulnerabilities remain)"
+                ;;
+              "force-fixed")
+                audit_status_msg="⚠️ **Audit Fix**: Completed with --force (may have breaking changes)"
+                ;;
+              "failed"|"force-failed")
+                audit_status_msg="❌ **Audit Fix**: Failed to resolve vulnerabilities"
+                ;;
+              *)
+                audit_status_msg="❓ **Audit Fix**: Status unknown"
+                ;;
+            esac
+            
+            if [[ "$build_status" == *"fails"* ]]; then
+              cat > pr_body.txt << EOF
+          Automated npm audit fix with TypeScript auto-repair for hashFiles dependencies.
+
+          **Build Status**: ⚠️ Build fails - manual review required
+          $audit_status_msg
+
+          This workflow attempts to automatically fix TypeScript compatibility issues that may arise from npm audit fixes.
+
+          ⚠️ **Manual Review Required**: The build is currently failing after automated fixes were attempted.
+
+          Common issues and solutions:
+          - Check for TypeScript version compatibility with Node.js types
+          - Review breaking changes in updated dependencies
+          - Consider pinning problematic dependency versions temporarily
+          - Review tsconfig.json for compatibility settings
+
+          **Automated Fix Strategy**:
+          1. Run npm audit fix with proper error handling
+          2. Update @types/node to latest compatible version
+          3. Try Node 20 specific @types/node version if needed
+          4. Clean reinstall dependencies if conflicts persist
+          5. Update TypeScript compiler if necessary
+
+          ---
+
+          Autogenerated by [NPM Audit Fix with TypeScript Auto-Fix Workflow](https://github.com/actions/runner/blob/main/.github/workflows/npm-audit-ts-fix.yml)
+          EOF
+            else
+              cat > pr_body.txt << EOF
+          Automated npm audit fix with TypeScript auto-repair for hashFiles dependencies.
+
+          **Build Status**: ✅ Build passes
+          $audit_status_msg
+
+          This workflow attempts to automatically fix TypeScript compatibility issues that may arise from npm audit fixes.
+
+          ✅ **Ready to Merge**: All automated fixes were successful and the build passes.
+
+          **Automated Fix Strategy**:
+          1. Run npm audit fix with proper error handling
+          2. Update @types/node to latest compatible version
+          3. Try Node 20 specific @types/node version if needed
+          4. Clean reinstall dependencies if conflicts persist
+          5. Update TypeScript compiler if necessary
+
+          ---
+
+          Autogenerated by [NPM Audit Fix with TypeScript Auto-Fix Workflow](https://github.com/actions/runner/blob/main/.github/workflows/npm-audit-ts-fix.yml)
+          EOF
+            fi
+            
+            if [ -n "$fixes_applied" ]; then
+              # Add the fixes applied section to the file
+              sed -i "/This workflow attempts/a\\
+          \\
+          **Automated Fixes Applied**:$fixes_applied" pr_body.txt
+            fi
+            
+            # Create PR with appropriate labels
+            labels="dependency,typescript"
+            if [[ "$build_status" == *"fails"* ]]; then
+              labels="dependency,typescript,needs-manual-review"
+            fi
+            
+            # Create PR
+            gh pr create -B main -H "$branch_name" \
+              --title "chore: npm audit fix with TypeScript auto-repair" \
+              --label "$labels" \
+              --body-file pr_body.txt
+          else
+            echo "No changes to commit"
+          fi
