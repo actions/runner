@@ -125,7 +125,7 @@ jobs:
             # Create PR
             gh pr create -B main -H "$branch_name" \
               --title "chore: npm audit fix for hashFiles dependencies" \
-              --label "dependency" \
+              --label "dependencies" \
               --body-file pr_body.txt
           else
             echo "✅ No changes to commit - npm audit fix did not modify any files"

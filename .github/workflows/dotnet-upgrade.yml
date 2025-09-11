@@ -96,7 +96,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr create -B main -H feature/dotnetsdk-upgrade/${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }} --title "Update dotnet sdk to latest version @${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}" --label "dependency" --body "
+          gh pr create -B main -H feature/dotnetsdk-upgrade/${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }} --title "Update dotnet sdk to latest version @${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}" --label "dependencies" --body "
             https://dotnetcli.blob.core.windows.net/dotnet/Sdk/${{ needs.dotnet-update.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}/latest.version
             
               

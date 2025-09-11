@@ -159,5 +159,5 @@ jobs:
           # Create PR
           gh pr create -B main -H "$branch_name" \
             --title "$pr_title" \
-            --label "dependency" \
+            --label "dependencies" \
             --body-file pr_body.txt
