@@ -67,6 +67,7 @@ if [ -e /etc/os-release ]; then
         fi
 
         apt_get_with_fallbacks() {
+            fail=0
             if "$apt_get" install -y "$1"; then
                 if ! dpkg -l | grep "^ii\s\s$1" &>/dev/null; then
                     fail=1
