@@ -88,7 +88,7 @@ if [ -e /etc/os-release ]; then
             exit 1
         fi
 
-        if ! apt_get_with_fallbacks libssl3$ libssl1.1$ libssl1.0.2$ libssl1.0.0$; then
+        if ! apt_get_with_fallbacks libssl3 libssl1.1 libssl1.0.2 libssl1.0.0; then
             print_errormessage
             exit 1
         fi
