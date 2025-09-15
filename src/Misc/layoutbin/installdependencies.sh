@@ -69,7 +69,7 @@ if [ -e /etc/os-release ]; then
         apt_get_with_fallbacks() {
             if "$apt_get" install -y "$1"; then
                 if ! dpkg -l | grep "^ii\s\s$1" &>/dev/null; then
-                    fail=$?
+                    fail=1
                 fi
             else
                 shift
@@ -116,7 +116,8 @@ if [ -e /etc/os-release ]; then
         fi
 
         if ! $dnf install -y lttng-ust openssl-libs krb5-libs zlib libicu; then
-            echo "'dnf' failed with exit code '$?'"
+            exit_code=$?
+            echo "'$dnf' failed with exit code '$exit_code'"
             print_errormessage
             exit 1
         fi
