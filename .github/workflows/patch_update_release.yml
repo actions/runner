@@ -153,6 +153,7 @@ jobs:
       run: |
         cd upstream-runner && git checkout ${{ steps.get-tags.outputs.LATEST_TAG }} && cd ..
         cp -r upstream-runner/* .
+        rm -rf upstream-runner
 
     - name: Create release branch
       if: steps.process-arches.outputs.successful_arches != ''

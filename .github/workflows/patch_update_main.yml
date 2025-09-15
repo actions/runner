@@ -132,6 +132,7 @@ jobs:
         rm -f successful_arches.txt
         cd upstream-runner && git checkout ${{ steps.get-commits.outputs.LATEST_COMMIT_SHORT }} && cd ..
         cp -r upstream-runner/* .
+        rm -rf upstream-runner
 
     - name: Import and configure the GPG key for Platform Engineering bot
       uses: crazy-max/ghaction-import-gpg@v6
