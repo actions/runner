@@ -110,7 +110,7 @@ if [ -e /etc/os-release ]; then
             if command -v microdnf; then
                 dnf=microdnf
             else
-                echo "Found neither 'dnf' nor 'yum'"
+                echo "Found neither 'dnf', 'yum', nor 'microdnf'"
                 print_errormessage
                 exit 1
             fi
