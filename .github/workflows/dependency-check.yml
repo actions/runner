@@ -15,7 +15,7 @@ on:
           - docker
           - npm
   schedule:
-    - cron: "0 10 * * 1" # Weekly on Monday at 10 AM UTC (runs after all dependency updates)
+    - cron: "0 11 * * 1" # Weekly on Monday at 11 AM
 
 jobs:
   dependency-status:
@@ -182,7 +182,7 @@ jobs:
         run: |
           echo "### Open Dependency PRs" >> $GITHUB_STEP_SUMMARY
 
-          # Get open PRs with dependencies label
+          # Get open PRs with dependency label
           OPEN_PRS=$(gh pr list --label "dependencies" --state open --json number,title,url)
           PR_COUNT=$(echo "$OPEN_PRS" | jq '. | length')
 
@@ -200,7 +200,7 @@ jobs:
       - name: Summary
         run: |
           echo "### Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Check for open PRs with the \`dependencies\` label before releases" >> $GITHUB_STEP_SUMMARY
+          echo "- Check for open PRs with the \`dependency\` label before releases" >> $GITHUB_STEP_SUMMARY
           echo "- Review and merge dependency updates regularly" >> $GITHUB_STEP_SUMMARY
           echo "- Critical vulnerabilities should be addressed immediately" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
