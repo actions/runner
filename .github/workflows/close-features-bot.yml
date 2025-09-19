@@ -7,7 +7,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v9
+      - uses: actions/stale@v10
         with:
           close-issue-message: "Thank you for your interest in the runner application and taking the time to provide your valuable feedback. We kindly ask you to redirect this feedback to the [GitHub Community Support Forum](https://github.com/orgs/community/discussions/categories/actions-and-packages) which our team actively monitors and would be a better place to start a discussion for new feature requests in GitHub Actions. For more information on this policy please [read our contribution guidelines](https://github.com/actions/runner#contribute). 😃"
           exempt-issue-labels: "keep"
