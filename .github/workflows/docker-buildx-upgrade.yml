@@ -2,7 +2,7 @@ name: "Docker/Buildx Version Upgrade"
 
 on:
   schedule:
-    - cron: "0 9 * * 1" # Weekly on Monday at 9 AM UTC (independent of other dependencies)
+    - cron: "0 0 * * 1" # Run every Monday at midnight
   workflow_dispatch: # Allow manual triggering
 
 jobs:
@@ -159,5 +159,8 @@ jobs:
           # Create PR
           gh pr create -B main -H "$branch_name" \
             --title "$pr_title" \
-            --label "dependency" \
+            --label "dependencies" \
+            --label "dependencies-weekly-check" \
+            --label "dependencies-not-dependabot" \
+            --label "docker" \
             --body-file pr_body.txt

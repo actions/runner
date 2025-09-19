@@ -334,6 +334,7 @@ namespace GitHub.Runner.Listener.Configuration
                         {
                             var runner = await _dotcomServer.AddRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
                             runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+                            runnerSettings.UseV2Flow = true; // if we are using runner admin, we also need to hit broker
 
                             agent.Id = runner.Id;
                             agent.Authorization = new TaskAgentAuthorization()
