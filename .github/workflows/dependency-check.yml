@@ -19,7 +19,7 @@ on:
 
 jobs:
   dependency-status:
-    runs-on: ubuntu-latest
+    runs-on: path-test
     outputs:
       node20-status: ${{ steps.check-versions.outputs.node20-status }}
       node24-status: ${{ steps.check-versions.outputs.node24-status }}
