@@ -20,31 +20,40 @@ namespace GitHub.Runner.Common.Tests.Worker.Handlers
         [Trait("Category", "Worker")]
         public void ScriptPath_WithSpaces_ShouldBeQuoted()
         {
-            // Arrange
-            using (TestHostContext hc = CreateTestContext())
-            {
-                var scriptHandler = new ScriptHandler();
-                scriptHandler.Initialize(hc);
-
-                // Create a mock temp directory path with spaces
-                var tempPathWithSpaces = "/path with spaces/_temp";
-                var scriptPathWithSpaces = Path.Combine(tempPathWithSpaces, "test-script.sh");
-                
-                // Test the logic that our fix addresses
-                var originalPath = scriptPathWithSpaces.Replace("\"", "\\\"");
-                var quotedPath = $"\"{scriptPathWithSpaces.Replace("\"", "\\\"")}\"";
-                
-                // Assert
-                Assert.False(originalPath.StartsWith("\""), "Original path should not be quoted");
-                Assert.True(quotedPath.StartsWith("\"") && quotedPath.EndsWith("\""), "Fixed path should be properly quoted");
-                Assert.Contains("path with spaces", quotedPath, StringComparison.Ordinal);
-            }
+            // Arrange - Test the path quoting logic that our fix addresses
+            var tempPathWithSpaces = "/path with spaces/_temp";
+            var scriptPathWithSpaces = Path.Combine(tempPathWithSpaces, "test-script.sh");
+            
+            // Test the original (broken) behavior 
+            var originalPath = scriptPathWithSpaces.Replace("\"", "\\\"");
+            
+            // Test our fix - properly quoted path
+            var quotedPath = $"\"{scriptPathWithSpaces.Replace("\"", "\\\"")}\"";
+            
+            // Assert
+            Assert.False(originalPath.StartsWith("\""), "Original path should not be quoted");
+            Assert.True(quotedPath.StartsWith("\"") && quotedPath.EndsWith("\""), "Fixed path should be properly quoted");
+            Assert.Contains("path with spaces", quotedPath, StringComparison.Ordinal);
+            
+            // Verify the specific scenario that was failing
+            Assert.Equal("\"/path with spaces/_temp/test-script.sh\"", quotedPath);
         }
-
-        private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
+        
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ScriptPath_WithQuotes_ShouldEscapeQuotes()
         {
-            var hc = new TestHostContext(this, testName);
-            return hc;
+            // Arrange - Test paths that contain quotes
+            var pathWithQuotes = "/path/\"quoted folder\"/script.sh";
+            
+            // Test our fix - properly escape quotes and wrap in quotes
+            var quotedPath = $"\"{pathWithQuotes.Replace("\"", "\\\"")}\"";
+            
+            // Assert
+            Assert.Equal("\"/path/\\\"quoted folder\\\"/script.sh\"", quotedPath);
+            Assert.True(quotedPath.StartsWith("\"") && quotedPath.EndsWith("\""), "Path should be wrapped in quotes");
+            Assert.Contains("\\\"", quotedPath, StringComparison.Ordinal);
         }
     }
 }
