@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Common;
+using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Worker.Container.ContainerHooks;
@@ -220,7 +221,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             // [OPTIONS]
             dockerCommandArgs.Add($"-i");
-            dockerCommandArgs.Add($"--workdir {workingDirectory}");
+            dockerCommandArgs.Add(DockerUtil.CreateEscapedOption("--workdir", workingDirectory));
             foreach (var env in environment)
             {
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
