@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Common;
-using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Worker.Container.ContainerHooks;
