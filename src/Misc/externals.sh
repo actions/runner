@@ -7,7 +7,7 @@ NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
 # When you update Node versions you must also create a new release of alpine_nodejs at that updated version.
 # Follow the instructions here: https://github.com/actions/alpine_nodejs?tab=readme-ov-file#getting-started
 NODE20_VERSION="20.19.5"
-NODE24_VERSION="24.7.0"
+NODE24_VERSION="24.9.0"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
