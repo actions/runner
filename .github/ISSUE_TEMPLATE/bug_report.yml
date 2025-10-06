@@ -1,0 +1,107 @@
+name: 🛑 Report a bug in the runner application
+description: If you have issues with GitHub Actions, please follow the "support for GitHub Actions" link, below.
+title: "[Bug]: "
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        👋 You're opening a bug report against the GitHub Actions **runner application**.
+
+        🛑 Please stop if you're not certain that the bug you're seeing is in the runner application - if you have general problems with actions, workflows, or runners, please see the [GitHub Community Support Forum](https://github.community/c/code-to-cloud/52) which is actively monitored.  Using the forum ensures that we route your problem to the correct team.  😃
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the bug you're experiencing...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Run '....'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: Describe what you expected to happen...
+    validations:
+      required: true
+
+  - type: input
+    id: runner-version
+    attributes:
+      label: Runner Version
+      description: What version of the runner are you using?
+      placeholder: e.g., 2.311.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: What operating system is the runner machine using?
+      options:
+        - Windows
+        - macOS
+        - Linux (Ubuntu)
+        - Linux (Other)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: whats-not-working
+    attributes:
+      label: What's not working?
+      description: Please include error messages and screenshots.
+      placeholder: Include error messages, screenshots, and any other relevant details...
+    validations:
+      required: false
+
+  - type: textarea
+    id: job-log-output
+    attributes:
+      label: Job Log Output
+      description: If applicable, include the relevant part of the job / step log output here. All sensitive information should already be masked out, but please double-check before pasting here.
+      placeholder: Paste relevant job log output here...
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: diagnostic-logs
+    attributes:
+      label: Runner and Worker's Diagnostic Logs
+      description: |
+        If applicable, add relevant diagnostic log information. Logs are located in the runner's `_diag` folder. 
+        The runner logs are prefixed with `Runner_` and the worker logs are prefixed with `Worker_`. 
+        Each job run correlates to a worker log. All sensitive information should already be masked out, 
+        but please double-check before pasting here.
+      placeholder: Paste relevant diagnostic logs here...
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
