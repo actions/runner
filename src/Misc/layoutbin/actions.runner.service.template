@@ -6,7 +6,7 @@ After=network.target
 ExecStart={{RunnerRoot}}/runsvc.sh
 User={{User}}
 WorkingDirectory={{RunnerRoot}}
-KillMode=process
+KillMode=control-group
 KillSignal=SIGTERM
 TimeoutStopSec=5min
 
