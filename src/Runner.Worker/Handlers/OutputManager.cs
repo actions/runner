@@ -13,10 +13,10 @@ namespace GitHub.Runner.Worker.Handlers
 {
     public sealed class OutputManager : IDisposable
     {
-        private const string _colorCodePrefix = "\033[";
+        private const string _colorCodePrefix = "\x1b[";
         private const int _maxAttempts = 3;
         private const string _timeoutKey = "GITHUB_ACTIONS_RUNNER_ISSUE_MATCHER_TIMEOUT";
-        private static readonly Regex _colorCodeRegex = new(@"\x0033\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        private static readonly Regex _colorCodeRegex = new(@"\x1b\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly IActionCommandManager _commandManager;
         private readonly ContainerInfo _container;
         private readonly IExecutionContext _executionContext;
