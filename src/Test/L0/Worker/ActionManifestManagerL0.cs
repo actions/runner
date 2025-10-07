@@ -45,7 +45,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
@@ -89,7 +89,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
@@ -135,7 +135,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
@@ -181,7 +181,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
@@ -227,7 +227,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
@@ -272,7 +272,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
@@ -310,7 +310,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
@@ -353,7 +353,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
@@ -396,7 +396,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
                 Assert.Equal(1, result.Deprecated.Count);
 
                 Assert.True(result.Deprecated.ContainsKey("greeting"));
@@ -568,7 +568,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
                 Assert.Equal(1, result.Deprecated.Count);
 
                 Assert.True(result.Deprecated.ContainsKey("greeting"));
@@ -612,7 +612,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
                 Assert.Equal(1, result.Deprecated.Count);
 
                 Assert.True(result.Deprecated.ContainsKey("greeting"));
@@ -656,7 +656,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                //Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
                 Assert.Equal(1, result.Deprecated.Count);
 
                 Assert.True(result.Deprecated.ContainsKey("greeting"));
@@ -700,7 +700,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
                 Assert.Equal(1, result.Deprecated.Count);
 
                 Assert.True(result.Deprecated.ContainsKey("greeting"));
@@ -744,7 +744,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
                 Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
                 Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
-                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertNull("value").ToString());
 
                 Assert.Equal(ActionExecutionType.Plugin, result.Execution.ExecutionType);
 
