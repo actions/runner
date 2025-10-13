@@ -1,0 +1,91 @@
+name: Auto Merge Oldest Pull Request
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Get oldest open pull request
+        id: get-oldest-pr
+        run: |
+
+          # Get the oldest open PR (regardless of mergeability)
+          PR_NUMBER=$(gh pr list --author "is-devops-bot" --state open --json number,createdAt,mergeable --jq 'sort_by(.createdAt) | .[0] | .number')
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open PRs found. Workflow completed successfully."
+            echo "pr_number=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Oldest open PR is #$PR_NUMBER"
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if oldest PR is mergeable
+        if: steps.get-oldest-pr.outputs.pr_number != ''
+        id: check-mergeable
+        run: |
+          PR_NUMBER="${{ steps.get-oldest-pr.outputs.pr_number }}"
+          echo "Checking mergeability of PR #$PR_NUMBER..."
+
+          # Get current mergeability status
+          MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+          echo "PR #$PR_NUMBER mergeable status: $MERGEABLE"
+
+          if [ "$MERGEABLE" = "MERGEABLE" ]; then
+            echo "is_mergeable=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          else
+            echo "is_mergeable=false" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on PR
+        if: steps.check-mergeable.outputs.is_mergeable == 'true'
+        uses: actions/github-script@v8.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const comments = "This PR is merged by the auto-merge-pr action defined at `.github/workflows/auto-merge-pr.yaml`"
+
+            const owner = context.payload.repository.owner.login;
+            const repo = context.payload.repository.name;
+            const issue_number = context.payload.number;
+
+            await github.rest.issues.createComment({
+                owner: owner,
+                repo: repo,
+                issue_number: issue_number,
+                body: comments,
+            });
+
+      - name: Merge oldest PR
+        if: steps.check-mergeable.outputs.is_mergeable == 'true'
+        run: |
+          PR_NUMBER="${{ steps.check-mergeable.outputs.pr_number }}"
+          echo "Merging oldest PR #$PR_NUMBER..."
+
+          if gh pr merge "$PR_NUMBER" --merge --delete-branch; then
+            echo "Successfully merged PR #$PR_NUMBER"
+          else
+            echo "Failed to merge PR #$PR_NUMBER"
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
