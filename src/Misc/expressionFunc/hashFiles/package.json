@@ -43,7 +43,7 @@
     "eslint-plugin-github": "^4.10.2",
     "eslint-plugin-prettier": "^5.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.5.0",
+    "lint-staged": "^16.2.4",
     "prettier": "^3.0.3",
     "typescript": "^5.9.2"
   }
