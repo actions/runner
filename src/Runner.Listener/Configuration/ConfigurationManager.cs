@@ -284,6 +284,7 @@ namespace GitHub.Runner.Listener.Configuration
                             {
                                 var runner = await _dotcomServer.ReplaceRunnerAsync(runnerSettings.PoolId, agent, runnerSettings.GitHubUrl, registerToken, publicKeyXML);
                                 runnerSettings.ServerUrlV2 = runner.RunnerAuthorization.ServerUrl;
+                                runnerSettings.UseV2Flow = true; // if we are using runner admin, we also need to hit broker
 
                                 agent.Id = runner.Id;
                                 agent.Authorization = new TaskAgentAuthorization()
@@ -291,6 +292,13 @@ namespace GitHub.Runner.Listener.Configuration
                                     AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
                                     ClientId = new Guid(runner.RunnerAuthorization.ClientId)
                                 };
+
+                                if (!string.IsNullOrEmpty(runner.RunnerAuthorization.LegacyAuthorizationUrl?.AbsoluteUri))
+                                {
+                                    agent.Authorization.AuthorizationUrl = runner.RunnerAuthorization.LegacyAuthorizationUrl;
+                                    agent.Properties["EnableAuthMigrationByDefault"] = true;
+                                    agent.Properties["AuthorizationUrlV2"] = runner.RunnerAuthorization.AuthorizationUrl.AbsoluteUri;
+                                }
                             }
                             else
                             {
@@ -342,6 +350,13 @@ namespace GitHub.Runner.Listener.Configuration
                                 AuthorizationUrl = runner.RunnerAuthorization.AuthorizationUrl,
                                 ClientId = new Guid(runner.RunnerAuthorization.ClientId)
                             };
+
+                            if (!string.IsNullOrEmpty(runner.RunnerAuthorization.LegacyAuthorizationUrl?.AbsoluteUri))
+                            {
+                                agent.Authorization.AuthorizationUrl = runner.RunnerAuthorization.LegacyAuthorizationUrl;
+                                agent.Properties["EnableAuthMigrationByDefault"] = true;
+                                agent.Properties["AuthorizationUrlV2"] = runner.RunnerAuthorization.AuthorizationUrl.AbsoluteUri;
+                            }
                         }
                         else
                         {
