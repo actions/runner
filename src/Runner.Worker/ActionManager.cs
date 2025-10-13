@@ -111,7 +111,7 @@ namespace GitHub.Runner.Worker
             {
                 // Log the error and fail the PrepareActionsAsync Initialization.
                 Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
-                executionContext.InfrastructureError(ex.Message);
+                executionContext.InfrastructureError(ex.Message, category: "resolve_action");
                 executionContext.Result = TaskResult.Failed;
                 throw;
             }
@@ -119,7 +119,7 @@ namespace GitHub.Runner.Worker
             {
                 // Log the error and fail the PrepareActionsAsync Initialization.
                 Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
-                executionContext.InfrastructureError(ex.Message);
+                executionContext.InfrastructureError(ex.Message, category: "invalid_action_download");
                 executionContext.Result = TaskResult.Failed;
                 throw;
             }
@@ -777,15 +777,15 @@ namespace GitHub.Runner.Worker
                 IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
                 Directory.CreateDirectory(destDirectory);
 
-                if (downloadInfo.PackageDetails != null) 
+                if (downloadInfo.PackageDetails != null)
                 {
                     executionContext.Output($"##[group]Download immutable action package '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}'");
                     executionContext.Output($"Version: {downloadInfo.PackageDetails.Version}");
                     executionContext.Output($"Digest: {downloadInfo.PackageDetails.ManifestDigest}");
                     executionContext.Output($"Source commit SHA: {downloadInfo.ResolvedSha}");
                     executionContext.Output("##[endgroup]");
-                } 
-                else 
+                }
+                else
                 {
                     executionContext.Output($"Download action repository '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}' (SHA:{downloadInfo.ResolvedSha})");
                 }
