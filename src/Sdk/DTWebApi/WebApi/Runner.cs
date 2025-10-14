@@ -19,6 +19,16 @@ namespace GitHub.DistributedTask.WebApi
             }
 
             /// <summary>
+            /// The url to refresh tokens with legacy service
+            /// </summary> 
+            [JsonProperty("legacy_authorization_url")]
+            public Uri LegacyAuthorizationUrl
+            {
+                get;
+                internal set;
+            }
+
+            /// <summary>
             /// The url to connect to poll for messages
             /// </summary> 
             [JsonProperty("server_url")]
