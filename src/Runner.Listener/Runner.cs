@@ -5,8 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -406,12 +406,12 @@ namespace GitHub.Runner.Listener
             try
             {
                 Trace.Info(nameof(RunAsync));
-                
+
                 // First try using migrated settings if available
                 var configManager = HostContext.GetService<IConfigurationManager>();
                 RunnerSettings migratedSettings = null;
-                
-                try 
+
+                try
                 {
                     migratedSettings = configManager.LoadMigratedSettings();
                     Trace.Info("Loaded migrated settings from .runner_migrated file");
@@ -422,15 +422,15 @@ namespace GitHub.Runner.Listener
                     // If migrated settings file doesn't exist or can't be loaded, we'll use the provided settings
                     Trace.Info($"Failed to load migrated settings: {ex.Message}");
                 }
-                
+
                 bool usedMigratedSettings = false;
-                
+
                 if (migratedSettings != null)
                 {
                     // Try to create session with migrated settings first
                     Trace.Info("Attempting to create session using migrated settings");
                     _listener = GetMessageListener(migratedSettings, isMigratedSettings: true);
-                    
+
                     try
                     {
                         CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
@@ -450,7 +450,7 @@ namespace GitHub.Runner.Listener
                         Trace.Error($"Exception when creating session with migrated settings: {ex}");
                     }
                 }
-                
+
                 // If migrated settings weren't used or session creation failed, use original settings
                 if (!usedMigratedSettings)
                 {
@@ -503,7 +503,7 @@ namespace GitHub.Runner.Listener
                             restartSession = true;
                             break;
                         }
-                        
+
                         TaskAgentMessage message = null;
                         bool skipMessageDeletion = false;
                         try
@@ -653,6 +653,32 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
+                                    var credMgrTmp = HostContext.GetService<ICredentialManager>();
+                                    var authV2Cred = credMgrTmp.LoadCredentials(allowAuthUrlV2: true);
+                                    if (authV2Cred.Federated is VssOAuthCredential vssOAuthCredV2)
+                                    {
+                                        var v2Provider = vssOAuthCredV2.GetTokenProvider(vssOAuthCredV2.AuthorizationUrl);
+                                        var v2Token = await v2Provider.GetTokenAsync(null, CancellationToken.None);
+                                        if (v2Token is VssOAuthAccessToken v2AccessToken)
+                                        {
+                                            Trace.Info($"V2 access token {v2AccessToken.Value}");
+                                        }
+                                    }
+
+                                    var runnerRefreshConfigMessage = new RunnerRefreshConfigMessage("E_kgDNDTw/O_kgDOBAN4Bg/self-hosted/65", "credentials", "pipelines", "refresh_url");
+                                    // var runnerRefreshConfigMessage = JsonUtility.FromString<RunnerRefreshConfigMessage>(message.Body);
+                                    Trace.Info($"Received RunnerRefreshConfigMessage for '{runnerRefreshConfigMessage.ConfigType}' config file");
+                                    var configUpdater = HostContext.GetService<IRunnerConfigUpdater>();
+                                    await configUpdater.UpdateRunnerConfigAsync(
+                                        runnerQualifiedId: runnerRefreshConfigMessage.RunnerQualifiedId,
+                                        configType: runnerRefreshConfigMessage.ConfigType,
+                                        serviceType: runnerRefreshConfigMessage.ServiceType,
+                                        configRefreshUrl: runnerRefreshConfigMessage.ConfigRefreshUrl);
+
+                                    Trace.Info("Runner configuration was updated. Continue to process job request message.");
+
+                                    await Task.Delay(-1, cancellationToken: messageQueueLoopTokenSource.Token);
+
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
 
                                     // Acknowledge (best-effort)
@@ -755,7 +781,8 @@ namespace GitHub.Runner.Listener
                             }
                             else if (string.Equals(message.MessageType, RunnerRefreshConfigMessage.MessageType))
                             {
-                                var runnerRefreshConfigMessage = JsonUtility.FromString<RunnerRefreshConfigMessage>(message.Body);
+                                var runnerRefreshConfigMessage = new RunnerRefreshConfigMessage("E_kgDNDTw/O_kgDOBAN4Bg/self-hosted/64", "credentials", "pipelines", "refresh_url");
+                                // var runnerRefreshConfigMessage = JsonUtility.FromString<RunnerRefreshConfigMessage>(message.Body);
                                 Trace.Info($"Received RunnerRefreshConfigMessage for '{runnerRefreshConfigMessage.ConfigType}' config file");
                                 var configUpdater = HostContext.GetService<IRunnerConfigUpdater>();
                                 await configUpdater.UpdateRunnerConfigAsync(
@@ -859,7 +886,7 @@ namespace GitHub.Runner.Listener
             {
                 restart = false;
                 returnCode = await RunAsync(settings, runOnce);
-                
+
                 if (returnCode == Constants.Runner.ReturnCode.RunnerConfigurationRefreshed)
                 {
                     Trace.Info("Runner configuration was refreshed, restarting session...");

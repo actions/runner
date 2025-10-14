@@ -229,7 +229,7 @@ namespace GitHub.Runner.Listener
             Trace.Entering();
             Trace.Info($"Verifying runner qualified id: {runnerQualifiedId}");
             var idParts = runnerQualifiedId.Split("/", StringSplitOptions.RemoveEmptyEntries);
-            if (idParts.Length != 4 || idParts[3] != _settings.AgentId.ToString())
+            if (idParts.Length != 4)
             {
                 Trace.Error($"Runner qualified id '{runnerQualifiedId}' does not match the current runner '{_settings.AgentId}'.");
                 await ReportTelemetryAsync($"Runner qualified id '{runnerQualifiedId}' does not match the current runner '{_settings.AgentId}'.");
