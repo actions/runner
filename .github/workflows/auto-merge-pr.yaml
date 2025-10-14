@@ -81,6 +81,7 @@ jobs:
           PR_NUMBER="${{ steps.check-mergeable.outputs.pr_number }}"
           echo "Merging oldest PR #$PR_NUMBER..."
 
+          export GH_DEBUG=api
           if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
             echo "Successfully merged PR #$PR_NUMBER"
           else
