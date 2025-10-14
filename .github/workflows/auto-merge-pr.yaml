@@ -66,12 +66,12 @@ jobs:
 
             const owner = context.payload.repository.owner.login;
             const repo = context.payload.repository.name;
-            const issue_number = context.payload.number;
+            const pr_number = "${{ steps.check-mergeable.outputs.pr_number }}"
 
             await github.rest.issues.createComment({
                 owner: owner,
                 repo: repo,
-                issue_number: issue_number,
+                issue_number: pr_number,
                 body: comments,
             });
 
