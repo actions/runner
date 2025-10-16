@@ -567,5 +567,193 @@ namespace GitHub.Runner.Common.Tests.Worker
                 }
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task SnapshotPreflightChecks_HostedRunnerCheck_Enabled_GitHubHosted_Success()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _jobEc.Global.Variables.Set(WellKnownDistributedTaskVariables.RunnerEnvironment, "github-hosted");
+
+                hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck, "true");
+
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+
+                var snapshot = new Pipelines.Snapshot("TestImageNameForPreflightCheck");
+                var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+                _message.Snapshot = imageNameValueStringToken;
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                    .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                await jobExtension.InitializeJob(_jobEc, _message);
+
+                var postJobSteps = _jobEc.PostJobSteps;
+                Assert.Equal(1, postJobSteps.Count);
+            }
+
+            Environment.SetEnvironmentVariable("RUNNER_ENVIRONMENT", null);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task SnapshotPreflightChecks_HostedRunnerCheck_Enabled_SelfHosted_ThrowsException()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _jobEc.Global.Variables.Set(WellKnownDistributedTaskVariables.RunnerEnvironment, "self-hosted");
+                hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
+
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck, "true");
+
+                var snapshot = new Pipelines.Snapshot("TestImageNameForPreflightCheck");
+                var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+                _message.Snapshot = imageNameValueStringToken;
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                    .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                var exception = await Assert.ThrowsAsync<ArgumentException>(() => jobExtension.InitializeJob(_jobEc, _message));
+                Assert.Contains("Snapshot workflows must be run on a GitHub Hosted Runner", exception.Message);
+            }
+
+            Environment.SetEnvironmentVariable("RUNNER_ENVIRONMENT", null);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task SnapshotPreflightChecks_ImageGenPoolCheck_Enabled_ImageGenEnabled_Success()
+        {
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED", "true");
+
+            using (TestHostContext hc = CreateTestContext())
+            {
+                hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
+
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightImageGenPoolCheck, "true");
+
+                var snapshot = new Pipelines.Snapshot("TestImageNameForPreflightCheck");
+                var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+                _message.Snapshot = imageNameValueStringToken;
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                    .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                await jobExtension.InitializeJob(_jobEc, _message);
+
+                var postJobSteps = _jobEc.PostJobSteps;
+                Assert.Equal(1, postJobSteps.Count);
+            }
+
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED", null);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task SnapshotPreflightChecks_ImageGenPoolCheck_Enabled_ImageGen_False_ThrowsException()
+        {
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED", "false");
+
+            using (TestHostContext hc = CreateTestContext())
+            {
+                hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
+                _jobEc.SetRunnerContext("environment", "github-hosted");
+
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightImageGenPoolCheck, "true");
+
+                var snapshot = new Pipelines.Snapshot("TestImageNameForPreflightCheck");
+                var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+                _message.Snapshot = imageNameValueStringToken;
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                    .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                var exception = await Assert.ThrowsAsync<ArgumentException>(() => jobExtension.InitializeJob(_jobEc, _message));
+                Assert.Contains("Snapshot workflows must be run a hosted runner with Image Generation enabled", exception.Message);
+            }
+
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED", null);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task SnapshotPreflightChecks_ImageGenPoolCheck_Enabled_ImageGen_Missing_ThrowsException()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
+
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightImageGenPoolCheck, "true");
+
+                var snapshot = new Pipelines.Snapshot("TestImageNameForPreflightCheck");
+                var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+                _message.Snapshot = imageNameValueStringToken;
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                    .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                var exception = await Assert.ThrowsAsync<ArgumentException>(() => jobExtension.InitializeJob(_jobEc, _message));
+                Assert.Contains("Snapshot workflows must be run a hosted runner with Image Generation enabled", exception.Message);
+            }
+
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED", null);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task SnapshotPreflightChecks_BothChecks_Enabled_AllConditionsMet_Success()
+        {
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED", "true");
+
+            using (TestHostContext hc = CreateTestContext())
+            {
+                hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
+
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                // Enable both preflight checks
+                _jobEc.Global.Variables.Set(WellKnownDistributedTaskVariables.RunnerEnvironment, "github-hosted");
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck, "true");
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightImageGenPoolCheck, "true");
+
+                var snapshot = new Pipelines.Snapshot("TestImageNameForPreflightCheck");
+                var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+                _message.Snapshot = imageNameValueStringToken;
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                    .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                await jobExtension.InitializeJob(_jobEc, _message);
+
+                var postJobSteps = _jobEc.PostJobSteps;
+                Assert.Equal(1, postJobSteps.Count);
+            }
+
+            Environment.SetEnvironmentVariable("RUNNER_ENVIRONMENT", null);
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED", null);
+        }
     }
 }
