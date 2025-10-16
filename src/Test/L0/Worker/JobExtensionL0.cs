@@ -695,7 +695,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task SnapshotPreflightChecks_ImageGenPoolCheck_Enabled_ImageGeg_Missing_ThrowsException()
+        public async Task SnapshotPreflightChecks_ImageGenPoolCheck_Enabled_ImageGen_Missing_ThrowsException()
         {
             using (TestHostContext hc = CreateTestContext())
             {
