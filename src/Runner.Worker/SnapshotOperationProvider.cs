@@ -45,7 +45,7 @@ public class SnapshotOperationProvider : RunnerService, ISnapshotOperationProvid
             context.Debug($"Snapshot: RUNNER_ENVIRONMENT={runnerEnvironment}");
             if (!string.Equals(runnerEnvironment, "github-hosted", StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException("Snapshot workflows must be run a GitHub Hosted Runner");
+                throw new ArgumentException("Snapshot workflows must be run on a GitHub Hosted Runner");
             }
         }
         var imageGenEnabled = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED"));
