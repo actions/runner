@@ -37,14 +37,18 @@ public class SnapshotOperationProvider : RunnerService, ISnapshotOperationProvid
 
     public void RunSnapshotPreflightChecks(IExecutionContext context)
     {
-
-        var runnerEnvironment = Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT");
-        context.Debug($"Snapshot: RUNNER_ENVIRONMENT={runnerEnvironment}");
-
         var shouldCheckRunnerEnvironment = context.Global.Variables.GetBoolean(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck);
-        if (shouldCheckRunnerEnvironment == true && runnerEnvironment != "github-hosted")
-        {
-            throw new ArgumentException("Snapshot workflows must be run a GitHub Hosted Runner");
+        if (shouldCheckRunnerEnvironment == true) {
+            if (context.ExpressionValues["runner"] is RunnerContext runnerContext)
+            {
+                var runnerEnvironment = runnerContext["environment"].ToString();
+                context.Debug($"Snapshot: RUNNER_ENVIRONMENT={runnerEnvironment}");
+
+                if (shouldCheckRunnerEnvironment == true && runnerEnvironment != "github-hosted")
+                {
+                    throw new ArgumentException("Snapshot workflows must be run a GitHub Hosted Runner");
+                }
+            }
         }
 
         var imageGenEnabled = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED");
