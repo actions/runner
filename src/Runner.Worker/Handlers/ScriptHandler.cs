@@ -249,7 +249,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // We do not not the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
-                resolvedScriptPath = StepHost.ResolvePathForStepHost(ExecutionContext, scriptFilePath).Replace("\"", "\\\"");
+                resolvedScriptPath = $"\"{StepHost.ResolvePathForStepHost(ExecutionContext, scriptFilePath).Replace("\"", "\\\"")}\"";
             }
             else
             {
@@ -260,7 +260,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
                 scriptFilePath = Inputs["path"];
                 ArgUtil.NotNullOrEmpty(scriptFilePath, "path");
-                resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
+                resolvedScriptPath = $"\"{Inputs["path"].Replace("\"", "\\\"")}\"";
             }
 
             // Format arg string with script path
