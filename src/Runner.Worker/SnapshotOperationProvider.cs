@@ -39,9 +39,9 @@ public class SnapshotOperationProvider : RunnerService, ISnapshotOperationProvid
     {
         var shouldCheckRunnerEnvironment = context.Global.Variables.GetBoolean(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck);
         if (shouldCheckRunnerEnvironment == true) {
-            if (context.ExpressionValues["runner"] is RunnerContext runnerContext)
+            context.Global.Variables.TryGetValue(WellKnownDistributedTaskVariables.RunnerEnvironment, out var runnerEnvironment);
+            if (runnerEnvironment != null)
             {
-                var runnerEnvironment = runnerContext["environment"].ToString();
                 context.Debug($"Snapshot: RUNNER_ENVIRONMENT={runnerEnvironment}");
 
                 if (shouldCheckRunnerEnvironment == true && runnerEnvironment != "github-hosted")
