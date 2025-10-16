@@ -623,7 +623,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
 
                 var exception = await Assert.ThrowsAsync<ArgumentException>(() => jobExtension.InitializeJob(_jobEc, _message));
-                Assert.Contains("Snapshot workflows must be run a GitHub Hosted Runner", exception.Message);
+                Assert.Contains("Snapshot workflows must be run on a GitHub Hosted Runner", exception.Message);
             }
 
             Environment.SetEnvironmentVariable("RUNNER_ENVIRONMENT", null);
