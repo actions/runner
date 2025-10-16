@@ -37,25 +37,21 @@ public class SnapshotOperationProvider : RunnerService, ISnapshotOperationProvid
 
     public void RunSnapshotPreflightChecks(IExecutionContext context)
     {
-        var shouldCheckRunnerEnvironment = context.Global.Variables.GetBoolean(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck);
-        if (shouldCheckRunnerEnvironment == true) {
-            context.Global.Variables.TryGetValue(WellKnownDistributedTaskVariables.RunnerEnvironment, out var runnerEnvironment);
-            if (runnerEnvironment != null)
+        var shouldCheckRunnerEnvironment = context.Global.Variables.GetBoolean(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck) ?? false;
+        if (shouldCheckRunnerEnvironment &&
+             context.Global.Variables.TryGetValue(WellKnownDistributedTaskVariables.RunnerEnvironment, out var runnerEnvironment) &&
+             !string.IsNullOrEmpty(runnerEnvironment))
+        {
+            context.Debug($"Snapshot: RUNNER_ENVIRONMENT={runnerEnvironment}");
+            if (!string.Equals(runnerEnvironment, "github-hosted", StringComparison.OrdinalIgnoreCase))
             {
-                context.Debug($"Snapshot: RUNNER_ENVIRONMENT={runnerEnvironment}");
-
-                if (shouldCheckRunnerEnvironment == true && runnerEnvironment != "github-hosted")
-                {
-                    throw new ArgumentException("Snapshot workflows must be run a GitHub Hosted Runner");
-                }
+                throw new ArgumentException("Snapshot workflows must be run a GitHub Hosted Runner");
             }
         }
-
-        var imageGenEnabled = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED");
+        var imageGenEnabled = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_IMAGE_GEN_ENABLED"));
         context.Debug($"Snapshot: GITHUB_ACTIONS_IMAGE_GEN_ENABLED={imageGenEnabled}");
-
-        var shouldCheckImageGenPool = context.Global.Variables.GetBoolean(Constants.Runner.Features.SnapshotPreflightImageGenPoolCheck);
-        if (shouldCheckImageGenPool == true && imageGenEnabled != "true")
+        var shouldCheckImageGenPool = context.Global.Variables.GetBoolean(Constants.Runner.Features.SnapshotPreflightImageGenPoolCheck) ?? false;
+        if (shouldCheckImageGenPool && !imageGenEnabled)
         {
             throw new ArgumentException("Snapshot workflows must be run a hosted runner with Image Generation enabled");
         }

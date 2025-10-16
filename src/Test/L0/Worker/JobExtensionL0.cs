@@ -575,7 +575,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _jobEc.SetRunnerContext("environment", "github-hosted");
+                _jobEc.Global.Variables.Set(WellKnownDistributedTaskVariables.RunnerEnvironment, "github-hosted");
 
                 hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
                 _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck, "true");
@@ -607,7 +607,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _jobEc.SetRunnerContext("environment", "self-hosted");
+                _jobEc.Global.Variables.Set(WellKnownDistributedTaskVariables.RunnerEnvironment, "self-hosted");
                 hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
 
                 var jobExtension = new JobExtension();
@@ -729,15 +729,15 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             using (TestHostContext hc = CreateTestContext())
             {
-                _jobEc.SetRunnerContext("environment", "github-hosted");
                 hc.SetSingleton<ISnapshotOperationProvider>(new SnapshotOperationProvider());
 
                 var jobExtension = new JobExtension();
                 jobExtension.Initialize(hc);
 
                 // Enable both preflight checks
-                 _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck, "true");
-                 _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightImageGenPoolCheck, "true");
+                _jobEc.Global.Variables.Set(WellKnownDistributedTaskVariables.RunnerEnvironment, "github-hosted");
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightHostedRunnerCheck, "true");
+                _jobEc.Global.Variables.Set(Constants.Runner.Features.SnapshotPreflightImageGenPoolCheck, "true");
 
                 var snapshot = new Pipelines.Snapshot("TestImageNameForPreflightCheck");
                 var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
