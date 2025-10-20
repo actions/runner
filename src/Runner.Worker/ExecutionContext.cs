@@ -522,6 +522,10 @@ namespace GitHub.Runner.Worker
                     if (annotation != null)
                     {
                         stepResult.Annotations.Add(annotation.Value);
+                        if (annotation.Value.IsInfrastructureIssue && string.IsNullOrEmpty(Global.InfrastructureFailureCategory))
+                        {
+                            Global.InfrastructureFailureCategory = issue.Category;
+                        }
                     }
                 });
 
@@ -1335,9 +1339,9 @@ namespace GitHub.Runner.Worker
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
-        public static void InfrastructureError(this IExecutionContext context, string message)
+        public static void InfrastructureError(this IExecutionContext context, string message, string category = null)
         {
-            var issue = new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true };
+            var issue = new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true, Category = category };
             context.AddIssue(issue, ExecutionContextLogOptions.Default);
         }
 

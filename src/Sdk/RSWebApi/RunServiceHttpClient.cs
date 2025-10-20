@@ -131,6 +131,7 @@ namespace GitHub.Actions.RunService.WebApi
             string environmentUrl,
             IList<Telemetry> telemetry,
             string billingOwnerId,
+            string infrastructureFailureCategory,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
@@ -145,6 +146,7 @@ namespace GitHub.Actions.RunService.WebApi
                 EnvironmentUrl = environmentUrl,
                 Telemetry = telemetry,
                 BillingOwnerId = billingOwnerId,
+                InfrastructureFailureCategory = infrastructureFailureCategory
             };
 
             requestUri = new Uri(requestUri, "completejob");

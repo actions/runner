@@ -35,5 +35,8 @@ namespace GitHub.Actions.RunService.WebApi
 
         [DataMember(Name = "billingOwnerId", EmitDefaultValue = false)]
         public string BillingOwnerId { get; set; }
+
+        [DataMember(Name = "infrastructureFailureCategory", EmitDefaultValue = false)]
+        public string InfrastructureFailureCategory { get; set; }
     }
 }
