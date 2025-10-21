@@ -38,6 +38,7 @@ public class SnapshotOperationProviderL0
             Assert.NotNull(actualSnapshot);
             Assert.Equal(expectedSnapshot.ImageName, actualSnapshot!.ImageName);
             _ec.Verify(ec => ec.Write(null, $"Request written to: {_snapshotRequestFilePath}"), Times.Once);
+            _ec.Verify(ec => ec.Write(null, $"Image Name: {expectedSnapshot.ImageName} Version: {expectedSnapshot.Version}"), Times.Once);
             _ec.Verify(ec => ec.Write(null, "This request will be processed after the job completes. You will not receive any feedback on the snapshot process within the workflow logs of this job."), Times.Once);
             _ec.Verify(ec => ec.Write(null, "If the snapshot process is successful, you should see a new image with the requested name in the list of available custom images when creating a new GitHub-hosted Runner."), Times.Once);
             _ec.VerifyNoOtherCalls();
