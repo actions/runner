@@ -1,5 +1,6 @@
 ﻿using GitHub.Runner.Sdk;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -59,6 +60,9 @@ namespace GitHub.Runner.Common
         [DataMember(EmitDefaultValue = false)]
         public string ServerUrlV2 { get; set; }
 
+        [DataMember(Name = "PullRequestSecurity", EmitDefaultValue = false)]
+        public PullRequestSecuritySettings PullRequestSecuritySettings { get; set; }
+
         [IgnoreDataMember]
         public bool IsHostedServer
         {
@@ -111,6 +115,18 @@ namespace GitHub.Runner.Common
                 _isHostedServer = null;
             }
         }
+    }
+
+    [DataContract]
+    public sealed class PullRequestSecuritySettings
+    {
+        // pullRequestSecurity is optional in the config -- if the key is
+        // defined, assume that we only want collaborators to run PRs.
+        [DataMember(EmitDefaultValue = false)]
+        public HashSet<string> AllowedAuthors = new HashSet<string>();
+
+        [DataMember(EmitDefaultValue = false)]
+        public bool AllowContributors = true;
     }
 
     [ServiceLocator(Default = typeof(ConfigurationStore))]
