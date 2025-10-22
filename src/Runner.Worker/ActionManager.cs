@@ -808,16 +808,17 @@ namespace GitHub.Runner.Worker
                 var useActionArchiveCache = false;
                 var hasActionArchiveCache = false;
                 var actionArchiveCacheDir = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory);
+                var externalCachingEnabled = Convert.ToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveExternalCachingEnabled) ?? "false");
+#if OS_WINDOWS
+                var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.zip");
+#else
+                var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.tar.gz");
+#endif
                 if (!string.IsNullOrEmpty(actionArchiveCacheDir) &&
                     Directory.Exists(actionArchiveCacheDir))
                 {
                     hasActionArchiveCache = true;
                     Trace.Info($"Check if action archive '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}' already exists in cache directory '{actionArchiveCacheDir}'");
-#if OS_WINDOWS
-                    var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.zip");
-#else
-                    var cacheArchiveFile = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), $"{downloadInfo.ResolvedSha}.tar.gz");
-#endif
                     if (File.Exists(cacheArchiveFile))
                     {
                         try
@@ -843,6 +844,12 @@ namespace GitHub.Runner.Worker
                 if (!useActionArchiveCache)
                 {
                     await DownloadRepositoryArchive(executionContext, link, downloadInfo.Authentication?.Token, archiveFile);
+                    if (hasActionArchiveCache && externalCachingEnabled)
+                    {
+                        executionContext.Output($"Saving archive file to cache at '{cacheArchiveFile}'");
+                        Directory.CreateDirectory(Path.GetDirectoryName(cacheArchiveFile));
+                        File.Copy(archiveFile, cacheArchiveFile, true);
+                    }
                 }
 
                 var stagingDirectory = Path.Combine(tempDirectory, "_staging");
