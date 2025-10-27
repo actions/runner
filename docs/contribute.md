@@ -1,5 +1,24 @@
 # Contributions
 
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Issues](#issues)
+- [Enhancements and Feature Requests](#enhancements-and-feature-requests)
+- [Required Dev Dependencies](#required-dev-dependencies)
+- [Quickstart: Run a Job from a Real Repository](#quickstart-run-a-job-from-a-real-repository)
+- [Development Life Cycle](#development-life-cycle)
+  - [Clone Repository](#clone-repository)
+  - [Build Layout](#build-layout)
+  - [Test Layout](#test-layout)
+  - [Configure Runner](#configure-runner)
+  - [Run Runner](#run-runner)
+  - [View Logs](#view-logs)
+- [Editors](#editors)
+- [Styling](#styling)
+
+## Getting Started
+
 We welcome contributions in the form of issues and pull requests. We view the contributions and the process as the same for github and external contributors. Please note the runner typically requires changes across the entire system and we aim for issues in the runner to be entirely self contained and fixable here. Therefore, we will primarily handle bug issues opened in this repo and we kindly request you to create all feature and enhancement requests on the [GitHub Feedback](https://github.com/community/community/discussions/categories/actions-and-packages) page. 
 
 > IMPORTANT: Building your own runner is critical for the dev inner loop process when contributing changes.  However, only runners built and distributed by GitHub (releases) are supported in production.  Be aware that workflows and orchestrations run service side with the runner being a remote process to run steps.  For that reason, the service can pull the runner forward so customizations can be lost.
@@ -124,8 +143,8 @@ cd runner/_layout
 ./config.(sh/cmd) # configure your custom runner
 ```
 
-You will need your the name of your repository and a runner registration token.
-Check [Quickstart](##Quickstart:-Run-a-job-from-a-real-repository) if you don't know how to get this token.
+You will need the name of your repository and a runner registration token.
+Check the [Quickstart section](#quickstart-run-a-job-from-a-real-repository) if you don't know how to get this token.
 
 These can also be passed down as arguments to `config.(sh/cmd)`:
 ```bash
