@@ -28,4 +28,18 @@ namespace GitHub.Runner.Worker.Expressions
             return jobStatus == ActionResult.Cancelled;
         }
     }
+
+    public sealed class NewCancelledFunction : GitHub.Actions.Expressions.Sdk.Function
+    {
+        protected sealed override object EvaluateCore(GitHub.Actions.Expressions.Sdk.EvaluationContext evaluationContext, out GitHub.Actions.Expressions.Sdk.ResultMemory resultMemory)
+        {
+            resultMemory = null;
+            var templateContext = evaluationContext.State as GitHub.Actions.WorkflowParser.ObjectTemplating.TemplateContext;
+            ArgUtil.NotNull(templateContext, nameof(templateContext));
+            var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
+            return jobStatus == ActionResult.Cancelled;
+        }
+    }
 }

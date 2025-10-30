@@ -18,7 +18,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     /// Evaluates parts of the workflow DOM. For example, a job strategy or step inputs.
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public class PipelineTemplateEvaluator
+    public class PipelineTemplateEvaluator : IPipelineTemplateEvaluator
     {
         public PipelineTemplateEvaluator(
             ITraceWriter trace,
