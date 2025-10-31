@@ -1390,17 +1390,9 @@ namespace GitHub.Runner.Worker
             return new[] { new KeyValuePair<string, object>(nameof(IExecutionContext), context) };
         }
 
-        public static PipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
+        public static IPipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
         {
-            if (traceWriter == null)
-            {
-                traceWriter = context.ToTemplateTraceWriter();
-            }
-            var schema = PipelineTemplateSchemaFactory.GetSchema();
-            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
-            {
-                MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
-            };
+            return new PipelineTemplateEvaluatorWrapper(context, traceWriter);
         }
 
         public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)

@@ -39,4 +39,29 @@ namespace GitHub.Runner.Worker.Expressions
             }
         }
     }
+
+    public sealed class NewSuccessFunction : GitHub.Actions.Expressions.Sdk.Function
+    {
+        protected sealed override object EvaluateCore(GitHub.Actions.Expressions.Sdk.EvaluationContext evaluationContext, out GitHub.Actions.Expressions.Sdk.ResultMemory resultMemory)
+        {
+            resultMemory = null;
+            var templateContext = evaluationContext.State as GitHub.Actions.WorkflowParser.ObjectTemplating.TemplateContext;
+            ArgUtil.NotNull(templateContext, nameof(templateContext));
+            var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+
+            // Decide based on 'action_status' for composite MAIN steps and 'job.status' for pre, post and job-level steps
+            var isCompositeMainStep = executionContext.IsEmbedded && executionContext.Stage == ActionRunStage.Main;
+            if (isCompositeMainStep)
+            {
+                ActionResult actionStatus = EnumUtil.TryParse<ActionResult>(executionContext.GetGitHubContext("action_status")) ?? ActionResult.Success;
+                return actionStatus == ActionResult.Success;
+            }
+            else
+            {
+                ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
+                return jobStatus == ActionResult.Success;
+            }
+        }
+    }
 }
