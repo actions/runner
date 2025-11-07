@@ -22,4 +22,13 @@ namespace GitHub.Runner.Worker.Expressions
             return true;
         }
     }
+
+    public sealed class NewAlwaysFunction : GitHub.Actions.Expressions.Sdk.Function
+    {
+        protected override Object EvaluateCore(GitHub.Actions.Expressions.Sdk.EvaluationContext context, out GitHub.Actions.Expressions.Sdk.ResultMemory resultMemory)
+        {
+            resultMemory = null;
+            return true;
+        }
+    }
 }

@@ -172,6 +172,7 @@ namespace GitHub.Runner.Common
                 public static readonly string ContainerActionRunnerTemp = "actions_container_action_runner_temp";
                 public static readonly string SnapshotPreflightHostedRunnerCheck = "actions_snapshot_preflight_hosted_runner_check";
                 public static readonly string SnapshotPreflightImageGenPoolCheck = "actions_snapshot_preflight_image_gen_pool_check";
+                public static readonly string CompareTemplateEvaluator = "actions_runner_compare_template_evaluator";
             }
             
             // Node version migration related constants
