@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
@@ -486,23 +487,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         public Task EnsureSnapshotPostJobStepForStringToken()
         {
             var snapshot = new Pipelines.Snapshot("TestImageNameFromStringToken");
-            var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
+            var imageNameValueStringToken = new Snapshot(imageName: snapshot.ImageName);
             return EnsureSnapshotPostJobStepForToken(imageNameValueStringToken, snapshot);
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public Task EnsureSnapshotPostJobStepForMappingToken()
-        {
-            var snapshot = new Pipelines.Snapshot("TestImageNameFromMappingToken");
-            var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
-            var mappingToken = new MappingToken(null, null, null)
-            {
-                { new StringToken(null,null,null, PipelineTemplateConstants.ImageName), imageNameValueStringToken }
-            };
-
-            return EnsureSnapshotPostJobStepForToken(mappingToken, snapshot);
         }
 
         [Fact]
@@ -511,21 +497,11 @@ namespace GitHub.Runner.Common.Tests.Worker
         public Task EnsureSnapshotPostJobStepForMappingToken_WithIf_Is_False()
         {
             var snapshot = new Pipelines.Snapshot("TestImageNameFromMappingToken", condition: $"{PipelineTemplateConstants.Success}() && 1==0", version: "2.*");
-            var imageNameValueStringToken = new StringToken(null, null, null, snapshot.ImageName);
-            var condition = new StringToken(null, null, null, snapshot.Condition);
-            var version = new StringToken(null, null, null, snapshot.Version);
-
-            var mappingToken = new MappingToken(null, null, null)
-            {
-                { new StringToken(null,null,null, PipelineTemplateConstants.ImageName), imageNameValueStringToken },
-                { new StringToken(null,null,null, PipelineTemplateConstants.If), condition },
-                { new StringToken(null,null,null, PipelineTemplateConstants.CustomImageVersion), version }
-            };
-
-            return EnsureSnapshotPostJobStepForToken(mappingToken, snapshot, skipSnapshotStep: true);
+            
+            return EnsureSnapshotPostJobStepForToken(snapshot, snapshot, skipSnapshotStep: true);
         }
 
-        private async Task EnsureSnapshotPostJobStepForToken(TemplateToken snapshotToken, Pipelines.Snapshot expectedSnapshot, bool skipSnapshotStep = false)
+        private async Task EnsureSnapshotPostJobStepForToken(Snapshot snapshotToken, Pipelines.Snapshot expectedSnapshot, bool skipSnapshotStep = false)
         {
             using (TestHostContext hc = CreateTestContext())
             {
