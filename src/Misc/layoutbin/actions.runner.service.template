@@ -1,6 +1,6 @@
 [Unit]
 Description={{Description}}
-After=network.target
+After=network-online.target
 
 [Service]
 ExecStart={{RunnerRoot}}/runsvc.sh
