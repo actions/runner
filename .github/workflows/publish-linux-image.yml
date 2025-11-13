@@ -31,7 +31,7 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ github.event.inputs.runsOn }}
+    runs-on: [X64, self-hosted, Linux]
     permissions:
       contents: read
       packages: write
