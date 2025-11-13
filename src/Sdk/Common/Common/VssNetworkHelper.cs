@@ -146,6 +146,7 @@ namespace GitHub.Services.Common
                     sockEx.SocketErrorCode == SocketError.TimedOut ||
                     sockEx.SocketErrorCode == SocketError.HostDown ||
                     sockEx.SocketErrorCode == SocketError.HostUnreachable ||
+                    sockEx.SocketErrorCode == SocketError.HostNotFound ||
                     sockEx.SocketErrorCode == SocketError.TryAgain)
                 {
                     return true;
