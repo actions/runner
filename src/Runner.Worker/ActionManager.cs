@@ -378,7 +378,7 @@ namespace GitHub.Runner.Worker
                 string dockerFileLowerCase = Path.Combine(actionDirectory, "dockerfile");
                 if (File.Exists(manifestFile) || File.Exists(manifestFileYaml))
                 {
-                    var manifestManager = HostContext.GetService<IActionManifestManager>();
+                    var manifestManager = HostContext.GetService<IActionManifestManagerWrapper>();
                     if (File.Exists(manifestFile))
                     {
                         definition.Data = manifestManager.Load(executionContext, manifestFile);
@@ -964,7 +964,7 @@ namespace GitHub.Runner.Worker
             if (File.Exists(actionManifest) || File.Exists(actionManifestYaml))
             {
                 executionContext.Debug($"action.yml for action: '{actionManifest}'.");
-                var manifestManager = HostContext.GetService<IActionManifestManager>();
+                var manifestManager = HostContext.GetService<IActionManifestManagerWrapper>();
                 ActionDefinitionData actionDefinitionData = null;
                 if (File.Exists(actionManifest))
                 {
