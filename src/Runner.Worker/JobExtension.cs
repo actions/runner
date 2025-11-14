@@ -396,7 +396,7 @@ namespace GitHub.Runner.Worker
                     }
 
                     // Register custom image creation post-job step if the "snapshot" token is present in the message.
-                    var snapshotRequest = templateEvaluator.EvaluateJobSnapshotRequest(message.Snapshot, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
+                    var snapshotRequest = message.Snapshot;
                     if (snapshotRequest != null)
                     {
                         var snapshotOperationProvider = HostContext.GetService<ISnapshotOperationProvider>();
