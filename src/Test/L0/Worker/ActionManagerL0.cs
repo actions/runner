@@ -2504,14 +2504,20 @@ runs:
             _pluginManager = new Mock<IRunnerPluginManager>();
             _pluginManager.Setup(x => x.GetPluginAction(It.IsAny<string>())).Returns(new RunnerPluginActionInfo() { PluginTypeName = "plugin.class, plugin", PostPluginTypeName = "plugin.cleanup, plugin" });
 
-            var actionManifest = new ActionManifestManager();
-            actionManifest.Initialize(_hc);
+            var actionManifestLegacy = new ActionManifestManagerLegacy();
+            actionManifestLegacy.Initialize(_hc);
+            _hc.SetSingleton<IActionManifestManagerLegacy>(actionManifestLegacy);
+            var actionManifestNew = new ActionManifestManager();
+            actionManifestNew.Initialize(_hc);
+            _hc.SetSingleton<IActionManifestManager>(actionManifestNew);
+            var actionManifestWrapper = new ActionManifestManagerWrapper();
+            actionManifestWrapper.Initialize(_hc);
 
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
             _hc.SetSingleton<IJobServer>(_jobServer.Object);
             _hc.SetSingleton<ILaunchServer>(_launchServer.Object);
             _hc.SetSingleton<IRunnerPluginManager>(_pluginManager.Object);
-            _hc.SetSingleton<IActionManifestManager>(actionManifest);
+            _hc.SetSingleton<IActionManifestManagerWrapper>(actionManifestWrapper);
             _hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
             _configurationStore = new Mock<IConfigurationStore>();
