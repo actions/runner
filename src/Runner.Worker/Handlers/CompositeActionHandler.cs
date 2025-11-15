@@ -187,7 +187,7 @@ namespace GitHub.Runner.Worker.Handlers
             if (Data.Outputs != null)
             {
                 // Evaluate the outputs in the steps context to easily retrieve the values
-                var actionManifestManager = HostContext.GetService<IActionManifestManager>();
+                var actionManifestManager = HostContext.GetService<IActionManifestManagerWrapper>();
 
                 // Format ExpressionValues to Dictionary<string, PipelineContextData>
                 var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
