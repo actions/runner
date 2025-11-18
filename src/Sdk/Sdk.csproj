@@ -20,7 +20,7 @@
     <ItemGroup>
         <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
         <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0" />
         <PackageReference Include="System.Security.Cryptography.Cng" Version="5.0.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.0" />
