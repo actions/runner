@@ -35,9 +35,10 @@
     "@actions/glob": "^0.4.0"
   },
   "devDependencies": {
-    "@types/node": "^20.6.2",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.7.2",
+    "@stylistic/eslint-plugin": "^3.1.0",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "@vercel/ncc": "^0.38.3",
     "eslint": "^8.47.0",
     "eslint-plugin-github": "^4.10.2",
