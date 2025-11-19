@@ -30,6 +30,7 @@ namespace GitHub.Runner.Common
             string environmentUrl,
             IList<Telemetry> telemetry,
             string billingOwnerId,
+            string infrastructureFailureCategory,
             CancellationToken token);
 
         Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken token);
@@ -80,11 +81,12 @@ namespace GitHub.Runner.Common
             string environmentUrl,
             IList<Telemetry> telemetry,
             string billingOwnerId,
+            string infrastructureFailureCategory,
             CancellationToken cancellationToken)
         {
             CheckConnection();
             return RetryRequest(
-                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, environmentUrl, telemetry, billingOwnerId, cancellationToken), cancellationToken,
+                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, environmentUrl, telemetry, billingOwnerId, infrastructureFailureCategory, cancellationToken), cancellationToken,
                 shouldRetry: ex =>
                     ex is not VssUnauthorizedException &&               // HTTP status 401
                     ex is not TaskOrchestrationJobNotFoundException);   // HTTP status 404
@@ -94,7 +96,9 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             return RetryRequest<RenewJobResponse>(
-                async () => await _runServiceHttpClient.RenewJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken);
+                async () => await _runServiceHttpClient.RenewJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken,
+                shouldRetry: ex =>
+                    ex is not TaskOrchestrationJobNotFoundException);   // HTTP status 404
         }
     }
 }

@@ -32,6 +32,7 @@ namespace GitHub.Runner.Listener
         Task DeleteSessionAsync();
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
         Task DeleteMessageAsync(TaskAgentMessage message);
+        Task AcknowledgeMessageAsync(string runnerRequestId, CancellationToken cancellationToken);
 
         Task RefreshListenerTokenAsync();
         void OnJobStatus(object sender, JobStatusEventArgs e);
@@ -52,7 +53,7 @@ namespace GitHub.Runner.Listener
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new();
-        private TaskAgentStatus runnerStatus = TaskAgentStatus.Online;
+        private TaskAgentStatus _runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
         private VssCredentials _creds;
         private VssCredentials _credsV2;
@@ -217,7 +218,7 @@ namespace GitHub.Runner.Listener
         public void OnJobStatus(object sender, JobStatusEventArgs e)
         {
             Trace.Info("Received job status event. JobState: {0}", e.Status);
-            runnerStatus = e.Status;
+            _runnerStatus = e.Status;
             try
             {
                 _getMessagesTokenSource?.Cancel();
@@ -250,7 +251,7 @@ namespace GitHub.Runner.Listener
                     message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
                                                                 _session.SessionId,
                                                                 _lastMessageId,
-                                                                runnerStatus,
+                                                                _runnerStatus,
                                                                 BuildConstants.RunnerPackage.Version,
                                                                 VarUtil.OS,
                                                                 VarUtil.OSArchitecture,
@@ -274,7 +275,7 @@ namespace GitHub.Runner.Listener
                         }
 
                         message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
-                                                                        runnerStatus,
+                                                                        _runnerStatus,
                                                                         BuildConstants.RunnerPackage.Version,
                                                                         VarUtil.OS,
                                                                         VarUtil.OSArchitecture,
@@ -315,11 +316,11 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Hosted runner has been deprovisioned.");
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.ErrorCode == 1)
+                catch (AccessDeniedException e) when (e.ErrorCode == 1 && !HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
-                catch (RunnerNotFoundException)
+                catch (RunnerNotFoundException) when (!HostContext.AllowAuthMigration)
                 {
                     throw;
                 }
@@ -333,11 +334,14 @@ namespace GitHub.Runner.Listener
                     message = null;
 
                     // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
-                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
+                    if (!HostContext.AllowAuthMigration &&
+                        ex is TaskAgentSessionExpiredException &&
+                        !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
                     {
                         Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
                     }
-                    else if (!IsGetNextMessageExceptionRetriable(ex))
+                    else if (!HostContext.AllowAuthMigration &&
+                            !IsGetNextMessageExceptionRetriable(ex))
                     {
                         throw;
                     }
@@ -432,6 +436,21 @@ namespace GitHub.Runner.Listener
             await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
             _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
             await _brokerServer.ForceRefreshConnection(_credsV2);
+        }
+
+        public async Task AcknowledgeMessageAsync(string runnerRequestId, CancellationToken cancellationToken)
+        {
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5)); // Short timeout
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+            Trace.Info($"Acknowledging runner request '{runnerRequestId}'.");
+            await _brokerServer.AcknowledgeRunnerRequestAsync(
+                runnerRequestId,
+                _session.SessionId,
+                _runnerStatus,
+                BuildConstants.RunnerPackage.Version,
+                VarUtil.OS,
+                VarUtil.OSArchitecture,
+                linkedCts.Token);
         }
 
         private TaskAgentMessage DecryptMessage(TaskAgentMessage message)

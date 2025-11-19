@@ -89,7 +89,7 @@ namespace GitHub.Runner.Listener.Configuration
         public string Token { get; set; }
 
         [DataMember(Name = "use_v2_flow")]
-        public bool UseV2Flow { get; set; }
+        public bool UseRunnerAdminFlow { get; set; }
 
         public VssCredentials ToVssCredentials()
         {

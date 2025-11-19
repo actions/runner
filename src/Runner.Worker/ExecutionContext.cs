@@ -522,6 +522,10 @@ namespace GitHub.Runner.Worker
                     if (annotation != null)
                     {
                         stepResult.Annotations.Add(annotation.Value);
+                        if (annotation.Value.IsInfrastructureIssue && string.IsNullOrEmpty(Global.InfrastructureFailureCategory))
+                        {
+                            Global.InfrastructureFailureCategory = issue.Category;
+                        }
                     }
                 });
 
@@ -862,7 +866,21 @@ namespace GitHub.Runner.Worker
 
             ExpressionValues["secrets"] = Global.Variables.ToSecretsContext();
             ExpressionValues["runner"] = new RunnerContext();
-            ExpressionValues["job"] = new JobContext();
+
+            Trace.Info("Initializing Job context");
+            var jobContext = new JobContext();
+            if (Global.Variables.GetBoolean(Constants.Runner.Features.AddCheckRunIdToJobContext) ?? false)
+            {
+                ExpressionValues.TryGetValue("job", out var jobDictionary);
+                if (jobDictionary != null)
+                {
+                    foreach (var pair in jobDictionary.AssertDictionary("job"))
+                    {
+                        jobContext[pair.Key] = pair.Value;
+                    }
+                }
+            }
+            ExpressionValues["job"] = jobContext;
 
             Trace.Info("Initialize GitHub context");
             var githubAccessToken = new StringContextData(Global.Variables.Get("system.github.token"));
@@ -1288,10 +1306,14 @@ namespace GitHub.Runner.Worker
             UpdateGlobalStepsContext();
         }
 
+        internal IPipelineTemplateEvaluator ToPipelineTemplateEvaluatorInternal(ObjectTemplating.ITraceWriter traceWriter = null)
+        {
+            return new PipelineTemplateEvaluatorWrapper(HostContext, this, traceWriter);
+        }
+
         private static void NoOp()
         {
         }
-
     }
 
     // The Error/Warning/etc methods are created as extension methods to simplify unit testing.
@@ -1321,9 +1343,9 @@ namespace GitHub.Runner.Worker
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
-        public static void InfrastructureError(this IExecutionContext context, string message)
+        public static void InfrastructureError(this IExecutionContext context, string message, string category = null)
         {
-            var issue = new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true };
+            var issue = new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true, Category = category };
             context.AddIssue(issue, ExecutionContextLogOptions.Default);
         }
 
@@ -1372,8 +1394,15 @@ namespace GitHub.Runner.Worker
             return new[] { new KeyValuePair<string, object>(nameof(IExecutionContext), context) };
         }
 
-        public static PipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
+        public static IPipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
         {
+            // Create wrapper?
+            if ((context.Global.Variables.GetBoolean(Constants.Runner.Features.CompareWorkflowParser) ?? false) || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_COMPARE_WORKFLOW_PARSER")))
+            {
+                return (context as ExecutionContext).ToPipelineTemplateEvaluatorInternal(traceWriter);
+            }
+
+            // Legacy
             if (traceWriter == null)
             {
                 traceWriter = context.ToTemplateTraceWriter();

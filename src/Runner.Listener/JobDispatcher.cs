@@ -110,7 +110,12 @@ namespace GitHub.Runner.Listener
             {
                 var jwt = JsonWebToken.Create(accessToken);
                 var claims = jwt.ExtractClaims();
-                orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orchid", StringComparison.OrdinalIgnoreCase))?.Value;
+                orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orch_id", StringComparison.OrdinalIgnoreCase))?.Value;
+                if (string.IsNullOrEmpty(orchestrationId))
+                {
+                    orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orchid", StringComparison.OrdinalIgnoreCase))?.Value;
+                }
+
                 if (!string.IsNullOrEmpty(orchestrationId))
                 {
                     Trace.Info($"Pull OrchestrationId {orchestrationId} from JWT claims");
@@ -1206,7 +1211,7 @@ namespace GitHub.Runner.Listener
                     jobAnnotations.Add(annotation.Value);
                 }
 
-                await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, environmentUrl: null, telemetry: null, billingOwnerId: message.BillingOwnerId, CancellationToken.None);
+                await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Failed, outputs: null, stepResults: null, jobAnnotations: jobAnnotations, environmentUrl: null, telemetry: null, billingOwnerId: message.BillingOwnerId, infrastructureFailureCategory: null, CancellationToken.None);
             }
             catch (Exception ex)
             {

@@ -42,6 +42,7 @@ namespace Sdk.RSWebApi.Contracts
                 StartColumn = columnNumber,
                 EndColumn = endColumnNumber,
                 StepNumber = stepNumber,
+                IsInfrastructureIssue = issue.IsInfrastructureIssue ?? false
             };
         }
 

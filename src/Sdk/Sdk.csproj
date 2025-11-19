@@ -9,12 +9,16 @@
         <NoWarn>NU1701;NU1603;SYSLIB0050;SYSLIB0051</NoWarn>
         <Version>$(Version)</Version>
         <DefineConstants>TRACE</DefineConstants>
-        <LangVersion>8.0</LangVersion>
+        <LangVersion>11.0</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
+        <InternalsVisibleTo Include="Test" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
         <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0" />
@@ -32,6 +36,9 @@
     <ItemGroup>
         <EmbeddedResource Include="DTPipelines\workflow-v1.0.json">
             <LogicalName>GitHub.DistributedTask.Pipelines.ObjectTemplating.workflow-v1.0.json</LogicalName>
+        </EmbeddedResource>
+        <EmbeddedResource Include="WorkflowParser\workflow-v1.0.json">
+            <LogicalName>GitHub.Actions.WorkflowParser.workflow-v1.0.json</LogicalName>
         </EmbeddedResource>
     </ItemGroup>
 </Project>

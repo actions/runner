@@ -58,10 +58,41 @@ namespace GitHub.Runner.Worker.Handlers
                 var nodeData = data as NodeJSActionExecutionData;
 
                 // With node12 EoL in 04/2022 and node16 EoL in 09/23, we want to execute all JS actions using node20
+                // With node20 EoL approaching, we're preparing to migrate to node24
                 if (string.Equals(nodeData.NodeVersion, "node12", StringComparison.InvariantCultureIgnoreCase) ||
                     string.Equals(nodeData.NodeVersion, "node16", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    nodeData.NodeVersion = "node20";
+                    nodeData.NodeVersion = Common.Constants.Runner.NodeMigration.Node20;
+                }
+
+                // Check if node20 was explicitly specified in the action
+                // We don't modify if node24 was explicitly specified
+                if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    bool useNode24ByDefault = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.UseNode24ByDefaultFlag) ?? false;
+                    bool requireNode24 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.RequireNode24Flag) ?? false;
+
+                    var (nodeVersion, configWarningMessage) = NodeUtil.DetermineActionsNodeVersion(environment, useNode24ByDefault, requireNode24);
+                    var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeVersion);
+                    nodeData.NodeVersion = finalNodeVersion;
+
+                    if (!string.IsNullOrEmpty(configWarningMessage))
+                    {
+                        executionContext.Warning(configWarningMessage);
+                    }
+
+                    if (!string.IsNullOrEmpty(platformWarningMessage))
+                    {
+                        executionContext.Warning(platformWarningMessage);
+                    }
+
+                    // Show information about Node 24 migration in Phase 2
+                    if (useNode24ByDefault && !requireNode24 && string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string infoMessage = "Node 20 is being deprecated. This workflow is running with Node 24 by default. " +
+                                             "If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable.";
+                        executionContext.Output(infoMessage);
+                    }
                 }
 
                 (handler as INodeScriptActionHandler).Data = nodeData;

@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Services.WebApi.Jwt;
 
 namespace GitHub.Runner.Common
 {
@@ -268,7 +269,7 @@ namespace GitHub.Runner.Common
                 }
             }
 
-            _trace.Info($"Enable auth migration at {_deferredAuthMigrationTime.ToString("O")}.");
+            _trace.Info($"Enable auth migration at {DateTime.UtcNow.ToString("O")}.");
             AuthMigrationChanged?.Invoke(this, new AuthMigrationEventArgs(trace));
         }
 
@@ -305,6 +306,36 @@ namespace GitHub.Runner.Common
                     credData.Data.TryGetValue("clientId", out var clientId))
                 {
                     _userAgents.Add(new ProductInfoHeaderValue("ClientId", clientId));
+                }
+
+                // for Hosted runner, we can pull orchestrationId from JWT claims of the runner listening token.
+                if (credData != null &&
+                    credData.Scheme == Constants.Configuration.OAuthAccessToken &&
+                    credData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Token, out var accessToken) &&
+                    !string.IsNullOrEmpty(accessToken))
+                {
+                    try
+                    {
+                        var jwt = JsonWebToken.Create(accessToken);
+                        var claims = jwt.ExtractClaims();
+                        var orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orch_id", StringComparison.OrdinalIgnoreCase))?.Value;
+                        if (string.IsNullOrEmpty(orchestrationId))
+                        {
+                            // fallback to orchid for C# actions-service
+                            orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orchid", StringComparison.OrdinalIgnoreCase))?.Value;
+                        }
+
+                        if (!string.IsNullOrEmpty(orchestrationId))
+                        {
+                            _trace.Info($"Pull OrchestrationId {orchestrationId} from runner JWT claims");
+                            _userAgents.Insert(0, new ProductInfoHeaderValue("OrchestrationId", orchestrationId));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _trace.Error("Fail to extract OrchestrationId from runner JWT claims");
+                        _trace.Error(ex);
+                    }
                 }
             }
 

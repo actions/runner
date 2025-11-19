@@ -1,10 +1,10 @@
-﻿using GitHub.Runner.Sdk;
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
+using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
@@ -54,6 +54,9 @@ namespace GitHub.Runner.Common
         public bool UseV2Flow { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public bool UseRunnerAdminFlow { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string ServerUrlV2 { get; set; }
 
         [IgnoreDataMember]
@@ -61,8 +64,20 @@ namespace GitHub.Runner.Common
         {
             get
             {
-                // Old runners do not have this property. Hosted runners likely don't have this property either.
-                return _isHostedServer ?? true;
+                // If the value has been explicitly set, return it.
+                if (_isHostedServer.HasValue)
+                {
+                    return _isHostedServer.Value;
+                }
+
+                // Otherwise, try to infer it from the GitHubUrl.
+                if (!string.IsNullOrEmpty(GitHubUrl))
+                {
+                    return UrlUtil.IsHostedServer(new UriBuilder(GitHubUrl));
+                }
+
+                // Default to true since Hosted runners likely don't have this property set.
+                return true;
             }
 
             set
@@ -116,6 +131,7 @@ namespace GitHub.Runner.Common
         bool IsConfigured();
         bool IsServiceConfigured();
         bool HasCredentials();
+        bool IsMigratedConfigured();
         CredentialData GetCredentials();
         CredentialData GetMigratedCredentials();
         RunnerSettings GetSettings();
@@ -196,6 +212,14 @@ namespace GitHub.Runner.Common
             bool serviceConfigured = new FileInfo(_serviceConfigFilePath).Exists;
             Trace.Info($"IsServiceConfigured: {serviceConfigured}");
             return serviceConfigured;
+        }
+
+        public bool IsMigratedConfigured()
+        {
+            Trace.Info("IsMigratedConfigured()");
+            bool configured = new FileInfo(_migratedConfigFilePath).Exists;
+            Trace.Info("IsMigratedConfigured: {0}", configured);
+            return configured;
         }
 
         public CredentialData GetCredentials()

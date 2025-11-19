@@ -50,8 +50,11 @@ namespace GitHub.Runner.Worker
             if (message.Variables.TryGetValue(Constants.Variables.System.OrchestrationId, out VariableValue orchestrationId) &&
                 !string.IsNullOrEmpty(orchestrationId.Value))
             {
-                // make the orchestration id the first item in the user-agent header to avoid get truncated in server log.
-                HostContext.UserAgents.Insert(0, new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
+                if (!HostContext.UserAgents.Any(x => string.Equals(x.Product?.Name, "OrchestrationId", StringComparison.OrdinalIgnoreCase)))
+                {
+                    // make the orchestration id the first item in the user-agent header to avoid get truncated in server log.
+                    HostContext.UserAgents.Insert(0, new ProductInfoHeaderValue("OrchestrationId", orchestrationId.Value));
+                }
 
                 // make sure orchestration id is in the user-agent header.
                 VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
@@ -318,7 +321,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, default);
+                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, infrastructureFailureCategory: jobContext.Global.InfrastructureFailureCategory, default);
                     return result;
                 }
                 catch (VssUnauthorizedException ex)

@@ -1,36 +1,30 @@
 ## What's Changed
-* Bump docker/login-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3673
-* Bump actions/stale from 8 to 9 by @dependabot in https://github.com/actions/runner/pull/3554
-* Bump docker/build-push-action from 3 to 6 by @dependabot in https://github.com/actions/runner/pull/3674
-* update node version from 20.18.0 -> 20.18.2 by @aiqiaoy in https://github.com/actions/runner/pull/3682
-* Pass BillingOwnerId through Acquire/Complete calls by @luketomlinson in https://github.com/actions/runner/pull/3689
-* Do not retry CompleteJobAsync for known non-retryable errors by @ericsciple in https://github.com/actions/runner/pull/3696
-* Update dotnet sdk to latest version @8.0.406 by @github-actions in https://github.com/actions/runner/pull/3712
-* Update Dockerfile with new docker and buildx versions by @thboop in https://github.com/actions/runner/pull/3680
-* chore: remove redundant words by @finaltrip in https://github.com/actions/runner/pull/3705
-* fix: actions feedback link is incorrect by @Yaminyam in https://github.com/actions/runner/pull/3165
-* Bump actions/github-script from 0.3.0 to 7.0.1 by @dependabot in https://github.com/actions/runner/pull/3557
-* Docker container provenance by @paveliak in https://github.com/actions/runner/pull/3736
-* Add request-id to http eventsource trace. by @TingluoHuang in https://github.com/actions/runner/pull/3740
-* Update Bocker and Buildx version to mitigate images scanners alerts by @Blizter in https://github.com/actions/runner/pull/3750
-* Fix typo, add invariant culture to timestamp for workflow log reporting by @GhadimiR in https://github.com/actions/runner/pull/3749
-* Create vssconnection to actions service when URL provided. by @TingluoHuang in https://github.com/actions/runner/pull/3751
-* Housekeeping: Update npm packages and node version by @thboop in https://github.com/actions/runner/pull/3752
-* Improve the out-of-date warning message. by @tecimovic in https://github.com/actions/runner/pull/3595
-* Update dotnet sdk to latest version @8.0.407 by @github-actions in https://github.com/actions/runner/pull/3753
-* Exit hosted runner cleanly during deprovisioning. by @TingluoHuang in https://github.com/actions/runner/pull/3755
-* Send annotation title to run-service. by @TingluoHuang in https://github.com/actions/runner/pull/3757
-* Allow server enforce runner settings. by @TingluoHuang in https://github.com/actions/runner/pull/3758
-* Support refresh runner configs with pipelines service. by @TingluoHuang in https://github.com/actions/runner/pull/3706
+* Custom Image: Preflight checks by @lawrencegripper in https://github.com/actions/runner/pull/4081
+* Update dotnet sdk to latest version @8.0.415 by @github-actions[bot] in https://github.com/actions/runner/pull/4080
+* Link to an extant discussion category by @jsoref in https://github.com/actions/runner/pull/4084
+* Improve logic around decide IsHostedServer. by @TingluoHuang in https://github.com/actions/runner/pull/4086
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4093
+* Compare updated template evaluator by @ericsciple in https://github.com/actions/runner/pull/4092
+* fix(dockerfile): set more lenient permissions on /home/runner by @caxu-rh in https://github.com/actions/runner/pull/4083
+* Add support for libicu73-76 for newer Debian/Ubuntu versions by @lets-build-an-ocean in https://github.com/actions/runner/pull/4098
+* Bump actions/download-artifact from 5 to 6 by @dependabot[bot] in https://github.com/actions/runner/pull/4089
+* Bump actions/upload-artifact from 4 to 5 by @dependabot[bot] in https://github.com/actions/runner/pull/4088
+* Bump Azure.Storage.Blobs from 12.25.1 to 12.26.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4077
+* Only start runner after network is online by @dupondje in https://github.com/actions/runner/pull/4094
+* Retry http error related to DNS resolution failure. by @TingluoHuang in https://github.com/actions/runner/pull/4110
+* Update Docker to v29.0.1 and Buildx to v0.30.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4114
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4115
+* Update dotnet sdk to latest version @8.0.416 by @github-actions[bot] in https://github.com/actions/runner/pull/4116
+* Compare updated workflow parser for ActionManifestManager by @ericsciple in https://github.com/actions/runner/pull/4111
+* Bump npm pkg version for hashFiles. by @TingluoHuang in https://github.com/actions/runner/pull/4122
 
 ## New Contributors
-* @finaltrip made their first contribution in https://github.com/actions/runner/pull/3705
-* @Yaminyam made their first contribution in https://github.com/actions/runner/pull/3165
-* @Blizter made their first contribution in https://github.com/actions/runner/pull/3750
-* @GhadimiR made their first contribution in https://github.com/actions/runner/pull/3749
-* @tecimovic made their first contribution in https://github.com/actions/runner/pull/3595
+* @lawrencegripper made their first contribution in https://github.com/actions/runner/pull/4081
+* @caxu-rh made their first contribution in https://github.com/actions/runner/pull/4083
+* @lets-build-an-ocean made their first contribution in https://github.com/actions/runner/pull/4098
+* @dupondje made their first contribution in https://github.com/actions/runner/pull/4094
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.322.0...v2.323.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.329.0...v2.330.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
