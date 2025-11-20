@@ -135,7 +135,7 @@ namespace GitHub.Runner.Worker.Handlers
             var extraExpressionValues = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             extraExpressionValues["inputs"] = inputsContext;
 
-            var manifestManager = HostContext.GetService<IActionManifestManager>();
+            var manifestManager = HostContext.GetService<IActionManifestManagerWrapper>();
             if (Data.Arguments != null)
             {
                 container.ContainerEntryPointArgs = "";

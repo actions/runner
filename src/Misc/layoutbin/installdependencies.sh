@@ -93,7 +93,7 @@ if [ -e /etc/os-release ]; then
             exit 1
         fi
 
-        if ! apt_get_with_fallbacks libicu74 libicu73 libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52; then
+        if ! apt_get_with_fallbacks libicu76 libicu75 libicu74 libicu73 libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52; then
             print_errormessage
             exit 1
         fi

@@ -118,7 +118,7 @@ jobs:
     # Upload runner package tar.gz/zip as artifact.
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: runner-packages-${{ matrix.runtime }}
         path: |
@@ -133,37 +133,37 @@ jobs:
 
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact (win-x64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: runner-packages-win-x64
         path: ./
     - name: Download Artifact (win-arm64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: runner-packages-win-arm64
         path: ./
     - name: Download Artifact (osx-x64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: runner-packages-osx-x64
         path: ./
     - name: Download Artifact (osx-arm64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: runner-packages-osx-arm64
         path: ./
     - name: Download Artifact (linux-x64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: runner-packages-linux-x64
         path: ./
     - name: Download Artifact (linux-arm)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: runner-packages-linux-arm
         path: ./
     - name: Download Artifact (linux-arm64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: runner-packages-linux-arm64
         path: ./

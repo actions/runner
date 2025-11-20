@@ -29,5 +29,7 @@ namespace GitHub.Runner.Worker
         public bool WriteDebug { get; set; }
         public string InfrastructureFailureCategory { get; set; }
         public JObject ContainerHookState { get; set; }
+        public bool HasTemplateEvaluatorMismatch { get; set; }
+        public bool HasActionManifestMismatch { get; set; }
     }
 }
