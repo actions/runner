@@ -9,6 +9,9 @@ NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
 NODE20_VERSION="20.19.5"
 NODE24_VERSION="24.11.1"
 
+BUN_URL=https://github.com/oven-sh/bun/releases/download
+BUN_VERSION="1.3.2"
+
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
   echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
@@ -142,18 +145,26 @@ if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.lib" node20/bin
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.exe" node24/bin
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.lib" node24/bin
+
+    # Note: Bun is only available for Windows x64, not for win-x86 (32-bit Windows)
+    if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
+        acquireExternalTool "$BUN_URL/bun-v${BUN_VERSION}/bun-windows-x64.zip" bun/bin fix_nested_dir
+    fi
+
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
 fi
 
-# Download the external tools only for Windows.
+# Download the external tools only for Windows ARM64.
+# Note: Bun doesn't have official Windows ARM64 release yet, so we skip it for now.
 if [[ "$PACKAGERUNTIME" == "win-arm64" ]]; then
     # todo: replace these with official release when available
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.exe" node20/bin
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/$PACKAGERUNTIME/node.lib" node20/bin
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.exe" node24/bin
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.lib" node24/bin
+
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
@@ -163,12 +174,14 @@ fi
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-darwin-x64.tar.gz" node20 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-darwin-x64.tar.gz" node24 fix_nested_dir
+    acquireExternalTool "$BUN_URL/bun-v${BUN_VERSION}/bun-darwin-x64.zip" bun/bin fix_nested_dir
 fi
 
 if [[ "$PACKAGERUNTIME" == "osx-arm64" ]]; then
     # node.js v12 doesn't support macOS on arm64.
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-darwin-arm64.tar.gz" node20 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-darwin-arm64.tar.gz" node24 fix_nested_dir
+    acquireExternalTool "$BUN_URL/bun-v${BUN_VERSION}/bun-darwin-aarch64.zip" bun/bin fix_nested_dir
 fi
 
 # Download the external tools for Linux PACKAGERUNTIMEs.
@@ -177,11 +190,15 @@ if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_ALPINE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-alpine-x64.tar.gz" node20_alpine
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-x64.tar.gz" node24 fix_nested_dir
     acquireExternalTool "$NODE_ALPINE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-alpine-x64.tar.gz" node24_alpine
+    acquireExternalTool "$BUN_URL/bun-v${BUN_VERSION}/bun-linux-x64.zip" bun/bin fix_nested_dir
+    acquireExternalTool "$BUN_URL/bun-v${BUN_VERSION}/bun-linux-x64-musl.zip" bun_alpine/bin fix_nested_dir
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE20_VERSION}/node-v${NODE20_VERSION}-linux-arm64.tar.gz" node20 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-arm64.tar.gz" node24 fix_nested_dir
+    acquireExternalTool "$BUN_URL/bun-v${BUN_VERSION}/bun-linux-aarch64.zip" bun/bin fix_nested_dir
+    acquireExternalTool "$BUN_URL/bun-v${BUN_VERSION}/bun-linux-aarch64-musl.zip" bun_alpine/bin fix_nested_dir
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then

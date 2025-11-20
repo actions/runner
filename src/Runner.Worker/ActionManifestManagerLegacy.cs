@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker
             ActionDefinitionData actionDefinition = new();
 
             // Clean up file name real quick
-            // Instead of using Regex which can be computationally expensive, 
+            // Instead of using Regex which can be computationally expensive,
             // we can just remove the # of characters from the fileName according to the length of the basePath
             string basePath = HostContext.GetDirectory(WellKnownDirectory.Actions);
             string fileRelativePath = manifestFile;
@@ -451,7 +451,8 @@ namespace GitHub.Runner.Worker
                 else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(usingToken.Value, "node16", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(usingToken.Value, "node20", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(usingToken.Value, "node24", StringComparison.OrdinalIgnoreCase))
+                         string.Equals(usingToken.Value, "node24", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(usingToken.Value, "bun", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
                     {
@@ -491,7 +492,7 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
-                    throw new ArgumentOutOfRangeException($"'using: {usingToken.Value}' is not supported, use 'docker', 'node12', 'node16', 'node20' or 'node24' instead.");
+                    throw new ArgumentOutOfRangeException($"'using: {usingToken.Value}' is not supported, use 'docker', 'node12', 'node16', 'node20', 'node24' or 'bun' instead.");
                 }
             }
             else if (pluginToken != null)
@@ -502,7 +503,7 @@ namespace GitHub.Runner.Worker
                 };
             }
 
-            throw new NotSupportedException("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12', 'node16', 'node20' or 'node24'.");
+            throw new NotSupportedException("Missing 'using' value. 'using' requires 'composite', 'docker', 'node12', 'node16', 'node20', 'node24' or 'bun'.");
         }
 
         private void ConvertInputs(
@@ -543,4 +544,3 @@ namespace GitHub.Runner.Worker
         }
     }
 }
-
