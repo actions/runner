@@ -33,7 +33,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
-        "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
+    "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy
@@ -62,7 +62,8 @@ RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && usermod -aG docker runner \
     && echo "%sudo   ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers \
     && echo "Defaults env_keep += \"DEBIAN_FRONTEND\"" >> /etc/sudoers \
-    && chmod 777 /home/runner
+    && chmod 777 /home/runner \
+    && chown -R runner:runner /home/runner
 
 COPY --chown=runner:docker --from=build /actions-runner .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
