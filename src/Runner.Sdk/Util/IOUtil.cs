@@ -389,23 +389,49 @@ namespace GitHub.Runner.Sdk
             ArgUtil.NotNull(cancellationToken, nameof(cancellationToken));
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Get the file contents of the directory to copy.
+            DirectoryInfo sourceDir = new(source);
+
+            if (sourceDir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                DirectoryInfo targetDir = new(target);
+
+                if (targetDir.Exists &&
+                    targetDir.Attributes.HasFlag(FileAttributes.ReparsePoint) &&
+                    targetDir.LinkTarget.Equals(sourceDir.LinkTarget, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                Directory.CreateSymbolicLink(target, sourceDir.LinkTarget);
+                return;
+            }
+
             // Create the target directory.
             Directory.CreateDirectory(target);
 
-            // Get the file contents of the directory to copy.
-            DirectoryInfo sourceDir = new(source);
             foreach (FileInfo sourceFile in sourceDir.GetFiles() ?? new FileInfo[0])
             {
-                // Check if the file already exists.
                 cancellationToken.ThrowIfCancellationRequested();
+
+                // Check if the file already exists.
                 FileInfo targetFile = new(Path.Combine(target, sourceFile.Name));
-                if (!targetFile.Exists ||
-                    sourceFile.Length != targetFile.Length ||
-                    sourceFile.LastWriteTime != targetFile.LastWriteTime)
+                if (targetFile.Exists &&
+                    sourceFile.Length == targetFile.Length &&
+                    sourceFile.LastWriteTime == targetFile.LastWriteTime)
+                {
+                    continue;
+                }
+
+                // Check if source is a symlink
+                if (!sourceFile.Attributes.HasFlag(FileAttributes.ReparsePoint))
                 {
                     // Copy the file.
                     sourceFile.CopyTo(targetFile.FullName, true);
+                    continue;
                 }
+
+                File.CreateSymbolicLink(targetFile.FullName, sourceFile.LinkTarget);
             }
 
             // Copy the subdirectories.
