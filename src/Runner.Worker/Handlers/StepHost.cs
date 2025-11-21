@@ -21,6 +21,8 @@ namespace GitHub.Runner.Worker.Handlers
 
         Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion);
 
+        Task<string> DetermineBunRuntimeVersion(IExecutionContext executionContext);
+
         Task<int> ExecuteAsync(IExecutionContext context,
                                string workingDirectory,
                                string fileName,
@@ -64,8 +66,29 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 executionContext.Warning(warningMessage);
             }
-            
+
             return Task.FromResult(nodeVersion);
+        }
+
+        public Task<string> DetermineBunRuntimeVersion(IExecutionContext executionContext)
+        {
+            // Check platform compatibility for Bun runtime
+            if (Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X86))
+            {
+                var os = Constants.Runner.Platform.ToString();
+                var msg = $"Bun runtime is not supported on {os} x86 (32-bit) platforms.";
+                throw new NotSupportedException(msg);
+            }
+
+            if (Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm) &&
+                Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            {
+                var msg = "Bun runtime is not supported on Linux ARM32 platforms.";
+                throw new NotSupportedException(msg);
+            }
+
+            // Bun runtime version is simply "bun"
+            return Task.FromResult("bun");
         }
 
         public async Task<int> ExecuteAsync(IExecutionContext context,
@@ -181,6 +204,59 @@ namespace GitHub.Runner.Worker.Handlers
             }
             executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
             return nodeExternal;
+        }
+
+        public async Task<string> DetermineBunRuntimeVersion(IExecutionContext executionContext)
+        {
+            string bunExternal = "bun";
+
+            if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
+            {
+                if (Container.IsAlpine)
+                {
+                    bunExternal = CheckPlatformForAlpineBunContainer(executionContext);
+                }
+                executionContext.Debug($"Running JavaScript Action with Bun runtime: {bunExternal}");
+                return bunExternal;
+            }
+
+            // Best effort to determine a compatible bun runtime
+            // Check if we're in an Alpine container
+            var osReleaseIdCmd = "sh -c \"cat /etc/*release | grep ^ID\"";
+            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+
+            var output = new List<string>();
+            var execExitCode = await dockerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
+            if (execExitCode == 0)
+            {
+                foreach (var line in output)
+                {
+                    executionContext.Debug(line);
+                    if (line.ToLower().Contains("alpine"))
+                    {
+                        bunExternal = CheckPlatformForAlpineBunContainer(executionContext);
+                        return bunExternal;
+                    }
+                }
+            }
+            executionContext.Debug($"Running JavaScript Action with Bun runtime: {bunExternal}");
+            return bunExternal;
+        }
+
+        private string CheckPlatformForAlpineBunContainer(IExecutionContext executionContext)
+        {
+            // Check for Alpine container compatibility
+            if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64) &&
+                !Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm64))
+            {
+                var os = Constants.Runner.Platform.ToString();
+                var arch = Constants.Runner.PlatformArchitecture.ToString();
+                var msg = $"Bun Actions in Alpine containers are only supported on x64 and ARM64 Linux runners. Detected {os} {arch}";
+                throw new NotSupportedException(msg);
+            }
+            string bunExternal = "bun_alpine";
+            executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with Bun runtime: {bunExternal}");
+            return bunExternal;
         }
 
         public async Task<int> ExecuteAsync(IExecutionContext context,
