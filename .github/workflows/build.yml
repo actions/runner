@@ -53,7 +53,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     # Build runner layout
     - name: Build & Layout Release
@@ -95,7 +95,7 @@ jobs:
             docker_platform: linux/arm64
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Get latest runner version
       id: latest_runner
