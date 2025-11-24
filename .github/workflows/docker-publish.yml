@@ -32,7 +32,7 @@ jobs:
             const fs = require('fs');
             const runnerVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '');
             console.log(`Using runner version ${runnerVersion}`);
-            if (!/^\\d+\\.\\d+\\.\\d+$/.test(runnerVersion)) {
+            if (!/^\d+\.\d+\.\d+$/.test(runnerVersion)) {
               throw new Error(`Invalid runner version: ${runnerVersion}`);
             }
             core.setOutput('version', runnerVersion);
