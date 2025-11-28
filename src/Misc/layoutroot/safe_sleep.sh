@@ -1,7 +1,16 @@
 #!/bin/bash
 
-if [ -z "$1" ]; then
+DURATION=$1
+
+if [ -z "$DURATION" ]; then
   exit 1
 fi
 
-sleep "$1"
+if command -v sleep &> /dev/null; then
+    sleep "$DURATION"
+else
+    SECONDS=0
+    while [[ $SECONDS -lt $DURATION ]]; do
+        :
+    done
+fi
