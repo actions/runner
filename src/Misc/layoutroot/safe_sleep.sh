@@ -1,6 +1,7 @@
 #!/bin/bash
 
-SECONDS=0
-while [[ $SECONDS -lt $1 ]]; do
-    :
-done
+if [ -z "$1" ]; then
+  exit 1
+fi
+
+sleep "$1"
