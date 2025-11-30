@@ -5,7 +5,8 @@ if [ -x "$(command -v sleep)" ]; then
   exit 0
 fi
 if [ -x "$(command -v ping)" ]; then
-  ping -c $1 127.0.0.1 > /dev/null
+  # Add 1 since the first ping is executed immediately.
+  ping -c $(( $1 + 1 )) 127.0.0.1 > /dev/null
   exit 0
 fi
 
