@@ -132,7 +132,7 @@ namespace GitHub.Services.WebApi
                 promptToSetParametersOn.Parameters = parameters;
             }
 
-            return ServerDataProvider.ConnectAsync(ConnectOptions.None, cancellationToken);
+            return m_serverDataProvider.ConnectAsync(ConnectOptions.None, cancellationToken);
         }
 
         /// <summary>
