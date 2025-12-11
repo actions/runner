@@ -18,7 +18,7 @@ namespace GitHub.Actions.Expressions
             ITraceWriter trace,
             IEnumerable<INamedValueInfo> namedValues,
             IEnumerable<IFunctionInfo> functions,
-            Boolean allowCaseFunction = false)
+            Boolean allowCaseFunction = true)
         {
             var context = new ParseContext(expression, trace, namedValues, functions, allowCaseFunction: allowCaseFunction);
             context.Trace.Info($"Parsing expression: <{expression}>");
@@ -446,7 +446,7 @@ namespace GitHub.Actions.Expressions
                 IEnumerable<INamedValueInfo> namedValues,
                 IEnumerable<IFunctionInfo> functions,
                 Boolean allowUnknownKeywords = false,
-                Boolean allowCaseFunction = false)
+                Boolean allowCaseFunction = true)
             {
                 Expression = expression ?? String.Empty;
                 if (Expression.Length > ExpressionConstants.MaxLength)
