@@ -27,7 +27,7 @@ if [ ! -z "$RUNNER_WAIT_FOR_DOCKER_IN_SECONDS" ]; then
                 echo "Docker is ready."
                 break
             fi
-            "$DIR"/safe_sleep.sh 1
+            sleep 1
         done
     fi
 fi
@@ -44,7 +44,7 @@ elif [[ $returnCode == 1 ]]; then
     exit 0
 elif [[ $returnCode == 2 ]]; then
     echo "Runner listener exit with retryable error, re-launch runner in 5 seconds."
-    "$DIR"/safe_sleep.sh 5
+    sleep 5
     exit 2
 elif [[ $returnCode == 3 ]]; then
     # Wait for 30 seconds or for flag file to exists for the runner update process finish
@@ -55,7 +55,7 @@ elif [[ $returnCode == 3 ]]; then
             rm "$updateFile"
             break
         fi
-        "$DIR"/safe_sleep.sh 1
+        sleep 1
     done
     exit 2
 elif [[ $returnCode == 4 ]]; then
@@ -67,7 +67,7 @@ elif [[ $returnCode == 4 ]]; then
             rm "$updateFile"
             break
         fi
-        "$DIR"/safe_sleep.sh 1
+        sleep 1
     done
     exit 2
 elif [[ $returnCode == 5 ]]; then
