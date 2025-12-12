@@ -9,7 +9,7 @@ namespace GitHub.DistributedTask.Expressions2
     {
         static ExpressionConstants()
         {
-	        AddFunction<Case>("case", 3, Byte.MaxValue);
+            AddFunction<Case>("case", 3, Byte.MaxValue);
             AddFunction<Contains>("contains", 2, 2);
             AddFunction<EndsWith>("endsWith", 2, 2);
             AddFunction<Format>("format", 1, Byte.MaxValue);
