@@ -6,6 +6,7 @@ namespace GitHub.Actions.Expressions
         ExceededMaxLength,
         TooFewParameters,
         TooManyParameters,
+        EvenParameters,
         UnexpectedEndOfExpression,
         UnexpectedSymbol,
         UnrecognizedFunction,

@@ -29,6 +29,9 @@ namespace GitHub.DistributedTask.Expressions2
                 case ParseExceptionKind.TooManyParameters:
                     description = "Too many parameters supplied";
                     break;
+                case ParseExceptionKind.EvenParameters:
+                    description = "Even number of parameters supplied, requires an odd number of parameters";
+                    break;
                 case ParseExceptionKind.UnexpectedEndOfExpression:
                     description = "Unexpected end of expression";
                     break;

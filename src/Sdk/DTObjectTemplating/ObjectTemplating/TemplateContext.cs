@@ -86,6 +86,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         internal ITraceWriter TraceWriter { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the case expression function is allowed.
+        /// Defaults to true. Set to false to disable the case function.
+        /// </summary>
+        internal Boolean AllowCaseFunction { get; set; } = true;
+
         private IDictionary<String, Int32> FileIds
         {
             get

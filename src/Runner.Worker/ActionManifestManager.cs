@@ -316,6 +316,7 @@ namespace GitHub.Runner.Worker
                 Schema = _actionManifestSchema,
                 // TODO: Switch to real tracewriter for cutover
                 TraceWriter = new GitHub.Actions.WorkflowParser.ObjectTemplating.EmptyTraceWriter(),
+                AllowCaseFunction = false,
             };
 
             // Expression values from execution context
