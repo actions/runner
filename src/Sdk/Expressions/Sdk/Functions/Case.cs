@@ -12,7 +12,7 @@ namespace GitHub.Actions.Expressions.Sdk.Functions
             out ResultMemory resultMemory)
         {
             resultMemory = null;
-			// Validate argument count - must be odd (pairs of predicate-result plus default)
+            // Validate argument count - must be odd (pairs of predicate-result plus default)
             if (Parameters.Count % 2 == 0)
             {
                 throw new InvalidOperationException("case requires an odd number of arguments");
