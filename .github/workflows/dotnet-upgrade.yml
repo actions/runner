@@ -15,7 +15,7 @@ jobs:
       DOTNET_CURRENT_MAJOR_MINOR_VERSION: ${{ steps.fetch_current_version.outputs.DOTNET_CURRENT_MAJOR_MINOR_VERSION }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Get current major minor version
         id: fetch_current_version
         shell: bash
@@ -89,7 +89,7 @@ jobs:
     if: ${{ needs.dotnet-update.outputs.SHOULD_UPDATE == 1 && needs.dotnet-update.outputs.BRANCH_EXISTS == 0 }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           ref: feature/dotnetsdk-upgrade/${{ needs.dotnet-update.outputs.DOTNET_LATEST_MAJOR_MINOR_PATCH_VERSION }}
       - name: Create Pull Request
