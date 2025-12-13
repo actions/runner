@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Moq;
 using Xunit;
+using GitHub.Runner.Common;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
 using GitHub.Runner.Worker.Container;
@@ -214,6 +215,131 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal("node24", nodeVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DetermineBunRuntimeVersionInDefaultStepHostAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new DefaultStepHost();
+                sh.Initialize(hc);
+
+                // Act.
+                var bunVersion = await sh.DetermineBunRuntimeVersion(_ec.Object);
+
+                // Assert.
+                Assert.Equal("bun", bunVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DetermineBunRuntimeVersionInContainerAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+
+                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                               .ReturnsAsync(0);
+
+                // Act.
+                var bunVersion = await sh.DetermineBunRuntimeVersion(_ec.Object);
+
+                // Assert.
+                Assert.Equal("bun", bunVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DetermineBunRuntimeVersionInAlpineContainerAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+
+                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                    .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
+                    {
+                        output.Add("alpine");
+                    })
+                    .ReturnsAsync(0);
+
+                // Act.
+                var bunVersion = await sh.DetermineBunRuntimeVersion(_ec.Object);
+
+                // Assert.
+                Assert.Equal("bun_alpine", bunVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DetermineBunRuntimeVersionInUnknownContainerAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
+
+                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                    .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
+                    {
+                        output.Add("ubuntu");
+                    })
+                    .ReturnsAsync(0);
+
+                // Act.
+                var bunVersion = await sh.DetermineBunRuntimeVersion(_ec.Object);
+
+                // Assert.
+                Assert.Equal("bun", bunVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DetermineBunRuntimeVersionInAlpineContainerWithContainerHooksAsync()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var sh = new ContainerStepHost();
+                sh.Initialize(hc);
+                sh.Container = new ContainerInfo() { ContainerId = "1234abcd", IsAlpine = true };
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.AllowRunnerContainerHooks, "true");
+                Environment.SetEnvironmentVariable(Constants.Hooks.ContainerHooksPath, "/some/path");
+
+                try
+                {
+                    // Act.
+                    var bunVersion = await sh.DetermineBunRuntimeVersion(_ec.Object);
+
+                    // Assert.
+                    Assert.Equal("bun_alpine", bunVersion);
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable(Constants.Hooks.ContainerHooksPath, null);
+                }
             }
         }
 #endif

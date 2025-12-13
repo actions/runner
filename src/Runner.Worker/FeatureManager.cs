@@ -16,5 +16,10 @@ namespace GitHub.Runner.Worker
         {
             return variables?.GetBoolean(Constants.Runner.Features.ContainerActionRunnerTemp) ?? false;
         }
+
+        public static bool IsBunRuntimeEnabled(Variables variables)
+        {
+            return variables?.GetBoolean(Constants.Runner.Features.AllowBunRuntime) ?? false;
+        }
     }
 }
