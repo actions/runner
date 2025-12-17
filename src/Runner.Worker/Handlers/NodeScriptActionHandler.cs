@@ -110,11 +110,28 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
-            ExecutionContext.StepTelemetry.Type = nodeRuntimeVersion;
-            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
+            string file;
+            bool isBun = string.Equals(Data.NodeVersion, "bun", StringComparison.OrdinalIgnoreCase);
 
-            // Format the arguments passed to node.
+            if (isBun)
+            {
+                if (!FeatureManager.IsBunRuntimeEnabled(ExecutionContext.Global.Variables))
+                {
+                    throw new NotSupportedException($"Bun runtime is not enabled. Please enable the feature flag '{Constants.Runner.Features.AllowBunRuntime}' to use Bun runtime.");
+                }
+
+                var bunRuntimeVersion = await StepHost.DetermineBunRuntimeVersion(ExecutionContext);
+                ExecutionContext.StepTelemetry.Type = bunRuntimeVersion;
+                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), bunRuntimeVersion, "bin", $"bun{IOUtil.ExeExtension}");
+            }
+            else
+            {
+                var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
+                ExecutionContext.StepTelemetry.Type = nodeRuntimeVersion;
+                file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
+            }
+
+            // Format the arguments passed to node/bun.
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid
             // file name character on Linux.
@@ -128,7 +145,8 @@ namespace GitHub.Runner.Worker.Handlers
             Encoding outputEncoding = null;
 #endif
 
-            // Remove environment variable that may cause conflicts with the node within the runner.
+            // Remove environment variable that may cause conflicts with the node/bun within the runner.
+            // This applies to both Node.js and Bun to avoid conflicts with the runner's environment.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
@@ -162,7 +180,8 @@ namespace GitHub.Runner.Worker.Handlers
                 else
                 {
                     var exitCode = await step;
-                    ExecutionContext.Debug($"Node Action run completed with exit code {exitCode}");
+                    string runtimeName = isBun ? "Bun" : "Node";
+                    ExecutionContext.Debug($"{runtimeName} Action run completed with exit code {exitCode}");
                     if (exitCode != 0)
                     {
                         ExecutionContext.Result = TaskResult.Failed;
