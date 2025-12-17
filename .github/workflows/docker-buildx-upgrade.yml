@@ -17,7 +17,7 @@ jobs:
       BUILDX_CURRENT_VERSION: ${{ steps.check_buildx_version.outputs.CURRENT_VERSION }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Check Docker version
         id: check_docker_version
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Update Docker version
         shell: bash
