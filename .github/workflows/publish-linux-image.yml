@@ -16,7 +16,7 @@ on:
         description: Version of the runner being installed
       imageName:
         type: string
-        description: The name of the image
+        description: The name of the image(that is Dockerfile)
       imageTag:
         type: string
         description: The tag of the image
