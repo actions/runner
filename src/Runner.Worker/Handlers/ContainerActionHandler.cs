@@ -191,19 +191,13 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));
 
             container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
-            if (FeatureManager.IsContainerActionRunnerTempEnabled(ExecutionContext.Global.Variables))
-            {
-                container.MountVolumes.Add(new MountVolume(tempDirectory, "/github/runner_temp"));
-            }
+            container.MountVolumes.Add(new MountVolume(tempDirectory, "/github/runner_temp"));
             container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
             container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
             container.MountVolumes.Add(new MountVolume(tempFileCommandDirectory, "/github/file_commands"));
             container.MountVolumes.Add(new MountVolume(defaultWorkingDirectory, "/github/workspace"));
 
-            if (FeatureManager.IsContainerActionRunnerTempEnabled(ExecutionContext.Global.Variables))
-            {
-                container.AddPathTranslateMapping(tempDirectory, "/github/runner_temp");
-            }
+            container.AddPathTranslateMapping(tempDirectory, "/github/runner_temp");
             container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
             container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
             container.AddPathTranslateMapping(tempFileCommandDirectory, "/github/file_commands");
