@@ -47,7 +47,9 @@ jobs:
 
       - name: Clear any existing tool cache
         run: |
-          mv "${RUNNER_TOOL_CACHE}" "${RUNNER_TOOL_CACHE}.old"
+          if [ -d "${RUNNER_TOOL_CACHE}" ]; then
+            rm -rf "${RUNNER_TOOL_CACHE}"
+          fi
           mkdir -p "${RUNNER_TOOL_CACHE}"
 
       - name: Setup Python
