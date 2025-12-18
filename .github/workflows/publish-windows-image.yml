@@ -28,8 +28,13 @@ jobs:
       packages: write
 
     steps:
+      - name: Display all inputs
+        run: echo "${{ toJSON(github.event.inputs) }}"
+
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Compute image version
         id: image
