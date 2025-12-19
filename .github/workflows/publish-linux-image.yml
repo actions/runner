@@ -85,8 +85,6 @@ jobs:
 
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v2
-        with:
-          cleanup: false
 
       - name: Log into registry ${{ vars.REGISTRY }}
         uses: docker/login-action@v2
@@ -114,3 +112,5 @@ jobs:
             org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
             org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
             org.opencontainers.image.licenses=MIT
+          cache-from: type=registry,ref=${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to:   type=registry,ref=${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
