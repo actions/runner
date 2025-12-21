@@ -48,7 +48,7 @@
 
     <Target Name="Test" DependsOnTargets="GenerateConstant">
         <Exec Command="dotnet build Test/Test.csproj -c $(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime)" ConsoleToMSBuild="true" />
-        <Exec Command="dotnet test Test/Test.csproj -c $(BUILDCONFIG) --no-build --report-trx" ConsoleToMSBuild="true" />
+        <Exec Command="dotnet test --project Test/Test.csproj -c $(BUILDCONFIG) --no-build --report-trx" ConsoleToMSBuild="true" />
     </Target>
 
     <Target Name="Layout" DependsOnTargets="Clean;Build">
