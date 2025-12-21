@@ -65,5 +65,7 @@
     <NuGetAuditMode>all</NuGetAuditMode>
     <!-- Report low, moderate, high and critical advisories -->
     <NuGetAuditLevel>moderate</NuGetAuditLevel>
+
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
   </PropertyGroup>
 </Project>
