@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -33,7 +34,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void MergeDefaultInputs()
+        public async Task MergeDefaultInputs()
         {
             //Arrange
             Setup();
@@ -79,7 +80,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void WriteEventPayload()
+        public async Task WriteEventPayload()
         {
             //Arrange
             Setup();
@@ -319,7 +320,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void WarnInvalidInputs()
+        public async Task WarnInvalidInputs()
         {
             //Arrange
             Setup();
@@ -372,7 +373,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void SetGitHubContextActionRepoRef()
+        public async Task SetGitHubContextActionRepoRef()
         {
             //Arrange
             Setup();
