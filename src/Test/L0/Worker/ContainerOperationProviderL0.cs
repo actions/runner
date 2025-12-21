@@ -32,7 +32,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void RunServiceContainersHealthcheck_UnhealthyServiceContainer_AssertFailedTask()
+        public async Task RunServiceContainersHealthcheck_UnhealthyServiceContainer_AssertFailedTask()
         {
             //Arrange
             Setup();
@@ -54,7 +54,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void RunServiceContainersHealthcheck_UnhealthyServiceContainer_AssertExceptionThrown()
+        public async Task RunServiceContainersHealthcheck_UnhealthyServiceContainer_AssertExceptionThrown()
         {
             //Arrange
             Setup();
@@ -68,7 +68,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void RunServiceContainersHealthcheck_healthyServiceContainer_AssertSucceededTask()
+        public async Task RunServiceContainersHealthcheck_healthyServiceContainer_AssertSucceededTask()
         {
             //Arrange
             Setup();
@@ -85,7 +85,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void RunServiceContainersHealthcheck_healthyServiceContainerWithoutHealthcheck_AssertSucceededTask()
+        public async Task RunServiceContainersHealthcheck_healthyServiceContainerWithoutHealthcheck_AssertSucceededTask()
         {
             //Arrange
             Setup();

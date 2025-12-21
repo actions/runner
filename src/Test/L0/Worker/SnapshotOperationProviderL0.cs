@@ -22,7 +22,7 @@ public class SnapshotOperationProviderL0
     [InlineData(false)]
     [Trait("Level", "L0")]
     [Trait("Category", "Worker")]
-    public async void CreateSnapshotRequestAsync(bool shouldSnapshotDirectoryAlreadyExist)
+    public async Task CreateSnapshotRequestAsync(bool shouldSnapshotDirectoryAlreadyExist)
     {
         using (TestHostContext testHostContext = CreateTestHostContext())
         {
