@@ -96,7 +96,9 @@ RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
 # Prepare tool cache
 ENV RUNNER_TOOL_CACHE=/opt/hostedtoolcache
 RUN mkdir ${RUNNER_TOOL_CACHE} \
-    && chgrp docker ${RUNNER_TOOL_CACHE} \
+    && chown runner /opt \
+    && chown runner ${RUNNER_TOOL_CACHE} \
+    && chgrp runner ${RUNNER_TOOL_CACHE} \
     && chmod g+rwx ${RUNNER_TOOL_CACHE}
 ARG HOST_TMP_TOOL_CACHE
 COPY --chown=$RUNNER_USER_UID:$RUNNER_USER_UID ./$HOST_TMP_TOOL_CACHE/ $RUNNER_TOOL_CACHE/
