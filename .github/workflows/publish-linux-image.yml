@@ -22,7 +22,7 @@ on:
         description: The tag of the image
       runsOn:
         type: string
-        description: The environment that this job runs on, such ubuntu-latest
+        description: The environment that this job runs on, such ubuntu-latest,raw-ubuntu-22.04...
         default: ubuntu-latest
 
 env:
@@ -31,8 +31,7 @@ env:
 
 jobs:
   build:
-    # runs-on: [X64, self-hosted, Linux]
-    runs-on: raw-ubuntu-22.04
+    runs-on: ${{ github.event.inputs.runsOn }}
     permissions:
       contents: read
       packages: write
