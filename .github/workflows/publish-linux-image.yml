@@ -48,10 +48,10 @@ jobs:
       - name: Clear any existing tool cache
         run: |
           if [ -e "${RUNNER_TOOL_CACHE}.old" ]; then
+            # if use self-hosted raw runner, the dir is owned by root
             sudo rm -rf "${RUNNER_TOOL_CACHE}.old"
           fi
           sudo mv "${RUNNER_TOOL_CACHE}" "${RUNNER_TOOL_CACHE}.old"
-          sudo mkdir -p "${RUNNER_TOOL_CACHE}"
 
       - name: Setup Python
         id: setup-python
