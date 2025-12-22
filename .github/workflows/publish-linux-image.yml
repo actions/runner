@@ -31,8 +31,8 @@ env:
 
 jobs:
   build:
-    runs-on: [X64, self-hosted, Linux]
-    # runs-on: lynx-infra-ubuntu-22.04-large
+    # runs-on: [X64, self-hosted, Linux]
+    runs-on: raw-ubuntu-22.04
     permissions:
       contents: read
       packages: write
