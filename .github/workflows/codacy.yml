@@ -1,0 +1,20 @@
+# Security Policy
+
+## Supported Versions
+
+| Version | Supported          |
+| ------- | ------------------ |
+| 5.1.x   | :white_check_mark: |
+| 5.0.x   | :x:                |
+| 4.0.x   | :white_check_mark: |
+| < 4.0   | :x:                |
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability in this project, please report it by emailing security@sanibrand-tech.com. Include as much detail as possible.
+
+We aim to respond to security reports within 2 business days. After triage, you’ll receive updates as we investigate, accept, or decline the report, and—if accepted—when a fix is ready.
+
+Please avoid public disclosure of the vulnerability until it has been reviewed and resolved.
+
+Thank you for helping keep our project safe!
