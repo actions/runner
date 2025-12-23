@@ -9,21 +9,21 @@ on:
         default: 'main'
       targetPlatform:
         type: string
-        description: 'targetPlatform to build'
+        description: 'TargetPlatform to build'
         default: 'linux/amd64'
       runnerVersion:
         type: string
-        description: Version of the runner being installed
+        description: 'Runner app version'
       imageName:
         type: string
-        description: The name of the image(that is Dockerfile)
+        description: 'Image name(that is Dockerfile)'
+        options:
+          - ubuntu-22.04
+          - ubuntu-22.04-physical
+          - ubuntu-24.04
       imageTag:
         type: string
-        description: The tag of the image
-      runsOn:
-        type: string
-        description: The environment that this job runs on, such ubuntu-latest,raw-ubuntu-22.04...
-        default: ubuntu-latest
+        description: 'Image tag'
 
 env:
   IMAGE_NAME: github-action-runners/${{ github.event.inputs.imageName }}
@@ -31,13 +31,16 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ github.event.inputs.runsOn }}
+    runs-on: ${{ 
+      github.event.inputs.imageName == 'ubuntu-22.04' && 'raw-ubuntu-22.04' ||
+      github.event.inputs.imageName == 'ubuntu-22.04-physical' && 'raw-ubuntu-22.04' ||
+      github.event.inputs.imageName == 'ubuntu-24.04' && 'raw-ubuntu-24.04' }}
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Display all inputs
+      - name: Show all inputs
         run: echo "${{ toJSON(github.event.inputs) }}"
 
       - name: Checkout repository
