@@ -28,7 +28,7 @@ jobs:
       packages: write
 
     steps:
-      - name: Display all inputs
+      - name: Show all inputs
         run: echo "${{ toJSON(github.event.inputs) }}"
 
       - name: Checkout repository
