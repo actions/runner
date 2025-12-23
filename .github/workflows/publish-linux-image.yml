@@ -1,4 +1,4 @@
-name: Publish Linux Runner Image
+name: Publish Linux Runner Images
 
 on:
   workflow_dispatch:
@@ -11,37 +11,52 @@ on:
         type: string
         description: 'TargetPlatform to build'
         default: 'linux/amd64'
-      runnerVersion:
-        type: string
-        description: 'Runner app version'
       imageName:
-        type: string
-        description: 'Image name(that is Dockerfile)'
+        type: choice
+        description: Which image(s) to build (i.e., the corresponding Dockerfile name)
+        default: 'all'
         options:
+          - all
           - ubuntu-22.04
           - ubuntu-22.04-physical
           - ubuntu-24.04
+      runnerVersion:
+        type: string
+        description: 'Runner app version'
       imageTag:
         type: string
         description: 'Image tag'
 
 env:
-  IMAGE_NAME: github-action-runners/${{ github.event.inputs.imageName }}
   HOST_TMP_TOOL_CACHE: hosttmptoolcache
 
 jobs:
   build:
-    runs-on: ${{ 
-      github.event.inputs.imageName == 'ubuntu-22.04' && 'raw-ubuntu-22.04' ||
-      github.event.inputs.imageName == 'ubuntu-22.04-physical' && 'raw-ubuntu-22.04' ||
-      github.event.inputs.imageName == 'ubuntu-24.04' && 'raw-ubuntu-24.04' }}
+    strategy:
+      matrix:
+        include:
+          - imageName: ubuntu-22.04
+            runs_on: raw-ubuntu-22.04
+          - imageName: ubuntu-22.04-physical
+            runs_on: raw-ubuntu-22.04
+          - imageName: ubuntu-24.04
+            runs_on: raw-ubuntu-24.04
+
+    runs-on: ${{ matrix.runs_on }}
+
     permissions:
       contents: read
       packages: write
+    
+    env:
+      IMAGE_NAME: github-action-runners/${{ matrix.imageName }}
 
     steps:
       - name: Show all inputs
-        run: echo "${{ toJSON(github.event.inputs) }}"
+        run: |
+          echo "${{ toJSON(github.event.inputs) }}"
+          echo "matrix.imageName=${{ matrix.imageName }}"
+          echo "matrix.runs_on=${{ matrix.runs_on }}"
 
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -98,13 +113,14 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Build and push Docker image
+        if: ${{ github.event.inputs.imageName == 'all' || github.event.inputs.imageName == matrix.imageName }}
         id: build-and-push
         uses: docker/build-push-action@v3
         with:
           context: ./images
-          file: ./images/Dockerfile.${{ github.event.inputs.imageName }}
+          file: ./images/Dockerfile.${{ matrix.imageName }}
           platforms: |
-            linux/amd64
+            ${{ github.event.inputs.targetPlatform }}
           tags: |
             ${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.imageTag }}
           build-args: |
@@ -113,7 +129,7 @@ jobs:
             HOST_TMP_TOOL_CACHE=${{ env.HOST_TMP_TOOL_CACHE }}
           push: true
           labels: |
-            org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
             org.opencontainers.image.licenses=MIT
           cache-from: type=registry,ref=${{ vars.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
