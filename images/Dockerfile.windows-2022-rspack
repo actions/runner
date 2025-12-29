@@ -21,7 +21,7 @@ ENV RUSTUP_HOME='C:\Users\ContainerAdministrator\.rustup' `
 # Download vs
 RUN Invoke-WebRequest -UseBasicParsing https://aka.ms/vs/17/release/vs_buildtools.exe -o C:\vs_buildtools.exe; `
     # Install Build Tools with the Microsoft.VisualStudio.Workload.AzureBuildTools workload, excluding workloads and components with known issues.
-    C:\vs_buildtools.exe --quiet --wait --norestart --nocache `
+    C:\vs_buildtools.exe --quiet --wait --norestart --nocache --includeRecommended `
         --add Microsoft.VisualStudio.Workload.VCTools `
         --add Microsoft.VisualStudio.Component.VC.ATL `
         --add Microsoft.VisualStudio.Component.VC.ATL.ARM64 `
@@ -31,12 +31,41 @@ RUN Invoke-WebRequest -UseBasicParsing https://aka.ms/vs/17/release/vs_buildtool
         --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
         --add Microsoft.VisualStudio.Component.Windows11SDK.22621 `
         --add Microsoft.VisualStudio.Workload.AzureBuildTools `
-        --remove Microsoft.VisualStudio.Component.Windows10SDK.10240 `
-        --remove Microsoft.VisualStudio.Component.Windows10SDK.10586 `
-        --remove Microsoft.VisualStudio.Component.Windows10SDK.14393 `
-        --remove Microsoft.VisualStudio.Component.Windows81SDK | Out-Null; `
+        --add Microsoft.VisualStudio.Component.CoreEditor `
+        --add Microsoft.VisualStudio.Workload.CoreEditor `
+        --add Microsoft.VisualStudio.Component.TypeScript.TSServer `
+        --add Microsoft.VisualStudio.ComponentGroup.WebToolsExtensions `
+        --add Microsoft.VisualStudio.Component.JavaScript.TypeScript `
+        --add Microsoft.VisualStudio.Component.Roslyn.Compiler `
+        --add Microsoft.Component.MSBuild `
+        --add Microsoft.VisualStudio.Component.Roslyn.LanguageServices `
+        --add Microsoft.VisualStudio.Component.TextTemplating `
+        --add Microsoft.VisualStudio.Component.NuGet `
+        --add Microsoft.VisualStudio.Component.Debugger.JustInTime `
+        --add Component.Microsoft.VisualStudio.LiveShare.2022 `
+        --add Microsoft.VisualStudio.Component.IntelliCode `
+        --add Microsoft.VisualStudio.Component.VC.CoreIde `
+        --add Microsoft.VisualStudio.Component.Graphics.Tools `
+        --add Microsoft.VisualStudio.Component.VC.DiagnosticTools `
+        --add Microsoft.VisualStudio.Component.Windows11SDK.22000 `
+        --add Microsoft.VisualStudio.Component.SecurityIssueAnalysis `
+        --add Microsoft.VisualStudio.Component.VC.Redist.14.Latest `
+        --add Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Core `
+        --add Microsoft.VisualStudio.ComponentGroup.WebToolsExtensions.CMake `
+        --add Microsoft.VisualStudio.Component.VC.CMake.Project `
+        --add Microsoft.VisualStudio.Component.VC.TestAdapterForBoostTest `
+        --add Microsoft.VisualStudio.Component.VC.TestAdapterForGoogleTest `
+        --add Microsoft.VisualStudio.Component.VC.ASAN `
+        --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset `
+        --add Microsoft.VisualStudio.Component.VC.Llvm.Clang `
+        --add Microsoft.VisualStudio.Component.Vcpkg `
+        --add Microsoft.VisualStudio.Workload.NativeDesktop | Out-Null; `
     # Cleanup
     del C:\vs_buildtools.exe; `
+    # Download Win10 SDK
+    Invoke-WebRequest -UseBasicParsing https://download.microsoft.com/download/9/7/9/97982c1d-d687-41be-9dd3-6d01e52ceb68/windowssdk/winsdksetup.exe -o C:\winsdksetup.exe; `
+    C:\winsdksetup.exe /quiet /norestart /log "C:/TEMP/Win10SDK-DesktopDebuggers-Install.log" | Out-Null; `
+    del C:\winsdksetup.exe; `
     # Download rust
     Invoke-WebRequest -UseBasicParsing https://win.rustup.rs/x86_64 -o C:\rustup-init.exe; `
     C:\rustup-init.exe -y | Out-Null; `
