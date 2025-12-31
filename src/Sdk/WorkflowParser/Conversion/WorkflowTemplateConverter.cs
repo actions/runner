@@ -1775,7 +1775,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
             var node = default(ExpressionNode);
             try
             {
-                node = expressionParser.CreateTree(condition, null, namedValues, functions) as ExpressionNode;
+                node = expressionParser.CreateTree(condition, null, namedValues, functions, allowCaseFunction: context.AllowCaseFunction) as ExpressionNode;
             }
             catch (Exception ex)
             {

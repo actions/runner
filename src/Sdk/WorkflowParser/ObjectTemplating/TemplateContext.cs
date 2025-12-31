@@ -113,6 +113,12 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating
         /// </summary>
         internal Boolean StrictJsonParsing { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the case expression function is allowed.
+        /// Defaults to true. Set to false to disable the case function.
+        /// </summary>
+        internal Boolean AllowCaseFunction { get; set; } = true;
+
         internal ITraceWriter TraceWriter { get; set; }
 
         private IDictionary<String, Int32> FileIds
