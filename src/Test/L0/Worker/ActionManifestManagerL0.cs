@@ -1,9 +1,11 @@
-﻿using GitHub.DistributedTask.Expressions2;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines.ContextData;
+﻿using GitHub.Actions.Expressions;
+using GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens;
+using GitHub.Actions.Expressions.Data;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Expressions;
+using GitHub.Actions.WorkflowParser;
+using LegacyContextData = GitHub.DistributedTask.Pipelines.ContextData;
+using LegacyExpressions = GitHub.DistributedTask.Expressions2;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -49,7 +51,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
-                var containerAction = result.Execution as ContainerActionExecutionData;
+                var containerAction = result.Execution as ContainerActionExecutionDataNew;
 
                 Assert.Equal("Dockerfile", containerAction.Image);
                 Assert.Equal("main.sh", containerAction.EntryPoint);
@@ -93,7 +95,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
-                var containerAction = result.Execution as ContainerActionExecutionData;
+                var containerAction = result.Execution as ContainerActionExecutionDataNew;
 
                 Assert.Equal("Dockerfile", containerAction.Image);
                 Assert.Equal("main.sh", containerAction.EntryPoint);
@@ -139,7 +141,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
-                var containerAction = result.Execution as ContainerActionExecutionData;
+                var containerAction = result.Execution as ContainerActionExecutionDataNew;
 
                 Assert.Equal("Dockerfile", containerAction.Image);
                 Assert.Equal("main.sh", containerAction.EntryPoint);
@@ -185,7 +187,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
-                var containerAction = result.Execution as ContainerActionExecutionData;
+                var containerAction = result.Execution as ContainerActionExecutionDataNew;
 
                 Assert.Equal("Dockerfile", containerAction.Image);
                 Assert.Equal("main.sh", containerAction.EntryPoint);
@@ -231,7 +233,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
-                var containerAction = result.Execution as ContainerActionExecutionData;
+                var containerAction = result.Execution as ContainerActionExecutionDataNew;
 
                 Assert.Equal("Dockerfile", containerAction.Image);
                 Assert.Equal("main.sh", containerAction.EntryPoint);
@@ -276,7 +278,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
-                var containerAction = result.Execution as ContainerActionExecutionData;
+                var containerAction = result.Execution as ContainerActionExecutionDataNew;
 
                 Assert.Equal("Dockerfile", containerAction.Image);
             }
@@ -314,7 +316,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
-                var containerAction = result.Execution as ContainerActionExecutionData;
+                var containerAction = result.Execution as ContainerActionExecutionDataNew;
 
                 Assert.Equal("Dockerfile", containerAction.Image);
                 Assert.Equal("main.sh", containerAction.EntryPoint);
@@ -357,7 +359,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
-                var containerAction = result.Execution as ContainerActionExecutionData;
+                var containerAction = result.Execution as ContainerActionExecutionDataNew;
 
                 Assert.Equal("docker://ubuntu:18.04", containerAction.Image);
                 Assert.Equal("main.sh", containerAction.EntryPoint);
@@ -826,10 +828,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 arguments.Add(new BasicExpressionToken(null, null, null, "inputs.greeting"));
                 arguments.Add(new StringToken(null, null, null, "test"));
 
-                var inputsContext = new DictionaryContextData();
-                inputsContext.Add("greeting", new StringContextData("hello"));
+                var inputsContext = new DictionaryExpressionData();
+                inputsContext.Add("greeting", new StringExpressionData("hello"));
 
-                var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+                var evaluateContext = new Dictionary<string, ExpressionData>(StringComparer.OrdinalIgnoreCase);
                 evaluateContext["inputs"] = inputsContext;
                 //Act
 
@@ -863,10 +865,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 environment.Add(new StringToken(null, null, null, "hello"), new BasicExpressionToken(null, null, null, "inputs.greeting"));
                 environment.Add(new StringToken(null, null, null, "test"), new StringToken(null, null, null, "test"));
 
-                var inputsContext = new DictionaryContextData();
-                inputsContext.Add("greeting", new StringContextData("hello"));
+                var inputsContext = new DictionaryExpressionData();
+                inputsContext.Add("greeting", new StringExpressionData("hello"));
 
-                var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+                var evaluateContext = new Dictionary<string, ExpressionData>(StringComparer.OrdinalIgnoreCase);
                 evaluateContext["inputs"] = inputsContext;
 
                 //Act
@@ -896,17 +898,17 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var actionManifest = new ActionManifestManager();
                 actionManifest.Initialize(_hc);
 
-                _ec.Object.ExpressionValues["github"] = new DictionaryContextData
+                _ec.Object.ExpressionValues["github"] = new LegacyContextData.DictionaryContextData
                 {
-                    { "ref", new StringContextData("refs/heads/main") },
+                    { "ref", new LegacyContextData.StringContextData("refs/heads/main") },
                 };
-                _ec.Object.ExpressionValues["strategy"] = new DictionaryContextData();
-                _ec.Object.ExpressionValues["matrix"] = new DictionaryContextData();
-                _ec.Object.ExpressionValues["steps"] = new DictionaryContextData();
-                _ec.Object.ExpressionValues["job"] = new DictionaryContextData();
-                _ec.Object.ExpressionValues["runner"] = new DictionaryContextData();
-                _ec.Object.ExpressionValues["env"] = new DictionaryContextData();
-                _ec.Object.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>("hashFiles", 1, 255));
+                _ec.Object.ExpressionValues["strategy"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["matrix"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["steps"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["job"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["runner"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["env"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionFunctions.Add(new LegacyExpressions.FunctionInfo<GitHub.Runner.Worker.Expressions.HashFilesFunction>("hashFiles", 1, 255));
 
                 //Act
                 var result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new StringToken(null, null, null, "defaultValue"));
@@ -934,6 +936,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             // Test host context.
             _hc = new TestHostContext(this, name);
 
+            var expressionValues = new LegacyContextData.DictionaryContextData();
+            var expressionFunctions = new List<LegacyExpressions.IFunctionInfo>();
+
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.Global)
                 .Returns(new GlobalContext
@@ -943,8 +948,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                     WriteDebug = true,
                 });
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
-            _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
-            _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
+            _ec.Setup(x => x.ExpressionValues).Returns(expressionValues);
+            _ec.Setup(x => x.ExpressionFunctions).Returns(expressionFunctions);
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>())).Callback((Issue issue, ExecutionContextLogOptions logOptions) => { _hc.GetTrace().Info($"[{issue.Type}]{logOptions.LogMessageOverride ?? issue.Message}"); });
         }

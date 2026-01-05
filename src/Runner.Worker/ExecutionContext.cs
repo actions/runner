@@ -1306,10 +1306,14 @@ namespace GitHub.Runner.Worker
             UpdateGlobalStepsContext();
         }
 
+        internal IPipelineTemplateEvaluator ToPipelineTemplateEvaluatorInternal(ObjectTemplating.ITraceWriter traceWriter = null)
+        {
+            return new PipelineTemplateEvaluatorWrapper(HostContext, this, traceWriter);
+        }
+
         private static void NoOp()
         {
         }
-
     }
 
     // The Error/Warning/etc methods are created as extension methods to simplify unit testing.
@@ -1390,8 +1394,15 @@ namespace GitHub.Runner.Worker
             return new[] { new KeyValuePair<string, object>(nameof(IExecutionContext), context) };
         }
 
-        public static PipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
+        public static IPipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
         {
+            // Create wrapper?
+            if ((context.Global.Variables.GetBoolean(Constants.Runner.Features.CompareWorkflowParser) ?? false) || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_COMPARE_WORKFLOW_PARSER")))
+            {
+                return (context as ExecutionContext).ToPipelineTemplateEvaluatorInternal(traceWriter);
+            }
+
+            // Legacy
             if (traceWriter == null)
             {
                 traceWriter = context.ToTemplateTraceWriter();

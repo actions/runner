@@ -1,5 +1,5 @@
 {
-    "plugins": ["@typescript-eslint"],
+    "plugins": ["@typescript-eslint", "@stylistic"],
     "extends": ["plugin:github/recommended"],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
@@ -26,7 +26,7 @@
       ],
       "camelcase": "off",
       "@typescript-eslint/explicit-function-return-type": ["error", {"allowExpressions": true}],
-      "@typescript-eslint/func-call-spacing": ["error", "never"],
+      "@stylistic/func-call-spacing": ["error", "never"],
       "@typescript-eslint/no-array-constructor": "error",
       "@typescript-eslint/no-empty-interface": "error",
       "@typescript-eslint/no-explicit-any": "error",
@@ -47,8 +47,8 @@
       "@typescript-eslint/promise-function-async": "error",
       "@typescript-eslint/require-array-sort-compare": "error",
       "@typescript-eslint/restrict-plus-operands": "error",
-      "@typescript-eslint/semi": ["error", "never"],
-      "@typescript-eslint/type-annotation-spacing": "error",
+      "@stylistic/semi": ["error", "never"],
+      "@stylistic/type-annotation-spacing": "error",
       "@typescript-eslint/unbound-method": "error",
       "filenames/match-regex" : "off",
       "github/no-then" : 1, // warning

@@ -1,14 +1,14 @@
-﻿using GitHub.Services.Common.Diagnostics;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
+using GitHub.Services.Common.Diagnostics;
 using GitHub.Services.Common.Internal;
 
 namespace GitHub.Services.Common

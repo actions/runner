@@ -11,12 +11,12 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     # Make sure ./releaseVersion match ./src/runnerversion
     # Query GitHub release ensure version is not used
     - name: Check version
-      uses: actions/github-script@v8.0.0
+      uses: actions/github-script@v8
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
@@ -86,7 +86,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     # Build runner layout
     - name: Build & Layout Release
@@ -118,7 +118,7 @@ jobs:
     # Upload runner package tar.gz/zip as artifact.
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: runner-packages-${{ matrix.runtime }}
         path: |
@@ -129,41 +129,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact (win-x64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         name: runner-packages-win-x64
         path: ./
     - name: Download Artifact (win-arm64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         name: runner-packages-win-arm64
         path: ./
     - name: Download Artifact (osx-x64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         name: runner-packages-osx-x64
         path: ./
     - name: Download Artifact (osx-arm64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         name: runner-packages-osx-arm64
         path: ./
     - name: Download Artifact (linux-x64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         name: runner-packages-linux-x64
         path: ./
     - name: Download Artifact (linux-arm)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         name: runner-packages-linux-arm
         path: ./
     - name: Download Artifact (linux-arm64)
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v7
       with:
         name: runner-packages-linux-arm64
         path: ./
@@ -171,7 +171,7 @@ jobs:
     # Create ReleaseNote file
     - name: Create ReleaseNote
       id: releaseNote
-      uses: actions/github-script@v8.0.0
+      uses: actions/github-script@v8
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
@@ -296,11 +296,11 @@ jobs:
       IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Compute image version
         id: image
-        uses: actions/github-script@v8.0.0
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -334,8 +334,9 @@ jobs:
           push: true
           labels: |
             org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
-            org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
             org.opencontainers.image.licenses=MIT
+          annotations: |
+            org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
 
       - name: Generate attestation
         uses: actions/attest-build-provenance@v3

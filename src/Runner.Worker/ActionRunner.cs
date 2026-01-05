@@ -206,7 +206,7 @@ namespace GitHub.Runner.Worker
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
-                var manifestManager = HostContext.GetService<IActionManifestManager>();
+                var manifestManager = HostContext.GetService<IActionManifestManagerWrapper>();
                 foreach (var input in definition.Data.Inputs)
                 {
                     string key = input.Key.AssertString("action input name").Value;

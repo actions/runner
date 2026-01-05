@@ -2,29 +2,29 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Reflection;
+using System.Linq;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using System.Reflection;
-using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-using GitHub.DistributedTask.ObjectTemplating.Schema;
-using GitHub.DistributedTask.ObjectTemplating;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines.ContextData;
-using System.Linq;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Actions.WorkflowParser;
+using GitHub.Actions.WorkflowParser.Conversion;
+using GitHub.Actions.WorkflowParser.ObjectTemplating;
+using GitHub.Actions.WorkflowParser.ObjectTemplating.Schema;
+using GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens;
+using GitHub.Actions.Expressions.Data;
 
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ActionManifestManager))]
     public interface IActionManifestManager : IRunnerService
     {
-        ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile);
+        public ActionDefinitionDataNew Load(IExecutionContext executionContext, string manifestFile);
 
-        DictionaryContextData EvaluateCompositeOutputs(IExecutionContext executionContext, TemplateToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
+        DictionaryExpressionData EvaluateCompositeOutputs(IExecutionContext executionContext, TemplateToken token, IDictionary<string, ExpressionData> extraExpressionValues);
 
-        List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
+        List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<string, ExpressionData> extraExpressionValues);
 
-        Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
+        Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, ExpressionData> extraExpressionValues);
 
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
     }
@@ -50,10 +50,10 @@ namespace GitHub.Runner.Worker
             Trace.Info($"Load schema file with definitions: {StringUtil.ConvertToJson(_actionManifestSchema.Definitions.Keys)}");
         }
 
-        public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
+        public ActionDefinitionDataNew Load(IExecutionContext executionContext, string manifestFile)
         {
             var templateContext = CreateTemplateContext(executionContext);
-            ActionDefinitionData actionDefinition = new();
+            ActionDefinitionDataNew actionDefinition = new();
 
             // Clean up file name real quick
             // Instead of using Regex which can be computationally expensive, 
@@ -160,21 +160,21 @@ namespace GitHub.Runner.Worker
             return actionDefinition;
         }
 
-        public DictionaryContextData EvaluateCompositeOutputs(
+        public DictionaryExpressionData EvaluateCompositeOutputs(
             IExecutionContext executionContext,
             TemplateToken token,
-            IDictionary<string, PipelineContextData> extraExpressionValues)
+            IDictionary<string, ExpressionData> extraExpressionValues)
         {
-            var result = default(DictionaryContextData);
+            DictionaryExpressionData result = null;
 
             if (token != null)
             {
                 var templateContext = CreateTemplateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(templateContext, "outputs", token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(templateContext, "outputs", token, 0, null);
                     templateContext.Errors.Check();
-                    result = token.ToContextData().AssertDictionary("composite outputs");
+                    result = token.ToExpressionData().AssertDictionary("composite outputs");
                 }
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {
@@ -184,13 +184,13 @@ namespace GitHub.Runner.Worker
                 templateContext.Errors.Check();
             }
 
-            return result ?? new DictionaryContextData();
+            return result ?? new DictionaryExpressionData();
         }
 
         public List<string> EvaluateContainerArguments(
             IExecutionContext executionContext,
             SequenceToken token,
-            IDictionary<string, PipelineContextData> extraExpressionValues)
+            IDictionary<string, ExpressionData> extraExpressionValues)
         {
             var result = new List<string>();
 
@@ -199,7 +199,7 @@ namespace GitHub.Runner.Worker
                 var templateContext = CreateTemplateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "container-runs-args", token, 0, null, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "container-runs-args", token, 0, null);
                     templateContext.Errors.Check();
 
                     Trace.Info($"Arguments evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
@@ -229,7 +229,7 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, string> EvaluateContainerEnvironment(
             IExecutionContext executionContext,
             MappingToken token,
-            IDictionary<string, PipelineContextData> extraExpressionValues)
+            IDictionary<string, ExpressionData> extraExpressionValues)
         {
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -238,7 +238,7 @@ namespace GitHub.Runner.Worker
                 var templateContext = CreateTemplateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "container-runs-env", token, 0, null, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "container-runs-env", token, 0, null);
                     templateContext.Errors.Check();
 
                     Trace.Info($"Environments evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
@@ -281,7 +281,7 @@ namespace GitHub.Runner.Worker
                 var templateContext = CreateTemplateContext(executionContext);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "input-default-context", token, 0, null, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "input-default-context", token, 0, null);
                     templateContext.Errors.Check();
 
                     Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
@@ -303,7 +303,7 @@ namespace GitHub.Runner.Worker
 
         private TemplateContext CreateTemplateContext(
             IExecutionContext executionContext,
-            IDictionary<string, PipelineContextData> extraExpressionValues = null)
+            IDictionary<string, ExpressionData> extraExpressionValues = null)
         {
             var result = new TemplateContext
             {
@@ -314,13 +314,18 @@ namespace GitHub.Runner.Worker
                     maxEvents: 1000000,
                     maxBytes: 10 * 1024 * 1024),
                 Schema = _actionManifestSchema,
-                TraceWriter = executionContext.ToTemplateTraceWriter(),
+                // TODO: Switch to real tracewriter for cutover
+                TraceWriter = new GitHub.Actions.WorkflowParser.ObjectTemplating.EmptyTraceWriter(),
+                AllowCaseFunction = false,
             };
 
             // Expression values from execution context
             foreach (var pair in executionContext.ExpressionValues)
             {
-                result.ExpressionValues[pair.Key] = pair.Value;
+                // Convert old PipelineContextData to new ExpressionData
+                var json = StringUtil.ConvertToJson(pair.Value, Newtonsoft.Json.Formatting.None);
+                var newValue = StringUtil.ConvertFromJson<GitHub.Actions.Expressions.Data.ExpressionData>(json);
+                result.ExpressionValues[pair.Key] = newValue;
             }
 
             // Extra expression values
@@ -332,10 +337,19 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            // Expression functions from execution context
-            foreach (var item in executionContext.ExpressionFunctions)
+            // Expression functions
+            foreach (var func in executionContext.ExpressionFunctions)
             {
-                result.ExpressionFunctions.Add(item);
+                GitHub.Actions.Expressions.IFunctionInfo newFunc = func.Name switch
+                {
+                    "always" => new GitHub.Actions.Expressions.FunctionInfo<Expressions.NewAlwaysFunction>(func.Name, func.MinParameters, func.MaxParameters),
+                    "cancelled" => new GitHub.Actions.Expressions.FunctionInfo<Expressions.NewCancelledFunction>(func.Name, func.MinParameters, func.MaxParameters),
+                    "failure" => new GitHub.Actions.Expressions.FunctionInfo<Expressions.NewFailureFunction>(func.Name, func.MinParameters, func.MaxParameters),
+                    "success" => new GitHub.Actions.Expressions.FunctionInfo<Expressions.NewSuccessFunction>(func.Name, func.MinParameters, func.MaxParameters),
+                    "hashFiles" => new GitHub.Actions.Expressions.FunctionInfo<Expressions.NewHashFilesFunction>(func.Name, func.MinParameters, func.MaxParameters),
+                    _ => throw new NotSupportedException($"Expression function '{func.Name}' is not supported in ActionManifestManager")
+                };
+                result.ExpressionFunctions.Add(newFunc);
             }
 
             // Add the file table from the Execution Context
@@ -368,7 +382,7 @@ namespace GitHub.Runner.Worker
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
-            var steps = default(List<Pipelines.Step>);
+            var steps = default(List<GitHub.Actions.WorkflowParser.IStep>);
 
             foreach (var run in runsMapping)
             {
@@ -416,7 +430,7 @@ namespace GitHub.Runner.Worker
                         break;
                     case "steps":
                         var stepsToken = run.Value.AssertSequence("steps");
-                        steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
+                        steps = WorkflowTemplateConverter.ConvertToSteps(templateContext, stepsToken);
                         templateContext.Errors.Check();
                         break;
                     default:
@@ -435,7 +449,7 @@ namespace GitHub.Runner.Worker
                     }
                     else
                     {
-                        return new ContainerActionExecutionData()
+                        return new ContainerActionExecutionDataNew()
                         {
                             Image = imageToken.Value,
                             Arguments = argsToken,
@@ -478,11 +492,11 @@ namespace GitHub.Runner.Worker
                     }
                     else
                     {
-                        return new CompositeActionExecutionData()
+                        return new CompositeActionExecutionDataNew()
                         {
-                            Steps = steps.Cast<Pipelines.ActionStep>().ToList(),
-                            PreSteps = new List<Pipelines.ActionStep>(),
-                            PostSteps = new Stack<Pipelines.ActionStep>(),
+                            Steps = steps,
+                            PreSteps = new List<GitHub.Actions.WorkflowParser.IStep>(),
+                            PostSteps = new Stack<GitHub.Actions.WorkflowParser.IStep>(),
                             InitCondition = "always()",
                             CleanupCondition = "always()",
                             Outputs = outputs
@@ -507,7 +521,7 @@ namespace GitHub.Runner.Worker
 
         private void ConvertInputs(
             TemplateToken inputsToken,
-            ActionDefinitionData actionDefinition)
+            ActionDefinitionDataNew actionDefinition)
         {
             actionDefinition.Inputs = new MappingToken(null, null, null);
             var inputsMapping = inputsToken.AssertMapping("inputs");
@@ -541,6 +555,50 @@ namespace GitHub.Runner.Worker
                 }
             }
         }
+    }
+
+    public sealed class ActionDefinitionDataNew
+    {
+        public string Name { get; set; }
+
+        public string Description { get; set; }
+
+        public MappingToken Inputs { get; set; }
+
+        public ActionExecutionData Execution { get; set; }
+
+        public Dictionary<String, String> Deprecated { get; set; }
+    }
+
+    public sealed class ContainerActionExecutionDataNew : ActionExecutionData
+    {
+        public override ActionExecutionType ExecutionType => ActionExecutionType.Container;
+
+        public override bool HasPre => !string.IsNullOrEmpty(Pre);
+        public override bool HasPost => !string.IsNullOrEmpty(Post);
+
+        public string Image { get; set; }
+
+        public string EntryPoint { get; set; }
+
+        public SequenceToken Arguments { get; set; }
+
+        public MappingToken Environment { get; set; }
+
+        public string Pre { get; set; }
+
+        public string Post { get; set; }
+    }
+
+    public sealed class CompositeActionExecutionDataNew : ActionExecutionData
+    {
+        public override ActionExecutionType ExecutionType => ActionExecutionType.Composite;
+        public override bool HasPre => PreSteps.Count > 0;
+        public override bool HasPost => PostSteps.Count > 0;
+        public List<GitHub.Actions.WorkflowParser.IStep> PreSteps { get; set; }
+        public List<GitHub.Actions.WorkflowParser.IStep> Steps { get; set; }
+        public Stack<GitHub.Actions.WorkflowParser.IStep> PostSteps { get; set; }
+        public MappingToken Outputs { get; set; }
     }
 }
 
