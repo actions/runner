@@ -318,6 +318,14 @@ namespace GitHub.Runner.Worker.Handlers
                 Environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
             }
 
+            if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SetOrchestrationIdEnvForActions) ?? false)
+            {
+                if (ExecutionContext.Global.Variables.TryGetValue(Constants.Variables.System.OrchestrationId, out var orchestrationId) && !string.IsNullOrEmpty(orchestrationId))
+                {
+                    Environment["ACTIONS_ORCHESTRATION_ID"] = orchestrationId;
+                }
+            }
+
             ExecutionContext.Debug($"{fileName} {arguments}");
 
             Inputs.TryGetValue("standardInInput", out var standardInInput);
