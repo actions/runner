@@ -112,6 +112,13 @@ namespace GitHub.Runner.Worker
                                             groupName = "Machine Setup Info";
                                         }
 
+                                        // not output internal groups
+                                        if (groupName.StartsWith("_internal_", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            jobContext.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = info.Detail });
+                                            continue;
+                                        }
+
                                         context.Output($"##[group]{groupName}");
                                         var multiLines = info.Detail.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
                                         foreach (var line in multiLines)
