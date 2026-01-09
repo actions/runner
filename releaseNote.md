@@ -1,30 +1,27 @@
 ## What's Changed
-* Custom Image: Preflight checks by @lawrencegripper in https://github.com/actions/runner/pull/4081
-* Update dotnet sdk to latest version @8.0.415 by @github-actions[bot] in https://github.com/actions/runner/pull/4080
-* Link to an extant discussion category by @jsoref in https://github.com/actions/runner/pull/4084
-* Improve logic around decide IsHostedServer. by @TingluoHuang in https://github.com/actions/runner/pull/4086
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4093
-* Compare updated template evaluator by @ericsciple in https://github.com/actions/runner/pull/4092
-* fix(dockerfile): set more lenient permissions on /home/runner by @caxu-rh in https://github.com/actions/runner/pull/4083
-* Add support for libicu73-76 for newer Debian/Ubuntu versions by @lets-build-an-ocean in https://github.com/actions/runner/pull/4098
-* Bump actions/download-artifact from 5 to 6 by @dependabot[bot] in https://github.com/actions/runner/pull/4089
-* Bump actions/upload-artifact from 4 to 5 by @dependabot[bot] in https://github.com/actions/runner/pull/4088
-* Bump Azure.Storage.Blobs from 12.25.1 to 12.26.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4077
-* Only start runner after network is online by @dupondje in https://github.com/actions/runner/pull/4094
-* Retry http error related to DNS resolution failure. by @TingluoHuang in https://github.com/actions/runner/pull/4110
-* Update Docker to v29.0.1 and Buildx to v0.30.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4114
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4115
-* Update dotnet sdk to latest version @8.0.416 by @github-actions[bot] in https://github.com/actions/runner/pull/4116
-* Compare updated workflow parser for ActionManifestManager by @ericsciple in https://github.com/actions/runner/pull/4111
-* Bump npm pkg version for hashFiles. by @TingluoHuang in https://github.com/actions/runner/pull/4122
+* Fix owner of /home/runner directory by @nikola-jokic in https://github.com/actions/runner/pull/4132
+* Update Docker to v29.0.2 and Buildx to v0.30.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4135
+* Update workflow around runner docker image. by @TingluoHuang in https://github.com/actions/runner/pull/4133
+* Fix regex for validating runner version format by @TingluoHuang in https://github.com/actions/runner/pull/4136
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4144
+* Ensure safe_sleep tries alternative approaches by @TingluoHuang in https://github.com/actions/runner/pull/4146
+* Bump actions/github-script from 7 to 8 by @dependabot[bot] in https://github.com/actions/runner/pull/4137
+* Bump actions/checkout from 5 to 6 by @dependabot[bot] in https://github.com/actions/runner/pull/4130
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4149
+* Bump docker image to use ubuntu 24.04 by @TingluoHuang in https://github.com/actions/runner/pull/4018
+* Add support for case function by @AllanGuigou in https://github.com/actions/runner/pull/4147
+* Cleanup feature flag actions_container_action_runner_temp by @ericsciple in https://github.com/actions/runner/pull/4163
+* Bump actions/download-artifact from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4155
+* Bump actions/upload-artifact from 5 to 6 by @dependabot[bot] in https://github.com/actions/runner/pull/4157
+* Set ACTIONS_ORCHESTRATION_ID as env to actions. by @TingluoHuang in https://github.com/actions/runner/pull/4178
+* Allow hosted VM report job telemetry via .setup_info file. by @TingluoHuang in https://github.com/actions/runner/pull/4186
+* Bump typescript from 5.9.2 to 5.9.3 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4184
+* Bump Azure.Storage.Blobs from 12.26.0 to 12.27.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4189
 
 ## New Contributors
-* @lawrencegripper made their first contribution in https://github.com/actions/runner/pull/4081
-* @caxu-rh made their first contribution in https://github.com/actions/runner/pull/4083
-* @lets-build-an-ocean made their first contribution in https://github.com/actions/runner/pull/4098
-* @dupondje made their first contribution in https://github.com/actions/runner/pull/4094
+* @AllanGuigou made their first contribution in https://github.com/actions/runner/pull/4147
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.329.0...v2.330.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.330.0...v2.331.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
