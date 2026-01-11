@@ -6,6 +6,12 @@ if [ -x "$(command -v sleep)" ]; then
     exit 0
 fi
 
+# assert integer
+if ! builtin printf %d "$1" &>/dev/null; then
+    echo "safe_sleep: invalid time interval ‘$1’"
+    exit 1
+fi
+
 # try to use ping if available
 if [ -x "$(command -v ping)" ]; then
     ping -c $(( $1 + 1 )) 127.0.0.1 > /dev/null
