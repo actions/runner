@@ -169,7 +169,8 @@ RUN sdkmanager --sdk_root=$ANDROID_HOME --install \
     "platforms;android-34" \
     "build-tools;29.0.1" \
     "build-tools;34.0.0" \
-    "platform-tools"
+    "platform-tools" \
+    "cmake;3.18.1"
 # Install android ndk
 RUN echo $ANDROID_NDK_LIST | awk -F ';' '{ for(i=1; i<=NF; i++) print $i }' \
     | while read -r substring; do sdkmanager --sdk_root=$ANDROID_HOME --install "ndk;$substring"; done
