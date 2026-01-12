@@ -130,9 +130,10 @@ RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && which docker-compose \
     && docker compose version
 
-# Install and Update PIP (Python's package manager)
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
-RUN python3 -m pip install --upgrade pip
+# Install pip for python PYTHON_VERSION
+# If using apt install python3-pip will not satisfy the python3.12
+# Because python3.12 do not has distutils module any more.
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python$PYTHON_VERSION
 
 # Add the Python "User Script Directory" to the PATH
 ENV PATH="${PATH}:${HOME}/.local/bin/"
