@@ -24,7 +24,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [InlineData(6)]
         [InlineData(7)]
         [InlineData(8)]
-        public async void TestIncrementAndWait(int totalAttempts)
+        public async Task TestIncrementAndWait(int totalAttempts)
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -97,7 +97,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         }
 
         [Fact]
-        public async void TestReset()
+        public async Task TestReset()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -151,7 +151,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         }
 
         [Fact]
-        public async void TestReceivesCancellationToken()
+        public async Task TestReceivesCancellationToken()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -180,7 +180,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         }
 
         [Fact]
-        public async void TestReceivesSender()
+        public async Task TestReceivesSender()
         {
             using (TestHostContext hc = CreateTestContext())
             {
