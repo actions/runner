@@ -34,7 +34,6 @@ RUN apt-get update -y \
     cmake \
     pkg-config \
     python$PYTHON_VERSION \
-    python3-pip \
     libffi-dev \
     zlib1g-dev \
     libbz2-dev \
@@ -131,12 +130,15 @@ RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && which docker-compose \
     && docker compose version
 
+# Install and Update PIP (Python's package manager)
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 && python3 -m pip install --upgrade pip
+
 # Add the Python "User Script Directory" to the PATH
 ENV PATH="${PATH}:${HOME}/.local/bin/"
 
 # Set PYTHON_VERSION as the default Python interpreter
-RUN update-alternatives --install /usr/bin/python3 python /usr/bin/python$PYTHON_VERSION 1
-RUN update-alternatives --set python /usr/bin/python$PYTHON_VERSION
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python$PYTHON_VERSION 1
+RUN update-alternatives --set python3 /usr/bin/python$PYTHON_VERSION
 
 USER runner
 
