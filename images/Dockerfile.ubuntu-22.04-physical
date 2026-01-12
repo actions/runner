@@ -131,7 +131,8 @@ RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
     && docker compose version
 
 # Install and Update PIP (Python's package manager)
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 && python3 -m pip install --upgrade pip
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+RUN python3 -m pip install --upgrade pip
 
 # Add the Python "User Script Directory" to the PATH
 ENV PATH="${PATH}:${HOME}/.local/bin/"
