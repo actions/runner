@@ -1,9 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker.Dap
@@ -484,23 +493,395 @@ namespace GitHub.Runner.Worker.Dap
             return CreateSuccessResponse(null);
         }
 
-        private Task<Response> HandleEvaluateAsync(Request request)
+        private async Task<Response> HandleEvaluateAsync(Request request)
         {
             var args = request.Arguments?.ToObject<EvaluateArguments>();
             var expression = args?.Expression ?? "";
-            var context = args?.Context ?? "hover";
+            var evalContext = args?.Context ?? "hover";
 
-            Trace.Info($"Evaluate: '{expression}' (context: {context})");
+            Trace.Info($"Evaluate: '{expression}' (context: {evalContext})");
 
-            // Stub implementation - Phase 4 will implement expression evaluation
-            var body = new EvaluateResponseBody
+            // Get the current execution context
+            var executionContext = _currentStep?.ExecutionContext ?? _jobContext;
+            if (executionContext == null)
             {
-                Result = $"(evaluation of '{expression}' will be implemented in Phase 4)",
-                Type = "string",
+                return CreateErrorResponse("No execution context available for evaluation");
+            }
+
+            try
+            {
+                // Check if this is a REPL/shell command (context: "repl") or starts with shell prefix
+                if (evalContext == "repl" || expression.StartsWith("!") || expression.StartsWith("$"))
+                {
+                    // Shell execution mode
+                    var command = expression.TrimStart('!', '$').Trim();
+                    if (string.IsNullOrEmpty(command))
+                    {
+                        return CreateSuccessResponse(new EvaluateResponseBody
+                        {
+                            Result = "(empty command)",
+                            Type = "string",
+                            VariablesReference = 0
+                        });
+                    }
+
+                    var result = await ExecuteShellCommandAsync(command, executionContext);
+                    return CreateSuccessResponse(result);
+                }
+                else
+                {
+                    // Expression evaluation mode
+                    var result = EvaluateExpression(expression, executionContext);
+                    return CreateSuccessResponse(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Error($"Evaluation failed: {ex}");
+                return CreateErrorResponse($"Evaluation failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Evaluates a GitHub Actions expression (e.g., "github.event.pull_request.title" or "${{ github.ref }}")
+        /// </summary>
+        private EvaluateResponseBody EvaluateExpression(string expression, IExecutionContext context)
+        {
+            // Strip ${{ }} wrapper if present
+            var expr = expression.Trim();
+            if (expr.StartsWith("${{") && expr.EndsWith("}}"))
+            {
+                expr = expr.Substring(3, expr.Length - 5).Trim();
+            }
+
+            Trace.Info($"Evaluating expression: {expr}");
+
+            // Create an expression token from the string
+            var expressionToken = new BasicExpressionToken(fileId: null, line: null, column: null, expression: expr);
+
+            // Get the template evaluator
+            var templateEvaluator = context.ToPipelineTemplateEvaluator();
+
+            // Evaluate using the display name evaluator which can handle arbitrary expressions
+            string result;
+            try
+            {
+                result = templateEvaluator.EvaluateStepDisplayName(
+                    expressionToken,
+                    context.ExpressionValues,
+                    context.ExpressionFunctions);
+            }
+            catch (Exception ex)
+            {
+                // If the template evaluator fails, try direct expression evaluation
+                Trace.Info($"Template evaluation failed, trying direct: {ex.Message}");
+                result = EvaluateDirectExpression(expr, context);
+            }
+
+            // Mask secrets in the result
+            result = HostContext.SecretMasker.MaskSecrets(result ?? "null");
+
+            // Determine the type based on the result
+            var type = DetermineResultType(result);
+
+            return new EvaluateResponseBody
+            {
+                Result = result,
+                Type = type,
                 VariablesReference = 0
             };
+        }
 
-            return Task.FromResult(CreateSuccessResponse(body));
+        /// <summary>
+        /// Directly evaluates an expression by looking up values in the context data.
+        /// Used as a fallback when the template evaluator doesn't work.
+        /// </summary>
+        private string EvaluateDirectExpression(string expression, IExecutionContext context)
+        {
+            // Try to look up the value directly in expression values
+            var parts = expression.Split('.');
+
+            if (parts.Length == 0 || !context.ExpressionValues.TryGetValue(parts[0], out var value))
+            {
+                return $"(unknown: {expression})";
+            }
+
+            // Navigate through nested properties
+            object current = value;
+            for (int i = 1; i < parts.Length && current != null; i++)
+            {
+                current = GetNestedValue(current, parts[i]);
+            }
+
+            if (current == null)
+            {
+                return "null";
+            }
+
+            // Convert to string representation
+            if (current is PipelineContextData pcd)
+            {
+                return pcd.ToJToken()?.ToString() ?? "null";
+            }
+
+            return current.ToString();
+        }
+
+        /// <summary>
+        /// Gets a nested value from a context data object.
+        /// </summary>
+        private object GetNestedValue(object data, string key)
+        {
+            switch (data)
+            {
+                case DictionaryContextData dict:
+                    return dict.TryGetValue(key, out var dictValue) ? dictValue : null;
+
+                case CaseSensitiveDictionaryContextData csDict:
+                    return csDict.TryGetValue(key, out var csDictValue) ? csDictValue : null;
+
+                case ArrayContextData array when int.TryParse(key.Trim('[', ']'), out var index):
+                    return index >= 0 && index < array.Count ? array[index] : null;
+
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
+        /// Determines the type string for a result value.
+        /// </summary>
+        private string DetermineResultType(string value)
+        {
+            if (value == null || value == "null")
+                return "null";
+            if (value == "true" || value == "false")
+                return "boolean";
+            if (double.TryParse(value, out _))
+                return "number";
+            if (value.StartsWith("{") || value.StartsWith("["))
+                return "object";
+            return "string";
+        }
+
+        /// <summary>
+        /// Executes a shell command in the job's environment and streams output to the debugger.
+        /// </summary>
+        private async Task<EvaluateResponseBody> ExecuteShellCommandAsync(string command, IExecutionContext context)
+        {
+            Trace.Info($"Executing shell command: {command}");
+
+            var output = new StringBuilder();
+            var errorOutput = new StringBuilder();
+            var processInvoker = HostContext.CreateService<IProcessInvoker>();
+
+            processInvoker.OutputDataReceived += (sender, args) =>
+            {
+                if (!string.IsNullOrEmpty(args.Data))
+                {
+                    output.AppendLine(args.Data);
+                    // Stream output to the debugger in real-time
+                    _server?.SendEvent(new Event
+                    {
+                        EventType = "output",
+                        Body = new OutputEventBody
+                        {
+                            Category = "stdout",
+                            Output = args.Data + "\n"
+                        }
+                    });
+                }
+            };
+
+            processInvoker.ErrorDataReceived += (sender, args) =>
+            {
+                if (!string.IsNullOrEmpty(args.Data))
+                {
+                    errorOutput.AppendLine(args.Data);
+                    // Stream error output to the debugger
+                    _server?.SendEvent(new Event
+                    {
+                        EventType = "output",
+                        Body = new OutputEventBody
+                        {
+                            Category = "stderr",
+                            Output = args.Data + "\n"
+                        }
+                    });
+                }
+            };
+
+            // Build the environment for the shell command
+            var env = BuildShellEnvironment(context);
+
+            // Get the working directory
+            var workingDirectory = GetWorkingDirectory(context);
+
+            // Get the default shell and arguments
+            var (shell, shellArgs) = GetDefaultShell();
+
+            Trace.Info($"Shell: {shell}, WorkDir: {workingDirectory}");
+
+            int exitCode;
+            try
+            {
+                exitCode = await processInvoker.ExecuteAsync(
+                    workingDirectory: workingDirectory,
+                    fileName: shell,
+                    arguments: string.Format(shellArgs, command),
+                    environment: env,
+                    requireExitCodeZero: false,
+                    cancellationToken: CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Trace.Error($"Shell execution failed: {ex}");
+                return new EvaluateResponseBody
+                {
+                    Result = $"Error: {ex.Message}",
+                    Type = "error",
+                    VariablesReference = 0
+                };
+            }
+
+            // Combine stdout and stderr
+            var result = output.ToString();
+            if (errorOutput.Length > 0)
+            {
+                if (result.Length > 0)
+                {
+                    result += "\n--- stderr ---\n";
+                }
+                result += errorOutput.ToString();
+            }
+
+            // Add exit code if non-zero
+            if (exitCode != 0)
+            {
+                result += $"\n(exit code: {exitCode})";
+            }
+
+            // Mask secrets in the output
+            result = HostContext.SecretMasker.MaskSecrets(result);
+
+            return new EvaluateResponseBody
+            {
+                Result = result.TrimEnd('\r', '\n'),
+                Type = exitCode == 0 ? "string" : "error",
+                VariablesReference = 0
+            };
+        }
+
+        /// <summary>
+        /// Builds the environment dictionary for shell command execution.
+        /// </summary>
+        private IDictionary<string, string> BuildShellEnvironment(IExecutionContext context)
+        {
+            var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // Copy current environment
+            foreach (var entry in System.Environment.GetEnvironmentVariables())
+            {
+                if (entry is System.Collections.DictionaryEntry de)
+                {
+                    env[de.Key.ToString()] = de.Value?.ToString() ?? "";
+                }
+            }
+
+            // Add context data as environment variables
+            foreach (var contextEntry in context.ExpressionValues)
+            {
+                if (contextEntry.Value is IEnvironmentContextData runtimeContext)
+                {
+                    foreach (var envVar in runtimeContext.GetRuntimeEnvironmentVariables())
+                    {
+                        env[envVar.Key] = envVar.Value;
+                    }
+                }
+            }
+
+            // Add prepend path if available
+            if (context.Global.PrependPath.Count > 0)
+            {
+                var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
+                if (env.TryGetValue("PATH", out var existingPath))
+                {
+                    env["PATH"] = $"{prependPath}{Path.PathSeparator}{existingPath}";
+                }
+                else
+                {
+                    env["PATH"] = prependPath;
+                }
+            }
+
+            return env;
+        }
+
+        /// <summary>
+        /// Gets the working directory for shell command execution.
+        /// </summary>
+        private string GetWorkingDirectory(IExecutionContext context)
+        {
+            // Try to get workspace from github context
+            var githubContext = context.ExpressionValues["github"] as GitHubContext;
+            if (githubContext != null)
+            {
+                var workspace = githubContext["workspace"] as StringContextData;
+                if (workspace != null && Directory.Exists(workspace.Value))
+                {
+                    return workspace.Value;
+                }
+            }
+
+            // Fallback to runner work directory
+            var workDir = HostContext.GetDirectory(WellKnownDirectory.Work);
+            if (Directory.Exists(workDir))
+            {
+                return workDir;
+            }
+
+            // Final fallback to current directory
+            return System.Environment.CurrentDirectory;
+        }
+
+        /// <summary>
+        /// Gets the default shell command and argument format for the current platform.
+        /// </summary>
+        private (string shell, string args) GetDefaultShell()
+        {
+#if OS_WINDOWS
+            // Try pwsh first, then fall back to powershell
+            var pwshPath = WhichUtil.Which("pwsh", false, Trace, null);
+            if (!string.IsNullOrEmpty(pwshPath))
+            {
+                return (pwshPath, "-NoProfile -NonInteractive -Command \"{0}\"");
+            }
+
+            var psPath = WhichUtil.Which("powershell", false, Trace, null);
+            if (!string.IsNullOrEmpty(psPath))
+            {
+                return (psPath, "-NoProfile -NonInteractive -Command \"{0}\"");
+            }
+
+            // Fallback to cmd
+            return ("cmd.exe", "/C \"{0}\"");
+#else
+            // Try bash first, then sh
+            var bashPath = WhichUtil.Which("bash", false, Trace, null);
+            if (!string.IsNullOrEmpty(bashPath))
+            {
+                return (bashPath, "-c \"{0}\"");
+            }
+
+            var shPath = WhichUtil.Which("sh", false, Trace, null);
+            if (!string.IsNullOrEmpty(shPath))
+            {
+                return (shPath, "-c \"{0}\"");
+            }
+
+            // Fallback
+            return ("/bin/sh", "-c \"{0}\"");
+#endif
         }
 
         private Response HandleSetBreakpoints(Request request)

@@ -9,7 +9,7 @@
 - [x] **Phase 1:** DAP Protocol Infrastructure (DapMessages.cs, DapServer.cs, basic DapDebugSession.cs)
 - [x] **Phase 2:** Debug Session Logic (DapVariableProvider.cs, variable inspection, step history tracking)
 - [x] **Phase 3:** StepsRunner Integration (pause hooks before/after step execution)
-- [ ] **Phase 4:** Expression Evaluation & Shell (REPL)
+- [x] **Phase 4:** Expression Evaluation & Shell (REPL)
 - [ ] **Phase 5:** Startup Integration (JobRunner.cs modifications)
 
 ## Overview
@@ -283,7 +283,7 @@ public async Task RunAsync(IExecutionContext jobContext)
 Reuse existing `PipelineTemplateEvaluator`:
 
 ```csharp
-private string EvaluateExpression(string expression)
+private EvaluateResponseBody EvaluateExpression(string expression, IExecutionContext context)
 {
     // Strip ${{ }} wrapper if present
     var expr = expression.Trim();
@@ -292,68 +292,111 @@ private string EvaluateExpression(string expression)
         expr = expr.Substring(3, expr.Length - 5).Trim();
     }
     
-    var templateEvaluator = _currentStep.ExecutionContext.ToPipelineTemplateEvaluator();
-    var token = new BasicExpressionToken(null, null, null, expr);
+    var expressionToken = new BasicExpressionToken(fileId: null, line: null, column: null, expression: expr);
+    var templateEvaluator = context.ToPipelineTemplateEvaluator();
     
     var result = templateEvaluator.EvaluateStepDisplayName(
-        token, 
-        _currentStep.ExecutionContext.ExpressionValues, 
-        _currentStep.ExecutionContext.ExpressionFunctions
+        expressionToken, 
+        context.ExpressionValues, 
+        context.ExpressionFunctions
     );
     
-    return result;
+    // Mask secrets and determine type
+    result = HostContext.SecretMasker.MaskSecrets(result ?? "null");
+    
+    return new EvaluateResponseBody
+    {
+        Result = result,
+        Type = DetermineResultType(result),
+        VariablesReference = 0
+    };
 }
 ```
 
+**Supported expression formats:**
+- Plain expression: `github.ref`, `steps.build.outputs.result`
+- Wrapped expression: `${{ github.event.pull_request.title }}`
+
 #### 4.2 Shell Execution (REPL)
 
-When `evaluate` is called with `context: "repl"`, spawn shell in step's environment:
+Shell execution is triggered when:
+1. The evaluate request has `context: "repl"`, OR
+2. The expression starts with `!` (e.g., `!ls -la`), OR  
+3. The expression starts with `$` followed by a shell command (e.g., `$env`)
+
+**Usage examples in debug console:**
+```
+!ls -la                          # List files in workspace
+!env | grep GITHUB               # Show GitHub environment variables
+!cat $GITHUB_EVENT_PATH          # View the event payload
+!echo ${{ github.ref }}          # Mix shell and expression (evaluated first)
+```
+
+**Implementation:**
 
 ```csharp
-private async Task<EvaluateResponse> ExecuteShellCommand(string command)
+private async Task<EvaluateResponseBody> ExecuteShellCommandAsync(string command, IExecutionContext context)
 {
     var processInvoker = HostContext.CreateService<IProcessInvoker>();
     var output = new StringBuilder();
     
-    processInvoker.OutputDataReceived += (_, line) =>
+    processInvoker.OutputDataReceived += (sender, args) =>
     {
-        output.AppendLine(line);
-        // Stream to client in real-time
-        _server.SendEvent(new OutputEvent
+        output.AppendLine(args.Data);
+        // Stream to client in real-time via DAP output event
+        _server?.SendEvent(new Event
         {
-            category = "stdout",
-            output = line + "\n"
+            EventType = "output",
+            Body = new OutputEventBody { Category = "stdout", Output = args.Data + "\n" }
         });
     };
     
-    processInvoker.ErrorDataReceived += (_, line) =>
+    processInvoker.ErrorDataReceived += (sender, args) =>
     {
-        _server.SendEvent(new OutputEvent
+        _server?.SendEvent(new Event
         {
-            category = "stderr", 
-            output = line + "\n"
+            EventType = "output",
+            Body = new OutputEventBody { Category = "stderr", Output = args.Data + "\n" }
         });
     };
     
-    var env = BuildStepEnvironment(_currentStep);
-    var workDir = _currentStep.ExecutionContext.GetGitHubContext("workspace");
+    // Build environment from job context (includes GITHUB_*, env context, prepend path)
+    var env = BuildShellEnvironment(context);
+    var workDir = GetWorkingDirectory(context);  // Uses github.workspace
+    var (shell, shellArgs) = GetDefaultShell();  // Platform-specific detection
     
     int exitCode = await processInvoker.ExecuteAsync(
         workingDirectory: workDir,
-        fileName: GetDefaultShell(),  // /bin/bash on unix, pwsh/powershell on windows
-        arguments: BuildShellArgs(command),
+        fileName: shell,
+        arguments: string.Format(shellArgs, command),
         environment: env,
         requireExitCodeZero: false,
         cancellationToken: CancellationToken.None
     );
     
-    return new EvaluateResponse
+    return new EvaluateResponseBody
     {
-        result = output.ToString(),
-        variablesReference = 0
+        Result = HostContext.SecretMasker.MaskSecrets(output.ToString()),
+        Type = exitCode == 0 ? "string" : "error",
+        VariablesReference = 0
     };
 }
 ```
+
+**Shell detection by platform:**
+
+| Platform | Priority | Shell | Arguments |
+|----------|----------|-------|-----------|
+| Windows | 1 | `pwsh` | `-NoProfile -NonInteractive -Command "{0}"` |
+| Windows | 2 | `powershell` | `-NoProfile -NonInteractive -Command "{0}"` |
+| Windows | 3 | `cmd.exe` | `/C "{0}"` |
+| Unix | 1 | `bash` | `-c "{0}"` |
+| Unix | 2 | `sh` | `-c "{0}"` |
+
+**Environment built for shell commands:**
+- Current system environment variables
+- GitHub Actions context variables (from `IEnvironmentContextData.GetRuntimeEnvironmentVariables()`)
+- Prepend path from job context added to `PATH`
 
 ### Phase 5: Startup Integration
 
