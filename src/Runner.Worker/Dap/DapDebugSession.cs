@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -82,6 +83,16 @@ namespace GitHub.Runner.Worker.Dap
     }
 
     /// <summary>
+    /// Stores information about a completed step for stack trace display.
+    /// </summary>
+    internal sealed class CompletedStepInfo
+    {
+        public string DisplayName { get; set; }
+        public TaskResult? Result { get; set; }
+        public int FrameId { get; set; }
+    }
+
+    /// <summary>
     /// Interface for the DAP debug session.
     /// Handles debug state, step coordination, and DAP request processing.
     /// </summary>
@@ -142,8 +153,11 @@ namespace GitHub.Runner.Worker.Dap
         // Thread ID for the single job execution thread
         private const int JobThreadId = 1;
 
-        // Frame ID for the current step
+        // Frame ID base for the current step (always 1)
         private const int CurrentFrameId = 1;
+
+        // Frame IDs for completed steps start at 1000
+        private const int CompletedFrameIdBase = 1000;
 
         private IDapServer _server;
         private DapSessionState _state = DapSessionState.WaitingForConnection;
@@ -153,9 +167,19 @@ namespace GitHub.Runner.Worker.Dap
         private TaskCompletionSource<DapCommand> _commandTcs;
         private readonly object _stateLock = new object();
 
+        // Whether to pause before the next step (set by 'next' command)
+        private bool _pauseOnNextStep = true;
+
         // Current execution context (set during OnStepStartingAsync)
         private IStep _currentStep;
         private IExecutionContext _jobContext;
+
+        // Track completed steps for stack trace
+        private readonly List<CompletedStepInfo> _completedSteps = new List<CompletedStepInfo>();
+        private int _nextCompletedFrameId = CompletedFrameIdBase;
+
+        // Variable provider for converting contexts to DAP variables
+        private DapVariableProvider _variableProvider;
 
         public bool IsActive => _state == DapSessionState.Ready || _state == DapSessionState.Paused || _state == DapSessionState.Running;
 
@@ -164,6 +188,7 @@ namespace GitHub.Runner.Worker.Dap
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+            _variableProvider = new DapVariableProvider(hostContext);
             Trace.Info("DapDebugSession initialized");
         }
 
@@ -299,7 +324,7 @@ namespace GitHub.Runner.Worker.Dap
             // We have a single thread representing the job execution
             var body = new ThreadsResponseBody
             {
-                Threads = new System.Collections.Generic.List<Thread>
+                Threads = new List<Thread>
                 {
                     new Thread
                     {
@@ -318,15 +343,19 @@ namespace GitHub.Runner.Worker.Dap
         {
             var args = request.Arguments?.ToObject<StackTraceArguments>();
 
-            var frames = new System.Collections.Generic.List<StackFrame>();
+            var frames = new List<StackFrame>();
 
             // Add current step as the top frame
             if (_currentStep != null)
             {
+                var resultIndicator = _currentStep.ExecutionContext?.Result != null
+                    ? $" [{_currentStep.ExecutionContext.Result}]"
+                    : " [running]";
+
                 frames.Add(new StackFrame
                 {
                     Id = CurrentFrameId,
-                    Name = _currentStep.DisplayName ?? "Current Step",
+                    Name = $"{_currentStep.DisplayName ?? "Current Step"}{resultIndicator}",
                     Line = 1,
                     Column = 1,
                     PresentationHint = "normal"
@@ -344,7 +373,20 @@ namespace GitHub.Runner.Worker.Dap
                 });
             }
 
-            // TODO: In Phase 2, add completed steps as additional frames
+            // Add completed steps as additional frames (most recent first)
+            for (int i = _completedSteps.Count - 1; i >= 0; i--)
+            {
+                var completedStep = _completedSteps[i];
+                var resultStr = completedStep.Result.HasValue ? $" [{completedStep.Result}]" : "";
+                frames.Add(new StackFrame
+                {
+                    Id = completedStep.FrameId,
+                    Name = $"{completedStep.DisplayName}{resultStr}",
+                    Line = 1,
+                    Column = 1,
+                    PresentationHint = "subtle"
+                });
+            }
 
             var body = new StackTraceResponseBody
             {
@@ -357,44 +399,39 @@ namespace GitHub.Runner.Worker.Dap
 
         private Response HandleScopes(Request request)
         {
-            // Stub implementation - Phase 2 will populate with actual contexts
-            var body = new ScopesResponseBody
-            {
-                Scopes = new System.Collections.Generic.List<Scope>
-                {
-                    new Scope { Name = "github", VariablesReference = 1, Expensive = false },
-                    new Scope { Name = "env", VariablesReference = 2, Expensive = false },
-                    new Scope { Name = "runner", VariablesReference = 3, Expensive = false },
-                    new Scope { Name = "job", VariablesReference = 4, Expensive = false },
-                    new Scope { Name = "steps", VariablesReference = 5, Expensive = false },
-                    new Scope { Name = "secrets", VariablesReference = 6, Expensive = false, PresentationHint = "registers" },
-                }
-            };
+            var args = request.Arguments?.ToObject<ScopesArguments>();
+            var frameId = args?.FrameId ?? CurrentFrameId;
 
-            return CreateSuccessResponse(body);
+            // Get the execution context for the requested frame
+            var context = GetExecutionContextForFrame(frameId);
+            if (context == null)
+            {
+                // Return empty scopes if no context available
+                return CreateSuccessResponse(new ScopesResponseBody { Scopes = new List<Scope>() });
+            }
+
+            // Use the variable provider to get scopes
+            var scopes = _variableProvider.GetScopes(context, frameId);
+
+            return CreateSuccessResponse(new ScopesResponseBody { Scopes = scopes });
         }
 
         private Response HandleVariables(Request request)
         {
-            // Stub implementation - Phase 2 will populate with actual variable values
             var args = request.Arguments?.ToObject<VariablesArguments>();
             var variablesRef = args?.VariablesReference ?? 0;
 
-            var body = new VariablesResponseBody
+            // Get the current execution context
+            var context = _currentStep?.ExecutionContext ?? _jobContext;
+            if (context == null)
             {
-                Variables = new System.Collections.Generic.List<Variable>
-                {
-                    new Variable
-                    {
-                        Name = "(stub)",
-                        Value = $"Variables for scope {variablesRef} will be implemented in Phase 2",
-                        Type = "string",
-                        VariablesReference = 0
-                    }
-                }
-            };
+                return CreateSuccessResponse(new VariablesResponseBody { Variables = new List<Variable>() });
+            }
 
-            return CreateSuccessResponse(body);
+            // Use the variable provider to get variables
+            var variables = _variableProvider.GetVariables(context, variablesRef);
+
+            return CreateSuccessResponse(new VariablesResponseBody { Variables = variables });
         }
 
         private Response HandleContinue(Request request)
@@ -406,6 +443,7 @@ namespace GitHub.Runner.Worker.Dap
                 if (_state == DapSessionState.Paused)
                 {
                     _state = DapSessionState.Running;
+                    _pauseOnNextStep = false; // Don't pause on next step
                     _commandTcs?.TrySetResult(DapCommand.Continue);
                 }
             }
@@ -425,6 +463,7 @@ namespace GitHub.Runner.Worker.Dap
                 if (_state == DapSessionState.Paused)
                 {
                     _state = DapSessionState.Running;
+                    _pauseOnNextStep = true; // Pause before next step
                     _commandTcs?.TrySetResult(DapCommand.Next);
                 }
             }
@@ -439,13 +478,13 @@ namespace GitHub.Runner.Worker.Dap
             // The runner will pause at the next step boundary
             lock (_stateLock)
             {
-                // Just acknowledge - actual pause happens at step boundary
+                _pauseOnNextStep = true;
             }
 
             return CreateSuccessResponse(null);
         }
 
-        private async Task<Response> HandleEvaluateAsync(Request request)
+        private Task<Response> HandleEvaluateAsync(Request request)
         {
             var args = request.Arguments?.ToObject<EvaluateArguments>();
             var expression = args?.Expression ?? "";
@@ -461,7 +500,7 @@ namespace GitHub.Runner.Worker.Dap
                 VariablesReference = 0
             };
 
-            return CreateSuccessResponse(body);
+            return Task.FromResult(CreateSuccessResponse(body));
         }
 
         private Response HandleSetBreakpoints(Request request)
@@ -500,6 +539,18 @@ namespace GitHub.Runner.Worker.Dap
             _currentStep = step;
             _jobContext = jobContext;
 
+            // Reset variable provider state for new step context
+            _variableProvider.Reset();
+
+            // Determine if we should pause
+            bool shouldPause = isFirstStep || _pauseOnNextStep;
+
+            if (!shouldPause)
+            {
+                Trace.Info($"Step starting (not pausing): {step.DisplayName}");
+                return;
+            }
+
             var reason = isFirstStep ? StopReason.Entry : StopReason.Step;
             var description = isFirstStep
                 ? $"Stopped at job entry: {step.DisplayName}"
@@ -531,10 +582,19 @@ namespace GitHub.Runner.Worker.Dap
                 return;
             }
 
-            Trace.Info($"Step completed: {step.DisplayName}, result: {step.ExecutionContext?.Result}");
+            var result = step.ExecutionContext?.Result;
+            Trace.Info($"Step completed: {step.DisplayName}, result: {result}");
 
-            // The step context will be available for inspection
-            // Future: could pause here if "pause after step" is enabled
+            // Add to completed steps list
+            _completedSteps.Add(new CompletedStepInfo
+            {
+                DisplayName = step.DisplayName,
+                Result = result,
+                FrameId = _nextCompletedFrameId++
+            });
+
+            // Clear current step reference since it's done
+            // (will be set again when next step starts)
         }
 
         public void OnJobCompleted()
@@ -559,7 +619,7 @@ namespace GitHub.Runner.Worker.Dap
             });
 
             // Send exited event
-            var exitCode = _jobContext?.Result == GitHub.DistributedTask.WebApi.TaskResult.Succeeded ? 0 : 1;
+            var exitCode = _jobContext?.Result == TaskResult.Succeeded ? 0 : 1;
             _server?.SendEvent(new Event
             {
                 EventType = "exited",
@@ -605,6 +665,22 @@ namespace GitHub.Runner.Worker.Dap
                     }
                 });
             }
+        }
+
+        /// <summary>
+        /// Gets the execution context for a given frame ID.
+        /// Currently only supports the current frame (completed steps don't have saved contexts).
+        /// </summary>
+        private IExecutionContext GetExecutionContextForFrame(int frameId)
+        {
+            if (frameId == CurrentFrameId)
+            {
+                return _currentStep?.ExecutionContext ?? _jobContext;
+            }
+
+            // For completed steps, we would need to save their execution contexts
+            // For now, return null (variables won't be available for completed steps)
+            return null;
         }
 
         #endregion
