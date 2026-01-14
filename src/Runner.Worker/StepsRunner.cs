@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +10,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Dap;
 using GitHub.Runner.Worker.Expressions;
 
 namespace GitHub.Runner.Worker
@@ -50,6 +51,12 @@ namespace GitHub.Runner.Worker
             jobContext.JobContext.Status = (jobContext.Result ?? TaskResult.Succeeded).ToActionResult();
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             bool checkPostJobActions = false;
+
+            // Get debug session for DAP debugging support
+            // The session's IsActive property determines if debugging is actually enabled
+            var debugSession = HostContext.GetService<IDapDebugSession>();
+            bool isFirstStep = true;
+
             while (jobContext.JobSteps.Count > 0 || !checkPostJobActions)
             {
                 if (jobContext.JobSteps.Count == 0 && !checkPostJobActions)
@@ -181,6 +188,14 @@ namespace GitHub.Runner.Worker
                             }
                         }
 
+                        // Pause for DAP debugger BEFORE step execution
+                        // This happens after expression values are set up so the debugger can inspect variables
+                        if (debugSession?.IsActive == true)
+                        {
+                            await debugSession.OnStepStartingAsync(step, jobContext, isFirstStep);
+                            isFirstStep = false;
+                        }
+
                         // Evaluate condition
                         step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
                         var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
@@ -253,8 +268,17 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"No need for updating job result with current step result '{step.ExecutionContext.Result}'.");
                 }
 
+                // Notify DAP debugger AFTER step execution
+                if (debugSession?.IsActive == true)
+                {
+                    debugSession.OnStepCompleted(step);
+                }
+
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
             }
+
+            // Notify DAP debugger that the job has completed
+            debugSession?.OnJobCompleted();
         }
 
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)

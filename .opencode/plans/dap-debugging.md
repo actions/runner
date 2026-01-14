@@ -8,7 +8,7 @@
 
 - [x] **Phase 1:** DAP Protocol Infrastructure (DapMessages.cs, DapServer.cs, basic DapDebugSession.cs)
 - [x] **Phase 2:** Debug Session Logic (DapVariableProvider.cs, variable inspection, step history tracking)
-- [ ] **Phase 3:** StepsRunner Integration (pause hooks before/after step execution)
+- [x] **Phase 3:** StepsRunner Integration (pause hooks before/after step execution)
 - [ ] **Phase 4:** Expression Evaluation & Shell (REPL)
 - [ ] **Phase 5:** Startup Integration (JobRunner.cs modifications)
 
