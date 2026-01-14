@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,6 +13,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Dap;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using Sdk.RSWebApi.Contracts;
@@ -112,6 +113,7 @@ namespace GitHub.Runner.Worker
 
             IExecutionContext jobContext = null;
             CancellationTokenRegistration? runnerShutdownRegistration = null;
+            IDapServer dapServer = null;
             try
             {
                 // Create the job execution context.
@@ -159,6 +161,47 @@ namespace GitHub.Runner.Worker
                 if (jobContext.Global.WriteDebug)
                 {
                     jobContext.SetRunnerContext("debug", "1");
+
+                    // Start DAP server for interactive debugging
+                    // This allows debugging workflow jobs with DAP-compatible editors (nvim-dap, VS Code, etc.)
+                    try
+                    {
+                        var port = 4711;
+                        var portEnv = Environment.GetEnvironmentVariable("ACTIONS_DAP_PORT");
+                        if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort))
+                        {
+                            port = customPort;
+                        }
+
+                        dapServer = HostContext.GetService<IDapServer>();
+                        var debugSession = HostContext.GetService<IDapDebugSession>();
+
+                        // Wire up the server and session
+                        dapServer.SetSession(debugSession);
+                        debugSession.SetDapServer(dapServer);
+
+                        await dapServer.StartAsync(port, jobRequestCancellationToken);
+                        Trace.Info($"DAP server listening on port {port}");
+                        jobContext.Output($"DAP debugger waiting for connection on port {port}...");
+                        jobContext.Output($"Connect your DAP client (nvim-dap, VS Code, etc.) to attach to this job.");
+
+                        // Block until debugger connects
+                        await dapServer.WaitForConnectionAsync(jobRequestCancellationToken);
+                        Trace.Info("DAP client connected, continuing job execution");
+                        jobContext.Output("Debugger connected. Job execution will pause before each step.");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Job was cancelled before debugger connected
+                        Trace.Info("Job cancelled while waiting for DAP client connection");
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail the job if DAP server fails to start
+                        Trace.Warning($"Failed to start DAP server: {ex.Message}");
+                        jobContext.Warning($"DAP debugging unavailable: {ex.Message}");
+                        dapServer = null;
+                    }
                 }
 
                 jobContext.SetRunnerContext("os", VarUtil.OS);
@@ -257,6 +300,20 @@ namespace GitHub.Runner.Worker
                 {
                     runnerShutdownRegistration.Value.Dispose();
                     runnerShutdownRegistration = null;
+                }
+
+                // Stop DAP server if it was started
+                if (dapServer != null)
+                {
+                    try
+                    {
+                        Trace.Info("Stopping DAP server");
+                        await dapServer.StopAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning($"Error stopping DAP server: {ex.Message}");
+                    }
                 }
 
                 await ShutdownQueue(throwOnFailure: false);
