@@ -680,14 +680,15 @@ namespace GitHub.Runner.Worker.Dap
                 if (!string.IsNullOrEmpty(args.Data))
                 {
                     output.AppendLine(args.Data);
-                    // Stream output to the debugger in real-time
+                    // Stream output to the debugger in real-time (masked)
+                    var maskedData = HostContext.SecretMasker.MaskSecrets(args.Data);
                     _server?.SendEvent(new Event
                     {
                         EventType = "output",
                         Body = new OutputEventBody
                         {
                             Category = "stdout",
-                            Output = args.Data + "\n"
+                            Output = maskedData + "\n"
                         }
                     });
                 }
@@ -698,14 +699,15 @@ namespace GitHub.Runner.Worker.Dap
                 if (!string.IsNullOrEmpty(args.Data))
                 {
                     errorOutput.AppendLine(args.Data);
-                    // Stream error output to the debugger
+                    // Stream error output to the debugger (masked)
+                    var maskedData = HostContext.SecretMasker.MaskSecrets(args.Data);
                     _server?.SendEvent(new Event
                     {
                         EventType = "output",
                         Body = new OutputEventBody
                         {
                             Category = "stderr",
-                            Output = args.Data + "\n"
+                            Output = maskedData + "\n"
                         }
                     });
                 }
@@ -744,29 +746,10 @@ namespace GitHub.Runner.Worker.Dap
                 };
             }
 
-            // Combine stdout and stderr
-            var result = output.ToString();
-            if (errorOutput.Length > 0)
-            {
-                if (result.Length > 0)
-                {
-                    result += "\n--- stderr ---\n";
-                }
-                result += errorOutput.ToString();
-            }
-
-            // Add exit code if non-zero
-            if (exitCode != 0)
-            {
-                result += $"\n(exit code: {exitCode})";
-            }
-
-            // Mask secrets in the output
-            result = HostContext.SecretMasker.MaskSecrets(result);
-
+            // Return only exit code summary - output was already streamed to the debugger
             return new EvaluateResponseBody
             {
-                Result = result.TrimEnd('\r', '\n'),
+                Result = $"(exit code: {exitCode})",
                 Type = exitCode == 0 ? "string" : "error",
                 VariablesReference = 0
             };
