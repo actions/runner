@@ -557,6 +557,39 @@ function handleTerminatedEvent() {
 }
 
 /**
+ * Load current debug state (used when page loads while already paused)
+ */
+async function loadCurrentDebugState() {
+  if (!debuggerPane) return;
+
+  try {
+    const stackTrace = await sendDapRequest('stackTrace', { threadId: 1 });
+    if (stackTrace.stackFrames && stackTrace.stackFrames.length > 0) {
+      const currentFrame = stackTrace.stackFrames[0];
+      currentFrameId = currentFrame.id;
+
+      // Move pane to current step
+      const stepName = currentFrame.name;
+      const stepElement = findStepByName(stepName);
+      if (stepElement) {
+        moveDebuggerPane(stepElement, stepName);
+      }
+
+      // Update step counter
+      const counter = debuggerPane.querySelector('.dap-step-counter');
+      if (counter) {
+        counter.textContent = `Step ${currentFrame.id + 1} of ${stackTrace.stackFrames.length}`;
+      }
+
+      // Load scopes
+      await loadScopes(currentFrame.id);
+    }
+  } catch (error) {
+    console.error('[Content] Failed to load current debug state:', error);
+  }
+}
+
+/**
  * Handle status change from background
  */
 function handleStatusChange(status) {
@@ -703,9 +736,10 @@ function init() {
   injectDebugButton();
 
   // Check current connection status
-  chrome.runtime.sendMessage({ type: 'get-status' }, (response) => {
+  chrome.runtime.sendMessage({ type: 'get-status' }, async (response) => {
     if (response && response.status) {
       handleStatusChange(response.status);
+
       // If already connected/paused, auto-show the debugger pane
       if (response.status === 'paused' || response.status === 'connected') {
         const pane = document.querySelector('.dap-debugger-pane');
@@ -713,6 +747,11 @@ function init() {
           injectDebuggerPane();
           const btn = document.querySelector('.dap-debug-btn');
           if (btn) btn.classList.add('selected');
+        }
+
+        // If already paused, load the current debug state
+        if (response.status === 'paused') {
+          await loadCurrentDebugState();
         }
       }
     }
