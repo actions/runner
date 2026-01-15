@@ -510,11 +510,20 @@ namespace GitHub.Runner.Worker.Dap
 
             try
             {
-                // Check if this is a REPL/shell command (context: "repl") or starts with shell prefix
-                if (evalContext == "repl" || expression.StartsWith("!") || expression.StartsWith("$"))
+                // GitHub Actions expressions start with "${{" - always evaluate as expressions
+                if (expression.StartsWith("${{"))
+                {
+                    var result = EvaluateExpression(expression, executionContext);
+                    return CreateSuccessResponse(result);
+                }
+
+                // Check if this is a REPL/shell command:
+                // - context is "repl" (from Debug Console pane)
+                // - expression starts with "!" (explicit shell prefix for Watch pane)
+                if (evalContext == "repl" || expression.StartsWith("!"))
                 {
                     // Shell execution mode
-                    var command = expression.TrimStart('!', '$').Trim();
+                    var command = expression.TrimStart('!').Trim();
                     if (string.IsNullOrEmpty(command))
                     {
                         return CreateSuccessResponse(new EvaluateResponseBody
@@ -530,7 +539,7 @@ namespace GitHub.Runner.Worker.Dap
                 }
                 else
                 {
-                    // Expression evaluation mode
+                    // Expression evaluation mode (Watch pane, hover, etc.)
                     var result = EvaluateExpression(expression, executionContext);
                     return CreateSuccessResponse(result);
                 }
