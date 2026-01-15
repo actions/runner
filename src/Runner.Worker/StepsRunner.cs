@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
@@ -56,6 +57,7 @@ namespace GitHub.Runner.Worker
             // The session's IsActive property determines if debugging is actually enabled
             var debugSession = HostContext.GetService<IDapDebugSession>();
             bool isFirstStep = true;
+            int stepIndex = 0; // Track step index for checkpoints
 
             while (jobContext.JobSteps.Count > 0 || !checkPostJobActions)
             {
@@ -71,6 +73,9 @@ namespace GitHub.Runner.Worker
                 }
 
                 var step = jobContext.JobSteps.Dequeue();
+
+                // Capture remaining steps for potential checkpoint (before we modify the queue)
+                var remainingSteps = jobContext.JobSteps.ToList();
 
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
@@ -192,8 +197,52 @@ namespace GitHub.Runner.Worker
                         // This happens after expression values are set up so the debugger can inspect variables
                         if (debugSession?.IsActive == true)
                         {
+                            // Store step info for checkpoint creation later
+                            debugSession.SetPendingStepInfo(step, jobContext, stepIndex, remainingSteps);
+
+                            // Pause and wait for user command (next/continue/stepBack/reverseContinue)
                             await debugSession.OnStepStartingAsync(step, jobContext, isFirstStep);
                             isFirstStep = false;
+
+                            // Check if user requested to step back
+                            if (debugSession.HasPendingRestore)
+                            {
+                                var checkpoint = debugSession.ConsumeRestoredCheckpoint();
+                                if (checkpoint != null)
+                                {
+                                    // Restore the checkpoint state using the correct checkpoint index
+                                    debugSession.RestoreCheckpoint(checkpoint.CheckpointIndex, jobContext);
+
+                                    // Re-queue the steps from checkpoint
+                                    while (jobContext.JobSteps.Count > 0)
+                                    {
+                                        jobContext.JobSteps.Dequeue();
+                                    }
+
+                                    // Queue the checkpoint's step and remaining steps
+                                    jobContext.JobSteps.Enqueue(checkpoint.CurrentStep);
+                                    foreach (var remainingStep in checkpoint.RemainingSteps)
+                                    {
+                                        jobContext.JobSteps.Enqueue(remainingStep);
+                                    }
+
+                                    // Reset step index to checkpoint's index
+                                    stepIndex = checkpoint.StepIndex;
+
+                                    // Clear pending step info since we're not executing this step
+                                    debugSession.ClearPendingStepInfo();
+
+                                    // Skip to next iteration - will process restored step
+                                    continue;
+                                }
+                            }
+
+                            // User pressed next/continue - create checkpoint NOW
+                            // This captures any REPL modifications made while paused
+                            if (debugSession.ShouldCreateCheckpoint())
+                            {
+                                debugSession.CreateCheckpointForPendingStep(jobContext);
+                            }
                         }
 
                         // Evaluate condition
@@ -253,6 +302,9 @@ namespace GitHub.Runner.Worker
                             jobCancelRegister?.Dispose();
                             jobCancelRegister = null;
                         }
+
+                        // Clear pending step info after step completes
+                        debugSession?.ClearPendingStepInfo();
                     }
                 }
 
@@ -273,6 +325,9 @@ namespace GitHub.Runner.Worker
                 {
                     debugSession.OnStepCompleted(step);
                 }
+
+                // Increment step index for checkpoint tracking
+                stepIndex++;
 
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
             }

@@ -76,7 +76,17 @@ namespace GitHub.Runner.Worker.Dap
         /// <summary>
         /// Disconnect from the debug session.
         /// </summary>
-        Disconnect
+        Disconnect,
+
+        /// <summary>
+        /// Step back to the previous checkpoint.
+        /// </summary>
+        StepBack,
+
+        /// <summary>
+        /// Reverse continue to the first checkpoint.
+        /// </summary>
+        ReverseContinue
     }
 
     /// <summary>
@@ -119,6 +129,16 @@ namespace GitHub.Runner.Worker.Dap
         DapSessionState State { get; }
 
         /// <summary>
+        /// Gets the number of checkpoints available for step-back.
+        /// </summary>
+        int CheckpointCount { get; }
+
+        /// <summary>
+        /// Gets whether a checkpoint restore is pending.
+        /// </summary>
+        bool HasPendingRestore { get; }
+
+        /// <summary>
         /// Sets the DAP server for sending events.
         /// </summary>
         /// <param name="server">The DAP server</param>
@@ -151,6 +171,48 @@ namespace GitHub.Runner.Worker.Dap
         /// Notifies the session that the job has completed.
         /// </summary>
         void OnJobCompleted();
+
+        /// <summary>
+        /// Stores step info for potential checkpoint creation.
+        /// Called at the start of OnStepStartingAsync, before pausing.
+        /// </summary>
+        /// <param name="step">The step about to execute</param>
+        /// <param name="jobContext">The job execution context</param>
+        /// <param name="stepIndex">The zero-based index of the step</param>
+        /// <param name="remainingSteps">Steps remaining in the queue after this step</param>
+        void SetPendingStepInfo(IStep step, IExecutionContext jobContext, int stepIndex, List<IStep> remainingSteps);
+
+        /// <summary>
+        /// Clears pending step info after step completes or is skipped.
+        /// </summary>
+        void ClearPendingStepInfo();
+
+        /// <summary>
+        /// Checks and consumes the flag indicating a checkpoint should be created.
+        /// Called by StepsRunner after WaitForCommandAsync returns.
+        /// </summary>
+        /// <returns>True if a checkpoint should be created</returns>
+        bool ShouldCreateCheckpoint();
+
+        /// <summary>
+        /// Creates a checkpoint for the pending step, capturing current state.
+        /// Called when user issues next/continue command, after any REPL modifications.
+        /// </summary>
+        /// <param name="jobContext">The job execution context</param>
+        void CreateCheckpointForPendingStep(IExecutionContext jobContext);
+
+        /// <summary>
+        /// Gets and clears the checkpoint that was just restored (for StepsRunner to use).
+        /// </summary>
+        /// <returns>The restored checkpoint, or null if none</returns>
+        StepCheckpoint ConsumeRestoredCheckpoint();
+
+        /// <summary>
+        /// Restores job state to a previous checkpoint.
+        /// </summary>
+        /// <param name="checkpointIndex">The index of the checkpoint to restore</param>
+        /// <param name="jobContext">The job execution context</param>
+        void RestoreCheckpoint(int checkpointIndex, IExecutionContext jobContext);
     }
 
     /// <summary>
@@ -190,9 +252,29 @@ namespace GitHub.Runner.Worker.Dap
         // Variable provider for converting contexts to DAP variables
         private DapVariableProvider _variableProvider;
 
+        // Checkpoint storage for step-back (time-travel) debugging
+        private readonly List<StepCheckpoint> _checkpoints = new List<StepCheckpoint>();
+        private const int MaxCheckpoints = 50;
+
+        // Track pending step info for checkpoint creation (set during OnStepStartingAsync)
+        private IStep _pendingStep;
+        private List<IStep> _pendingRemainingSteps;
+        private int _pendingStepIndex;
+
+        // Flag to signal checkpoint creation when user continues
+        private bool _shouldCreateCheckpoint = false;
+
+        // Signal pending restoration to StepsRunner
+        private int? _pendingRestoreCheckpoint = null;
+        private StepCheckpoint _restoredCheckpoint = null;
+
         public bool IsActive => _state == DapSessionState.Ready || _state == DapSessionState.Paused || _state == DapSessionState.Running;
 
         public DapSessionState State => _state;
+
+        public int CheckpointCount => _checkpoints.Count;
+
+        public bool HasPendingRestore => _pendingRestoreCheckpoint.HasValue;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -229,6 +311,8 @@ namespace GitHub.Runner.Worker.Dap
                     "evaluate" => await HandleEvaluateAsync(request),
                     "setBreakpoints" => HandleSetBreakpoints(request),
                     "setExceptionBreakpoints" => HandleSetExceptionBreakpoints(request),
+                    "stepBack" => HandleStepBack(request),
+                    "reverseContinue" => HandleReverseContinue(request),
                     _ => CreateErrorResponse($"Unknown command: {request.Command}")
                 };
             }
@@ -259,8 +343,9 @@ namespace GitHub.Runner.Worker.Dap
                 SupportsEvaluateForHovers = true,
                 SupportTerminateDebuggee = true,
                 SupportsTerminateRequest = true,
+                // Step back (time-travel) debugging is supported
+                SupportsStepBack = true,
                 // We don't support these features (yet)
-                SupportsStepBack = false,
                 SupportsSetVariable = false,
                 SupportsRestartFrame = false,
                 SupportsGotoTargetsRequest = false,
@@ -453,6 +538,7 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     _state = DapSessionState.Running;
                     _pauseOnNextStep = false; // Don't pause on next step
+                    _shouldCreateCheckpoint = true; // Signal to create checkpoint before step executes
                     _commandTcs?.TrySetResult(DapCommand.Continue);
                 }
             }
@@ -473,6 +559,7 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     _state = DapSessionState.Running;
                     _pauseOnNextStep = true; // Pause before next step
+                    _shouldCreateCheckpoint = true; // Signal to create checkpoint before step executes
                     _commandTcs?.TrySetResult(DapCommand.Next);
                 }
             }
@@ -898,6 +985,60 @@ namespace GitHub.Runner.Worker.Dap
             });
         }
 
+        private Response HandleStepBack(Request request)
+        {
+            Trace.Info("StepBack command received");
+
+            if (_checkpoints.Count == 0)
+            {
+                return CreateErrorResponse("No checkpoints available. Cannot step back before any steps have executed.");
+            }
+
+            lock (_stateLock)
+            {
+                if (_state != DapSessionState.Paused)
+                {
+                    return CreateErrorResponse("Can only step back when paused");
+                }
+
+                // Step back to the most recent checkpoint
+                // (which represents the state before the last executed step)
+                int targetCheckpoint = _checkpoints.Count - 1;
+                _pendingRestoreCheckpoint = targetCheckpoint;
+                _state = DapSessionState.Running;
+                _pauseOnNextStep = true; // Pause immediately after restore
+                _commandTcs?.TrySetResult(DapCommand.StepBack);
+            }
+
+            return CreateSuccessResponse(null);
+        }
+
+        private Response HandleReverseContinue(Request request)
+        {
+            Trace.Info("ReverseContinue command received");
+
+            if (_checkpoints.Count == 0)
+            {
+                return CreateErrorResponse("No checkpoints available. Cannot reverse continue before any steps have executed.");
+            }
+
+            lock (_stateLock)
+            {
+                if (_state != DapSessionState.Paused)
+                {
+                    return CreateErrorResponse("Can only reverse continue when paused");
+                }
+
+                // Go back to the first checkpoint (beginning of job)
+                _pendingRestoreCheckpoint = 0;
+                _state = DapSessionState.Running;
+                _pauseOnNextStep = true;
+                _commandTcs?.TrySetResult(DapCommand.ReverseContinue);
+            }
+
+            return CreateSuccessResponse(null);
+        }
+
         #endregion
 
         #region Step Coordination (called by StepsRunner)
@@ -1054,6 +1195,314 @@ namespace GitHub.Runner.Worker.Dap
             // For completed steps, we would need to save their execution contexts
             // For now, return null (variables won't be available for completed steps)
             return null;
+        }
+
+        #endregion
+
+        #region Checkpoint Methods (Time-Travel Debugging)
+
+        /// <summary>
+        /// Stores step info for potential checkpoint creation.
+        /// Called at the start of step processing, before pausing.
+        /// </summary>
+        public void SetPendingStepInfo(IStep step, IExecutionContext jobContext, int stepIndex, List<IStep> remainingSteps)
+        {
+            _pendingStep = step;
+            _pendingStepIndex = stepIndex;
+            _pendingRemainingSteps = remainingSteps;
+            Trace.Info($"Pending step info set: '{step.DisplayName}' (index {stepIndex}, {remainingSteps.Count} remaining)");
+        }
+
+        /// <summary>
+        /// Clears pending step info after step completes or is skipped.
+        /// </summary>
+        public void ClearPendingStepInfo()
+        {
+            _pendingStep = null;
+            _pendingRemainingSteps = null;
+            _pendingStepIndex = 0;
+        }
+
+        /// <summary>
+        /// Checks and consumes the flag indicating a checkpoint should be created.
+        /// Called by StepsRunner after WaitForCommandAsync returns.
+        /// </summary>
+        public bool ShouldCreateCheckpoint()
+        {
+            var should = _shouldCreateCheckpoint;
+            _shouldCreateCheckpoint = false;
+            return should;
+        }
+
+        /// <summary>
+        /// Called when user issues next/continue command.
+        /// Creates checkpoint capturing current state (including any REPL modifications).
+        /// </summary>
+        public void CreateCheckpointForPendingStep(IExecutionContext jobContext)
+        {
+            if (_pendingStep == null)
+            {
+                Trace.Warning("CreateCheckpointForPendingStep called but no pending step");
+                return;
+            }
+
+            // Enforce maximum checkpoint limit
+            if (_checkpoints.Count >= MaxCheckpoints)
+            {
+                _checkpoints.RemoveAt(0); // Remove oldest
+                Trace.Info($"Removed oldest checkpoint (exceeded max {MaxCheckpoints})");
+            }
+
+            var checkpoint = new StepCheckpoint
+            {
+                StepIndex = _pendingStepIndex,
+                StepDisplayName = _pendingStep.DisplayName,
+                CreatedAt = DateTime.UtcNow,
+                CurrentStep = _pendingStep,
+                RemainingSteps = new List<IStep>(_pendingRemainingSteps),
+
+                // Deep copy environment variables - captures any REPL modifications
+                EnvironmentVariables = new Dictionary<string, string>(
+                    jobContext.Global.EnvironmentVariables,
+                    StringComparer.OrdinalIgnoreCase),
+
+                // Deep copy env context
+                EnvContextData = CopyEnvContextData(jobContext),
+
+                // Copy prepend path
+                PrependPath = new List<string>(jobContext.Global.PrependPath),
+
+                // Copy job state
+                JobResult = jobContext.Result,
+                JobStatus = jobContext.JobContext.Status,
+
+                // Snapshot steps context
+                StepsSnapshot = SnapshotStepsContext(jobContext.Global.StepsContext, jobContext.ScopeName)
+            };
+
+            _checkpoints.Add(checkpoint);
+            Trace.Info($"Created checkpoint [{_checkpoints.Count - 1}] for step '{_pendingStep.DisplayName}' " +
+                       $"(env vars: {checkpoint.EnvironmentVariables.Count}, " +
+                       $"prepend paths: {checkpoint.PrependPath.Count})");
+
+            // Send notification to debugger
+            _server?.SendEvent(new Event
+            {
+                EventType = "output",
+                Body = new OutputEventBody
+                {
+                    Category = "console",
+                    Output = $"Checkpoint [{_checkpoints.Count - 1}] created for step '{_pendingStep.DisplayName}'\n"
+                }
+            });
+        }
+
+        /// <summary>
+        /// Gets and clears the checkpoint that should be restored (for StepsRunner to use).
+        /// Returns the checkpoint from the pending restore index if set.
+        /// The returned checkpoint's CheckpointIndex property is set for use with RestoreCheckpoint().
+        /// </summary>
+        public StepCheckpoint ConsumeRestoredCheckpoint()
+        {
+            // If there's a pending restore, get the checkpoint from the index
+            // (This is the correct checkpoint to restore to)
+            if (_pendingRestoreCheckpoint.HasValue)
+            {
+                var checkpointIndex = _pendingRestoreCheckpoint.Value;
+                if (checkpointIndex >= 0 && checkpointIndex < _checkpoints.Count)
+                {
+                    var checkpoint = _checkpoints[checkpointIndex];
+                    // Ensure the checkpoint knows its own index (for RestoreCheckpoint call)
+                    checkpoint.CheckpointIndex = checkpointIndex;
+                    // Clear the pending state - the caller will handle restoration
+                    _pendingRestoreCheckpoint = null;
+                    _restoredCheckpoint = null;
+                    return checkpoint;
+                }
+            }
+
+            // Fallback to already-restored checkpoint (shouldn't normally be used)
+            var restoredCheckpoint = _restoredCheckpoint;
+            _restoredCheckpoint = null;
+            _pendingRestoreCheckpoint = null;
+            return restoredCheckpoint;
+        }
+
+        /// <summary>
+        /// Restores job state to a previous checkpoint.
+        /// </summary>
+        public void RestoreCheckpoint(int checkpointIndex, IExecutionContext jobContext)
+        {
+            if (checkpointIndex < 0 || checkpointIndex >= _checkpoints.Count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(checkpointIndex),
+                    $"Checkpoint index {checkpointIndex} out of range (0-{_checkpoints.Count - 1})");
+            }
+
+            var checkpoint = _checkpoints[checkpointIndex];
+            Trace.Info($"Restoring checkpoint [{checkpointIndex}] for step '{checkpoint.StepDisplayName}'");
+
+            // Restore environment variables
+            jobContext.Global.EnvironmentVariables.Clear();
+            foreach (var kvp in checkpoint.EnvironmentVariables)
+            {
+                jobContext.Global.EnvironmentVariables[kvp.Key] = kvp.Value;
+            }
+
+            // Restore env context
+            RestoreEnvContext(jobContext, checkpoint.EnvContextData);
+
+            // Restore prepend path
+            jobContext.Global.PrependPath.Clear();
+            jobContext.Global.PrependPath.AddRange(checkpoint.PrependPath);
+
+            // Restore job result
+            jobContext.Result = checkpoint.JobResult;
+            jobContext.JobContext.Status = checkpoint.JobStatus;
+
+            // Note: StepsContext restoration is complex and requires internal access
+            // For now, we just log this limitation
+            Trace.Info($"Steps context restoration: {checkpoint.StepsSnapshot.Count} steps in snapshot (partial restoration)");
+
+            // Clear checkpoints after this one (they're now invalid)
+            if (checkpointIndex + 1 < _checkpoints.Count)
+            {
+                var removeCount = _checkpoints.Count - checkpointIndex - 1;
+                _checkpoints.RemoveRange(checkpointIndex + 1, removeCount);
+                Trace.Info($"Removed {removeCount} invalidated checkpoints");
+            }
+
+            // Clear completed steps list for frames after this checkpoint
+            while (_completedSteps.Count > checkpointIndex)
+            {
+                _completedSteps.RemoveAt(_completedSteps.Count - 1);
+            }
+
+            // Store restored checkpoint for StepsRunner to consume
+            _restoredCheckpoint = checkpoint;
+
+            // Send notification to debugger
+            _server?.SendEvent(new Event
+            {
+                EventType = "output",
+                Body = new OutputEventBody
+                {
+                    Category = "console",
+                    Output = $"Restored to checkpoint [{checkpointIndex}] before step '{checkpoint.StepDisplayName}'\n" +
+                             $"Note: Filesystem changes were NOT reverted\n"
+                }
+            });
+
+            Trace.Info($"Checkpoint restored. {_checkpoints.Count} checkpoints remain.");
+        }
+
+        private Dictionary<string, string> CopyEnvContextData(IExecutionContext context)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (context.ExpressionValues.TryGetValue("env", out var envData))
+            {
+                if (envData is DictionaryContextData dict)
+                {
+                    foreach (var kvp in dict)
+                    {
+                        if (kvp.Value is StringContextData strData)
+                        {
+                            result[kvp.Key] = strData.Value;
+                        }
+                    }
+                }
+                else if (envData is CaseSensitiveDictionaryContextData csDict)
+                {
+                    foreach (var kvp in csDict)
+                    {
+                        if (kvp.Value is StringContextData strData)
+                        {
+                            result[kvp.Key] = strData.Value;
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private void RestoreEnvContext(IExecutionContext context, Dictionary<string, string> envData)
+        {
+            // Create a new env context with restored data and replace the old one
+            // Since DictionaryContextData doesn't have a Clear method, we replace the entire object
+#if OS_WINDOWS
+            var newEnvContext = new DictionaryContextData();
+#else
+            var newEnvContext = new CaseSensitiveDictionaryContextData();
+#endif
+            foreach (var kvp in envData)
+            {
+                newEnvContext[kvp.Key] = new StringContextData(kvp.Value);
+            }
+
+            context.ExpressionValues["env"] = newEnvContext;
+        }
+
+        private Dictionary<string, StepStateSnapshot> SnapshotStepsContext(StepsContext stepsContext, string scopeName)
+        {
+            var result = new Dictionary<string, StepStateSnapshot>();
+
+            // Get the scope's context data
+            var scopeData = stepsContext.GetScope(scopeName);
+            if (scopeData != null)
+            {
+                foreach (var stepEntry in scopeData)
+                {
+                    if (stepEntry.Value is DictionaryContextData stepData)
+                    {
+                        var snapshot = new StepStateSnapshot
+                        {
+                            Outputs = new Dictionary<string, string>()
+                        };
+
+                        // Extract outcome
+                        if (stepData.TryGetValue("outcome", out var outcome) && outcome is StringContextData outcomeStr)
+                        {
+                            snapshot.Outcome = ParseActionResult(outcomeStr.Value);
+                        }
+
+                        // Extract conclusion
+                        if (stepData.TryGetValue("conclusion", out var conclusion) && conclusion is StringContextData conclusionStr)
+                        {
+                            snapshot.Conclusion = ParseActionResult(conclusionStr.Value);
+                        }
+
+                        // Extract outputs
+                        if (stepData.TryGetValue("outputs", out var outputs) && outputs is DictionaryContextData outputsDict)
+                        {
+                            foreach (var output in outputsDict)
+                            {
+                                if (output.Value is StringContextData outputStr)
+                                {
+                                    snapshot.Outputs[output.Key] = outputStr.Value;
+                                }
+                            }
+                        }
+
+                        result[$"{scopeName}/{stepEntry.Key}"] = snapshot;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private ActionResult? ParseActionResult(string value)
+        {
+            return value?.ToLower() switch
+            {
+                "success" => ActionResult.Success,
+                "failure" => ActionResult.Failure,
+                "cancelled" => ActionResult.Cancelled,
+                "skipped" => ActionResult.Skipped,
+                _ => null
+            };
         }
 
         #endregion
