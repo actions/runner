@@ -165,8 +165,10 @@ function injectDebuggerPane() {
   pane.className = 'dap-debugger-pane mx-2 mb-2 border rounded-2';
   pane.innerHTML = createDebuggerPaneHTML();
 
-  // Insert at the top of steps container
-  stepsContainer.insertBefore(pane, stepsContainer.firstChild);
+  // Insert before the first real workflow step (skip "Set up job" at index 0)
+  const steps = stepsContainer.querySelectorAll('check-step');
+  const targetStep = steps.length > 1 ? steps[1] : stepsContainer.firstChild;
+  stepsContainer.insertBefore(pane, targetStep);
 
   // Setup event handlers
   setupPaneEventHandlers(pane);
@@ -569,10 +571,21 @@ async function loadCurrentDebugState() {
       currentFrameId = currentFrame.id;
 
       // Move pane to current step
-      const stepName = currentFrame.name;
-      const stepElement = findStepByName(stepName);
+      // Strip result indicator from step name for DOM lookup
+      const rawStepName = stripResultIndicator(currentFrame.name);
+      let stepElement = findStepByName(rawStepName);
+
+      if (!stepElement) {
+        // Fallback: use step index (skip "Set up job" at index 0)
+        const steps = getAllSteps();
+        const adjustedIndex = currentFrame.id; // 1-based, matches after skipping "Set up job"
+        if (adjustedIndex > 0 && adjustedIndex < steps.length) {
+          stepElement = steps[adjustedIndex];
+        }
+      }
+
       if (stepElement) {
-        moveDebuggerPane(stepElement, stepName);
+        moveDebuggerPane(stepElement, rawStepName);
       }
 
       // Update step counter
@@ -609,6 +622,7 @@ function handleStatusChange(status) {
       isConnected = true;
       updateStatus('PAUSED');
       enableControls(true);
+      loadCurrentDebugState();
       break;
 
     case 'running':
