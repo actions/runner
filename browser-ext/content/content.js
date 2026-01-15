@@ -20,6 +20,14 @@ function escapeHtml(text) {
 }
 
 /**
+ * Strip result indicator suffix from step name
+ * e.g., "Run tests [running]" -> "Run tests"
+ */
+function stripResultIndicator(name) {
+  return name.replace(/\s*\[(running|success|failure|skipped|cancelled)\]$/i, '');
+}
+
+/**
  * Send DAP request to background script
  */
 function sendDapRequest(command, args = {}) {
@@ -236,7 +244,9 @@ async function handleReplKeydown(e) {
         frameId: currentFrameId,
         context: command.startsWith('!') ? 'repl' : 'watch',
       });
-      if (response.result) {
+      // Only show result if it's NOT an exit code summary
+      // (shell command output is already streamed via output events)
+      if (response.result && !/^\(exit code: -?\d+\)$/.test(response.result)) {
         appendOutput(response.result, 'result');
       }
     } catch (error) {
@@ -359,15 +369,26 @@ async function loadScopes(frameId) {
   scopesContainer.innerHTML = '<div class="color-fg-muted">Loading...</div>';
 
   try {
+    console.log('[Content] Loading scopes for frame:', frameId);
     const response = await sendDapRequest('scopes', { frameId });
+    console.log('[Content] Scopes response:', response);
 
     scopesContainer.innerHTML = '';
 
+    if (!response.scopes || response.scopes.length === 0) {
+      scopesContainer.innerHTML = '<div class="color-fg-muted">No scopes available</div>';
+      return;
+    }
+
     for (const scope of response.scopes) {
-      const node = createTreeNode(scope.name, scope.variablesReference, true);
+      console.log('[Content] Creating tree node for scope:', scope.name, 'variablesRef:', scope.variablesReference);
+      // Only mark as expandable if variablesReference > 0
+      const isExpandable = scope.variablesReference > 0;
+      const node = createTreeNode(scope.name, scope.variablesReference, isExpandable);
       scopesContainer.appendChild(node);
     }
   } catch (error) {
+    console.error('[Content] Failed to load scopes:', error);
     scopesContainer.innerHTML = `<div class="color-fg-danger">Error: ${escapeHtml(error.message)}</div>`;
   }
 }
@@ -476,24 +497,30 @@ async function handleStoppedEvent(body) {
       const currentFrame = stackTrace.stackFrames[0];
       currentFrameId = currentFrame.id;
 
-      // Find the step element and move pane
-      const stepName = currentFrame.name;
-      const stepElement = findStepByName(stepName);
+      // Strip result indicator from step name for DOM lookup
+      // e.g., "Run tests [running]" -> "Run tests"
+      const rawStepName = stripResultIndicator(currentFrame.name);
+      let stepElement = findStepByName(rawStepName);
+
+      if (!stepElement) {
+        // Fallback: use step index
+        // Note: GitHub Actions UI shows "Set up job" at index 0, which is not a real workflow step
+        // DAP uses 1-based frame IDs, so frame ID 1 maps to UI step index 1 (skipping "Set up job")
+        const steps = getAllSteps();
+        const adjustedIndex = currentFrame.id; // 1-based, happens to match after skipping "Set up job"
+        if (adjustedIndex > 0 && adjustedIndex < steps.length) {
+          stepElement = steps[adjustedIndex];
+        }
+      }
 
       if (stepElement) {
-        moveDebuggerPane(stepElement, stepName);
-      } else {
-        // Try to find by frame id as step index
-        const steps = getAllSteps();
-        if (steps[currentFrame.id]) {
-          moveDebuggerPane(steps[currentFrame.id], stepName);
-        }
+        moveDebuggerPane(stepElement, rawStepName);
       }
 
       // Update step counter
       const counter = debuggerPane?.querySelector('.dap-step-counter');
       if (counter) {
-        counter.textContent = `Step ${currentFrame.id + 1} of ${stackTrace.stackFrames.length}`;
+        counter.textContent = `Step ${currentFrame.id} of ${stackTrace.stackFrames.length}`;
       }
 
       // Load scopes
@@ -600,6 +627,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
+ * Inject debug button into GitHub Actions UI header
+ */
+function injectDebugButton() {
+  const container = document.querySelector('.js-check-run-search');
+  if (!container || container.querySelector('.dap-debug-btn-container')) {
+    return; // Already injected or container not found
+  }
+
+  const buttonContainer = document.createElement('div');
+  buttonContainer.className = 'ml-2 dap-debug-btn-container';
+  buttonContainer.innerHTML = `
+    <button type="button" class="btn btn-sm dap-debug-btn" title="Toggle DAP Debugger">
+      <svg viewBox="0 0 16 16" width="16" height="16" class="octicon mr-1" style="vertical-align: text-bottom;">
+        <path fill="currentColor" d="M4.72.22a.75.75 0 0 1 1.06 0l1 1a.75.75 0 0 1-1.06 1.06l-.22-.22-.22.22a.75.75 0 0 1-1.06-1.06l1-1Z"/>
+        <path fill="currentColor" d="M11.28.22a.75.75 0 0 0-1.06 0l-1 1a.75.75 0 0 0 1.06 1.06l.22-.22.22.22a.75.75 0 0 0 1.06-1.06l-1-1Z"/>
+        <path fill="currentColor" d="M8 4a4 4 0 0 0-4 4v1h1v2.5a2.5 2.5 0 0 0 2.5 2.5h1a2.5 2.5 0 0 0 2.5-2.5V9h1V8a4 4 0 0 0-4-4Z"/>
+        <path fill="currentColor" d="M5 9H3.5a.5.5 0 0 0-.5.5v2a.5.5 0 0 0 .5.5H5V9ZM11 9h1.5a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H11V9Z"/>
+      </svg>
+      Debug
+    </button>
+  `;
+
+  const button = buttonContainer.querySelector('button');
+  button.addEventListener('click', () => {
+    let pane = document.querySelector('.dap-debugger-pane');
+    if (pane) {
+      // Toggle visibility
+      pane.hidden = !pane.hidden;
+      button.classList.toggle('selected', !pane.hidden);
+    } else {
+      // Create and show pane
+      pane = injectDebuggerPane();
+      if (pane) {
+        button.classList.add('selected');
+        // Check connection status after creating pane
+        chrome.runtime.sendMessage({ type: 'get-status' }, (response) => {
+          if (response && response.status) {
+            handleStatusChange(response.status);
+          }
+        });
+      }
+    }
+  });
+
+  // Insert at the beginning of the container
+  container.insertBefore(buttonContainer, container.firstChild);
+  console.log('[Content] Debug button injected');
+}
+
+/**
  * Initialize content script
  */
 function init() {
@@ -614,21 +691,30 @@ function init() {
       const steps = getAllSteps();
       if (steps.length > 0) {
         observer.disconnect();
-        console.log('[Content] Steps found, injecting debugger pane');
-        injectDebuggerPane();
+        console.log('[Content] Steps found, injecting debug button');
+        injectDebugButton();
       }
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return;
   }
 
-  // Inject debugger pane
-  injectDebuggerPane();
+  // Inject debug button in header (user can click to show debugger pane)
+  injectDebugButton();
 
   // Check current connection status
   chrome.runtime.sendMessage({ type: 'get-status' }, (response) => {
     if (response && response.status) {
       handleStatusChange(response.status);
+      // If already connected/paused, auto-show the debugger pane
+      if (response.status === 'paused' || response.status === 'connected') {
+        const pane = document.querySelector('.dap-debugger-pane');
+        if (!pane) {
+          injectDebuggerPane();
+          const btn = document.querySelector('.dap-debug-btn');
+          if (btn) btn.classList.add('selected');
+        }
+      }
     }
   });
 }

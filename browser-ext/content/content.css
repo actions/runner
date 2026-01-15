@@ -305,3 +305,33 @@ html[data-color-mode="light"] .dap-repl-output,
 html[data-color-mode="light"] .dap-repl-input input {
   background-color: #f6f8fa !important;
 }
+
+/* Debug Button in Header */
+.dap-debug-btn-container {
+  display: flex;
+  align-items: center;
+}
+
+.dap-debug-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dap-debug-btn.selected {
+  background-color: var(--bgColor-accent-muted, #388bfd26);
+  border-color: var(--borderColor-accent-emphasis, #388bfd);
+}
+
+.dap-debug-btn:hover:not(:disabled) {
+  background-color: var(--bgColor-neutral-muted, #6e768166);
+}
+
+/* Light mode for debug button */
+[data-color-mode="light"] .dap-debug-btn.selected,
+html[data-color-mode="light"] .dap-debug-btn.selected {
+  background-color: #ddf4ff;
+  border-color: #54aeff;
+}
