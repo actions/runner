@@ -1,0 +1,307 @@
+/**
+ * Content Script Styles
+ * 
+ * Matches GitHub's Primer design system for seamless integration.
+ * Uses CSS custom properties for light/dark mode support.
+ */
+
+/* Debugger Pane Container */
+.dap-debugger-pane {
+  background-color: var(--bgColor-default, #0d1117);
+  border-color: var(--borderColor-default, #30363d) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+}
+
+/* Header */
+.dap-header {
+  background-color: var(--bgColor-muted, #161b22);
+}
+
+.dap-header .octicon {
+  color: var(--fgColor-muted, #8b949e);
+}
+
+.dap-step-info {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status Labels */
+.dap-status-label {
+  flex-shrink: 0;
+}
+
+.Label--attention {
+  background-color: #9e6a03 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.Label--success {
+  background-color: #238636 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.Label--danger {
+  background-color: #da3633 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.Label--secondary {
+  background-color: #30363d !important;
+  color: #8b949e !important;
+  border: none !important;
+}
+
+/* Content Area */
+.dap-content {
+  min-height: 200px;
+  max-height: 400px;
+}
+
+/* Scopes Panel */
+.dap-scopes {
+  border-color: var(--borderColor-default, #30363d) !important;
+  min-width: 150px;
+}
+
+.dap-scope-header {
+  background-color: var(--bgColor-muted, #161b22);
+  font-size: 12px;
+}
+
+.dap-scope-tree {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Tree Nodes */
+.dap-tree-node {
+  padding: 1px 0;
+}
+
+.dap-tree-content {
+  display: flex;
+  align-items: flex-start;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.dap-tree-content:hover {
+  background-color: var(--bgColor-muted, #161b22);
+}
+
+.dap-tree-children {
+  margin-left: 16px;
+  border-left: 1px solid var(--borderColor-muted, #21262d);
+  padding-left: 8px;
+}
+
+.dap-expand-icon {
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  color: var(--fgColor-muted, #8b949e);
+  font-size: 10px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.dap-tree-node .text-bold {
+  color: var(--fgColor-default, #e6edf3);
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.dap-tree-node .color-fg-muted {
+  color: var(--fgColor-muted, #8b949e);
+  word-break: break-word;
+}
+
+/* REPL Console */
+.dap-repl {
+  display: flex;
+  flex-direction: column;
+}
+
+.dap-repl-header {
+  background-color: var(--bgColor-muted, #161b22);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.dap-repl-output {
+  background-color: var(--bgColor-inset, #010409);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 100px;
+}
+
+.dap-output-input {
+  color: var(--fgColor-muted, #8b949e);
+}
+
+.dap-output-result {
+  color: var(--fgColor-default, #e6edf3);
+}
+
+.dap-output-stdout {
+  color: var(--fgColor-default, #e6edf3);
+}
+
+.dap-output-error {
+  color: var(--fgColor-danger, #f85149);
+}
+
+/* REPL Input */
+.dap-repl-input {
+  flex-shrink: 0;
+}
+
+.dap-repl-input input {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  background-color: var(--bgColor-inset, #010409) !important;
+  border-color: var(--borderColor-default, #30363d) !important;
+  color: var(--fgColor-default, #e6edf3) !important;
+  width: 100%;
+}
+
+.dap-repl-input input:focus {
+  border-color: var(--focus-outlineColor, #1f6feb) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.3);
+}
+
+.dap-repl-input input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dap-repl-input input::placeholder {
+  color: var(--fgColor-muted, #8b949e);
+}
+
+/* Control Buttons */
+.dap-controls {
+  background-color: var(--bgColor-muted, #161b22);
+}
+
+.dap-controls button {
+  min-width: 32px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.dap-controls button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dap-controls button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dap-controls button:not(:disabled):hover {
+  background-color: var(--bgColor-accent-muted, #388bfd26);
+}
+
+.dap-step-counter {
+  flex-shrink: 0;
+}
+
+/* Utility Classes (in case GitHub's aren't loaded) */
+.d-flex { display: flex; }
+.flex-column { flex-direction: column; }
+.flex-items-center { align-items: center; }
+.flex-auto { flex: 1 1 auto; }
+
+.p-2 { padding: 8px; }
+.px-2 { padding-left: 8px; padding-right: 8px; }
+.mx-2 { margin-left: 8px; margin-right: 8px; }
+.mb-2 { margin-bottom: 8px; }
+.ml-2 { margin-left: 8px; }
+.ml-3 { margin-left: 16px; }
+.mr-2 { margin-right: 8px; }
+.ml-auto { margin-left: auto; }
+
+.border { border: 1px solid var(--borderColor-default, #30363d); }
+.border-bottom { border-bottom: 1px solid var(--borderColor-default, #30363d); }
+.border-top { border-top: 1px solid var(--borderColor-default, #30363d); }
+.border-right { border-right: 1px solid var(--borderColor-default, #30363d); }
+.rounded-2 { border-radius: 6px; }
+
+.overflow-auto { overflow: auto; }
+.text-bold { font-weight: 600; }
+.text-mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+.text-small { font-size: 12px; }
+
+.color-fg-muted { color: var(--fgColor-muted, #8b949e); }
+.color-fg-danger { color: var(--fgColor-danger, #f85149); }
+.color-fg-default { color: var(--fgColor-default, #e6edf3); }
+
+/* Light mode overrides */
+@media (prefers-color-scheme: light) {
+  .dap-debugger-pane {
+    background-color: var(--bgColor-default, #ffffff);
+    border-color: var(--borderColor-default, #d0d7de) !important;
+  }
+
+  .dap-header,
+  .dap-scope-header,
+  .dap-repl-header,
+  .dap-controls {
+    background-color: var(--bgColor-muted, #f6f8fa);
+  }
+
+  .dap-repl-output,
+  .dap-repl-input input {
+    background-color: var(--bgColor-inset, #f6f8fa) !important;
+  }
+
+  .dap-tree-node .text-bold {
+    color: var(--fgColor-default, #1f2328);
+  }
+
+  .color-fg-muted {
+    color: var(--fgColor-muted, #656d76);
+  }
+}
+
+/* Respect GitHub's color mode data attribute */
+[data-color-mode="light"] .dap-debugger-pane,
+html[data-color-mode="light"] .dap-debugger-pane {
+  background-color: #ffffff;
+  border-color: #d0d7de !important;
+}
+
+[data-color-mode="light"] .dap-header,
+[data-color-mode="light"] .dap-scope-header,
+[data-color-mode="light"] .dap-repl-header,
+[data-color-mode="light"] .dap-controls,
+html[data-color-mode="light"] .dap-header,
+html[data-color-mode="light"] .dap-scope-header,
+html[data-color-mode="light"] .dap-repl-header,
+html[data-color-mode="light"] .dap-controls {
+  background-color: #f6f8fa;
+}
+
+[data-color-mode="light"] .dap-repl-output,
+[data-color-mode="light"] .dap-repl-input input,
+html[data-color-mode="light"] .dap-repl-output,
+html[data-color-mode="light"] .dap-repl-input input {
+  background-color: #f6f8fa !important;
+}

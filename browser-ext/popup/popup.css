@@ -1,0 +1,228 @@
+/**
+ * Popup Styles
+ * 
+ * GitHub-inspired dark theme for the extension popup.
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  background-color: #0d1117;
+  color: #e6edf3;
+}
+
+h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+h3 .icon {
+  flex-shrink: 0;
+}
+
+/* Status Section */
+.status-section {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: #161b22;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.status-disconnected {
+  background-color: #6e7681;
+}
+
+.status-connecting {
+  background-color: #9e6a03;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-connected {
+  background-color: #238636;
+}
+
+.status-paused {
+  background-color: #9e6a03;
+}
+
+.status-running {
+  background-color: #238636;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-error {
+  background-color: #da3633;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+#status-text {
+  font-weight: 500;
+}
+
+/* Config Section */
+.config-section {
+  margin-bottom: 16px;
+}
+
+.config-section label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8b949e;
+}
+
+.config-section input {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 6px;
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 14px;
+}
+
+.config-section input:focus {
+  border-color: #1f6feb;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.3);
+}
+
+.config-section input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.config-hint {
+  font-size: 11px;
+  color: #6e7681;
+  margin-top: 4px;
+}
+
+/* Actions Section */
+.actions-section {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+button {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #238636;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #2ea043;
+}
+
+.btn-secondary {
+  background-color: #21262d;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #30363d;
+}
+
+/* Help Section */
+.help-section {
+  font-size: 12px;
+  color: #8b949e;
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.help-section p {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+.help-section p:first-child {
+  margin-top: 0;
+}
+
+.help-section strong {
+  color: #e6edf3;
+}
+
+.help-section code {
+  display: block;
+  background-color: #0d1117;
+  padding: 8px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  overflow-x: auto;
+  margin: 8px 0;
+  white-space: nowrap;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid #21262d;
+}
+
+.footer a {
+  color: #58a6ff;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}

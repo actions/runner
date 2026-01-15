@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <h3>
+      <svg class="icon" viewBox="0 0 16 16" width="16" height="16">
+        <path fill="currentColor" d="M4.72.22a.75.75 0 0 1 1.06 0l1 1a.75.75 0 0 1-1.06 1.06l-.22-.22-.22.22a.75.75 0 0 1-1.06-1.06l1-1Z"/>
+        <path fill="currentColor" d="M11.28.22a.75.75 0 0 0-1.06 0l-1 1a.75.75 0 0 0 1.06 1.06l.22-.22.22.22a.75.75 0 0 0 1.06-1.06l-1-1Z"/>
+        <path fill="currentColor" d="M8 4a4 4 0 0 0-4 4v1h1v2.5a2.5 2.5 0 0 0 2.5 2.5h1a2.5 2.5 0 0 0 2.5-2.5V9h1V8a4 4 0 0 0-4-4Z"/>
+        <path fill="currentColor" d="M5 9H3.5a.5.5 0 0 0-.5.5v2a.5.5 0 0 0 .5.5H5V9ZM11 9h1.5a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5H11V9Z"/>
+      </svg>
+      Actions DAP Debugger
+    </h3>
+    
+    <div class="status-section">
+      <div class="status-indicator" id="status-indicator"></div>
+      <span id="status-text">Disconnected</span>
+    </div>
+    
+    <div class="config-section">
+      <label>
+        Proxy URL
+        <input type="text" id="proxy-url" value="ws://localhost:4712" 
+               placeholder="ws://localhost:4712 or wss://...">
+      </label>
+      <p class="config-hint">For codespaces, use the forwarded URL (wss://...)</p>
+    </div>
+    
+    <div class="actions-section">
+      <button id="connect-btn" class="btn-primary">Connect</button>
+      <button id="disconnect-btn" class="btn-secondary" disabled>Disconnect</button>
+    </div>
+    
+    <div class="help-section">
+      <p><strong>Quick Start:</strong></p>
+      <p>1. Start the proxy:</p>
+      <code>cd browser-ext/proxy && npm install && node proxy.js</code>
+      <p>2. Re-run your GitHub Actions job with "Enable debug logging"</p>
+      <p>3. Click Connect when the job is waiting for debugger</p>
+    </div>
+    
+    <div class="footer">
+      <a href="https://github.com/actions/runner" target="_blank">Documentation</a>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
