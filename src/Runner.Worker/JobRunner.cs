@@ -114,6 +114,7 @@ namespace GitHub.Runner.Worker
             IExecutionContext jobContext = null;
             CancellationTokenRegistration? runnerShutdownRegistration = null;
             IDapServer dapServer = null;
+            CancellationTokenRegistration? dapCancellationRegistration = null;
             try
             {
                 // Create the job execution context.
@@ -189,6 +190,20 @@ namespace GitHub.Runner.Worker
                         await dapServer.WaitForConnectionAsync(jobRequestCancellationToken);
                         Trace.Info("DAP client connected, continuing job execution");
                         jobContext.Output("Debugger connected. Job execution will pause before each step.");
+
+                        // Register cancellation handler to properly terminate DAP session on job cancellation
+                        try
+                        {
+                            dapCancellationRegistration = jobRequestCancellationToken.Register(() =>
+                            {
+                                Trace.Info("Job cancelled - terminating DAP session");
+                                debugSession.CancelSession();
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Warning($"Failed to register DAP cancellation handler: {ex.Message}");
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -301,6 +316,9 @@ namespace GitHub.Runner.Worker
                     runnerShutdownRegistration.Value.Dispose();
                     runnerShutdownRegistration = null;
                 }
+
+                // Dispose DAP cancellation registration
+                dapCancellationRegistration?.Dispose();
 
                 // Stop DAP server if it was started
                 if (dapServer != null)

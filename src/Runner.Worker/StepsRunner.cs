@@ -201,7 +201,7 @@ namespace GitHub.Runner.Worker
                             debugSession.SetPendingStepInfo(step, jobContext, stepIndex, remainingSteps);
 
                             // Pause and wait for user command (next/continue/stepBack/reverseContinue)
-                            await debugSession.OnStepStartingAsync(step, jobContext, isFirstStep);
+                            await debugSession.OnStepStartingAsync(step, jobContext, isFirstStep, jobContext.CancellationToken);
                             isFirstStep = false;
 
                             // Check if user requested to step back

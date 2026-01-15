@@ -184,8 +184,9 @@ namespace GitHub.Runner.Worker.Dap
         /// <param name="step">The step about to execute</param>
         /// <param name="jobContext">The job execution context</param>
         /// <param name="isFirstStep">Whether this is the first step in the job</param>
+        /// <param name="cancellationToken">Cancellation token for job cancellation</param>
         /// <returns>Task that completes when execution should continue</returns>
-        Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, bool isFirstStep);
+        Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, bool isFirstStep, CancellationToken cancellationToken);
 
         /// <summary>
         /// Called by StepsRunner after a step completes.
@@ -197,6 +198,12 @@ namespace GitHub.Runner.Worker.Dap
         /// Notifies the session that the job has completed.
         /// </summary>
         void OnJobCompleted();
+
+        /// <summary>
+        /// Cancels the debug session externally (e.g., job cancellation).
+        /// Sends terminated event to debugger and releases any blocking waits.
+        /// </summary>
+        void CancelSession();
 
         /// <summary>
         /// Stores step info for potential checkpoint creation.
@@ -296,6 +303,9 @@ namespace GitHub.Runner.Worker.Dap
 
         // Debug logging level (controlled via attach args or REPL command)
         private DebugLogLevel _debugLogLevel = DebugLogLevel.Off;
+
+        // Job cancellation token for REPL commands and blocking waits
+        private CancellationToken _jobCancellationToken;
 
         public bool IsActive => _state == DapSessionState.Ready || _state == DapSessionState.Paused || _state == DapSessionState.Running;
 
@@ -892,7 +902,17 @@ namespace GitHub.Runner.Worker.Dap
                     arguments: string.Format(shellArgs, command),
                     environment: env,
                     requireExitCodeZero: false,
-                    cancellationToken: CancellationToken.None);
+                    cancellationToken: _jobCancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Trace.Info("Shell command cancelled due to job cancellation");
+                return new EvaluateResponseBody
+                {
+                    Result = "(cancelled)",
+                    Type = "error",
+                    VariablesReference = 0
+                };
             }
             catch (Exception ex)
             {
@@ -1156,7 +1176,7 @@ namespace GitHub.Runner.Worker.Dap
 
         #region Step Coordination (called by StepsRunner)
 
-        public async Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, bool isFirstStep)
+        public async Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, bool isFirstStep, CancellationToken cancellationToken)
         {
             if (!IsActive)
             {
@@ -1165,6 +1185,7 @@ namespace GitHub.Runner.Worker.Dap
 
             _currentStep = step;
             _jobContext = jobContext;
+            _jobCancellationToken = cancellationToken; // Store for REPL commands
 
             // Hook up StepsContext debug logging (do this once when we first get jobContext)
             if (jobContext.Global.StepsContext.OnDebugLog == null)
@@ -1209,7 +1230,7 @@ namespace GitHub.Runner.Worker.Dap
             });
 
             // Wait for debugger command
-            await WaitForCommandAsync();
+            await WaitForCommandAsync(cancellationToken);
         }
 
         public void OnStepCompleted(IStep step)
@@ -1285,7 +1306,45 @@ namespace GitHub.Runner.Worker.Dap
             });
         }
 
-        private async Task WaitForCommandAsync()
+        /// <summary>
+        /// Cancels the debug session externally (e.g., job cancellation).
+        /// Sends terminated/exited events to debugger and releases any blocking waits.
+        /// </summary>
+        public void CancelSession()
+        {
+            Trace.Info("CancelSession called - terminating debug session");
+
+            lock (_stateLock)
+            {
+                if (_state == DapSessionState.Terminated)
+                {
+                    Trace.Info("Session already terminated, ignoring CancelSession");
+                    return;
+                }
+                _state = DapSessionState.Terminated;
+            }
+
+            // Send terminated event to debugger so it updates its UI
+            _server?.SendEvent(new Event
+            {
+                EventType = "terminated",
+                Body = new TerminatedEventBody()
+            });
+
+            // Send exited event with cancellation exit code (130 = SIGINT convention)
+            _server?.SendEvent(new Event
+            {
+                EventType = "exited",
+                Body = new ExitedEventBody { ExitCode = 130 }
+            });
+
+            // Release any pending command waits
+            _commandTcs?.TrySetResult(DapCommand.Disconnect);
+
+            Trace.Info("Debug session cancelled");
+        }
+
+        private async Task WaitForCommandAsync(CancellationToken cancellationToken)
         {
             lock (_stateLock)
             {
@@ -1295,30 +1354,39 @@ namespace GitHub.Runner.Worker.Dap
 
             Trace.Info("Waiting for debugger command...");
 
-            var command = await _commandTcs.Task;
-
-            Trace.Info($"Received command: {command}");
-
-            lock (_stateLock)
+            // Register cancellation to release the wait
+            using (cancellationToken.Register(() =>
             {
-                if (_state == DapSessionState.Paused)
-                {
-                    _state = DapSessionState.Running;
-                }
-            }
-
-            // Send continued event
-            if (command == DapCommand.Continue || command == DapCommand.Next)
+                Trace.Info("Job cancellation detected, releasing debugger wait");
+                _commandTcs?.TrySetResult(DapCommand.Disconnect);
+            }))
             {
-                _server?.SendEvent(new Event
+                var command = await _commandTcs.Task;
+
+                Trace.Info($"Received command: {command}");
+
+                lock (_stateLock)
                 {
-                    EventType = "continued",
-                    Body = new ContinuedEventBody
+                    if (_state == DapSessionState.Paused)
                     {
-                        ThreadId = JobThreadId,
-                        AllThreadsContinued = true
+                        _state = DapSessionState.Running;
                     }
-                });
+                }
+
+                // Send continued event (only for normal commands, not cancellation)
+                if (!cancellationToken.IsCancellationRequested &&
+                    (command == DapCommand.Continue || command == DapCommand.Next))
+                {
+                    _server?.SendEvent(new Event
+                    {
+                        EventType = "continued",
+                        Body = new ContinuedEventBody
+                        {
+                            ThreadId = JobThreadId,
+                            AllThreadsContinued = true
+                        }
+                    });
+                }
             }
         }
 
