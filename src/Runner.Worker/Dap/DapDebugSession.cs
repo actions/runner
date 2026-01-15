@@ -90,6 +90,32 @@ namespace GitHub.Runner.Worker.Dap
     }
 
     /// <summary>
+    /// Debug log levels for controlling verbosity of debug output.
+    /// </summary>
+    public enum DebugLogLevel
+    {
+        /// <summary>
+        /// No debug logging.
+        /// </summary>
+        Off = 0,
+
+        /// <summary>
+        /// Errors and critical state changes only.
+        /// </summary>
+        Minimal = 1,
+
+        /// <summary>
+        /// Step lifecycle and checkpoint operations.
+        /// </summary>
+        Normal = 2,
+
+        /// <summary>
+        /// Everything including outputs, expressions, and StepsContext mutations.
+        /// </summary>
+        Verbose = 3
+    }
+
+    /// <summary>
     /// Reasons for stopping/pausing execution.
     /// </summary>
     public static class StopReason
@@ -268,6 +294,9 @@ namespace GitHub.Runner.Worker.Dap
         private int? _pendingRestoreCheckpoint = null;
         private StepCheckpoint _restoredCheckpoint = null;
 
+        // Debug logging level (controlled via attach args or REPL command)
+        private DebugLogLevel _debugLogLevel = DebugLogLevel.Off;
+
         public bool IsActive => _state == DapSessionState.Ready || _state == DapSessionState.Paused || _state == DapSessionState.Running;
 
         public DapSessionState State => _state;
@@ -383,6 +412,34 @@ namespace GitHub.Runner.Worker.Dap
         private Response HandleAttach(Request request)
         {
             Trace.Info("Attach request handled");
+
+            // Parse debug logging from attach args
+            if (request.Arguments != null)
+            {
+                // Check for debugLogging (boolean)
+                var debugLogging = request.Arguments["debugLogging"];
+                if (debugLogging != null && debugLogging.Type == Newtonsoft.Json.Linq.JTokenType.Boolean && (bool)debugLogging)
+                {
+                    _debugLogLevel = DebugLogLevel.Normal;
+                    Trace.Info("Debug logging enabled via attach args (level: normal)");
+                }
+
+                // Check for debugLogLevel (string)
+                var debugLogLevel = request.Arguments["debugLogLevel"];
+                if (debugLogLevel != null && debugLogLevel.Type == Newtonsoft.Json.Linq.JTokenType.String)
+                {
+                    _debugLogLevel = ((string)debugLogLevel)?.ToLower() switch
+                    {
+                        "minimal" => DebugLogLevel.Minimal,
+                        "normal" => DebugLogLevel.Normal,
+                        "verbose" => DebugLogLevel.Verbose,
+                        "off" => DebugLogLevel.Off,
+                        _ => _debugLogLevel
+                    };
+                    Trace.Info($"Debug log level set via attach args: {_debugLogLevel}");
+                }
+            }
+
             return CreateSuccessResponse(null);
         }
 
@@ -587,6 +644,12 @@ namespace GitHub.Runner.Worker.Dap
             var evalContext = args?.Context ?? "hover";
 
             Trace.Info($"Evaluate: '{expression}' (context: {evalContext})");
+
+            // Check for !debug command (works in any context)
+            if (expression.StartsWith("!debug", StringComparison.OrdinalIgnoreCase))
+            {
+                return HandleDebugCommand(expression);
+            }
 
             // Get the current execution context
             var executionContext = _currentStep?.ExecutionContext ?? _jobContext;
@@ -963,6 +1026,56 @@ namespace GitHub.Runner.Worker.Dap
 #endif
         }
 
+        /// <summary>
+        /// Handles the !debug REPL command for controlling debug logging.
+        /// </summary>
+        private Response HandleDebugCommand(string command)
+        {
+            var parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var arg = parts.Length > 1 ? parts[1].ToLower() : "status";
+
+            string result;
+            switch (arg)
+            {
+                case "on":
+                    _debugLogLevel = DebugLogLevel.Normal;
+                    result = "Debug logging enabled (level: normal)";
+                    Trace.Info("Debug logging enabled via REPL command");
+                    break;
+                case "off":
+                    _debugLogLevel = DebugLogLevel.Off;
+                    result = "Debug logging disabled";
+                    Trace.Info("Debug logging disabled via REPL command");
+                    break;
+                case "minimal":
+                    _debugLogLevel = DebugLogLevel.Minimal;
+                    result = "Debug logging set to minimal";
+                    Trace.Info("Debug log level set to minimal via REPL command");
+                    break;
+                case "normal":
+                    _debugLogLevel = DebugLogLevel.Normal;
+                    result = "Debug logging set to normal";
+                    Trace.Info("Debug log level set to normal via REPL command");
+                    break;
+                case "verbose":
+                    _debugLogLevel = DebugLogLevel.Verbose;
+                    result = "Debug logging set to verbose";
+                    Trace.Info("Debug log level set to verbose via REPL command");
+                    break;
+                case "status":
+                default:
+                    result = $"Debug logging: {_debugLogLevel}\n" +
+                             $"Commands: !debug [on|off|minimal|normal|verbose|status]";
+                    break;
+            }
+
+            return CreateSuccessResponse(new EvaluateResponseBody
+            {
+                Result = result,
+                VariablesReference = 0
+            });
+        }
+
         private Response HandleSetBreakpoints(Request request)
         {
             // Stub - breakpoints not implemented in demo
@@ -1053,8 +1166,18 @@ namespace GitHub.Runner.Worker.Dap
             _currentStep = step;
             _jobContext = jobContext;
 
+            // Hook up StepsContext debug logging (do this once when we first get jobContext)
+            if (jobContext.Global.StepsContext.OnDebugLog == null)
+            {
+                jobContext.Global.StepsContext.OnDebugLog = (msg) => DebugLog(msg, DebugLogLevel.Verbose);
+            }
+
             // Reset variable provider state for new step context
             _variableProvider.Reset();
+
+            // Log step starting
+            DebugLog($"[Step] Starting: '{step.DisplayName}' (index={_pendingStepIndex})");
+            DebugLog($"[Step] Checkpoints available: {_checkpoints.Count}");
 
             // Determine if we should pause
             bool shouldPause = isFirstStep || _pauseOnNextStep;
@@ -1098,6 +1221,24 @@ namespace GitHub.Runner.Worker.Dap
 
             var result = step.ExecutionContext?.Result;
             Trace.Info($"Step completed: {step.DisplayName}, result: {result}");
+
+            // Log step completion
+            DebugLog($"[Step] Completed: '{step.DisplayName}', result={result}");
+
+            // Log current steps context state for this step at Normal level
+            if (_debugLogLevel >= DebugLogLevel.Normal)
+            {
+                var stepsScope = step.ExecutionContext?.Global?.StepsContext?.GetScope(step.ExecutionContext.ScopeName);
+                if (stepsScope != null && !string.IsNullOrEmpty(step.ExecutionContext?.ContextName))
+                {
+                    if (stepsScope.TryGetValue(step.ExecutionContext.ContextName, out var stepData) && stepData is DictionaryContextData sd)
+                    {
+                        var outcome = sd.TryGetValue("outcome", out var o) && o is StringContextData os ? os.Value : "null";
+                        var conclusion = sd.TryGetValue("conclusion", out var c) && c is StringContextData cs ? cs.Value : "null";
+                        DebugLog($"[Step] Context state: outcome={outcome}, conclusion={conclusion}");
+                    }
+                }
+            }
 
             // Add to completed steps list
             _completedSteps.Add(new CompletedStepInfo
@@ -1285,6 +1426,17 @@ namespace GitHub.Runner.Worker.Dap
                        $"(env vars: {checkpoint.EnvironmentVariables.Count}, " +
                        $"prepend paths: {checkpoint.PrependPath.Count})");
 
+            // Debug logging for checkpoint creation
+            DebugLog($"[Checkpoint] Created [{_checkpoints.Count - 1}] for step '{_pendingStep.DisplayName}'");
+            if (_debugLogLevel >= DebugLogLevel.Verbose)
+            {
+                DebugLog($"[Checkpoint] Snapshot contains {checkpoint.StepsSnapshot.Count} step(s)", DebugLogLevel.Verbose);
+                foreach (var entry in checkpoint.StepsSnapshot)
+                {
+                    DebugLog($"[Checkpoint]   {entry.Key}: outcome={entry.Value.Outcome}, conclusion={entry.Value.Conclusion}", DebugLogLevel.Verbose);
+                }
+            }
+
             // Send notification to debugger
             _server?.SendEvent(new Event
             {
@@ -1342,6 +1494,13 @@ namespace GitHub.Runner.Worker.Dap
             var checkpoint = _checkpoints[checkpointIndex];
             Trace.Info($"Restoring checkpoint [{checkpointIndex}] for step '{checkpoint.StepDisplayName}'");
 
+            // Debug logging for checkpoint restoration
+            DebugLog($"[Checkpoint] Restoring [{checkpointIndex}] for step '{checkpoint.StepDisplayName}'");
+            if (_debugLogLevel >= DebugLogLevel.Verbose)
+            {
+                DebugLog($"[Checkpoint] Snapshot has {checkpoint.StepsSnapshot.Count} step(s)", DebugLogLevel.Verbose);
+            }
+
             // Restore environment variables
             jobContext.Global.EnvironmentVariables.Clear();
             foreach (var kvp in checkpoint.EnvironmentVariables)
@@ -1360,9 +1519,8 @@ namespace GitHub.Runner.Worker.Dap
             jobContext.Result = checkpoint.JobResult;
             jobContext.JobContext.Status = checkpoint.JobStatus;
 
-            // Note: StepsContext restoration is complex and requires internal access
-            // For now, we just log this limitation
-            Trace.Info($"Steps context restoration: {checkpoint.StepsSnapshot.Count} steps in snapshot (partial restoration)");
+            // Restore steps context - clear scope and restore from snapshot
+            RestoreStepsContext(jobContext.Global.StepsContext, checkpoint.StepsSnapshot, jobContext.ScopeName);
 
             // Clear checkpoints after this one (they're now invalid)
             if (checkpointIndex + 1 < _checkpoints.Count)
@@ -1444,6 +1602,59 @@ namespace GitHub.Runner.Worker.Dap
             context.ExpressionValues["env"] = newEnvContext;
         }
 
+        private void RestoreStepsContext(StepsContext stepsContext, Dictionary<string, StepStateSnapshot> snapshot, string scopeName)
+        {
+            // Normalize scope name (null -> empty string)
+            scopeName = scopeName ?? string.Empty;
+
+            DebugLog($"[StepsContext] Restoring: clearing scope '{(string.IsNullOrEmpty(scopeName) ? "(root)" : scopeName)}', will restore {snapshot.Count} step(s)");
+
+            // Clear the entire scope - removes all step data that shouldn't exist yet in this timeline
+            stepsContext.ClearScope(scopeName);
+
+            // Restore each step's state from the snapshot
+            foreach (var entry in snapshot)
+            {
+                // Key format is "{scopeName}/{stepName}" - e.g., "/thefoo" for root-level steps (empty scope)
+                var key = entry.Key;
+                var slashIndex = key.IndexOf('/');
+
+                if (slashIndex >= 0)
+                {
+                    var snapshotScopeName = slashIndex > 0 ? key.Substring(0, slashIndex) : string.Empty;
+                    var stepName = key.Substring(slashIndex + 1);
+
+                    // Only restore steps for the current scope
+                    if (snapshotScopeName == scopeName)
+                    {
+                        var state = entry.Value;
+
+                        if (state.Outcome.HasValue)
+                        {
+                            stepsContext.SetOutcome(scopeName, stepName, state.Outcome.Value);
+                        }
+                        if (state.Conclusion.HasValue)
+                        {
+                            stepsContext.SetConclusion(scopeName, stepName, state.Conclusion.Value);
+                        }
+
+                        // Restore outputs
+                        if (state.Outputs != null)
+                        {
+                            foreach (var output in state.Outputs)
+                            {
+                                stepsContext.SetOutput(scopeName, stepName, output.Key, output.Value, out _);
+                            }
+                        }
+
+                        DebugLog($"[StepsContext] Restored: step='{stepName}', outcome={state.Outcome}, conclusion={state.Conclusion}", DebugLogLevel.Verbose);
+                    }
+                }
+            }
+
+            Trace.Info($"Steps context restored: cleared scope '{scopeName}' and restored {snapshot.Count} step(s) from snapshot");
+        }
+
         private Dictionary<string, StepStateSnapshot> SnapshotStepsContext(StepsContext stepsContext, string scopeName)
         {
             var result = new Dictionary<string, StepStateSnapshot>();
@@ -1503,6 +1714,31 @@ namespace GitHub.Runner.Worker.Dap
                 "skipped" => ActionResult.Skipped,
                 _ => null
             };
+        }
+
+        #endregion
+
+        #region Debug Logging
+
+        /// <summary>
+        /// Sends a debug log message to the DAP console if the current log level permits.
+        /// </summary>
+        /// <param name="message">The message to log (will be prefixed with [DEBUG])</param>
+        /// <param name="minLevel">Minimum level required for this message to be logged</param>
+        private void DebugLog(string message, DebugLogLevel minLevel = DebugLogLevel.Normal)
+        {
+            if (_debugLogLevel >= minLevel)
+            {
+                _server?.SendEvent(new Event
+                {
+                    EventType = "output",
+                    Body = new OutputEventBody
+                    {
+                        Category = "console",
+                        Output = $"[DEBUG] {message}\n"
+                    }
+                });
+            }
         }
 
         #endregion
