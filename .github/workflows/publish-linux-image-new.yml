@@ -1,4 +1,4 @@
-name: Publish Linux Runner Images
+name: Publish Linux Runner Images New
 
 on:
   workflow_dispatch:
@@ -29,6 +29,7 @@ on:
 
 env:
   HOST_TMP_TOOL_CACHE: hosttmptoolcache
+  PYTHON_TOOLCACHE_VERSION: '3.13.3'
 
 jobs:
   select-matrix:
@@ -38,6 +39,7 @@ jobs:
       packages: write
     outputs:
       include: ${{ steps.generate-matrix.outputs.include }}
+      oslist: ${{ steps.generate-matrix.outputs.oslist }} # 新增 oslist 输出
     steps:
       - name: Generate matrix based on input
         id: generate-matrix
@@ -48,21 +50,9 @@ jobs:
           script: |
             const imageName = process.env.INPUT_IMAGENAME;
             const allConfigs = [
-              {
-                imageName: 'ubuntu-22.04',
-                runs_on: 'raw-ubuntu-22.04',
-                toolcache_os: 'ubuntu-22.04'
-              },
-              {
-                imageName: 'ubuntu-22.04-physical',
-                runs_on: 'raw-ubuntu-22.04',
-                toolcache_os: 'ubuntu-22.04'
-              },
-              {
-                imageName: 'ubuntu-24.04',
-                runs_on: 'raw-ubuntu-24.04',
-                toolcache_os: 'ubuntu-24.04'
-              }
+              { imageName: 'ubuntu-22.04', runs_on: 'raw-ubuntu-22.04', toolcache_os: 'ubuntu-22.04' },
+              { imageName: 'ubuntu-22.04-physical', runs_on: 'raw-ubuntu-22.04', toolcache_os: 'ubuntu-22.04' },
+              { imageName: 'ubuntu-24.04', runs_on: 'raw-ubuntu-24.04', toolcache_os: 'ubuntu-24.04' }
             ];
 
             let include = [];
@@ -72,23 +62,53 @@ jobs:
               const selectedConfig = allConfigs.find(config => config.imageName === imageName);
               if (selectedConfig) {
                 include.push(selectedConfig);
-              } else {
-                // 如果输入非法，输出空数组，下游 job 会被跳过
-                console.log(`Warning: Invalid imageName input '${imageName}'. Resulting in an empty matrix.`);
               }
             }
 
+            const oslist = [...new Set(include.map(item => item.toolcache_os))];
+            
             console.log('Generated include matrix:', JSON.stringify(include, null, 2));
+            console.log('Generated oslist:', JSON.stringify(oslist, null, 2));
+
             core.setOutput('include', JSON.stringify(include));
+            core.setOutput('oslist', JSON.stringify(oslist));
+
+  prepare-toolcache:
+    needs: select-matrix
+    if: ${{ needs.select-matrix.outputs.include != '[]' }}
+    strategy:
+      matrix:
+        os: ${{ fromJSON(needs.select-matrix.outputs.oslist) }}
+    runs-on: ${{ matrix.os }} # 在 GitHub-hosted runner 上运行
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python for toolcache
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_TOOLCACHE_VERSION }}
+
+      - name: Package tool cache
+        run: |
+          mkdir -p ./images/${{ env.HOST_TMP_TOOL_CACHE }}
+          cp -rL "$RUNNER_TOOL_CACHE"/* "./images/${{ env.HOST_TMP_TOOL_CACHE }}/"
+
+      - name: Upload tool cache artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolcache-${{ matrix.os }}-py-${{ env.PYTHON_TOOLCACHE_VERSION }}
+          path: ./images/${{ env.HOST_TMP_TOOL_CACHE }}
 
   build:
-    needs: select-matrix
-    # 如果 select-matrix 输出空 JSON 数组，这个 job 会被自动跳过
+    needs: [select-matrix, prepare-toolcache] # 同时依赖两个上游
     if: ${{ needs.select-matrix.outputs.include != '[]' }}
     strategy:
       matrix:
         include: ${{ fromJSON(needs.select-matrix.outputs.include) }}
-    runs-on: ${{ matrix.runs_on }}
+    runs-on: ${{ matrix.runs_on }} # 在 self-hosted runner 上运行
     permissions:
       contents: read
       packages: write
@@ -101,29 +121,15 @@ jobs:
           echo "Matrix context: ${{ toJSON(matrix) }}"
 
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
 
-      - name: Clear any existing tool cache
-        run: |
-          if [ -e "${RUNNER_TOOL_CACHE}.old" ]; then
-            # if use self-hosted raw runner, the dir is owned by root
-            sudo rm -rf "${RUNNER_TOOL_CACHE}.old"
-          fi
-          sudo mv "${RUNNER_TOOL_CACHE}" "${RUNNER_TOOL_CACHE}.old"
-
-      - name: Setup Python
-        id: setup-python
-        uses: actions/setup-python@v4
+      - name: Download tool cache artifact
+        uses: actions/download-artifact@v4
         with:
-          python-version: '3.13.3'
-
-      - name: Copy tool cache to docker context
-        id: copy-tool-cache
-        run: |
-          mkdir -p ./images/${HOST_TMP_TOOL_CACHE}
-          cp -r $RUNNER_TOOL_CACHE/* ./images/${HOST_TMP_TOOL_CACHE}/
+          name: toolcache-${{ matrix.toolcache_os }}-py-${{ env.PYTHON_TOOLCACHE_VERSION }}
+          path: ./images/${{ env.HOST_TMP_TOOL_CACHE }}
 
       - name: Compute image version
         id: image
@@ -154,6 +160,7 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Build and push Docker image
+        if: ${{ github.event.inputs.imageName == 'all' || github.event.inputs.imageName == matrix.imageName }}
         id: build-and-push
         uses: docker/build-push-action@v3
         with:
