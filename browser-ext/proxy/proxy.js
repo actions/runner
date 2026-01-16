@@ -36,13 +36,37 @@ console.log(`[Proxy] Starting WebSocket-to-TCP proxy`);
 console.log(`[Proxy] WebSocket: ws://localhost:${config.wsPort}`);
 console.log(`[Proxy] DAP Server: tcp://${config.dapHost}:${config.dapPort}`);
 
-const wss = new WebSocket.Server({ port: config.wsPort });
+const wss = new WebSocket.Server({
+  port: config.wsPort,
+  // Enable ping/pong for connection health checks
+  clientTracking: true,
+});
 
 console.log(`[Proxy] WebSocket server listening on port ${config.wsPort}`);
+
+// Ping all clients every 25 seconds to detect dead connections
+// This is shorter than Chrome's service worker timeout (~30s)
+const PING_INTERVAL = 25000;
+const pingInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      console.log(`[Proxy] Client failed to respond to ping, terminating`);
+      return ws.terminate();
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, PING_INTERVAL);
 
 wss.on('connection', (ws, req) => {
   const clientId = `${req.socket.remoteAddress}:${req.socket.remotePort}`;
   console.log(`[Proxy] WebSocket client connected: ${clientId}`);
+
+  // Mark as alive for ping/pong tracking
+  ws.isAlive = true;
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
 
   // Connect to DAP TCP server
   const tcp = net.createConnection({
@@ -80,15 +104,26 @@ wss.on('connection', (ws, req) => {
 
   // WebSocket → TCP: Add Content-Length framing
   ws.on('message', (data) => {
-    if (!tcpConnected) {
-      console.warn(`[Proxy] TCP not connected, dropping message`);
-      return;
-    }
-
     const json = data.toString();
     try {
       // Validate it's valid JSON
       const parsed = JSON.parse(json);
+
+      // Handle keepalive messages from the browser extension - don't forward to DAP server
+      if (parsed.type === 'keepalive') {
+        console.log(`[Proxy] Keepalive received from client`);
+        // Respond with a keepalive-ack to confirm the connection is alive
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'keepalive-ack', timestamp: Date.now() }));
+        }
+        return;
+      }
+
+      if (!tcpConnected) {
+        console.warn(`[Proxy] TCP not connected, dropping message`);
+        return;
+      }
+
       console.log(`[Proxy] WS→TCP: ${parsed.command || parsed.event || 'message'}`);
 
       // Add DAP framing
@@ -163,6 +198,7 @@ wss.on('error', (err) => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log(`\n[Proxy] Shutting down...`);
+  clearInterval(pingInterval);
   wss.clients.forEach((ws) => ws.close(1001, 'Server shutting down'));
   wss.close(() => {
     console.log(`[Proxy] Goodbye!`);

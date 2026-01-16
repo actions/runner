@@ -279,29 +279,16 @@ function appendOutput(text, type) {
   const output = document.querySelector('.dap-repl-output');
   if (!output) return;
 
-  const line = document.createElement('div');
-  line.className = `dap-output-${type}`;
-  if (type === 'error') line.classList.add('color-fg-danger');
-  if (type === 'input') line.classList.add('color-fg-muted');
-
-  // Handle multi-line output
+  // Handle multi-line output - each line gets its own div
   const lines = text.split('\n');
-  lines.forEach((l, i) => {
-    if (i > 0) {
-      output.appendChild(document.createElement('br'));
-    }
-    const span = document.createElement('span');
-    span.textContent = l;
-    if (i === 0) {
-      span.className = line.className;
-    }
-    output.appendChild(span);
+  lines.forEach((l) => {
+    const div = document.createElement('div');
+    div.className = `dap-output-${type}`;
+    if (type === 'error') div.classList.add('color-fg-danger');
+    if (type === 'input') div.classList.add('color-fg-muted');
+    div.textContent = l;
+    output.appendChild(div);
   });
-
-  if (lines.length === 1) {
-    line.textContent = text;
-    output.appendChild(line);
-  }
 
   output.scrollTop = output.scrollHeight;
 }

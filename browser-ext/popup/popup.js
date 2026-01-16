@@ -18,15 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Get current status from background
   chrome.runtime.sendMessage({ type: 'get-status' }, (response) => {
-    if (response && response.status) {
-      updateStatusUI(response.status);
+    if (response) {
+      updateStatusUI(response.status, response.reconnecting);
     }
   });
 
   // Listen for status changes
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'status-changed') {
-      updateStatusUI(message.status);
+      updateStatusUI(message.status, message.reconnecting);
     }
   });
 
@@ -60,15 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Update the UI to reflect current status
    */
-  function updateStatusUI(status) {
+  function updateStatusUI(status, reconnecting = false) {
     // Update text
     const statusNames = {
       disconnected: 'Disconnected',
-      connecting: 'Connecting...',
+      connecting: reconnecting ? 'Reconnecting...' : 'Connecting...',
       connected: 'Connected',
       paused: 'Paused',
       running: 'Running',
-      error: 'Error',
+      error: 'Connection Error',
     };
     statusText.textContent = statusNames[status] || status;
 
@@ -80,11 +80,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const isConnecting = status === 'connecting';
 
     connectBtn.disabled = isConnected || isConnecting;
-    disconnectBtn.disabled = !isConnected;
+    disconnectBtn.disabled = status === 'disconnected';
 
     // Update connect button text
     if (isConnecting) {
-      connectBtn.textContent = 'Connecting...';
+      connectBtn.textContent = reconnecting ? 'Reconnecting...' : 'Connecting...';
     } else {
       connectBtn.textContent = 'Connect';
     }
