@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -95,6 +95,7 @@ namespace GitHub.Runner.Worker
         // timeline record update methods
         void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
+        void ResetForRerun();
         void SetEnvContext(string name, string value);
         void SetRunnerContext(string name, string value);
         string GetGitHubContext(string name);
@@ -543,6 +544,29 @@ namespace GitHub.Runner.Worker
             UpdateGlobalStepsContext();
 
             return Result.Value;
+        }
+
+        /// <summary>
+        /// Resets the execution context for re-running (e.g., after step-back in DAP debugging).
+        /// Creates a new CancellationTokenSource since the previous one was disposed in Complete().
+        /// </summary>
+        public void ResetForRerun()
+        {
+            // Create a new CancellationTokenSource since the old one was disposed
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            // Reset record state to allow re-execution
+            _record.State = TimelineRecordState.Pending;
+            _record.FinishTime = null;
+            _record.PercentComplete = 0;
+            _record.ResultCode = null;
+
+            // Reset result
+            Result = null;
+            Outcome = null;
+
+            // Reset the force completed task
+            _forceCompleted = new TaskCompletionSource<int>();
         }
 
         public void UpdateGlobalStepsContext()

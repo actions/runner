@@ -222,9 +222,12 @@ namespace GitHub.Runner.Worker
                                     }
 
                                     // Queue the checkpoint's step and remaining steps
+                                    // Reset execution context for rerun since CancellationTokenSource was disposed in Complete()
+                                    checkpoint.CurrentStep.ExecutionContext.ResetForRerun();
                                     jobContext.JobSteps.Enqueue(checkpoint.CurrentStep);
                                     foreach (var remainingStep in checkpoint.RemainingSteps)
                                     {
+                                        remainingStep.ExecutionContext.ResetForRerun();
                                         jobContext.JobSteps.Enqueue(remainingStep);
                                     }
 
