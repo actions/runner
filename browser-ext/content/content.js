@@ -492,8 +492,9 @@ async function handleStoppedEvent(body) {
       let stepElement = findStepByName(rawStepName);
 
       if (!stepElement && currentFrame.line > 0) {
-        // Fallback: use step number from Line property (1-indexed, matches data-number)
-        stepElement = findStepByNumber(currentFrame.line);
+        // Fallback: use step number from Line property
+        // Add 1 to account for "Set up job" which is always step 1 in GitHub UI but not in DAP
+        stepElement = findStepByNumber(currentFrame.line + 1);
       }
 
       if (stepElement) {
@@ -557,8 +558,9 @@ async function loadCurrentDebugState() {
       let stepElement = findStepByName(rawStepName);
 
       if (!stepElement && currentFrame.line > 0) {
-        // Fallback: use step number from Line property (1-indexed, matches data-number)
-        stepElement = findStepByNumber(currentFrame.line);
+        // Fallback: use step number from Line property
+        // Add 1 to account for "Set up job" which is always step 1 in GitHub UI but not in DAP
+        stepElement = findStepByNumber(currentFrame.line + 1);
       }
 
       if (stepElement) {
