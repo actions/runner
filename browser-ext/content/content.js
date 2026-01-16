@@ -491,15 +491,9 @@ async function handleStoppedEvent(body) {
       const rawStepName = stripResultIndicator(currentFrame.name);
       let stepElement = findStepByName(rawStepName);
 
-      if (!stepElement) {
-        // Fallback: use step index
-        // Note: GitHub Actions UI shows "Set up job" at index 0, which is not a real workflow step
-        // DAP uses 1-based frame IDs, so frame ID 1 maps to UI step index 1 (skipping "Set up job")
-        const steps = getAllSteps();
-        const adjustedIndex = currentFrame.id; // 1-based, happens to match after skipping "Set up job"
-        if (adjustedIndex > 0 && adjustedIndex < steps.length) {
-          stepElement = steps[adjustedIndex];
-        }
+      if (!stepElement && currentFrame.line > 0) {
+        // Fallback: use step number from Line property (1-indexed, matches data-number)
+        stepElement = findStepByNumber(currentFrame.line);
       }
 
       if (stepElement) {
@@ -509,7 +503,7 @@ async function handleStoppedEvent(body) {
       // Update step counter
       const counter = debuggerPane?.querySelector('.dap-step-counter');
       if (counter) {
-        counter.textContent = `Step ${currentFrame.id} of ${stackTrace.stackFrames.length}`;
+        counter.textContent = `Step ${currentFrame.line || currentFrame.id} of ${stackTrace.stackFrames.length}`;
       }
 
       // Load scopes
@@ -562,13 +556,9 @@ async function loadCurrentDebugState() {
       const rawStepName = stripResultIndicator(currentFrame.name);
       let stepElement = findStepByName(rawStepName);
 
-      if (!stepElement) {
-        // Fallback: use step index (skip "Set up job" at index 0)
-        const steps = getAllSteps();
-        const adjustedIndex = currentFrame.id; // 1-based, matches after skipping "Set up job"
-        if (adjustedIndex > 0 && adjustedIndex < steps.length) {
-          stepElement = steps[adjustedIndex];
-        }
+      if (!stepElement && currentFrame.line > 0) {
+        // Fallback: use step number from Line property (1-indexed, matches data-number)
+        stepElement = findStepByNumber(currentFrame.line);
       }
 
       if (stepElement) {
@@ -578,7 +568,7 @@ async function loadCurrentDebugState() {
       // Update step counter
       const counter = debuggerPane.querySelector('.dap-step-counter');
       if (counter) {
-        counter.textContent = `Step ${currentFrame.id + 1} of ${stackTrace.stackFrames.length}`;
+        counter.textContent = `Step ${currentFrame.line || currentFrame.id} of ${stackTrace.stackFrames.length}`;
       }
 
       // Load scopes

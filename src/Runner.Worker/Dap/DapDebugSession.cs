@@ -517,7 +517,7 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     Id = CurrentFrameId,
                     Name = $"{_currentStep.DisplayName ?? "Current Step"}{resultIndicator}",
-                    Line = 1,
+                    Line = _pendingStepIndex + 1, // 1-indexed to match GitHub UI's data-number attribute
                     Column = 1,
                     PresentationHint = "normal"
                 });
@@ -528,7 +528,7 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     Id = CurrentFrameId,
                     Name = "(no step executing)",
-                    Line = 1,
+                    Line = 0,
                     Column = 1,
                     PresentationHint = "subtle"
                 });
