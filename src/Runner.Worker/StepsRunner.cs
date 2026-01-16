@@ -86,6 +86,8 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.Start();
 
                 // Expression functions
+                // Clear first to handle step-back scenarios where the same step may be re-processed
+                step.ExecutionContext.ExpressionFunctions.Clear();
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
