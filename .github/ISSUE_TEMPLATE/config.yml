@@ -4,7 +4,7 @@ contact_links:
     url: https://github.com/orgs/community/discussions/categories/actions
     about: If you have feature requests for GitHub Actions, please use the Actions section on the Github Product Feedback page.
   - name: ✅ Support for GitHub Actions
-    url: https://github.community/c/code-to-cloud/52
+    url: https://github.com/orgs/community/discussions/categories/actions
     about: If you have questions about GitHub Actions or need support writing workflows, please ask in the GitHub Community Support forum.
   - name: ✅ Feedback and suggestions for GitHub Actions
     url: https://github.com/github/feedback/discussions/categories/actions
