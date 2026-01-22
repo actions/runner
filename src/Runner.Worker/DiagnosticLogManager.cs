@@ -129,7 +129,7 @@ namespace GitHub.Runner.Worker
             var workerLogFiles = new List<string>();
             var directoryInfo = new DirectoryInfo(diagnosticFolder);
 
-            // Sometimes the timing is off between the job start time and the time the worker log file is created.
+            // Sometimes the timing is off between the job start time and the time when the worker log file is created.
             // This adds a small buffer that provides some leeway in case the worker log file was created slightly
             // before the time we log as job start time.
             int bufferInSeconds = -30;
