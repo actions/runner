@@ -233,7 +233,7 @@ namespace GitHub.Runner.Common
 
         public Task<List<TaskAgent>> GetAgentsAsync(string agentName)
         {
-            return GetAgentsAsync(0, agentName); // search in all all agentPools
+            return GetAgentsAsync(0, agentName); // search in all agentPools
         }
 
         public Task<TaskAgent> ReplaceAgentAsync(int agentPoolId, TaskAgent agent)
