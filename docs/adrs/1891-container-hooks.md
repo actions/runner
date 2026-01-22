@@ -7,7 +7,7 @@
 # Background
 
 [Job Hooks](https://github.com/actions/runner/blob/main/docs/adrs/1751-runner-job-hooks.md) have given users the ability to customize how their self hosted runners run a job.
-Users also want the ability to customize how they run containers during the scope of the job, rather then being locked into the docker implementation we have in the runner. They may want to use podman, kubernetes, or even change the docker commands we run. 
+Users also want the ability to customize how they run containers during the scope of the job, rather than being locked into the docker implementation we have in the runner. They may want to use podman, kubernetes, or even change the docker commands we run. 
 We should give them that option, and publish examples how they can create their own hooks.
 
 # Guiding Principles
@@ -88,14 +88,14 @@ We will not version these hooks at launch. If needed, we can always major versio
 The [job context](https://docs.github.com/en/actions/learn-github-actions/contexts#example-contents-of-the-job-context) currently has a variety of fields that correspond to containers. We should consider allowing hooks to populate new fields in the job context. That is out of scope for this original release however.
 
 ## Hooks
-Hooks are to be implemented at a very high level, and map to actions the runner does, rather then specific docker actions like `docker build` or `docker create`. By mapping to runner actions, we create a very extensible framework that is flexible enough to solve any user concerns in the future. By providing first party implementations, we give users easy starting points to customize specific hooks (like `docker build`) without having to write full blown solutions.
+Hooks are to be implemented at a very high level, and map to actions the runner does, rather than specific docker actions like `docker build` or `docker create`. By mapping to runner actions, we create a very extensible framework that is flexible enough to solve any user concerns in the future. By providing first party implementations, we give users easy starting points to customize specific hooks (like `docker build`) without having to write full blown solutions.
 
 The other would be to provide hooks that mirror every docker call we make, and expose more hooks to help support k8s users, with the expectation that users may have to no-op on multiple hooks if they don't correspond to our use case.
 
 Why we don't want to go that way
 - It feels clunky, users need to understand which hooks they need to implement and which they can ignore, which isn't a great UX
 - It doesn't scale well, I don't want to build a solution where we may need to add more hooks, by mapping to runner actions, updating hooks is a painful experience for users
-- Its overwhelming, its easier to tell users to build 4 hooks and track data themselves, rather then 16 hooks where the runner needs certain information and then needs to provide that information back into each hook. If we expose `Container Create`, you need to return the container you created, then we do `container run` which uses that container. If we just give you an image and say create and run this container, you don't need to store the container id in the runner, and it maps better to k8s scenarios where we don't really have container ids.
+- Its overwhelming, its easier to tell users to build 4 hooks and track data themselves, rather than 16 hooks where the runner needs certain information and then needs to provide that information back into each hook. If we expose `Container Create`, you need to return the container you created, then we do `container run` which uses that container. If we just give you an image and say create and run this container, you don't need to store the container id in the runner, and it maps better to k8s scenarios where we don't really have container ids.
 
 ### Prepare_job hook
 The `prepare_job` hook is called when a job is started. We pass in any job or service containers the job has. We expect that you:

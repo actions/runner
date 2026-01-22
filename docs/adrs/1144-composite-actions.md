@@ -80,7 +80,7 @@ We want to support the `uses` steps from workflows in composite actions, includi
 
 ### Defaults - Not being considered at this time
 
-- In actions, we have the idea of [defaults](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#defaultsrun) , which allow you to specify a shell and working directory in one location, rather then on each step.
+- In actions, we have the idea of [defaults](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#defaultsrun) , which allow you to specify a shell and working directory in one location, rather than on each step.
 - However, `shell` is currently required in composite run steps
   - In regular run steps, it is optional, and defaults to a different value based on the OS.
 - We want to prioritize the right experience for the consumer, and make the action author continue to explicitly set these values. We can consider improving this experience in the future.

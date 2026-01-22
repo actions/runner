@@ -494,7 +494,7 @@ namespace GitHub.Services.WebApi
                                 Tuple<Version, Type> cachedValue;
 
                                 // Check if the TypeName already exists in cache and add it if not.  if it does exist, update if it has a higher ExclusiveMaxApiVersion.
-                                // (In theory an old exception could be mapped to more then one type in the case we want the latest server
+                                // (In theory an old exception could be mapped to more than one type in the case we want the latest server
                                 // to send different older types to different versions of older clients.  This method is used only on client when converting a type 
                                 // from an older server, so we want the latest mapping of the older type.)
                                 if (!s_exceptionsWithAttributeMapping.TryGetValue(attribute.TypeName, out cachedValue) || attribute.ExclusiveMaxApiVersion > cachedValue.Item1)

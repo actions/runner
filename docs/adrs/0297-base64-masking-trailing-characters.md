@@ -43,6 +43,6 @@ This will result in us only revealing length or bit information when a prefix or
 
 ## Consequences
 
-- In the case where a secret has a prefix or suffix added before base64 encoding, we may now reveal up to 20 bits of information and the length of the original string modulo 3, rather then the original 16 bits and no length information
+- In the case where a secret has a prefix or suffix added before base64 encoding, we may now reveal up to 20 bits of information and the length of the original string modulo 3, rather than the original 16 bits and no length information
 - Secrets with a suffix appended before encoding will now be masked across the board. Previously it was only masked if it was a multiple of 3 characters
 - Performance will suffer in a negligible way
