@@ -48,7 +48,7 @@ namespace GitHub.Runner.Common.Tests
                 startIndex: typeof(Tests.TestHostContext).FullName.LastIndexOf(nameof(TestHostContext)));
             _suiteName = _suiteName.Replace(".", "_");
 
-            // Setup the trace manager.
+            // Set up the trace manager.
             TraceFileName = Path.Combine(
                 Path.Combine(TestUtil.GetSrcPath(), "Test", "TestLogs"),
                 $"trace_{_suiteName}_{_testName}.log");

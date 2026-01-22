@@ -585,7 +585,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private Mock<IActionRunner> CreateStep(TestHostContext hc, TaskResult result, string condition, Boolean continueOnError = false, MappingToken env = null, string name = "Test", bool setOutput = false, string contextName = null)
         {
-            // Setup the step.
+            // Set up the step.
             var step = new Mock<IActionRunner>();
             step.Setup(x => x.Condition).Returns(condition);
             step.Setup(x => x.ContinueOnError).Returns(new BooleanToken(null, null, null, continueOnError));
@@ -598,7 +598,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     ContextName = contextName ?? "Test"
                 });
 
-            // Setup the step execution context.
+            // Set up the step execution context.
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
             stepContext.Setup(x => x.Global).Returns(() => _ec.Object.Global);
