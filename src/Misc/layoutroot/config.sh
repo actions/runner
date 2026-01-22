@@ -14,7 +14,7 @@ then
     command -v ldd > /dev/null
     if [ $? -ne 0 ]
     then
-        echo "Can not find 'ldd'. Please install 'ldd' and try again."
+        echo "Cannot find 'ldd'. Please install 'ldd' and try again."
         exit 1
     fi
 
@@ -44,7 +44,7 @@ then
     if ! [ -x "$(command -v ldconfig)" ]; then
         LDCONFIG_COMMAND="/sbin/ldconfig"
         if ! [ -x "$LDCONFIG_COMMAND" ]; then
-            echo "Can not find 'ldconfig' in PATH and '/sbin/ldconfig' doesn't exists either. Please install 'ldconfig' and try again."
+            echo "Cannot find 'ldconfig' in PATH and '/sbin/ldconfig' doesn't exists either. Please install 'ldconfig' and try again."
             exit 1
         fi
     else

@@ -618,7 +618,7 @@ validate_remote_local_file_sizes()
         fi
         
     else
-        say "Either downloaded or local package size can not be measured. One of them may be corrupted."      
+        say "Either downloaded or local package size cannot be measured. One of them may be corrupted."      
     fi 
 }
 
