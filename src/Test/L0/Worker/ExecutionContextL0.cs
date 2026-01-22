@@ -38,7 +38,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
@@ -116,7 +116,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
                 jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
@@ -171,7 +171,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
@@ -225,7 +225,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
 
@@ -280,7 +280,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var pagingLogger2 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
@@ -332,7 +332,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
                 jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
@@ -383,7 +383,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
                 jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var pagingLogger2 = new Mock<IPagingLogger>();
                 var pagingLogger3 = new Mock<IPagingLogger>();
@@ -481,7 +481,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
                 jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var pagingLogger2 = new Mock<IPagingLogger>();
                 var pagingLogger3 = new Mock<IPagingLogger>();
@@ -565,7 +565,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
                 jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 hc.EnqueueInstance(pagingLogger1.Object);
@@ -619,7 +619,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
@@ -662,7 +662,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
@@ -726,7 +726,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var pagingLogger2 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
@@ -866,7 +866,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
                 var pagingLogger2 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
@@ -905,7 +905,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             var hc = new TestHostContext(this, testName);
 
-            // Arrange: Setup the configuration store.
+            // Arrange: Set up the configuration store.
             var configurationStore = new Mock<IConfigurationStore>();
             configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings());
             hc.SetSingleton(configurationStore.Object);
@@ -1060,7 +1060,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 inputVarsContext["VARIABLE_2"] = new StringContextData("value2");
                 jobRequest.ContextData["vars"] = inputVarsContext;
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 hc.EnqueueInstance(pagingLogger1.Object);
@@ -1105,7 +1105,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 inputVarsContext[Constants.Variables.Actions.RunnerDebug] = new StringContextData("true");
                 jobRequest.ContextData["vars"] = inputVarsContext;
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 hc.EnqueueInstance(pagingLogger1.Object);
@@ -1151,7 +1151,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobRequest.Variables[Constants.Variables.Actions.StepDebug] = "false";
                 jobRequest.Variables[Constants.Variables.Actions.RunnerDebug] = "false";
 
-                // Arrange: Setup the paging logger.
+                // Arrange: Set up the paging logger.
                 var pagingLogger1 = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 hc.EnqueueInstance(pagingLogger1.Object);

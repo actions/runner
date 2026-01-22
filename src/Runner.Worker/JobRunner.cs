@@ -85,7 +85,7 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                // Setup the job server and job server queue.
+                // Set up the job server and job server queue.
                 var jobServer = HostContext.GetService<IJobServer>();
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 Uri jobServerUrl = systemConnection.Url;
