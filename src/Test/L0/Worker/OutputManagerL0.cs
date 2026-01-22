@@ -795,7 +795,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
                 _executionContext.Setup(x => x.GetGitHubContext("repository")).Returns("my-org/workflow-repo");
 
-                // Setup a git repository
+                // Set up a git repository
                 await CreateRepository(hostContext, workspaceDirectory, "https://github.com/my-org/workflow-repo");
 
                 // Create test files
@@ -856,7 +856,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
                 _executionContext.Setup(x => x.GetGitHubContext("repository")).Returns("my-org/workflow-repo");
 
-                // Setup a git repository
+                // Set up a git repository
                 await CreateRepository(hostContext, workspaceDirectory, "https://github.com/my-org/workflow-repo");
 
                 // Create test files
@@ -918,7 +918,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
                 _executionContext.Setup(x => x.GetGitHubContext("repository")).Returns("my-org/workflow-repo");
 
-                // Setup a git repository
+                // Set up a git repository
                 var repositoryPath = Path.Combine(workspaceDirectory, "workflow-repo");
                 await CreateRepository(hostContext, repositoryPath, "https://github.com/my-org/workflow-repo");
 
@@ -974,7 +974,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
                 _executionContext.Setup(x => x.GetGitHubContext("repository")).Returns("my-org/workflow-repo");
 
-                // Setup a git repository
+                // Set up a git repository
                 var repositoryPath = Path.Combine(workspaceDirectory, "workflow-repo");
                 await CreateRepository(hostContext, repositoryPath, "https://github.com/my-org/workflow-repo");
 

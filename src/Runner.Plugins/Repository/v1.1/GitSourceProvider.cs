@@ -295,7 +295,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             if (gitLfsSupport)
             {
                 // Initialize git lfs by execute 'git lfs install'
-                executionContext.Debug("Setup the local Git hooks for Git LFS.");
+                executionContext.Debug("Set up the local Git hooks for Git LFS.");
                 int exitCode_lfsInstall = await gitCommandManager.GitLFSInstall(executionContext, targetPath);
                 if (exitCode_lfsInstall != 0)
                 {

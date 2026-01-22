@@ -153,7 +153,7 @@ namespace GitHub.Runner.Worker
                 ExecutionContext.SetGitHubContext("action_ref", null);
             }
 
-            // Setup container stephost for running inside the container.
+            // Set up container stephost for running inside the container.
             if (ExecutionContext.Global.Container != null)
             {
                 // Make sure the required container is already created
