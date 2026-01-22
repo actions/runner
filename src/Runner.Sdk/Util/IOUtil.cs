@@ -260,7 +260,7 @@ namespace GitHub.Runner.Sdk
 
         /// <summary>
         /// Given a path and directory, return the path relative to the directory.  If the path is not
-        /// under the directory then the path is returned un modified.  Examples:
+        /// under the directory then the path is returned unmodified.  Examples:
         /// MakeRelative(@"d:\src\project\foo.cpp", @"d:\src") -> @"project\foo.cpp"
         /// MakeRelative(@"d:\src\project\foo.cpp", @"d:\specs") -> @"d:\src\project\foo.cpp"
         /// MakeRelative(@"d:\src\project\foo.cpp", @"d:\src\proj") -> @"d:\src\project\foo.cpp"
