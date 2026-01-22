@@ -13,7 +13,7 @@ This feature is mainly intended for self hosted runner administrators.
 
 **What we don't think this will solve**
 - Policy features that require certain steps run at the beginning or end of all jobs
-  - This would be better solved to in a central place in settings, rather then decentralized on each runner. 
+  - This would be better solved to in a central place in settings, rather than decentralized on each runner. 
   - The Proposed `Notification Hooks for Runners` is limited to self hosted runners, we don't believe Policy features should be
 - Reuse scenarios between jobs are covered by [composite actions](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) and [reusable workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows)
 - Security applications, security should be handled on the policy side on the server, not decentralized on each runner
