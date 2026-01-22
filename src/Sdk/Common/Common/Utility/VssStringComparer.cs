@@ -218,7 +218,7 @@ namespace GitHub.Services.Common
         // Converters comparer
         public static VssStringComparer VSSServerPath { get { return s_ordinalIgnoreCase; } }
 
-        // Item rename in VSS is case sensitive.
+        // Item rename in VSS is case-sensitive.
         public static VssStringComparer VSSItemName { get { return s_ordinal; } }
         // Web Access Comparers
         public static VssStringComparer HtmlElementName { get { return s_ordinalIgnoreCase; } }
