@@ -135,7 +135,7 @@ if [[ "$currentplatform" == 'darwin'  && $restartinteractiverunner -eq 0 ]]; the
     then
         # inspect the open file handles to find the node process
         # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-        # Try finding node24 first, then fallback to earlier versions if needed
+        # Try finding node24 first, then fall back to earlier versions if needed
         nodever="node24"
         path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
         if [[ $? -ne 0 || -z "$path" ]] # Fallback if RunnerService.js was started with node20

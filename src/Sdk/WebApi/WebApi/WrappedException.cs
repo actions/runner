@@ -227,7 +227,7 @@ namespace GitHub.Services.WebApi
 
             if (exception == null)
             {
-                //no standard mapping, fallback to 
+                //no standard mapping, fall back to 
                 exception = UnWrap(innerException);
             }
 

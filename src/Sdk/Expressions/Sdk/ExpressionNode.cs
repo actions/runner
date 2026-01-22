@@ -1,4 +1,4 @@
-#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+﻿#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
 
 using System;
 
@@ -12,7 +12,7 @@ namespace GitHub.Actions.Expressions.Sdk
 
         /// <summary>
         /// The name is used for tracing. Normally the parser will set the name. However if a node
-        /// is added manually, then the name may not be set and will fallback to the type name.
+        /// is added manually, then the name may not be set and will fall back to the type name.
         /// </summary>
         public String Name
         {
