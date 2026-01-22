@@ -89,7 +89,7 @@ namespace GitHub.Services.Common.Internal
         }
 
         /// <summary>
-        /// string comparer for uri, is not case sensitive and does not care about trailing '/'
+        /// string comparer for uri, is not case-sensitive and does not care about trailing '/'
         /// </summary>
         public static IEqualityComparer<Uri> AbsoluteUriStringComparer = new _AbsoluteUriStringComparer();
 
