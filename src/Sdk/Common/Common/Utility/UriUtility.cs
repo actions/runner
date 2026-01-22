@@ -33,7 +33,7 @@ namespace GitHub.Services.Common.Internal
         /// inform the user that it is unsafe and prevent navigation.
         /// </summary>
         /// <remarks>
-        /// Note: the data scheme is not in this list nor is it in the safe list either, this is by design.
+        /// Note: by design the data scheme is excluded from this list and the safe list.
         /// See http://msdn.microsoft.com/en-us/library/ie/cc848897(v=vs.85).aspx for a reference of the data protocol.
         /// See http://www.gnucitizen.org/blog/bugs-in-the-browser-firefoxs-data-url-scheme-vulnerability/ for attacks on the data protocol.
         /// </remarks>
