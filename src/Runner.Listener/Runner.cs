@@ -293,7 +293,7 @@ namespace GitHub.Runner.Listener
                         // We need try our best to make the startup type accurate
                         // The problem is coming from runner autoupgrade, which result an old version service host binary but a newer version runner binary
                         // At that time the servicehost won't pass --startuptype to Runner.Listener while the runner is actually running as service.
-                        // We will guess the startup type only when the runner is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
+                        // We will guess the startup type only when the runner is configured as service and the guess will be based on whether STDOUT/STDERR/STDIN been redirect or not
                         Trace.Info($"Try determine runner startup type base on console redirects.");
                         startType = (Console.IsErrorRedirected && Console.IsInputRedirected && Console.IsOutputRedirected) ? StartupType.Service : StartupType.Manual;
                     }
