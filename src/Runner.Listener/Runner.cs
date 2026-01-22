@@ -190,7 +190,7 @@ namespace GitHub.Runner.Listener
 
                 // warmup runner process (JIT/CLR)
                 // In scenarios where the runner is single use (used and then thrown away), the system provisioning the runner can call `Runner.Listener --warmup` before the machine is made available to the pool for use.
-                // this will optimizes the runner process startup time.
+                // this will optimize the runner process startup time.
                 if (command.Warmup)
                 {
                     var binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
