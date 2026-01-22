@@ -38,13 +38,13 @@ namespace GitHub.Services.Common.ClientStorage
         T ReadEntry<T>(string path);
 
         /// <summary>
-        /// Reads one entry from the storage.  If the entry does not exist or can not be converted to type T, the default value provided will be returned.
+        /// Reads one entry from the storage.  If the entry does not exist or cannot be converted to type T, the default value provided will be returned.
         /// When T is not a simple type, and there is extra logic to determine the default value, the pattern: ReadEntry&lt;T&gt;(path) && GetDefault(); is
         /// preferred, so that method to retrieve the default is not evaluated unless the entry does not exist.
         /// </summary>
         /// <typeparam name="T">The type to return.</typeparam>
         /// <param name="path">This is the path key for the data to retrieve.</param>
-        /// <param name="defaultValue">The value to return if the key does not exist or the value can not be converted to type T</param>
+        /// <param name="defaultValue">The value to return if the key does not exist or the value cannot be converted to type T</param>
         /// <returns></returns>
         T ReadEntry<T>(string path, T defaultValue);
 
