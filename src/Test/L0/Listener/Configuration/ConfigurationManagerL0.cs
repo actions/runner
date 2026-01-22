@@ -375,7 +375,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 trace.Info("Constructed");
                 _store.Setup(x => x.IsConfigured()).Returns(false);
 
-                trace.Info("Ensuring service generation mode fails when on un-configured runners");
+                trace.Info("Ensuring service generation mode fails when on deconfigured runners");
                 var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => configManager.ConfigureAsync(command));
 
                 Assert.Contains("requires that the runner is already configured", ex.Message);
@@ -407,7 +407,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 
                 _store.Setup(x => x.IsConfigured()).Returns(true);
 
-                trace.Info("Ensuring service generation mode fails when on un-configured runners");
+                trace.Info("Ensuring service generation mode fails when on deconfigured runners");
                 await configManager.ConfigureAsync(command);
 
                 _serviceControlManager.Verify(x => x.GenerateScripts(It.IsAny<RunnerSettings>()), Times.Once);
