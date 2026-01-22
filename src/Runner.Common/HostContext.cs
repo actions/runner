@@ -321,7 +321,7 @@ namespace GitHub.Runner.Common
                         var orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orch_id", StringComparison.OrdinalIgnoreCase))?.Value;
                         if (string.IsNullOrEmpty(orchestrationId))
                         {
-                            // fallback to orchid for C# actions-service
+                            // fall back to orchid for C# actions-service
                             orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orchid", StringComparison.OrdinalIgnoreCase))?.Value;
                         }
 
