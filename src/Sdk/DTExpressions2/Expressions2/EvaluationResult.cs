@@ -75,7 +75,7 @@ namespace GitHub.DistributedTask.Expressions2
         public Boolean IsTruthy => !IsFalsy;
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         public Boolean AbstractEqual(EvaluationResult right)
@@ -84,7 +84,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         public Boolean AbstractGreaterThan(EvaluationResult right)
@@ -93,7 +93,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         public Boolean AbstractGreaterThanOrEqual(EvaluationResult right)
@@ -102,7 +102,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         public Boolean AbstractLessThan(EvaluationResult right)
@@ -111,7 +111,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         public Boolean AbstractLessThanOrEqual(EvaluationResult right)
@@ -120,7 +120,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         public Boolean AbstractNotEqual(EvaluationResult right)
@@ -221,7 +221,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         private static Boolean AbstractEqual(
@@ -272,7 +272,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         private static Boolean AbstractGreaterThan(
@@ -314,7 +314,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except string comparison is OrdinalIgnoreCase, and objects are not coerced to primitives.
         /// </summary>
         private static Boolean AbstractLessThan(
@@ -355,7 +355,7 @@ namespace GitHub.DistributedTask.Expressions2
             return false;
         }
 
-        /// Similar to the Javascript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
+        /// Similar to the JavaScript abstract equality comparison algorithm http://www.ecma-international.org/ecma-262/5.1/#sec-11.9.3.
         /// Except objects are not coerced to primitives.
         private static void CoerceTypes(
             ref Object canonicalLeftValue,
@@ -397,7 +397,7 @@ namespace GitHub.DistributedTask.Expressions2
         }
 
         /// <summary>
-        /// For primitives, follows the Javascript rules (the Number function in Javascript). Otherwise NaN.
+        /// For primitives, follows the JavaScript rules (the Number function in JavaScript). Otherwise NaN.
         /// </summary>
         private static Double ConvertToNumber(Object canonicalValue)
         {

@@ -8,7 +8,7 @@ We released [composite run steps](https://github.com/actions/runner/pull/554) la
 
 We want to support the `uses` steps from workflows in composite actions, including:
   - Container actions
-  - Javascript actions
+  - JavaScript actions
   - Other Composite actions (up to a limit of course!)
   - The pre and post steps these actions can generate
 
