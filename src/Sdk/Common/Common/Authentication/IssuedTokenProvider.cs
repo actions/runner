@@ -267,7 +267,7 @@ namespace GitHub.Services.Common
                     // It may seem strange to pass the string value of TotalSeconds into this method, but testing
                     // showed that ETW is persnickety when you register a method in an EventSource that doesn't
                     // use strings or integers as its parameters. It is easier to simply give a string to the method
-                    // than figure out to get ETW to reliably accept a double or TimeSpan.
+                    // than figure out how to get ETW to reliably accept a double or TimeSpan.
                     VssHttpEventSource.Log.AuthorizationDelayed(getTokenTime.TotalSeconds.ToString());
                 }
             }

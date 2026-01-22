@@ -8,7 +8,7 @@
 
 [Job Hooks](https://github.com/actions/runner/blob/main/docs/adrs/1751-runner-job-hooks.md) have given users the ability to customize how their self hosted runners run a job.
 Users also want the ability to customize how they run containers during the scope of the job, rather then being locked into the docker implementation we have in the runner. They may want to use podman, kubernetes, or even change the docker commands we run. 
-We should give them that option, and publish examples how how they can create their own hooks.
+We should give them that option, and publish examples how they can create their own hooks.
 
 # Guiding Principles
 - **Extensibility** is the focus, we need to make sure we are flexible enough to cover current and future scenarios, even at the cost of making it harder to utilize these hooks
