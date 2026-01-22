@@ -14,7 +14,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
 
         /// <summary>
         /// The name is used for tracing. Normally the parser will set the name. However if a node
-        /// is added manually, then the name may not be set and will fallback to the type name.
+        /// is added manually, then the name may not be set and will fall back to the type name.
         /// </summary>
         protected internal String Name
         {

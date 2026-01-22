@@ -25,7 +25,7 @@ This feature is mainly intended for self hosted runner administrators.
 
 You can set these variables to the **absolute** path of a `.sh` or `.ps1` file.
 
-We will execute `pwsh` (fallback to `powershell`) or `bash` (fallback to `sh`) as appropriate.
+We will execute `pwsh` (fall back to `powershell`) or `bash` (fall back to `sh`) as appropriate.
 - `.sh` files will execute with the args `-e {pathtofile}`
 - `.ps1` files will execute with the args `-command \". '{pathtofile}'\"`
 
