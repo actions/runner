@@ -407,7 +407,7 @@ namespace GitHub.Runner.Worker
                     if (snapshotRequest != null)
                     {
                         var snapshotOperationProvider = HostContext.GetService<ISnapshotOperationProvider>();
-                        // Check that that runner is capable of taking a snapshot
+                        // Check that the runner is capable of taking a snapshot
                         snapshotOperationProvider.RunSnapshotPreflightChecks(context);
 
                         // Add post job step to write snapshot file
