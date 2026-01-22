@@ -631,7 +631,7 @@ namespace GitHub.Runner.Listener
             }
             catch (VssResourceNotFoundException)
             {
-                // ignore VssResourceNotFoundException, this exception means the runner is configured against a old server that doesn't support report runner update detail.
+                // ignore VssResourceNotFoundException, this exception means the runner is configured against an old server that doesn't support report runner update detail.
                 Trace.Info($"Catch VssResourceNotFoundException during report update state, ignore this error for backcompat.");
             }
             catch (Exception ex)

@@ -416,7 +416,7 @@ namespace GitHub.Services.Common.Internal
         }
 
         /// <summary>
-        /// Given a input path that might correspond to a UNC path known to the Windows Client WebDav Redirector,
+        /// Given an input path that might correspond to a UNC path known to the Windows Client WebDav Redirector,
         /// returns the converted UNC path to an HTTP (or HTTPS) url.
         /// </summary>
         /// <param name="uncPath"></param>

@@ -246,7 +246,7 @@ namespace RunnerService
             FileInfo[] updateLogs = dirInfo.GetFiles("SelfUpdate-*-*.log.*") ?? new FileInfo[0];
             if (updateLogs.Length == 0)
             {
-                // totally wrong, we are not even able to get a update log.
+                // totally wrong, we are not even able to get an update log.
                 return RunnerUpdateResult.Failed;
             }
             else
