@@ -326,7 +326,7 @@ namespace GitHub.Runner.Sdk
             }
             else if (Path.IsPathRooted(relativePath))
             {
-                throw new InvalidOperationException($"{relativePath} can not be a rooted path.");
+                throw new InvalidOperationException($"{relativePath} cannot be a rooted path.");
             }
             else
             {
