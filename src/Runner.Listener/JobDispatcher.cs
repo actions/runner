@@ -261,7 +261,7 @@ namespace GitHub.Runner.Listener
                 // if the runner received a new job request while a previous job request is still running, this typically indicates two situations
                 // 1. a runner bug caused a server and runner mismatch on the state of the job request, e.g. the runner didn't renew the jobrequest
                 //    properly but thinks it still owns the job reqest, however the server has already abandoned the jobrequest.
-                // 2. a server bug or design change that allowed the server to send more than one job request to an given runner that hasn't finished
+                // 2. a server bug or design change that allowed the server to send more than one job request to a given runner that hasn't finished
                 //.   a previous job request.
                 var runnerServer = HostContext.GetService<IRunnerServer>();
                 TaskAgentJobRequest request = null;
