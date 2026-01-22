@@ -291,7 +291,7 @@ namespace GitHub.Services.Common
         /// Determines if the web response is an authentication redirect for issued token providers.
         /// </summary>
         /// <param name="webResponse">The web response</param>
-        /// <returns>True if this is an token authentication redirect, false otherwise</returns>
+        /// <returns>True if this is a token authentication redirect, false otherwise</returns>
         internal bool IsAuthenticationChallenge(IHttpResponse webResponse)
         {
             if (webResponse == null)
