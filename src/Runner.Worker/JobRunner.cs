@@ -528,7 +528,7 @@ namespace GitHub.Runner.Worker
 
                     if (result == TaskResult.Failed && warnOnFailedJob)
                     {
-                        jobContext.Warning($"This job failure may be caused by using an out of date version of GitHub runner on your self-hosted runner. You are currently using GitHub runner version {currentVersion}. Please update to the latest version {serverPackages[0].Version}");
+                        jobContext.Warning($"This job failure may be caused by using an out-of-date version of GitHub runner on your self-hosted runner. You are currently using GitHub runner version {currentVersion}. Please update to the latest version {serverPackages[0].Version}");
                     }
                     else if (warnOnOldRunnerVersion)
                     {
