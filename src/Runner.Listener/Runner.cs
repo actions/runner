@@ -518,7 +518,7 @@ namespace GitHub.Runner.Listener
                                     autoUpdateInProgress = false;
                                     if (await selfUpdateTask)
                                     {
-                                        Trace.Info("Auto update task finished at backend, an runner update is ready to apply exit the current runner instance.");
+                                        Trace.Info("Auto update task finished at backend, a runner update is ready to apply exit the current runner instance.");
                                         Trace.Info("Stop message queue looping.");
                                         messageQueueLoopTokenSource.Cancel();
                                         try
