@@ -19,7 +19,7 @@ This feature is mainly intended for self hosted runner administrators.
 - Security applications, security should be handled on the policy side on the server, not decentralized on each runner
 
 ## Hooks
-- We will expose 2 variables that users can set to enable hooks  
+- We will expose two variables that users can set to enable hooks  
   - `ACTIONS_RUNNER_HOOK_JOB_STARTED`
   - `ACTIONS_RUNNER_HOOK_JOB_COMPLETED`
 
@@ -63,7 +63,7 @@ These are **synchronous** hooks, so they will block job execution while they are
 - There will be no support for `continue-on-error`
 
 ## Key Decisions
-- We will expose 2 variables that users can set to enable hooks  
+- We will expose two variables that users can set to enable hooks  
   - `ACTIONS_RUNNER_HOOK_JOB_STARTED`
   - `ACTIONS_RUNNER_HOOK_JOB_COMPLETED`
 - Users can set these variables to the path of a `.sh` or `.ps1` file, which we will execute when Jobs are started or completed.
