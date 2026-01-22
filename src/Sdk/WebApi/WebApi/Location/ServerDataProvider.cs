@@ -529,7 +529,7 @@ namespace GitHub.Services.WebApi.Location
             ServiceDefinition definition;
             if (m_locationDataCacheManager.TryFindService(serviceType, serviceIdentifier, out definition))
             {
-                // If we hit a cache entry return it whether it is null or not.
+                // If we hit a cache entry return it whether or not it is null.
                 return definition;
             }
 
