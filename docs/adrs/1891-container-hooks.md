@@ -46,7 +46,7 @@ All text written to stdout or stderr should appear in the job or step logs. With
 1. Wrapping the json in some unique tag and processing it like we do commands
 2. Writing to a file
 
-For 1, users typically view logging information as a safe action, so we worry someone accidentally logging unsantized information and causing unexpected or un-secure behavior. We eventually plan to move off of stdout/stderr style commands in favor of a runner cli. 
+For 1, users typically view logging information as a safe action, so we worry someone accidentally logging unsantized information and causing unexpected or insecure behavior. We eventually plan to move off of stdout/stderr style commands in favor of a runner cli. 
 Investing in this area doesn't make a lot of sense at this time.
 
 While writing to a file to communicate isn't the most ideal pattern, its an existing pattern in the runner and serves us well, so lets reuse it.
