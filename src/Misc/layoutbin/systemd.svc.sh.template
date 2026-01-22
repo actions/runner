@@ -74,7 +74,7 @@ function install()
     sed "s/{{User}}/${run_as_user}/g; s/{{Description}}/$(echo ${SVC_DESCRIPTION} | sed -e 's/[\/&]/\\&/g')/g; s/{{RunnerRoot}}/$(echo ${RUNNER_ROOT} | sed -e 's/[\/&]/\\&/g')/g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     mv "${TEMP_PATH}" "${UNIT_PATH}" || failed "failed to copy unit file"
 
-    # Recent Fedora based Linux (CentOS/Redhat) has SELinux enabled by default
+    # Recent Fedora based Linux (CentOS/Red Hat) has SELinux enabled by default
     # We need to restore security context on the unit file we added otherwise SystemD have no access to it.
     command -v getenforce > /dev/null
     if [ $? -eq 0 ]
