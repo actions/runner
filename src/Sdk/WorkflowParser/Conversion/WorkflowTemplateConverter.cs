@@ -711,12 +711,14 @@ namespace GitHub.Actions.WorkflowParser.Conversion
 
                 if (isEarlyValidation)
                 {
-                    // Skip early validation if any expressions other than "url" (expanded by the runner)
-                    var urlToken = environmentMapping
-                        .Where(x => x.Key is StringToken key && string.Equals(key.Value, WorkflowTemplateConstants.Url, StringComparison.Ordinal))
+                    // Skip early validation if any expressions other than "url" or "deployment" (expanded by the runner)
+                    var deferredTokens = environmentMapping
+                        .Where(x => x.Key is StringToken key && (
+                            string.Equals(key.Value, WorkflowTemplateConstants.Url, StringComparison.Ordinal) ||
+                            string.Equals(key.Value, WorkflowTemplateConstants.Deployment, StringComparison.Ordinal)))
                         .Select(x => x.Value)
-                        .SingleOrDefault();
-                    if (isEarlyValidation && environmentMapping.Traverse().Any(x => x is ExpressionToken && x != urlToken))
+                        .ToHashSet();
+                    if (isEarlyValidation && environmentMapping.Traverse().Any(x => x is ExpressionToken && !deferredTokens.Contains(x)))
                     {
                         return null;
                     }
@@ -724,6 +726,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
 
                 var name = default(String);
                 var url = default(TemplateToken);
+                var deployment = default(TemplateToken);
                 foreach (var environmentProp in environmentMapping)
                 {
                     var propertyName = environmentProp.Key.AssertString($"job {WorkflowTemplateConstants.Environment} key");
@@ -738,6 +741,9 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         case WorkflowTemplateConstants.Url:
                             url = propertyValue;
                             break;
+                        case WorkflowTemplateConstants.Deployment:
+                            deployment = propertyValue;
+                            break;
                         default:
                             propertyName.AssertUnexpectedValue($"job {WorkflowTemplateConstants.Environment} key"); // throws
                             break;
@@ -746,7 +752,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
 
                 if (!String.IsNullOrEmpty(name))
                 {
-                    return new ActionsEnvironmentReference(name) { Url = url };
+                    return new ActionsEnvironmentReference(name) { Url = url, Deployment = deployment };
                 }
                 else
                 {

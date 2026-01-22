@@ -620,6 +620,52 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    // Evaluate environment deployment
+                    if (jobContext.ActionsEnvironment?.Deployment != null && jobContext.ActionsEnvironment?.Deployment.Type != TokenType.Null)
+                    {
+                        try
+                        {
+                            context.Output($"Evaluate environment deployment");
+
+                            var deploymentResult = templateEvaluator.EvaluateEnvironmentDeployment(jobContext.ActionsEnvironment.Deployment, context.ExpressionValues, context.ExpressionFunctions);
+                            if (deploymentResult.HasValue)
+                            {
+                                context.Output($"Evaluated environment deployment: {deploymentResult.Value}");
+                                jobContext.ActionsEnvironment.Deployment = new BooleanToken(null, null, null, deploymentResult.Value);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Result = TaskResult.Failed;
+                            context.Error($"Failed to evaluate environment deployment");
+                            context.Error(ex);
+                            jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
+                        }
+                    }
+
+                    // Evaluate environment deployment
+                    if (jobContext.ActionsEnvironment?.Deployment != null && jobContext.ActionsEnvironment?.Deployment.Type != TokenType.Null)
+                    {
+                        try
+                        {
+                            context.Output($"Evaluate environment deployment");
+
+                            var deploymentResult = templateEvaluator.EvaluateEnvironmentDeployment(jobContext.ActionsEnvironment.Deployment, context.ExpressionValues, context.ExpressionFunctions);
+                            if (deploymentResult.HasValue)
+                            {
+                                context.Output($"Evaluated environment deployment: {deploymentResult.Value}");
+                                jobContext.ActionsEnvironment.Deployment = new BooleanToken(null, null, null, deploymentResult.Value);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Result = TaskResult.Failed;
+                            context.Error($"Failed to evaluate environment deployment");
+                            context.Error(ex);
+                            jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
+                        }
+                    }
+
                     if (context.Global.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
                     {
                         Trace.Info("Support log upload starting.");

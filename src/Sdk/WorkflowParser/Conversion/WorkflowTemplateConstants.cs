@@ -99,6 +99,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         public const String TypeBoolean = "boolean";
         public const String TypeNumber = "number";
         public const String Url = "url";
+        public const String Deployment = "deployment";
         public const String Username = "username";
         public const String Uses = "uses";
         public const String Vars = "vars";

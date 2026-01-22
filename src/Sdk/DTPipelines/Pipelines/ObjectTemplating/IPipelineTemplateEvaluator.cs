@@ -58,6 +58,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions);
 
+
+        Boolean? EvaluateEnvironmentDeployment(
+            TemplateToken token,
+            DictionaryContextData contextData,
+            IList<IFunctionInfo> expressionFunctions);
+
         Dictionary<String, String> EvaluateJobDefaultsRun(
             TemplateToken token,
             DictionaryContextData contextData,

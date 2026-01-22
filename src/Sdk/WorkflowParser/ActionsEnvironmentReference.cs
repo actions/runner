@@ -6,7 +6,7 @@ using GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens;
 namespace GitHub.Actions.WorkflowParser
 {
     /// <summary>
-    /// Information about an environment parsed from YML with evaluated name, URL will be evaluated on runner
+    /// Information about an environment parsed from YML with evaluated name, URL and Deployment will be evaluated on runner
     /// </summary>
     [DataContract]
     public sealed class ActionsEnvironmentReference
@@ -21,5 +21,8 @@ namespace GitHub.Actions.WorkflowParser
 
         [DataMember]
         public TemplateToken? Url { get; set; }
+
+        [DataMember]
+        public TemplateToken? Deployment { get; set; }
     }
 }

@@ -160,6 +160,23 @@ namespace GitHub.Runner.Worker
                 CompareEnvironmentUrl);
         }
 
+        public Boolean? EvaluateEnvironmentDeployment(
+            TemplateToken token,
+            DictionaryContextData contextData,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            return EvaluateAndCompare(
+                "EvaluateEnvironmentDeployment",
+                () => _legacyEvaluator.EvaluateEnvironmentDeployment(token, contextData, expressionFunctions),
+                () => _newEvaluator.EvaluateJobEnvironmentDeployment(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
+                CompareEnvironmentDeployment);
+        }
+
+        private static bool CompareEnvironmentDeployment(Boolean? legacy, Boolean? newResult)
+        {
+            return legacy == newResult;
+        }
+
         public Dictionary<string, string> EvaluateJobDefaultsRun(
             TemplateToken token,
             DictionaryContextData contextData,

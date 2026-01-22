@@ -760,6 +760,35 @@ namespace GitHub.Actions.WorkflowParser
             return result;
         }
 
+
+        public Boolean? EvaluateJobEnvironmentDeployment(
+            TemplateToken token,
+            DictionaryExpressionData expressionData,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            Boolean? result = null;
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(expressionData, expressionFunctions);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, WorkflowTemplateConstants.StringRunnerContextNoSecrets, token, 0, null);
+                    context.Errors.Check();
+                    var boolToken = token.AssertBoolean("environment.deployment");
+                    result = boolToken.Value;
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result;
+        }
+
         public Dictionary<String, String> EvaluateJobDefaultsRun(
             TemplateToken token,
             DictionaryExpressionData expressionData,

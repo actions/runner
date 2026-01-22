@@ -306,6 +306,34 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         }
 
 
+
+        public Boolean? EvaluateEnvironmentDeployment(
+            TemplateToken token,
+            DictionaryContextData contextData,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            if (token == null || token.Type == TokenType.Null)
+            {
+                return null;
+            }
+
+            var context = CreateContext(contextData, expressionFunctions);
+            try
+            {
+                token = TemplateEvaluator.Evaluate(context, TemplateConstants.StringRunnerContextNoSecrets, token, 0, null, omitHeader: true);
+                context.Errors.Check();
+                var boolToken = token.AssertBoolean("environment.deployment");
+                return boolToken.Value;
+            }
+            catch (Exception ex) when (!(ex is TemplateValidationException))
+            {
+                context.Errors.Add(ex);
+            }
+
+            context.Errors.Check();
+            return null;
+        }
+
         public Dictionary<String, String> EvaluateJobDefaultsRun(
             TemplateToken token,
             DictionaryContextData contextData,
