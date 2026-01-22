@@ -408,7 +408,7 @@ namespace GitHub.Services.WebApi
                 // DEVNOTE: Do not tack-on the version information, instead let the
                 // assembly load without it so that it may resolve to the appropriate.
                 // Otherwise, translation down the stack may fail due to version mismatch
-                // and that end's up creating un-necessary retries on certain user defined exceptions.
+                // and that ends up creating un-necessary retries on certain user defined exceptions.
                 // newName.Version = Assembly.GetExecutingAssembly().GetName().Version;
                 newName.SetPublicKeyToken(asmName.GetPublicKeyToken());
 
