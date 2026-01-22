@@ -192,7 +192,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 case ReturnCode.NERR_GroupNotFound:
                 case ReturnCode.ERROR_NO_SUCH_ALIAS:
-                    Trace.Info(StringUtil.Format("Group {0} not exists.", groupName));
+                    Trace.Info(StringUtil.Format("Group {0} does not exist.", groupName));
                     break;
 
                 case ReturnCode.ERROR_ACCESS_DENIED:
