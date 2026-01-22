@@ -7,8 +7,8 @@ This ADR details the design changes for supporting custom configurable hooks for
 This feature is mainly intended for self hosted runner administrators.
 
 **What we hope to solve with this feature**
-1. A runner admininstrator is able to add custom scripts to cleanup their runner environment at the start or end of a job
-2. A runner admininstrator is able to add custom scripts to help setup their runner environment at the beginning of a job, for reasons like [caching](https://github.com/actions/runner/issues/1543#issuecomment-1050346279)
+1. A runner administrator is able to add custom scripts to cleanup their runner environment at the start or end of a job
+2. A runner administrator is able to add custom scripts to help setup their runner environment at the beginning of a job, for reasons like [caching](https://github.com/actions/runner/issues/1543#issuecomment-1050346279)
 3. A runner administrator is able to grab custom telemetry of jobs running on their self hosted runner
 
 **What we don't think this will solve**
