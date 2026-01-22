@@ -351,7 +351,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
             }
 
             // fetch lfs object upfront, this will avoid fetch lfs object during checkout which cause checkout taking forever
-            // since checkout will fetch lfs object 1 at a time, while git lfs fetch will fetch lfs object in parallel.
+            // since checkout will fetch lfs object one at a time, while git lfs fetch will fetch lfs object in parallel.
             if (gitLfsSupport)
             {
                 int exitCode_lfsFetch = await gitCommandManager.GitLFSFetch(executionContext, targetPath, "origin", sourcesToBuild, string.Join(" ", additionalLfsFetchArgs), cancellationToken);
