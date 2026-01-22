@@ -2,7 +2,7 @@
 
 ## Context
 
-This ADR details the design changes for supporting custom configurable hooks for on various runner events. This has been a long requested user feature [here](https://github.com/actions/runner/issues/1543), [here](https://github.com/actions/runner/issues/699) and [here](https://github.com/actions/runner/issues/1116) for users to have more information on runner observability, and for the ability to run cleanup and teardown jobs. 
+This ADR details the design changes for supporting custom configurable hooks for on various runner events. This has been a long requested user feature ([actions/runner#699](https://github.com/actions/runner/issues/699) [actions/runner#1116](https://github.com/actions/runner/issues/1116), and [actions/runner#1543](https://github.com/actions/runner/issues/1543)) for users to have more information on runner observability, and for the ability to run cleanup and teardown jobs.
 
 This feature is mainly intended for self hosted runner administrators.
 
