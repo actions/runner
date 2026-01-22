@@ -1101,7 +1101,7 @@ Config Options:
  --replace              Replace any existing runner with the same name (default false)
  --pat                  GitHub personal access token with repo scope. Used for checking network connectivity when executing `.{separator}run.{ext} --check`
  --disableupdate        Disable self-hosted runner automatic update to the latest released version`
- --ephemeral            Configure the runner to only take one job and then let the service un-configure the runner after the job finishes (default false)");
+ --ephemeral            Configure the runner to only take one job and then let the service deconfigure the runner after the job finishes (default false)");
 
 #if OS_WINDOWS
     _term.WriteLine($@" --runasservice   Run the runner as a service");
