@@ -24,9 +24,7 @@ Depends on how your SSL server certificate gets configured, you might need to do
 
 ### Trust CA certificate for the Runner
 
-The actions runner is a dotnet core application which will follow how dotnet load SSL CA certificates on each OS.
-
-You can get full details documentation at [here](https://docs.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography#x509store)
+The actions runner is a dotnet core application which will follow how [dotnet load SSL CA certificates on each OS](https://docs.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography#x509store).
 
 In short:
 - Windows: Load from Windows certificate store.
