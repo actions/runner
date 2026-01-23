@@ -407,7 +407,7 @@ namespace GitHub.Runner.Common
                     break;
 
                 case WellKnownDirectory.Tools:
-                    // TODO: Coallesce to just check RUNNER_TOOL_CACHE when images stabilize
+                    // TODO: Coalesce to just check RUNNER_TOOL_CACHE when images stabilize
                     path = Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") ?? Environment.GetEnvironmentVariable("RUNNER_TOOLSDIRECTORY") ?? Environment.GetEnvironmentVariable("AGENT_TOOLSDIRECTORY") ?? Environment.GetEnvironmentVariable(Constants.Variables.Agent.ToolsDirectory);
 
                     if (string.IsNullOrEmpty(path))
