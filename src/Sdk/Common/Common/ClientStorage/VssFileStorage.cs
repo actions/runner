@@ -220,7 +220,7 @@ namespace GitHub.Services.Common.ClientStorage
         /// GetFolderPath throw)
         /// </summary>
         /// <param name="specialFolder">Folder to retrieve</param>
-        /// <returns>Path if available, null othewise</returns>
+        /// <returns>Path if available, null otherwise</returns>
         private static string SafeGetFolderPath(Environment.SpecialFolder specialFolder)
         {
             try
