@@ -48,7 +48,7 @@ namespace GitHub.Services.Common.Internal
         /// </summary>
         /// <remarks>
         /// "x-mvwit" is here as it is used and saved to work item history rich HTML changes. It is used to reference other work
-        /// items in the list. If we remove it from this list, it will not be a navigatable link in e.g. Web Access.
+        /// items in the list. If we remove it from this list, it will not be a navigable link in e.g. Web Access.
         /// </remarks>
         private static readonly ICollection<string> SafeUriSchemeList = new HashSet<string>(new string[] {
             "http", "https", "ftp", "gopher", "mailto", "news", "telnet", "wais",
