@@ -1178,7 +1178,7 @@ namespace GitHub.Runner.Listener.Configuration
             QueryConfig = 0x1,
             ChangeConfig = 0x2,
             QueryStatus = 0x4,
-            EnumerateDependants = 0x8,
+            EnumerateDependents = 0x8,
             Start = 0x10,
             Stop = 0x20,
             PauseContinue = 0x40,
@@ -1187,7 +1187,7 @@ namespace GitHub.Runner.Listener.Configuration
             Delete = 0x00010000,
             StandardRightsRequired = 0xF0000,
             AllAccess =
-                (StandardRightsRequired | QueryConfig | ChangeConfig | QueryStatus | EnumerateDependants | Start | Stop
+                (StandardRightsRequired | QueryConfig | ChangeConfig | QueryStatus | EnumerateDependents | Start | Stop
                  | PauseContinue | Interrogate | UserDefinedControl)
         }
 
