@@ -303,8 +303,8 @@ namespace GitHub.Services.FileContainer.Client
                     HttpContent byteArrayContent = new ByteArrayContent(dataToSend, 0, bytesToCopy);
                     byteArrayContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
                     byteArrayContent.Headers.ContentLength = currentStream.Length;
-                    byteArrayContent.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(currentStream.StartingPostionOnOuterStream,
-                                                                                                             currentStream.EndingPostionOnOuterStream,
+                    byteArrayContent.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(currentStream.StartingPositionOnOuterStream,
+                                                                                                             currentStream.EndingPositionOnOuterStream,
                                                                                                              streamParser.Length);
                     FileUploadTrace(itemPath, $"Generate new HttpRequest for uploading file '{itemPath}', chunk '{currentChunk}' of '{totalChunks}'.");
 
