@@ -952,7 +952,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.Initialize(hc);
 
                 var inputGithubContext = new GitHubContext();
-                var inputeRunnerContext = new RunnerContext();
+                var inputRunnerContext = new RunnerContext();
 
                 // string context data
                 inputGithubContext["action_path"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_actions/owner/composite/main");
@@ -965,8 +965,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 inputGithubContext["run_id"] = new StringContextData("2033211332");
                 inputGithubContext["workflow"] = new StringContextData("Name of Workflow");
                 inputGithubContext["workspace"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/step-order/step-order");
-                inputeRunnerContext["temp"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp");
-                inputeRunnerContext["tool_cache"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_tool");
+                inputRunnerContext["temp"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_temp");
+                inputRunnerContext["tool_cache"] = new StringContextData("/home/username/Projects/work/runner/_layout/_work/_tool");
 
                 // dictionary context data
                 var githubEvent = new DictionaryContextData();
@@ -979,7 +979,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 inputGithubContext["event"] = githubEvent;
 
                 ec.ExpressionValues["github"] = inputGithubContext;
-                ec.ExpressionValues["runner"] = inputeRunnerContext;
+                ec.ExpressionValues["runner"] = inputRunnerContext;
 
                 var ecExpect = new Runner.Worker.ExecutionContext();
                 ecExpect.Initialize(hc);
