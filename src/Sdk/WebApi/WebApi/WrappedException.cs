@@ -340,7 +340,7 @@ namespace GitHub.Services.WebApi
 
         private static Type LoadType(String typeName)
         {
-            // For rest api version < 3.0, the server transmits the fulllAssemblyQualifiedName of exception at time that version was initially released,
+            // For rest api version < 3.0, the server transmits the fullAssemblyQualifiedName of exception at time that version was initially released,
             // which means normal loading will fail due to version mismatch, as the version will always be <= 14.0.0.0.
             // Example: typeName=GitHub.Core.WebApi.ProjectDoesNotExistWithNameException, GitHub.Core.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
 
