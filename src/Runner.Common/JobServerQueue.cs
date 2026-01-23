@@ -891,8 +891,8 @@ namespace GitHub.Runner.Common
                         }
 
                         // Create a new record and only set the Log field
-                        var attachmentUpdataRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
-                        QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdataRecord);
+                        var attachmentUpdateRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
+                        QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdateRecord);
                     }
                     else
                     {
