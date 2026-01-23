@@ -209,7 +209,7 @@ namespace GitHub.Services.Common
                 catch (Exception /*exception*/)
                 {
                     // With an exception here the message may still contain an unmasked password.
-                    // We also do not want to interupt the current thread with this exception, because it may be constructing a message 
+                    // We also do not want to interrupt the current thread with this exception, because it may be constructing a message 
                     // for a different exception. Trace this exception and continue on using a generic exception message.
                     //TeamFoundationTracingService.TraceExceptionRaw(99231, s_area, s_layer, exception);
                 }
