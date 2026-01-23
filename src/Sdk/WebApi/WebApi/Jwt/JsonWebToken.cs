@@ -656,7 +656,7 @@ namespace GitHub.Services.WebApi.Jwt
             private JsonWebToken _actorToken;
         }
 
-        //this coverter converts back and forth from the JWT encoded string
+        //this converter converts back and forth from the JWT encoded string
         //and this full type
         internal class JsonWebTokenConverter : VssSecureJsonConverter
         {
