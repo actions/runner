@@ -294,7 +294,7 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Invoked when the current token is being validated. When overriden in a derived class,
+        /// Invoked when the current token is being validated. When overridden in a derived class,
         /// validate and return the validated token.
         /// </summary>
         /// <remarks>Is called inside a lock in <c>ValidateToken</c></remarks>
