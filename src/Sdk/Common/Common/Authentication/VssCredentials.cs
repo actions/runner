@@ -114,7 +114,7 @@ namespace GitHub.Services.Common
             {
                 // If we use TaskScheduler.FromCurrentSynchronizationContext() here and this is executing under the UI 
                 // thread, for example from an event handler in a WinForms applications, this TaskScheduler will capture 
-                // the UI SyncrhonizationContext whose MaximumConcurrencyLevel is 1 and only has a single thread to 
+                // the UI SynchronizationContext whose MaximumConcurrencyLevel is 1 and only has a single thread to 
                 // execute queued work. Then, if the UI thread invokes one of our synchronous methods that are just 
                 // wrappers that block until the asynchronous overload returns, and if the async Task queues work to 
                 // this TaskScheduler, like GitHub.Services.CommonGetTokenOperation.GetTokenAsync does, 
