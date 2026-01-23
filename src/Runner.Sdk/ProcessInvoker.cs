@@ -297,7 +297,7 @@ namespace GitHub.Runner.Sdk
             _stopWatch = Stopwatch.StartNew();
             _proc.Start();
 
-            // Decrease invoked process priority, in platform specifc way, relative to parent
+            // Decrease invoked process priority, in platform specific way, relative to parent
             if (!highPriorityProcess)
             {
                 DecreaseProcessPriority(_proc);
