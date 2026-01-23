@@ -230,7 +230,7 @@ namespace GitHub.Runner.Worker.Handlers
             // [ARG...]
             dockerCommandArgs.Add(arguments);
 
-            string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
+            string dockerCommandArgString = string.Join(" ", dockerCommandArgs);
             TranslateToContainerPath(environment);
 
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
@@ -247,7 +247,7 @@ namespace GitHub.Runner.Worker.Handlers
 #endif
                 return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                                                          fileName: dockerClientPath,
-                                                         arguments: dockerCommandArgstring,
+                                                         arguments: dockerCommandArgString,
                                                          environment: environment,
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,
