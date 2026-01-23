@@ -386,7 +386,7 @@ namespace GitHub.Services.WebApi.Location
 
         /// <summary>
         /// Get the API resource locations -- a collection of versioned URL paths that
-        /// are keyed by a location identitifer
+        /// are keyed by a location identifier
         /// </summary>
         /// <returns></returns>
         ApiResourceLocationCollection GetResourceLocations();
@@ -582,7 +582,7 @@ namespace GitHub.Services.WebApi.Location
 
         /// <summary>
         /// Get the API resource locations -- a collection of versioned URL paths that
-        /// are keyed by a location identitifer
+        /// are keyed by a location identifier
         /// </summary>
         /// <returns></returns>
         Task<ApiResourceLocationCollection> GetResourceLocationsAsync(CancellationToken cancellationToken = default(CancellationToken));
