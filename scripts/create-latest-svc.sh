@@ -171,7 +171,7 @@ sudo chown -R $svc_user ./runner
 pushd ./runner
 
 #---------------------------------------
-# Unattend config
+# Unattended config
 #---------------------------------------
 runner_url="https://github.com/${runner_scope}"
 if [ -n "${ghe_hostname}" ]; then
