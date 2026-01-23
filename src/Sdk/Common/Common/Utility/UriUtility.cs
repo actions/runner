@@ -490,7 +490,7 @@ namespace GitHub.Services.Common.Internal
                 // A machine name could not be resolved, for the purposes of this method, 
                 // assume that machines are not the same and ignore the error
 
-                // ToDo: tedchamb come back to this
+                // TODO: tedchamb come back to this
                 //TeamFoundationTrace.TraceException(ex);
             }
 
