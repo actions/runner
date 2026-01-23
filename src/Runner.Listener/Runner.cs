@@ -1079,7 +1079,7 @@ namespace GitHub.Runner.Listener
             _term.WriteLine($@"
 Commands:
  .{separator}config.{ext}         Configures the runner
- .{separator}config.{ext} remove  Unconfigures the runner
+ .{separator}config.{ext} remove  Deconfigures the runner
  .{separator}run.{ext}            Runs the runner interactively. Does not require any options.
 
 Options:
