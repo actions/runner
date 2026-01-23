@@ -134,7 +134,7 @@ namespace GitHub.Services.OAuth
         /// </summary>
         /// <param name="failedToken">If applicable, the previous token which is now considered invalid</param>
         /// <param name="cancellationToken">A token used for signalling cancellation</param>
-        /// <returns>A <c>Task&lgt;IssuedToken&gt;</c> for tracking the progress of the token request</returns>
+        /// <returns>A <c>Task&lt;IssuedToken&gt;</c> for tracking the progress of the token request</returns>
         protected override async Task<IssuedToken> OnGetTokenAsync(
             IssuedToken failedToken,
             CancellationToken cancellationToken)
