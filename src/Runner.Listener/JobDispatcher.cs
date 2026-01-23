@@ -1025,7 +1025,7 @@ namespace GitHub.Runner.Listener
                         var logNameParts = logName.Split('_', StringSplitOptions.RemoveEmptyEntries);
                         if (logNameParts.Length != 3)
                         {
-                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            Trace.Warning($"log file '{log}' doesn't follow naming convention 'GUID_GUID_INT'.");
                             continue;
                         }
                         var logPageSeperator = logName.IndexOf('_');
@@ -1040,13 +1040,13 @@ namespace GitHub.Runner.Listener
 
                         if (!Guid.TryParse(logNameParts[1], out logRecordId))
                         {
-                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            Trace.Warning($"log file '{log}' doesn't follow naming convention 'GUID_GUID_INT'.");
                             continue;
                         }
 
                         if (!int.TryParse(logNameParts[2], out pageNumber))
                         {
-                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            Trace.Warning($"log file '{log}' doesn't follow naming convention 'GUID_GUID_INT'.");
                             continue;
                         }
 
