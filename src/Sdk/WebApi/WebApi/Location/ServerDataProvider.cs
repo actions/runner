@@ -740,7 +740,7 @@ namespace GitHub.Services.WebApi.Location
                 m_locationDataCacheManager = new LocationCacheManager(m_instanceId, m_serviceOwner, m_baseUri);
             }
 
-            // update the location service cache if we tried to retireve location service data
+            // update the location service cache if we tried to retrieve location service data
             m_locationDataCacheManager.WebApplicationRelativeDirectory = connectionData.WebApplicationRelativeDirectory;
             if (locationServiceData != null)
             {

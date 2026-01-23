@@ -98,7 +98,7 @@ namespace GitHub.Runner.Listener
                 Guid dispatchedJobId = _jobDispatchedQueue.Dequeue();
                 if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
                 {
-                    Trace.Verbose($"Retrive previous WorkerDispatcher for job {currentDispatch.JobId}.");
+                    Trace.Verbose($"Retrieve previous WorkerDispatcher for job {currentDispatch.JobId}.");
                 }
             }
 
@@ -167,7 +167,7 @@ namespace GitHub.Runner.Listener
                 dispatchedJobId = _jobDispatchedQueue.Dequeue();
                 if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
                 {
-                    Trace.Verbose($"Retrive previous WorkerDispatcher for job {currentDispatch.JobId}.");
+                    Trace.Verbose($"Retrieve previous WorkerDispatcher for job {currentDispatch.JobId}.");
                 }
             }
             else
