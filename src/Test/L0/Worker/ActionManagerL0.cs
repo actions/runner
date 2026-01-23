@@ -415,11 +415,11 @@ runs:
                 var actionId = Guid.NewGuid();
                 var actions = new List<Pipelines.ActionStep>();
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "nonexistent/no", "nonexistent.completed");
                 Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
                 File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                File.Copy(Path.Combine(TestUtil.GetSrcPath(), "Test", TestDataFolderName, "dockerfileaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
+                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "nonexistent"));
+                File.Copy(Path.Combine(TestUtil.GetSrcPath(), "Test", TestDataFolderName, "dockerfileaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "nonexistent", "action.yml"));
 
                 //Act
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
