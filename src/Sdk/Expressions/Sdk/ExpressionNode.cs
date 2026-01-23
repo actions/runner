@@ -28,7 +28,7 @@ namespace GitHub.Actions.Expressions.Sdk
         }
 
         /// <summary>
-        /// Indicates whether the evalation result should be stored on the context and used
+        /// Indicates whether the evaluation result should be stored on the context and used
         /// when the expanded result is traced.
         /// </summary>
         protected abstract Boolean TraceFullyExpanded { get; }
