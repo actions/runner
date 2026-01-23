@@ -25,7 +25,7 @@ namespace GitHub.Services.Common
     public abstract class VssException : ApplicationException
     {
         /// <summary>
-        /// No-arg constructor that sumply defers to the base class.
+        /// No-arg constructor that simply defers to the base class.
         /// </summary>
         public VssException() : base()
         {
