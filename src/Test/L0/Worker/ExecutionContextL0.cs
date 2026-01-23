@@ -905,7 +905,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             var hc = new TestHostContext(this, testName);
 
-            // Arrange: Setup the configation store.
+            // Arrange: Setup the configuration store.
             var configurationStore = new Mock<IConfigurationStore>();
             configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings());
             hc.SetSingleton(configurationStore.Object);
