@@ -144,7 +144,7 @@ namespace GitHub.Runner.Listener
             WorkerDispatcher workerDispatcher;
             if (!_jobInfos.TryGetValue(jobCancelMessage.JobId, out workerDispatcher))
             {
-                Trace.Verbose($"Job request {jobCancelMessage.JobId} is not a current running job, ignore cancllation request.");
+                Trace.Verbose($"Job request {jobCancelMessage.JobId} is not a current running job, ignore cancellation request.");
                 return false;
             }
             else
