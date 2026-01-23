@@ -189,7 +189,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                     int exitCode_clean = await gitCommandManager.GitClean(executionContext, targetPath);
                     if (exitCode_clean != 0)
                     {
-                        executionContext.Debug($"'git clean -ffdx' failed with exit code {exitCode_clean}, this normally caused by:\n    1) Path too long\n    2) Permission issue\n    3) File in use\nFor futher investigation, manually run 'git clean -ffdx' on repo root: {targetPath} after each build.");
+                        executionContext.Debug($"'git clean -ffdx' failed with exit code {exitCode_clean}, this normally caused by:\n    1) Path too long\n    2) Permission issue\n    3) File in use\nFor further investigation, manually run 'git clean -ffdx' on repo root: {targetPath} after each build.");
                         softCleanSucceed = false;
                     }
 
@@ -199,7 +199,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                         int exitCode_reset = await gitCommandManager.GitReset(executionContext, targetPath);
                         if (exitCode_reset != 0)
                         {
-                            executionContext.Debug($"'git reset --hard HEAD' failed with exit code {exitCode_reset}\nFor futher investigation, manually run 'git reset --hard HEAD' on repo root: {targetPath} after each build.");
+                            executionContext.Debug($"'git reset --hard HEAD' failed with exit code {exitCode_reset}\nFor further investigation, manually run 'git reset --hard HEAD' on repo root: {targetPath} after each build.");
                             softCleanSucceed = false;
                         }
                     }
@@ -212,7 +212,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                             int exitCode_submoduleclean = await gitCommandManager.GitSubmoduleClean(executionContext, targetPath);
                             if (exitCode_submoduleclean != 0)
                             {
-                                executionContext.Debug($"'git submodule foreach git clean -ffdx' failed with exit code {exitCode_submoduleclean}\nFor futher investigation, manually run 'git submodule foreach git clean -ffdx' on repo root: {targetPath} after each build.");
+                                executionContext.Debug($"'git submodule foreach git clean -ffdx' failed with exit code {exitCode_submoduleclean}\nFor further investigation, manually run 'git submodule foreach git clean -ffdx' on repo root: {targetPath} after each build.");
                                 softCleanSucceed = false;
                             }
                         }
@@ -222,7 +222,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                             int exitCode_submodulereset = await gitCommandManager.GitSubmoduleReset(executionContext, targetPath);
                             if (exitCode_submodulereset != 0)
                             {
-                                executionContext.Debug($"'git submodule foreach git reset --hard HEAD' failed with exit code {exitCode_submodulereset}\nFor futher investigation, manually run 'git submodule foreach git reset --hard HEAD' on repo root: {targetPath} after each build.");
+                                executionContext.Debug($"'git submodule foreach git reset --hard HEAD' failed with exit code {exitCode_submodulereset}\nFor further investigation, manually run 'git submodule foreach git reset --hard HEAD' on repo root: {targetPath} after each build.");
                                 softCleanSucceed = false;
                             }
                         }
