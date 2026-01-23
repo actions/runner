@@ -30,7 +30,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
         }
 
         /// <summary>
-        /// Indicates whether the evalation result should be stored on the context and used
+        /// Indicates whether the evaluation result should be stored on the context and used
         /// when the realized result is traced.
         /// </summary>
         protected abstract Boolean TraceFullyRealized { get; }
