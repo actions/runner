@@ -542,7 +542,7 @@ namespace GitHub.Services.Common.ClientStorage
                 {
                     // during testing, creating this backup provided reliability in the event of aborted threads, and
                     // crashed processes.  With this, I was not able to simulate a case where corruption happens, but there is no
-                    // 100% gaurantee against corruption.
+                    // 100% guarantee against corruption.
                     string originalContent = JValue.Parse(JsonConvert.SerializeObject(originalSettings)).ToString(Formatting.Indented);
                     SaveFile(m_bckUpFilePath, originalContent);
                 }
