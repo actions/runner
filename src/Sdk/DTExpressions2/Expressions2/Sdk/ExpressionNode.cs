@@ -159,7 +159,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
                     String.Equals(realizedExpression, $"'{traceValue}'", StringComparison.Ordinal))
                 {
                     // Don't bother tracing the realized expression when the result is a number and the
-                    // realized expresion is a precisely matching string.
+                    // realized expression is a precisely matching string.
                 }
                 else
                 {
