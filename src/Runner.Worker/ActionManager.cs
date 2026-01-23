@@ -1100,10 +1100,21 @@ namespace GitHub.Runner.Worker
             {
                 return null;
             }
+            var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
 
-            var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{token}"));
-            HostContext.SecretMasker.AddValue(base64EncodingToken);
-            return new AuthenticationHeaderValue("Basic", base64EncodingToken);
+            if (!string.IsNullOrEmpty(authToken))
+            {
+                HostContext.SecretMasker.AddValue(authToken);
+                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
+                HostContext.SecretMasker.AddValue(base64EncodingToken);
+                return new AuthenticationHeaderValue("Basic", base64EncodingToken);
+            }
+            else
+            {
+                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{token}"));
+                HostContext.SecretMasker.AddValue(base64EncodingToken);
+                return new AuthenticationHeaderValue("Basic", base64EncodingToken);
+            }
         }
 
         private async Task DownloadRepositoryArchive(IExecutionContext executionContext, string downloadUrl, string downloadAuthToken, string archiveFile)
