@@ -560,9 +560,9 @@ namespace GitHub.Runner.Listener.Configuration
                 sfa.lpsaActions = tmpBuf.ToInt64();
 
                 // Call the ChangeServiceFailureActions() abstraction of ChangeServiceConfig2()
-                bool falureActionsResult = ChangeServiceFailureActions(svcHndl, SERVICE_CONFIG_FAILURE_ACTIONS, ref sfa);
+                bool failureActionsResult = ChangeServiceFailureActions(svcHndl, SERVICE_CONFIG_FAILURE_ACTIONS, ref sfa);
                 //Check the return
-                if (!falureActionsResult)
+                if (!failureActionsResult)
                 {
                     int lastErrorCode = (int)GetLastError();
                     Exception win32exception = new Win32Exception(lastErrorCode);
