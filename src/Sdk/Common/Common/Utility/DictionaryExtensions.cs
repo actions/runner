@@ -95,7 +95,7 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Returns the value in an IReadonlyDictionary with values of type <see cref="object"/>  
-        /// casted as values of requested type, or the defualt if the key is not found or 
+        /// casted as values of requested type, or the default if the key is not found or 
         /// if the value was found but not compatible with the requested type.
         /// </summary>
         /// <typeparam name="K">The key type</typeparam>
@@ -112,7 +112,7 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Returns the value in an IDictionary with values of type <see cref="object"/>  
-        /// casted as values of requested type, or the defualt if the key is not found or 
+        /// casted as values of requested type, or the default if the key is not found or 
         /// if the value was found but not compatible with the requested type.
         /// </summary>
         /// <typeparam name="K">The key type</typeparam>
@@ -129,7 +129,7 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Returns the value in a Dictionary with values of type <see cref="object"/>  
-        /// casted as values of requested type, or the defualt if the key is not found or 
+        /// casted as values of requested type, or the default if the key is not found or 
         /// if the value was found but not compatible with the requested type.
         /// </summary>
         /// <remarks>
