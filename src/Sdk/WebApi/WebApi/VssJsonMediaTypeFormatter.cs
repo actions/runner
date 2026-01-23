@@ -83,7 +83,7 @@ namespace GitHub.Services.WebApi
 
             if (!enumsAsNumbers)
             {
-                // Serialze enums as camelCased string values
+                // Serialize enums as camelCased string values
                 this.SerializerSettings.Converters.Add(new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() });
             }
 
