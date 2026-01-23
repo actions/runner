@@ -1098,18 +1098,18 @@ namespace GitHub.Runner.Common.Tests.Worker
             _outputManager.OnDataReceived(null, new ProcessDataReceivedEventArgs(line));
         }
 
-        private async Task CreateRepository(TestHostContext hostConetxt, string path, string url)
+        private async Task CreateRepository(TestHostContext hostContext, string path, string url)
         {
             Directory.CreateDirectory(path);
             var gitPath = WhichUtil.Which("git", true);
             var environment = new Dictionary<string, string>();
 
-            using (var processInvoker = new ProcessInvoker(hostConetxt.GetTrace()))
+            using (var processInvoker = new ProcessInvoker(hostContext.GetTrace()))
             {
                 await processInvoker.ExecuteAsync(path, gitPath, "init", environment, CancellationToken.None);
             }
 
-            using (var processInvoker = new ProcessInvoker(hostConetxt.GetTrace()))
+            using (var processInvoker = new ProcessInvoker(hostContext.GetTrace()))
             {
                 await processInvoker.ExecuteAsync(path, gitPath, $"remote add origin {url}", environment, CancellationToken.None);
             }
