@@ -15,7 +15,7 @@ namespace GitHub.Services.Common
     /// </summary>
     /// <remarks>
     /// All Exceptions in the VSS space -- any exception that flows across
-    /// a REST API boudary -- should derive from VssServiceException. This is likely
+    /// a REST API boundary -- should derive from VssServiceException. This is likely
     /// almost ALL new exceptions. Legacy TFS exceptions that do not flow through rest
     /// derive from TeamFoundationServerException or TeamFoundationServiceException
     /// </remarks>
