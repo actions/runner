@@ -177,7 +177,7 @@ namespace GitHub.DistributedTask.Expressions2
 
         /// <summary>
         /// Useful for working with values that are not the direct evaluation result of a parameter.
-        /// This allows ExpressionNode authors to leverage the coercion and comparision functions
+        /// This allows ExpressionNode authors to leverage the coercion and comparison functions
         /// for any values.
         ///
         /// Also note, the value will be canonicalized (for example numeric types converted to double) and any
