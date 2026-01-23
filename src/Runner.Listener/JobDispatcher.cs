@@ -1028,7 +1028,7 @@ namespace GitHub.Runner.Listener
                             Trace.Warning($"log file '{log}' doesn't follow naming convention 'GUID_GUID_INT'.");
                             continue;
                         }
-                        var logPageSeperator = logName.IndexOf('_');
+                        var logPageSeparator = logName.IndexOf('_');
                         var logRecordId = Guid.Empty;
                         var pageNumber = 0;
 
