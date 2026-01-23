@@ -71,7 +71,7 @@ namespace GitHub.Services.Common
         /// credential.
         /// </summary>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
-        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed, otherwise CredentialProptType.DoNotPrompt</param>
+        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed, otherwise CredentialPromptType.DoNotPrompt</param>
         public VssCredentials(
             FederatedCredential federatedCredential,
             CredentialPromptType promptType)
@@ -84,7 +84,7 @@ namespace GitHub.Services.Common
         /// credential.
         /// </summary>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
-        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialProptType.DoNotPrompt</param>
+        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialPromptType.DoNotPrompt</param>
         /// <param name="scheduler">An optional <c>TaskScheduler</c> to ensure credentials prompting occurs on the UI thread</param>
         public VssCredentials(
             FederatedCredential federatedCredential,
@@ -99,7 +99,7 @@ namespace GitHub.Services.Common
         /// credential.
         /// </summary>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
-        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialProptType.DoNotPrompt</param>
+        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialPromptType.DoNotPrompt</param>
         /// <param name="scheduler">An optional <c>TaskScheduler</c> to ensure credentials prompting occurs on the UI thread</param>
         /// <param name="credentialPrompt">An optional <c>IVssCredentialPrompt</c> to perform prompting for credentials</param>
         public VssCredentials(
