@@ -10,7 +10,7 @@ namespace GitHub.Services.Common
     public static class TypeExtensionMethods
     {
         /// <summary>
-        /// Determins if a value is assignable to the requested type.  It goes
+        /// Determines if a value is assignable to the requested type.  It goes
         /// the extra step beyond IsAssignableFrom in that it also checks for
         /// IConvertible and attempts to convert the value.
         /// </summary>
