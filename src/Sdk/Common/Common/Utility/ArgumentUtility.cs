@@ -1238,7 +1238,7 @@ namespace GitHub.Services.Common
                         return true;
                     }
 
-                    // skip the low surogate
+                    // skip the low surrogate
                     i++;
                 }
             }
