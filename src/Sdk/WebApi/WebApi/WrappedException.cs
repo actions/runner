@@ -320,7 +320,7 @@ namespace GitHub.Services.WebApi
                         // to make code changes to exceptions that we don't own.
                         Debug.Assert(!(exception is VssException) || exception.Message == Message,
                             "The unwrapped exception message does not match the original exception message.",
-                            "Type: {0}{1}Expected: {2}{1}Actual: {3}{1}{1}This can happen if the exception has a contructor that manipulates the input string.  You can work around this by creating a constructor that takes in a WrappedException which sets the message verbatim and optionally the inner exception.",
+                            "Type: {0}{1}Expected: {2}{1}Actual: {3}{1}{1}This can happen if the exception has a constructor that manipulates the input string.  You can work around this by creating a constructor that takes in a WrappedException which sets the message verbatim and optionally the inner exception.",
                             exception.GetType(),
                             Environment.NewLine,
                             Message,
