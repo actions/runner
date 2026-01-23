@@ -229,7 +229,7 @@ namespace GitHub.Services.Common
         public static VssStringComparer StringFieldConditionOrdinal { get { return s_ordinal; } }
 
         // Service Endpoint Comparer
-        public static VssStringComparer ServiceEndpointTypeCompararer { get { return s_ordinalIgnoreCase; } }
+        public static VssStringComparer ServiceEndpointTypeComparer { get { return s_ordinalIgnoreCase; } }
 
         private class DataSourceIgnoreProtocolComparer : VssStringComparer
         {
