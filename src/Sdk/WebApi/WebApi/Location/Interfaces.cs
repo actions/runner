@@ -155,7 +155,7 @@ namespace GitHub.Services.WebApi.Location
 
         // <summary>
         // Removes the ServiceDefinition with the specified service type and
-        // service identifier from the location serivce.
+        // service identifier from the location service.
         // </summary>
         // <param name="serviceType">
         //     The service type of the ServiceDefinition to remove.
