@@ -152,7 +152,7 @@ namespace GitHub.Runner.Worker
                     var value = variable.Value.Value?.Trim() ?? string.Empty;
 
                     // Add the entire value, even if it contains CR or LF. During expression tracing,
-                    // invidual trace info may contain line breaks.
+                    // individual trace info may contain line breaks.
                     HostContext.SecretMasker.AddValue(value);
 
                     // Also add each individual line. Typically individual lines are processed from STDOUT of child processes.
