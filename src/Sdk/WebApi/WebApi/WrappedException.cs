@@ -477,7 +477,7 @@ namespace GitHub.Services.WebApi
                         IEnumerable<Type> types;
                         try
                         {
-                            // calling GetTypes has side effect of loading direct dependancies of the assembly.
+                            // calling GetTypes has side effect of loading direct dependencies of the assembly.
                             types = assembly.GetTypes();
                         }
                         catch (ReflectionTypeLoadException ex)
