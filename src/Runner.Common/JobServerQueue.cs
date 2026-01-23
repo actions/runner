@@ -56,7 +56,7 @@ namespace GitHub.Runner.Common
         // indicate how many timelines we have, we will process _timelineUpdateQueue base on the order of timeline in this list
         private readonly List<Guid> _allTimelines = new();
 
-        // bufferd timeline records that fail to update
+        // buffered timeline records that fail to update
         private readonly Dictionary<Guid, List<TimelineRecord>> _bufferedRetryRecords = new();
 
         // Task for each queue's dequeue process
