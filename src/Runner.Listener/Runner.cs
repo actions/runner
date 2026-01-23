@@ -47,7 +47,7 @@ namespace GitHub.Runner.Listener
         // <summary>
         // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
         // Normally we rely on the HTTP clients to back off between retry attempts. However, acquiring a job
-        // involves calls to both Run Serivce and Broker. And Run Service and Broker communicate with each other
+        // involves calls to both Run Service and Broker. And Run Service and Broker communicate with each other
         // in an async fashion.
         //
         // When Run Service encounters a non-retriable error, it sends an async message to Broker. The runner will,
