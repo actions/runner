@@ -138,7 +138,7 @@ namespace GitHub.Services.Common.ClientStorage
             }
 
 #if DEBUG
-            Debug.Assert(fullPath.Equals(storage.m_filePath), string.Format("The same storage file is being referenced with different casing.  This will cause issues when running in cross patform environments where the file system may be case-sensitive.  {0} != {1}", storage.m_filePath, normalizedFullPath));
+            Debug.Assert(fullPath.Equals(storage.m_filePath), string.Format("The same storage file is being referenced with different casing.  This will cause issues when running in cross platform environments where the file system may be case-sensitive.  {0} != {1}", storage.m_filePath, normalizedFullPath));
 #endif
             return storage;
         }
