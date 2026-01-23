@@ -47,7 +47,7 @@ namespace GitHub.Services.WebApi
             int paramStart = -1, paramLength = 0;
             bool insideParam = false;
             HashSet<string> unusedValues = new HashSet<string>(routeValues.Keys, StringComparer.OrdinalIgnoreCase);
-            Dictionary<string, object> caseIncensitiveRouteValues = new Dictionary<string, object>(routeValues, StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, object> caseInsensitiveRouteValues = new Dictionary<string, object>(routeValues, StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < routeTemplate.Length; i++)
             {
@@ -71,7 +71,7 @@ namespace GitHub.Services.WebApi
                         }
 
                         Object paramValue;
-                        if (caseIncensitiveRouteValues.TryGetValue(paramName, out paramValue))
+                        if (caseInsensitiveRouteValues.TryGetValue(paramName, out paramValue))
                         {
                             if (paramValue != null)
                             {
@@ -148,7 +148,7 @@ namespace GitHub.Services.WebApi
                 foreach (String paramName in unusedValues)
                 {
                     Object paramValue;
-                    if (caseIncensitiveRouteValues.TryGetValue(paramName, out paramValue) && paramValue != null)
+                    if (caseInsensitiveRouteValues.TryGetValue(paramName, out paramValue) && paramValue != null)
                     {
                         sbResult.Append(isFirst ? '?' : '&');
                         isFirst = false;
