@@ -65,7 +65,7 @@ namespace GitHub.Services.Common.ClientStorage
         /// <summary>
         /// Write one entry into the local data storage.
         /// </summary>
-        /// <param name="path">This is the key for the data to store.  Providing a path allows data to be accessed hierarchicaly.</param>
+        /// <param name="path">This is the key for the data to store.  Providing a path allows data to be accessed hierarchically.</param>
         /// <param name="value">The value to store at the specified path. Setting his to NULL will remove the entry.</param>
         void WriteEntry(string path, object value);
 
