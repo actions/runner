@@ -45,7 +45,7 @@ namespace GitHub.Services.WebApi
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="bypassSafeArrayWrapping">This should typically be false.  A true value will cause the wrapping to be skipped which is neccesary when creating ObjectContent from arrays on client to prepare a request</param>
+        /// <param name="bypassSafeArrayWrapping">This should typically be false.  A true value will cause the wrapping to be skipped which is necessary when creating ObjectContent from arrays on client to prepare a request</param>
         public VssJsonMediaTypeFormatter(bool bypassSafeArrayWrapping = false)
             : this(bypassSafeArrayWrapping, false, false)
         {
@@ -59,7 +59,7 @@ namespace GitHub.Services.WebApi
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="bypassSafeArrayWrapping">This should typically be false.  A true value will cause the wrapping to be skipped which is neccesary when creating ObjectContent from arrays on client to prepare a request</param>
+        /// <param name="bypassSafeArrayWrapping">This should typically be false.  A true value will cause the wrapping to be skipped which is necessary when creating ObjectContent from arrays on client to prepare a request</param>
         public VssJsonMediaTypeFormatter(HttpRequestMessage request, bool bypassSafeArrayWrapping = false)
         {
             Request = request;
