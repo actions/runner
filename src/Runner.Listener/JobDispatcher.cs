@@ -783,7 +783,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
-                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cance();
+                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cancel();
                     // Stop renew only on cancellation token fired.
                     Trace.Info($"job renew has been cancelled, stop renew job {jobId}.");
                     return;
@@ -899,7 +899,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
-                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cance();
+                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cancel();
                     // Stop renew only on cancellation token fired.
                     Trace.Info($"job renew has been cancelled, stop renew job request {requestId}.");
                     return;
