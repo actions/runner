@@ -37,7 +37,7 @@ namespace GitHub.Actions.Expressions.Sdk
         /// For <c ref="EvaluationOptions.Converters" />, this value is currently ignored.
         ///
         /// <para>
-        /// For example, consider a function jsonParse() which takes a string paramter,
+        /// For example, consider a function jsonParse() which takes a string parameter,
         /// and returns a JToken object. The JToken object is newly created and a rough
         /// measurement should be returned for the amount of bytes it consumes in memory.
         /// Set the <c ref="IsTotal" /> to true, since new object contains no references
