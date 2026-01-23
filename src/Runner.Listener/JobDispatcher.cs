@@ -678,7 +678,7 @@ namespace GitHub.Runner.Listener
                             // worker haven't exit within cancellation timeout.
                             if (completedTask != workerProcessTask)
                             {
-                                Trace.Info($"worker process for job {message.JobId} haven't exit within cancellation timout, kill running worker.");
+                                Trace.Info($"worker process for job {message.JobId} haven't exit within cancellation timeout, kill running worker.");
                                 workerProcessCancelTokenSource.Cancel();
                                 try
                                 {
