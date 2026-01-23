@@ -245,7 +245,7 @@ namespace GitHub.Runner.Worker
 #else
             var envContext = ExecutionContext.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
 #endif
-            // Apply environment from env context, env context contains job level env and action's evn block
+            // Apply environment from env context, env context contains job level env and action's env block
             foreach (var env in envContext)
             {
                 environment[env.Key] = env.Value.ToString();
