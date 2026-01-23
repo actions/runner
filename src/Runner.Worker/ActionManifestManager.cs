@@ -551,7 +551,7 @@ namespace GitHub.Runner.Worker
 
                 if (!hasDefault)
                 {
-                    actionDefinition.Inputs.Add(inputName, new StringToken(null, null, null, string.Empty));
+                    actionDefinition.Inputs.Add(inputName, new NullToken(null, null, null));
                 }
             }
         }

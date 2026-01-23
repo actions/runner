@@ -211,7 +211,7 @@ namespace GitHub.Runner.Worker
                 {
                     string key = input.Key.AssertString("action input name").Value;
                     validInputs.Add(key);
-                    if (!inputs.ContainsKey(key))
+                    if (!inputs.ContainsKey(key) && !(input.Value is NullToken))
                     {
                         inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
                     }
