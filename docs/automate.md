@@ -76,3 +76,76 @@ Repo level one-liner.  NOTE: replace with yourorg/yourrepo (repo level) or just 
 ```bash
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/delete.sh | bash -s yourorg/yourrepo runnername
 ```
+
+## Troubleshooting
+
+### Common Issues
+
+#### Permission Denied
+```bash
+# Ensure scripts have execute permissions
+chmod +x ./config.sh ./run.sh
+```
+
+#### PAT Token Issues
+```bash
+# Verify your PAT has the correct scopes:
+# - repo (for repository-level runners)
+# - admin:org (for organization-level runners)
+export RUNNER_CFG_PAT=your_token_here
+echo $RUNNER_CFG_PAT  # Verify it's set
+```
+
+#### Network Connectivity
+```bash
+# Test GitHub connectivity
+curl -H "Authorization: token $RUNNER_CFG_PAT" https://api.github.com/user
+
+# For GitHub Enterprise Server
+curl -H "Authorization: token $RUNNER_CFG_PAT" https://your-github-enterprise/api/v3/user
+```
+
+#### Service Installation Fails
+```bash
+# Check if running as appropriate user
+whoami
+
+# For Linux - ensure systemd is available
+systemctl --version
+
+# For macOS - ensure launchd is available
+launchctl version
+```
+
+#### Runner Registration Fails
+```bash
+# Check if runner already exists
+curl -H "Authorization: token $RUNNER_CFG_PAT" \
+  "https://api.github.com/repos/OWNER/REPO/actions/runners"
+
+# Remove existing runner if needed
+./config.sh remove --token $RUNNER_CFG_PAT
+```
+
+### Getting Help
+
+- **Configuration Issues**: Check the [Prerequisites](start/envlinux.md) for your platform
+- **Network Problems**: Review [network troubleshooting guide](checks/network.md)
+- **General Support**: Visit [GitHub Community Discussions](https://github.com/orgs/community/discussions/categories/actions)
+
+### Advanced Examples
+
+#### Organization-level Runner with Custom Labels
+```bash
+export RUNNER_CFG_PAT=your_org_pat
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | \
+  bash -s -- -s myorg -n prod-runner-1 -l production,linux,docker
+```
+
+#### Repository-level Runner for GitHub Enterprise
+```bash
+export RUNNER_CFG_PAT=your_ghe_pat
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | \
+  bash -s -- -s myorg/myrepo -g github.company.com -n build-server -u builder
+```
+```
