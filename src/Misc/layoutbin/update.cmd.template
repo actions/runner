@@ -124,7 +124,7 @@ type nul > update.finished
 echo [%date% %time%] update.finished file creation succeed >> "%logfile%" 2>&1
 
 rem rename the update log file with %logfile%.succeed/.failed/succeedneedrestart
-rem runner service host can base on the log file name determin the result of the runner update
+rem runner service host can determine the result of the runner update based on the log file
 echo [%date% %time%] Rename "%logfile%" to be "%logfile%.succeed" >> "%logfile%" 2>&1
 move "%logfile%" "%logfile%.succeed" >nul
 
