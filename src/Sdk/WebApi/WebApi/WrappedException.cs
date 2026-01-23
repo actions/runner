@@ -482,7 +482,7 @@ namespace GitHub.Services.WebApi
                         }
                         catch (ReflectionTypeLoadException ex)
                         {
-                            // if dependant assembly fails to load, we should still be able to get all the exceptions, since it would be unlikely,
+                            // if dependent assembly fails to load, we should still be able to get all the exceptions, since it would be unlikely,
                             // that an exception is referencing a type from the assembly that failed to load.
                             types = ex.Types.Where<Type>(t => t != null);
                         }
