@@ -312,7 +312,7 @@ namespace GitHub.Runner.Worker
             }
             catch (Exception ex)
             {
-                Trace.Warning("Caught exception while attempting to evaulate/update the step's DisplayName.  Exception Details:  {0}", ex);
+                Trace.Warning("Caught exception while attempting to evaluate/update the step's DisplayName.  Exception Details:  {0}", ex);
             }
 
             // For consistency with other implementations of TryUpdateDisplayName we use !string.IsNullOrEmpty below,
