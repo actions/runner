@@ -286,9 +286,9 @@ jobContainer: **Optional** An Object containing information about the specified 
 
 ### Cleanup Job
 The `cleanup_job` hook is called at the end of a job and expects you to:
-- Stop any running service or job containers (or the equiavalent pod)
+- Stop any running service or job containers (or the equivalent pod)
 - Stop the network (if one exists)
-- Delete any job or service containers (or the equiavalent pod)
+- Delete any job or service containers (or the equivalent pod)
 - Delete the network (if one exists)
 - Cleanup anything else that was created for the run
 
