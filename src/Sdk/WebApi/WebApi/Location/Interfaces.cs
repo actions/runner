@@ -227,7 +227,7 @@ namespace GitHub.Services.WebApi.Location
             String serviceType);
 
         /// <summary>
-        /// Returns the location for the ServiceDefintion associated with the ServiceType
+        /// Returns the location for the ServiceDefinition associated with the ServiceType
         /// and ServiceIdentifier that should be used based on the current connection. 
         /// If a ServiceDefinition with the ServiceType and ServiceIdentifier does not
         /// exist then null will be returned. If a ServiceDefinition with the ServiceType
@@ -256,7 +256,7 @@ namespace GitHub.Services.WebApi.Location
             Guid serviceIdentifier);
 
         /// <summary>
-        /// Returns the location for the ServiceDefintion that should be used based on
+        /// Returns the location for the ServiceDefinition that should be used based on
         /// the current connection. This method will never return null or empty. If it
         /// succeeds it will return a targetable location for the provided 
         /// ServiceDefinition.
@@ -469,7 +469,7 @@ namespace GitHub.Services.WebApi.Location
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Returns the location for the ServiceDefintion associated with the ServiceType
+        /// Returns the location for the ServiceDefinition associated with the ServiceType
         /// and ServiceIdentifier that should be used based on the current connection. 
         /// If a ServiceDefinition with the ServiceType and ServiceIdentifier does not
         /// exist then null will be returned. If a ServiceDefinition with the ServiceType
@@ -499,7 +499,7 @@ namespace GitHub.Services.WebApi.Location
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Returns the location for the ServiceDefintion that should be used based on
+        /// Returns the location for the ServiceDefinition that should be used based on
         /// the current connection. This method will never return null or empty. If it
         /// succeeds it will return a targetable location for the provided 
         /// ServiceDefinition.
