@@ -162,7 +162,7 @@ namespace GitHub.Actions.Expressions.Sdk
                     String.Equals(expandedExpression, $"'{traceValue}'", StringComparison.Ordinal))
                 {
                     // Don't bother tracing the expanded expression when the result is a number and the
-                    // expanded expresion is a precisely matching string.
+                    // expanded expression is a precisely matching string.
                 }
                 else
                 {
