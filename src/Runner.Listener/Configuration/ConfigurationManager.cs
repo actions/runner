@@ -709,7 +709,7 @@ namespace GitHub.Runner.Listener.Configuration
             var runnerToken = string.Empty;
             if (!string.IsNullOrEmpty(githubPAT))
             {
-                Trace.Info($"Retriving runner {tokenType} token using GitHub PAT.");
+                Trace.Info($"Retrieving runner {tokenType} token using GitHub PAT.");
                 var jitToken = await GetJITRunnerTokenAsync(githubUrl, githubPAT, tokenType);
                 Trace.Info($"Retrieved runner {tokenType} token is good to {jitToken.ExpiresAt}.");
                 HostContext.SecretMasker.AddValue(jitToken.Token);
