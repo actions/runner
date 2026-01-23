@@ -332,7 +332,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "configure",
                        "--url", _expectedServerUrl,
                        "--name", _expectedAgentName,
-                       "--runnergroup", "notexists",
+                       "--runnergroup", "nonexistent",
                        "--work", _expectedWorkFolder,
                        "--auth", _expectedAuthType,
                        "--token", _expectedToken,
@@ -344,7 +344,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 var ex = await Assert.ThrowsAsync<TaskAgentPoolNotFoundException>(() => configManager.ConfigureAsync(command));
 
-                Assert.Contains("notexists", ex.Message);
+                Assert.Contains("nonexistent", ex.Message);
 
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(1));
             }

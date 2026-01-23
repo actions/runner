@@ -167,7 +167,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     {
                         TargetVersion = "2.999.0",
                         OS = BuildConstants.RunnerPackage.PackageName,
-                        DownloadUrl = "https://github.com/actions/runner/notexists"
+                        DownloadUrl = "https://github.com/actions/runner/nonexistent"
                     };
 
                     var ex = await Assert.ThrowsAsync<TaskCanceledException>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
