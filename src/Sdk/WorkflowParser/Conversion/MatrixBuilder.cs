@@ -42,7 +42,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         }
 
         /// <summary>
-        /// Adds the sequence containg all exclude mappings.
+        /// Adds the sequence containing all exclude mappings.
         /// </summary>
         internal void Exclude(SequenceToken exclude)
         {
@@ -50,7 +50,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         }
 
         /// <summary>
-        /// Adds the sequence containg all include mappings.
+        /// Adds the sequence containing all include mappings.
         /// </summary>
         internal void Include(SequenceToken include)
         {
