@@ -425,7 +425,7 @@ namespace GitHub.Runner.Listener
                     using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
                         // Start the process channel.
-                        // It's OK if StartServer bubbles an execption after the worker process has already started.
+                        // It's OK if StartServer bubbles an exception after the worker process has already started.
                         // The worker will shutdown after 30 seconds if it hasn't received the job message.
                         processChannel.StartServer(
                             // Delegate to start the child process.
