@@ -110,7 +110,7 @@ fi
 sudo -u ${svc_user} mkdir runner
 
 # TODO: validate not in a container
-# TODO: validate systemd or osx svc installer
+# TODO: validate systemd or macOS svc installer
 
 #--------------------------------------
 # Get a config token
