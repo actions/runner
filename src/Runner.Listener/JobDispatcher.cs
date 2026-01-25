@@ -917,7 +917,7 @@ namespace GitHub.Runner.Listener
                     }
                     else
                     {
-                        // retry till reach lockeduntil + 5 mins extra buffer.
+                        // retry until locked-until + 5 mins extra buffer.
                         remainingTime = request.LockedUntil.Value + TimeSpan.FromMinutes(5) - DateTime.UtcNow;
                     }
 
