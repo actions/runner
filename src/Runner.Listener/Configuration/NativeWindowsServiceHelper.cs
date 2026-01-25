@@ -278,11 +278,11 @@ namespace GitHub.Runner.Listener.Configuration
             DirectoryInfo dInfo = new DirectoryInfo(path);
             DirectorySecurity dSecurity = dInfo.GetAccessControl();
 
-            var allAccessRuls = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
+            var allAccessRules = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
 
             SecurityIdentifier sid = (SecurityIdentifier)new NTAccount(groupName).Translate(typeof(SecurityIdentifier));
 
-            if (allAccessRuls.Any(x => x.IdentityReference.Value == sid.ToString() &&
+            if (allAccessRules.Any(x => x.IdentityReference.Value == sid.ToString() &&
                                        x.AccessControlType == AccessControlType.Allow &&
                                        x.FileSystemRights.HasFlag(FileSystemRights.FullControl) &&
                                        x.InheritanceFlags == (InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit) &&
@@ -422,11 +422,11 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 DirectorySecurity dSecurity = dInfo.GetAccessControl();
 
-                var allAccessRuls = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
+                var allAccessRules = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
 
                 SecurityIdentifier sid = (SecurityIdentifier)new NTAccount(groupName).Translate(typeof(SecurityIdentifier));
 
-                foreach (FileSystemAccessRule ace in allAccessRuls)
+                foreach (FileSystemAccessRule ace in allAccessRules)
                 {
                     if (String.Equals(sid.ToString(), ace.IdentityReference.Value, StringComparison.OrdinalIgnoreCase))
                     {
