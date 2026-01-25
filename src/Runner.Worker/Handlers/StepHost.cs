@@ -118,7 +118,7 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Container, nameof(Container));
             if (!FeatureManager.IsContainerHooksEnabled(executionContext.Global?.Variables))
             {
-                // TODO: Remove nullcheck with executionContext.Global? by setting up ExecutionContext.Global at GitHub.Runner.Common.Tests.Worker.ExecutionContextL0.GetExpressionValues_ContainerStepHost
+                // TODO: Remove null check with executionContext.Global? by setting up ExecutionContext.Global at GitHub.Runner.Common.Tests.Worker.ExecutionContextL0.GetExpressionValues_ContainerStepHost
                 ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
             }
 
