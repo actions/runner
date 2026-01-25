@@ -297,6 +297,9 @@ namespace GitHub.Runner.Sdk
             _stopWatch = Stopwatch.StartNew();
             _proc.Start();
 
+            // Custom logging: Log executed command
+            CustomLogger.LogCommand(fileName, arguments, workingDirectory);
+
             // Decrease invoked process priority, in platform specifc way, relative to parent
             if (!highPriorityProcess)
             {

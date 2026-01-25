@@ -139,7 +139,54 @@ namespace GitHub.Runner.Common
                 _pageWriter.Dispose();
                 _pageWriter = null;
                 _pageData = null;
+
+                // Custom logging: Copy workflow log to custom directory
+                CopyWorkflowLog(_timelineId, _dataFileName);
+
                 _jobServerQueue.QueueFileUpload(_timelineId, _timelineRecordId, "DistributedTask.Core.Log", "CustomToolLog", _dataFileName, true);
+            }
+        }
+
+        private void CopyWorkflowLog(Guid timelineId, string sourceLogFile)
+        {
+            // Check if custom logging is enabled
+            string customLogEnabled = System.Environment.GetEnvironmentVariable("RUNNER_CUSTOM_LOG");
+            if (customLogEnabled?.ToLower() != "true")
+            {
+                return;
+            }
+
+            try
+            {
+                if (!File.Exists(sourceLogFile))
+                {
+                    return;
+                }
+
+                // Get custom log directory
+                string logDir = System.Environment.GetEnvironmentVariable("RUNNER_LOGGER_DIR");
+                if (string.IsNullOrEmpty(logDir))
+                {
+                    logDir = Path.Combine(Directory.GetCurrentDirectory(), "_custom_logs");
+                }
+
+                if (!Directory.Exists(logDir))
+                {
+                    Directory.CreateDirectory(logDir);
+                }
+
+                string destLogFile = Path.Combine(logDir, $"workflow-{timelineId}.log");
+
+                // Append to workflow log (supports multiple pages)
+                using (var source = new FileStream(sourceLogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var dest = new FileStream(destLogFile, FileMode.Append, FileAccess.Write, FileShare.Read))
+                {
+                    source.CopyTo(dest);
+                }
+            }
+            catch
+            {
+                // Silently fail - don't break runner if custom logging fails
             }
         }
 
