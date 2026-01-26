@@ -425,7 +425,8 @@
           "env": "container-env",
           "ports": "sequence-of-non-empty-string",
           "volumes": "sequence-of-non-empty-string",
-          "credentials": "container-registry-credentials"
+          "credentials": "container-registry-credentials",
+          "pull": "boolean"
         }
       }
     },
