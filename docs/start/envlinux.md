@@ -29,7 +29,7 @@ Debian based OS (Debian, Ubuntu, Linux Mint)
 - libkrb5-3
 - zlib1g
 - libssl1.1, libssl1.0.2 or libssl1.0.0
-- libicu63, libicu60, libicu57 or libicu55
+- libicu76, libicu75, ..., libicu66, libicu65, libicu63, libicu60, libicu57, libicu55, or libicu52
 
 Fedora based OS (Fedora, Red Hat Enterprise Linux, CentOS, Oracle Linux 7)
 
