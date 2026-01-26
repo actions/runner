@@ -499,7 +499,7 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
-            if (_record.RecordType == "Task")
+            if (_record.RecordType == ExecutionContextType.Task)
             {
                 var stepResult = new StepResult
                 {
@@ -530,6 +530,25 @@ namespace GitHub.Runner.Worker
                 });
 
                 Global.StepsResult.Add(stepResult);
+            }
+
+            if (Global.Variables.GetBoolean(Constants.Runner.Features.SendJobLevelAnnotations) ?? false)
+            {
+                if (_record.RecordType == ExecutionContextType.Job)
+                {
+                    _record.Issues?.ForEach(issue =>
+                    {
+                        var annotation = issue.ToAnnotation();
+                        if (annotation != null)
+                        {
+                            Global.JobAnnotations.Add(annotation.Value);
+                            if (annotation.Value.IsInfrastructureIssue && string.IsNullOrEmpty(Global.InfrastructureFailureCategory))
+                            {
+                                Global.InfrastructureFailureCategory = issue.Category;
+                            }
+                        }
+                    });
+                }
             }
 
             if (Root != this)
