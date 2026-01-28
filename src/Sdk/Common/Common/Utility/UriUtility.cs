@@ -33,7 +33,7 @@ namespace GitHub.Services.Common.Internal
         /// inform the user that it is unsafe and prevent navigation.
         /// </summary>
         /// <remarks>
-        /// Note: the data scheme is not in this list nor is it in the safe list either, this is by design.
+        /// Note: by design the data scheme is excluded from this list and the safe list.
         /// See http://msdn.microsoft.com/en-us/library/ie/cc848897(v=vs.85).aspx for a reference of the data protocol.
         /// See http://www.gnucitizen.org/blog/bugs-in-the-browser-firefoxs-data-url-scheme-vulnerability/ for attacks on the data protocol.
         /// </remarks>
@@ -48,7 +48,7 @@ namespace GitHub.Services.Common.Internal
         /// </summary>
         /// <remarks>
         /// "x-mvwit" is here as it is used and saved to work item history rich HTML changes. It is used to reference other work
-        /// items in the list. If we remove it from this list, it will not be a navigatable link in e.g. Web Access.
+        /// items in the list. If we remove it from this list, it will not be a navigable link in e.g. Web Access.
         /// </remarks>
         private static readonly ICollection<string> SafeUriSchemeList = new HashSet<string>(new string[] {
             "http", "https", "ftp", "gopher", "mailto", "news", "telnet", "wais",
@@ -89,7 +89,7 @@ namespace GitHub.Services.Common.Internal
         }
 
         /// <summary>
-        /// string comparer for uri, is not case sensitive and does not care about trailing '/'
+        /// string comparer for uri, is not case-sensitive and does not care about trailing '/'
         /// </summary>
         public static IEqualityComparer<Uri> AbsoluteUriStringComparer = new _AbsoluteUriStringComparer();
 
@@ -176,7 +176,7 @@ namespace GitHub.Services.Common.Internal
         /// <param name="treatAbsolutePathAsRelative">If true, any leading forward slashes on the relative path argument are discarded.</param>
         /// <returns>The base Uri with the relativePath appended to it.</returns>
         /// <remarks> 
-        /// This is intended to be an alternative the Uri constructor, which can remove several path segments from your arguments.  For example:
+        /// This is intended to be an alternative to the Uri constructor, which can remove several path segments from your arguments.  For example:
         /// 
         /// new Uri(new Uri("http://localhost/abc/efg/"), "/Hello/World") returns http://localhost/Hello/World ("/abc/efg/" removed due to absolute path argument)
         /// new Uri(new Uri("http://localhost/dir1/dir2"), "hi.txt") returns http://localhost/dir1/hi.txt ("dir2" removed due to lack of trailing slash)
@@ -197,7 +197,7 @@ namespace GitHub.Services.Common.Internal
         /// <param name="treatAbsolutePathAsRelative">If true, any leading forward slashes on the relative path argument are discarded.</param>
         /// <returns>The base Uri with the relativePath appended to it.</returns>
         /// <remarks> 
-        /// This is intended to be an alternative the Uri constructor, which can remove several path segments from your arguments.  For example:
+        /// This is intended to be an alternative to the Uri constructor, which can remove several path segments from your arguments.  For example:
         /// 
         /// new Uri(new Uri("http://localhost/abc/efg/"), "/Hello/World") returns http://localhost/Hello/World ("/abc/efg/" removed due to absolute path argument)
         /// new Uri(new Uri("http://localhost/dir1/dir2"), "hi.txt") returns http://localhost/dir1/hi.txt ("dir2" removed due to lack of trailing slash)
@@ -416,7 +416,7 @@ namespace GitHub.Services.Common.Internal
         }
 
         /// <summary>
-        /// Given a input path that might correspond to a UNC path known to the Windows Client WebDav Redirector,
+        /// Given an input path that might correspond to a UNC path known to the Windows Client WebDav Redirector,
         /// returns the converted UNC path to an HTTP (or HTTPS) url.
         /// </summary>
         /// <param name="uncPath"></param>
@@ -490,7 +490,7 @@ namespace GitHub.Services.Common.Internal
                 // A machine name could not be resolved, for the purposes of this method, 
                 // assume that machines are not the same and ignore the error
 
-                // ToDo: tedchamb come back to this
+                // TODO: tedchamb come back to this
                 //TeamFoundationTrace.TraceException(ex);
             }
 
