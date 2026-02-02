@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
@@ -63,7 +64,44 @@ namespace GitHub.Runner.Worker.Handlers
                     var append = @"if ((Test-Path -LiteralPath variable:\LASTEXITCODE)) { exit $LASTEXITCODE }";
                     contents = $"{prepend}{Environment.NewLine}{contents}{Environment.NewLine}{append}";
                     break;
+                case "bash":
+                case "sh":
+                    contents = FixBashEnvironmentVariables(contents);
+                    break;
             }
+            return contents;
+        }
+
+        /// <summary>
+        /// Fixes unquoted environment variables in bash/sh scripts to prevent issues with paths containing spaces.
+        /// This method quotes environment variables used in shell redirects and command substitutions.
+        /// </summary>
+        /// <param name="contents">The shell script content to fix</param>
+        /// <returns>Fixed shell script content with properly quoted environment variables</returns>
+        private static string FixBashEnvironmentVariables(string contents)
+        {
+            if (string.IsNullOrEmpty(contents))
+            {
+                return contents;
+            }
+
+            // Pattern to match environment variables in shell redirects that aren't already quoted
+            // This targets patterns like: >> $GITHUB_STEP_SUMMARY, > $GITHUB_OUTPUT, etc.
+            // but avoids already quoted ones like: >> "$GITHUB_STEP_SUMMARY" or >> '$GITHUB_OUTPUT'
+            var redirectPattern = new Regex(
+                @"(\s+(?:>>|>|<|2>>|2>)\s+)(\$[A-Za-z_][A-Za-z0-9_]*)\b(?!\s*['""])",
+                RegexOptions.Compiled | RegexOptions.Multiline
+            );
+
+            // Replace unquoted environment variables in redirects with quoted versions
+            contents = redirectPattern.Replace(contents, match =>
+            {
+                var redirectOperator = match.Groups[1].Value; // e.g., " >> "
+                var envVar = match.Groups[2].Value; // e.g., "$GITHUB_STEP_SUMMARY"
+                
+                return $"{redirectOperator}\"{envVar}\"";
+            });
+
             return contents;
         }
 
