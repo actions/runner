@@ -651,7 +651,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             if (isJob)
             {
                 namedValues = s_jobIfNamedValues;
-                // TODO: refactor into seperate functions
+                // TODO: refactor into separate functions
                 // functions = PhaseCondition.FunctionInfo;
             }
             else

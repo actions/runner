@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common.Tests
         {
             if ((DateTime.UtcNow.Month - 1) % 3 != 0)
             {
-                // Only check these script once a quater.
+                // Only check these script once a quarter.
                 return;
             }
 
@@ -45,7 +45,7 @@ namespace GitHub.Runner.Common.Tests
         {
             if ((DateTime.UtcNow.Month - 1) % 3 != 0)
             {
-                // Only check these script once a quater.
+                // Only check these script once a quarter.
                 return;
             }
 

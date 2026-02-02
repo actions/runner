@@ -540,7 +540,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine();
                     _term.WriteSuccessMessage("Runner service removed");
 #else
-                    // unconfig systemd or osx service first
+                    // deconfigure systemd or macOS service first
                     throw new Exception("Uninstall service first");
 #endif
                 }
@@ -709,9 +709,9 @@ namespace GitHub.Runner.Listener.Configuration
             var runnerToken = string.Empty;
             if (!string.IsNullOrEmpty(githubPAT))
             {
-                Trace.Info($"Retriving runner {tokenType} token using GitHub PAT.");
+                Trace.Info($"Retrieving runner {tokenType} token using GitHub PAT.");
                 var jitToken = await GetJITRunnerTokenAsync(githubUrl, githubPAT, tokenType);
-                Trace.Info($"Retrived runner {tokenType} token is good to {jitToken.ExpiresAt}.");
+                Trace.Info($"Retrieved runner {tokenType} token is good to {jitToken.ExpiresAt}.");
                 HostContext.SecretMasker.AddValue(jitToken.Token);
                 runnerToken = jitToken.Token;
             }
