@@ -457,6 +457,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 new SetEnvCommandExtension(),
                 new WarningCommandExtension(),
                 new AddMaskCommandExtension(),
+                new SetOutputCommandExtension(),
+                new SaveStateCommandExtension(),
             };
             foreach (var command in commands)
             {
@@ -497,6 +499,54 @@ namespace GitHub.Runner.Common.Tests.Worker
                         new CaseSensitiveDictionaryContextData()
 #endif
             };
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetOutputCommand_EmitsTelemetryOnce()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Object.Global.JobTelemetry = new List<JobTelemetry>();
+                var reference = string.Empty;
+                _ec.Setup(x => x.SetOutput(It.IsAny<string>(), It.IsAny<string>(), out reference));
+
+                // First set-output should add telemetry
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::set-output name=foo::bar", null));
+                Assert.Single(_ec.Object.Global.JobTelemetry);
+                Assert.Equal(JobTelemetryType.ActionCommand, _ec.Object.Global.JobTelemetry[0].Type);
+                Assert.Equal("DeprecatedCommand: set-output", _ec.Object.Global.JobTelemetry[0].Message);
+                Assert.True(_ec.Object.Global.HasDeprecatedSetOutput);
+
+                // Second set-output should not add another telemetry entry
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::set-output name=foo2::bar2", null));
+                Assert.Single(_ec.Object.Global.JobTelemetry);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SaveStateCommand_EmitsTelemetryOnce()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Object.Global.JobTelemetry = new List<JobTelemetry>();
+                _ec.Setup(x => x.IsEmbedded).Returns(false);
+                _ec.Setup(x => x.IntraActionState).Returns(new Dictionary<string, string>());
+
+                // First save-state should add telemetry
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::save-state name=foo::bar", null));
+                Assert.Single(_ec.Object.Global.JobTelemetry);
+                Assert.Equal(JobTelemetryType.ActionCommand, _ec.Object.Global.JobTelemetry[0].Type);
+                Assert.Equal("DeprecatedCommand: save-state", _ec.Object.Global.JobTelemetry[0].Message);
+                Assert.True(_ec.Object.Global.HasDeprecatedSaveState);
+
+                // Second save-state should not add another telemetry entry
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::save-state name=foo2::bar2", null));
+                Assert.Single(_ec.Object.Global.JobTelemetry);
+            }
         }
 
     }
