@@ -1,4 +1,4 @@
-#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+﻿#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
 
 using System;
 using System.Collections.Generic;
@@ -43,7 +43,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     {
                         case WorkflowTemplateConstants.On:
                             var inputTypes = ConvertToOnWorkflowDispatchInputTypes(workflowPair.Value);
-                            foreach(var item in inputTypes)
+                            foreach (var item in inputTypes)
                             {
                                 result.InputTypes.TryAdd(item.Key, item.Value);
                             }
@@ -432,7 +432,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                 context.Error(snapshotToken, $"job {WorkflowTemplateConstants.Snapshot} {WorkflowTemplateConstants.ImageName} is required.");
                 return null;
             }
-            
+
             return new Snapshot
             {
                 ImageName = imageName,
@@ -445,7 +445,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         {
             var versionSegments = versionString.Split(".");
 
-            if (versionSegments.Length != 2 || 
+            if (versionSegments.Length != 2 ||
                 !versionSegments[1].Equals("*") ||
                 !Int32.TryParse(versionSegments[0], NumberStyles.None, CultureInfo.InvariantCulture, result: out int parsedMajor) ||
                 parsedMajor < 0)
@@ -1154,7 +1154,12 @@ namespace GitHub.Actions.WorkflowParser.Conversion
 
             if (String.IsNullOrEmpty(result.Image))
             {
-                context.Error(value, "Container image cannot be empty");
+                // Only error during early validation (parse time)
+                // At runtime (expression evaluation), empty image = no container
+                if (isEarlyValidation)
+                {
+                    context.Error(value, "Container image cannot be empty");
+                }
                 return null;
             }
 
@@ -1838,9 +1843,9 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     case "actions":
                         permissions.Actions = permissionLevel;
                         break;
-					case "artifact-metadata":
-						permissions.ArtifactMetadata = permissionLevel;
-						break;
+                    case "artifact-metadata":
+                        permissions.ArtifactMetadata = permissionLevel;
+                        break;
                     case "attestations":
                         permissions.Attestations = permissionLevel;
                         break;
