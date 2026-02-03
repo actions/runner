@@ -84,7 +84,8 @@ namespace GitHub.Runner.Worker
                 "EvaluateContainerEnvironment",
                 () => _legacyManager.EvaluateContainerEnvironment(executionContext, token, extraExpressionValues),
                 () => _newManager.EvaluateContainerEnvironment(executionContext, ConvertToNewToken(token) as GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens.MappingToken, ConvertToNewExpressionValues(extraExpressionValues)),
-                (legacyResult, newResult) => {
+                (legacyResult, newResult) =>
+                {
                     var trace = HostContext.GetTrace(nameof(ActionManifestManagerWrapper));
                     return CompareDictionaries(trace, legacyResult, newResult, "ContainerEnvironment");
                 });
@@ -165,9 +166,150 @@ namespace GitHub.Runner.Worker
                 return null;
             }
 
-            // Serialize new steps and deserialize to old steps
-            var json = StringUtil.ConvertToJson(newSteps, Newtonsoft.Json.Formatting.None);
-            return StringUtil.ConvertFromJson<List<GitHub.DistributedTask.Pipelines.ActionStep>>(json);
+            var result = new List<GitHub.DistributedTask.Pipelines.ActionStep>();
+            foreach (var step in newSteps)
+            {
+                var actionStep = new GitHub.DistributedTask.Pipelines.ActionStep
+                {
+                    ContextName = step.Id,
+                };
+
+                if (step is GitHub.Actions.WorkflowParser.RunStep runStep)
+                {
+                    actionStep.Condition = ExtractConditionString(runStep.If);
+                    actionStep.DisplayNameToken = ConvertToLegacyToken<TemplateToken>(runStep.Name);
+                    actionStep.ContinueOnError = ConvertToLegacyToken<TemplateToken>(runStep.ContinueOnError);
+                    actionStep.TimeoutInMinutes = ConvertToLegacyToken<TemplateToken>(runStep.TimeoutMinutes);
+                    actionStep.Environment = ConvertToLegacyToken<TemplateToken>(runStep.Env);
+                    actionStep.Reference = new GitHub.DistributedTask.Pipelines.ScriptReference();
+                    actionStep.Inputs = BuildRunStepInputs(runStep);
+                }
+                else if (step is GitHub.Actions.WorkflowParser.ActionStep usesStep)
+                {
+                    actionStep.Condition = ExtractConditionString(usesStep.If);
+                    actionStep.DisplayNameToken = ConvertToLegacyToken<TemplateToken>(usesStep.Name);
+                    actionStep.ContinueOnError = ConvertToLegacyToken<TemplateToken>(usesStep.ContinueOnError);
+                    actionStep.TimeoutInMinutes = ConvertToLegacyToken<TemplateToken>(usesStep.TimeoutMinutes);
+                    actionStep.Environment = ConvertToLegacyToken<TemplateToken>(usesStep.Env);
+                    actionStep.Reference = ParseActionReference(usesStep.Uses?.Value);
+                    actionStep.Inputs = ConvertToLegacyToken<MappingToken>(usesStep.With);
+                }
+
+                result.Add(actionStep);
+            }
+            return result;
+        }
+
+        private string ExtractConditionString(GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens.BasicExpressionToken ifToken)
+        {
+            if (ifToken == null)
+            {
+                return null;
+            }
+
+            // The Expression property is internal, so we use ToString() which formats as "${{ expr }}"
+            // Then strip the delimiters to get just the expression
+            var str = ifToken.ToString();
+            if (str.StartsWith("${{") && str.EndsWith("}}"))
+            {
+                return str.Substring(3, str.Length - 5).Trim();
+            }
+            return str;
+        }
+
+        private MappingToken BuildRunStepInputs(GitHub.Actions.WorkflowParser.RunStep runStep)
+        {
+            var inputs = new MappingToken(null, null, null);
+
+            // script (from run)
+            if (runStep.Run != null)
+            {
+                inputs.Add(
+                    new StringToken(null, null, null, "script"),
+                    ConvertToLegacyToken<TemplateToken>(runStep.Run));
+            }
+
+            // shell
+            if (runStep.Shell != null)
+            {
+                inputs.Add(
+                    new StringToken(null, null, null, "shell"),
+                    ConvertToLegacyToken<TemplateToken>(runStep.Shell));
+            }
+
+            // working-directory
+            if (runStep.WorkingDirectory != null)
+            {
+                inputs.Add(
+                    new StringToken(null, null, null, "workingDirectory"),
+                    ConvertToLegacyToken<TemplateToken>(runStep.WorkingDirectory));
+            }
+
+            return inputs.Count > 0 ? inputs : null;
+        }
+
+        private GitHub.DistributedTask.Pipelines.ActionStepDefinitionReference ParseActionReference(string uses)
+        {
+            if (string.IsNullOrEmpty(uses))
+            {
+                return null;
+            }
+
+            // Docker reference: docker://image:tag
+            if (uses.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
+            {
+                return new GitHub.DistributedTask.Pipelines.ContainerRegistryReference
+                {
+                    Image = uses.Substring("docker://".Length)
+                };
+            }
+
+            // Local path reference: ./path/to/action
+            if (uses.StartsWith("./") || uses.StartsWith(".\\"))
+            {
+                return new GitHub.DistributedTask.Pipelines.RepositoryPathReference
+                {
+                    RepositoryType = "self",
+                    Path = uses
+                };
+            }
+
+            // Repository reference: owner/repo@ref or owner/repo/path@ref
+            var atIndex = uses.LastIndexOf('@');
+            string refPart = null;
+            string repoPart = uses;
+
+            if (atIndex > 0)
+            {
+                refPart = uses.Substring(atIndex + 1);
+                repoPart = uses.Substring(0, atIndex);
+            }
+
+            // Split by / to get owner/repo and optional path
+            var parts = repoPart.Split('/');
+            string name;
+            string path = null;
+
+            if (parts.Length >= 2)
+            {
+                name = $"{parts[0]}/{parts[1]}";
+                if (parts.Length > 2)
+                {
+                    path = string.Join("/", parts, 2, parts.Length - 2);
+                }
+            }
+            else
+            {
+                name = repoPart;
+            }
+
+            return new GitHub.DistributedTask.Pipelines.RepositoryPathReference
+            {
+                RepositoryType = "GitHub",
+                Name = name,
+                Ref = refPart,
+                Path = path
+            };
         }
 
         private T ConvertToLegacyToken<T>(GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens.TemplateToken newToken) where T : TemplateToken
