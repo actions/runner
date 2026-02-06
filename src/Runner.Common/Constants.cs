@@ -172,6 +172,7 @@ namespace GitHub.Runner.Common
                 public static readonly string SnapshotPreflightHostedRunnerCheck = "actions_snapshot_preflight_hosted_runner_check";
                 public static readonly string SnapshotPreflightImageGenPoolCheck = "actions_snapshot_preflight_image_gen_pool_check";
                 public static readonly string CompareWorkflowParser = "actions_runner_compare_workflow_parser";
+                public static readonly string CutoverWorkflowParser = "actions_runner_cutover_workflow_parser";
                 public static readonly string SetOrchestrationIdEnvForActions = "actions_set_orchestration_id_env_for_actions";
                 public static readonly string SendJobLevelAnnotations = "actions_send_job_level_annotations";
             }

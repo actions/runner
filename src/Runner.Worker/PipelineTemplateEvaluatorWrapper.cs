@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using GitHub.Actions.WorkflowParser;
 using GitHub.DistributedTask.Expressions2;
@@ -19,6 +19,7 @@ namespace GitHub.Runner.Worker
         private WorkflowTemplateEvaluator _newEvaluator;
         private IExecutionContext _context;
         private Tracing _trace;
+        private bool _cutover;
 
         public PipelineTemplateEvaluatorWrapper(
             IHostContext hostContext,
@@ -29,6 +30,8 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(context, nameof(context));
             _context = context;
             _trace = hostContext.GetTrace(nameof(PipelineTemplateEvaluatorWrapper));
+            _cutover = (context.Global.Variables.GetBoolean(Constants.Runner.Features.CutoverWorkflowParser) ?? false)
+                || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_CUTOVER_WORKFLOW_PARSER"));
 
             if (traceWriter == null)
             {
@@ -55,7 +58,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateStepContinueOnError",
                 () => _legacyEvaluator.EvaluateStepContinueOnError(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateStepContinueOnError(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -67,7 +70,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateStepDisplayName",
                 () => _legacyEvaluator.EvaluateStepDisplayName(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateStepName(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -80,7 +83,7 @@ namespace GitHub.Runner.Worker
             IList<IFunctionInfo> expressionFunctions,
             StringComparer keyComparer)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateStepEnvironment",
                 () => _legacyEvaluator.EvaluateStepEnvironment(token, contextData, expressionFunctions, keyComparer),
                 () => _newEvaluator.EvaluateStepEnvironment(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions), keyComparer),
@@ -93,7 +96,7 @@ namespace GitHub.Runner.Worker
             IList<IFunctionInfo> expressionFunctions,
             IEnumerable<KeyValuePair<string, object>> expressionState)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateStepIf",
                 () => _legacyEvaluator.EvaluateStepIf(token, contextData, expressionFunctions, expressionState),
                 () => _newEvaluator.EvaluateStepIf(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions), expressionState),
@@ -105,7 +108,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateStepInputs",
                 () => _legacyEvaluator.EvaluateStepInputs(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateStepInputs(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -117,7 +120,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateStepTimeout",
                 () => _legacyEvaluator.EvaluateStepTimeout(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateStepTimeout(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -129,7 +132,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateJobContainer",
                 () => _legacyEvaluator.EvaluateJobContainer(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateJobContainer(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -141,7 +144,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateJobOutput",
                 () => _legacyEvaluator.EvaluateJobOutput(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateJobOutputs(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -153,7 +156,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateEnvironmentUrl",
                 () => _legacyEvaluator.EvaluateEnvironmentUrl(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateJobEnvironmentUrl(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -165,7 +168,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateJobDefaultsRun",
                 () => _legacyEvaluator.EvaluateJobDefaultsRun(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateJobDefaultsRun(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -177,7 +180,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateJobServiceContainers",
                 () => _legacyEvaluator.EvaluateJobServiceContainers(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateJobServiceContainers(ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -189,7 +192,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 "EvaluateJobSnapshotRequest",
                 () => _legacyEvaluator.EvaluateJobSnapshotRequest(token, contextData, expressionFunctions),
                 () => _newEvaluator.EvaluateSnapshot(string.Empty, ConvertToken(token), ConvertData(contextData), ConvertFunctions(expressionFunctions)),
@@ -216,12 +219,25 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private TLegacy EvaluateAndCompare<TLegacy, TNew>(
+        private TLegacy EvaluateWrapper<TLegacy, TNew>(
             string methodName,
             Func<TLegacy> legacyEvaluator,
             Func<TNew> newEvaluator,
             Func<TLegacy, TNew, bool> resultComparer)
         {
+            // Cutover: use only the new evaluator, convert result to legacy type
+            if (_cutover)
+            {
+                var newResult = newEvaluator();
+                if (typeof(TLegacy) == typeof(TNew))
+                {
+                    return (TLegacy)(object)newResult;
+                }
+
+                var json = StringUtil.ConvertToJson(newResult, Newtonsoft.Json.Formatting.None);
+                return StringUtil.ConvertFromJson<TLegacy>(json);
+            }
+
             // Legacy evaluator
             var legacyException = default(Exception);
             var legacyResult = default(TLegacy);

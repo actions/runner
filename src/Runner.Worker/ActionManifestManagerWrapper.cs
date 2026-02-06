@@ -40,7 +40,7 @@ namespace GitHub.Runner.Worker
 
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 executionContext,
                 "Load",
                 () => _legacyManager.Load(executionContext, manifestFile),
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker
             TemplateToken token,
             IDictionary<string, PipelineContextData> extraExpressionValues)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 executionContext,
                 "EvaluateCompositeOutputs",
                 () => _legacyManager.EvaluateCompositeOutputs(executionContext, token, extraExpressionValues),
@@ -66,7 +66,7 @@ namespace GitHub.Runner.Worker
             SequenceToken token,
             IDictionary<string, PipelineContextData> extraExpressionValues)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 executionContext,
                 "EvaluateContainerArguments",
                 () => _legacyManager.EvaluateContainerArguments(executionContext, token, extraExpressionValues),
@@ -79,12 +79,13 @@ namespace GitHub.Runner.Worker
             MappingToken token,
             IDictionary<string, PipelineContextData> extraExpressionValues)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 executionContext,
                 "EvaluateContainerEnvironment",
                 () => _legacyManager.EvaluateContainerEnvironment(executionContext, token, extraExpressionValues),
                 () => _newManager.EvaluateContainerEnvironment(executionContext, ConvertToNewToken(token) as GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens.MappingToken, ConvertToNewExpressionValues(extraExpressionValues)),
-                (legacyResult, newResult) => {
+                (legacyResult, newResult) =>
+                {
                     var trace = HostContext.GetTrace(nameof(ActionManifestManagerWrapper));
                     return CompareDictionaries(trace, legacyResult, newResult, "ContainerEnvironment");
                 });
@@ -95,7 +96,7 @@ namespace GitHub.Runner.Worker
             string inputName,
             TemplateToken token)
         {
-            return EvaluateAndCompare(
+            return EvaluateWrapper(
                 executionContext,
                 "EvaluateDefaultInput",
                 () => _legacyManager.EvaluateDefaultInput(executionContext, inputName, token),
@@ -216,13 +217,27 @@ namespace GitHub.Runner.Worker
         }
 
         // Comparison helper methods
-        private TLegacy EvaluateAndCompare<TLegacy, TNew>(
+        private TLegacy EvaluateWrapper<TLegacy, TNew>(
             IExecutionContext context,
             string methodName,
             Func<TLegacy> legacyEvaluator,
             Func<TNew> newEvaluator,
             Func<TLegacy, TNew, bool> resultComparer)
         {
+            // Cutover: use only the new evaluator, convert result to legacy type
+            if ((context.Global.Variables.GetBoolean(Constants.Runner.Features.CutoverWorkflowParser) ?? false)
+                || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_CUTOVER_WORKFLOW_PARSER")))
+            {
+                var newResult = newEvaluator();
+                if (typeof(TLegacy) == typeof(TNew))
+                {
+                    return (TLegacy)(object)newResult;
+                }
+
+                var json = StringUtil.ConvertToJson(newResult, Newtonsoft.Json.Formatting.None);
+                return StringUtil.ConvertFromJson<TLegacy>(json);
+            }
+
             // Legacy only?
             if (!((context.Global.Variables.GetBoolean(Constants.Runner.Features.CompareWorkflowParser) ?? false)
                 || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_COMPARE_WORKFLOW_PARSER"))))

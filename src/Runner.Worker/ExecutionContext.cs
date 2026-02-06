@@ -1416,7 +1416,8 @@ namespace GitHub.Runner.Worker
         public static IPipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
         {
             // Create wrapper?
-            if ((context.Global.Variables.GetBoolean(Constants.Runner.Features.CompareWorkflowParser) ?? false) || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_COMPARE_WORKFLOW_PARSER")))
+            if ((context.Global.Variables.GetBoolean(Constants.Runner.Features.CompareWorkflowParser) ?? false) || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_COMPARE_WORKFLOW_PARSER"))
+                || (context.Global.Variables.GetBoolean(Constants.Runner.Features.CutoverWorkflowParser) ?? false) || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_CUTOVER_WORKFLOW_PARSER")))
             {
                 return (context as ExecutionContext).ToPipelineTemplateEvaluatorInternal(traceWriter);
             }
