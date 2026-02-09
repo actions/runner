@@ -540,7 +540,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine();
                     _term.WriteSuccessMessage("Runner service removed");
 #else
-                    // unconfig systemd or macOS service first
+                    // uninstall systemd or macOS service first
                     throw new Exception("Uninstall service first");
 #endif
                 }
