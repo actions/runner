@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -1111,10 +1110,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Directory.CreateDirectory(parentPath);
                 File.WriteAllText(workPath, "blocking file content");
 
+                const int testPoolId = 12345;
+                const int testAgentId = 67890;
+
                 var runnerConfig = new RunnerSettings
                 {
-                    PoolId = 12345,
-                    AgentId = 67890
+                    PoolId = testPoolId,
+                    AgentId = testAgentId
                 };
 
                 _configurationManager.Setup(m => m.LoadSettings()).Returns(runnerConfig);
