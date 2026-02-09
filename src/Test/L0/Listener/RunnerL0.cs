@@ -1107,8 +1107,12 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 // Place a file where the work directory should be - this blocks Directory.CreateDirectory
                 string parentPath = Path.GetDirectoryName(workPath);
+                Assert.NotNull(parentPath);
+                Assert.NotEmpty(parentPath);
                 Directory.CreateDirectory(parentPath);
-                File.WriteAllText(workPath, "blocking file content");
+
+                const string blockingFileContent = "test file blocking directory creation";
+                File.WriteAllText(workPath, blockingFileContent);
 
                 const int testPoolId = 12345;
                 const int testAgentId = 67890;
