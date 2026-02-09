@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -1074,6 +1075,69 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
 
                 Assert.True(hc.AllowAuthMigration);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task RunCommand_ShouldReturnTerminatedError_WhenWorkDirCreationFails()
+        {
+            using (var hostCtx = new TestHostContext(this))
+            {
+                // Setup: arrange mocks and runner instance
+                var runnerInstance = new Runner.Listener.Runner();
+                hostCtx.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hostCtx.SetSingleton<IJobNotification>(_jobNotification.Object);
+                hostCtx.SetSingleton<IMessageListener>(_messageListener.Object);
+                hostCtx.SetSingleton<IPromptManager>(_promptManager.Object);
+                hostCtx.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hostCtx.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hostCtx.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+
+                runnerInstance.Initialize(hostCtx);
+
+                // Create a file at the work directory path to block directory creation
+                string workPath = hostCtx.GetDirectory(WellKnownDirectory.Work);
+
+                // Clean up any existing directory first
+                if (Directory.Exists(workPath))
+                {
+                    Directory.Delete(workPath, recursive: true);
+                }
+
+                // Place a file where the work directory should be - this blocks Directory.CreateDirectory
+                string parentPath = Path.GetDirectoryName(workPath);
+                Directory.CreateDirectory(parentPath);
+                File.WriteAllText(workPath, "blocking file content");
+
+                var runnerConfig = new RunnerSettings
+                {
+                    PoolId = 12345,
+                    AgentId = 67890
+                };
+
+                _configurationManager.Setup(m => m.LoadSettings()).Returns(runnerConfig);
+                _configurationManager.Setup(m => m.IsConfigured()).Returns(true);
+                _configStore.Setup(m => m.IsServiceConfigured()).Returns(false);
+
+                try
+                {
+                    // Execute: run the command which should fail during work dir validation
+                    var cmd = new CommandSettings(hostCtx, new string[] { "run" });
+                    int exitCode = await runnerInstance.ExecuteCommand(cmd);
+
+                    // Verify: should return TerminatedError code when dir creation fails
+                    Assert.Equal(Constants.Runner.ReturnCode.TerminatedError, exitCode);
+                }
+                finally
+                {
+                    // Cleanup: remove the blocking file
+                    if (File.Exists(workPath))
+                    {
+                        File.Delete(workPath);
+                    }
+                }
             }
         }
     }
