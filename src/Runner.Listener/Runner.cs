@@ -5,8 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -406,12 +406,27 @@ namespace GitHub.Runner.Listener
             try
             {
                 Trace.Info(nameof(RunAsync));
-                
+
+                // Validate directory permissions.
+                string workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
+                Trace.Info($"Validating directory permissions for: '{workDirectory}'");
+                try
+                {
+                    Directory.CreateDirectory(workDirectory);
+                    IOUtil.ValidateExecutePermission(workDirectory);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error(ex);
+                    _term.WriteError($"Fail to create and validate runner's work directory '{workDirectory}'.");
+                    return Constants.Runner.ReturnCode.TerminatedError;
+                }
+
                 // First try using migrated settings if available
                 var configManager = HostContext.GetService<IConfigurationManager>();
                 RunnerSettings migratedSettings = null;
-                
-                try 
+
+                try
                 {
                     migratedSettings = configManager.LoadMigratedSettings();
                     Trace.Info("Loaded migrated settings from .runner_migrated file");
@@ -422,15 +437,15 @@ namespace GitHub.Runner.Listener
                     // If migrated settings file doesn't exist or can't be loaded, we'll use the provided settings
                     Trace.Info($"Failed to load migrated settings: {ex.Message}");
                 }
-                
+
                 bool usedMigratedSettings = false;
-                
+
                 if (migratedSettings != null)
                 {
                     // Try to create session with migrated settings first
                     Trace.Info("Attempting to create session using migrated settings");
                     _listener = GetMessageListener(migratedSettings, isMigratedSettings: true);
-                    
+
                     try
                     {
                         CreateSessionResult createSessionResult = await _listener.CreateSessionAsync(HostContext.RunnerShutdownToken);
@@ -450,7 +465,7 @@ namespace GitHub.Runner.Listener
                         Trace.Error($"Exception when creating session with migrated settings: {ex}");
                     }
                 }
-                
+
                 // If migrated settings weren't used or session creation failed, use original settings
                 if (!usedMigratedSettings)
                 {
@@ -503,7 +518,7 @@ namespace GitHub.Runner.Listener
                             restartSession = true;
                             break;
                         }
-                        
+
                         TaskAgentMessage message = null;
                         bool skipMessageDeletion = false;
                         try
@@ -859,7 +874,7 @@ namespace GitHub.Runner.Listener
             {
                 restart = false;
                 returnCode = await RunAsync(settings, runOnce);
-                
+
                 if (returnCode == Constants.Runner.ReturnCode.RunnerConfigurationRefreshed)
                 {
                     Trace.Info("Runner configuration was refreshed, restarting session...");
