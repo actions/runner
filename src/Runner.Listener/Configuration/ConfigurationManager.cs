@@ -493,7 +493,7 @@ namespace GitHub.Runner.Listener.Configuration
         {
             bool isConfigured = _store.IsConfigured();
             bool hasCredentials = _store.HasCredentials();
-            //delete credential config files
+            // delete credential config files
             var currentAction = "Removing .credentials";
             if (hasCredentials)
             {
@@ -507,7 +507,7 @@ namespace GitHub.Runner.Listener.Configuration
                 _term.WriteLine("Does not exist. Skipping " + currentAction);
             }
 
-            //delete settings config file
+            // delete settings config file
             currentAction = "Removing .runner";
             if (isConfigured)
             {
@@ -528,7 +528,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             try
             {
-                //stop, uninstall service and remove service config file
+                // stop, uninstall service and remove service config file
                 if (_store.IsServiceConfigured())
                 {
                     currentAction = "Removing service";
@@ -545,7 +545,7 @@ namespace GitHub.Runner.Listener.Configuration
 #endif
                 }
 
-                //delete agent from the server
+                // delete agent from the server
                 currentAction = "Removing runner from the server";
                 bool isConfigured = _store.IsConfigured();
                 bool hasCredentials = _store.HasCredentials();
