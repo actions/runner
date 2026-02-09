@@ -303,6 +303,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         case PipelineTemplateConstants.Credentials:
                             result.Credentials = ConvertToContainerCredentials(containerPropertyPair.Value);
                             break;
+                        case PipelineTemplateConstants.Pull:
+                            result.Pull = containerPropertyPair.Value.AssertBoolean($"{PipelineTemplateConstants.Container} {propertyName}").Value;
                         default:
                             propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Container} key");
                             break;
