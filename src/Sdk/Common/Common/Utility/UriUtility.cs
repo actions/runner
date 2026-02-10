@@ -146,7 +146,7 @@ namespace GitHub.Services.Common.Internal
         /// returns the absolute Uri but in a consistent way such that the presence of a trailing slash doesnt affect the returned string, 
         /// also converts the uri to lowerInvariant
         /// </summary>
-        /// <param name="uri">Uri, cannot be null, must be Absolute</param>
+        /// <param name="uri">URI, cannot be null, must be Absolute</param>
         /// <returns></returns>
         public static string GetInvariantAbsoluteUri(Uri uri)
         {
@@ -171,10 +171,10 @@ namespace GitHub.Services.Common.Internal
         /// <summary>
         /// Joins a URI and a relativePath with a single forward slash.  Duplicate slashes at the junction point are removed.
         /// </summary>
-        /// <param name="baseUri">The base Uri.  Must be an absolute Uri. The last segment of the Uri path (if any) is considered a virtual directory and not removed, even if it does not have a trailing forward slash.</param>
-        /// <param name="relativePath">The relative path to append to the Uri.</param>
+        /// <param name="baseUri">The base URI.  Must be an absolute URI. The last segment of the URI path (if any) is considered a virtual directory and not removed, even if it does not have a trailing forward slash.</param>
+        /// <param name="relativePath">The relative path to append to the URI.</param>
         /// <param name="treatAbsolutePathAsRelative">If true, any leading forward slashes on the relative path argument are discarded.</param>
-        /// <returns>The base Uri with the relativePath appended to it.</returns>
+        /// <returns>The base URI with the relativePath appended to it.</returns>
         /// <remarks> 
         /// This is intended to be an alternative to the Uri constructor, which can remove several path segments from your arguments.  For example:
         /// 
@@ -192,10 +192,10 @@ namespace GitHub.Services.Common.Internal
         /// <summary>
         /// Joins a URI and a relativePath with a single forward slash.  Duplicate slashes at the junction point are removed.
         /// </summary>
-        /// <param name="baseUri">The base Uri.  Must be an absolute Uri. The last segment of the Uri path (if any) is considered a virtual directory and not removed, even if it does not have a trailing forward slash.</param>
-        /// <param name="relativePath">The relative path to append to the Uri.</param>
+        /// <param name="baseUri">The base URI.  Must be an absolute URI. The last segment of the URI path (if any) is considered a virtual directory and not removed, even if it does not have a trailing forward slash.</param>
+        /// <param name="relativePath">The relative path to append to the URI.</param>
         /// <param name="treatAbsolutePathAsRelative">If true, any leading forward slashes on the relative path argument are discarded.</param>
-        /// <returns>The base Uri with the relativePath appended to it.</returns>
+        /// <returns>The base URI with the relativePath appended to it.</returns>
         /// <remarks> 
         /// This is intended to be an alternative to the Uri constructor, which can remove several path segments from your arguments.  For example:
         /// 
@@ -283,18 +283,18 @@ namespace GitHub.Services.Common.Internal
         }
 
         /// <summary>
-        /// Check that the Uri has http or https as its scheme.  We don't want anyone pointing at file://virus.exe.
+        /// Check that the URI has http or https as its scheme.  We don't want anyone pointing at file://virus.exe.
         /// </summary>
-        /// <param name="uri">Uri to be checked.</param>
+        /// <param name="uri">URI to be checked.</param>
         public static void CheckUriIsHttp(Uri uri)
         {
             CheckUriIsHttp(uri, true);
         }
 
         /// <summary>
-        /// Check that the Uri has http or https as its scheme.  We don't want anyone pointing at file://virus.exe.
+        /// Check that the URI has http or https as its scheme.  We don't want anyone pointing at file://virus.exe.
         /// </summary>
-        /// <param name="uri">Uri to be checked.</param>
+        /// <param name="uri">URI to be checked.</param>
         /// <param name="allowPathAndQuery">Allow sub path and query string if true.  If false, the URL must be authority only.</param>
         public static void CheckUriIsHttp(Uri uri, bool allowPathAndQuery)
         {
@@ -314,18 +314,18 @@ namespace GitHub.Services.Common.Internal
         }
 
         /// <summary>
-        /// Check that a given Uri is an absolute Uri.  Also, ensure its is http or https.
+        /// Check that a given URI is an absolute URI.  Also, ensure its is http or https.
         /// </summary>
-        /// <param name="uri">Uri to be checked.</param>
+        /// <param name="uri">URI to be checked.</param>
         public static void CheckUriIsAbsoluteAndHttp(Uri uri)
         {
             CheckUriIsAbsoluteAndHttp(uri, true);
         }
 
         /// <summary>
-        /// Check that a given Uri is an absolute Uri.  Also, ensure its is http or https.
+        /// Check that a given URI is an absolute URI.  Also, ensure its is http or https.
         /// </summary>
-        /// <param name="uri">Uri to be checked.</param>
+        /// <param name="uri">URI to be checked.</param>
         /// <param name="allowPathAndQuery">Allow sub path and query string if true.  If false, the URL must be authority only.</param>
         public static void CheckUriIsAbsoluteAndHttp(Uri uri, bool allowPathAndQuery)
         {

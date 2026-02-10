@@ -12,7 +12,7 @@ namespace GitHub.Services.WebApi
         /// </summary>
         /// <param name="routeTemplate"></param>
         /// <param name="routeValues"></param>
-        /// <param name="escapeUri">Set true to escape the replaced route Uri string prior to returning it</param>
+        /// <param name="escapeUri">Set true to escape the replaced route URI string prior to returning it</param>
         /// <param name="appendUnusedAsQueryParams">Set true to append any unused routeValues as query parameters to the returned route</param>
         /// <param name="requireExplicitRouteParams">If set to true requires all the route parameters to be explicitly passed in routeParams</param>
         /// <returns></returns>
