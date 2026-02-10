@@ -222,41 +222,37 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void EvaluateAndCompare_SkipsMismatchRecording_WhenCancellationOccursDuringEvaluation()
+        public void EvaluateDefaultInput_BothParsersAgree()
         {
             try
             {
-                // Arrange - Test that mismatches are not recorded when cancellation state changes during evaluation
                 Setup();
-
-                // Enable comparison feature
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                // Create the wrapper
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var legacyManager = new ActionManifestManagerLegacy();
+                legacyManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManagerLegacy>(legacyManager);
 
-                // Create a simple token for evaluation
-                var token = new StringToken(null, null, null, "test-value");
-                var contextData = new DictionaryContextData();
-                var expressionFunctions = new List<LegacyExpressions.IFunctionInfo>();
+                var newManager = new ActionManifestManager();
+                newManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManager>(newManager);
 
-                // First evaluation without cancellation - should work normally
-                var result1 = wrapper.EvaluateStepDisplayName(token, contextData, expressionFunctions);
-                Assert.Equal("test-value", result1);
-                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+                var wrapper = new ActionManifestManagerWrapper();
+                wrapper.Initialize(_hc);
 
-                // Now simulate a scenario where cancellation occurs during evaluation
-                // Cancel the token before next evaluation
-                _ecTokenSource.Cancel();
+                _ec.Object.ExpressionValues["github"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["strategy"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["matrix"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["steps"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["job"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["runner"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["env"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionFunctions.Add(new LegacyExpressions.FunctionInfo<GitHub.Runner.Worker.Expressions.HashFilesFunction>("hashFiles", 1, 255));
 
-                // Evaluate again - even if there were a mismatch, it should be skipped due to cancellation
-                var result2 = wrapper.EvaluateStepDisplayName(token, contextData, expressionFunctions);
-                Assert.Equal("test-value", result2);
+                var result = wrapper.EvaluateDefaultInput(_ec.Object, "testInput", new StringToken(null, null, null, "defaultValue"));
 
-                // Verify no mismatch was recorded (cancellation race detection should have prevented it)
-                // Note: In this test, both parsers return the same result, so there's no actual mismatch.
-                // The cancellation race detection is a safeguard for when results differ due to timing.
-                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+                Assert.Equal("defaultValue", result);
+                Assert.False(_ec.Object.Global.HasActionManifestMismatch);
             }
             finally
             {
@@ -267,30 +263,115 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void EvaluateAndCompare_DoesNotRecordMismatch_WhenResultsMatch()
+        public void EvaluateContainerArguments_BothParsersAgree()
         {
             try
             {
-                // Arrange - Test that no mismatch is recorded when both parsers return matching results
                 Setup();
-
-                // Enable comparison feature
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                // Create the wrapper
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var legacyManager = new ActionManifestManagerLegacy();
+                legacyManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManagerLegacy>(legacyManager);
 
-                // Create a simple token for evaluation
-                var token = new StringToken(null, null, null, "test-value");
-                var contextData = new DictionaryContextData();
-                var expressionFunctions = new List<LegacyExpressions.IFunctionInfo>();
+                var newManager = new ActionManifestManager();
+                newManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManager>(newManager);
 
-                // Evaluation without cancellation - should work normally and not record mismatch for matching results
-                var result = wrapper.EvaluateStepDisplayName(token, contextData, expressionFunctions);
-                Assert.Equal("test-value", result);
+                var wrapper = new ActionManifestManagerWrapper();
+                wrapper.Initialize(_hc);
 
-                // Since both parsers return the same result, no mismatch should be recorded
-                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+                var arguments = new SequenceToken(null, null, null);
+                arguments.Add(new StringToken(null, null, null, "arg1"));
+                arguments.Add(new StringToken(null, null, null, "arg2"));
+
+                var evaluateContext = new Dictionary<string, LegacyContextData.PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+
+                var result = wrapper.EvaluateContainerArguments(_ec.Object, arguments, evaluateContext);
+
+                Assert.Equal(2, result.Count);
+                Assert.Equal("arg1", result[0]);
+                Assert.Equal("arg2", result[1]);
+                Assert.False(_ec.Object.Global.HasActionManifestMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateContainerEnvironment_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var legacyManager = new ActionManifestManagerLegacy();
+                legacyManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManagerLegacy>(legacyManager);
+
+                var newManager = new ActionManifestManager();
+                newManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManager>(newManager);
+
+                var wrapper = new ActionManifestManagerWrapper();
+                wrapper.Initialize(_hc);
+
+                var environment = new MappingToken(null, null, null);
+                environment.Add(new StringToken(null, null, null, "hello"), new StringToken(null, null, null, "world"));
+
+                var evaluateContext = new Dictionary<string, LegacyContextData.PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+
+                var result = wrapper.EvaluateContainerEnvironment(_ec.Object, environment, evaluateContext);
+
+                Assert.Equal(1, result.Count);
+                Assert.Equal("world", result["hello"]);
+                Assert.False(_ec.Object.Global.HasActionManifestMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateCompositeOutputs_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var legacyManager = new ActionManifestManagerLegacy();
+                legacyManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManagerLegacy>(legacyManager);
+
+                var newManager = new ActionManifestManager();
+                newManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManager>(newManager);
+
+                var wrapper = new ActionManifestManagerWrapper();
+                wrapper.Initialize(_hc);
+
+                var outputDef = new MappingToken(null, null, null);
+                outputDef.Add(new StringToken(null, null, null, "description"), new StringToken(null, null, null, "test output"));
+                outputDef.Add(new StringToken(null, null, null, "value"), new StringToken(null, null, null, "value1"));
+
+                var token = new MappingToken(null, null, null);
+                token.Add(new StringToken(null, null, null, "output1"), outputDef);
+
+                var evaluateContext = new Dictionary<string, LegacyContextData.PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+
+                var result = wrapper.EvaluateCompositeOutputs(_ec.Object, token, evaluateContext);
+
+                Assert.NotNull(result);
+                Assert.False(_ec.Object.Global.HasActionManifestMismatch);
             }
             finally
             {

@@ -216,7 +216,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private TLegacy EvaluateAndCompare<TLegacy, TNew>(
+        internal TLegacy EvaluateAndCompare<TLegacy, TNew>(
             string methodName,
             Func<TLegacy> legacyEvaluator,
             Func<TNew> newEvaluator,
@@ -668,18 +668,14 @@ namespace GitHub.Runner.Worker
         /// </summary>
         private bool IsKnownEquivalentErrorPattern(Exception legacyException, Exception newException)
         {
-            // Get all messages in the exception chain
-            var legacyMessages = string.Join(" | ", GetExceptionMessages(legacyException));
-            var newMessages = string.Join(" | ", GetExceptionMessages(newException));
-
             // fromJSON('') - both parsers fail when parsing empty string as JSON
             // The error messages differ but both indicate JSON parsing failure.
             // Legacy throws raw JsonReaderException: "Error reading JToken from JsonReader..."
             // New wraps it: "Error parsing fromJson" with inner JsonReaderException
             // Both may be wrapped in TemplateValidationException: "The template is not valid..."
-            if (IsJsonParseError(legacyMessages) && IsJsonParseError(newMessages))
+            if (HasJsonExceptionType(legacyException) && HasJsonExceptionType(newException))
             {
-                _trace.Info("CompareExceptions - both exceptions are JSON parse errors (semantically equivalent)");
+                _trace.Info("CompareExceptions - both exceptions are JSON parse errors, treating as matched");
                 return true;
             }
 
@@ -687,14 +683,44 @@ namespace GitHub.Runner.Worker
         }
 
         /// <summary>
-        /// Checks if the exception message chain indicates a JSON parsing error.
+        /// Checks if the exception chain contains a JSON-related exception type.
         /// </summary>
-        private bool IsJsonParseError(string messages)
+        internal static bool HasJsonExceptionType(Exception ex)
         {
-            // Common patterns for JSON parse errors from fromJSON function
-            return messages.Contains("Error reading JToken from JsonReader") ||
-                   messages.Contains("Error parsing fromJson") ||
-                   messages.Contains("JsonReaderException");
+            var toProcess = new Queue<Exception>();
+            toProcess.Enqueue(ex);
+            int count = 0;
+
+            while (toProcess.Count > 0 && count < 50)
+            {
+                var current = toProcess.Dequeue();
+                if (current == null) continue;
+
+                count++;
+
+                if (current is Newtonsoft.Json.JsonReaderException ||
+                    current is System.Text.Json.JsonException)
+                {
+                    return true;
+                }
+
+                if (current is AggregateException aggregateEx)
+                {
+                    foreach (var innerEx in aggregateEx.InnerExceptions)
+                    {
+                        if (innerEx != null && count < 50)
+                        {
+                            toProcess.Enqueue(innerEx);
+                        }
+                    }
+                }
+                else if (current.InnerException != null)
+                {
+                    toProcess.Enqueue(current.InnerException);
+                }
+            }
+
+            return false;
         }
 
         private IList<string> GetExceptionMessages(Exception ex)

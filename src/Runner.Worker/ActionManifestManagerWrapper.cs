@@ -775,6 +775,14 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
+            // Check for known equivalent error patterns (e.g., JSON parse errors)
+            // where both parsers correctly reject invalid input but with different wording
+            if (PipelineTemplateEvaluatorWrapper.HasJsonExceptionType(legacyException) && PipelineTemplateEvaluatorWrapper.HasJsonExceptionType(newException))
+            {
+                trace.Info("CompareExceptions - both exceptions are JSON parse errors, treating as matched");
+                return true;
+            }
+
             // Compare exception messages recursively (including inner exceptions)
             var legacyMessages = GetExceptionMessages(legacyException);
             var newMessages = GetExceptionMessages(newException);
@@ -839,5 +847,6 @@ namespace GitHub.Runner.Worker
 
             return messages;
         }
+
     }
 }
