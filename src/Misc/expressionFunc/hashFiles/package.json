@@ -2,13 +2,14 @@
   "name": "hashFiles",
   "version": "1.0.0",
   "description": "GitHub Actions HashFiles() expression function",
+  "type": "module",
   "main": "lib/hashFiles.js",
   "scripts": {
     "build": "tsc",
     "format": "prettier --write **/*.ts",
     "format-check": "prettier --check **/*.ts",
     "lint": "eslint src/**/*.ts",
-    "pack": "ncc build -o ../../layoutbin/hashFiles",
+    "pack": "ncc build -o ../../layoutbin/hashFiles --target es2020",
     "all": "npm run format && npm run lint && npm run build && npm run pack",
     "prepare": "cd ../../../../ && husky"
   },
