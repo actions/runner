@@ -324,8 +324,11 @@ namespace GitHub.Runner.Listener
                         HostContext.EnableAuthMigration("EnableAuthMigrationByDefault");
                     }
 
+                    // hosted runner only run one job and would like to know the result of the job for telemetry and alerting on failure spike.
+                    var returnJobResultForHosted = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED"));
+
                     // Run the runner interactively or as service
-                    return await ExecuteRunnerAsync(settings, command.RunOnce || settings.Ephemeral);
+                    return await ExecuteRunnerAsync(settings, command.RunOnce || settings.Ephemeral || returnJobResultForHosted, returnJobResultForHosted);
                 }
                 else
                 {
@@ -401,7 +404,7 @@ namespace GitHub.Runner.Listener
         }
 
         //create worker manager, create message listener and start listening to the queue
-        private async Task<int> RunAsync(RunnerSettings settings, bool runOnce = false)
+        private async Task<int> RunAsync(RunnerSettings settings, bool runOnce = false, bool returnRunOnceJobResult = false)
         {
             try
             {
@@ -578,6 +581,21 @@ namespace GitHub.Runner.Listener
                                     catch (Exception ex)
                                     {
                                         Trace.Info($"Ignore any exception after cancel message loop. {ex}");
+                                    }
+
+                                    if (returnRunOnceJobResult)
+                                    {
+                                        try
+                                        {
+                                            var jobResult = await jobDispatcher.RunOnceJobCompleted.Task;
+                                            return TaskResultUtil.TranslateToReturnCode(jobResult);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Trace.Error("run once job finished with error.");
+                                            Trace.Error(ex);
+                                            return Constants.Runner.ReturnCode.TerminatedError;
+                                        }
                                     }
 
                                     return Constants.Runner.ReturnCode.Success;
@@ -866,14 +884,14 @@ namespace GitHub.Runner.Listener
             return Constants.Runner.ReturnCode.Success;
         }
 
-        private async Task<int> ExecuteRunnerAsync(RunnerSettings settings, bool runOnce)
+        private async Task<int> ExecuteRunnerAsync(RunnerSettings settings, bool runOnce, bool returnRunOnceJobResult)
         {
             int returnCode = Constants.Runner.ReturnCode.Success;
             bool restart = false;
             do
             {
                 restart = false;
-                returnCode = await RunAsync(settings, runOnce);
+                returnCode = await RunAsync(settings, runOnce, returnRunOnceJobResult);
 
                 if (returnCode == Constants.Runner.ReturnCode.RunnerConfigurationRefreshed)
                 {
