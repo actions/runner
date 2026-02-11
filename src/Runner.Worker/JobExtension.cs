@@ -740,7 +740,7 @@ namespace GitHub.Runner.Worker
                     if (context.Global.DeprecatedNode20Actions?.Count > 0)
                     {
                         var actionsList = string.Join(", ", context.Global.DeprecatedNode20Actions);
-                        var deprecationMessage = $"Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: {actionsList}. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2025. Please check if updated versions of these actions are available that support Node.js 24. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        var deprecationMessage = $"Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: {actionsList}. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2025. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
                         context.Warning(deprecationMessage);
                     }
                 }
