@@ -735,6 +735,14 @@ namespace GitHub.Runner.Worker
                             context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check service connectivity. {ex.Message}" });
                         }
                     }
+
+                    // Add deprecation warning annotation for Node.js 20 actions
+                    if (context.Global.DeprecatedNode20Actions?.Count > 0)
+                    {
+                        var actionsList = string.Join(", ", context.Global.DeprecatedNode20Actions);
+                        var deprecationMessage = $"Node.js 20 actions are deprecated and will stop working on June 2nd, 2025. Please update the following actions to use Node.js 24: {actionsList}. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        context.Warning(deprecationMessage);
+                    }
                 }
                 catch (Exception ex)
                 {

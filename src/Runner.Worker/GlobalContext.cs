@@ -33,5 +33,6 @@ namespace GitHub.Runner.Worker
         public bool HasActionManifestMismatch { get; set; }
         public bool HasDeprecatedSetOutput { get; set; }
         public bool HasDeprecatedSaveState { get; set; }
+        public HashSet<string> DeprecatedNode20Actions { get; set; }
     }
 }

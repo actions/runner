@@ -856,6 +856,9 @@ namespace GitHub.Runner.Worker
             // Job level annotations
             Global.JobAnnotations = new List<Annotation>();
 
+            // Track Node.js 20 actions for deprecation warning
+            Global.DeprecatedNode20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
