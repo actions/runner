@@ -74,7 +74,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-      
+
 
         [Fact]
         [Trait("Level", "L0")]
@@ -114,6 +114,207 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert - should be node24 as requested
                 Assert.Equal("node24", handler.Data.NodeVersion);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Node20Action_TrackedWhenWarnFlagEnabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                var variables = new Dictionary<string, VariableValue>
+                {
+                    { Constants.Runner.NodeMigration.WarnOnNode20Flag, new VariableValue("true") }
+                };
+                Variables serverVariables = new(hc, variables);
+                var deprecatedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = new Dictionary<string, string>(),
+                    DeprecatedNode20Actions = deprecatedActions
+                });
+
+                var actionRef = new RepositoryPathReference
+                {
+                    Name = "actions/checkout",
+                    Ref = "v4"
+                };
+
+                // Act.
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = "node20";
+                hf.Create(
+                    _ec.Object,
+                    actionRef,
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
+                    new List<JobExtensionRunner>()
+                );
+
+                // Assert.
+                Assert.Contains("actions/checkout@v4", deprecatedActions);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Node20Action_NotTrackedWhenWarnFlagDisabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                var variables = new Dictionary<string, VariableValue>();
+                Variables serverVariables = new(hc, variables);
+                var deprecatedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = new Dictionary<string, string>(),
+                    DeprecatedNode20Actions = deprecatedActions
+                });
+
+                var actionRef = new RepositoryPathReference
+                {
+                    Name = "actions/checkout",
+                    Ref = "v4"
+                };
+
+                // Act.
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = "node20";
+                hf.Create(
+                    _ec.Object,
+                    actionRef,
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
+                    new List<JobExtensionRunner>()
+                );
+
+                // Assert - should not track when flag is disabled
+                Assert.Empty(deprecatedActions);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Node24Action_NotTrackedEvenWhenWarnFlagEnabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                var variables = new Dictionary<string, VariableValue>
+                {
+                    { Constants.Runner.NodeMigration.WarnOnNode20Flag, new VariableValue("true") }
+                };
+                Variables serverVariables = new(hc, variables);
+                var deprecatedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = new Dictionary<string, string>(),
+                    DeprecatedNode20Actions = deprecatedActions
+                });
+
+                var actionRef = new RepositoryPathReference
+                {
+                    Name = "actions/checkout",
+                    Ref = "v5"
+                };
+
+                // Act.
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = "node24";
+                hf.Create(
+                    _ec.Object,
+                    actionRef,
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
+                    new List<JobExtensionRunner>()
+                );
+
+                // Assert - node24 actions should not be tracked
+                Assert.Empty(deprecatedActions);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Node12Action_TrackedAsDeprecatedWhenWarnFlagEnabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                var variables = new Dictionary<string, VariableValue>
+                {
+                    { Constants.Runner.NodeMigration.WarnOnNode20Flag, new VariableValue("true") }
+                };
+                Variables serverVariables = new(hc, variables);
+                var deprecatedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = new Dictionary<string, string>(),
+                    DeprecatedNode20Actions = deprecatedActions
+                });
+
+                var actionRef = new RepositoryPathReference
+                {
+                    Name = "some-org/old-action",
+                    Ref = "v1"
+                };
+
+                // Act - node12 gets migrated to node20, then should be tracked
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = "node12";
+                hf.Create(
+                    _ec.Object,
+                    actionRef,
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
+                    new List<JobExtensionRunner>()
+                );
+
+                // Assert - node12 gets migrated to node20 and should be tracked
+                Assert.Contains("some-org/old-action@v1", deprecatedActions);
             }
         }
     }
