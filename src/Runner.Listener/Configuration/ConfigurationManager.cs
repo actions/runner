@@ -178,8 +178,12 @@ namespace GitHub.Runner.Listener.Configuration
                         }
                     }
 
-                    // Validate can connect.
-                    await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
+                    // Validate can connect using the obtained vss credentials.
+                    // In Runner Admin flow there's nothing new to test connection to at this point as registerToken is already validated via GetTenantCredential.
+                    if (!runnerSettings.UseRunnerAdminFlow)
+                    {
+                        await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
+                    }
 
                     _term.WriteLine();
                     _term.WriteSuccessMessage("Connected to GitHub");
