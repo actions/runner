@@ -1,10 +1,12 @@
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
+using System;
+using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker
 {
-    public sealed class JobContext : DictionaryContextData
+    public sealed class JobContext : DictionaryContextData, IEnvironmentContextData
     {
         public ActionResult? Status
         {
@@ -79,6 +81,30 @@ namespace GitHub.Runner.Worker
                 else
                 {
                     this["check_run_id"] = null;
+                }
+            }
+        }
+
+        private readonly HashSet<string> _contextEnvAllowlist = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "check_run_id",
+            "status",
+        };
+
+        public IEnumerable<KeyValuePair<string, string>> GetRuntimeEnvironmentVariables()
+        {
+            foreach (var data in this)
+            {
+                if (_contextEnvAllowlist.Contains(data.Key))
+                {
+                    if (data.Value is StringContextData value)
+                    {
+                        yield return new KeyValuePair<string, string>($"JOB_{data.Key.ToUpperInvariant()}", value);
+                    }
+                    else if (data.Value is NumberContextData numberValue)
+                    {
+                        yield return new KeyValuePair<string, string>($"JOB_{data.Key.ToUpperInvariant()}", numberValue.ToString());
+                    }
                 }
             }
         }
