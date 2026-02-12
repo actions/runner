@@ -226,9 +226,33 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(embeddedSteps, nameof(embeddedSteps));
 
+            bool emitCompositeMarkers =
+                (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.EmitCompositeMarkers) ?? false)
+                || StringUtil.ConvertToBoolean(
+                    System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.EmitCompositeMarkers));
+
+            // Read nesting prefix from execution context (set by parent composite, if any)
+            string idPrefix = "";
+            if (emitCompositeMarkers)
+            {
+                idPrefix = ExecutionContext.Global.Variables.Get("system.compositeMarkerIdPrefix") ?? "";
+            }
+
             foreach (IStep step in embeddedSteps)
             {
                 Trace.Info($"Processing embedded step: DisplayName='{step.DisplayName}'");
+
+                // Build step ID from ContextName for markers
+                var contextName = (step as IActionRunner)?.Action?.ContextName ?? $"__{embeddedSteps.IndexOf(step)}";
+                var stepId = string.IsNullOrEmpty(idPrefix) ? contextName : $"{idPrefix}.{contextName}";
+                var stepStopwatch = new System.Diagnostics.Stopwatch();
+
+                // Emit start marker before condition evaluation
+                if (emitCompositeMarkers)
+                {
+                    ExecutionContext.Output($"##[start-action display={EscapeProperty(SanitizeDisplayName(step.DisplayName))};id={EscapeProperty(stepId)}]");
+                    stepStopwatch.Start();
+                }
 
                 // Add Expression Functions
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
@@ -381,6 +405,13 @@ namespace GitHub.Runner.Worker.Handlers
                         // Condition is false
                         Trace.Info("Skipping step due to condition evaluation.");
                         SetStepConclusion(step, TaskResult.Skipped);
+
+                        if (emitCompositeMarkers)
+                        {
+                            stepStopwatch.Stop();
+                            ExecutionContext.Output($"##[end-action id={EscapeProperty(stepId)};outcome=skipped;conclusion=skipped;duration_ms=0]");
+                        }
+
                         continue;
                     }
                     else if (conditionEvaluateError != null)
@@ -389,11 +420,40 @@ namespace GitHub.Runner.Worker.Handlers
                         step.ExecutionContext.Error(conditionEvaluateError);
                         SetStepConclusion(step, TaskResult.Failed);
                         ExecutionContext.Result = TaskResult.Failed;
+
+                        if (emitCompositeMarkers)
+                        {
+                            stepStopwatch.Stop();
+                            ExecutionContext.Output($"##[end-action id={EscapeProperty(stepId)};outcome=failure;conclusion=failure;duration_ms={stepStopwatch.ElapsedMilliseconds}]");
+                        }
+
                         break;
                     }
                     else
                     {
+                        // Set the prefix for nested composites BEFORE running the step
+                        if (emitCompositeMarkers)
+                        {
+                            ExecutionContext.Global.Variables.Set("system.compositeMarkerIdPrefix", stepId);
+                        }
+
                         await RunStepAsync(step);
+
+                        // Restore prefix for sibling steps (in case a nested composite changed it)
+                        if (emitCompositeMarkers)
+                        {
+                            ExecutionContext.Global.Variables.Set("system.compositeMarkerIdPrefix", idPrefix);
+                        }
+
+                        if (emitCompositeMarkers)
+                        {
+                            stepStopwatch.Stop();
+                            // Outcome = raw result before continue-on-error (null when continue-on-error didn't fire)
+                            // Result = final result after continue-on-error
+                            var outcome = (step.ExecutionContext.Outcome ?? step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult().ToString().ToLowerInvariant();
+                            var conclusion = (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult().ToString().ToLowerInvariant();
+                            ExecutionContext.Output($"##[end-action id={EscapeProperty(stepId)};outcome={outcome};conclusion={conclusion};duration_ms={stepStopwatch.ElapsedMilliseconds}]");
+                        }
                     }
 
                 }
@@ -469,6 +529,41 @@ namespace GitHub.Runner.Worker.Handlers
         {
             step.ExecutionContext.Result = result;
             step.ExecutionContext.UpdateGlobalStepsContext();
+        }
+
+        private static string EscapeProperty(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+            return value
+                .Replace("%", "%25")
+                .Replace(";", "%3B")
+                .Replace("\r", "%0D")
+                .Replace("\n", "%0A")
+                .Replace("]", "%5D");
+        }
+
+        private const int MaxDisplayNameLength = 1000;
+
+        private static string SanitizeDisplayName(string displayName)
+        {
+            if (string.IsNullOrEmpty(displayName)) return displayName;
+
+            // Take first line only (FormatStepName in ActionRunner.cs already does this
+            // for most cases, but be defensive for any code path that skips it)
+            var result = displayName.TrimStart(' ', '\t', '\r', '\n');
+            var firstNewLine = result.IndexOfAny(new[] { '\r', '\n' });
+            if (firstNewLine >= 0)
+            {
+                result = result.Substring(0, firstNewLine);
+            }
+
+            // Truncate excessively long names
+            if (result.Length > MaxDisplayNameLength)
+            {
+                result = result.Substring(0, MaxDisplayNameLength);
+            }
+
+            return result;
         }
     }
 }
