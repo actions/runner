@@ -13,10 +13,8 @@ RUN apt-get update -y \
     lsb-release \
     ca-certificates \
     wget \
-    software-properties-common \
     gnupg \
     apt-transport-https \
-    wget \
     g++ \
     gcc \
     gdb \
@@ -39,6 +37,7 @@ RUN apt-get update -y \
     zlib1g-dev \
     libbz2-dev \
     liblzma-dev \
+    libc6-dbg \
     unzip \
     zip \
     openjdk-11-jdk \

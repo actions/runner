@@ -84,7 +84,10 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Clear any existing tool cache
+        run: |
+          mv "${{ runner.tool_cache }}" "${{ runner.tool_cache }}.old"
+          mkdir -p "${{ runner.tool_cache }}"
 
       - name: Setup Python for toolcache
         uses: actions/setup-python@v4
@@ -95,6 +98,16 @@ jobs:
         run: |
           mkdir -p ./images/${{ env.HOST_TMP_TOOL_CACHE }}
           cp -rL "$RUNNER_TOOL_CACHE"/* "./images/${{ env.HOST_TMP_TOOL_CACHE }}/"
+
+      # 后续改为如下，参考https://docs.github.com/en/enterprise-server@3.15/admin/managing-github-actions-for-your-enterprise/managing-access-to-actions-from-githubcom/setting-up-the-tool-cache-on-self-hosted-runners-without-internet-access 
+      # - name: Archive tool cache
+      #   run: |
+      #     cd "${{ runner.tool_cache }}"
+      #     tar -czf tool_cache.tar.gz *
+      # - name: Upload tool cache artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     path: ${{ runner.tool_cache }}/tool_cache.tar.gz
 
       - name: Upload tool cache artifact
         uses: actions/upload-artifact@v4
