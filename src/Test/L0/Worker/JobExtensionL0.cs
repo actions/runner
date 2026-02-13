@@ -258,7 +258,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task UploadDiganosticLogIfEnvironmentVariableSet()
+        public async Task UploadDiagnosticLogIfEnvironmentVariableSet()
         {
             using (TestHostContext hc = CreateTestContext())
             {

@@ -98,7 +98,7 @@ namespace GitHub.Runner.Listener
                 Guid dispatchedJobId = _jobDispatchedQueue.Dequeue();
                 if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
                 {
-                    Trace.Verbose($"Retrive previous WorkerDispatcher for job {currentDispatch.JobId}.");
+                    Trace.Verbose($"Retrieve previous WorkerDispatcher for job {currentDispatch.JobId}.");
                 }
             }
 
@@ -144,7 +144,7 @@ namespace GitHub.Runner.Listener
             WorkerDispatcher workerDispatcher;
             if (!_jobInfos.TryGetValue(jobCancelMessage.JobId, out workerDispatcher))
             {
-                Trace.Verbose($"Job request {jobCancelMessage.JobId} is not a current running job, ignore cancllation request.");
+                Trace.Verbose($"Job request {jobCancelMessage.JobId} is not a current running job, ignore cancellation request.");
                 return false;
             }
             else
@@ -167,7 +167,7 @@ namespace GitHub.Runner.Listener
                 dispatchedJobId = _jobDispatchedQueue.Dequeue();
                 if (_jobInfos.TryGetValue(dispatchedJobId, out currentDispatch))
                 {
-                    Trace.Verbose($"Retrive previous WorkerDispatcher for job {currentDispatch.JobId}.");
+                    Trace.Verbose($"Retrieve previous WorkerDispatcher for job {currentDispatch.JobId}.");
                 }
             }
             else
@@ -259,9 +259,9 @@ namespace GitHub.Runner.Listener
 
                 // based on the current design, server will only send one job for a given runner at a time.
                 // if the runner received a new job request while a previous job request is still running, this typically indicates two situations
-                // 1. a runner bug caused a server and runner mismatch on the state of the job request, e.g. the runner didn't renew the jobrequest
-                //    properly but thinks it still owns the job reqest, however the server has already abandoned the jobrequest.
-                // 2. a server bug or design change that allowed the server to send more than one job request to an given runner that hasn't finished
+                // 1. a runner bug caused a server and runner mismatch on the state of the job request, e.g. the runner didn't renew the job request
+                //    properly but thinks it still owns the job request, however the server has already abandoned the job request.
+                // 2. a server bug or design change that allowed the server to send more than one job request to a given runner that hasn't finished
                 //.   a previous job request.
                 var runnerServer = HostContext.GetService<IRunnerServer>();
                 TaskAgentJobRequest request = null;
@@ -426,7 +426,7 @@ namespace GitHub.Runner.Listener
                     using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
                         // Start the process channel.
-                        // It's OK if StartServer bubbles an execption after the worker process has already started.
+                        // It's OK if StartServer bubbles an exception after the worker process has already started.
                         // The worker will shutdown after 30 seconds if it hasn't received the job message.
                         processChannel.StartServer(
                             // Delegate to start the child process.
@@ -679,7 +679,7 @@ namespace GitHub.Runner.Listener
                             // worker haven't exit within cancellation timeout.
                             if (completedTask != workerProcessTask)
                             {
-                                Trace.Info($"worker process for job {message.JobId} haven't exit within cancellation timout, kill running worker.");
+                                Trace.Info($"worker process for job {message.JobId} haven't exit within cancellation timeout, kill running worker.");
                                 workerProcessCancelTokenSource.Cancel();
                                 try
                                 {
@@ -781,7 +781,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
-                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cance();
+                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cancel();
                     // Stop renew only on cancellation token fired.
                     Trace.Info($"job renew has been cancelled, stop renew job {jobId}.");
                     return;
@@ -804,7 +804,7 @@ namespace GitHub.Runner.Listener
                     }
                     else
                     {
-                        // retry till reach lockeduntil + 5 mins extra buffer.
+                        // retry till reach locked until + 5 mins extra buffer.
                         remainingTime = request.LockedUntil.Value + TimeSpan.FromMinutes(5) - DateTime.UtcNow;
                     }
 
@@ -897,7 +897,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
-                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cance();
+                    // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cancel();
                     // Stop renew only on cancellation token fired.
                     Trace.Info($"job renew has been cancelled, stop renew job request {requestId}.");
                     return;
@@ -920,7 +920,7 @@ namespace GitHub.Runner.Listener
                     }
                     else
                     {
-                        // retry till reach lockeduntil + 5 mins extra buffer.
+                        // retry until locked-until + 5 mins extra buffer.
                         remainingTime = request.LockedUntil.Value + TimeSpan.FromMinutes(5) - DateTime.UtcNow;
                     }
 
@@ -1028,10 +1028,10 @@ namespace GitHub.Runner.Listener
                         var logNameParts = logName.Split('_', StringSplitOptions.RemoveEmptyEntries);
                         if (logNameParts.Length != 3)
                         {
-                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            Trace.Warning($"log file '{log}' doesn't follow naming convention 'GUID_GUID_INT'.");
                             continue;
                         }
-                        var logPageSeperator = logName.IndexOf('_');
+                        var logPageSeparator = logName.IndexOf('_');
                         var logRecordId = Guid.Empty;
                         var pageNumber = 0;
 
@@ -1043,13 +1043,13 @@ namespace GitHub.Runner.Listener
 
                         if (!Guid.TryParse(logNameParts[1], out logRecordId))
                         {
-                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            Trace.Warning($"log file '{log}' doesn't follow naming convention 'GUID_GUID_INT'.");
                             continue;
                         }
 
                         if (!int.TryParse(logNameParts[2], out pageNumber))
                         {
-                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                            Trace.Warning($"log file '{log}' doesn't follow naming convention 'GUID_GUID_INT'.");
                             continue;
                         }
 

@@ -1968,7 +1968,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
 
                     break;
                 default:
-                    // The schema for worflow_call.inputs only allows boolean, string, or number.
+                    // The schema for workflow_call.inputs only allows boolean, string, or number.
                     // We should have failed earlier if we receive any other type.
                     throw new ArgumentException($"Unexpected defined type '{definedType.Value}' when converting input value for '{key}'");
             }
@@ -2009,13 +2009,13 @@ namespace GitHub.Actions.WorkflowParser.Conversion
 
             foreach (var definition in outputs)
             {
-                var spec = definition.Value.AssertMapping("workfow job output spec").ToDictionary(
+                var spec = definition.Value.AssertMapping("workflow job output spec").ToDictionary(
                     x => x.Key.AssertString("outputs spec key").Value,
                     x => x.Value,
                     StringComparer.OrdinalIgnoreCase
                 );
 
-                var value = spec["value"].AssertString("workfow job output value").Value;
+                var value = spec["value"].AssertString("workflow job output value").Value;
 
                 result.Add(definition.Key, value);
             }

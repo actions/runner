@@ -201,7 +201,7 @@ Coalesce empty with \"error\". For any other values, omit logging an issue and d
 
 #### Default severity level
 
-Problem matchers are unable to interpret severity strings other than `warning` and `error`. The `severity` match group expects `warning` or `error` (case insensitive).
+Problem matchers are unable to interpret severity strings other than `warning` and `error`. The `severity` match group expects `warning` or `error` (case-insensitive).
 
 However some tools indicate error/warning in different ways. For example `flake8` uses codes like `E100`, `W200`, and `F300` (error, warning, fatal, respectively).
 
