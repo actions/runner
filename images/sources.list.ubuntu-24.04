@@ -1,0 +1,14 @@
+deb http://mirrors.ivolces.com/ubuntu/ noble main restricted universe multiverse
+deb-src http://mirrors.ivolces.com/ubuntu/ noble main restricted universe multiverse
+
+deb http://mirrors.ivolces.com/ubuntu/ noble-security main restricted universe multiverse
+deb-src http://mirrors.ivolces.com/ubuntu/ noble-security main restricted universe multiverse
+
+deb http://mirrors.ivolces.com/ubuntu/ noble-updates main restricted universe multiverse
+deb-src http://mirrors.ivolces.com/ubuntu/ noble-updates main restricted universe multiverse
+
+# deb http://mirrors.ivolces.com/ubuntu/ noble-proposed main restricted universe multiverse
+# deb-src http://mirrors.ivolces.com/ubuntu/ noble-proposed main restricted universe multiverse
+
+deb http://mirrors.ivolces.com/ubuntu/ noble-backports main restricted universe multiverse
+deb-src http://mirrors.ivolces.com/ubuntu/ noble-backports main restricted universe multiverse

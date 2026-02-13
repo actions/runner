@@ -4,14 +4,31 @@ ENV TZ=Asia/Shanghai \
     DEBIAN_FRONTEND=noninteractive
 
 ARG PYTHON_VERSION="3.12"
+COPY sources.list.ubuntu-24.04 /etc/apt/sources.list
+RUN rm -f /etc/apt/sources.list.d/*.list || true
+
+# 基础工具
 RUN apt-get update -y \
-    && apt-get install -y software-properties-common \
-    && add-apt-repository -y ppa:git-core/ppa \
-    && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt-get update -y \
     && apt-get install -y --no-install-recommends \
     lsb-release \
     ca-certificates \
+    curl \
+    software-properties-common \
+    gpg \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制预置的 keyring
+COPY git-core-ppa.gpg /etc/apt/keyrings/git-core-ppa.gpg
+COPY deadsnakes-ppa.gpg /etc/apt/keyrings/deadsnakes-ppa.gpg
+
+# 写入 PPA 源，再更新索引
+RUN echo "deb [signed-by=/etc/apt/keyrings/git-core-ppa.gpg] https://launchpad.proxy.ustclug.org/git-core/ppa/ubuntu $(lsb_release -cs) main" \
+       > /etc/apt/sources.list.d/git-core-ppa.list && \
+    echo "deb [signed-by=/etc/apt/keyrings/deadsnakes-ppa.gpg] https://launchpad.proxy.ustclug.org/deadsnakes/ppa/ubuntu $(lsb_release -cs) main" \
+       > /etc/apt/sources.list.d/deadsnakes-ppa.list && \
+    apt-get update -y
+
+RUN apt-get install -y --no-install-recommends \
     wget \
     gnupg \
     apt-transport-https \
@@ -44,7 +61,6 @@ RUN apt-get update -y \
     telnet \
     libreadline-dev \
     libncurses6 \
-    curl \
     vim \
     lsof \
     swig \
