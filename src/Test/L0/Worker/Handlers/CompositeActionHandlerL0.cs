@@ -42,7 +42,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Handlers
         {
             var longName = new string('a', 1500);
             var sanitized = SanitizeDisplayName(longName);
-            Assert.Equal(1000, sanitized.Length);
+            Assert.Equal(CompositeActionHandler.MaxDisplayNameLength, sanitized.Length);
         }
 
         [Fact]
@@ -250,38 +250,12 @@ namespace GitHub.Runner.Common.Tests.Worker.Handlers
             Assert.Equal("##[end-action id=failing-step;outcome=failure;conclusion=success;duration_ms=500]", marker);
         }
 
-        // Helper methods that mirror the implementation
-        private static string EscapeProperty(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return value;
-            return value
-                .Replace("%", "%25")
-                .Replace(";", "%3B")
-                .Replace("\r", "%0D")
-                .Replace("\n", "%0A")
-                .Replace("]", "%5D");
-        }
+        // Helper methods that call the real production code
+        private static string EscapeProperty(string value) =>
+            CompositeActionHandler.EscapeProperty(value);
 
-        private const int MaxDisplayNameLength = 1000;
-
-        private static string SanitizeDisplayName(string displayName)
-        {
-            if (string.IsNullOrEmpty(displayName)) return displayName;
-
-            var result = displayName.TrimStart(' ', '\t', '\r', '\n');
-            var firstNewLine = result.IndexOfAny(new[] { '\r', '\n' });
-            if (firstNewLine >= 0)
-            {
-                result = result.Substring(0, firstNewLine);
-            }
-
-            if (result.Length > MaxDisplayNameLength)
-            {
-                result = result.Substring(0, MaxDisplayNameLength);
-            }
-
-            return result;
-        }
+        private static string SanitizeDisplayName(string displayName) =>
+            CompositeActionHandler.SanitizeDisplayName(displayName);
 
         private static string StripMarkers(string line)
         {

@@ -204,6 +204,26 @@ namespace GitHub.Runner.Common
             return unescaped;
         }
 
+        /// <summary>
+        /// Escapes special characters in a value using the standard action command escape mappings.
+        /// Iterates in reverse so that '%' is escaped first to avoid double-encoding.
+        /// </summary>
+        public static string EscapeValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return value;
+            }
+
+            string escaped = value;
+            for (int i = _escapeMappings.Length - 1; i >= 0; i--)
+            {
+                escaped = escaped.Replace(_escapeMappings[i].Token, _escapeMappings[i].Replacement);
+            }
+
+            return escaped;
+        }
+
         private static string UnescapeProperty(string escaped)
         {
             if (string.IsNullOrEmpty(escaped))
