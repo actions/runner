@@ -226,183 +226,261 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(embeddedSteps, nameof(embeddedSteps));
 
+            bool emitCompositeMarkers =
+                (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.EmitCompositeMarkers) ?? false)
+                || StringUtil.ConvertToBoolean(
+                    System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.EmitCompositeMarkers));
+
+            // Read nesting prefix from execution context (set by parent composite, if any)
+            string idPrefix = "";
+            if (emitCompositeMarkers)
+            {
+                idPrefix = ExecutionContext.Global.Variables.Get("system.compositeMarkerIdPrefix") ?? "";
+            }
+
+            var containerSetupIndex = 0;
             foreach (IStep step in embeddedSteps)
             {
                 Trace.Info($"Processing embedded step: DisplayName='{step.DisplayName}'");
 
-                // Add Expression Functions
-                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
-                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
-                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
-                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
-                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
+                // Build step ID from ContextName for markers
+                var contextName = (step as IActionRunner)?.Action?.ContextName ?? $"__container_setup_{containerSetupIndex++}";
+                var stepId = string.IsNullOrEmpty(idPrefix) ? contextName : $"{idPrefix}.{contextName}";
+                var stepStopwatch = new System.Diagnostics.Stopwatch();
 
-                // Set action_status to the success of the current composite action
-                var actionResult = ExecutionContext.Result?.ToActionResult() ?? ActionResult.Success;
-                step.ExecutionContext.SetGitHubContext("action_status", actionResult.ToString().ToLowerInvariant());
+                // Emit start marker before condition evaluation
+                var endMarkerEmitted = false;
+                if (emitCompositeMarkers)
+                {
+                    step.TryUpdateDisplayName(out _);
+                    ExecutionContext.Output($"##[start-action display={EscapeProperty(SanitizeDisplayName(step.DisplayName))};id={EscapeProperty(stepId)}]");
+                    stepStopwatch.Start();
+                }
 
-                // Initialize env context
-                Trace.Info("Initialize Env context for embedded step");
+                try
+                {
+
+                    // Add Expression Functions
+                    step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
+                    step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
+                    step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
+                    step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
+                    step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
+
+                    // Set action_status to the success of the current composite action
+                    var actionResult = ExecutionContext.Result?.ToActionResult() ?? ActionResult.Success;
+                    step.ExecutionContext.SetGitHubContext("action_status", actionResult.ToString().ToLowerInvariant());
+
+                    // Initialize env context
+                    Trace.Info("Initialize Env context for embedded step");
 #if OS_WINDOWS
                 var envContext = new DictionaryContextData();
 #else
-                var envContext = new CaseSensitiveDictionaryContextData();
+                    var envContext = new CaseSensitiveDictionaryContextData();
 #endif
-                step.ExecutionContext.ExpressionValues["env"] = envContext;
+                    step.ExecutionContext.ExpressionValues["env"] = envContext;
 
-                // Merge global env
-                foreach (var pair in ExecutionContext.Global.EnvironmentVariables)
-                {
-                    envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
-                }
+                    // Merge global env
+                    foreach (var pair in ExecutionContext.Global.EnvironmentVariables)
+                    {
+                        envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+                    }
 
-                // Merge composite-step env
-                if (ExecutionContext.ExpressionValues.TryGetValue("env", out var envContextData))
-                {
+                    // Merge composite-step env
+                    if (ExecutionContext.ExpressionValues.TryGetValue("env", out var envContextData))
+                    {
 #if OS_WINDOWS
                     var dict = envContextData as DictionaryContextData;
 #else
-                    var dict = envContextData as CaseSensitiveDictionaryContextData;
+                        var dict = envContextData as CaseSensitiveDictionaryContextData;
 #endif
-                    foreach (var pair in dict)
-                    {
-                        // Skip global env, otherwise we merge an outdated global env
-                        if (ExecutionContext.StepEnvironmentOverrides.Contains(pair.Key))
+                        foreach (var pair in dict)
                         {
-                            envContext[pair.Key] = pair.Value;
-                        }
-                    }
-                }
-
-                try
-                {
-                    if (step is IActionRunner actionStep)
-                    {
-                        // Evaluate and merge embedded-step env
-                        step.ExecutionContext.StepEnvironmentOverrides.AddRange(ExecutionContext.StepEnvironmentOverrides);
-                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
-                        var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
-                        foreach (var env in actionEnvironment)
-                        {
-                            envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
-                            step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Evaluation error
-                    Trace.Info("Caught exception from expression for embedded step.env");
-                    step.ExecutionContext.Error(ex);
-                    SetStepConclusion(step, TaskResult.Failed);
-                }
-
-                // Register Callback
-                CancellationTokenRegistration? jobCancelRegister = null;
-                try
-                {
-                    // Register job cancellation call back only if job cancellation token not been fire before each step run
-                    if (!ExecutionContext.Root.CancellationToken.IsCancellationRequested)
-                    {
-                        // Test the condition again. The job was cancelled after the condition was originally evaluated.
-                        jobCancelRegister = ExecutionContext.Root.CancellationToken.Register(() =>
-                        {
-                            // Mark job as cancelled
-                            ExecutionContext.Root.Result = TaskResult.Canceled;
-                            ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
-                            step.ExecutionContext.SetGitHubContext("action_status", (ExecutionContext.Root.Result?.ToActionResult() ?? ActionResult.Cancelled).ToString().ToLowerInvariant());
-
-                            step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
-                            var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
-                            var conditionReTestResult = false;
-                            if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                            // Skip global env, otherwise we merge an outdated global env
+                            if (ExecutionContext.StepEnvironmentOverrides.Contains(pair.Key))
                             {
-                                step.ExecutionContext.Debug($"Skip Re-evaluate condition on runner shutdown.");
+                                envContext[pair.Key] = pair.Value;
                             }
-                            else
-                            {
-                                try
-                                {
-                                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionReTestTraceWriter);
-                                    var condition = new BasicExpressionToken(null, null, null, step.Condition);
-                                    conditionReTestResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
-                                }
-                                catch (Exception ex)
-                                {
-                                    // Cancel the step since we get exception while re-evaluate step condition
-                                    Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
-                                    step.ExecutionContext.Error(ex);
-                                }
-                            }
+                        }
+                    }
 
-                            if (!conditionReTestResult)
+                    try
+                    {
+                        if (step is IActionRunner actionStep)
+                        {
+                            // Evaluate and merge embedded-step env
+                            step.ExecutionContext.StepEnvironmentOverrides.AddRange(ExecutionContext.StepEnvironmentOverrides);
+                            var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
+                            var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
+                            foreach (var env in actionEnvironment)
                             {
-                                // Cancel the step
-                                Trace.Info("Cancel current running step.");
-                                step.ExecutionContext.CancelToken();
+                                envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                                step.ExecutionContext.StepEnvironmentOverrides.Add(env.Key);
                             }
-                        });
-                    }
-                    else
-                    {
-                        if (ExecutionContext.Root.Result != TaskResult.Canceled)
-                        {
-                            // Mark job as cancelled
-                            ExecutionContext.Root.Result = TaskResult.Canceled;
-                            ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
                         }
                     }
-                    // Evaluate condition
-                    step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
-                    var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
-                    var conditionResult = false;
-                    var conditionEvaluateError = default(Exception);
-                    if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                    catch (Exception ex)
                     {
-                        step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
-                    }
-                    else
-                    {
-                        try
-                        {
-                            var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
-                            var condition = new BasicExpressionToken(null, null, null, step.Condition);
-                            conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.Info("Caught exception from expression.");
-                            Trace.Error(ex);
-                            conditionEvaluateError = ex;
-                        }
-                    }
-                    if (!conditionResult && conditionEvaluateError == null)
-                    {
-                        // Condition is false
-                        Trace.Info("Skipping step due to condition evaluation.");
-                        SetStepConclusion(step, TaskResult.Skipped);
-                        continue;
-                    }
-                    else if (conditionEvaluateError != null)
-                    {
-                        // Condition error
-                        step.ExecutionContext.Error(conditionEvaluateError);
+                        // Evaluation error
+                        Trace.Info("Caught exception from expression for embedded step.env");
+                        step.ExecutionContext.Error(ex);
                         SetStepConclusion(step, TaskResult.Failed);
-                        ExecutionContext.Result = TaskResult.Failed;
-                        break;
-                    }
-                    else
-                    {
-                        await RunStepAsync(step);
                     }
 
-                }
+                    // Register Callback
+                    CancellationTokenRegistration? jobCancelRegister = null;
+                    try
+                    {
+                        // Register job cancellation call back only if job cancellation token not been fire before each step run
+                        if (!ExecutionContext.Root.CancellationToken.IsCancellationRequested)
+                        {
+                            // Test the condition again. The job was cancelled after the condition was originally evaluated.
+                            jobCancelRegister = ExecutionContext.Root.CancellationToken.Register(() =>
+                            {
+                                // Mark job as cancelled
+                                ExecutionContext.Root.Result = TaskResult.Canceled;
+                                ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                                step.ExecutionContext.SetGitHubContext("action_status", (ExecutionContext.Root.Result?.ToActionResult() ?? ActionResult.Cancelled).ToString().ToLowerInvariant());
+
+                                step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
+                                var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
+                                var conditionReTestResult = false;
+                                if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                                {
+                                    step.ExecutionContext.Debug($"Skip Re-evaluate condition on runner shutdown.");
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionReTestTraceWriter);
+                                        var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                                        conditionReTestResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Cancel the step since we get exception while re-evaluate step condition
+                                        Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
+                                        step.ExecutionContext.Error(ex);
+                                    }
+                                }
+
+                                if (!conditionReTestResult)
+                                {
+                                    // Cancel the step
+                                    Trace.Info("Cancel current running step.");
+                                    step.ExecutionContext.CancelToken();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            if (ExecutionContext.Root.Result != TaskResult.Canceled)
+                            {
+                                // Mark job as cancelled
+                                ExecutionContext.Root.Result = TaskResult.Canceled;
+                                ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                            }
+                        }
+                        // Evaluate condition
+                        step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
+                        var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
+                        var conditionResult = false;
+                        var conditionEvaluateError = default(Exception);
+                        if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                        {
+                            step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
+                        }
+                        else
+                        {
+                            try
+                            {
+                                var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
+                                var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                                conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Info("Caught exception from expression.");
+                                Trace.Error(ex);
+                                conditionEvaluateError = ex;
+                            }
+                        }
+                        if (!conditionResult && conditionEvaluateError == null)
+                        {
+                            // Condition is false
+                            Trace.Info("Skipping step due to condition evaluation.");
+                            SetStepConclusion(step, TaskResult.Skipped);
+
+                            if (emitCompositeMarkers)
+                            {
+                                stepStopwatch.Stop();
+                                ExecutionContext.Output($"##[end-action id={EscapeProperty(stepId)};outcome=skipped;conclusion=skipped;duration_ms=0]");
+                                endMarkerEmitted = true;
+                            }
+
+                            continue;
+                        }
+                        else if (conditionEvaluateError != null)
+                        {
+                            // Condition error
+                            step.ExecutionContext.Error(conditionEvaluateError);
+                            SetStepConclusion(step, TaskResult.Failed);
+                            ExecutionContext.Result = TaskResult.Failed;
+
+                            if (emitCompositeMarkers)
+                            {
+                                stepStopwatch.Stop();
+                                ExecutionContext.Output($"##[end-action id={EscapeProperty(stepId)};outcome=failure;conclusion=failure;duration_ms={stepStopwatch.ElapsedMilliseconds}]");
+                                endMarkerEmitted = true;
+                            }
+
+                            break;
+                        }
+                        else
+                        {
+                            // Set the prefix for nested composites BEFORE running the step
+                            if (emitCompositeMarkers)
+                            {
+                                ExecutionContext.Global.Variables.Set("system.compositeMarkerIdPrefix", stepId);
+                            }
+
+                            await RunStepAsync(step);
+
+                            if (emitCompositeMarkers)
+                            {
+                                // Restore prefix for sibling steps (in case a nested composite changed it)
+                                ExecutionContext.Global.Variables.Set("system.compositeMarkerIdPrefix", idPrefix);
+
+                                stepStopwatch.Stop();
+                                // Outcome = raw result before continue-on-error (null when continue-on-error didn't fire)
+                                // Result = final result after continue-on-error
+                                var outcome = (step.ExecutionContext.Outcome ?? step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult().ToString().ToLowerInvariant();
+                                var conclusion = (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult().ToString().ToLowerInvariant();
+                                ExecutionContext.Output($"##[end-action id={EscapeProperty(stepId)};outcome={outcome};conclusion={conclusion};duration_ms={stepStopwatch.ElapsedMilliseconds}]");
+                                endMarkerEmitted = true;
+                            }
+                        }
+
+                    }
+                    finally
+                    {
+                        if (jobCancelRegister != null)
+                        {
+                            jobCancelRegister?.Dispose();
+                            jobCancelRegister = null;
+                        }
+                    }
+
+                } // end marker safety try
                 finally
                 {
-                    if (jobCancelRegister != null)
+                    if (emitCompositeMarkers && !endMarkerEmitted)
                     {
-                        jobCancelRegister?.Dispose();
-                        jobCancelRegister = null;
+                        stepStopwatch.Stop();
+                        var outcome = (step.ExecutionContext.Outcome ?? step.ExecutionContext.Result ?? TaskResult.Failed).ToActionResult().ToString().ToLowerInvariant();
+                        var conclusion = (step.ExecutionContext.Result ?? TaskResult.Failed).ToActionResult().ToString().ToLowerInvariant();
+                        ExecutionContext.Output($"##[end-action id={EscapeProperty(stepId)};outcome={outcome};conclusion={conclusion};duration_ms={stepStopwatch.ElapsedMilliseconds}]");
                     }
                 }
                 // Check failed or cancelled
@@ -469,6 +547,35 @@ namespace GitHub.Runner.Worker.Handlers
         {
             step.ExecutionContext.Result = result;
             step.ExecutionContext.UpdateGlobalStepsContext();
+        }
+
+        internal static string EscapeProperty(string value)
+        {
+            return ActionCommand.EscapeValue(value);
+        }
+
+        internal const int MaxDisplayNameLength = 1000;
+
+        internal static string SanitizeDisplayName(string displayName)
+        {
+            if (string.IsNullOrEmpty(displayName)) return displayName;
+
+            // Take first line only (FormatStepName in ActionRunner.cs already does this
+            // for most cases, but be defensive for any code path that skips it)
+            var result = displayName.TrimStart(' ', '\t', '\r', '\n');
+            var firstNewLine = result.IndexOfAny(new[] { '\r', '\n' });
+            if (firstNewLine >= 0)
+            {
+                result = result.Substring(0, firstNewLine);
+            }
+
+            // Truncate excessively long names
+            if (result.Length > MaxDisplayNameLength)
+            {
+                result = result.Substring(0, MaxDisplayNameLength);
+            }
+
+            return result;
         }
     }
 }

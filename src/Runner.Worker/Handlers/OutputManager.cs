@@ -90,6 +90,14 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
+            // Strip runner-controlled markers from user output to prevent injection
+            if (!String.IsNullOrEmpty(line) &&
+                (line.Contains("##[start-action") || line.Contains("##[end-action")))
+            {
+                line = line.Replace("##[start-action", @"##[\start-action")
+                           .Replace("##[end-action", @"##[\end-action");
+            }
+
             // Problem matchers
             if (_matchers.Length > 0)
             {
