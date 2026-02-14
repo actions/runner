@@ -39,7 +39,7 @@ jobs:
       packages: write
     outputs:
       include: ${{ steps.generate-matrix.outputs.include }}
-      oslist: ${{ steps.generate-matrix.outputs.oslist }} # 新增 oslist 输出
+      distrolist: ${{ steps.generate-matrix.outputs.distrolist }}
     steps:
       - name: Generate matrix based on input
         id: generate-matrix
@@ -50,9 +50,9 @@ jobs:
           script: |
             const imageName = process.env.INPUT_IMAGENAME;
             const allConfigs = [
-              { imageName: 'ubuntu-22.04', runs_on: 'raw-ubuntu-22.04', toolcache_os: 'ubuntu-22.04' },
-              { imageName: 'ubuntu-22.04-physical', runs_on: 'raw-ubuntu-22.04', toolcache_os: 'ubuntu-22.04' },
-              { imageName: 'ubuntu-24.04', runs_on: 'raw-ubuntu-24.04', toolcache_os: 'ubuntu-24.04' }
+              { imageName: 'ubuntu-22.04', runs_on: 'raw-ubuntu-22.04', distro: 'ubuntu-22.04' },
+              { imageName: 'ubuntu-22.04-physical', runs_on: 'raw-ubuntu-22.04', distro: 'ubuntu-22.04' },
+              { imageName: 'ubuntu-24.04', runs_on: 'raw-ubuntu-24.04', distro: 'ubuntu-24.04' }
             ];
 
             let include = [];
@@ -65,21 +65,21 @@ jobs:
               }
             }
 
-            const oslist = [...new Set(include.map(item => item.toolcache_os))];
+            const distrolist = [...new Set(include.map(item => item.distro))];
             
             console.log('Generated include matrix:', JSON.stringify(include, null, 2));
-            console.log('Generated oslist:', JSON.stringify(oslist, null, 2));
+            console.log('Generated distrolist:', JSON.stringify(distrolist, null, 2));
 
             core.setOutput('include', JSON.stringify(include));
-            core.setOutput('oslist', JSON.stringify(oslist));
+            core.setOutput('distrolist', JSON.stringify(distrolist));
 
   prepare-toolcache:
     needs: select-matrix
     if: ${{ needs.select-matrix.outputs.include != '[]' }}
     strategy:
       matrix:
-        os: ${{ fromJSON(needs.select-matrix.outputs.oslist) }}
-    runs-on: ${{ matrix.os }} # 在 GitHub-hosted runner 上运行
+        distro: ${{ fromJSON(needs.select-matrix.outputs.distrolist) }}
+    runs-on: ${{ matrix.distro }} # runs on GitHub-hosted runner
     permissions:
       contents: read
       packages: write
@@ -94,34 +94,25 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_TOOLCACHE_VERSION }}
 
-      - name: Package tool cache
+      # Ref:https://docs.github.com/en/enterprise-server@3.15/admin/managing-github-actions-for-your-enterprise/managing-access-to-actions-from-githubcom/setting-up-the-tool-cache-on-self-hosted-runners-without-internet-access 
+      - name: Archive tool cache
         run: |
-          mkdir -p ./images/${{ env.HOST_TMP_TOOL_CACHE }}
-          cp -rL "$RUNNER_TOOL_CACHE"/* "./images/${{ env.HOST_TMP_TOOL_CACHE }}/"
-
-      # 后续改为如下，参考https://docs.github.com/en/enterprise-server@3.15/admin/managing-github-actions-for-your-enterprise/managing-access-to-actions-from-githubcom/setting-up-the-tool-cache-on-self-hosted-runners-without-internet-access 
-      # - name: Archive tool cache
-      #   run: |
-      #     cd "${{ runner.tool_cache }}"
-      #     tar -czf tool_cache.tar.gz *
-      # - name: Upload tool cache artifact
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     path: ${{ runner.tool_cache }}/tool_cache.tar.gz
+          cd "${{ runner.tool_cache }}"
+          tar -czf tool_cache_${{ matrix.distro }}.tar.gz *
 
       - name: Upload tool cache artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: toolcache-${{ matrix.os }}-py-${{ env.PYTHON_TOOLCACHE_VERSION }}
-          path: ./images/${{ env.HOST_TMP_TOOL_CACHE }}
+          name: toolcache-${{ matrix.distro }}
+          path: ${{ runner.tool_cache }}/tool_cache_${{ matrix.distro }}.tar.gz
 
   build:
-    needs: [select-matrix, prepare-toolcache] # 同时依赖两个上游
+    needs: [select-matrix, prepare-toolcache]
     if: ${{ needs.select-matrix.outputs.include != '[]' }}
     strategy:
       matrix:
         include: ${{ fromJSON(needs.select-matrix.outputs.include) }}
-    runs-on: ${{ matrix.runs_on }} # 在 self-hosted runner 上运行
+    runs-on: ${{ matrix.runs_on }} # runs on self-hosted runner
     permissions:
       contents: read
       packages: write
@@ -141,8 +132,13 @@ jobs:
       - name: Download tool cache artifact
         uses: actions/download-artifact@v4
         with:
-          name: toolcache-${{ matrix.toolcache_os }}-py-${{ env.PYTHON_TOOLCACHE_VERSION }}
-          path: ./images/${{ env.HOST_TMP_TOOL_CACHE }}
+          name: toolcache-${{ matrix.distro }}
+          path: ./toolcache_artifact
+      
+      - name: Unpack tool cache to docker context
+        run: |
+          mkdir -p ./images/${HOST_TMP_TOOL_CACHE}
+          tar -xzf ./toolcache_artifact/tool_cache_${{ matrix.distro }}.tar.gz -C ./images/${HOST_TMP_TOOL_CACHE}
 
       - name: Compute image version
         id: image
