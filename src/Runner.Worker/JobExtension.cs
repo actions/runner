@@ -112,6 +112,13 @@ namespace GitHub.Runner.Worker
                                             groupName = "Machine Setup Info";
                                         }
 
+                                        // not output internal groups
+                                        if (groupName.StartsWith("_internal_", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            jobContext.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.General, Message = info.Detail });
+                                            continue;
+                                        }
+
                                         context.Output($"##[group]{groupName}");
                                         var multiLines = info.Detail.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
                                         foreach (var line in multiLines)
@@ -400,6 +407,10 @@ namespace GitHub.Runner.Worker
                     if (snapshotRequest != null)
                     {
                         var snapshotOperationProvider = HostContext.GetService<ISnapshotOperationProvider>();
+                        // Check that that runner is capable of taking a snapshot
+                        snapshotOperationProvider.RunSnapshotPreflightChecks(context);
+
+                        // Add postjob step to write snapshot file
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(
                             runAsync: (executionContext, _) => snapshotOperationProvider.CreateSnapshotRequestAsync(executionContext, snapshotRequest),
                             condition: snapshotRequest.Condition,

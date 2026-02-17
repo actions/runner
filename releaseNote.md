@@ -1,23 +1,27 @@
 ## What's Changed
-* Fix name of generated of artifact builds from GitHub workflow for arm artifacts by @satmandu in https://github.com/actions/runner/pull/3568
-* Ignore error when fail to report worker crash. by @TingluoHuang in https://github.com/actions/runner/pull/3588
-* Fix null ref in 'OnEventWritten()' by @TingluoHuang in https://github.com/actions/runner/pull/3593
-* Send stepNumber for annotation to run-service by @TingluoHuang in https://github.com/actions/runner/pull/3614
-* Enable nuget audit. by @TingluoHuang in https://github.com/actions/runner/pull/3615
-* Update dotnet install script. by @TingluoHuang in https://github.com/actions/runner/pull/3659
-* Print immutable action package details in set up job logs by @heavymachinery in https://github.com/actions/runner/pull/3645
-* Update dotnet sdk to latest version @8.0.405 by @github-actions in https://github.com/actions/runner/pull/3666
-* Upgrade `buildx` from `0.18.0` to `0.19.3` (critical CVE) by @MPV in https://github.com/actions/runner/pull/3647
-* Upgrade `docker` from `27.3.1` to `27.4.1` by @MPV in https://github.com/actions/runner/pull/3648
-* Bump Microsoft.NET.Test.Sdk from 17.8.0 to 17.12.0 in /src by @dependabot in https://github.com/actions/runner/pull/3584
-* Bump docker/setup-buildx-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3564
-* Bump github/codeql-action from 2 to 3 by @dependabot in https://github.com/actions/runner/pull/3555
-* Bump Moq from 4.20.70 to 4.20.72 in /src by @dependabot in https://github.com/actions/runner/pull/3672
+* Fix owner of /home/runner directory by @nikola-jokic in https://github.com/actions/runner/pull/4132
+* Update Docker to v29.0.2 and Buildx to v0.30.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4135
+* Update workflow around runner docker image. by @TingluoHuang in https://github.com/actions/runner/pull/4133
+* Fix regex for validating runner version format by @TingluoHuang in https://github.com/actions/runner/pull/4136
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4144
+* Ensure safe_sleep tries alternative approaches by @TingluoHuang in https://github.com/actions/runner/pull/4146
+* Bump actions/github-script from 7 to 8 by @dependabot[bot] in https://github.com/actions/runner/pull/4137
+* Bump actions/checkout from 5 to 6 by @dependabot[bot] in https://github.com/actions/runner/pull/4130
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4149
+* Bump docker image to use ubuntu 24.04 by @TingluoHuang in https://github.com/actions/runner/pull/4018
+* Add support for case function by @AllanGuigou in https://github.com/actions/runner/pull/4147
+* Cleanup feature flag actions_container_action_runner_temp by @ericsciple in https://github.com/actions/runner/pull/4163
+* Bump actions/download-artifact from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4155
+* Bump actions/upload-artifact from 5 to 6 by @dependabot[bot] in https://github.com/actions/runner/pull/4157
+* Set ACTIONS_ORCHESTRATION_ID as env to actions. by @TingluoHuang in https://github.com/actions/runner/pull/4178
+* Allow hosted VM report job telemetry via .setup_info file. by @TingluoHuang in https://github.com/actions/runner/pull/4186
+* Bump typescript from 5.9.2 to 5.9.3 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4184
+* Bump Azure.Storage.Blobs from 12.26.0 to 12.27.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4189
 
 ## New Contributors
-* @satmandu made their first contribution in https://github.com/actions/runner/pull/3568
+* @AllanGuigou made their first contribution in https://github.com/actions/runner/pull/4147
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.321.0...v2.322.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.330.0...v2.331.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.

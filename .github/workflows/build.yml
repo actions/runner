@@ -14,6 +14,9 @@ on:
     paths-ignore:
     - '**.md'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     strategy:
@@ -41,7 +44,7 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
-          os: windows-2019
+          os: windows-latest
           devScript: ./dev
 
         - runtime: win-arm64
@@ -50,7 +53,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     # Build runner layout
     - name: Build & Layout Release
@@ -75,8 +78,53 @@ jobs:
     # Upload runner package tar.gz/zip as artifact
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: runner-package-${{ matrix.runtime }}
         path: |
           _package
+
+  docker:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, ubuntu-24.04-arm ]
+        include:
+          - os: ubuntu-latest
+            docker_platform: linux/amd64
+          - os: ubuntu-24.04-arm
+            docker_platform: linux/arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Get latest runner version
+      id: latest_runner
+      uses: actions/github-script@v8
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const release = await github.rest.repos.getLatestRelease({
+            owner: 'actions',
+            repo: 'runner',
+          });
+          const version = release.data.tag_name.replace(/^v/, '');
+          core.setOutput('version', version);
+
+    - name: Setup Docker buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./images
+        load: true
+        platforms: ${{ matrix.docker_platform }}
+        tags: |
+          ${{ github.sha }}:latest
+        build-args: |
+          RUNNER_VERSION=${{ steps.latest_runner.outputs.version }}
+
+    - name: Test Docker image
+      run: |
+        docker run --rm ${{ github.sha }}:latest ./run.sh --version
+  

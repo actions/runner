@@ -135,7 +135,7 @@ namespace GitHub.Runner.Worker.Handlers
             var extraExpressionValues = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             extraExpressionValues["inputs"] = inputsContext;
 
-            var manifestManager = HostContext.GetService<IActionManifestManager>();
+            var manifestManager = HostContext.GetService<IActionManifestManagerWrapper>();
             if (Data.Arguments != null)
             {
                 container.ContainerEntryPointArgs = "";
@@ -191,11 +191,13 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));
 
             container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
+            container.MountVolumes.Add(new MountVolume(tempDirectory, "/github/runner_temp"));
             container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
             container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
             container.MountVolumes.Add(new MountVolume(tempFileCommandDirectory, "/github/file_commands"));
             container.MountVolumes.Add(new MountVolume(defaultWorkingDirectory, "/github/workspace"));
 
+            container.AddPathTranslateMapping(tempDirectory, "/github/runner_temp");
             container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
             container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
             container.AddPathTranslateMapping(tempFileCommandDirectory, "/github/file_commands");
@@ -235,6 +237,14 @@ namespace GitHub.Runner.Worker.Handlers
             if (systemConnection.Data.TryGetValue("ResultsServiceUrl", out var resultsUrl) && !string.IsNullOrEmpty(resultsUrl))
             {
                 Environment["ACTIONS_RESULTS_URL"] = resultsUrl;
+            }
+
+            if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SetOrchestrationIdEnvForActions) ?? false)
+            {
+                if (ExecutionContext.Global.Variables.TryGetValue(Constants.Variables.System.OrchestrationId, out var orchestrationId) && !string.IsNullOrEmpty(orchestrationId))
+                {
+                    Environment["ACTIONS_ORCHESTRATION_ID"] = orchestrationId;
+                }
             }
 
             foreach (var variable in this.Environment)

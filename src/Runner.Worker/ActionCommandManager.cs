@@ -318,6 +318,17 @@ namespace GitHub.Runner.Worker
                 context.AddIssue(issue, ExecutionContextLogOptions.Default);
             }
 
+            if (!context.Global.HasDeprecatedSetOutput)
+            {
+                context.Global.HasDeprecatedSetOutput = true;
+                var telemetry = new JobTelemetry
+                {
+                    Type = JobTelemetryType.ActionCommand,
+                    Message = "DeprecatedCommand: set-output"
+                };
+                context.Global.JobTelemetry.Add(telemetry);
+            }
+
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
                 throw new Exception("Required field 'name' is missing in ##[set-output] command.");
@@ -351,6 +362,17 @@ namespace GitHub.Runner.Worker
                 };
                 issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
                 context.AddIssue(issue, ExecutionContextLogOptions.Default);
+            }
+
+            if (!context.Global.HasDeprecatedSaveState)
+            {
+                context.Global.HasDeprecatedSaveState = true;
+                var telemetry = new JobTelemetry
+                {
+                    Type = JobTelemetryType.ActionCommand,
+                    Message = "DeprecatedCommand: save-state"
+                };
+                context.Global.JobTelemetry.Add(telemetry);
             }
 
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))

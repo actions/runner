@@ -131,6 +131,7 @@ namespace GitHub.Actions.RunService.WebApi
             string environmentUrl,
             IList<Telemetry> telemetry,
             string billingOwnerId,
+            string infrastructureFailureCategory,
             CancellationToken cancellationToken = default)
         {
             HttpMethod httpMethod = new HttpMethod("POST");
@@ -145,6 +146,7 @@ namespace GitHub.Actions.RunService.WebApi
                 EnvironmentUrl = environmentUrl,
                 Telemetry = telemetry,
                 BillingOwnerId = billingOwnerId,
+                InfrastructureFailureCategory = infrastructureFailureCategory
             };
 
             requestUri = new Uri(requestUri, "completejob");
@@ -253,11 +255,12 @@ namespace GitHub.Actions.RunService.WebApi
             return false;
         }
 
-        private static string Truncate(string errorBody)
+        internal static string Truncate(string errorBody)
         {
-            if (errorBody.Length > 100)
+            const int maxLength = 200;
+            if (errorBody.Length > maxLength)
             {
-                return errorBody.Substring(0, 100) + "[truncated]";
+                return errorBody.Substring(0, maxLength) + "[truncated]";
             }
 
             return errorBody;

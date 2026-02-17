@@ -70,7 +70,7 @@ namespace GitHub.Runner.Common
 
         protected async Task RetryRequest(Func<Task> func,
             CancellationToken cancellationToken,
-            int maxRetryAttemptsCount = 5,
+            int maxAttempts = 5,
             Func<Exception, bool> shouldRetry = null
         )
         {
@@ -79,31 +79,31 @@ namespace GitHub.Runner.Common
                 await func();
                 return Unit.Value;
             }
-            await RetryRequest<Unit>(wrappedFunc, cancellationToken, maxRetryAttemptsCount, shouldRetry);
+            await RetryRequest<Unit>(wrappedFunc, cancellationToken, maxAttempts, shouldRetry);
         }
 
         protected async Task<T> RetryRequest<T>(Func<Task<T>> func,
             CancellationToken cancellationToken,
-            int maxRetryAttemptsCount = 5,
+            int maxAttempts = 5,
             Func<Exception, bool> shouldRetry = null
         )
         {
-            var retryCount = 0;
+            var attempt = 0;
             while (true)
             {
-                retryCount++;
+                attempt++;
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     return await func();
                 }
                 // TODO: Add handling of non-retriable exceptions: https://github.com/github/actions-broker/issues/122
-                catch (Exception ex) when (retryCount < maxRetryAttemptsCount && (shouldRetry == null || shouldRetry(ex)))
+                catch (Exception ex) when (attempt < maxAttempts && (shouldRetry == null || shouldRetry(ex)))
                 {
                     Trace.Error("Catch exception during request");
                     Trace.Error(ex);
                     var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
-                    Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxRetryAttemptsCount - retryCount} attempt left.");
+                    Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxAttempts - attempt} attempt left.");
                     await Task.Delay(backOff, cancellationToken);
                 }
             }

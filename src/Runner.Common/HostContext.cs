@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Services.WebApi.Jwt;
 
 namespace GitHub.Runner.Common
 {
@@ -37,6 +38,11 @@ namespace GitHub.Runner.Common
         void ShutdownRunner(ShutdownReason reason);
         void WritePerfCounter(string counter);
         void LoadDefaultUserAgents();
+
+        bool AllowAuthMigration { get; }
+        void EnableAuthMigration(string trace);
+        void DeferAuthMigration(TimeSpan deferred, string trace);
+        event EventHandler<AuthMigrationEventArgs> AuthMigrationChanged;
     }
 
     public enum StartupType
@@ -70,12 +76,21 @@ namespace GitHub.Runner.Common
         private RunnerWebProxy _webProxy = new();
         private string _hostType = string.Empty;
 
+        // disable auth migration by default
+        private readonly ManualResetEventSlim _allowAuthMigration = new ManualResetEventSlim(false);
+        private DateTime _deferredAuthMigrationTime = DateTime.MaxValue;
+        private readonly object _authMigrationLock = new object();
+        private CancellationTokenSource _authMigrationAutoReenableTaskCancellationTokenSource = new();
+        private Task _authMigrationAutoReenableTask;
+
         public event EventHandler Unloading;
+        public event EventHandler<AuthMigrationEventArgs> AuthMigrationChanged;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
         public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
         public List<ProductInfoHeaderValue> UserAgents => _userAgents;
         public RunnerWebProxy WebProxy => _webProxy;
+        public bool AllowAuthMigration => _allowAuthMigration.IsSet;
         public HostContext(string hostType, string logFile = null)
         {
             // Validate args.
@@ -207,6 +222,71 @@ namespace GitHub.Runner.Common
             LoadDefaultUserAgents();
         }
 
+        // marked as internal for testing
+        internal async Task AuthMigrationAuthReenableAsync(TimeSpan refreshInterval, CancellationToken token)
+        {
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    _trace.Verbose($"Auth migration defer timer is set to expire at {_deferredAuthMigrationTime.ToString("O")}. AllowAuthMigration: {_allowAuthMigration.IsSet}.");
+                    await Task.Delay(refreshInterval, token);
+                    if (!_allowAuthMigration.IsSet && DateTime.UtcNow > _deferredAuthMigrationTime)
+                    {
+                        _trace.Info($"Auth migration defer timer expired. Allowing auth migration.");
+                        EnableAuthMigration("Auth migration defer timer expired.");
+                    }
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Task was cancelled, exit the loop.
+            }
+            catch (Exception ex)
+            {
+                _trace.Info("Error in auth migration reenable task.");
+                _trace.Error(ex);
+            }
+        }
+
+        public void EnableAuthMigration(string trace)
+        {
+            _allowAuthMigration.Set();
+
+            lock (_authMigrationLock)
+            {
+                if (_authMigrationAutoReenableTask == null)
+                {
+                    var refreshIntervalInMS = 60 * 1000;
+#if DEBUG
+                    // For L0, we will refresh faster
+                    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_AUTH_MIGRATION_REFRESH_INTERVAL")))
+                    {
+                        refreshIntervalInMS = int.Parse(Environment.GetEnvironmentVariable("_GITHUB_ACTION_AUTH_MIGRATION_REFRESH_INTERVAL"));
+                    }
+#endif
+                    _authMigrationAutoReenableTask = AuthMigrationAuthReenableAsync(TimeSpan.FromMilliseconds(refreshIntervalInMS), _authMigrationAutoReenableTaskCancellationTokenSource.Token);
+                }
+            }
+
+            _trace.Info($"Enable auth migration at {DateTime.UtcNow.ToString("O")}.");
+            AuthMigrationChanged?.Invoke(this, new AuthMigrationEventArgs(trace));
+        }
+
+        public void DeferAuthMigration(TimeSpan deferred, string trace)
+        {
+            _allowAuthMigration.Reset();
+
+            // defer migration for a while
+            lock (_authMigrationLock)
+            {
+                _deferredAuthMigrationTime = DateTime.UtcNow.Add(deferred);
+            }
+
+            _trace.Info($"Disabled auth migration until {_deferredAuthMigrationTime.ToString("O")}.");
+            AuthMigrationChanged?.Invoke(this, new AuthMigrationEventArgs(trace));
+        }
+
         public void LoadDefaultUserAgents()
         {
             if (string.IsNullOrEmpty(WebProxy.HttpProxyAddress) && string.IsNullOrEmpty(WebProxy.HttpsProxyAddress))
@@ -226,6 +306,36 @@ namespace GitHub.Runner.Common
                     credData.Data.TryGetValue("clientId", out var clientId))
                 {
                     _userAgents.Add(new ProductInfoHeaderValue("ClientId", clientId));
+                }
+
+                // for Hosted runner, we can pull orchestrationId from JWT claims of the runner listening token.
+                if (credData != null &&
+                    credData.Scheme == Constants.Configuration.OAuthAccessToken &&
+                    credData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Token, out var accessToken) &&
+                    !string.IsNullOrEmpty(accessToken))
+                {
+                    try
+                    {
+                        var jwt = JsonWebToken.Create(accessToken);
+                        var claims = jwt.ExtractClaims();
+                        var orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orch_id", StringComparison.OrdinalIgnoreCase))?.Value;
+                        if (string.IsNullOrEmpty(orchestrationId))
+                        {
+                            // fallback to orchid for C# actions-service
+                            orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orchid", StringComparison.OrdinalIgnoreCase))?.Value;
+                        }
+
+                        if (!string.IsNullOrEmpty(orchestrationId))
+                        {
+                            _trace.Info($"Pull OrchestrationId {orchestrationId} from runner JWT claims");
+                            _userAgents.Insert(0, new ProductInfoHeaderValue("OrchestrationId", orchestrationId));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _trace.Error("Fail to extract OrchestrationId from runner JWT claims");
+                        _trace.Error(ex);
+                    }
                 }
             }
 
@@ -341,6 +451,12 @@ namespace GitHub.Runner.Common
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
                         ".runner");
+                    break;
+
+                case WellKnownConfigFile.MigratedRunner:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".runner_migrated");
                     break;
 
                 case WellKnownConfigFile.Credentials:
@@ -543,6 +659,18 @@ namespace GitHub.Runner.Common
                     _loadContext.Unloading -= LoadContext_Unloading;
                     _loadContext = null;
                 }
+
+                if (_authMigrationAutoReenableTask != null)
+                {
+                    _authMigrationAutoReenableTaskCancellationTokenSource?.Cancel();
+                }
+
+                if (_authMigrationAutoReenableTaskCancellationTokenSource != null)
+                {
+                    _authMigrationAutoReenableTaskCancellationTokenSource?.Dispose();
+                    _authMigrationAutoReenableTaskCancellationTokenSource = null;
+                }
+
                 _httpTraceSubscription?.Dispose();
                 _diagListenerSubscription?.Dispose();
                 _traceManager?.Dispose();

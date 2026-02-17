@@ -4,7 +4,7 @@
 
 ## Supported Distributions and Versions
 
-Please see "[Supported architectures and operating systems for self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#linux)."
+Please see "[Supported architectures and operating systems for self-hosted runners](https://docs.github.com/en/actions/reference/runners/self-hosted-runners#linux)."
 
 ## Install .Net Core 3.x Linux Dependencies
 
@@ -28,8 +28,8 @@ Debian based OS (Debian, Ubuntu, Linux Mint)
 - liblttng-ust1 or liblttng-ust0
 - libkrb5-3
 - zlib1g
-- libssl1.1, libssl1.0.2 or libssl1.0.0
-- libicu63, libicu60, libicu57 or libicu55
+- libssl3t64, libssl3, libssl1.1, libssl1.0.2 or libssl1.0.0
+- libicu76, libicu75, ..., libicu66, libicu65, libicu63, libicu60, libicu57, libicu55, or libicu52
 
 Fedora based OS (Fedora, Red Hat Enterprise Linux, CentOS, Oracle Linux 7)
 

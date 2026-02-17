@@ -25,7 +25,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IExecutionContext> _ec;
         private TestHostContext _hc;
         private ActionRunner _actionRunner;
-        private IActionManifestManager _actionManifestManager;
+        private IActionManifestManagerWrapper _actionManifestManager;
         private Mock<IFileCommandManager> _fileCommandManager;
 
         private DictionaryContextData _context = new();
@@ -319,6 +319,94 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void EvaluateDisplayNameForLocalAction()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                Reference = new Pipelines.RepositoryPathReference()
+                {
+                    RepositoryType = Pipelines.PipelineConstants.SelfAlias,
+                    Path = "./"
+                }
+            };
+            _actionRunner.Action = action;
+
+            // Act
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+
+            // Assert
+            Assert.True(validDisplayName);
+            Assert.True(updated);
+            Assert.Equal("Run ./", _actionRunner.DisplayName);  // NOT "Run /./"
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateDisplayNameForLocalActionWithPath()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                Reference = new Pipelines.RepositoryPathReference()
+                {
+                    RepositoryType = Pipelines.PipelineConstants.SelfAlias,
+                    Path = "./.github/actions/my-action"
+                }
+            };
+            _actionRunner.Action = action;
+
+            // Act
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+
+            // Assert
+            Assert.True(validDisplayName);
+            Assert.True(updated);
+            Assert.Equal("Run ./.github/actions/my-action", _actionRunner.DisplayName);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateDisplayNameForRemoteActionWithPath()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                Reference = new Pipelines.RepositoryPathReference()
+                {
+                    Name = "owner/repo",
+                    Path = "subdir",
+                    Ref = "v1"
+                }
+            };
+            _actionRunner.Action = action;
+
+            // Act
+            var validDisplayName = _actionRunner.EvaluateDisplayName(_context, _actionRunner.ExecutionContext, out bool updated);
+
+            // Assert
+            Assert.True(validDisplayName);
+            Assert.True(updated);
+            Assert.Equal("Run owner/repo/subdir@v1", _actionRunner.DisplayName);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void WarnInvalidInputs()
         {
             //Arrange
@@ -459,9 +547,16 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _handlerFactory = new Mock<IHandlerFactory>();
             _defaultStepHost = new Mock<IDefaultStepHost>();
-            _actionManifestManager = new ActionManifestManager();
-            _fileCommandManager = new Mock<IFileCommandManager>();
+
+            var actionManifestLegacy = new ActionManifestManagerLegacy();
+            actionManifestLegacy.Initialize(_hc);
+            _hc.SetSingleton<IActionManifestManagerLegacy>(actionManifestLegacy);
+            var actionManifestNew = new ActionManifestManager();
+            actionManifestNew.Initialize(_hc);
+            _hc.SetSingleton<IActionManifestManager>(actionManifestNew);
+            _actionManifestManager = new ActionManifestManagerWrapper();
             _actionManifestManager.Initialize(_hc);
+            _fileCommandManager = new Mock<IFileCommandManager>();
 
             var githubContext = new GitHubContext();
             githubContext.Add("event", JToken.Parse("{\"foo\":\"bar\"}").ToPipelineContextData());
@@ -489,7 +584,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _hc.SetSingleton<IActionManager>(_actionManager.Object);
             _hc.SetSingleton<IHandlerFactory>(_handlerFactory.Object);
-            _hc.SetSingleton<IActionManifestManager>(_actionManifestManager);
+            _hc.SetSingleton<IActionManifestManagerWrapper>(_actionManifestManager);
 
             _hc.EnqueueInstance<IDefaultStepHost>(_defaultStepHost.Object);
 

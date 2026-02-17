@@ -1,43 +1,40 @@
-name: Publish Runner Image
+name: Publish DockerImage from Release Branch
 
 on:
   workflow_dispatch:
     inputs:
-      runnerVersion:
-        type: string
-        description: Version of the runner being installed
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
+      releaseBranch:
+        description: 'Release Branch (releases/mXXX)'
+        required: true
 
 jobs:
-  build:
+  publish-image:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
+      id-token: write
+      attestations: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository_owner }}/actions-runner
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.releaseBranch }}
 
       - name: Compute image version
         id: image
-        uses: actions/github-script@v7.0.1
-        env:
-          RUNNER_VERSION: ${{ github.event.inputs.runnerVersion }}
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
-            const inputRunnerVersion = process.env.RUNNER_VERSION;
-            if (inputRunnerVersion) {
-              console.log(`Using input runner version ${inputRunnerVersion}`)
-              core.setOutput('version', inputRunnerVersion);
-              return
+            const runnerVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '');
+            console.log(`Using runner version ${runnerVersion}`);
+            if (!/^\d+\.\d+\.\d+$/.test(runnerVersion)) {
+              throw new Error(`Invalid runner version: ${runnerVersion}`);
             }
-            const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
-            console.log(`Using runner version ${runnerVersion}`)
             core.setOutput('version', runnerVersion);
 
       - name: Setup Docker buildx
@@ -66,5 +63,13 @@ jobs:
           push: true
           labels: |
             org.opencontainers.image.source=${{github.server_url}}/${{github.repository}}
-            org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
             org.opencontainers.image.licenses=MIT
+          annotations: |
+            org.opencontainers.image.description=https://github.com/actions/runner/releases/tag/v${{ steps.image.outputs.version }}
+
+      - name: Generate attestation
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-and-push.outputs.digest }}
+          push-to-registry: true

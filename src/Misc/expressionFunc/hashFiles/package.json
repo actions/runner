@@ -10,8 +10,7 @@
     "lint": "eslint src/**/*.ts",
     "pack": "ncc build -o ../../layoutbin/hashFiles",
     "all": "npm run format && npm run lint && npm run build && npm run pack",
-    "prepare": "cd ../../../../ && husky install"
-
+    "prepare": "cd ../../../../ && husky"
   },
   "repository": {
     "type": "git",
@@ -36,16 +35,17 @@
     "@actions/glob": "^0.4.0"
   },
   "devDependencies": {
-    "@types/node": "^20.6.2",
-    "@typescript-eslint/eslint-plugin": "^6.7.2",
-    "@typescript-eslint/parser": "^6.7.2",
-    "@vercel/ncc": "^0.38.0",
+    "@stylistic/eslint-plugin": "^3.1.0",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vercel/ncc": "^0.38.3",
     "eslint": "^8.47.0",
-    "eslint-plugin-github": "^4.10.0",
+    "eslint-plugin-github": "^4.10.2",
     "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
     "prettier": "^3.0.3",
-    "typescript": "^5.2.2",
-    "husky": "^8.0.3",
-    "lint-staged": "^14.0.0"
+    "typescript": "^5.9.3"
   }
 }

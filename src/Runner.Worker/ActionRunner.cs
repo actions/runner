@@ -206,7 +206,7 @@ namespace GitHub.Runner.Worker
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
-                var manifestManager = HostContext.GetService<IActionManifestManager>();
+                var manifestManager = HostContext.GetService<IActionManifestManagerWrapper>();
                 foreach (var input in definition.Data.Inputs)
                 {
                     string key = input.Key.AssertString("action input name").Value;
@@ -379,7 +379,14 @@ namespace GitHub.Runner.Worker
             {
                 prefix = PipelineTemplateConstants.RunDisplayPrefix;
                 var repositoryReference = action.Reference as RepositoryPathReference;
-                var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
+                var pathString = string.Empty;
+                if (!string.IsNullOrEmpty(repositoryReference.Path))
+                {
+                    // For local actions (Name is empty), don't prepend "/" to avoid "/./"
+                    pathString = string.IsNullOrEmpty(repositoryReference.Name)
+                        ? repositoryReference.Path
+                        : $"/{repositoryReference.Path}";
+                }
                 var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
                     $"{repositoryReference.Name}{pathString}@{repositoryReference.Ref}";
                 tokenToParse = new StringToken(null, null, null, repoString);

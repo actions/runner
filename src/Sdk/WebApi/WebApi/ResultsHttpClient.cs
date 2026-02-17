@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -132,7 +133,7 @@ namespace GitHub.Services.Results.Client
 
         private async Task StepSummaryUploadCompleteAsync(string planId, string jobId, Guid stepId, long size, CancellationToken cancellationToken)
         {
-            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat);
+            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture);
             var request = new StepSummaryMetadataCreate()
             {
                 WorkflowJobRunBackendId = jobId,
@@ -148,7 +149,7 @@ namespace GitHub.Services.Results.Client
 
         private async Task StepLogUploadCompleteAsync(string planId, string jobId, Guid stepId, long lineCount, CancellationToken cancellationToken)
         {
-            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat);
+            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture);
             var request = new StepLogsMetadataCreate()
             {
                 WorkflowJobRunBackendId = jobId,
@@ -164,7 +165,7 @@ namespace GitHub.Services.Results.Client
 
         private async Task JobLogUploadCompleteAsync(string planId, string jobId, long lineCount, CancellationToken cancellationToken)
         {
-            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat);
+            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture);
             var request = new JobLogsMetadataCreate()
             {
                 WorkflowJobRunBackendId = jobId,
@@ -519,8 +520,8 @@ namespace GitHub.Services.Results.Client
                 Number = r.Order.GetValueOrDefault(),
                 Name = r.Name,
                 Status = ConvertStateToStatus(r.State.GetValueOrDefault()),
-                StartedAt = r.StartTime?.ToString(Constants.TimestampFormat),
-                CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat),
+                StartedAt = r.StartTime?.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture),
+                CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture),
                 Conclusion = ConvertResultToConclusion(r.Result)
             };
         }
@@ -565,7 +566,7 @@ namespace GitHub.Services.Results.Client
 
         public async Task UpdateWorkflowStepsAsync(Guid planId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken)
         {
-            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat);
+            var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture);
             var stepRecords = records.Where(r => String.Equals(r.RecordType, "Task", StringComparison.Ordinal));
             var stepUpdateRequests = stepRecords.GroupBy(r => r.ParentId).Select(sg => new StepsUpdateRequest()
             {

@@ -1,0 +1,194 @@
+name: Auto Update Node Version
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Weekly, every Monday
+  workflow_dispatch:
+
+jobs:
+  update-node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Get latest Node versions
+        id: node-versions
+        run: |
+          # Get latest Node.js releases from official GitHub releases
+          echo "Fetching latest Node.js releases..."
+
+          # Get latest v20.x release
+          LATEST_NODE20=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
+            jq -r '.[] | select(.tag_name | startswith("v20.")) | .tag_name' | \
+            head -1 | sed 's/^v//')
+
+          # Get latest v24.x release  
+          LATEST_NODE24=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
+            jq -r '.[] | select(.tag_name | startswith("v24.")) | .tag_name' | \
+            head -1 | sed 's/^v//')
+
+          echo "Found Node.js releases: 20=$LATEST_NODE20, 24=$LATEST_NODE24"
+
+          # Verify these versions are available in alpine_nodejs releases
+          echo "Verifying availability in alpine_nodejs..."
+          ALPINE_RELEASES=$(curl -s https://api.github.com/repos/actions/alpine_nodejs/releases | jq -r '.[].tag_name')
+
+          if ! echo "$ALPINE_RELEASES" | grep -q "^v$LATEST_NODE20$"; then
+            echo "::warning title=Node 20 Fallback::Node 20 version $LATEST_NODE20 not found in alpine_nodejs releases, using fallback"
+            # Fall back to latest available alpine_nodejs v20 release
+            LATEST_NODE20=$(echo "$ALPINE_RELEASES" | grep "^v20\." | head -1 | sed 's/^v//')
+            echo "Using latest available alpine_nodejs Node 20: $LATEST_NODE20"
+          fi
+
+          if ! echo "$ALPINE_RELEASES" | grep -q "^v$LATEST_NODE24$"; then
+            echo "::warning title=Node 24 Fallback::Node 24 version $LATEST_NODE24 not found in alpine_nodejs releases, using fallback"
+            # Fall back to latest available alpine_nodejs v24 release
+            LATEST_NODE24=$(echo "$ALPINE_RELEASES" | grep "^v24\." | head -1 | sed 's/^v//')
+            echo "Using latest available alpine_nodejs Node 24: $LATEST_NODE24"
+          fi
+
+          # Validate that we have non-empty version numbers
+          if [ -z "$LATEST_NODE20" ] || [ "$LATEST_NODE20" = "" ]; then
+            echo "::error title=Invalid Node 20 Version::Failed to determine valid Node 20 version. Got: '$LATEST_NODE20'"
+            echo "Available alpine_nodejs releases:"
+            echo "$ALPINE_RELEASES" | head -10
+            exit 1
+          fi
+
+          if [ -z "$LATEST_NODE24" ] || [ "$LATEST_NODE24" = "" ]; then
+            echo "::error title=Invalid Node 24 Version::Failed to determine valid Node 24 version. Got: '$LATEST_NODE24'"
+            echo "Available alpine_nodejs releases:"
+            echo "$ALPINE_RELEASES" | head -10
+            exit 1
+          fi
+
+          # Additional validation: ensure versions match expected format (x.y.z)
+          if ! echo "$LATEST_NODE20" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error title=Invalid Node 20 Format::Node 20 version '$LATEST_NODE20' does not match expected format (x.y.z)"
+            exit 1
+          fi
+
+          if ! echo "$LATEST_NODE24" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error title=Invalid Node 24 Format::Node 24 version '$LATEST_NODE24' does not match expected format (x.y.z)"
+            exit 1
+          fi
+
+          echo "✅ Validated Node versions: 20=$LATEST_NODE20, 24=$LATEST_NODE24"
+          echo "latest_node20=$LATEST_NODE20" >> $GITHUB_OUTPUT
+          echo "latest_node24=$LATEST_NODE24" >> $GITHUB_OUTPUT
+
+          # Check current versions in externals.sh
+          CURRENT_NODE20=$(grep "NODE20_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
+          CURRENT_NODE24=$(grep "NODE24_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
+
+          echo "current_node20=$CURRENT_NODE20" >> $GITHUB_OUTPUT
+          echo "current_node24=$CURRENT_NODE24" >> $GITHUB_OUTPUT
+
+          # Determine if updates are needed
+          NEEDS_UPDATE20="false"
+          NEEDS_UPDATE24="false"
+
+          if [ "$CURRENT_NODE20" != "$LATEST_NODE20" ]; then
+            NEEDS_UPDATE20="true"
+            echo "::notice title=Node 20 Update Available::Current: $CURRENT_NODE20 → Latest: $LATEST_NODE20"
+          fi
+
+          if [ "$CURRENT_NODE24" != "$LATEST_NODE24" ]; then
+            NEEDS_UPDATE24="true"
+            echo "::notice title=Node 24 Update Available::Current: $CURRENT_NODE24 → Latest: $LATEST_NODE24"
+          fi
+
+          if [ "$NEEDS_UPDATE20" == "false" ] && [ "$NEEDS_UPDATE24" == "false" ]; then
+            echo "::notice title=No Updates Needed::All Node.js versions are up to date"
+          fi
+
+          echo "needs_update20=$NEEDS_UPDATE20" >> $GITHUB_OUTPUT
+          echo "needs_update24=$NEEDS_UPDATE24" >> $GITHUB_OUTPUT
+
+      - name: Update externals.sh and create PR
+        if: steps.node-versions.outputs.needs_update20 == 'true' || steps.node-versions.outputs.needs_update24 == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Final validation before making changes
+          NODE20_VERSION="${{ steps.node-versions.outputs.latest_node20 }}"
+          NODE24_VERSION="${{ steps.node-versions.outputs.latest_node24 }}"
+          
+          echo "Final validation of versions before PR creation:"
+          echo "Node 20: '$NODE20_VERSION'"
+          echo "Node 24: '$NODE24_VERSION'"
+          
+          # Validate versions are not empty and match expected format
+          if [ -z "$NODE20_VERSION" ] || ! echo "$NODE20_VERSION" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error title=Invalid Node 20 Version::Refusing to create PR with invalid Node 20 version: '$NODE20_VERSION'"
+            exit 1
+          fi
+          
+          if [ -z "$NODE24_VERSION" ] || ! echo "$NODE24_VERSION" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error title=Invalid Node 24 Version::Refusing to create PR with invalid Node 24 version: '$NODE24_VERSION'"
+            exit 1
+          fi
+          
+          echo "✅ All versions validated successfully"
+
+          # Update the files
+          if [ "${{ steps.node-versions.outputs.needs_update20 }}" == "true" ]; then
+            sed -i 's/NODE20_VERSION="[^"]*"/NODE20_VERSION="'"$NODE20_VERSION"'"/' src/Misc/externals.sh
+          fi
+
+          if [ "${{ steps.node-versions.outputs.needs_update24 }}" == "true" ]; then
+            sed -i 's/NODE24_VERSION="[^"]*"/NODE24_VERSION="'"$NODE24_VERSION"'"/' src/Misc/externals.sh
+          fi
+
+          # Verify the changes were applied correctly
+          echo "Verifying changes in externals.sh:"
+          grep "NODE20_VERSION=" src/Misc/externals.sh
+          grep "NODE24_VERSION=" src/Misc/externals.sh
+          
+          # Ensure we actually have valid versions in the file
+          UPDATED_NODE20=$(grep "NODE20_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
+          UPDATED_NODE24=$(grep "NODE24_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
+          
+          if [ -z "$UPDATED_NODE20" ] || [ -z "$UPDATED_NODE24" ]; then
+            echo "::error title=Update Failed::Failed to properly update externals.sh"
+            echo "Updated Node 20: '$UPDATED_NODE20'"
+            echo "Updated Node 24: '$UPDATED_NODE24'"
+            exit 1
+          fi
+
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "<41898282+github-actions[bot]@users.noreply.github.com>"
+
+          # Create branch and commit changes
+          branch_name="chore/update-node"
+          git checkout -b "$branch_name"
+          git commit -a -m "chore: update Node versions (20: $NODE20_VERSION, 24: $NODE24_VERSION)"
+          git push --force origin "$branch_name"
+
+          # Create PR body using here-doc for proper formatting
+          cat > pr_body.txt << EOF
+          Automated Node.js version update:
+
+          - Node 20: ${{ steps.node-versions.outputs.current_node20 }} → $NODE20_VERSION
+          - Node 24: ${{ steps.node-versions.outputs.current_node24 }} → $NODE24_VERSION
+
+          This update ensures we're using the latest stable Node.js versions for security and performance improvements.
+
+          **Note**: When updating Node versions, remember to also create a new release of alpine_nodejs at the updated version following the instructions at: https://github.com/actions/alpine_nodejs
+
+          ---
+
+          Autogenerated by [Node Version Upgrade Workflow](https://github.com/actions/runner/blob/main/.github/workflows/node-upgrade.yml)
+          EOF
+
+          # Create PR
+          gh pr create -B main -H "$branch_name" \
+            --title "chore: update Node versions" \
+            --label "dependencies" \
+            --label "dependencies-weekly-check" \
+            --label "dependencies-not-dependabot" \
+            --label "node" \
+            --label "javascript" \
+            --body-file pr_body.txt
+
+          echo "::notice title=PR Created::Successfully created Node.js version update PR on branch $branch_name"
