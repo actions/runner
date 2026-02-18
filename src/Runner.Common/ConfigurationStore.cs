@@ -77,6 +77,12 @@ namespace GitHub.Runner.Common
                 }
                 else
                 {
+                    // feature flag env in case the new logic is wrong.
+                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_FORCE_EMPTY_GITHUB_URL_IS_HOSTED")))
+                    {
+                        return true;
+                    }
+
                     // GitHubUrl will be empty for jit configured runner
                     // We will try to infer it from the ServerUrl/ServerUrlV2
                     if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_FORCE_GHES")))
