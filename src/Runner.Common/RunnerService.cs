@@ -98,7 +98,7 @@ namespace GitHub.Runner.Common
                     return await func();
                 }
                 // TODO: Add handling of non-retriable exceptions: https://github.com/github/actions-broker/issues/122
-                catch (Exception ex) when (attempt < maxAttempts && (shouldRetry == null || shouldRetry(ex)))
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested && attempt < maxAttempts && (shouldRetry == null || shouldRetry(ex)))
                 {
                     Trace.Error("Catch exception during request");
                     Trace.Error(ex);
