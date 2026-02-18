@@ -75,6 +75,41 @@ namespace GitHub.Runner.Common
                 {
                     return UrlUtil.IsHostedServer(new UriBuilder(GitHubUrl));
                 }
+                else
+                {
+                    // feature flag env in case the new logic is wrong.
+                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_FORCE_EMPTY_GITHUB_URL_IS_HOSTED")))
+                    {
+                        return true;
+                    }
+
+                    // GitHubUrl will be empty for jit configured runner
+                    // We will try to infer it from the ServerUrl/ServerUrlV2
+                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_FORCE_GHES")))
+                    {
+                        // Allow env to override and force GHES in case the inference logic is wrong.
+                        return false;
+                    }
+
+                    if (!string.IsNullOrEmpty(ServerUrl))
+                    {
+                        // pipelines services
+                        var serverUrl = new UriBuilder(ServerUrl);
+                        return serverUrl.Host.EndsWith(".actions.githubusercontent.com", StringComparison.OrdinalIgnoreCase)
+                                || serverUrl.Host.EndsWith(".codedev.ms", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (!string.IsNullOrEmpty(ServerUrlV2))
+                    {
+                        // broker-listener
+                        var serverUrlV2 = new UriBuilder(ServerUrlV2);
+                        return serverUrlV2.Host.EndsWith(".actions.githubusercontent.com", StringComparison.OrdinalIgnoreCase)
+                                || serverUrlV2.Host.EndsWith(".githubapp.com", StringComparison.OrdinalIgnoreCase)
+                                || serverUrlV2.Host.EndsWith(".ghe.com", StringComparison.OrdinalIgnoreCase)
+                                || serverUrlV2.Host.EndsWith(".actions.localhost", StringComparison.OrdinalIgnoreCase)
+                                || serverUrlV2.Host.EndsWith(".ghe.localhost", StringComparison.OrdinalIgnoreCase);
+                    }
+                }
 
                 // Default to true since Hosted runners likely don't have this property set.
                 return true;
