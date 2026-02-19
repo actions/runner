@@ -190,6 +190,10 @@ namespace GitHub.Runner.Common
                 // Feature flags for controlling the migration phases
                 public static readonly string UseNode24ByDefaultFlag = "actions.runner.usenode24bydefault";
                 public static readonly string RequireNode24Flag = "actions.runner.requirenode24";
+                public static readonly string WarnOnNode20Flag = "actions.runner.warnonnode20";
+
+                // Blog post URL for Node 20 deprecation
+                public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
