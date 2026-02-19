@@ -149,10 +149,17 @@ namespace GitHub.Runner.Worker.Handlers
         {
             if (action is Pipelines.RepositoryPathReference repoRef)
             {
-                var pathString = string.IsNullOrEmpty(repoRef.Path) ? string.Empty : $"/{repoRef.Path}";
-                return string.IsNullOrEmpty(repoRef.Ref)
+                var pathString = string.Empty;
+                if (!string.IsNullOrEmpty(repoRef.Path))
+                {
+                    pathString = string.IsNullOrEmpty(repoRef.Name)
+                        ? repoRef.Path
+                        : $"/{repoRef.Path}";
+                }
+                var repoString = string.IsNullOrEmpty(repoRef.Ref)
                     ? $"{repoRef.Name}{pathString}"
                     : $"{repoRef.Name}{pathString}@{repoRef.Ref}";
+                return string.IsNullOrEmpty(repoString) ? null : repoString;
             }
 
             return null;

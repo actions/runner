@@ -317,5 +317,58 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Contains("some-org/old-action@v1", deprecatedActions);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LocalNode20Action_TrackedWhenWarnFlagEnabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                var variables = new Dictionary<string, VariableValue>
+                {
+                    { Constants.Runner.NodeMigration.WarnOnNode20Flag, new VariableValue("true") }
+                };
+                Variables serverVariables = new(hc, variables);
+                var deprecatedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = new Dictionary<string, string>(),
+                    DeprecatedNode20Actions = deprecatedActions
+                });
+
+                // Local action: Name is empty, Path is the local path
+                var actionRef = new RepositoryPathReference
+                {
+                    Name = "",
+                    Path = "./.github/actions/my-action",
+                    RepositoryType = "self"
+                };
+
+                // Act.
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = "node20";
+                hf.Create(
+                    _ec.Object,
+                    actionRef,
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
+                    new List<JobExtensionRunner>()
+                );
+
+                // Assert - local action should be tracked with its path
+                Assert.Contains("./.github/actions/my-action", deprecatedActions);
+            }
+        }
     }
 }
