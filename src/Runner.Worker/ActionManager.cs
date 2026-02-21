@@ -811,6 +811,33 @@ namespace GitHub.Runner.Worker
                 if (!string.IsNullOrEmpty(actionArchiveCacheDir) &&
                     Directory.Exists(actionArchiveCacheDir))
                 {
+                    var cacheDirectory = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), downloadInfo.ResolvedSha);
+                    if (Directory.Exists(cacheDirectory))
+                    {
+                        try
+                        {
+                            Trace.Info($"Found unpacked action directory '{cacheDirectory}' in cache directory '{actionArchiveCacheDir}'");
+                                                    
+                            // Symlink cache directory to the destination
+                            Directory.CreateSymbolicLink(destDirectory, cacheDirectory);
+                                                    
+                            executionContext.Debug($"Created symlink from cached directory '{cacheDirectory}' to '{destDirectory}'");
+                            executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                            {
+                                Type = JobTelemetryType.General,
+                                Message = $"Action directory cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use symlink from cache"
+                            });
+                            
+                            Trace.Info("Finished getting action repository.");
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Failed to create symlink from cached directory '{cacheDirectory}' to '{destDirectory}'. Error: {ex}");
+                            // Fall through to normal download logic
+                        }
+                    }
+
                     hasActionArchiveCache = true;
                     Trace.Info($"Check if action archive '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}' already exists in cache directory '{actionArchiveCacheDir}'");
 #if OS_WINDOWS
