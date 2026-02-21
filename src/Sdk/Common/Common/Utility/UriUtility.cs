@@ -197,7 +197,7 @@ namespace GitHub.Services.Common.Internal
         /// <param name="treatAbsolutePathAsRelative">If true, any leading forward slashes on the relative path argument are discarded.</param>
         /// <returns>The base URI with the relativePath appended to it.</returns>
         /// <remarks> 
-        /// This is intended to be an alternative to the Uri constructor, which can remove several path segments from your arguments.  For example:
+        /// This is intended to be an alternative to the URI constructor, which can remove several path segments from your arguments.  For example:
         /// 
         /// new Uri(new Uri("http://localhost/abc/efg/"), "/Hello/World") returns http://localhost/Hello/World ("/abc/efg/" removed due to absolute path argument)
         /// new Uri(new Uri("http://localhost/dir1/dir2"), "hi.txt") returns http://localhost/dir1/hi.txt ("dir2" removed due to lack of trailing slash)
