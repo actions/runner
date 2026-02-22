@@ -818,8 +818,17 @@ namespace GitHub.Runner.Worker
                         {
                             Trace.Info($"Found unpacked action directory '{cacheDirectory}' in cache directory '{actionArchiveCacheDir}'");
                                                     
-                            // Symlink cache directory to the destination
-                            Directory.CreateSymbolicLink(destDirectory, cacheDirectory);
+                            // repository archive from github always contains a nested folder
+                            var nestedDirectories = new DirectoryInfo(cacheDirectory).GetDirectories();
+                            if (nestedDirectories.Length != 1)
+                            {
+                                throw new InvalidOperationException($"'{cacheDirectory}' contains '{nestedDirectories.Length}' directories");
+                            }
+                            else
+                            {
+                                executionContext.Debug($"Symlink '{nestedDirectories[0].Name}' to '{destDirectory}'");
+                                Directory.CreateSymbolicLink(destDirectory, nestedDirectories[0].FullName);
+                            }
                                                     
                             executionContext.Debug($"Created symlink from cached directory '{cacheDirectory}' to '{destDirectory}'");
                             executionContext.Global.JobTelemetry.Add(new JobTelemetry()
