@@ -499,7 +499,7 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
-            if (_record.RecordType == "Task")
+            if (_record.RecordType == ExecutionContextType.Task)
             {
                 var stepResult = new StepResult
                 {
@@ -530,6 +530,25 @@ namespace GitHub.Runner.Worker
                 });
 
                 Global.StepsResult.Add(stepResult);
+            }
+
+            if (Global.Variables.GetBoolean(Constants.Runner.Features.SendJobLevelAnnotations) ?? false)
+            {
+                if (_record.RecordType == ExecutionContextType.Job)
+                {
+                    _record.Issues?.ForEach(issue =>
+                    {
+                        var annotation = issue.ToAnnotation();
+                        if (annotation != null)
+                        {
+                            Global.JobAnnotations.Add(annotation.Value);
+                            if (annotation.Value.IsInfrastructureIssue && string.IsNullOrEmpty(Global.InfrastructureFailureCategory))
+                            {
+                                Global.InfrastructureFailureCategory = issue.Category;
+                            }
+                        }
+                    });
+                }
             }
 
             if (Root != this)
@@ -836,6 +855,9 @@ namespace GitHub.Runner.Worker
 
             // Job level annotations
             Global.JobAnnotations = new List<Annotation>();
+
+            // Track Node.js 20 actions for deprecation warning
+            Global.DeprecatedNode20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);

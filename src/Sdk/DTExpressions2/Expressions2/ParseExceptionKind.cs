@@ -6,6 +6,7 @@
         ExceededMaxLength,
         TooFewParameters,
         TooManyParameters,
+        EvenParameters,
         UnexpectedEndOfExpression,
         UnexpectedSymbol,
         UnrecognizedFunction,

@@ -32,7 +32,7 @@ We are taking the following steps to better direct requests related to GitHub Ac
 
 2. High Priority bugs can be reported through Community Discussions or you can report these to our support team https://support.github.com/contact/bug-report.
 
-3. Security Issues should be handled as per our [security.md](security.md)
+3. Security Issues should be handled as per our [SECURITY.md](https://github.com/actions/runner?tab=security-ov-file)
 
 We will still provide security updates for this project and fix major breaking changes during this time.
 
