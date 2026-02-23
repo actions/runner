@@ -811,39 +811,45 @@ namespace GitHub.Runner.Worker
                 if (!string.IsNullOrEmpty(actionArchiveCacheDir) &&
                     Directory.Exists(actionArchiveCacheDir))
                 {
-                    var cacheDirectory = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), downloadInfo.ResolvedSha);
-                    if (Directory.Exists(cacheDirectory))
+                    var symlinkCachedActions = executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SymlinkCachedActions) ?? false;
+                    if (symlinkCachedActions)
                     {
-                        try
+                        Trace.Info($"Checking if can symlink '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}'");
+
+                        var cacheDirectory = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), downloadInfo.ResolvedSha);
+                        if (Directory.Exists(cacheDirectory))
                         {
-                            Trace.Info($"Found unpacked action directory '{cacheDirectory}' in cache directory '{actionArchiveCacheDir}'");
-                                                    
-                            // repository archive from github always contains a nested folder
-                            var nestedDirectories = new DirectoryInfo(cacheDirectory).GetDirectories();
-                            if (nestedDirectories.Length != 1)
+                            try
                             {
-                                throw new InvalidOperationException($"'{cacheDirectory}' contains '{nestedDirectories.Length}' directories");
+                                Trace.Info($"Found unpacked action directory '{cacheDirectory}' in cache directory '{actionArchiveCacheDir}'");
+                                                        
+                                // repository archive from github always contains a nested folder
+                                var nestedDirectories = new DirectoryInfo(cacheDirectory).GetDirectories();
+                                if (nestedDirectories.Length != 1)
+                                {
+                                    throw new InvalidOperationException($"'{cacheDirectory}' contains '{nestedDirectories.Length}' directories");
+                                }
+                                else
+                                {
+                                    executionContext.Debug($"Symlink '{nestedDirectories[0].Name}' to '{destDirectory}'");
+                                    Directory.CreateSymbolicLink(destDirectory, nestedDirectories[0].FullName);
+                                }
+                                                        
+                                executionContext.Debug($"Created symlink from cached directory '{cacheDirectory}' to '{destDirectory}'");
+                                executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                                {
+                                    Type = JobTelemetryType.General,
+                                    Message = $"Action directory cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use symlink from cache"
+                                });
+                                
+                                Trace.Info("Finished getting action repository.");
+                                return;
                             }
-                            else
+                            catch (Exception ex)
                             {
-                                executionContext.Debug($"Symlink '{nestedDirectories[0].Name}' to '{destDirectory}'");
-                                Directory.CreateSymbolicLink(destDirectory, nestedDirectories[0].FullName);
+                                Trace.Error($"Failed to create symlink from cached directory '{cacheDirectory}' to '{destDirectory}'. Error: {ex}");
+                                // Fall through to normal download logic
                             }
-                                                    
-                            executionContext.Debug($"Created symlink from cached directory '{cacheDirectory}' to '{destDirectory}'");
-                            executionContext.Global.JobTelemetry.Add(new JobTelemetry()
-                            {
-                                Type = JobTelemetryType.General,
-                                Message = $"Action directory cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use symlink from cache"
-                            });
-                            
-                            Trace.Info("Finished getting action repository.");
-                            return;
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.Error($"Failed to create symlink from cached directory '{cacheDirectory}' to '{destDirectory}'. Error: {ex}");
-                            // Fall through to normal download logic
                         }
                     }
 
