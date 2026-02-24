@@ -830,11 +830,7 @@ namespace GitHub.Runner.Worker
                                     executionContext.Debug($"Symlink '{nestedDirectories[0].Name}' to '{destDirectory}'");
                                     // make sure we get a clean folder ready to use.
                                     IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
-                                    // create directory chain
-                                    Directory.CreateDirectory(destDirectory);
-                                    // delete leaf directory
-                                    Directory.Delete(destDirectory);
-                                    Directory.CreateSymbolicLink(destDirectory, nestedDirectories[0].FullName);
+                                    IOUtil.CreateSymbolicLink(destDirectory, nestedDirectories[0].FullName);
                                 }
                                                         
                                 executionContext.Debug($"Created symlink from cached directory '{cacheDirectory}' to '{destDirectory}'");
