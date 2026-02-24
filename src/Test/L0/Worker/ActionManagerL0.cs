@@ -468,6 +468,73 @@ runs:
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_SymlinkCacheIsReentrant()
+        {
+            try
+            {
+                //Arrange
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.SymlinkCachedActions, "true");
+                Setup();
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/checkout",
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/checkout",
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                const string Content = @"
+name: 'Test'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+";
+
+                string actionsArchive = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions_archive", "action_checkout");
+                Directory.CreateDirectory(actionsArchive);
+                Directory.CreateDirectory(Path.Combine(actionsArchive, "actions_checkout", "master-sha"));
+                Directory.CreateDirectory(Path.Combine(actionsArchive, "actions_checkout", "master-sha", "content"));
+                await File.WriteAllTextAsync(Path.Combine(actionsArchive, "actions_checkout", "master-sha", "content", "action.yml"), Content);
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory, actionsArchive);
+
+                //Act
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                string destDirectory = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions", "checkout", "master");
+                Assert.True(Directory.Exists(destDirectory), "Destination directory does not exist");  
+                var di = new DirectoryInfo(destDirectory);   
+                Assert.NotNull(di.LinkTarget); 
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.SymlinkCachedActions, null);
+                Teardown();
+            }
+        }
+
 #if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
