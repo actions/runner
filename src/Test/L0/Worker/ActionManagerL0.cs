@@ -468,6 +468,77 @@ runs:
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_SymlinkCacheIsReentrant()
+        {
+            try
+            {
+                //Arrange
+                var variables = new Dictionary<string, VariableValue>
+                {
+                    { Constants.Runner.Features.SymlinkCachedActions, new VariableValue(bool.TrueString, false) }
+                };
+
+                Setup(variables: variables);
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/checkout",
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/checkout",
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                const string Content = @"
+name: 'Test'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+";
+
+                string actionsArchive = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions_archive", "action_checkout");
+                Directory.CreateDirectory(actionsArchive);
+                Directory.CreateDirectory(Path.Combine(actionsArchive, "actions_checkout", "master-sha"));
+                Directory.CreateDirectory(Path.Combine(actionsArchive, "actions_checkout", "master-sha", "content"));
+                await File.WriteAllTextAsync(Path.Combine(actionsArchive, "actions_checkout", "master-sha", "content", "action.yml"), Content);
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory, actionsArchive);
+
+                //Act
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                string destDirectory = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions", "checkout", "master");
+                Assert.True(Directory.Exists(destDirectory), "Destination directory does not exist");  
+                var di = new DirectoryInfo(destDirectory);   
+                Assert.NotNull(di.LinkTarget); 
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory, null);
+                Teardown();
+            }
+        }
+
 #if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
@@ -2427,7 +2498,7 @@ runs:
 #endif
         }
 
-        private void Setup([CallerMemberName] string name = "", bool enableComposite = true)
+        private void Setup([CallerMemberName] string name = "", bool enableComposite = true, Dictionary<string, VariableValue> variables = null)
         {
             _ecTokenSource?.Dispose();
             _ecTokenSource = new CancellationTokenSource();
@@ -2442,8 +2513,7 @@ runs:
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Root).Returns(new GitHub.Runner.Worker.ExecutionContext());
-            var variables = new Dictionary<string, VariableValue>();
-            _ec.Object.Global.Variables = new Variables(_hc, variables);
+            _ec.Object.Global.Variables = new Variables(_hc, variables ?? new Dictionary<string, VariableValue>());
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Object.Global.FileTable = new List<String>();

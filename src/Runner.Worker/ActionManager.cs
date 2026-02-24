@@ -773,10 +773,6 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                // make sure we get a clean folder ready to use.
-                IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
-                Directory.CreateDirectory(destDirectory);
-
                 if (downloadInfo.PackageDetails != null)
                 {
                     executionContext.Output($"##[group]Download immutable action package '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}'");
@@ -832,6 +828,12 @@ namespace GitHub.Runner.Worker
                                 else
                                 {
                                     executionContext.Debug($"Symlink '{nestedDirectories[0].Name}' to '{destDirectory}'");
+                                    // make sure we get a clean folder ready to use.
+                                    IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
+                                    // create directory chain
+                                    Directory.CreateDirectory(destDirectory);
+                                    // delete leaf directory
+                                    Directory.Delete(destDirectory);
                                     Directory.CreateSymbolicLink(destDirectory, nestedDirectories[0].FullName);
                                 }
                                                         
@@ -933,6 +935,10 @@ namespace GitHub.Runner.Worker
                     }
                 }
 #endif
+
+                // make sure we get a clean folder ready to use.
+                IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
+                Directory.CreateDirectory(destDirectory);
 
                 // repository archive from github always contains a nested folder
                 var subDirectories = new DirectoryInfo(stagingDirectory).GetDirectories();
