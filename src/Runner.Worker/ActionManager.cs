@@ -773,10 +773,6 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                // make sure we get a clean folder ready to use.
-                IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
-                Directory.CreateDirectory(destDirectory);
-
                 if (downloadInfo.PackageDetails != null)
                 {
                     executionContext.Output($"##[group]Download immutable action package '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}'");
@@ -811,6 +807,50 @@ namespace GitHub.Runner.Worker
                 if (!string.IsNullOrEmpty(actionArchiveCacheDir) &&
                     Directory.Exists(actionArchiveCacheDir))
                 {
+                    var symlinkCachedActions = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.SymlinkCachedActions));
+                    if (symlinkCachedActions)
+                    {
+                        Trace.Info($"Checking if can symlink '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}'");
+
+                        var cacheDirectory = Path.Combine(actionArchiveCacheDir, downloadInfo.ResolvedNameWithOwner.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_'), downloadInfo.ResolvedSha);
+                        if (Directory.Exists(cacheDirectory))
+                        {
+                            try
+                            {
+                                Trace.Info($"Found unpacked action directory '{cacheDirectory}' in cache directory '{actionArchiveCacheDir}'");
+                                                        
+                                // repository archive from github always contains a nested folder
+                                var nestedDirectories = new DirectoryInfo(cacheDirectory).GetDirectories();
+                                if (nestedDirectories.Length != 1)
+                                {
+                                    throw new InvalidOperationException($"'{cacheDirectory}' contains '{nestedDirectories.Length}' directories");
+                                }
+                                else
+                                {
+                                    executionContext.Debug($"Symlink '{nestedDirectories[0].Name}' to '{destDirectory}'");
+                                    // make sure we get a clean folder ready to use.
+                                    IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
+                                    IOUtil.CreateSymbolicLink(destDirectory, nestedDirectories[0].FullName);
+                                }
+                                                        
+                                executionContext.Debug($"Created symlink from cached directory '{cacheDirectory}' to '{destDirectory}'");
+                                executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                                {
+                                    Type = JobTelemetryType.General,
+                                    Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache} via symlink"
+                                });
+                                
+                                Trace.Info("Finished getting action repository.");
+                                return;
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Error($"Failed to create symlink from cached directory '{cacheDirectory}' to '{destDirectory}'. Error: {ex}");
+                                // Fall through to normal download logic
+                            }
+                        }
+                    }
+
                     hasActionArchiveCache = true;
                     Trace.Info($"Check if action archive '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}' already exists in cache directory '{actionArchiveCacheDir}'");
 #if OS_WINDOWS
@@ -891,6 +931,10 @@ namespace GitHub.Runner.Worker
                     }
                 }
 #endif
+
+                // make sure we get a clean folder ready to use.
+                IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
+                Directory.CreateDirectory(destDirectory);
 
                 // repository archive from github always contains a nested folder
                 var subDirectories = new DirectoryInfo(stagingDirectory).GetDirectories();
