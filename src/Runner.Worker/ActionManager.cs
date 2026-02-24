@@ -807,7 +807,7 @@ namespace GitHub.Runner.Worker
                 if (!string.IsNullOrEmpty(actionArchiveCacheDir) &&
                     Directory.Exists(actionArchiveCacheDir))
                 {
-                    var symlinkCachedActions = executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SymlinkCachedActions) ?? false;
+                    var symlinkCachedActions = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.SymlinkCachedActions));
                     if (symlinkCachedActions)
                     {
                         Trace.Info($"Checking if can symlink '{downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha}'");

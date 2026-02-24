@@ -175,7 +175,6 @@ namespace GitHub.Runner.Common
                 public static readonly string SetOrchestrationIdEnvForActions = "actions_set_orchestration_id_env_for_actions";
                 public static readonly string SendJobLevelAnnotations = "actions_send_job_level_annotations";
                 public static readonly string EmitCompositeMarkers = "actions_runner_emit_composite_markers";
-                public static readonly string SymlinkCachedActions = "actions_symlink_cached_actions";
             }
 
             // Node version migration related constants
@@ -290,6 +289,7 @@ namespace GitHub.Runner.Common
                 public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
                 public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";
                 public static readonly string ActionArchiveCacheDirectory = "ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE";
+                public static readonly string SymlinkCachedActions = "ACTIONS_RUNNER_SYMLINK_CACHED_ACTIONS";
                 public static readonly string EmitCompositeMarkers = "ACTIONS_RUNNER_EMIT_COMPOSITE_MARKERS";
             }
 

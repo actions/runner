@@ -476,12 +476,8 @@ runs:
             try
             {
                 //Arrange
-                var variables = new Dictionary<string, VariableValue>
-                {
-                    { Constants.Runner.Features.SymlinkCachedActions, new VariableValue(bool.TrueString, false) }
-                };
-
-                Setup(variables: variables);
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.SymlinkCachedActions, "true");
+                Setup();
                 var actionId = Guid.NewGuid();
                 var actions = new List<Pipelines.ActionStep>
                 {
@@ -534,7 +530,7 @@ runs:
             }
             finally
             {
-                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory, null);
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.SymlinkCachedActions, null);
                 Teardown();
             }
         }
@@ -2498,7 +2494,7 @@ runs:
 #endif
         }
 
-        private void Setup([CallerMemberName] string name = "", bool enableComposite = true, Dictionary<string, VariableValue> variables = null)
+        private void Setup([CallerMemberName] string name = "", bool enableComposite = true)
         {
             _ecTokenSource?.Dispose();
             _ecTokenSource = new CancellationTokenSource();
@@ -2513,7 +2509,8 @@ runs:
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Root).Returns(new GitHub.Runner.Worker.ExecutionContext());
-            _ec.Object.Global.Variables = new Variables(_hc, variables ?? new Dictionary<string, VariableValue>());
+            var variables = new Dictionary<string, VariableValue>();
+            _ec.Object.Global.Variables = new Variables(_hc, variables);
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Object.Global.FileTable = new List<String>();
