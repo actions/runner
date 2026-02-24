@@ -841,7 +841,7 @@ namespace GitHub.Runner.Worker
                                 executionContext.Global.JobTelemetry.Add(new JobTelemetry()
                                 {
                                     Type = JobTelemetryType.General,
-                                    Message = $"Action directory cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use symlink from cache"
+                                    Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache} via symlink"
                                 });
                                 
                                 Trace.Info("Finished getting action repository.");
