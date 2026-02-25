@@ -17,7 +17,7 @@ LAYOUT_DIR="$SCRIPT_DIR/../_layout"
 DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="8.0.418"
+DOTNETSDK_VERSION="10.0.103"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 RUNNER_VERSION=$(cat runnerversion)
 
@@ -153,7 +153,7 @@ function runtest ()
         ulimit -n 1024
     fi
 
-    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests"
+    dotnet test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" Test/Test.csproj || failed "failed tests"
 }
 
 function format()

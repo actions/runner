@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
     <SelfContained>true</SelfContained>
@@ -10,14 +10,44 @@
     <Version>$(Version)</Version>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Sdk\Sdk.csproj" />
-  </ItemGroup>
+  <Target Name="GenerateConstant" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <GeneratedDir>$(IntermediateOutputPath)Generated/</GeneratedDir>
+      <BuildConstantsFile>$(GeneratedDir)BuildConstants.g.cs</BuildConstantsFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Include="$(BuildConstantsFile)" />
+    </ItemGroup>
+    
+    <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true">
+        <Output TaskParameter="ConsoleOutput" PropertyName="GitInfoCommitHash" />
+    </Exec>
+    <Message Text="Building $(Product): $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
+
+    <ItemGroup>
+      <BuildConstants Include="namespace GitHub.Runner.Sdk"/>
+      <BuildConstants Include="{"/>
+      <BuildConstants Include="%20%20%20%20public static class BuildConstants"/>
+      <BuildConstants Include="%20%20%20%20{"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20public static class Source"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string CommitHash = %22$(GitInfoCommitHash)%22%3B"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20}%0A"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20public static class RunnerPackage"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string PackageName = %22$(PackageRuntime)%22%3B"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Version = %22$(RunnerVersion)%22%3B"/>
+      <BuildConstants Include="%20%20%20%20%20%20%20%20}"/>
+      <BuildConstants Include="%20%20%20%20}"/>
+      <BuildConstants Include="}"/>
+    </ItemGroup>
+
+    <WriteLinesToFile File="$(BuildConstantsFile)" Lines="@(BuildConstants)" Overwrite="true" />
+  </Target>
 
   <ItemGroup>
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
-    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+    <ProjectReference Include="..\Sdk\Sdk.csproj" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
