@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -226,6 +227,11 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(embeddedSteps, nameof(embeddedSteps));
 
+            bool emitCompositeMarkers =
+                (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.EmitCompositeMarkers) ?? false)
+                || StringUtil.ConvertToBoolean(
+                    System.Environment.GetEnvironmentVariable(Constants.Variables.Agent.EmitCompositeMarkers));
+
             foreach (IStep step in embeddedSteps)
             {
                 Trace.Info($"Processing embedded step: DisplayName='{step.DisplayName}'");
@@ -295,6 +301,20 @@ namespace GitHub.Runner.Worker.Handlers
                     Trace.Info("Caught exception from expression for embedded step.env");
                     step.ExecutionContext.Error(ex);
                     SetStepConclusion(step, TaskResult.Failed);
+                }
+
+                // Marker ID uses the step's fully qualified context name (ScopeName.ContextName),
+                // which encodes the full composite nesting chain at any depth.
+                var markerId = emitCompositeMarkers ? step.ExecutionContext.GetFullyQualifiedContextName() : null;
+                var stepStopwatch = default(Stopwatch);
+                var endMarkerEmitted = false;
+
+                // Emit start marker after full context setup so display name expressions resolve correctly
+                if (emitCompositeMarkers)
+                {
+                    step.TryUpdateDisplayName(out _);
+                    ExecutionContext.Output($"##[start-action display={EscapeProperty(SanitizeDisplayName(step.DisplayName))};id={EscapeProperty(markerId)}]");
+                    stepStopwatch = Stopwatch.StartNew();
                 }
 
                 // Register Callback
@@ -381,6 +401,14 @@ namespace GitHub.Runner.Worker.Handlers
                         // Condition is false
                         Trace.Info("Skipping step due to condition evaluation.");
                         SetStepConclusion(step, TaskResult.Skipped);
+
+                        if (emitCompositeMarkers)
+                        {
+                            stepStopwatch.Stop();
+                            ExecutionContext.Output($"##[end-action id={EscapeProperty(markerId)};outcome=skipped;conclusion=skipped;duration_ms=0]");
+                            endMarkerEmitted = true;
+                        }
+
                         continue;
                     }
                     else if (conditionEvaluateError != null)
@@ -389,13 +417,31 @@ namespace GitHub.Runner.Worker.Handlers
                         step.ExecutionContext.Error(conditionEvaluateError);
                         SetStepConclusion(step, TaskResult.Failed);
                         ExecutionContext.Result = TaskResult.Failed;
+
+                        if (emitCompositeMarkers)
+                        {
+                            stepStopwatch.Stop();
+                            ExecutionContext.Output($"##[end-action id={EscapeProperty(markerId)};outcome=failure;conclusion=failure;duration_ms={stepStopwatch.ElapsedMilliseconds}]");
+                            endMarkerEmitted = true;
+                        }
+
                         break;
                     }
                     else
                     {
                         await RunStepAsync(step);
-                    }
 
+                        if (emitCompositeMarkers)
+                        {
+                            stepStopwatch.Stop();
+                            // Outcome = raw result before continue-on-error (null when continue-on-error didn't fire)
+                            // Result = final result after continue-on-error
+                            var outcome = (step.ExecutionContext.Outcome ?? step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult().ToString().ToLowerInvariant();
+                            var conclusion = (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult().ToString().ToLowerInvariant();
+                            ExecutionContext.Output($"##[end-action id={EscapeProperty(markerId)};outcome={outcome};conclusion={conclusion};duration_ms={stepStopwatch.ElapsedMilliseconds}]");
+                            endMarkerEmitted = true;
+                        }
+                    }
                 }
                 finally
                 {
@@ -403,6 +449,14 @@ namespace GitHub.Runner.Worker.Handlers
                     {
                         jobCancelRegister?.Dispose();
                         jobCancelRegister = null;
+                    }
+
+                    if (emitCompositeMarkers && !endMarkerEmitted)
+                    {
+                        stepStopwatch.Stop();
+                        var outcome = (step.ExecutionContext.Outcome ?? step.ExecutionContext.Result ?? TaskResult.Failed).ToActionResult().ToString().ToLowerInvariant();
+                        var conclusion = (step.ExecutionContext.Result ?? TaskResult.Failed).ToActionResult().ToString().ToLowerInvariant();
+                        ExecutionContext.Output($"##[end-action id={EscapeProperty(markerId)};outcome={outcome};conclusion={conclusion};duration_ms={stepStopwatch.ElapsedMilliseconds}]");
                     }
                 }
                 // Check failed or cancelled
@@ -469,6 +523,45 @@ namespace GitHub.Runner.Worker.Handlers
         {
             step.ExecutionContext.Result = result;
             step.ExecutionContext.UpdateGlobalStepsContext();
+        }
+
+        /// <summary>
+        /// Escapes marker property values so they cannot break the ##[command key=value] format.
+        /// Delegates to ActionCommand.EscapeValue which escapes `;`, `]`, `\r`, `\n`, and `%`.
+        /// </summary>
+        internal static string EscapeProperty(string value)
+        {
+            return ActionCommand.EscapeValue(value);
+        }
+
+        /// <summary>Maximum character length for display names in markers to prevent log bloat.</summary>
+        internal const int MaxDisplayNameLength = 1000;
+
+        /// <summary>
+        /// Normalizes a step display name for safe embedding in a marker property.
+        /// Trims leading whitespace, drops everything after the first newline, and
+        /// truncates to <see cref="MaxDisplayNameLength"/> characters.
+        /// </summary>
+        internal static string SanitizeDisplayName(string displayName)
+        {
+            if (string.IsNullOrEmpty(displayName)) return displayName;
+
+            // Take first line only (FormatStepName in ActionRunner.cs already does this
+            // for most cases, but be defensive for any code path that skips it)
+            var result = displayName.TrimStart(' ', '\t', '\r', '\n');
+            var firstNewLine = result.IndexOfAny(new[] { '\r', '\n' });
+            if (firstNewLine >= 0)
+            {
+                result = result.Substring(0, firstNewLine);
+            }
+
+            // Truncate excessively long names
+            if (result.Length > MaxDisplayNameLength)
+            {
+                result = result.Substring(0, MaxDisplayNameLength);
+            }
+
+            return result;
         }
     }
 }

@@ -1006,6 +1006,66 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StripCompositeMarkers_StartAction()
+        {
+            using (Setup())
+            using (_outputManager)
+            {
+                Process("##[start-action display=Fake;id=fake]");
+                Assert.Single(_messages);
+                Assert.Contains(@"##[\start-action", _messages[0]);
+                Assert.DoesNotContain("##[start-action", _messages[0]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StripCompositeMarkers_EndAction()
+        {
+            using (Setup())
+            using (_outputManager)
+            {
+                Process("##[end-action id=fake;outcome=success;conclusion=success;duration_ms=100]");
+                Assert.Single(_messages);
+                Assert.Contains(@"##[\end-action", _messages[0]);
+                Assert.DoesNotContain("##[end-action", _messages[0]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StripCompositeMarkers_PreservesOtherCommands()
+        {
+            using (Setup())
+            using (_outputManager)
+            {
+                Process("##[group]My Group");
+                // Should not be stripped (not a composite marker)
+                Assert.Single(_messages);
+                Assert.Equal("##[group]My Group", _messages[0]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StripCompositeMarkers_EmbeddedInLine()
+        {
+            using (Setup())
+            using (_outputManager)
+            {
+                Process("Some text ##[start-action display=fake;id=fake] more text");
+                Assert.Single(_messages);
+                Assert.Contains(@"##[\start-action", _messages[0]);
+                Assert.DoesNotContain("##[start-action", _messages[0]);
+            }
+        }
+
         private TestHostContext Setup(
             [CallerMemberName] string name = "",
             IssueMatchersConfig matchers = null,
