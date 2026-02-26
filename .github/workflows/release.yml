@@ -43,7 +43,7 @@ jobs:
           }
 
   build:
-    needs: check
+    needs: check 
     outputs:
       linux-x64-sha: ${{ steps.sha.outputs.linux-x64-sha256 }}
       linux-arm64-sha: ${{ steps.sha.outputs.linux-arm64-sha256 }}
