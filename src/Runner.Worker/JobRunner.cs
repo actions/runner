@@ -178,6 +178,30 @@ namespace GitHub.Runner.Worker
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);
 
+                // Create bind mount /mnt/foo1 -> /tmp/foo1
+                Trace.Info("Setting up bind mount.");
+                try
+                {
+                    Directory.CreateDirectory("/tmp/foo1");
+                    Directory.CreateDirectory("/mnt/foo1");
+                    var mountProcess = HostContext.CreateService<IProcessInvoker>();
+                    mountProcess.OutputDataReceived += (_, data) => Trace.Info(data.Data);
+                    mountProcess.ErrorDataReceived += (_, data) => Trace.Error(data.Data);
+                    await mountProcess.ExecuteAsync(
+                        workingDirectory: workDirectory,
+                        fileName: "mount",
+                        arguments: "--bind /tmp/foo1 /mnt/foo1",
+                        environment: null,
+                        requireExitCodeZero: true,
+                        cancellationToken: jobContext.CancellationToken);
+                    Trace.Info("Bind mount /mnt/foo1 -> /tmp/foo1 created successfully.");
+                }
+                catch (Exception ex)
+                {
+                    Trace.Warning($"Failed to create bind mount: {ex.Message}");
+                    jobContext.Warning($"Failed to create bind mount /mnt/foo1: {ex.Message}");
+                }
+
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
                 IJobExtension jobExtension = HostContext.CreateService<IJobExtension>();

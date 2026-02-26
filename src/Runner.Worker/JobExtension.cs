@@ -536,6 +536,28 @@ namespace GitHub.Runner.Worker
                     context.Start();
                     context.Debug("Starting: Complete job");
 
+                    // Tear down bind mount /mnt/foo1
+                    Trace.Info("Tearing down bind mount.");
+                    try
+                    {
+                        var umountProcess = HostContext.CreateService<IProcessInvoker>();
+                        umountProcess.OutputDataReceived += (_, data) => Trace.Info(data.Data);
+                        umountProcess.ErrorDataReceived += (_, data) => Trace.Error(data.Data);
+                        await umountProcess.ExecuteAsync(
+                            workingDirectory: "/",
+                            fileName: "umount",
+                            arguments: "/mnt/foo1",
+                            environment: null,
+                            requireExitCodeZero: false,
+                            cancellationToken: jobContext.CancellationToken);
+                        Trace.Info("Bind mount /mnt/foo1 unmounted successfully.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning($"Failed to unmount bind mount: {ex.Message}");
+                        context.Warning($"Failed to unmount /mnt/foo1: {ex.Message}");
+                    }
+
                     Trace.Info("Initialize Env context");
 
 #if OS_WINDOWS
