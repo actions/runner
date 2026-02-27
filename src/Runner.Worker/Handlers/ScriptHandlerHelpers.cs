@@ -27,7 +27,8 @@ namespace GitHub.Runner.Worker.Handlers
             ["powershell"] = ".ps1",
             ["bash"] = ".sh",
             ["sh"] = ".sh",
-            ["python"] = ".py"
+            ["python"] = ".py",
+            ["dotnet"] = ".cs"
         };
 
         internal static string GetScriptArgumentsFormat(string scriptType)
