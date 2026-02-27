@@ -26,11 +26,47 @@ run() {
     done
 }
 
+handle_sigterm() {
+    # Default graceful stop timeout is 3 seconds
+    RUNNER_GRACEFUL_STOP_TIMEOUT=${RUNNER_GRACEFUL_STOP_TIMEOUT:-3}
+    echo "Received SIGTERM, " \
+        "Graceful shutdown in $RUNNER_GRACEFUL_STOP_TIMEOUT Secs ..."
+
+    if [ -n "$RUNNER_TOKEN" ]; then
+        idle_runner="/runner/config.sh remove --token $RUNNER_TOKEN"
+    else
+        # workaround for Issue#3330
+        # For the case JITCONFIG is used instead of reg token.
+        # Fallback to check if worker is running,race condition prone.
+        worker_process_id=$(pgrep Runner.Worker)
+        idle_runner="test -z \"$worker_process_id\""
+    fi
+
+    if ! eval $idle_runner; then
+        echo "Running a job, waiting for $RUNNER_GRACEFUL_STOP_TIMEOUT s to finish.."
+        i=0
+        while [[ $i -lt $RUNNER_GRACEFUL_STOP_TIMEOUT ]]; do
+            # While waiting, if runner is stops.
+            if ! ps -p $PID > /dev/null; then
+                echo "Runner stopped itself while graceful period waiting."
+                return
+            fi
+            sleep 1
+            ((i++))
+        done
+        echo "Graceful period over, terminating..."
+    fi
+    if ps -p $PID > /dev/null; then
+        kill -INT -$PID
+    fi
+}
+
 runWithManualTrap() {
     # Set job control
     set -m
 
-    trap 'kill -INT -$PID' INT TERM
+    trap 'handle_sigterm' TERM
+    trap 'kill -INT -$PID' INT
 
     # run the helper process which keep the listener alive
     while :;
@@ -80,8 +116,8 @@ if [[ ! -z "$RUNNER_UPDATE_CA_CERTS" ]]; then
     updateCerts
 fi
 
-if [[ -z "$RUNNER_MANUALLY_TRAP_SIG" ]]; then
-    run $*
-else
+if [[ -n "$RUNNER_MANUALLY_TRAP_SIG" || -n "$RUNNER_GRACEFUL_STOP_TIMEOUT" ]]; then
     runWithManualTrap $*
+else
+    run $*
 fi
