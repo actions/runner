@@ -36,6 +36,7 @@ namespace GitHub.Runner.Worker.Container
             this.ContainerImage = containerImage;
             this.ContainerDisplayName = $"{container.Alias}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
             this.ContainerCreateOptions = container.Options;
+            this.ContainerEntryPointArgs = string.Join(" ", container.Args);
             _environmentVariables = container.Environment;
             this.IsJobContainer = isJobContainer;
             this.ContainerNetworkAlias = networkAlias;

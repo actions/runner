@@ -58,6 +58,15 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
+        /// Gets or sets the arguments used for the container instance.
+        /// </summary>
+        public IList<String> Args
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// Gets or sets the credentials used for pulling the container iamge.
         /// </summary>
         public ContainerRegistryCredentials Credentials

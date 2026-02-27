@@ -6,6 +6,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class PipelineTemplateConstants
     {
+        public const String Args = "args";
         public const String Always = "always";
         public const String BooleanStepsContext = "boolean-steps-context";
         public const String BooleanStrategyContext = "boolean-strategy-context";
