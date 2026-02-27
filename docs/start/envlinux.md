@@ -20,6 +20,7 @@ Execute ./bin/installdependencies.sh to install any missing Dotnet Core 6.0 depe
 You can easily correct the problem by executing `./bin/installdependencies.sh`.  
 The `installdependencies.sh` script should install all required dependencies on all supported Linux versions  
 > Note: The `installdependencies.sh` script will try to use the default package management mechanism on your Linux flavor (ex. `yum`/`apt-get`/`apt`).
+> For Fedora-based systems, the script automatically handles lttng-ust version compatibility by creating symlinks when needed (e.g., Fedora 41 ships with liblttng-ust.so.1 but the runner needs liblttng-ust.so.0).
 
 ### Full dependencies list
 
@@ -33,7 +34,7 @@ Debian based OS (Debian, Ubuntu, Linux Mint)
 
 Fedora based OS (Fedora, Red Hat Enterprise Linux, CentOS, Oracle Linux 7)
 
-- lttng-ust
+- lttng-ust (the installdependencies.sh script will automatically handle version compatibility for newer Fedora versions)
 - openssl-libs
 - krb5-libs
 - zlib
