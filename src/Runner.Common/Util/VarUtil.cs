@@ -12,6 +12,7 @@ namespace GitHub.Runner.Common.Util
                 {
                     case Constants.OSPlatform.Linux:
                     case Constants.OSPlatform.OSX:
+                    case Constants.OSPlatform.FreeBSD:
                         return StringComparer.Ordinal;
                     case Constants.OSPlatform.Windows:
                         return StringComparer.OrdinalIgnoreCase;
@@ -33,6 +34,8 @@ namespace GitHub.Runner.Common.Util
                         return "macOS";
                     case Constants.OSPlatform.Windows:
                         return "Windows";
+                    case Constants.OSPlatform.FreeBSD:
+                        return "FreeBSD";
                     default:
                         throw new NotSupportedException(); // Should never reach here.
                 }

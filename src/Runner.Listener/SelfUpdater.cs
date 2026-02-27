@@ -103,7 +103,7 @@ namespace GitHub.Runner.Listener
 #if OS_WINDOWS
                     invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
                     invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
-#elif (OS_OSX || OS_LINUX)
+#elif (OS_OSX || OS_LINUX || OS_FREEBSD)
                     invokeScript.StartInfo.FileName = WhichUtil.Which("bash", trace: Trace);
                     invokeScript.StartInfo.Arguments = $"\"{updateScript}\"";
 #endif

@@ -76,7 +76,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             Trace.Info($"Service name '{serviceName}' display name '{serviceDisplayName}' will be used for service configuration.");
         }
-#if (OS_LINUX || OS_OSX)
+#if (OS_LINUX || OS_OSX || OS_FREEBSD)
         const int MaxServiceNameLength = 150;
         const int MaxRepoOrgCharacters = 70;
 #elif OS_WINDOWS

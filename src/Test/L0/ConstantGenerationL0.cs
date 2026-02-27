@@ -21,7 +21,8 @@ namespace GitHub.Runner.Common.Tests
                 "linux-arm",
                 "linux-arm64",
                 "osx-x64",
-                "osx-arm64"
+                "osx-arm64",
+                "freebsd-x64"
             };
 
             Assert.Equal(40, BuildConstants.Source.CommitHash.Length);
