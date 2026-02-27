@@ -78,7 +78,7 @@ jobs:
     # Upload runner package tar.gz/zip as artifact
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: runner-package-${{ matrix.runtime }}
         path: |
