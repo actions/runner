@@ -42,6 +42,7 @@ namespace GitHub.Runner.Worker.Container
             this.RegistryAuthUsername = container.Credentials?.Username;
             this.RegistryAuthPassword = container.Credentials?.Password;
             this.RegistryServer = DockerUtil.ParseRegistryHostnameFromImageName(this.ContainerImage);
+            this.ContainerPull = container.Pull;
 
 #if OS_WINDOWS
             _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
@@ -89,6 +90,7 @@ namespace GitHub.Runner.Worker.Container
         public string RegistryServer { get; set; }
         public string RegistryAuthUsername { get; set; }
         public string RegistryAuthPassword { get; set; }
+        public bool ContainerPull { get; set; }
         public bool IsJobContainer { get; set; }
         public bool IsAlpine { get; set; }
 

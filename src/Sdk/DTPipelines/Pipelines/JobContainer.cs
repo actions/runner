@@ -65,6 +65,15 @@ namespace GitHub.DistributedTask.Pipelines
             get;
             set;
         }
+
+        /// <summary>
+        /// Gets or sets whether to pull the image or not before running.
+        /// </summary>
+        public Boolean Pull
+        {
+            get;
+            set;
+        }
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]

@@ -190,40 +190,52 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            UpdateRegistryAuthForGitHubToken(executionContext, container);
-
-            // Before pulling, generate client authentication if required
-            var configLocation = await ContainerRegistryLogin(executionContext, container);
-
-            // Pull down docker image with retry up to 3 times
-            int retryCount = 0;
-            int pullExitCode = 0;
-            while (retryCount < 3)
+            if (container.ContainerPull)
             {
-                pullExitCode = await _dockerManager.DockerPull(executionContext, container.ContainerImage, configLocation);
-                if (pullExitCode == 0)
-                {
-                    break;
-                }
-                else
-                {
-                    retryCount++;
-                    if (retryCount < 3)
-                    {
-                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
-                        await Task.Delay(backOff);
-                    }
-                }
-            }
+	            UpdateRegistryAuthForGitHubToken(executionContext, container);
 
-            // Remove credentials after pulling
-            ContainerRegistryLogout(configLocation);
+	            // Before pulling, generate client authentication if required
+	            var configLocation = await ContainerRegistryLogin(executionContext, container);
 
-            if (retryCount == 3 && pullExitCode != 0)
-            {
-                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
-            }
+	            // Pull down docker image with retry up to 3 times
+	            int retryCount = 0;
+	            int pullExitCode = 0;
+	            while (retryCount < 3)
+	            {
+	                pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage, configLocation);
+	                if (pullExitCode == 0)
+	                {
+	                    break;
+	                }
+	                else
+	                {
+	                    retryCount++;
+	                    if (retryCount < 3)
+	                    {
+	                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+	                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+	                        await Task.Delay(backOff);
+	                    }
+	                }
+	            }
+
+	            // Remove credentials after pulling
+	            ContainerRegistryLogout(configLocation);
+
+	            if (retryCount == 3 && pullExitCode != 0)
+	            {
+	                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
+	            }
+	        }
+	        else
+	        {
+	            // Check that the container already exists locally
+                int inspectExitCode = await _dockerManger.DockerInspect(executionContext, container.ContainerImage, "");
+                if (inspectExitCode != 0)
+                {
+                    throw new InvalidOperationException($"Docker inspect failed with exit code {inspectExitCode}.  Check that the image specified exists locally.");
+                }
+	        }
 
             if (container.IsJobContainer)
             {
