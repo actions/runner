@@ -43,7 +43,7 @@ namespace GitHub.DistributedTask.Pipelines
             TemplateToken jobOutputs,
             IList<TemplateToken> defaults,
             ActionsEnvironmentReference actionsEnvironment,
-            TemplateToken snapshot,
+            Snapshot snapshot,
             String messageType = JobRequestMessageTypes.PipelineAgentJobRequest)
         {
             this.MessageType = messageType;
@@ -240,7 +240,7 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         [DataMember(EmitDefaultValue = false)]
-        public TemplateToken Snapshot
+        public Snapshot Snapshot
         {
             get;
             set;
