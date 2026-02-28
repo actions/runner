@@ -13,6 +13,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Test</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Sdk\Sdk.csproj" />
     <ProjectReference Include="..\Runner.Common\Runner.Common.csproj" />
     <ProjectReference Include="..\Runner.Sdk\Runner.Sdk.csproj" />
