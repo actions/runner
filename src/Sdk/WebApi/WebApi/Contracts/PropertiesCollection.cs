@@ -15,7 +15,7 @@ namespace GitHub.Services.WebApi
     //the server side TeamFoundationPropertiesService stores five types in their native format
     //: Byte[], Int32, Double, DateType and String.
     //JSON.NET deals correctly with Double, DateType and String, but can't discern the proper
-    //type of Byte[] and Int32 on deserization if deserializing into Object. Byte[] gets serialized as a 
+    //type of Byte[] and Int32 on deserialization if deserializing into Object. Byte[] gets serialized as a 
     //Base64 encoded string, and stays that way. All integers get serialized as Int64, and stay that way
     //on deserialization. Adding ItemTypeNameHandling=TypeNameHandling.All fixed Byte[] but not Int32, it turns
     //out that they only primitive type that gets the name is byte[]...

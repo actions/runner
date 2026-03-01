@@ -30,7 +30,7 @@ if [ -n "$BASH_VERSION" ]; then
     fi
 fi
 
-# fallback to a busy wait
+# fall back to a busy wait
 SECONDS=0
 while [[ $SECONDS -lt $1 ]]; do
     :

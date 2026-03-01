@@ -529,7 +529,7 @@ namespace GitHub.Services.WebApi.Location
             ServiceDefinition definition;
             if (m_locationDataCacheManager.TryFindService(serviceType, serviceIdentifier, out definition))
             {
-                // If we hit a cache entry return it whether it is null or not.
+                // If we hit a cache entry return it whether or not it is null.
                 return definition;
             }
 
@@ -740,7 +740,7 @@ namespace GitHub.Services.WebApi.Location
                 m_locationDataCacheManager = new LocationCacheManager(m_instanceId, m_serviceOwner, m_baseUri);
             }
 
-            // update the location service cache if we tried to retireve location service data
+            // update the location service cache if we tried to retrieve location service data
             m_locationDataCacheManager.WebApplicationRelativeDirectory = connectionData.WebApplicationRelativeDirectory;
             if (locationServiceData != null)
             {

@@ -2,30 +2,30 @@
 
 ## Context
 
-This ADR details the design changes for supporting custom configurable hooks for on various runner events. This has been a long requested user feature [here](https://github.com/actions/runner/issues/1543), [here](https://github.com/actions/runner/issues/699) and [here](https://github.com/actions/runner/issues/1116) for users to have more information on runner observability, and for the ability to run cleanup and teardown jobs. 
+This ADR details the design changes for supporting custom configurable hooks for on various runner events. This has been a long requested user feature ([actions/runner#699](https://github.com/actions/runner/issues/699) [actions/runner#1116](https://github.com/actions/runner/issues/1116), and [actions/runner#1543](https://github.com/actions/runner/issues/1543)) for users to have more information on runner observability, and for the ability to run cleanup and teardown jobs.
 
 This feature is mainly intended for self hosted runner administrators.
 
 **What we hope to solve with this feature**
-1. A runner admininstrator is able to add custom scripts to cleanup their runner environment at the start or end of a job
-2. A runner admininstrator is able to add custom scripts to help setup their runner environment at the beginning of a job, for reasons like [caching](https://github.com/actions/runner/issues/1543#issuecomment-1050346279)
+1. A runner administrator is able to add custom scripts to cleanup their runner environment at the start or end of a job
+2. A runner administrator is able to add custom scripts to help setup their runner environment at the beginning of a job, for reasons like [caching](https://github.com/actions/runner/issues/1543#issuecomment-1050346279)
 3. A runner administrator is able to grab custom telemetry of jobs running on their self hosted runner
 
 **What we don't think this will solve**
 - Policy features that require certain steps run at the beginning or end of all jobs
-  - This would be better solved to in a central place in settings, rather then decentralized on each runner. 
-  - The Proposed `Notification Hooks for Runners` is limited to self hosted runners, we don't beileve Policy features should be
-- Reuse scenarios between jobs are covered by [composite actions](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) and [resuable workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows)
+  - This would be better solved to in a central place in settings, rather than decentralized on each runner. 
+  - The Proposed `Notification Hooks for Runners` is limited to self hosted runners, we don't believe Policy features should be
+- Reuse scenarios between jobs are covered by [composite actions](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) and [reusable workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows)
 - Security applications, security should be handled on the policy side on the server, not decentralized on each runner
 
 ## Hooks
-- We will expose 2 variables that users can set to enable hooks  
+- We will expose two variables that users can set to enable hooks  
   - `ACTIONS_RUNNER_HOOK_JOB_STARTED`
   - `ACTIONS_RUNNER_HOOK_JOB_COMPLETED`
 
 You can set these variables to the **absolute** path of a `.sh` or `.ps1` file.
 
-We will execute `pwsh` (fallback to `powershell`) or `bash` (fallback to `sh`) as appropriate.
+We will execute `pwsh` (fall back to `powershell`) or `bash` (fall back to `sh`) as appropriate.
 - `.sh` files will execute with the args `-e {pathtofile}`
 - `.ps1` files will execute with the args `-command \". '{pathtofile}'\"`
 
@@ -63,7 +63,7 @@ These are **synchronous** hooks, so they will block job execution while they are
 - There will be no support for `continue-on-error`
 
 ## Key Decisions
-- We will expose 2 variables that users can set to enable hooks  
+- We will expose two variables that users can set to enable hooks  
   - `ACTIONS_RUNNER_HOOK_JOB_STARTED`
   - `ACTIONS_RUNNER_HOOK_JOB_COMPLETED`
 - Users can set these variables to the path of a `.sh` or `.ps1` file, which we will execute when Jobs are started or completed.
@@ -73,7 +73,7 @@ These are **synchronous** hooks, so they will block job execution while they are
 - These files will execute as the Runner user, outside of any container specification on the job
 - These are **synchronous** hooks
   - Runner admins can execute a background process for async hooks if they want
-  - We will fail the job and halt execution on any exit code that is not 0. The Runner admin is responsible for returning the correct exit code and ensuring resilency. 
+  - We will fail the job and halt execution on any exit code that is not 0. The Runner admin is responsible for returning the correct exit code and ensuring resiliency. 
     - This includes that the runner user needs access to the file in the env and the file must exist
     - There will be no `continue-on-error` type option on launch
     - There will be no `timeout` option on launch

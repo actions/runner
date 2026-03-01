@@ -167,7 +167,7 @@ namespace GitHub.Services.Common
                     await BufferRequestContentAsync(request, tokenSource.Token).ConfigureAwait(false);
 
                     // ConfigureAwait(false) enables the continuation to be run outside any captured
-                    // SyncronizationContext (such as ASP.NET's) which keeps things from deadlocking...
+                    // SynchronizationContext (such as ASP.NET's) which keeps things from deadlocking...
                     response = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
 
                     responseWrapper = new HttpResponseMessageWrapper(response);

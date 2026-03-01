@@ -269,7 +269,7 @@ namespace GitHub.Services.WebApi.Jwt
             return GetSignature(header, payload, alg, credentials);
         }
 
-        //if we alread have the alg, we assume that the creds have been validated already,
+        //if we already have the alg, we assume that the creds have been validated already,
         //to save the expense of validating twice in the create function...
         private static byte[] GetSignature(JWTHeader header, JWTPayload payload, JWTAlgorithm alg, VssSigningCredentials signingCredentials)
         {
@@ -656,7 +656,7 @@ namespace GitHub.Services.WebApi.Jwt
             private JsonWebToken _actorToken;
         }
 
-        //this coverter converts back and forth from the JWT encoded string
+        //this converter converts back and forth from the JWT encoded string
         //and this full type
         internal class JsonWebTokenConverter : VssSecureJsonConverter
         {

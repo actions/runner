@@ -186,7 +186,7 @@ namespace GitHub.DistributedTask.WebApi
             }
 
             //ConfigureAwait(false) enables the continuation to be run outside
-            //any captured SyncronizationContext (such as ASP.NET's) which keeps things
+            //any captured SynchronizationContext (such as ASP.NET's) which keeps things
             //from deadlocking...
             using (HttpResponseMessage response = await this.SendAsync(message, userState, cancellationToken).ConfigureAwait(false))
             {

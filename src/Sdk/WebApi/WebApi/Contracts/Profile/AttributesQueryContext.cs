@@ -117,7 +117,7 @@ namespace GitHub.Services.Profile
     /// Used to specify the scope of a set of attributes.
     /// </summary>
     /// <remarks>
-    /// A profile attribute is either a core attribute or an attribute beloging to some application container.
+    /// A profile attribute is either a core attribute or an attribute belonging to some application container.
     /// A core attribute belongs to scope AttributesScope.Core.
     /// An attribute stored under some application container belongs to scope AttributesScope.Application.
     /// An attribute always belongs to scope AttributesScope.Core | AttributesScope.Application.

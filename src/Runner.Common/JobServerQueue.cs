@@ -56,7 +56,7 @@ namespace GitHub.Runner.Common
         // indicate how many timelines we have, we will process _timelineUpdateQueue base on the order of timeline in this list
         private readonly List<Guid> _allTimelines = new();
 
-        // bufferd timeline records that fail to update
+        // buffered timeline records that fail to update
         private readonly Dictionary<Guid, List<TimelineRecord>> _bufferedRetryRecords = new();
 
         // Task for each queue's dequeue process
@@ -183,7 +183,7 @@ namespace GitHub.Runner.Common
         }
 
         // WebConsoleLine queue and FileUpload queue are always best effort
-        // TimelineUpdate queue error will become critical when timeline records contain output variabls.
+        // TimelineUpdate queue error will become critical when timeline records contain output variables.
         public async Task ShutdownAsync()
         {
             if (!_queueInProcess)
@@ -214,7 +214,7 @@ namespace GitHub.Runner.Common
             Trace.Info("Results upload queue drained.");
 
             // ProcessTimelinesUpdateQueueAsync() will throw exception during shutdown
-            // if there is any timeline records that failed to update contains output variabls.
+            // if there is any timeline records that failed to update contains output variables.
             Trace.Verbose("Draining timeline update queue.");
             await ProcessTimelinesUpdateQueueAsync(runOnce: true);
             Trace.Info("Timeline update queue drained.");
@@ -891,8 +891,8 @@ namespace GitHub.Runner.Common
                         }
 
                         // Create a new record and only set the Log field
-                        var attachmentUpdataRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
-                        QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdataRecord);
+                        var attachmentUpdateRecord = new TimelineRecord() { Id = file.TimelineRecordId, Log = taskLog };
+                        QueueTimelineRecordUpdate(file.TimelineId, attachmentUpdateRecord);
                     }
                     else
                     {

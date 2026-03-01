@@ -71,7 +71,7 @@ namespace GitHub.Services.Common
         /// credential.
         /// </summary>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
-        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed, otherwise CredentialProptType.DoNotPrompt</param>
+        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed, otherwise CredentialPromptType.DoNotPrompt</param>
         public VssCredentials(
             FederatedCredential federatedCredential,
             CredentialPromptType promptType)
@@ -84,7 +84,7 @@ namespace GitHub.Services.Common
         /// credential.
         /// </summary>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
-        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialProptType.DoNotPrompt</param>
+        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialPromptType.DoNotPrompt</param>
         /// <param name="scheduler">An optional <c>TaskScheduler</c> to ensure credentials prompting occurs on the UI thread</param>
         public VssCredentials(
             FederatedCredential federatedCredential,
@@ -99,7 +99,7 @@ namespace GitHub.Services.Common
         /// credential.
         /// </summary>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
-        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialProptType.DoNotPrompt</param>
+        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialPromptType.DoNotPrompt</param>
         /// <param name="scheduler">An optional <c>TaskScheduler</c> to ensure credentials prompting occurs on the UI thread</param>
         /// <param name="credentialPrompt">An optional <c>IVssCredentialPrompt</c> to perform prompting for credentials</param>
         public VssCredentials(
@@ -114,7 +114,7 @@ namespace GitHub.Services.Common
             {
                 // If we use TaskScheduler.FromCurrentSynchronizationContext() here and this is executing under the UI 
                 // thread, for example from an event handler in a WinForms applications, this TaskScheduler will capture 
-                // the UI SyncrhonizationContext whose MaximumConcurrencyLevel is 1 and only has a single thread to 
+                // the UI SynchronizationContext whose MaximumConcurrencyLevel is 1 and only has a single thread to 
                 // execute queued work. Then, if the UI thread invokes one of our synchronous methods that are just 
                 // wrappers that block until the asynchronous overload returns, and if the async Task queues work to 
                 // this TaskScheduler, like GitHub.Services.CommonGetTokenOperation.GetTokenAsync does, 
@@ -291,7 +291,7 @@ namespace GitHub.Services.Common
         /// Determines if the web response is an authentication redirect for issued token providers.
         /// </summary>
         /// <param name="webResponse">The web response</param>
-        /// <returns>True if this is an token authentication redirect, false otherwise</returns>
+        /// <returns>True if this is a token authentication redirect, false otherwise</returns>
         internal bool IsAuthenticationChallenge(IHttpResponse webResponse)
         {
             if (webResponse == null)

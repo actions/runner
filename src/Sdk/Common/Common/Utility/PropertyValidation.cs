@@ -278,7 +278,7 @@ namespace GitHub.Services.Common.Internal
         }
 
         /// <summary>
-        /// Verify that a propery is within the bounds of the specified range.
+        /// Verify that a property is within the bounds of the specified range.
         /// </summary>
         /// <param name="propertyValue">The property value</param>
         /// <param name="minValue">The minimum value allowed</param>

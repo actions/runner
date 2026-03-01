@@ -1520,7 +1520,7 @@ namespace GitHub.Runner.Worker
 
         public void Error(string format, params Object[] args)
         {
-            /* TraceWriter should be used for logging and not creating erros. */
+            /* TraceWriter should be used for logging and not creating errors. */
             if (logTemplateErrorsAsDebugMessages())
             {
                 _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, format, args));

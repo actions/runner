@@ -402,7 +402,7 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public async Task OomScoreAdjIsWriten_Default()
+        public async Task OomScoreAdjIsWritten_Default()
         {
             // We are on a system that supports oom_score_adj in procfs as assumed by ProcessInvoker
             string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
@@ -438,7 +438,7 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public async Task OomScoreAdjIsWriten_FromEnv()
+        public async Task OomScoreAdjIsWritten_FromEnv()
         {
             // We are on a system that supports oom_score_adj in procfs as assumed by ProcessInvoker
             string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";

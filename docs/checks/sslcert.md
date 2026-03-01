@@ -24,9 +24,7 @@ Depends on how your SSL server certificate gets configured, you might need to do
 
 ### Trust CA certificate for the Runner
 
-The actions runner is a dotnet core application which will follow how dotnet load SSL CA certificates on each OS.
-
-You can get full details documentation at [here](https://docs.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography#x509store)
+The actions runner is a dotnet core application which will follow how [dotnet load SSL CA certificates on each OS](https://docs.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography#x509store).
 
 In short:
 - Windows: Load from Windows certificate store.
@@ -40,7 +38,7 @@ To let the runner trusts your CA certificate, you will need to:
     - Windows: https://docs.microsoft.com/en-us/skype-sdk/sdn/articles/installing-the-trusted-root-certificate
     - macOS: ![trust ca cert](./../res/macOStrustCA.gif)
     - Linux: Refer to the distribution documentation
-      1. RedHat: https://www.redhat.com/sysadmin/ca-certificates-cli
+      1. Red Hat: https://www.redhat.com/sysadmin/ca-certificates-cli
       2. Ubuntu: http://manpages.ubuntu.com/manpages/focal/man8/update-ca-certificates.8.html
       3. Google search: "trust ca certificate on [linux distribution]"
       4. If all approaches failed, set environment variable `SSL_CERT_FILE` to the CA bundle `.pem` file we get.

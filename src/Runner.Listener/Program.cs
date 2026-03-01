@@ -141,7 +141,7 @@ namespace GitHub.Runner.Listener
             }
             catch (AccessDeniedException e) when (e.ErrorCode == 1)
             {
-                terminal.WriteError($"An error occured: {e.Message}");
+                terminal.WriteError($"An error occurred: {e.Message}");
                 trace.Error(e);
                 return Constants.Runner.ReturnCode.TerminatedError;
             }

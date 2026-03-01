@@ -45,9 +45,9 @@ date "+[%F %T-%4N] Sleep 1 more second to make sure process exited" >> "$logfile
 # ./externals.2.100.0
 # ./bin.2.99.0
 # ./externals.2.99.0
-# by using the juction folder we can avoid file in use problem.
+# by using the junction folder we can avoid file in use problem.
 
-# if the bin/externals junction point already exist, we just need to delete the juction point then re-create to point to new bin/externals folder.
+# if the bin/externals junction point already exist, we just need to delete the junction point then re-create to point to new bin/externals folder.
 # if the bin/externals still are real folders, we need to rename the existing folder to bin.version format then create junction point to new bin/externals folder.
 
 # check bin folder
@@ -135,7 +135,7 @@ if [[ "$currentplatform" == 'darwin'  && $restartinteractiverunner -eq 0 ]]; the
     then
         # inspect the open file handles to find the node process
         # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-        # Try finding node24 first, then fallback to earlier versions if needed
+        # Try finding node24 first, then fall back to earlier versions if needed
         nodever="node24"
         path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
         if [[ $? -ne 0 || -z "$path" ]] # Fallback if RunnerService.js was started with node20
@@ -208,7 +208,7 @@ touch update.finished
 date "+[%F %T-%4N] update.finished file creation succeed" >> "$logfile"
 
 # rename the update log file with %logfile%.succeed/.failed/succeedneedrestart
-# runner service host can base on the log file name determin the result of the runner update
+# runner service host can determine the result of the runner update based on the log file
 date "+[%F %T-%4N] Rename $logfile to be $logfile.succeed" >> "$logfile" 2>&1
 mv -fv "$logfile" "$logfile.succeed" >> "$logfile" 2>&1
 

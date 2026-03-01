@@ -1465,7 +1465,7 @@
       ]
     },
     "workflow-run-activity": {
-      "description": "The types of workflow run activity that trigger the workflow. Suupported activity types: `completed`, `requested`, `in_progress`.",
+      "description": "The types of workflow run activity that trigger the workflow. Supported activity types: `completed`, `requested`, `in_progress`.",
       "one-of": [
         "workflow-run-activity-type",
         "workflow-run-activity-types"
