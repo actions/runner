@@ -284,6 +284,140 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void EvaluateJobContainer_DockerPrefixOnly_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var token = new StringToken(null, null, null, "docker://");
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobContainer(token, contextData, functions);
+
+                Assert.Null(result);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobContainer_DockerPrefixOnlyMapping_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var token = new MappingToken(null, null, null);
+                token.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, "docker://"));
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobContainer(token, contextData, functions);
+
+                Assert.Null(result);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobContainer_EmptyImageMapping_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var token = new MappingToken(null, null, null);
+                token.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, ""));
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobContainer(token, contextData, functions);
+
+                Assert.Null(result);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobContainer_ValidImage_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var token = new StringToken(null, null, null, "ubuntu:latest");
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobContainer(token, contextData, functions);
+
+                Assert.NotNull(result);
+                Assert.Equal("ubuntu:latest", result.Image);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobContainer_DockerPrefixWithImage_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var token = new StringToken(null, null, null, "docker://ubuntu:latest");
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobContainer(token, contextData, functions);
+
+                Assert.NotNull(result);
+                Assert.Equal("ubuntu:latest", result.Image);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void EvaluateJobOutput_BothParsersAgree()
         {
             try
@@ -383,6 +517,144 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = wrapper.EvaluateJobServiceContainers(null, contextData, functions);
 
                 Assert.Null(result);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobServiceContainers_EmptyImage_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                // Build a services mapping token with one service whose image is empty string
+                // Similar to: services: { db: { image: '' } }
+                var servicesMapping = new MappingToken(null, null, null);
+                var serviceMapping = new MappingToken(null, null, null);
+                serviceMapping.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, ""));
+                servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobServiceContainers(servicesMapping, contextData, functions);
+
+                // Should get a list with one entry where the container is null (empty image = no container)
+                Assert.NotNull(result);
+                Assert.Single(result);
+                Assert.Equal("db", result[0].Key);
+                Assert.Null(result[0].Value);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobServiceContainers_DockerPrefixOnlyImage_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var servicesMapping = new MappingToken(null, null, null);
+                var serviceMapping = new MappingToken(null, null, null);
+                serviceMapping.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, "docker://"));
+                servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobServiceContainers(servicesMapping, contextData, functions);
+
+                Assert.NotNull(result);
+                Assert.Single(result);
+                Assert.Equal("db", result[0].Key);
+                Assert.Null(result[0].Value);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobServiceContainers_ExpressionEvalsToEmpty_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                // Simulates: services: { db: { image: ${{ condition && 'img' || '' }} } }
+                // where the expression evaluates to '' at runtime
+                var servicesMapping = new MappingToken(null, null, null);
+                var serviceMapping = new MappingToken(null, null, null);
+                serviceMapping.Add(new StringToken(null, null, null, "image"), new BasicExpressionToken(null, null, null, "''"));
+                servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobServiceContainers(servicesMapping, contextData, functions);
+
+                Assert.NotNull(result);
+                Assert.Single(result);
+                Assert.Equal("db", result[0].Key);
+                Assert.Null(result[0].Value);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobServiceContainers_ValidImage_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var servicesMapping = new MappingToken(null, null, null);
+                var serviceMapping = new MappingToken(null, null, null);
+                serviceMapping.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, "postgres:latest"));
+                servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobServiceContainers(servicesMapping, contextData, functions);
+
+                Assert.NotNull(result);
+                Assert.Single(result);
+                Assert.Equal("db", result[0].Key);
+                Assert.NotNull(result[0].Value);
+                Assert.Equal("postgres:latest", result[0].Value.Image);
                 Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
             }
             finally
