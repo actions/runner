@@ -120,8 +120,10 @@ namespace GitHub.Runner.Listener
             }
             catch (Exception ex)
             {
+                Trace.Error(ex);
+                _terminal.WriteError($"Runner update failed: {ex.Message}");
                 _updateTrace.Enqueue(ex.ToString());
-                throw;
+                return false;
             }
             finally
             {
