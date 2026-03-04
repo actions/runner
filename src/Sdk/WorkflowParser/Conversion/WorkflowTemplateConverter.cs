@@ -1146,6 +1146,22 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         case WorkflowTemplateConstants.Options:
                             result.Options = containerPropertyPair.Value.AssertString($"{WorkflowTemplateConstants.Container} {propertyName}").Value;
                             break;
+                        case WorkflowTemplateConstants.Entrypoint:
+                            if (!context.GetFeatures().AllowServiceContainerCommand)
+                            {
+                                context.Error(containerPropertyPair.Key, $"The key '{WorkflowTemplateConstants.Entrypoint}' is not allowed");
+                                break;
+                            }
+                            result.Entrypoint = containerPropertyPair.Value.AssertString($"{WorkflowTemplateConstants.Container} {propertyName}").Value;
+                            break;
+                        case WorkflowTemplateConstants.Command:
+                            if (!context.GetFeatures().AllowServiceContainerCommand)
+                            {
+                                context.Error(containerPropertyPair.Key, $"The key '{WorkflowTemplateConstants.Command}' is not allowed");
+                                break;
+                            }
+                            result.Command = containerPropertyPair.Value.AssertString($"{WorkflowTemplateConstants.Container} {propertyName}").Value;
+                            break;
                         case WorkflowTemplateConstants.Ports:
                             var ports = containerPropertyPair.Value.AssertSequence($"{WorkflowTemplateConstants.Container} {propertyName}");
                             var portList = new List<String>(ports.Count);

@@ -2590,20 +2590,52 @@
         "properties": {
           "image": {
             "type": "string",
-            "description": "Use `jobs.<job_id>.container.image` to define the Docker image to use as the container to run the action. The value can be the Docker Hub image or a registry name."
+            "description": "The Docker image to use as the container. The value can be the Docker Hub image or a registry name."
           },
           "options": {
             "type": "string",
-            "description": "Use `jobs.<job_id>.container.options` to configure additional Docker container resource options."
+            "description": "Additional Docker container resource options."
           },
           "env": "container-env",
           "ports": {
             "type": "sequence-of-non-empty-string",
-            "description": "Use `jobs.<job_id>.container.ports` to set an array of ports to expose on the container."
+            "description": "An array of ports to expose on the container."
           },
           "volumes": {
             "type": "sequence-of-non-empty-string",
-            "description": "Use `jobs.<job_id>.container.volumes` to set an array of volumes for the container to use. You can use volumes to share data between services or other steps in a job. You can specify named Docker volumes, anonymous Docker volumes, or bind mounts on the host."
+            "description": "An array of volumes for the container to use. You can use volumes to share data between services or other steps in a job. You can specify named Docker volumes, anonymous Docker volumes, or bind mounts on the host."
+          },
+          "credentials": "container-registry-credentials"
+        }
+      }
+    },
+    "service-container-mapping": {
+      "mapping": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "The Docker image to use as the container. The value can be the Docker Hub image or a registry name."
+          },
+          "options": {
+            "type": "string",
+            "description": "Additional Docker container resource options."
+          },
+          "entrypoint": {
+            "type": "string",
+            "description": "Override the default ENTRYPOINT in the service container image."
+          },
+          "command": {
+            "type": "string",
+            "description": "Override the default CMD in the service container image."
+          },
+          "env": "container-env",
+          "ports": {
+            "type": "sequence-of-non-empty-string",
+            "description": "An array of ports to expose on the container."
+          },
+          "volumes": {
+            "type": "sequence-of-non-empty-string",
+            "description": "An array of volumes for the container to use. You can use volumes to share data between services or other steps in a job. You can specify named Docker volumes, anonymous Docker volumes, or bind mounts on the host."
           },
           "credentials": "container-registry-credentials"
         }
@@ -2635,11 +2667,11 @@
       ],
       "one-of": [
         "string",
-        "container-mapping"
+        "service-container-mapping"
       ]
     },
     "container-registry-credentials": {
-      "description": "If the image's container registry requires authentication to pull the image, you can use `jobs.<job_id>.container.credentials` to set a map of the username and password. The credentials are the same values that you would provide to the `docker login` command.",
+      "description": "If the container registry requires authentication to pull the image, set a map of the username and password. The credentials are the same values that you would provide to the `docker login` command.",
       "context": [
         "github",
         "inputs",
@@ -2655,7 +2687,7 @@
       }
     },
     "container-env": {
-      "description": "Use `jobs.<job_id>.container.env` to set a map of variables in the container.",
+      "description": "A map of environment variables to set in the container.",
       "mapping": {
         "loose-key-type": "non-empty-string",
         "loose-value-type": "string-runner-context"
