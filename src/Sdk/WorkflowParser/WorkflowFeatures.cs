@@ -49,6 +49,13 @@ namespace GitHub.Actions.WorkflowParser
         public bool StrictJsonParsing { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether service containers may specify "entrypoint" and "command".
+        /// Used during parsing and evaluation.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool AllowServiceContainerCommand { get; set; }
+
+        /// <summary>
         /// Gets the default workflow features.
         /// </summary>
         public static WorkflowFeatures GetDefaults()
@@ -60,6 +67,7 @@ namespace GitHub.Actions.WorkflowParser
                 Snapshot = false,           // Default to false since this feature is still in an experimental phase
                 StrictJsonParsing = false,  // Default to false since this is temporary for telemetry purposes only
                 AllowModelsPermission = false, // Default to false since we want this to be disabled for all non-production environments
+                AllowServiceContainerCommand = false, // Default to false since this feature is gated by actions_service_container_command
             };
         }
 

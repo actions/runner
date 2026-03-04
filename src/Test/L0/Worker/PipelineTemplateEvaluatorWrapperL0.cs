@@ -36,7 +36,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
 
                 var token = new StringToken(null, null, null, "test-value");
                 var contextData = new DictionaryContextData();
@@ -63,7 +63,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
 
                 // Call EvaluateAndCompare directly: the new evaluator cancels the token
                 // and returns a different value, forcing hasMismatch = true.
@@ -98,7 +98,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
 
                 // Different results without cancellation — mismatch SHOULD be recorded.
                 var result = wrapper.EvaluateAndCompare<string, string>(
@@ -130,7 +130,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new BooleanToken(null, null, null, true);
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
@@ -156,7 +156,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new MappingToken(null, null, null);
                 token.Add(new StringToken(null, null, null, "FOO"), new StringToken(null, null, null, "bar"));
                 var contextData = new DictionaryContextData();
@@ -184,7 +184,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new BasicExpressionToken(null, null, null, "true");
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
@@ -211,7 +211,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new MappingToken(null, null, null);
                 token.Add(new StringToken(null, null, null, "input1"), new StringToken(null, null, null, "val1"));
                 var contextData = new DictionaryContextData();
@@ -239,7 +239,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new NumberToken(null, null, null, 10);
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
@@ -265,7 +265,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new StringToken(null, null, null, "");
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
@@ -291,7 +291,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new StringToken(null, null, null, "docker://");
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
@@ -317,7 +317,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new MappingToken(null, null, null);
                 token.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, "docker://"));
                 var contextData = new DictionaryContextData();
@@ -344,7 +344,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new MappingToken(null, null, null);
                 token.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, ""));
                 var contextData = new DictionaryContextData();
@@ -371,7 +371,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new StringToken(null, null, null, "ubuntu:latest");
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
@@ -398,7 +398,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new StringToken(null, null, null, "docker://ubuntu:latest");
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
@@ -425,7 +425,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new MappingToken(null, null, null);
                 token.Add(new StringToken(null, null, null, "out1"), new StringToken(null, null, null, "val1"));
                 var contextData = new DictionaryContextData();
@@ -453,7 +453,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new StringToken(null, null, null, "https://example.com");
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
@@ -482,7 +482,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var token = new MappingToken(null, null, null);
                 token.Add(new StringToken(null, null, null, "shell"), new StringToken(null, null, null, "bash"));
                 var contextData = new DictionaryContextData();
@@ -510,7 +510,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
 
@@ -542,7 +542,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 serviceMapping.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, ""));
                 servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
 
@@ -576,7 +576,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 serviceMapping.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, "docker://"));
                 servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
 
@@ -611,7 +611,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 serviceMapping.Add(new StringToken(null, null, null, "image"), new BasicExpressionToken(null, null, null, "''"));
                 servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
 
@@ -644,7 +644,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 serviceMapping.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, "postgres:latest"));
                 servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
 
@@ -666,6 +666,75 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void EvaluateJobServiceContainers_EntrypointAndCommand_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var servicesMapping = new MappingToken(null, null, null);
+                var serviceMapping = new MappingToken(null, null, null);
+                serviceMapping.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, "postgres:latest"));
+                serviceMapping.Add(new StringToken(null, null, null, "entrypoint"), new StringToken(null, null, null, "/bin/bash"));
+                serviceMapping.Add(new StringToken(null, null, null, "command"), new StringToken(null, null, null, "-lc echo hi"));
+                servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: true);
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                var result = wrapper.EvaluateJobServiceContainers(servicesMapping, contextData, functions);
+
+                Assert.NotNull(result);
+                Assert.Single(result);
+                Assert.Equal("db", result[0].Key);
+                Assert.NotNull(result[0].Value);
+                Assert.Equal("postgres:latest", result[0].Value.Image);
+                Assert.Equal("/bin/bash", result[0].Value.Entrypoint);
+                Assert.Equal("-lc echo hi", result[0].Value.Command);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateJobServiceContainers_EntrypointAndCommand_FlagOff_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var servicesMapping = new MappingToken(null, null, null);
+                var serviceMapping = new MappingToken(null, null, null);
+                serviceMapping.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, "postgres:latest"));
+                serviceMapping.Add(new StringToken(null, null, null, "entrypoint"), new StringToken(null, null, null, "/bin/bash"));
+                serviceMapping.Add(new StringToken(null, null, null, "command"), new StringToken(null, null, null, "-lc echo hi"));
+                servicesMapping.Add(new StringToken(null, null, null, "db"), serviceMapping);
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
+                var contextData = new DictionaryContextData();
+                var functions = new List<LegacyExpressions.IFunctionInfo>();
+
+                Assert.Throws<GitHub.DistributedTask.ObjectTemplating.TemplateValidationException>(() =>
+                    wrapper.EvaluateJobServiceContainers(servicesMapping, contextData, functions));
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void EvaluateJobSnapshotRequest_Null_BothParsersAgree()
         {
             try
@@ -673,7 +742,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
                 var contextData = new DictionaryContextData();
                 var functions = new List<LegacyExpressions.IFunctionInfo>();
 
@@ -702,7 +771,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
 
                 // Both throw JsonReaderException with different messages — should be treated as equivalent
                 var legacyEx = new Newtonsoft.Json.JsonReaderException("Error reading JToken from JsonReader. Path '', line 0, position 0.");
@@ -733,7 +802,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
 
                 // Legacy throws Newtonsoft JsonReaderException, new throws System.Text.Json.JsonException
                 var legacyEx = new Newtonsoft.Json.JsonReaderException("Error reading JToken");
@@ -764,7 +833,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
-                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object);
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
 
                 // Both throw non-JSON exceptions with different messages — should record mismatch
                 var legacyEx = new InvalidOperationException("some error");
