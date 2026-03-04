@@ -153,7 +153,7 @@ index f3c1b8f9..9a1c5aa0 100644
                  "osx-arm64"
              };
 diff --git a/src/Test/L0/Listener/SelfUpdaterL0.cs b/src/Test/L0/Listener/SelfUpdaterL0.cs
-index be095ce9..300cc179 100644
+index 8003dd07..06f6c9fd 100644
 --- a/src/Test/L0/Listener/SelfUpdaterL0.cs
 +++ b/src/Test/L0/Listener/SelfUpdaterL0.cs
 @@ -1,4 +1,4 @@
@@ -178,7 +178,7 @@ index be095ce9..300cc179 100644
  }
  #endif
 diff --git a/src/Test/L0/Listener/SelfUpdaterV2L0.cs b/src/Test/L0/Listener/SelfUpdaterV2L0.cs
-index 5115a6bb..001dd486 100644
+index a91e1127..0a982cac 100644
 --- a/src/Test/L0/Listener/SelfUpdaterV2L0.cs
 +++ b/src/Test/L0/Listener/SelfUpdaterV2L0.cs
 @@ -1,4 +1,4 @@
@@ -284,4 +284,4 @@ index 056a312e..3f9a3679 100644
          <Exec Command="%22$(DesktopMSBuild)%22 Runner.Service/Windows/RunnerService.csproj /p:Configuration=$(BUILDCONFIG) /p:PackageRuntime=$(PackageRuntime) /p:OutputPath=%22$(MSBuildProjectDirectory)/../_layout/bin%22" ConsoleToMSBuild="true" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86' Or '$(PackageRuntime)' == 'win-arm64'" />
      </Target>
  
-# From upstream commit: 60a9422599bf11abf799dab8dc5ab5c1de3eb3dc
+# From upstream commit: 8a73bccebb88715b3ce5443ec579b4e2d4dae6e4
