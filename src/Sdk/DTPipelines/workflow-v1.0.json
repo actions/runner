@@ -430,6 +430,21 @@
       }
     },
 
+    "service-container-mapping": {
+      "mapping": {
+        "properties": {
+          "image": "string",
+          "options": "string",
+          "entrypoint": "string",
+          "command": "string",
+          "env": "container-env",
+          "ports": "sequence-of-non-empty-string",
+          "volumes": "sequence-of-non-empty-string",
+          "credentials": "container-registry-credentials"
+        }
+      }
+    },
+
     "services": {
       "context": [
         "github",
@@ -454,7 +469,7 @@
       ],
       "one-of": [
         "string",
-        "container-mapping"
+        "service-container-mapping"
       ]
     },
 

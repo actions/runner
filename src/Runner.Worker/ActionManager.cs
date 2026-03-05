@@ -111,7 +111,7 @@ namespace GitHub.Runner.Worker
             {
                 // Log the error and fail the PrepareActionsAsync Initialization.
                 Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
-                executionContext.InfrastructureError(ex.Message, category: "resolve_action");
+                executionContext.InfrastructureError(ex.InnerException?.Message ?? ex.Message, category: "resolve_action");
                 executionContext.Result = TaskResult.Failed;
                 throw;
             }
@@ -818,7 +818,7 @@ namespace GitHub.Runner.Worker
                             try
                             {
                                 Trace.Info($"Found unpacked action directory '{cacheDirectory}' in cache directory '{actionArchiveCacheDir}'");
-                                                        
+
                                 // repository archive from github always contains a nested folder
                                 var nestedDirectories = new DirectoryInfo(cacheDirectory).GetDirectories();
                                 if (nestedDirectories.Length != 1)
@@ -832,14 +832,14 @@ namespace GitHub.Runner.Worker
                                     IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
                                     IOUtil.CreateSymbolicLink(destDirectory, nestedDirectories[0].FullName);
                                 }
-                                                        
+
                                 executionContext.Debug($"Created symlink from cached directory '{cacheDirectory}' to '{destDirectory}'");
                                 executionContext.Global.JobTelemetry.Add(new JobTelemetry()
                                 {
                                     Type = JobTelemetryType.General,
                                     Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache} via symlink"
                                 });
-                                
+
                                 Trace.Info("Finished getting action repository.");
                                 return;
                             }

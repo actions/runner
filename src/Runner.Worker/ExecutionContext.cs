@@ -1328,9 +1328,9 @@ namespace GitHub.Runner.Worker
             UpdateGlobalStepsContext();
         }
 
-        internal IPipelineTemplateEvaluator ToPipelineTemplateEvaluatorInternal(ObjectTemplating.ITraceWriter traceWriter = null)
+        internal IPipelineTemplateEvaluator ToPipelineTemplateEvaluatorInternal(bool allowServiceContainerCommand, ObjectTemplating.ITraceWriter traceWriter = null)
         {
-            return new PipelineTemplateEvaluatorWrapper(HostContext, this, traceWriter);
+            return new PipelineTemplateEvaluatorWrapper(HostContext, this, allowServiceContainerCommand, traceWriter);
         }
 
         private static void NoOp()
@@ -1418,10 +1418,13 @@ namespace GitHub.Runner.Worker
 
         public static IPipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
         {
+            var allowServiceContainerCommand = (context.Global.Variables.GetBoolean(Constants.Runner.Features.ServiceContainerCommand) ?? false)
+                || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_SERVICE_CONTAINER_COMMAND"));
+
             // Create wrapper?
             if ((context.Global.Variables.GetBoolean(Constants.Runner.Features.CompareWorkflowParser) ?? false) || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_COMPARE_WORKFLOW_PARSER")))
             {
-                return (context as ExecutionContext).ToPipelineTemplateEvaluatorInternal(traceWriter);
+                return (context as ExecutionContext).ToPipelineTemplateEvaluatorInternal(allowServiceContainerCommand, traceWriter);
             }
 
             // Legacy
@@ -1433,6 +1436,7 @@ namespace GitHub.Runner.Worker
             return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
             {
                 MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
+                AllowServiceContainerCommand = allowServiceContainerCommand,
             };
         }
 
