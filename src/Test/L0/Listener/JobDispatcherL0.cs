@@ -739,7 +739,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.True(jobDispatcher.RunOnceJobCompleted.Task.IsCompleted, "JobDispatcher should set task complete token for one time agent.");
                 if (jobDispatcher.RunOnceJobCompleted.Task.IsCompleted)
                 {
-                    Assert.True(await jobDispatcher.RunOnceJobCompleted.Task, "JobDispatcher should set task complete token to 'TRUE' for one time agent.");
+                    var result = await jobDispatcher.RunOnceJobCompleted.Task;
+                    Assert.Equal(TaskResult.Succeeded, result);
                 }
             }
         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using GitHub.Actions.WorkflowParser;
 using GitHub.DistributedTask.Expressions2;
@@ -23,6 +23,7 @@ namespace GitHub.Runner.Worker
         public PipelineTemplateEvaluatorWrapper(
             IHostContext hostContext,
             IExecutionContext context,
+            bool allowServiceContainerCommand,
             ObjectTemplating.ITraceWriter traceWriter = null)
         {
             ArgUtil.NotNull(hostContext, nameof(hostContext));
@@ -40,11 +41,14 @@ namespace GitHub.Runner.Worker
             _legacyEvaluator = new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
             {
                 MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
+                AllowServiceContainerCommand = allowServiceContainerCommand,
             };
 
             // New evaluator
             var newTraceWriter = new GitHub.Actions.WorkflowParser.ObjectTemplating.EmptyTraceWriter();
-            _newEvaluator = new WorkflowTemplateEvaluator(newTraceWriter, context.Global.FileTable, features: null)
+            var features = WorkflowFeatures.GetDefaults();
+            features.AllowServiceContainerCommand = allowServiceContainerCommand;
+            _newEvaluator = new WorkflowTemplateEvaluator(newTraceWriter, context.Global.FileTable, features)
             {
                 MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
             };
@@ -216,12 +220,15 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private TLegacy EvaluateAndCompare<TLegacy, TNew>(
+        internal TLegacy EvaluateAndCompare<TLegacy, TNew>(
             string methodName,
             Func<TLegacy> legacyEvaluator,
             Func<TNew> newEvaluator,
             Func<TLegacy, TNew, bool> resultComparer)
         {
+            // Capture cancellation state before evaluation
+            var cancellationRequestedBefore = _context.CancellationToken.IsCancellationRequested;
+
             // Legacy evaluator
             var legacyException = default(Exception);
             var legacyResult = default(TLegacy);
@@ -253,14 +260,18 @@ namespace GitHub.Runner.Worker
                     newException = ex;
                 }
 
+                // Capture cancellation state after evaluation
+                var cancellationRequestedAfter = _context.CancellationToken.IsCancellationRequested;
+
                 // Compare results or exceptions
+                bool hasMismatch = false;
                 if (legacyException != null || newException != null)
                 {
                     // Either one or both threw exceptions - compare them
                     if (!CompareExceptions(legacyException, newException))
                     {
                         _trace.Info($"{methodName} exception mismatch");
-                        RecordMismatch($"{methodName}");
+                        hasMismatch = true;
                     }
                 }
                 else
@@ -269,6 +280,20 @@ namespace GitHub.Runner.Worker
                     if (!resultComparer(legacyResult, newResult))
                     {
                         _trace.Info($"{methodName} mismatch");
+                        hasMismatch = true;
+                    }
+                }
+
+                // Only record mismatch if it wasn't caused by a cancellation race condition
+                if (hasMismatch)
+                {
+                    if (!cancellationRequestedBefore && cancellationRequestedAfter)
+                    {
+                        // Cancellation state changed during evaluation window - skip recording
+                        _trace.Info($"{methodName} mismatch skipped due to cancellation race condition");
+                    }
+                    else
+                    {
                         RecordMismatch($"{methodName}");
                     }
                 }
@@ -377,6 +402,18 @@ namespace GitHub.Runner.Worker
             if (!string.Equals(legacyResult.Options, newResult.Options, StringComparison.Ordinal))
             {
                 _trace.Info($"CompareJobContainer mismatch - Options differs (legacy='{legacyResult.Options}', new='{newResult.Options}')");
+                return false;
+            }
+
+            if (!string.Equals(legacyResult.Entrypoint, newResult.Entrypoint, StringComparison.Ordinal))
+            {
+                _trace.Info($"CompareJobContainer mismatch - Entrypoint differs (legacy='{legacyResult.Entrypoint}', new='{newResult.Entrypoint}')");
+                return false;
+            }
+
+            if (!string.Equals(legacyResult.Command, newResult.Command, StringComparison.Ordinal))
+            {
+                _trace.Info($"CompareJobContainer mismatch - Command differs (legacy='{legacyResult.Command}', new='{newResult.Command}')");
                 return false;
             }
 
@@ -612,6 +649,13 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
+            // Check for known equivalent error patterns (e.g., JSON parse errors)
+            // where both parsers correctly reject invalid input but with different wording
+            if (IsKnownEquivalentErrorPattern(legacyException, newException))
+            {
+                return true;
+            }
+
             // Compare exception messages recursively (including inner exceptions)
             var legacyMessages = GetExceptionMessages(legacyException);
             var newMessages = GetExceptionMessages(newException);
@@ -632,6 +676,67 @@ namespace GitHub.Runner.Worker
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Checks if two exceptions match a known pattern where both parsers correctly reject
+        /// invalid input but with different error messages (e.g., JSON parse errors from fromJSON).
+        /// </summary>
+        private bool IsKnownEquivalentErrorPattern(Exception legacyException, Exception newException)
+        {
+            // fromJSON('') - both parsers fail when parsing empty string as JSON
+            // The error messages differ but both indicate JSON parsing failure.
+            // Legacy throws raw JsonReaderException: "Error reading JToken from JsonReader..."
+            // New wraps it: "Error parsing fromJson" with inner JsonReaderException
+            // Both may be wrapped in TemplateValidationException: "The template is not valid..."
+            if (HasJsonExceptionType(legacyException) && HasJsonExceptionType(newException))
+            {
+                _trace.Info("CompareExceptions - both exceptions are JSON parse errors, treating as matched");
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if the exception chain contains a JSON-related exception type.
+        /// </summary>
+        internal static bool HasJsonExceptionType(Exception ex)
+        {
+            var toProcess = new Queue<Exception>();
+            toProcess.Enqueue(ex);
+            int count = 0;
+
+            while (toProcess.Count > 0 && count < 50)
+            {
+                var current = toProcess.Dequeue();
+                if (current == null) continue;
+
+                count++;
+
+                if (current is Newtonsoft.Json.JsonReaderException ||
+                    current is System.Text.Json.JsonException)
+                {
+                    return true;
+                }
+
+                if (current is AggregateException aggregateEx)
+                {
+                    foreach (var innerEx in aggregateEx.InnerExceptions)
+                    {
+                        if (innerEx != null && count < 50)
+                        {
+                            toProcess.Enqueue(innerEx);
+                        }
+                    }
+                }
+                else if (current.InnerException != null)
+                {
+                    toProcess.Enqueue(current.InnerException);
+                }
+            }
+
+            return false;
         }
 
         private IList<string> GetExceptionMessages(Exception ex)

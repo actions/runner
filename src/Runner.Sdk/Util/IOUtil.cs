@@ -93,6 +93,16 @@ namespace GitHub.Runner.Sdk
             }
         }
 
+        public static FileSystemInfo CreateSymbolicLink(string destDirectory, string srcDirectory)
+        {
+            // ensure directory chain exists
+            Directory.CreateDirectory(destDirectory);
+            // delete leaf directory
+            Directory.Delete(destDirectory);
+            // create symlink for the leaf directory
+            return Directory.CreateSymbolicLink(destDirectory, srcDirectory);
+        }
+
         public static void Delete(string path, CancellationToken cancellationToken)
         {
             DeleteDirectory(path, cancellationToken);

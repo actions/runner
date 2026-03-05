@@ -65,6 +65,20 @@ namespace GitHub.Runner.Worker.Handlers
                     nodeData.NodeVersion = Common.Constants.Runner.NodeMigration.Node20;
                 }
 
+                // Track Node.js 20 actions for deprecation annotation
+                if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    bool warnOnNode20 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.WarnOnNode20Flag) ?? false;
+                    if (warnOnNode20)
+                    {
+                        string actionName = GetActionName(action);
+                        if (!string.IsNullOrEmpty(actionName))
+                        {
+                            executionContext.Global.DeprecatedNode20Actions?.Add(actionName);
+                        }
+                    }
+                }
+
                 // Check if node20 was explicitly specified in the action
                 // We don't modify if node24 was explicitly specified
                 if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.InvariantCultureIgnoreCase))
@@ -90,7 +104,8 @@ namespace GitHub.Runner.Worker.Handlers
                     if (useNode24ByDefault && !requireNode24 && string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
                     {
                         string infoMessage = "Node 20 is being deprecated. This workflow is running with Node 24 by default. " +
-                                             "If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable.";
+                                             "If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. " +
+                                             $"For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
                         executionContext.Output(infoMessage);
                     }
                 }
@@ -128,6 +143,26 @@ namespace GitHub.Runner.Worker.Handlers
             handler.ActionDirectory = actionDirectory;
             handler.LocalActionContainerSetupSteps = localActionContainerSetupSteps;
             return handler;
+        }
+
+        private static string GetActionName(Pipelines.ActionStepDefinitionReference action)
+        {
+            if (action is Pipelines.RepositoryPathReference repoRef)
+            {
+                var pathString = string.Empty;
+                if (!string.IsNullOrEmpty(repoRef.Path))
+                {
+                    pathString = string.IsNullOrEmpty(repoRef.Name)
+                        ? repoRef.Path
+                        : $"/{repoRef.Path}";
+                }
+                var repoString = string.IsNullOrEmpty(repoRef.Ref)
+                    ? $"{repoRef.Name}{pathString}"
+                    : $"{repoRef.Name}{pathString}@{repoRef.Ref}";
+                return string.IsNullOrEmpty(repoString) ? null : repoString;
+            }
+
+            return null;
         }
     }
 }

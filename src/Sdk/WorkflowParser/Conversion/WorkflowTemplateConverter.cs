@@ -1,4 +1,4 @@
-#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+﻿#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
 
 using System;
 using System.Collections.Generic;
@@ -43,7 +43,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     {
                         case WorkflowTemplateConstants.On:
                             var inputTypes = ConvertToOnWorkflowDispatchInputTypes(workflowPair.Value);
-                            foreach(var item in inputTypes)
+                            foreach (var item in inputTypes)
                             {
                                 result.InputTypes.TryAdd(item.Key, item.Value);
                             }
@@ -432,7 +432,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                 context.Error(snapshotToken, $"job {WorkflowTemplateConstants.Snapshot} {WorkflowTemplateConstants.ImageName} is required.");
                 return null;
             }
-            
+
             return new Snapshot
             {
                 ImageName = imageName,
@@ -445,7 +445,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         {
             var versionSegments = versionString.Split(".");
 
-            if (versionSegments.Length != 2 || 
+            if (versionSegments.Length != 2 ||
                 !versionSegments[1].Equals("*") ||
                 !Int32.TryParse(versionSegments[0], NumberStyles.None, CultureInfo.InvariantCulture, result: out int parsedMajor) ||
                 parsedMajor < 0)
@@ -1079,7 +1079,8 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         internal static JobContainer ConvertToJobContainer(
             TemplateContext context,
             TemplateToken value,
-            bool isEarlyValidation = false)
+            bool isEarlyValidation = false,
+            bool isServiceContainer = false)
         {
             var result = new JobContainer();
             if (isEarlyValidation && value.Traverse().Any(x => x is ExpressionToken))
@@ -1089,11 +1090,34 @@ namespace GitHub.Actions.WorkflowParser.Conversion
 
             if (value is StringToken containerLiteral)
             {
-                if (String.IsNullOrEmpty(containerLiteral.Value))
+                // Trim "docker://"
+                var trimmedImage = containerLiteral.Value;
+                var hasDockerPrefix = containerLiteral.Value.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal);
+                if (hasDockerPrefix)
                 {
+                    trimmedImage = trimmedImage.Substring(WorkflowTemplateConstants.DockerUriPrefix.Length);
+                }
+
+                // Empty shorthand after trimming "docker://" ?
+                if (String.IsNullOrEmpty(trimmedImage))
+                {
+                    // Error at parse-time for:
+                    //   1. container: 'docker://'
+                    //   2. services.foo: ''
+                    //   3. services.foo: 'docker://'
+                    //
+                    // Do not error for:
+                    //   1. container: ''
+                    if (isEarlyValidation && (hasDockerPrefix || isServiceContainer))
+                    {
+                        context.Error(value, "Container image cannot be empty");
+                    }
+
+                    // Short-circuit
                     return null;
                 }
 
+                // Store original, trimmed further below
                 result.Image = containerLiteral.Value;
             }
             else
@@ -1121,6 +1145,22 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                             break;
                         case WorkflowTemplateConstants.Options:
                             result.Options = containerPropertyPair.Value.AssertString($"{WorkflowTemplateConstants.Container} {propertyName}").Value;
+                            break;
+                        case WorkflowTemplateConstants.Entrypoint:
+                            if (!context.GetFeatures().AllowServiceContainerCommand)
+                            {
+                                context.Error(containerPropertyPair.Key, $"The key '{WorkflowTemplateConstants.Entrypoint}' is not allowed");
+                                break;
+                            }
+                            result.Entrypoint = containerPropertyPair.Value.AssertString($"{WorkflowTemplateConstants.Container} {propertyName}").Value;
+                            break;
+                        case WorkflowTemplateConstants.Command:
+                            if (!context.GetFeatures().AllowServiceContainerCommand)
+                            {
+                                context.Error(containerPropertyPair.Key, $"The key '{WorkflowTemplateConstants.Command}' is not allowed");
+                                break;
+                            }
+                            result.Command = containerPropertyPair.Value.AssertString($"{WorkflowTemplateConstants.Container} {propertyName}").Value;
                             break;
                         case WorkflowTemplateConstants.Ports:
                             var ports = containerPropertyPair.Value.AssertSequence($"{WorkflowTemplateConstants.Container} {propertyName}");
@@ -1152,15 +1192,28 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                 }
             }
 
-            if (String.IsNullOrEmpty(result.Image))
+            // Trim "docker://"
+            var hadDockerPrefix = false;
+            if (!String.IsNullOrEmpty(result.Image) && result.Image.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal))
             {
-                context.Error(value, "Container image cannot be empty");
-                return null;
+                hadDockerPrefix = true;
+                result.Image = result.Image.Substring(WorkflowTemplateConstants.DockerUriPrefix.Length);
             }
 
-            if (result.Image.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal))
+            if (String.IsNullOrEmpty(result.Image))
             {
-                result.Image = result.Image.Substring(WorkflowTemplateConstants.DockerUriPrefix.Length);
+                // Error at parse-time for:
+                //   1. container: {image: 'docker://'}
+                //   2. services.foo: {image: ''}
+                //   3. services.foo: {image: 'docker://'}
+                //
+                // Do not error for:
+                //   1. container: {image: ''}
+                if (isEarlyValidation && (hadDockerPrefix || isServiceContainer))
+                {
+                    context.Error(value, "Container image cannot be empty");
+                }
+                return null;
             }
 
             return result;
@@ -1183,7 +1236,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
             foreach (var servicePair in servicesMapping)
             {
                 var networkAlias = servicePair.Key.AssertString("services key").Value;
-                var container = ConvertToJobContainer(context, servicePair.Value);
+                var container = ConvertToJobContainer(context, servicePair.Value, isEarlyValidation, isServiceContainer: true);
                 result.Add(new KeyValuePair<String, JobContainer>(networkAlias, container));
             }
 
@@ -1838,9 +1891,9 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     case "actions":
                         permissions.Actions = permissionLevel;
                         break;
-					case "artifact-metadata":
-						permissions.ArtifactMetadata = permissionLevel;
-						break;
+                    case "artifact-metadata":
+                        permissions.ArtifactMetadata = permissionLevel;
+                        break;
                     case "attestations":
                         permissions.Attestations = permissionLevel;
                         break;

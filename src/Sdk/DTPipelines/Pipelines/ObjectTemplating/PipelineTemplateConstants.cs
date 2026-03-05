@@ -47,6 +47,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String NumberStrategyContext = "number-strategy-context";
         public const String On = "on";
         public const String Options = "options";
+        public const String Entrypoint = "entrypoint";
+        public const String Command = "command";
         public const String Outputs = "outputs";
         public const String OutputsPattern = "needs.*.outputs";
         public const String Password = "password";

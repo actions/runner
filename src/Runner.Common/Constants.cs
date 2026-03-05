@@ -172,8 +172,10 @@ namespace GitHub.Runner.Common
                 public static readonly string SnapshotPreflightHostedRunnerCheck = "actions_snapshot_preflight_hosted_runner_check";
                 public static readonly string SnapshotPreflightImageGenPoolCheck = "actions_snapshot_preflight_image_gen_pool_check";
                 public static readonly string CompareWorkflowParser = "actions_runner_compare_workflow_parser";
+                public static readonly string ServiceContainerCommand = "actions_service_container_command";
                 public static readonly string SetOrchestrationIdEnvForActions = "actions_set_orchestration_id_env_for_actions";
                 public static readonly string SendJobLevelAnnotations = "actions_send_job_level_annotations";
+                public static readonly string EmitCompositeMarkers = "actions_runner_emit_composite_markers";
             }
 
             // Node version migration related constants
@@ -190,6 +192,10 @@ namespace GitHub.Runner.Common
                 // Feature flags for controlling the migration phases
                 public static readonly string UseNode24ByDefaultFlag = "actions.runner.usenode24bydefault";
                 public static readonly string RequireNode24Flag = "actions.runner.requirenode24";
+                public static readonly string WarnOnNode20Flag = "actions.runner.warnonnode20";
+
+                // Blog post URL for Node 20 deprecation
+                public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
@@ -284,6 +290,8 @@ namespace GitHub.Runner.Common
                 public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
                 public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";
                 public static readonly string ActionArchiveCacheDirectory = "ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE";
+                public static readonly string SymlinkCachedActions = "ACTIONS_RUNNER_SYMLINK_CACHED_ACTIONS";
+                public static readonly string EmitCompositeMarkers = "ACTIONS_RUNNER_EMIT_COMPOSITE_MARKERS";
             }
 
             public static class System
