@@ -20,7 +20,7 @@ namespace GitHub.DistributedTask.Expressions2
             IEnumerable<IFunctionInfo> functions,
             Boolean allowCaseFunction = true)
         {
-            var context = new ParseContext(expression, trace, namedValues, functions, allowCaseFunction);
+            var context = new ParseContext(expression, trace, namedValues, functions, allowCaseFunction: allowCaseFunction);
             context.Trace.Info($"Parsing expression: <{expression}>");
             return CreateTree(context);
         }
