@@ -19,6 +19,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class PipelineTemplateEvaluatorWrapperL0
     {
         private CancellationTokenSource _ecTokenSource;
+        private CancellationTokenSource _rootTokenSource;
         private Mock<IExecutionContext> _ec;
         private TestHostContext _hc;
 
@@ -65,7 +66,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
 
-                // Call EvaluateAndCompare directly: the new evaluator cancels the token
+                // Call EvaluateAndCompare directly: the new evaluator cancels the root token
                 // and returns a different value, forcing hasMismatch = true.
                 // Because cancellation flipped during the evaluation window, the
                 // mismatch should be skipped.
@@ -74,9 +75,46 @@ namespace GitHub.Runner.Common.Tests.Worker
                     () => "legacy-value",
                     () =>
                     {
-                        _ecTokenSource.Cancel();
+                        _rootTokenSource.Cancel();
                         return "different-value";
                     },
+                    (legacy, @new) => string.Equals(legacy, @new, StringComparison.Ordinal));
+
+                Assert.Equal("legacy-value", result);
+                Assert.False(_ec.Object.Global.HasTemplateEvaluatorMismatch);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateAndCompare_SkipsMismatchRecording_WhenRootCancellationOccursBetweenEvaluators()
+        {
+            // Simulates job-level cancellation firing between legacy and new evaluator runs.
+            // Root is mocked with a separate CancellationTokenSource to exercise the
+            // _context.Root?.CancellationToken path (the job-level token).
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var wrapper = new PipelineTemplateEvaluatorWrapper(_hc, _ec.Object, allowServiceContainerCommand: false);
+
+                // Legacy evaluator cancels the root token (simulating job cancel) and returns a value.
+                // The new evaluator returns a different value. The mismatch should be skipped.
+                var result = wrapper.EvaluateAndCompare<string, string>(
+                    "TestRootCancellationSkip",
+                    () =>
+                    {
+                        var legacyValue = "legacy-value";
+                        _rootTokenSource.Cancel();
+                        return legacyValue;
+                    },
+                    () => "different-value",
                     (legacy, @new) => string.Equals(legacy, @new, StringComparison.Ordinal));
 
                 Assert.Equal("legacy-value", result);
@@ -862,6 +900,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             _ecTokenSource?.Dispose();
             _ecTokenSource = new CancellationTokenSource();
+            _rootTokenSource?.Dispose();
+            _rootTokenSource = new CancellationTokenSource();
 
             _hc = new TestHostContext(this, name);
 
@@ -877,6 +917,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                     WriteDebug = true,
                 });
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
+            var rootEc = new Mock<IExecutionContext>();
+            rootEc.Setup(x => x.CancellationToken).Returns(_rootTokenSource.Token);
+            _ec.Setup(x => x.Root).Returns(rootEc.Object);
             _ec.Setup(x => x.ExpressionValues).Returns(expressionValues);
             _ec.Setup(x => x.ExpressionFunctions).Returns(expressionFunctions);
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
@@ -885,6 +928,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private void Teardown()
         {
+            _ecTokenSource?.Dispose();
+            _rootTokenSource?.Dispose();
             _hc?.Dispose();
         }
     }
