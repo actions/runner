@@ -34,11 +34,13 @@ fi
 
 updateFile="update.finished"
 "$DIR"/bin/Runner.Listener run $*
-
 returnCode=$?
 if [[ $returnCode == 0 ]]; then
     echo "Runner listener exit with 0 return code, stop the service, no retry needed."
     exit 0
+elif [[ "$ACTIONS_RUNNER_OUTDATED_EXIT_CODE" =~ ^[0-9]+$ && "$ACTIONS_RUNNER_OUTDATED_EXIT_CODE" -gt 5 && "$returnCode" -eq "$ACTIONS_RUNNER_OUTDATED_EXIT_CODE" ]]; then
+    echo "Runner listener exit with outdated error code: ${returnCode}."
+    exit "$returnCode"
 elif [[ $returnCode == 1 ]]; then
     echo "Runner listener exit with terminated error, stop the service, no retry needed."
     exit 0
@@ -74,6 +76,6 @@ elif [[ $returnCode == 5 ]]; then
     echo "Runner listener exit with Session Conflict error, stop the service, no retry needed."
     exit 0
 else
-    echo "Exiting with unknown error code: ${returnCode}"
+    echo "NOO Exiting with unknown error code: ${returnCode}"
     exit 0
 fi

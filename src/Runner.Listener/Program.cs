@@ -143,7 +143,7 @@ namespace GitHub.Runner.Listener
             {
                 terminal.WriteError($"An error occured: {e.Message}");
                 trace.Error(e);
-                return Constants.Runner.ReturnCode.TerminatedError;
+                return GetRunnerOutdatedExitCode();
             }
             catch (RunnerNotFoundException e)
             {
@@ -157,6 +157,18 @@ namespace GitHub.Runner.Listener
                 trace.Error(e);
                 return Constants.Runner.ReturnCode.RetryableError;
             }
+        }
+
+        private static int GetRunnerOutdatedExitCode()
+        {
+            var configuredExitCode = Environment.GetEnvironmentVariable(Constants.Variables.Actions.RunnerOutdatedExitCode);
+            if (int.TryParse(configuredExitCode, NumberStyles.Integer, CultureInfo.InvariantCulture, out int exitCode) &&
+                exitCode > 5)
+            {
+                return exitCode;
+            }
+
+            return Constants.Runner.ReturnCode.TerminatedError;
         }
 
         private static void LoadAndSetEnv()

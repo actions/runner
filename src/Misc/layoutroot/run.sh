@@ -19,6 +19,9 @@ run() {
         returnCode=$?
         if [[ $returnCode -eq 2 ]]; then
             echo "Restarting runner..."
+        elif [[ -n "$ACTIONS_RUNNER_OUTDATED_EXIT_CODE" && "$returnCode" == "$ACTIONS_RUNNER_OUTDATED_EXIT_CODE" ]]; then
+            echo "Exiting runner..."
+            exit "$returnCode"
         else
             echo "Exiting runner..."
             exit 0
@@ -42,6 +45,9 @@ runWithManualTrap() {
         returnCode=$?
         if [[ $returnCode -eq 2 ]]; then
             echo "Restarting runner..."
+        elif [[ -n "$ACTIONS_RUNNER_OUTDATED_EXIT_CODE" && "$returnCode" == "$ACTIONS_RUNNER_OUTDATED_EXIT_CODE" ]]; then
+            echo "Exiting runner..."
+            exit "$returnCode"
         else
             echo "Exiting runner..."
             # Unregister signal handling before exit

@@ -278,6 +278,7 @@ namespace GitHub.Runner.Common
                 public static readonly string AllowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
                 public static readonly string RequireJobContainer = "ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
+                public static readonly string RunnerOutdatedExitCode = "ACTIONS_RUNNER_OUTDATED_EXIT_CODE";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }
 
