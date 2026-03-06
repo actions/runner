@@ -538,6 +538,15 @@ namespace GitHub.Runner.Worker
                         hasDefault = true;
                         actionDefinition.Inputs.Add(inputName, metadata.Value);
                     }
+                    else if (string.Equals(metadataName, "required", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var requiredValue = metadata.Value.AssertBoolean("input required");
+                        if (requiredValue.Value)
+                        {
+                            actionDefinition.RequiredInputs ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                            actionDefinition.RequiredInputs.Add(inputName.Value);
+                        }
+                    }
                     else if (string.Equals(metadataName, "deprecationMessage", StringComparison.OrdinalIgnoreCase))
                     {
                         if (actionDefinition.Deprecated == null)
@@ -568,6 +577,8 @@ namespace GitHub.Runner.Worker
         public ActionExecutionData Execution { get; set; }
 
         public Dictionary<String, String> Deprecated { get; set; }
+
+        public HashSet<string> RequiredInputs { get; set; }
     }
 
     public sealed class ContainerActionExecutionDataNew : ActionExecutionData
