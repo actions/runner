@@ -51,6 +51,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Int32 MaxResultSize { get; set; } = 10 * 1024 * 1024; // 10 mb
 
+        public bool AllowServiceContainerCommand { get; set; }
+
         public Boolean EvaluateStepContinueOnError(
             TemplateToken token,
             DictionaryContextData contextData,
@@ -357,7 +359,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.Services, token, 0, null, omitHeader: true);
                     context.Errors.Check();
-                    result = PipelineTemplateConverter.ConvertToJobServiceContainers(context, token);
+                    result = PipelineTemplateConverter.ConvertToJobServiceContainers(context, token, allowServiceContainerCommand: AllowServiceContainerCommand);
                 }
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {

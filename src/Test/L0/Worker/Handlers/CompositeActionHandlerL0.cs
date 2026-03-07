@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
 using Moq;
+using Newtonsoft.Json.Linq;
 using Xunit;
 using DTWebApi = GitHub.DistributedTask.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker.Handlers
 {
@@ -248,6 +252,66 @@ namespace GitHub.Runner.Common.Tests.Worker.Handlers
             var id = "failing-step";
             var marker = $"##[end-action id={EscapeProperty(id)};outcome=failure;conclusion=success;duration_ms=500]";
             Assert.Equal("##[end-action id=failing-step;outcome=failure;conclusion=success;duration_ms=500]", marker);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PostStepMarker_UsesEvaluatedDisplayName()
+        {
+            // Arrange: create an ActionRunner with a RepositoryPathReference (simulating actions/cache@v4)
+            // and Stage = Post. Verify that EvaluateDisplayName produces the correct display name
+            // so the composite marker emits "Run actions/cache@v4" instead of the fallback "run".
+            var hc = new TestHostContext(this, nameof(PostStepMarker_UsesEvaluatedDisplayName));
+            var actionManifestLegacy = new ActionManifestManagerLegacy();
+            actionManifestLegacy.Initialize(hc);
+            hc.SetSingleton<IActionManifestManagerLegacy>(actionManifestLegacy);
+            var actionManifestNew = new ActionManifestManager();
+            actionManifestNew.Initialize(hc);
+            hc.SetSingleton<IActionManifestManager>(actionManifestNew);
+            var actionManifestManager = new ActionManifestManagerWrapper();
+            actionManifestManager.Initialize(hc);
+            hc.SetSingleton<IActionManifestManagerWrapper>(actionManifestManager);
+
+            var ec = new Mock<IExecutionContext>();
+            var contextData = new DictionaryContextData();
+            var githubContext = new GitHubContext();
+            githubContext.Add("event", JToken.Parse("{\"foo\":\"bar\"}").ToPipelineContextData());
+            contextData.Add("github", githubContext);
+#if OS_WINDOWS
+            contextData["env"] = new DictionaryContextData();
+#else
+            contextData["env"] = new CaseSensitiveDictionaryContextData();
+#endif
+            ec.Setup(x => x.Global).Returns(new GlobalContext());
+            ec.Setup(x => x.ExpressionValues).Returns(contextData);
+            ec.Setup(x => x.ExpressionFunctions).Returns(new List<GitHub.DistributedTask.Expressions2.IFunctionInfo>());
+            ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()));
+            ec.Object.Global.Variables = new Variables(hc, new Dictionary<string, VariableValue>());
+
+            var actionRunner = new ActionRunner();
+            actionRunner.Initialize(hc);
+            actionRunner.ExecutionContext = ec.Object;
+            actionRunner.Stage = ActionRunStage.Post;
+            actionRunner.Action = new Pipelines.ActionStep()
+            {
+                Name = "cache",
+                Id = Guid.NewGuid(),
+                Reference = new Pipelines.RepositoryPathReference()
+                {
+                    Name = "actions/cache",
+                    Ref = "v4"
+                }
+            };
+
+            // Act: call EvaluateDisplayName directly, which is what CompositeActionHandler now does
+            // for embedded steps (including Post stage) instead of TryUpdateDisplayName.
+            var result = actionRunner.EvaluateDisplayName(contextData, ec.Object, out bool updated);
+
+            // Assert: display name should be "Run actions/cache@v4", not the fallback "run"
+            Assert.True(result);
+            Assert.True(updated);
+            Assert.Equal("Run actions/cache@v4", actionRunner.DisplayName);
         }
 
         // Helper methods that call the real production code

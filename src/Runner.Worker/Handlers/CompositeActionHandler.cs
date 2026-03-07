@@ -312,7 +312,14 @@ namespace GitHub.Runner.Worker.Handlers
                 // Emit start marker after full context setup so display name expressions resolve correctly
                 if (emitCompositeMarkers)
                 {
-                    step.TryUpdateDisplayName(out _);
+                    try
+                    {
+                        step.EvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext, out _);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning("Caught exception while evaluating embedded step display name. {0}", ex);
+                    }
                     ExecutionContext.Output($"##[start-action display={EscapeProperty(SanitizeDisplayName(step.DisplayName))};id={EscapeProperty(markerId)}]");
                     stepStopwatch = Stopwatch.StartNew();
                 }
