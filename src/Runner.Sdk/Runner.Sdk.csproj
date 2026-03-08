@@ -16,6 +16,7 @@
     <CompilerVisibleProperty Include="MSBuildProjectDirectory" />
     <CompilerVisibleProperty Include="PackageRuntime" />
     <CompilerVisibleProperty Include="RunnerVersion" />
+    <CompilerVisibleProperty Include="CommitHash" />
   </ItemGroup>
 
   <ItemGroup>
