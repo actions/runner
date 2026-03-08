@@ -48,6 +48,8 @@
         <RemoveDir Directories="Runner.PluginHost/obj" />
         <RemoveDir Directories="Runner.Sdk/bin" />
         <RemoveDir Directories="Runner.Sdk/obj" />
+        <RemoveDir Directories="Runner.Sdk.Generator/bin" />
+        <RemoveDir Directories="Runner.Sdk.Generator/obj" />
         <RemoveDir Directories="Runner.Plugins/bin" />
         <RemoveDir Directories="Runner.Plugins/obj" />
         <RemoveDir Directories="Test/bin" />
