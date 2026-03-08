@@ -8,46 +8,22 @@
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <NoWarn>NU1701;NU1603;SYSLIB0050;SYSLIB0051</NoWarn>
     <Version>$(Version)</Version>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
-  <Target Name="GenerateConstant" BeforeTargets="BeforeBuild">
-    <PropertyGroup>
-      <GeneratedDir>$(IntermediateOutputPath)Generated/</GeneratedDir>
-      <BuildConstantsFile>$(GeneratedDir)BuildConstants.g.cs</BuildConstantsFile>
-    </PropertyGroup>
-
-    <ItemGroup>
-      <Compile Include="$(BuildConstantsFile)" />
-    </ItemGroup>
-    
-    <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true">
-        <Output TaskParameter="ConsoleOutput" PropertyName="GitInfoCommitHash" />
-    </Exec>
-    <Message Text="Building $(Product): $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
-
-    <ItemGroup>
-      <BuildConstants Include="namespace GitHub.Runner.Sdk"/>
-      <BuildConstants Include="{"/>
-      <BuildConstants Include="%20%20%20%20public static class BuildConstants"/>
-      <BuildConstants Include="%20%20%20%20{"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20public static class Source"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string CommitHash = %22$(GitInfoCommitHash)%22%3B"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20}%0A"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20public static class RunnerPackage"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string PackageName = %22$(PackageRuntime)%22%3B"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Version = %22$(RunnerVersion)%22%3B"/>
-      <BuildConstants Include="%20%20%20%20%20%20%20%20}"/>
-      <BuildConstants Include="%20%20%20%20}"/>
-      <BuildConstants Include="}"/>
-    </ItemGroup>
-
-    <WriteLinesToFile File="$(BuildConstantsFile)" Lines="@(BuildConstants)" Overwrite="true" />
-  </Target>
+  <!-- Expose build-time properties to the source generator via analyzer config -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="MSBuildProjectDirectory" />
+    <CompilerVisibleProperty Include="PackageRuntime" />
+    <CompilerVisibleProperty Include="RunnerVersion" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sdk\Sdk.csproj" />
+    <!-- Reference the source generator; it must not be treated as a regular assembly reference -->
+    <ProjectReference Include="..\Runner.Sdk.Generator\Runner.Sdk.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
