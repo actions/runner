@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -13,9 +16,10 @@ namespace GitHub.Runner.Sdk.Generator
             IncrementalValueProvider<(string CommitHash, string PackageRuntime, string RunnerVersion)> props =
                 context.AnalyzerConfigOptionsProvider.Select((options, _) =>
                 {
-                    string commitHash = ValueOrDefault(options.GlobalOptions, "build_property.CommitHash", "N/A");
-                    string packageRuntime = ValueOrDefault(options.GlobalOptions, "build_property.PackageRuntime", "N/A");
-                    string runnerVersion = ValueOrDefault(options.GlobalOptions, "build_property.RunnerVersion", "0");
+                    string projectDir = ValueOrDefault(options.GlobalOptions, "build_property.MSBuildProjectDirectory", "");
+                    string commitHash = ValueOrDefault(options.GlobalOptions, "build_property.CommitHash", GetCommitHash(projectDir));
+                    string packageRuntime = ValueOrDefault(options.GlobalOptions, "build_property.PackageRuntime", GetRuntimeId());
+                    string runnerVersion = ValueOrDefault(options.GlobalOptions, "build_property.RunnerVersion", GetRunnerVersion(projectDir));
                     return (commitHash, packageRuntime, runnerVersion);
                 });
 
@@ -23,6 +27,42 @@ namespace GitHub.Runner.Sdk.Generator
             {
                 ctx.AddSource("BuildConstants.g.cs", BuildSource(values.CommitHash, values.PackageRuntime, values.RunnerVersion));
             });
+        }
+
+        private static string GetCommitHash(string projectDir)
+        {
+            using var process = Process.Start(new ProcessStartInfo("git", "rev-parse HEAD")
+            {
+                WorkingDirectory = projectDir,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            });
+            return process.StandardOutput.ReadToEnd().Trim();
+        }
+
+        private static string GetRunnerVersion(string projectDir)
+        {
+            return File.ReadAllText(Path.Combine(projectDir, "..", "runnerversion")).Trim();
+        }
+
+        private static string GetRuntimeId()
+        {
+            string platform = "unknown";
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                platform = "win";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                platform = "linux";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                platform = "osx";
+            }
+
+            return $"{platform}-{RuntimeInformation.OSArchitecture}".ToLowerInvariant();
         }
 
         private static string ValueOrDefault(AnalyzerConfigOptions options, string name, string defaultValue)

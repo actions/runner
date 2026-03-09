@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
 using Xunit;
 
 namespace GitHub.Runner.Common.Tests
@@ -27,11 +24,12 @@ namespace GitHub.Runner.Common.Tests
                 try
                 {
 #if OS_WINDOWS
-                    string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node20\bin\node");
+                    string nodeFallback = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node20\bin\node.exe");
 #else
-                    string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node20/bin/node");
                     hc.EnqueueInstance<IProcessInvoker>(new ProcessInvokerWrapper());
+                    string nodeFallback = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node20/bin/node");
 #endif
+                    string node = FindInPath("node") ?? nodeFallback;
                     var startInfo = new ProcessStartInfo(node, "-e \"setTimeout(function(){{}}, 15 * 1000);\"");
                     startInfo.Environment[envName] = envValue;
                     sleep = Process.Start(startInfo);
@@ -65,6 +63,18 @@ namespace GitHub.Runner.Common.Tests
                     sleep?.Kill();
                 }
             }
+        }
+        private static string FindInPath(string executable)
+        {
+            foreach (string dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+            {
+                string full = Path.Combine(dir, executable);
+                if (File.Exists(full))
+                {
+                    return full;
+                }
+            }
+            return null;
         }
     }
 }
