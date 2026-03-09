@@ -44,11 +44,11 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
-          os: windows-2025-vs2026
+          os: windows-latest
           devScript: ./dev
 
         - runtime: win-arm64
-          os: windows-2025-vs2026
+          os: windows-latest
           devScript: ./dev
 
     runs-on: ${{ matrix.os }}
