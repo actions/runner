@@ -24,12 +24,13 @@ namespace GitHub.Runner.Common.Tests
                 try
                 {
 #if OS_WINDOWS
-                    string nodeFallback = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node20\bin\node.exe");
+                    string nodeExec = "node.exe"
 #else
                     hc.EnqueueInstance<IProcessInvoker>(new ProcessInvokerWrapper());
-                    string nodeFallback = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node20/bin/node");
+                    string nodeExec = "node";
 #endif
-                    string node = FindInPath("node") ?? nodeFallback;
+                    string nodeFallback = Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "externals", "node20", "bin", nodeExec);
+                    string node = FindInPath(nodeExec) ?? nodeFallback;
                     var startInfo = new ProcessStartInfo(node, "-e \"setTimeout(function(){{}}, 15 * 1000);\"");
                     startInfo.Environment[envName] = envValue;
                     sleep = Process.Start(startInfo);

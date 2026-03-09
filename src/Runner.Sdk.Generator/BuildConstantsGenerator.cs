@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -16,10 +17,10 @@ namespace GitHub.Runner.Sdk.Generator
             IncrementalValueProvider<(string CommitHash, string PackageRuntime, string RunnerVersion)> props =
                 context.AnalyzerConfigOptionsProvider.Select((options, _) =>
                 {
-                    string projectDir = ValueOrDefault(options.GlobalOptions, "build_property.MSBuildProjectDirectory", "");
-                    string commitHash = ValueOrDefault(options.GlobalOptions, "build_property.CommitHash", GetCommitHash(projectDir));
-                    string packageRuntime = ValueOrDefault(options.GlobalOptions, "build_property.PackageRuntime", GetRuntimeId());
-                    string runnerVersion = ValueOrDefault(options.GlobalOptions, "build_property.RunnerVersion", GetRunnerVersion(projectDir));
+                    string projectDir = ValueOrDefault(options.GlobalOptions, "build_property.MSBuildProjectDirectory", () => string.Empty);
+                    string commitHash = ValueOrDefault(options.GlobalOptions, "build_property.CommitHash", () => GetCommitHash(projectDir));
+                    string packageRuntime = ValueOrDefault(options.GlobalOptions, "build_property.PackageRuntime", () => GetRuntimeId());
+                    string runnerVersion = ValueOrDefault(options.GlobalOptions, "build_property.RunnerVersion", () => GetRunnerVersion(projectDir));
                     return (commitHash, packageRuntime, runnerVersion);
                 });
 
@@ -65,12 +66,12 @@ namespace GitHub.Runner.Sdk.Generator
             return $"{platform}-{RuntimeInformation.OSArchitecture}".ToLowerInvariant();
         }
 
-        private static string ValueOrDefault(AnalyzerConfigOptions options, string name, string defaultValue)
+        private static string ValueOrDefault(AnalyzerConfigOptions options, string name, Func<string> getDefaultValue)
         {
             options.TryGetValue(name, out string? value);
             if (string.IsNullOrEmpty(value))
             {
-                return defaultValue;
+                return getDefaultValue();
             }
 
             return value!;
