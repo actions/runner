@@ -24,7 +24,7 @@ namespace GitHub.Runner.Common.Tests
                 try
                 {
 #if OS_WINDOWS
-                    string nodeExec = "node.exe"
+                    string nodeExec = "node.exe";
 #else
                     hc.EnqueueInstance<IProcessInvoker>(new ProcessInvokerWrapper());
                     string nodeExec = "node";
