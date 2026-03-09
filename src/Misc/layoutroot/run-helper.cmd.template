@@ -2,16 +2,6 @@
 SET UPDATEFILE=update.finished
 "%~dp0\bin\Runner.Listener.exe" run %*
 SET RETURNCODE=%ERRORLEVEL%
-SET OUTDATED_EXIT_CODE_NUM=
-
-if not "%ACTIONS_RUNNER_OUTDATED_EXIT_CODE%"=="" (
-  set /a OUTDATED_EXIT_CODE_NUM=%ACTIONS_RUNNER_OUTDATED_EXIT_CODE% >NUL 2>NUL
-  if errorlevel 1 SET OUTDATED_EXIT_CODE_NUM=
-)
-
-if not "%OUTDATED_EXIT_CODE_NUM%"=="" (
-  if %OUTDATED_EXIT_CODE_NUM% LEQ 5 SET OUTDATED_EXIT_CODE_NUM=
-)
 
 rem using `if %ERRORLEVEL% EQU N` instead of `if ERRORLEVEL N`
 rem `if ERRORLEVEL N` means: error level is N or MORE
@@ -21,9 +11,9 @@ if %RETURNCODE% EQU 0 (
   exit /b 0
 )
 
-if not "%OUTDATED_EXIT_CODE_NUM%"=="" (
-  if "%RETURNCODE%"=="%OUTDATED_EXIT_CODE_NUM%" (
-    echo "Runner listener exit with outdated error code: %RETURNCODE%."
+if "%ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE%"=="1" (
+  if %RETURNCODE% EQU 7 (
+    echo "Runner listener exit with deprecated version error code: %RETURNCODE%."
     exit /b %RETURNCODE%
   )
 )

@@ -22,25 +22,15 @@ rem ****************************************************************************
 copy "%~dp0run-helper.cmd.template" "%~dp0run-helper.cmd" /Y
 call "%~dp0run-helper.cmd" %*
 set RETURNCODE=%ERRORLEVEL%
-set OUTDATED_EXIT_CODE_NUM=
-
-if not "%ACTIONS_RUNNER_OUTDATED_EXIT_CODE%"=="" (
-  set /a OUTDATED_EXIT_CODE_NUM=%ACTIONS_RUNNER_OUTDATED_EXIT_CODE% >NUL 2>NUL
-  if errorlevel 1 set OUTDATED_EXIT_CODE_NUM=
-)
-
-if not "%OUTDATED_EXIT_CODE_NUM%"=="" (
-  if %OUTDATED_EXIT_CODE_NUM% LEQ 5 set OUTDATED_EXIT_CODE_NUM=
-)
   
 if %RETURNCODE% EQU 1 (
   echo "Restarting runner..."
   goto :launch_helper
 )
 
-if not "%OUTDATED_EXIT_CODE_NUM%"=="" (
-  if "%RETURNCODE%"=="%OUTDATED_EXIT_CODE_NUM%" (
-    echo "Exiting runner with outdated error code: %RETURNCODE%"
+if "%ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE%"=="1" (
+  if %RETURNCODE% EQU 7 (
+    echo "Exiting runner with deprecated version error code: %RETURNCODE%"
     exit /b %RETURNCODE%
   )
 )
