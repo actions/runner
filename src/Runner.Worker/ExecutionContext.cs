@@ -77,8 +77,7 @@ namespace GitHub.Runner.Worker
 
         List<string> StepEnvironmentOverrides { get; }
 
-        ExecutionContext Root { get; }
-        ExecutionContext Parent { get; }
+        IExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -251,7 +250,9 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public ExecutionContext Root
+        IExecutionContext IExecutionContext.Root => Root;
+
+        private ExecutionContext Root
         {
             get
             {
@@ -266,13 +267,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public ExecutionContext Parent
-        {
-            get
-            {
-                return _parentExecutionContext;
-            }
-        }
+
 
         public JobContext JobContext
         {
