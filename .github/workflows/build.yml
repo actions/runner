@@ -111,10 +111,10 @@ jobs:
           core.setOutput('version', version);
 
     - name: Setup Docker buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Build Docker image
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: ./images
         load: true
