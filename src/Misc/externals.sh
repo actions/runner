@@ -6,7 +6,7 @@ NODE_URL=https://nodejs.org/dist
 NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
 # When you update Node versions you must also create a new release of alpine_nodejs at that updated version.
 # Follow the instructions here: https://github.com/actions/alpine_nodejs?tab=readme-ov-file#getting-started
-NODE20_VERSION="20.20.0"
+NODE20_VERSION="20.20.1"
 NODE24_VERSION="24.14.0"
 
 get_abs_path() {
