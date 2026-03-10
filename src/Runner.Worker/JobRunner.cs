@@ -121,6 +121,11 @@ namespace GitHub.Runner.Worker
                 jobContext.Start();
                 jobContext.Debug($"Starting: {message.JobDisplayName}");
 
+                if (jobContext.Global.EnableDebugger)
+                {
+                    Trace.Info("Debugger enabled for this job run");
+                }
+
                 runnerShutdownRegistration = HostContext.RunnerShutdownToken.Register(() =>
                 {
                     // log an issue, then runner get shutdown by Ctrl-C or Ctrl-Break.
