@@ -17,9 +17,10 @@ LAYOUT_DIR="$SCRIPT_DIR/../_layout"
 DOWNLOAD_DIR="$SCRIPT_DIR/../_downloads/netcore2x"
 PACKAGE_DIR="$SCRIPT_DIR/../_package"
 DOTNETSDK_ROOT="$SCRIPT_DIR/../_dotnetsdk"
-DOTNETSDK_VERSION="8.0.418"
+DOTNETSDK_VERSION="10.0.103"
 DOTNETSDK_INSTALLDIR="$DOTNETSDK_ROOT/$DOTNETSDK_VERSION"
 RUNNER_VERSION=$(cat runnerversion)
+GIT_COMMIT_HASH=$(git rev-parse HEAD)
 
 pushd "$SCRIPT_DIR"
 
@@ -116,21 +117,21 @@ function heading()
 {
     echo
     echo
-    echo "-----------------------------------------"
+    echo "----------------------------------------------------------------------------------"
     echo "  ${1}"
-    echo "-----------------------------------------"
+    echo "----------------------------------------------------------------------------------"
 }
 
 function build ()
 {
-    heading "Building ..."
-    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed build
+    heading "Building $RUNNER_VERSION: $GIT_COMMIT_HASH --- $RUNTIME_ID ..."
+    dotnet msbuild -t:Build -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" -p:CommitHash="${GIT_COMMIT_HASH}" ./dir.proj || failed build
 }
 
 function layout ()
 {
-    heading "Create layout ..."
-    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed build
+    heading "Create $RUNNER_VERSION: $GIT_COMMIT_HASH --- $RUNTIME_ID ..."
+    dotnet msbuild -t:layout -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" -p:CommitHash="${GIT_COMMIT_HASH}" ./dir.proj || failed build
 
     #change execution flag to allow running with sudo
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
@@ -147,13 +148,13 @@ function layout ()
 
 function runtest ()
 {
-    heading "Testing ..."
+    heading "Testing $RUNNER_VERSION: $GIT_COMMIT_HASH --- $RUNTIME_ID ..."
 
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
         ulimit -n 1024
     fi
 
-    dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests"
+    dotnet test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" -p:CommitHash="${GIT_COMMIT_HASH}" Test/Test.csproj || failed "failed tests"
 }
 
 function format()
