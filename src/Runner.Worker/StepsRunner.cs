@@ -10,6 +10,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Dap;
 using GitHub.Runner.Worker.Expressions;
 
 namespace GitHub.Runner.Worker
@@ -50,6 +51,16 @@ namespace GitHub.Runner.Worker
             jobContext.JobContext.Status = (jobContext.Result ?? TaskResult.Succeeded).ToActionResult();
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             bool checkPostJobActions = false;
+            IDapDebugSession debugSession = null;
+            try
+            {
+                debugSession = HostContext.GetService<IDapDebugSession>();
+            }
+            catch
+            {
+                // Debug session not available — continue without debugging
+            }
+            bool isFirstStep = true;
             while (jobContext.JobSteps.Count > 0 || !checkPostJobActions)
             {
                 if (jobContext.JobSteps.Count == 0 && !checkPostJobActions)
@@ -226,9 +237,35 @@ namespace GitHub.Runner.Worker
                         }
                         else
                         {
+                            // Pause for DAP debugger before step execution
+                            if (debugSession?.IsActive == true)
+                            {
+                                try
+                                {
+                                    await debugSession.OnStepStartingAsync(step, jobContext, isFirstStep, jobContext.CancellationToken);
+                                    isFirstStep = false;
+                                }
+                                catch (Exception ex)
+                                {
+                                    Trace.Warning($"DAP OnStepStarting error: {ex.Message}");
+                                }
+                            }
+
                             // Run the step
                             await RunStepAsync(step, jobContext.CancellationToken);
                             CompleteStep(step);
+
+                            if (debugSession?.IsActive == true)
+                            {
+                                try
+                                {
+                                    debugSession.OnStepCompleted(step);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Trace.Warning($"DAP OnStepCompleted error: {ex.Message}");
+                                }
+                            }
                         }
                     }
                     finally
@@ -254,6 +291,18 @@ namespace GitHub.Runner.Worker
                 }
 
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
+            }
+
+            if (debugSession?.IsActive == true)
+            {
+                try
+                {
+                    debugSession.OnJobCompleted();
+                }
+                catch (Exception ex)
+                {
+                    Trace.Warning($"DAP OnJobCompleted error: {ex.Message}");
+                }
             }
         }
 
