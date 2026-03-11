@@ -28,8 +28,8 @@ namespace GitHub.Runner.Worker.Handlers
     public abstract class Handler : RunnerService
     {
 #if OS_WINDOWS
-        // In windows OS the maximum supported size of a environment variable value is 32k.
-        // You can set environment variable greater then 32K, but that variable will not be able to read in node.exe.
+        // In windows OS the maximum supported size of an environment variable value is 32k.
+        // You can set environment variable greater than 32K, but that variable will not be able to read in node.exe.
         private const int _environmentVariableMaximumSize = 32766;
 #endif
 

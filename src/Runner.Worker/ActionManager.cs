@@ -700,7 +700,7 @@ namespace GitHub.Runner.Worker
                 catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is cancelled.
                 {
                     // UnresolvableActionDownloadInfoException is a 422 client error, don't retry
-                    // NonRetryableActionDownloadInfoException is an non-retryable exception from Actions
+                    // NonRetryableActionDownloadInfoException is a non-retryable exception from Actions
                     // Some possible cases are:
                     // * Repo is rate limited
                     // * Repo or tag doesn't exist, or isn't public
@@ -895,7 +895,7 @@ namespace GitHub.Runner.Worker
                 }
                 catch (InvalidDataException e)
                 {
-                    throw new InvalidActionArchiveException($"Can't un-zip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. error: {e}.");
+                    throw new InvalidActionArchiveException($"Can't unzip archive file: {archiveFile}. action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. error: {e}.");
                 }
 #else
                 string tar = WhichUtil.Which("tar", require: true, trace: Trace);

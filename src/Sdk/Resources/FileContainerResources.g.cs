@@ -6,7 +6,7 @@ namespace GitHub.Services.WebApi
     {
         public static string ArtifactUriNotSupportedException(object arg0)
         {
-            const string Format = @"The artifact Uri {0} is not supported.";
+            const string Format = @"The artifact URI {0} is not supported.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 

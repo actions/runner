@@ -47,7 +47,7 @@ namespace GitHub.Runner.Listener
         // <summary>
         // Helps avoid excessive calls to Run Service when encountering non-retriable errors from /acquirejob.
         // Normally we rely on the HTTP clients to back off between retry attempts. However, acquiring a job
-        // involves calls to both Run Serivce and Broker. And Run Service and Broker communicate with each other
+        // involves calls to both Run Service and Broker. And Run Service and Broker communicate with each other
         // in an async fashion.
         //
         // When Run Service encounters a non-retriable error, it sends an async message to Broker. The runner will,
@@ -190,7 +190,7 @@ namespace GitHub.Runner.Listener
 
                 // warmup runner process (JIT/CLR)
                 // In scenarios where the runner is single use (used and then thrown away), the system provisioning the runner can call `Runner.Listener --warmup` before the machine is made available to the pool for use.
-                // this will optimizes the runner process startup time.
+                // this will optimize the runner process startup time.
                 if (command.Warmup)
                 {
                     var binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
@@ -293,7 +293,7 @@ namespace GitHub.Runner.Listener
                         // We need try our best to make the startup type accurate
                         // The problem is coming from runner autoupgrade, which result an old version service host binary but a newer version runner binary
                         // At that time the servicehost won't pass --startuptype to Runner.Listener while the runner is actually running as service.
-                        // We will guess the startup type only when the runner is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
+                        // We will guess the startup type only when the runner is configured as service and the guess will be based on whether STDOUT/STDERR/STDIN been redirect or not
                         Trace.Info($"Try determine runner startup type base on console redirects.");
                         startType = (Console.IsErrorRedirected && Console.IsInputRedirected && Console.IsOutputRedirected) ? StartupType.Service : StartupType.Manual;
                     }
@@ -536,7 +536,7 @@ namespace GitHub.Runner.Listener
                                     autoUpdateInProgress = false;
                                     if (await selfUpdateTask)
                                     {
-                                        Trace.Info("Auto update task finished at backend, an runner update is ready to apply exit the current runner instance.");
+                                        Trace.Info("Auto update task finished at backend, a runner update is ready to apply exit the current runner instance.");
                                         Trace.Info("Stop message queue looping.");
                                         messageQueueLoopTokenSource.Cancel();
                                         try
@@ -852,7 +852,7 @@ namespace GitHub.Runner.Listener
                         catch (Exception ex) when (runOnce)
                         {
                             // ignore exception during delete session for ephemeral runner since the runner might already be deleted from the server side
-                            // and the delete session call will ends up with 401.
+                            // and the delete session call will end up with 401.
                             Trace.Info($"Ignore any exception during DeleteSession for an ephemeral runner. {ex}");
                         }
                     }
@@ -1112,7 +1112,7 @@ namespace GitHub.Runner.Listener
             _term.WriteLine($@"
 Commands:
  .{separator}config.{ext}         Configures the runner
- .{separator}config.{ext} remove  Unconfigures the runner
+ .{separator}config.{ext} remove  Deconfigures the runner
  .{separator}run.{ext}            Runs the runner interactively. Does not require any options.
 
 Options:
@@ -1134,7 +1134,7 @@ Config Options:
  --replace              Replace any existing runner with the same name (default false)
  --pat                  GitHub personal access token with repo scope. Used for checking network connectivity when executing `.{separator}run.{ext} --check`
  --disableupdate        Disable self-hosted runner automatic update to the latest released version`
- --ephemeral            Configure the runner to only take one job and then let the service un-configure the runner after the job finishes (default false)");
+ --ephemeral            Configure the runner to only take one job and then let the service deconfigure the runner after the job finishes (default false)");
 
 #if OS_WINDOWS
     _term.WriteLine($@" --runasservice   Run the runner as a service");

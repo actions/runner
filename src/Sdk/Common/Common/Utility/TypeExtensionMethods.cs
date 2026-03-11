@@ -10,7 +10,7 @@ namespace GitHub.Services.Common
     public static class TypeExtensionMethods
     {
         /// <summary>
-        /// Determins if a value is assignable to the requested type.  It goes
+        /// Determines if a value is assignable to the requested type.  It goes
         /// the extra step beyond IsAssignableFrom in that it also checks for
         /// IConvertible and attempts to convert the value.
         /// </summary>
@@ -220,7 +220,7 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Portable compliant way to get a constructor with specified arguments.  This will return a constructor that is public or private as long as the arguments match.  NULL will be returned if there is no match.
-        /// Note that it will pick the first one it finds that matches, which is not necesarily the best match.
+        /// Note that it will pick the first one it finds that matches, which is not necessarily the best match.
         /// </summary>
         /// <param name="type">The Type that has the constructor</param>
         /// <param name="parameterTypes">The type of the arguments for the constructor.</param>
@@ -232,7 +232,7 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Portable compliant way to get a constructor with specified arguments from a prefiltered list.  This will return a constructor that is public or private as long as the arguments match.  NULL will be returned if there is no match.
-        /// Note that it will pick the first one it finds that matches, which is not necesarily the best match.
+        /// Note that it will pick the first one it finds that matches, which is not necessarily the best match.
         /// </summary>
         /// <param name="constructors">Prefiltered list of constructors</param>
         /// <param name="parameterTypes">The type of the arguments for the constructor.</param>
