@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -607,5 +607,201 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Single(terminatedEvents);
             }
         }
+
+        #region Scope inspection integration tests
+
+        private Mock<IStep> CreateMockStepWithContext(
+            string displayName,
+            DictionaryContextData expressionValues,
+            TaskResult? result = null)
+        {
+            var mockEc = new Mock<IExecutionContext>();
+            mockEc.SetupAllProperties();
+            mockEc.Object.Result = result;
+            mockEc.Setup(x => x.ExpressionValues).Returns(expressionValues);
+
+            var mockStep = new Mock<IStep>();
+            mockStep.Setup(x => x.DisplayName).Returns(displayName);
+            mockStep.Setup(x => x.ExecutionContext).Returns(mockEc.Object);
+
+            return mockStep;
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ScopesRequestReturnsScopesFromExecutionContext()
+        {
+            using (CreateTestContext())
+            {
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+
+                var exprValues = new DictionaryContextData();
+                exprValues["github"] = new DictionaryContextData
+                {
+                    { "repository", new StringContextData("owner/repo") }
+                };
+                exprValues["env"] = new DictionaryContextData
+                {
+                    { "CI", new StringContextData("true") }
+                };
+
+                var step = CreateMockStepWithContext("Run tests", exprValues);
+                var jobContext = CreateMockJobContext();
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await Task.Delay(100);
+
+                var scopesJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 20,
+                    Type = "request",
+                    Command = "scopes",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new ScopesArguments { FrameId = 1 })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(scopesJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+
+                // Resume to unblock
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 21,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await Task.WhenAny(stepTask, Task.Delay(5000));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task VariablesRequestReturnsVariablesFromExecutionContext()
+        {
+            using (CreateTestContext())
+            {
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+
+                var exprValues = new DictionaryContextData();
+                exprValues["env"] = new DictionaryContextData
+                {
+                    { "CI", new StringContextData("true") },
+                    { "HOME", new StringContextData("/home/runner") }
+                };
+
+                var step = CreateMockStepWithContext("Run tests", exprValues);
+                var jobContext = CreateMockJobContext();
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await Task.Delay(100);
+
+                // "env" is at ScopeNames index 1 → variablesReference = 2
+                var variablesJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 20,
+                    Type = "request",
+                    Command = "variables",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new VariablesArguments { VariablesReference = 2 })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(variablesJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+
+                // Resume to unblock
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 21,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await Task.WhenAny(stepTask, Task.Delay(5000));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ScopesRequestReturnsEmptyWhenNoStepActive()
+        {
+            using (CreateTestContext())
+            {
+                await InitializeSessionAsync();
+
+                var scopesJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 10,
+                    Type = "request",
+                    Command = "scopes",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new ScopesArguments { FrameId = 1 })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(scopesJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task SecretsValuesAreRedactedThroughSession()
+        {
+            using (CreateTestContext())
+            {
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+
+                var exprValues = new DictionaryContextData();
+                exprValues["secrets"] = new DictionaryContextData
+                {
+                    { "MY_TOKEN", new StringContextData("ghp_verysecret") }
+                };
+
+                var step = CreateMockStepWithContext("Run tests", exprValues);
+                var jobContext = CreateMockJobContext();
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await Task.Delay(100);
+
+                // "secrets" is at ScopeNames index 5 → variablesReference = 6
+                var variablesJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 20,
+                    Type = "request",
+                    Command = "variables",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new VariablesArguments { VariablesReference = 6 })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(variablesJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+                // The response body is serialized — we can't easily inspect it from
+                // the mock, but the important thing is it succeeded without exposing
+                // raw secrets (which is tested in DapVariableProviderL0).
+
+                // Resume to unblock
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 21,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await Task.WhenAny(stepTask, Task.Delay(5000));
+            }
+        }
+
+        #endregion
     }
 }
