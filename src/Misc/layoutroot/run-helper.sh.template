@@ -76,6 +76,6 @@ elif [[ $returnCode == 5 ]]; then
     echo "Runner listener exit with Session Conflict error, stop the service, no retry needed."
     exit 0
 else
-    echo "NOO Exiting with unknown error code: ${returnCode}"
+    echo "Exiting with unknown error code: ${returnCode}"
     exit 0
 fi
