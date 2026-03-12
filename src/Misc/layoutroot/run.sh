@@ -45,7 +45,7 @@ runWithManualTrap() {
         returnCode=$?
         if [[ $returnCode -eq 2 ]]; then
             echo "Restarting runner..."
-        elif [[ "$ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE" == "1" && $returnCode -eq 6 ]]; then
+        elif [[ "$ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE" == "1" && $returnCode -eq 7 ]]; then
             echo "Exiting runner..."
             exit "$returnCode"
         else
