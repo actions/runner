@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -306,8 +306,19 @@ namespace GitHub.Runner.Worker.Dap
 
             if (value == null)
             {
-                variable.Value = "null";
+                variable.Value = isSecretsScope ? RedactedValue : "null";
                 variable.Type = "null";
+                variable.VariablesReference = 0;
+                return variable;
+            }
+
+            // Secrets scope: redact ALL values regardless of underlying type.
+            // Keys are visible but values are always replaced with the
+            // redaction marker, and nested containers are not drillable.
+            if (isSecretsScope)
+            {
+                variable.Value = RedactedValue;
+                variable.Type = "string";
                 variable.VariablesReference = 0;
                 return variable;
             }
@@ -315,7 +326,7 @@ namespace GitHub.Runner.Worker.Dap
             switch (value)
             {
                 case StringContextData str:
-                    variable.Value = isSecretsScope ? RedactedValue : MaskSecrets(str.Value);
+                    variable.Value = MaskSecrets(str.Value);
                     variable.Type = "string";
                     variable.VariablesReference = 0;
                     break;
@@ -355,7 +366,7 @@ namespace GitHub.Runner.Worker.Dap
 
                 default:
                     var rawValue = value.ToJToken()?.ToString() ?? "unknown";
-                    variable.Value = isSecretsScope ? RedactedValue : MaskSecrets(rawValue);
+                    variable.Value = MaskSecrets(rawValue);
                     variable.Type = value.GetType().Name;
                     variable.VariablesReference = 0;
                     break;
