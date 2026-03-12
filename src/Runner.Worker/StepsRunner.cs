@@ -243,12 +243,12 @@ namespace GitHub.Runner.Worker
                                 try
                                 {
                                     await debugSession.OnStepStartingAsync(step, jobContext, isFirstStep, jobContext.CancellationToken);
-                                    isFirstStep = false;
                                 }
                                 catch (Exception ex)
                                 {
                                     Trace.Warning($"DAP OnStepStarting error: {ex.Message}");
                                 }
+                                isFirstStep = false;
                             }
 
                             // Run the step

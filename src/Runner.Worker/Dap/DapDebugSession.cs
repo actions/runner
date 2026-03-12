@@ -159,7 +159,8 @@ namespace GitHub.Runner.Worker.Dap
                 Trace.Error($"Error handling request '{request?.Command}': {ex}");
                 if (request != null)
                 {
-                    var errorResponse = CreateResponse(request, false, ex.Message, body: null);
+                    var maskedMessage = HostContext?.SecretMasker?.MaskSecrets(ex.Message) ?? ex.Message;
+                    var errorResponse = CreateResponse(request, false, maskedMessage, body: null);
                     errorResponse.RequestSeq = request.Seq;
                     errorResponse.Command = request.Command;
                     _server?.SendResponse(errorResponse);
@@ -631,15 +632,15 @@ namespace GitHub.Runner.Worker.Dap
 
         public void OnJobCompleted()
         {
-            if (!IsActive)
-            {
-                return;
-            }
-
             Trace.Info("Job completed, sending terminated event");
 
             lock (_stateLock)
             {
+                if (_state == DapSessionState.Terminated)
+                {
+                    Trace.Info("Session already terminated, skipping OnJobCompleted events");
+                    return;
+                }
                 _state = DapSessionState.Terminated;
             }
 
@@ -742,6 +743,10 @@ namespace GitHub.Runner.Worker.Dap
         {
             lock (_stateLock)
             {
+                if (_state == DapSessionState.Terminated)
+                {
+                    return;
+                }
                 _state = DapSessionState.Paused;
                 _commandTcs = new TaskCompletionSource<DapCommand>(TaskCreationOptions.RunContinuationsAsynchronously);
             }
