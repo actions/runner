@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -89,8 +89,9 @@ namespace GitHub.Runner.Worker.Dap
 
             _trace.Info($"REPL shell: {shellCommand}, argFormat: {argFormat}");
 
-            // 2. Prepare the script content
-            var contents = command.Script;
+            // 2. Expand ${{ }} expressions in the script body, just like
+            //    ActionRunner evaluates step inputs before ScriptHandler sees them
+            var contents = ExpandExpressions(command.Script, context);
             contents = ScriptHandlerHelpers.FixUpScriptContents(shellCommand, contents);
 
             // Write to a temp file (same pattern as ScriptHandler)
@@ -198,6 +199,73 @@ namespace GitHub.Runner.Worker.Dap
         }
 
         /// <summary>
+        /// Expands <c>${{ }}</c> expressions in the input string using the
+        /// runner's template evaluator — the same evaluation path that processes
+        /// step inputs before <see cref="ScriptHandler"/> runs them.
+        ///
+        /// Each <c>${{ expr }}</c> occurrence is individually evaluated and
+        /// replaced with its masked string result, mirroring the semantics of
+        /// expression interpolation in a workflow <c>run:</c> step body.
+        /// </summary>
+        private string ExpandExpressions(string input, IExecutionContext context)
+        {
+            if (string.IsNullOrEmpty(input) || !input.Contains("${{"))
+            {
+                return input ?? string.Empty;
+            }
+
+            var result = new StringBuilder();
+            int pos = 0;
+
+            while (pos < input.Length)
+            {
+                var start = input.IndexOf("${{", pos, StringComparison.Ordinal);
+                if (start < 0)
+                {
+                    result.Append(input, pos, input.Length - pos);
+                    break;
+                }
+
+                // Append the literal text before the expression
+                result.Append(input, pos, start - pos);
+
+                var end = input.IndexOf("}}", start + 3, StringComparison.Ordinal);
+                if (end < 0)
+                {
+                    // Unterminated expression — keep literal
+                    result.Append(input, start, input.Length - start);
+                    break;
+                }
+
+                var expr = input.Substring(start + 3, end - start - 3).Trim();
+                end += 2; // skip past "}}"
+
+                // Evaluate the expression
+                try
+                {
+                    var templateEvaluator = context.ToPipelineTemplateEvaluator();
+                    var token = new GitHub.DistributedTask.ObjectTemplating.Tokens.BasicExpressionToken(
+                        null, null, null, expr);
+                    var evaluated = templateEvaluator.EvaluateStepDisplayName(
+                        token,
+                        context.ExpressionValues,
+                        context.ExpressionFunctions);
+                    result.Append(_hostContext.SecretMasker.MaskSecrets(evaluated ?? string.Empty));
+                }
+                catch (Exception ex)
+                {
+                    _trace.Warning($"Expression expansion failed for '{expr}': {ex.Message}");
+                    // Keep the original expression literal on failure
+                    result.Append(input, start, end - start);
+                }
+
+                pos = end;
+            }
+
+            return result.ToString();
+        }
+
+        /// <summary>
         /// Resolves the default shell the same way <see cref="ScriptHandler"/>
         /// does: check job defaults, then fall back to platform default.
         /// </summary>
@@ -270,12 +338,13 @@ namespace GitHub.Runner.Worker.Dap
                 }
             }
 
-            // Apply REPL-specific overrides last (so they win)
+            // Apply REPL-specific overrides last (so they win),
+            // expanding any ${{ }} expressions in the values
             if (replEnv != null)
             {
                 foreach (var pair in replEnv)
                 {
-                    env[pair.Key] = pair.Value;
+                    env[pair.Key] = ExpandExpressions(pair.Value, context);
                 }
             }
 
