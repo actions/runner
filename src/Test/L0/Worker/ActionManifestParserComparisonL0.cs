@@ -379,6 +379,40 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Load_BothParsersRejectInvalidExpressionContext()
+        {
+            try
+            {
+                // Arrange — regression test: both parsers must reject github context
+                // in container-runs-env (only inputs is allowed per schema)
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var legacyManager = new ActionManifestManagerLegacy();
+                legacyManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManagerLegacy>(legacyManager);
+
+                var newManager = new ActionManifestManager();
+                newManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManager>(newManager);
+
+                var wrapper = new ActionManifestManagerWrapper();
+                wrapper.Initialize(_hc);
+
+                var manifestPath = Path.Combine(TestUtil.GetTestDataPath(), "dockerfileaction_env_invalid_context.yml");
+
+                // Act & Assert — both parsers should reject, wrapper should throw
+                Assert.Throws<ArgumentException>(() => wrapper.Load(_ec.Object, manifestPath));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         private string GetFullExceptionMessage(Exception ex)
         {
             var messages = new List<string>();
