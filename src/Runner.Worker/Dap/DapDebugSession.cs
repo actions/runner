@@ -19,12 +19,13 @@ namespace GitHub.Runner.Worker.Dap
     }
 
     /// <summary>
-    /// Minimal production DAP debug session.
+    /// Production DAP debug session.
     /// Handles step-level breakpoints with next/continue flow control,
-    /// client reconnection, and cancellation signal propagation.
+    /// scope/variable inspection, client reconnection, and cancellation
+    /// signal propagation.
     ///
-    /// Scope inspection, REPL, step manipulation, and time-travel debugging
-    /// are intentionally deferred to future iterations.
+    /// REPL, step manipulation, and time-travel debugging are intentionally
+    /// deferred to future iterations.
     /// </summary>
     public sealed class DapDebugSession : RunnerService, IDapDebugSession
     {
@@ -62,6 +63,9 @@ namespace GitHub.Runner.Worker.Dap
         // Client connection tracking for reconnection support
         private volatile bool _isClientConnected;
 
+        // Scope/variable inspection provider — reusable by future DAP features
+        private DapVariableProvider _variableProvider;
+
         public bool IsActive =>
             _state == DapSessionState.Ready ||
             _state == DapSessionState.Paused ||
@@ -72,6 +76,7 @@ namespace GitHub.Runner.Worker.Dap
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+            _variableProvider = new DapVariableProvider(hostContext);
             Trace.Info("DapDebugSession initialized");
         }
 
@@ -321,19 +326,43 @@ namespace GitHub.Runner.Worker.Dap
 
         private Response HandleScopes(Request request)
         {
-            // MVP: return empty scopes — scope inspection deferred
+            var args = request.Arguments?.ToObject<ScopesArguments>();
+            var frameId = args?.FrameId ?? CurrentFrameId;
+
+            var context = GetExecutionContextForFrame(frameId);
+            if (context == null)
+            {
+                return CreateResponse(request, true, body: new ScopesResponseBody
+                {
+                    Scopes = new List<Scope>()
+                });
+            }
+
+            var scopes = _variableProvider.GetScopes(context);
             return CreateResponse(request, true, body: new ScopesResponseBody
             {
-                Scopes = new List<Scope>()
+                Scopes = scopes
             });
         }
 
         private Response HandleVariables(Request request)
         {
-            // MVP: return empty variables — variable inspection deferred
+            var args = request.Arguments?.ToObject<VariablesArguments>();
+            var variablesRef = args?.VariablesReference ?? 0;
+
+            var context = _currentStep?.ExecutionContext ?? _jobContext;
+            if (context == null)
+            {
+                return CreateResponse(request, true, body: new VariablesResponseBody
+                {
+                    Variables = new List<Variable>()
+                });
+            }
+
+            var variables = _variableProvider.GetVariables(context, variablesRef);
             return CreateResponse(request, true, body: new VariablesResponseBody
             {
-                Variables = new List<Variable>()
+                Variables = variables
             });
         }
 
@@ -401,6 +430,10 @@ namespace GitHub.Runner.Worker.Dap
             _currentStep = step;
             _jobContext = jobContext;
             _currentStepIndex = _completedSteps.Count;
+
+            // Reset variable references so stale nested refs from the
+            // previous step are not served to the client.
+            _variableProvider?.Reset();
 
             // Determine if we should pause
             bool shouldPause = isFirstStep || _pauseOnNextStep;
@@ -596,6 +629,23 @@ namespace GitHub.Runner.Worker.Dap
                     });
                 }
             }
+        }
+
+        /// <summary>
+        /// Resolves the execution context for a given stack frame ID.
+        /// Frame 1 = current step; frames 1000+ = completed steps (no
+        /// context available — those steps have already finished).
+        /// Falls back to the job-level context when no step is active.
+        /// </summary>
+        private IExecutionContext GetExecutionContextForFrame(int frameId)
+        {
+            if (frameId == CurrentFrameId)
+            {
+                return _currentStep?.ExecutionContext ?? _jobContext;
+            }
+
+            // Completed-step frames don't carry a live execution context.
+            return null;
         }
 
         /// <summary>
