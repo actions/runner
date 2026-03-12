@@ -66,6 +66,9 @@ namespace GitHub.Runner.Worker.Dap
         // Scope/variable inspection provider — reusable by future DAP features
         private DapVariableProvider _variableProvider;
 
+        // REPL command executor for run() commands
+        private DapReplExecutor _replExecutor;
+
         public bool IsActive =>
             _state == DapSessionState.Ready ||
             _state == DapSessionState.Paused ||
@@ -83,6 +86,7 @@ namespace GitHub.Runner.Worker.Dap
         public void SetDapServer(IDapServer server)
         {
             _server = server;
+            _replExecutor = new DapReplExecutor(HostContext, server);
             Trace.Info("DAP server reference set");
         }
 
@@ -114,23 +118,30 @@ namespace GitHub.Runner.Worker.Dap
 
                 Trace.Info($"Handling DAP request: {request.Command}");
 
-                var response = request.Command switch
+                Response response;
+                if (request.Command == "evaluate")
                 {
-                    "initialize" => HandleInitialize(request),
-                    "attach" => HandleAttach(request),
-                    "configurationDone" => HandleConfigurationDone(request),
-                    "disconnect" => HandleDisconnect(request),
-                    "threads" => HandleThreads(request),
-                    "stackTrace" => HandleStackTrace(request),
-                    "scopes" => HandleScopes(request),
-                    "variables" => HandleVariables(request),
-                    "evaluate" => HandleEvaluate(request),
-                    "continue" => HandleContinue(request),
-                    "next" => HandleNext(request),
-                    "setBreakpoints" => HandleSetBreakpoints(request),
-                    "setExceptionBreakpoints" => HandleSetExceptionBreakpoints(request),
-                    _ => CreateResponse(request, false, $"Unsupported command: {request.Command}", body: null)
-                };
+                    response = await HandleEvaluateAsync(request, cancellationToken);
+                }
+                else
+                {
+                    response = request.Command switch
+                    {
+                        "initialize" => HandleInitialize(request),
+                        "attach" => HandleAttach(request),
+                        "configurationDone" => HandleConfigurationDone(request),
+                        "disconnect" => HandleDisconnect(request),
+                        "threads" => HandleThreads(request),
+                        "stackTrace" => HandleStackTrace(request),
+                        "scopes" => HandleScopes(request),
+                        "variables" => HandleVariables(request),
+                        "continue" => HandleContinue(request),
+                        "next" => HandleNext(request),
+                        "setBreakpoints" => HandleSetBreakpoints(request),
+                        "setExceptionBreakpoints" => HandleSetExceptionBreakpoints(request),
+                        _ => CreateResponse(request, false, $"Unsupported command: {request.Command}", body: null)
+                    };
+                }
 
                 response.RequestSeq = request.Seq;
                 response.Command = request.Command;
@@ -148,8 +159,6 @@ namespace GitHub.Runner.Worker.Dap
                     _server?.SendResponse(errorResponse);
                 }
             }
-
-            await Task.CompletedTask;
         }
 
         #endregion
@@ -367,18 +376,94 @@ namespace GitHub.Runner.Worker.Dap
             });
         }
 
-        private Response HandleEvaluate(Request request)
+        private async Task<Response> HandleEvaluateAsync(Request request, CancellationToken cancellationToken)
         {
             var args = request.Arguments?.ToObject<EvaluateArguments>();
             var expression = args?.Expression ?? string.Empty;
             var frameId = args?.FrameId ?? CurrentFrameId;
+            var evalContext = args?.Context ?? "hover";
 
-            Trace.Info($"Evaluate request: '{expression}' (frame: {frameId}, context: {args?.Context ?? "unknown"})");
+            Trace.Info($"Evaluate request: '{expression}' (frame: {frameId}, context: {evalContext})");
 
+            // REPL context → route through the DSL dispatcher
+            if (string.Equals(evalContext, "repl", StringComparison.OrdinalIgnoreCase))
+            {
+                var result = await HandleReplInputAsync(expression, frameId, cancellationToken);
+                return CreateResponse(request, true, body: result);
+            }
+
+            // Watch/hover/variables/clipboard → expression evaluation only
             var context = GetExecutionContextForFrame(frameId);
-            var result = _variableProvider.EvaluateExpression(expression, context);
+            var evalResult = _variableProvider.EvaluateExpression(expression, context);
+            return CreateResponse(request, true, body: evalResult);
+        }
 
-            return CreateResponse(request, true, body: result);
+        /// <summary>
+        /// Routes REPL input through the DSL parser. If the input matches a
+        /// known command it is dispatched; otherwise it falls through to
+        /// expression evaluation.
+        /// </summary>
+        private async Task<EvaluateResponseBody> HandleReplInputAsync(
+            string input,
+            int frameId,
+            CancellationToken cancellationToken)
+        {
+            // Try to parse as a DSL command
+            var command = DapReplParser.TryParse(input, out var parseError);
+
+            if (parseError != null)
+            {
+                return new EvaluateResponseBody
+                {
+                    Result = parseError,
+                    Type = "error",
+                    VariablesReference = 0
+                };
+            }
+
+            if (command != null)
+            {
+                return await DispatchReplCommandAsync(command, frameId, cancellationToken);
+            }
+
+            // Not a DSL command → evaluate as a GitHub Actions expression
+            // (this lets the REPL console also work for ad-hoc expression queries)
+            var context = GetExecutionContextForFrame(frameId);
+            return _variableProvider.EvaluateExpression(input, context);
+        }
+
+        private async Task<EvaluateResponseBody> DispatchReplCommandAsync(
+            DapReplCommand command,
+            int frameId,
+            CancellationToken cancellationToken)
+        {
+            switch (command)
+            {
+                case HelpCommand help:
+                    var helpText = string.IsNullOrEmpty(help.Topic)
+                        ? DapReplParser.GetGeneralHelp()
+                        : help.Topic.Equals("run", StringComparison.OrdinalIgnoreCase)
+                            ? DapReplParser.GetRunHelp()
+                            : $"Unknown help topic: {help.Topic}. Try: help or help(\"run\")";
+                    return new EvaluateResponseBody
+                    {
+                        Result = helpText,
+                        Type = "string",
+                        VariablesReference = 0
+                    };
+
+                case RunCommand run:
+                    var context = GetExecutionContextForFrame(frameId);
+                    return await _replExecutor.ExecuteRunCommandAsync(run, context, cancellationToken);
+
+                default:
+                    return new EvaluateResponseBody
+                    {
+                        Result = $"Unknown command type: {command.GetType().Name}",
+                        Type = "error",
+                        VariablesReference = 0
+                    };
+            }
         }
 
         private Response HandleContinue(Request request)
