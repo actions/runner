@@ -124,6 +124,7 @@ namespace GitHub.Runner.Worker.Dap
                     "stackTrace" => HandleStackTrace(request),
                     "scopes" => HandleScopes(request),
                     "variables" => HandleVariables(request),
+                    "evaluate" => HandleEvaluate(request),
                     "continue" => HandleContinue(request),
                     "next" => HandleNext(request),
                     "setBreakpoints" => HandleSetBreakpoints(request),
@@ -179,7 +180,7 @@ namespace GitHub.Runner.Worker.Dap
                 // All other capabilities are false for MVP
                 SupportsFunctionBreakpoints = false,
                 SupportsConditionalBreakpoints = false,
-                SupportsEvaluateForHovers = false,
+                SupportsEvaluateForHovers = true,
                 SupportsStepBack = false,
                 SupportsSetVariable = false,
                 SupportsRestartFrame = false,
@@ -364,6 +365,20 @@ namespace GitHub.Runner.Worker.Dap
             {
                 Variables = variables
             });
+        }
+
+        private Response HandleEvaluate(Request request)
+        {
+            var args = request.Arguments?.ToObject<EvaluateArguments>();
+            var expression = args?.Expression ?? string.Empty;
+            var frameId = args?.FrameId ?? CurrentFrameId;
+
+            Trace.Info($"Evaluate request: '{expression}' (frame: {frameId}, context: {args?.Context ?? "unknown"})");
+
+            var context = GetExecutionContextForFrame(frameId);
+            var result = _variableProvider.EvaluateExpression(expression, context);
+
+            return CreateResponse(request, true, body: result);
         }
 
         private Response HandleContinue(Request request)
