@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -18,6 +18,8 @@ namespace GitHub.Runner.Worker.Dap
     public sealed class DapServer : RunnerService, IDapServer
     {
         private const string ContentLengthHeader = "Content-Length: ";
+        private const int MaxMessageSize = 10 * 1024 * 1024; // 10 MB
+        private const int MaxHeaderLineLength = 8192; // 8 KB
 
         private TcpListener _listener;
         private TcpClient _client;
@@ -27,6 +29,7 @@ namespace GitHub.Runner.Worker.Dap
         private TaskCompletionSource<bool> _connectionTcs;
         private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
         private int _nextSeq = 1;
+        private Task _connectionLoopTask;
         private volatile bool _acceptConnections = true;
 
         public override void Initialize(IHostContext hostContext)
@@ -41,7 +44,7 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info("Debug session set");
         }
 
-        public async Task StartAsync(int port, CancellationToken cancellationToken)
+        public Task StartAsync(int port, CancellationToken cancellationToken)
         {
             Trace.Info($"Starting DAP server on port {port}");
 
@@ -53,9 +56,9 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info($"DAP server listening on 127.0.0.1:{port}");
 
             // Start the connection loop in the background
-            _ = ConnectionLoopAsync(_cts.Token);
+            _connectionLoopTask = ConnectionLoopAsync(_cts.Token);
 
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -142,10 +145,18 @@ namespace GitHub.Runner.Worker.Dap
         /// </summary>
         private void CleanupConnection()
         {
-            try { _stream?.Close(); } catch { /* best effort */ }
-            try { _client?.Close(); } catch { /* best effort */ }
-            _stream = null;
-            _client = null;
+            _sendLock.Wait();
+            try
+            {
+                try { _stream?.Close(); } catch { /* best effort */ }
+                try { _client?.Close(); } catch { /* best effort */ }
+                _stream = null;
+                _client = null;
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
 
         public async Task WaitForConnectionAsync(CancellationToken cancellationToken)
@@ -172,7 +183,14 @@ namespace GitHub.Runner.Worker.Dap
             try { _listener?.Stop(); }
             catch { /* best effort */ }
 
-            await Task.CompletedTask;
+            if (_connectionLoopTask != null)
+            {
+                try
+                {
+                    await Task.WhenAny(_connectionLoopTask, Task.Delay(5000));
+                }
+                catch { /* best effort */ }
+            }
 
             Trace.Info("DAP server stopped");
         }
@@ -309,6 +327,11 @@ namespace GitHub.Runner.Worker.Dap
                 throw new InvalidDataException("Missing Content-Length header");
             }
 
+            if (contentLength > MaxMessageSize)
+            {
+                throw new InvalidDataException($"Message size {contentLength} exceeds maximum allowed size of {MaxMessageSize}");
+            }
+
             var buffer = new byte[contentLength];
             var totalRead = 0;
             while (totalRead < contentLength)
@@ -356,6 +379,11 @@ namespace GitHub.Runner.Worker.Dap
 
                 previousWasCr = (c == '\r');
                 lineBuilder.Append(c);
+
+                if (lineBuilder.Length > MaxHeaderLineLength)
+                {
+                    throw new InvalidDataException($"Header line exceeds maximum length of {MaxHeaderLineLength}");
+                }
             }
         }
 
@@ -383,16 +411,15 @@ namespace GitHub.Runner.Worker.Dap
 
         public void SendMessage(ProtocolMessage message)
         {
-            if (_stream == null)
-            {
-                return;
-            }
-
             try
             {
                 _sendLock.Wait();
                 try
                 {
+                    if (_stream == null)
+                    {
+                        return;
+                    }
                     message.Seq = _nextSeq++;
                     SendMessageInternal(message);
                 }
@@ -409,17 +436,16 @@ namespace GitHub.Runner.Worker.Dap
 
         public void SendEvent(Event evt)
         {
-            if (_stream == null)
-            {
-                Trace.Warning($"Cannot send event '{evt.EventType}': no client connected");
-                return;
-            }
-
             try
             {
                 _sendLock.Wait();
                 try
                 {
+                    if (_stream == null)
+                    {
+                        Trace.Warning($"Cannot send event '{evt.EventType}': no client connected");
+                        return;
+                    }
                     evt.Seq = _nextSeq++;
                     SendMessageInternal(evt);
                 }
@@ -437,17 +463,16 @@ namespace GitHub.Runner.Worker.Dap
 
         public void SendResponse(Response response)
         {
-            if (_stream == null)
-            {
-                Trace.Warning($"Cannot send response for '{response.Command}': no client connected");
-                return;
-            }
-
             try
             {
                 _sendLock.Wait();
                 try
                 {
+                    if (_stream == null)
+                    {
+                        Trace.Warning($"Cannot send response for '{response.Command}': no client connected");
+                        return;
+                    }
                     response.Seq = _nextSeq++;
                     SendMessageInternal(response);
                 }

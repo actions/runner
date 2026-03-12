@@ -275,12 +275,14 @@ namespace GitHub.Runner.Worker
                     catch (OperationCanceledException) when (jobRequestCancellationToken.IsCancellationRequested)
                     {
                         Trace.Info("Job was cancelled before debugger client connected. Continuing without debugger.");
+                        try { await dapServer.StopAsync(); } catch { }
                         dapServer = null;
                         debugSession = null;
                     }
                     catch (Exception ex)
                     {
                         Trace.Warning($"Failed to complete DAP handshake: {ex.Message}. Job will continue without debugging.");
+                        try { await dapServer.StopAsync(); } catch { }
                         dapServer = null;
                         debugSession = null;
                     }
