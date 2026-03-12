@@ -803,5 +803,170 @@ namespace GitHub.Runner.Common.Tests.Worker
         }
 
         #endregion
+
+        #region Evaluate request integration tests
+
+        private Mock<IStep> CreateMockStepWithEvaluatableContext(
+            TestHostContext hc,
+            string displayName,
+            DictionaryContextData expressionValues,
+            TaskResult? result = null)
+        {
+            var mockEc = new Mock<IExecutionContext>();
+            mockEc.SetupAllProperties();
+            mockEc.Object.Result = result;
+            mockEc.Setup(x => x.ExpressionValues).Returns(expressionValues);
+            mockEc.Setup(x => x.ExpressionFunctions)
+                .Returns(new List<GitHub.DistributedTask.Expressions2.IFunctionInfo>());
+            mockEc.Setup(x => x.Global).Returns(new GlobalContext
+            {
+                FileTable = new List<string>(),
+                Variables = new Variables(hc, new Dictionary<string, VariableValue>()),
+            });
+            mockEc.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()));
+
+            var mockStep = new Mock<IStep>();
+            mockStep.Setup(x => x.DisplayName).Returns(displayName);
+            mockStep.Setup(x => x.ExecutionContext).Returns(mockEc.Object);
+
+            return mockStep;
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task EvaluateRequestReturnsResult()
+        {
+            using (var hc = CreateTestContext())
+            {
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+
+                var exprValues = new DictionaryContextData();
+                exprValues["github"] = new DictionaryContextData
+                {
+                    { "repository", new StringContextData("owner/repo") }
+                };
+
+                var step = CreateMockStepWithEvaluatableContext(hc, "Run tests", exprValues);
+                var jobContext = CreateMockJobContext();
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await Task.Delay(100);
+
+                var evaluateJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 20,
+                    Type = "request",
+                    Command = "evaluate",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new EvaluateArguments
+                    {
+                        Expression = "github.repository",
+                        FrameId = 1,
+                        Context = "watch"
+                    })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(evaluateJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+
+                // Resume to unblock
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 21,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await Task.WhenAny(stepTask, Task.Delay(5000));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task EvaluateRequestReturnsGracefulErrorWhenNoContext()
+        {
+            using (CreateTestContext())
+            {
+                await InitializeSessionAsync();
+
+                // No step is active — evaluate should still succeed with
+                // a descriptive "no context" message, not an error response.
+                var evaluateJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 10,
+                    Type = "request",
+                    Command = "evaluate",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new EvaluateArguments
+                    {
+                        Expression = "github.repository",
+                        FrameId = 1,
+                        Context = "hover"
+                    })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(evaluateJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task EvaluateRequestWithWrapperSyntax()
+        {
+            using (var hc = CreateTestContext())
+            {
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+
+                var exprValues = new DictionaryContextData();
+                exprValues["github"] = new DictionaryContextData
+                {
+                    { "event_name", new StringContextData("push") }
+                };
+
+                var step = CreateMockStepWithEvaluatableContext(hc, "Run tests", exprValues);
+                var jobContext = CreateMockJobContext();
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await Task.Delay(100);
+
+                var evaluateJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 20,
+                    Type = "request",
+                    Command = "evaluate",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new EvaluateArguments
+                    {
+                        Expression = "${{ github.event_name }}",
+                        FrameId = 1,
+                        Context = "watch"
+                    })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(evaluateJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+
+                // Resume to unblock
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 21,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await Task.WhenAny(stepTask, Task.Delay(5000));
+            }
+        }
+
+        #endregion
     }
 }

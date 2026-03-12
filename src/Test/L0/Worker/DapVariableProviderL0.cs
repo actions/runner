@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Tests;
+using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Dap;
 using Xunit;
 
@@ -496,6 +498,169 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var repoVar = variables.Find(v => v.Name == "repository");
                 Assert.NotNull(repoVar);
                 Assert.Equal("${{ github.repository }}", repoVar.EvaluateName);
+            }
+        }
+
+        #endregion
+
+        #region EvaluateExpression
+
+        /// <summary>
+        /// Creates a mock execution context with Global set up so that
+        /// ToPipelineTemplateEvaluator() works for real expression evaluation.
+        /// </summary>
+        private Moq.Mock<IExecutionContext> CreateEvaluatableContext(
+            TestHostContext hc,
+            DictionaryContextData expressionValues)
+        {
+            var mock = new Moq.Mock<IExecutionContext>();
+            mock.Setup(x => x.ExpressionValues).Returns(expressionValues);
+            mock.Setup(x => x.ExpressionFunctions)
+                .Returns(new List<GitHub.DistributedTask.Expressions2.IFunctionInfo>());
+            mock.Setup(x => x.Global).Returns(new GlobalContext
+            {
+                FileTable = new List<string>(),
+                Variables = new Variables(hc, new Dictionary<string, VariableValue>()),
+            });
+            // ToPipelineTemplateEvaluator uses ToTemplateTraceWriter which calls
+            // context.Write — provide a no-op so it doesn't NRE.
+            mock.Setup(x => x.Write(Moq.It.IsAny<string>(), Moq.It.IsAny<string>()));
+            return mock;
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpression_ReturnsValueForSimpleExpression()
+        {
+            using (var hc = CreateTestContext())
+            {
+                var exprValues = new DictionaryContextData();
+                exprValues["github"] = new DictionaryContextData
+                {
+                    { "repository", new StringContextData("owner/repo") }
+                };
+
+                var ctx = CreateEvaluatableContext(hc, exprValues);
+                var result = _provider.EvaluateExpression("github.repository", ctx.Object);
+
+                Assert.Equal("owner/repo", result.Result);
+                Assert.Equal("string", result.Type);
+                Assert.Equal(0, result.VariablesReference);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpression_StripsWrapperSyntax()
+        {
+            using (var hc = CreateTestContext())
+            {
+                var exprValues = new DictionaryContextData();
+                exprValues["github"] = new DictionaryContextData
+                {
+                    { "event_name", new StringContextData("push") }
+                };
+
+                var ctx = CreateEvaluatableContext(hc, exprValues);
+                var result = _provider.EvaluateExpression("${{ github.event_name }}", ctx.Object);
+
+                Assert.Equal("push", result.Result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpression_MasksSecretInResult()
+        {
+            using (var hc = CreateTestContext())
+            {
+                hc.SecretMasker.AddValue("super-secret");
+
+                var exprValues = new DictionaryContextData();
+                exprValues["env"] = new DictionaryContextData
+                {
+                    { "TOKEN", new StringContextData("super-secret") }
+                };
+
+                var ctx = CreateEvaluatableContext(hc, exprValues);
+                var result = _provider.EvaluateExpression("env.TOKEN", ctx.Object);
+
+                Assert.DoesNotContain("super-secret", result.Result);
+                Assert.Contains("***", result.Result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpression_ReturnsErrorForInvalidExpression()
+        {
+            using (var hc = CreateTestContext())
+            {
+                var exprValues = new DictionaryContextData();
+                exprValues["github"] = new DictionaryContextData();
+
+                var ctx = CreateEvaluatableContext(hc, exprValues);
+                // An invalid expression syntax should not throw — it should
+                // return an error result.
+                var result = _provider.EvaluateExpression("!!!invalid[[", ctx.Object);
+
+                Assert.Contains("error", result.Result, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpression_ReturnsMessageWhenNoContext()
+        {
+            using (CreateTestContext())
+            {
+                var result = _provider.EvaluateExpression("github.repository", null);
+
+                Assert.Contains("no execution context", result.Result, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpression_ReturnsEmptyForEmptyExpression()
+        {
+            using (var hc = CreateTestContext())
+            {
+                var exprValues = new DictionaryContextData();
+                var ctx = CreateEvaluatableContext(hc, exprValues);
+                var result = _provider.EvaluateExpression("", ctx.Object);
+
+                Assert.Equal(string.Empty, result.Result);
+            }
+        }
+
+        #endregion
+
+        #region InferResultType
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InferResultType_ClassifiesCorrectly()
+        {
+            using (CreateTestContext())
+            {
+                Assert.Equal("null", DapVariableProvider.InferResultType(null));
+                Assert.Equal("null", DapVariableProvider.InferResultType("null"));
+                Assert.Equal("boolean", DapVariableProvider.InferResultType("true"));
+                Assert.Equal("boolean", DapVariableProvider.InferResultType("false"));
+                Assert.Equal("number", DapVariableProvider.InferResultType("42"));
+                Assert.Equal("number", DapVariableProvider.InferResultType("3.14"));
+                Assert.Equal("object", DapVariableProvider.InferResultType("{\"key\":\"val\"}"));
+                Assert.Equal("object", DapVariableProvider.InferResultType("[1,2,3]"));
+                Assert.Equal("string", DapVariableProvider.InferResultType("hello world"));
+                Assert.Equal("string", DapVariableProvider.InferResultType("owner/repo"));
             }
         }
 
