@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 
@@ -168,6 +169,92 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             return _hostContext.SecretMasker.MaskSecrets(value);
+        }
+
+        /// <summary>
+        /// Evaluates a GitHub Actions expression (e.g. "github.repository",
+        /// "${{ github.event_name }}") in the context of the current step and
+        /// returns a masked result suitable for the DAP evaluate response.
+        ///
+        /// Uses the runner's standard <see cref="GitHub.DistributedTask.Pipelines.ObjectTemplating.IPipelineTemplateEvaluator"/>
+        /// so the full expression language is available (functions, operators,
+        /// context access).
+        /// </summary>
+        public EvaluateResponseBody EvaluateExpression(string expression, IExecutionContext context)
+        {
+            if (context?.ExpressionValues == null)
+            {
+                return new EvaluateResponseBody
+                {
+                    Result = "(no execution context available)",
+                    Type = "string",
+                    VariablesReference = 0
+                };
+            }
+
+            // Strip ${{ }} wrapper if present
+            var expr = expression?.Trim() ?? string.Empty;
+            if (expr.StartsWith("${{") && expr.EndsWith("}}"))
+            {
+                expr = expr.Substring(3, expr.Length - 5).Trim();
+            }
+
+            if (string.IsNullOrEmpty(expr))
+            {
+                return new EvaluateResponseBody
+                {
+                    Result = string.Empty,
+                    Type = "string",
+                    VariablesReference = 0
+                };
+            }
+
+            try
+            {
+                var templateEvaluator = context.ToPipelineTemplateEvaluator();
+                var token = new BasicExpressionToken(null, null, null, expr);
+
+                var result = templateEvaluator.EvaluateStepDisplayName(
+                    token,
+                    context.ExpressionValues,
+                    context.ExpressionFunctions);
+
+                result = MaskSecrets(result ?? "null");
+
+                return new EvaluateResponseBody
+                {
+                    Result = result,
+                    Type = InferResultType(result),
+                    VariablesReference = 0
+                };
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = MaskSecrets($"Evaluation error: {ex.Message}");
+                return new EvaluateResponseBody
+                {
+                    Result = errorMessage,
+                    Type = "string",
+                    VariablesReference = 0
+                };
+            }
+        }
+
+        /// <summary>
+        /// Infers a simple DAP type hint from the string representation of a result.
+        /// </summary>
+        internal static string InferResultType(string value)
+        {
+            if (value == null || value == "null")
+                return "null";
+            if (value == "true" || value == "false")
+                return "boolean";
+            if (double.TryParse(value, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out _))
+                return "number";
+            if (value.StartsWith("{") || value.StartsWith("["))
+                return "object";
+            return "string";
         }
 
         #region Private helpers
