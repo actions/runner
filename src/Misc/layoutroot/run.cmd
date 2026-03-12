@@ -21,17 +21,16 @@ rem ****************************************************************************
 :launch_helper
 copy "%~dp0run-helper.cmd.template" "%~dp0run-helper.cmd" /Y
 call "%~dp0run-helper.cmd" %*
-set RETURNCODE=%ERRORLEVEL%
   
-if %RETURNCODE% EQU 1 (
+if %ERRORLEVEL% EQU 1 (
   echo "Restarting runner..."
   goto :launch_helper
 )
 
 if "%ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE%"=="1" (
-  if %RETURNCODE% EQU 7 (
-    echo "Exiting runner with deprecated version error code: %RETURNCODE%"
-    exit /b %RETURNCODE%
+  if %ERRORLEVEL% EQU 7 (
+    echo "Exiting runner with deprecated version error code: %ERRORLEVEL%"
+    exit /b %ERRORLEVEL%
   )
 )
 
