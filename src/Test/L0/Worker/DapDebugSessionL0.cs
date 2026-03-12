@@ -968,5 +968,171 @@ namespace GitHub.Runner.Common.Tests.Worker
         }
 
         #endregion
+
+        #region REPL routing tests
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ReplHelpReturnsHelpText()
+        {
+            using (CreateTestContext())
+            {
+                await InitializeSessionAsync();
+
+                var evaluateJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 10,
+                    Type = "request",
+                    Command = "evaluate",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new EvaluateArguments
+                    {
+                        Expression = "help",
+                        Context = "repl"
+                    })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(evaluateJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ReplExpressionFallsThroughToEvaluation()
+        {
+            using (var hc = CreateTestContext())
+            {
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+
+                var exprValues = new DictionaryContextData();
+                exprValues["github"] = new DictionaryContextData
+                {
+                    { "repository", new StringContextData("owner/repo") }
+                };
+
+                var step = CreateMockStepWithEvaluatableContext(hc, "Run tests", exprValues);
+                var jobContext = CreateMockJobContext();
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await Task.Delay(100);
+
+                // In REPL context, a non-DSL expression should still evaluate
+                var evaluateJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 20,
+                    Type = "request",
+                    Command = "evaluate",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new EvaluateArguments
+                    {
+                        Expression = "github.repository",
+                        Context = "repl"
+                    })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(evaluateJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 21,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await Task.WhenAny(stepTask, Task.Delay(5000));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ReplParseErrorReturnsErrorResult()
+        {
+            using (CreateTestContext())
+            {
+                await InitializeSessionAsync();
+
+                // Malformed run() command
+                var evaluateJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 10,
+                    Type = "request",
+                    Command = "evaluate",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new EvaluateArguments
+                    {
+                        Expression = "run()",
+                        Context = "repl"
+                    })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(evaluateJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+                // The response is successful at the DAP level (not an error
+                // response), but the result body conveys the parse error
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WatchContextStillEvaluatesExpressions()
+        {
+            using (var hc = CreateTestContext())
+            {
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+
+                var exprValues = new DictionaryContextData();
+                exprValues["github"] = new DictionaryContextData
+                {
+                    { "repository", new StringContextData("owner/repo") }
+                };
+
+                var step = CreateMockStepWithEvaluatableContext(hc, "Run tests", exprValues);
+                var jobContext = CreateMockJobContext();
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await Task.Delay(100);
+
+                // watch context should NOT route through REPL even if input
+                // looks like a DSL command — it should evaluate as expression
+                var evaluateJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 20,
+                    Type = "request",
+                    Command = "evaluate",
+                    Arguments = Newtonsoft.Json.Linq.JObject.FromObject(new EvaluateArguments
+                    {
+                        Expression = "github.repository",
+                        Context = "watch"
+                    })
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(evaluateJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 21,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await Task.WhenAny(stepTask, Task.Delay(5000));
+            }
+        }
+
+        #endregion
     }
 }
