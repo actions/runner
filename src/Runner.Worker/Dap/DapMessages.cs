@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -881,6 +881,103 @@ namespace GitHub.Runner.Worker.Dap
         /// </summary>
         [JsonProperty("memoryReference", NullValueHandling = NullValueHandling.Ignore)]
         public string MemoryReference { get; set; }
+    }
+
+    #endregion
+
+    #region Completions Request/Response
+
+    /// <summary>
+    /// Arguments for 'completions' request.
+    /// </summary>
+    public class CompletionsArguments
+    {
+        /// <summary>
+        /// Returns completions in the scope of this stack frame.
+        /// </summary>
+        [JsonProperty("frameId", NullValueHandling = NullValueHandling.Ignore)]
+        public int? FrameId { get; set; }
+
+        /// <summary>
+        /// One or more source lines. Typically this is the text users have typed
+        /// in the debug console (REPL).
+        /// </summary>
+        [JsonProperty("text")]
+        public string Text { get; set; }
+
+        /// <summary>
+        /// The position within 'text' for which to determine the completion proposals.
+        /// It is measured in UTF-16 code units.
+        /// </summary>
+        [JsonProperty("column")]
+        public int Column { get; set; }
+
+        /// <summary>
+        /// A line for which to determine the completion proposals.
+        /// If missing the first line of the text is assumed.
+        /// </summary>
+        [JsonProperty("line", NullValueHandling = NullValueHandling.Ignore)]
+        public int? Line { get; set; }
+    }
+
+    /// <summary>
+    /// A completion item in the debug console.
+    /// </summary>
+    public class CompletionItem
+    {
+        /// <summary>
+        /// The label of this completion item.
+        /// </summary>
+        [JsonProperty("label")]
+        public string Label { get; set; }
+
+        /// <summary>
+        /// If text is returned and not an empty string, then it is inserted instead
+        /// of the label.
+        /// </summary>
+        [JsonProperty("text", NullValueHandling = NullValueHandling.Ignore)]
+        public string Text { get; set; }
+
+        /// <summary>
+        /// A human-readable string with additional information about this item.
+        /// </summary>
+        [JsonProperty("detail", NullValueHandling = NullValueHandling.Ignore)]
+        public string Detail { get; set; }
+
+        /// <summary>
+        /// The item's type. Typically the client uses this information to render the item
+        /// in the UI with an icon.
+        /// Values: 'method', 'function', 'constructor', 'field', 'variable', 'class',
+        /// 'interface', 'module', 'property', 'unit', 'value', 'enum', 'keyword',
+        /// 'snippet', 'text', 'color', 'file', 'reference', 'customcolor'
+        /// </summary>
+        [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+        public string Type { get; set; }
+
+        /// <summary>
+        /// Start position (0-based) within 'text' that should be replaced
+        /// by the completion text.
+        /// </summary>
+        [JsonProperty("start", NullValueHandling = NullValueHandling.Ignore)]
+        public int? Start { get; set; }
+
+        /// <summary>
+        /// Length of the text that should be replaced by the completion text.
+        /// </summary>
+        [JsonProperty("length", NullValueHandling = NullValueHandling.Ignore)]
+        public int? Length { get; set; }
+    }
+
+    /// <summary>
+    /// Response body for 'completions' request.
+    /// </summary>
+    public class CompletionsResponseBody
+    {
+        /// <summary>
+        /// The possible completions.
+        /// </summary>
+        [JsonProperty("targets")]
+        public List<CompletionItem> Targets { get; set; } = new List<CompletionItem>();
     }
 
     #endregion

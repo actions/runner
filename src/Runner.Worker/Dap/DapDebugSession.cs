@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -139,6 +139,12 @@ namespace GitHub.Runner.Worker.Dap
                         "next" => HandleNext(request),
                         "setBreakpoints" => HandleSetBreakpoints(request),
                         "setExceptionBreakpoints" => HandleSetExceptionBreakpoints(request),
+                        "completions" => HandleCompletions(request),
+                        "stepIn" => CreateResponse(request, false, "Step In is not supported. Actions jobs debug at the step level — use 'next' to advance to the next step.", body: null),
+                        "stepOut" => CreateResponse(request, false, "Step Out is not supported. Actions jobs debug at the step level — use 'continue' to resume.", body: null),
+                        "stepBack" => CreateResponse(request, false, "Step Back is not yet supported.", body: null),
+                        "reverseContinue" => CreateResponse(request, false, "Reverse Continue is not yet supported.", body: null),
+                        "pause" => CreateResponse(request, false, "Pause is not supported. The debugger pauses automatically at step boundaries.", body: null),
                         _ => CreateResponse(request, false, $"Unsupported command: {request.Command}", body: null)
                     };
                 }
@@ -195,7 +201,7 @@ namespace GitHub.Runner.Worker.Dap
                 SupportsRestartFrame = false,
                 SupportsGotoTargetsRequest = false,
                 SupportsStepInTargetsRequest = false,
-                SupportsCompletionsRequest = false,
+                SupportsCompletionsRequest = true,
                 SupportsModulesRequest = false,
                 SupportsTerminateRequest = false,
                 SupportTerminateDebuggee = false,
@@ -464,6 +470,52 @@ namespace GitHub.Runner.Worker.Dap
                         VariablesReference = 0
                     };
             }
+        }
+
+        private Response HandleCompletions(Request request)
+        {
+            var args = request.Arguments?.ToObject<CompletionsArguments>();
+            var text = args?.Text ?? string.Empty;
+
+            var items = new List<CompletionItem>();
+
+            // Offer DSL commands when the user is starting to type
+            if (string.IsNullOrEmpty(text) || "help".StartsWith(text, System.StringComparison.OrdinalIgnoreCase))
+            {
+                items.Add(new CompletionItem
+                {
+                    Label = "help",
+                    Text = "help",
+                    Detail = "Show available debug console commands",
+                    Type = "function"
+                });
+            }
+            if (string.IsNullOrEmpty(text) || "help(\"run\")".StartsWith(text, System.StringComparison.OrdinalIgnoreCase))
+            {
+                items.Add(new CompletionItem
+                {
+                    Label = "help(\"run\")",
+                    Text = "help(\"run\")",
+                    Detail = "Show help for the run command",
+                    Type = "function"
+                });
+            }
+            if (string.IsNullOrEmpty(text) || "run(".StartsWith(text, System.StringComparison.OrdinalIgnoreCase)
+                || text.StartsWith("run(", System.StringComparison.OrdinalIgnoreCase))
+            {
+                items.Add(new CompletionItem
+                {
+                    Label = "run(\"...\")",
+                    Text = "run(\"",
+                    Detail = "Execute a script (like a workflow run step)",
+                    Type = "function"
+                });
+            }
+
+            return CreateResponse(request, true, body: new CompletionsResponseBody
+            {
+                Targets = items
+            });
         }
 
         private Response HandleContinue(Request request)
