@@ -268,6 +268,10 @@ namespace GitHub.Runner.Worker.Dap
 
         private Response HandleThreads(Request request)
         {
+            var threadName = _jobContext != null
+                ? MaskUserVisibleText($"Job: {_jobContext.GetGitHubContext("job") ?? "workflow job"}")
+                : "Job Thread";
+
             var body = new ThreadsResponseBody
             {
                 Threads = new List<Thread>
@@ -275,9 +279,7 @@ namespace GitHub.Runner.Worker.Dap
                     new Thread
                     {
                         Id = JobThreadId,
-                        Name = _jobContext != null
-                            ? $"Job: {_jobContext.GetGitHubContext("job") ?? "workflow job"}"
-                            : "Job Thread"
+                        Name = threadName
                     }
                 }
             };
@@ -299,7 +301,7 @@ namespace GitHub.Runner.Worker.Dap
                 frames.Add(new StackFrame
                 {
                     Id = CurrentFrameId,
-                    Name = $"{_currentStep.DisplayName ?? "Current Step"}{resultIndicator}",
+                    Name = MaskUserVisibleText($"{_currentStep.DisplayName ?? "Current Step"}{resultIndicator}"),
                     Line = _currentStepIndex + 1,
                     Column = 1,
                     PresentationHint = "normal"
@@ -325,7 +327,7 @@ namespace GitHub.Runner.Worker.Dap
                 frames.Add(new StackFrame
                 {
                     Id = completedStep.FrameId,
-                    Name = $"{completedStep.DisplayName}{resultStr}",
+                    Name = MaskUserVisibleText($"{completedStep.DisplayName}{resultStr}"),
                     Line = 1,
                     Column = 1,
                     PresentationHint = "subtle"
@@ -823,11 +825,23 @@ namespace GitHub.Runner.Worker.Dap
                 Body = new StoppedEventBody
                 {
                     Reason = reason,
-                    Description = description,
+                    Description = MaskUserVisibleText(description),
                     ThreadId = JobThreadId,
                     AllThreadsStopped = true
                 }
             });
+        }
+
+        private string MaskUserVisibleText(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return value ?? string.Empty;
+            }
+
+            return _variableProvider?.MaskSecrets(value)
+                ?? HostContext?.SecretMasker?.MaskSecrets(value)
+                ?? value;
         }
 
         /// <summary>
