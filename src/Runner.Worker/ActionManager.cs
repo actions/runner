@@ -105,6 +105,15 @@ namespace GitHub.Runner.Worker
             }
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             executionContext.Output("Prepare all required actions");
+
+            // Eagerly discover, resolve, and download all reachable actions
+            // via BFS before the recursive walk.  This collapses all network
+            // I/O into a tight loop so the recursion is purely local.
+            if (rootStepId == default(Guid))
+            {
+                await EagerlyResolveAllReachableActionsAsync(executionContext, actions.ToList(), resolvedDownloadInfos);
+            }
+
             PrepareActionsState result = new PrepareActionsState();
             try
             {
@@ -830,6 +839,181 @@ namespace GitHub.Runner.Worker
                     resolvedDownloadInfos[kvp.Key] = kvp.Value;
                 }
             }
+        }
+
+        /// <summary>
+        /// BFS discovery loop: resolve and download all reachable actions upfront
+        /// so the recursive walk makes zero network calls.
+        /// </summary>
+        private async Task EagerlyResolveAllReachableActionsAsync(
+            IExecutionContext executionContext,
+            List<Pipelines.ActionStep> initialActions,
+            Dictionary<string, WebApi.ActionDownloadInfo> resolvedDownloadInfos)
+        {
+            // downloadedKeys tracks repo downloads (owner/repo@ref — no path).
+            // scannedKeys tracks which sub-path action.ymls have been scanned
+            // (owner/repo/path@ref) so we don't re-scan the same composite.
+            var downloadedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var scannedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var pending = new List<Pipelines.ActionStep>(initialActions);
+
+            while (pending.Count > 0)
+            {
+                // Collect repo actions we haven't scanned yet
+                var repoActions = new List<Pipelines.ActionStep>();
+                foreach (var action in pending)
+                {
+                    if (action.Reference.Type != Pipelines.ActionSourceType.Repository)
+                    {
+                        continue;
+                    }
+                    var scanKey = GetScanKey(action);
+                    if (!string.IsNullOrEmpty(scanKey) && scannedKeys.Add(scanKey))
+                    {
+                        repoActions.Add(action);
+                    }
+                }
+                pending.Clear();
+
+                if (repoActions.Count == 0)
+                {
+                    break;
+                }
+
+                // Resolve only repos not yet in the cache
+                var toResolve = repoActions
+                    .Where(a =>
+                    {
+                        var key = GetDownloadInfoLookupKey(a);
+                        return !string.IsNullOrEmpty(key) && !downloadedKeys.Contains(key);
+                    })
+                    .ToList();
+
+                if (toResolve.Count > 0)
+                {
+                    await ResolveNewActionsAsync(executionContext, toResolve, resolvedDownloadInfos);
+
+                    // Download in parallel
+                    var downloadTasks = new List<Task>();
+                    foreach (var action in toResolve)
+                    {
+                        var key = GetDownloadInfoLookupKey(action);
+                        if (downloadedKeys.Add(key) && resolvedDownloadInfos.TryGetValue(key, out var info))
+                        {
+                            downloadTasks.Add(DownloadRepositoryActionAsync(executionContext, info));
+                        }
+                    }
+                    await Task.WhenAll(downloadTasks);
+                }
+
+                // Scan ALL actions for composite sub-references (including
+                // sub-paths of already-downloaded repos).
+                foreach (var action in repoActions)
+                {
+                    var subRefs = ScanForRepoReferences(executionContext, action);
+                    if (subRefs != null)
+                    {
+                        pending.AddRange(subRefs);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns a scan key that includes the sub-path, so that different
+        /// sub-paths within the same repo are scanned independently.
+        /// Format: "owner/repo/path@ref" or "owner/repo@ref" when no path.
+        /// </summary>
+        private static string GetScanKey(Pipelines.ActionStep action)
+        {
+            if (action.Reference.Type != Pipelines.ActionSourceType.Repository)
+            {
+                return null;
+            }
+
+            var repoRef = action.Reference as Pipelines.RepositoryPathReference;
+            if (repoRef == null ||
+                string.Equals(repoRef.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (!string.IsNullOrEmpty(repoRef.Path))
+            {
+                return $"{repoRef.Name}/{repoRef.Path}@{repoRef.Ref}";
+            }
+            return $"{repoRef.Name}@{repoRef.Ref}";
+        }
+
+        /// <summary>
+        /// Lightweight scan: load an action's manifest and return any repository
+        /// references from composite steps, without side effects (no GUID
+        /// assignment, no step caching).
+        /// </summary>
+        private List<Pipelines.ActionStep> ScanForRepoReferences(
+            IExecutionContext executionContext,
+            Pipelines.ActionStep action)
+        {
+            var repoRef = action.Reference as Pipelines.RepositoryPathReference;
+            if (repoRef == null ||
+                string.Equals(repoRef.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            string destDirectory = Path.Combine(
+                HostContext.GetDirectory(WellKnownDirectory.Actions),
+                repoRef.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar),
+                repoRef.Ref);
+            string actionEntryDirectory = destDirectory;
+            if (!string.IsNullOrEmpty(repoRef.Path))
+            {
+                actionEntryDirectory = Path.Combine(destDirectory, repoRef.Path);
+            }
+
+            var actionManifest = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYmlFile);
+            var actionManifestYaml = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYamlFile);
+
+            ActionDefinitionData actionDef = null;
+            try
+            {
+                var manifestManager = HostContext.GetService<IActionManifestManagerWrapper>();
+                if (File.Exists(actionManifest))
+                {
+                    actionDef = manifestManager.Load(executionContext, actionManifest);
+                }
+                else if (File.Exists(actionManifestYaml))
+                {
+                    actionDef = manifestManager.Load(executionContext, actionManifestYaml);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Warning($"Failed to scan action manifest for {repoRef.Name}: {ex.Message}");
+                return null;
+            }
+
+            if (actionDef?.Execution?.ExecutionType != ActionExecutionType.Composite)
+            {
+                return null;
+            }
+
+            var compositeAction = actionDef.Execution as CompositeActionExecutionData;
+            if (compositeAction?.Steps == null)
+            {
+                return null;
+            }
+
+            var result = new List<Pipelines.ActionStep>();
+            foreach (var step in compositeAction.Steps)
+            {
+                if (step is Pipelines.ActionStep actionStep &&
+                    actionStep.Reference?.Type == Pipelines.ActionSourceType.Repository)
+                {
+                    result.Add(actionStep);
+                }
+            }
+            return result.Count > 0 ? result : null;
         }
 
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo)

@@ -1894,6 +1894,113 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_EagerResolution_AllDownloadsBeforeRecursion()
+        {
+            // Verifies that the eager BFS resolution loop resolves and
+            // downloads ALL reachable actions before the recursive walk
+            // begins.  We detect this by checking that all watermarks exist
+            // at the time of the FIRST resolve callback that the recursion
+            // would normally trigger (i.e. the eager loop should have
+            // already completed all downloads by then).
+            //
+            // Action tree (3 levels):
+            //   CompositePrestep → [Node, CompositePrestep2]
+            //   CompositePrestep2 → [Node, Docker]
+            //
+            // With eager BFS all 4 watermarks should exist after the BFS
+            // loop, before recursion.  We verify by recording watermark
+            // state during the very last resolve call.
+            try
+            {
+                //Arrange
+                Setup();
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+
+                var resolveCallCount = 0;
+                var allWatermarksAtLastResolve = new Dictionary<string, bool>();
+                _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
+                    .Returns((Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+                    {
+                        resolveCallCount++;
+                        // On each resolve call, snapshot which watermarks exist.
+                        // After the final call, all earlier downloads should be done.
+                        var actionsDir = _hc.GetDirectory(WellKnownDirectory.Actions);
+                        allWatermarksAtLastResolve["CompositePrestep"] = File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "CompositePrestep.completed"));
+                        allWatermarksAtLastResolve["Node"] = File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Node.completed"));
+                        allWatermarksAtLastResolve["CompositePrestep2"] = File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "CompositePrestep2.completed"));
+                        allWatermarksAtLastResolve["Docker"] = File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Docker.completed"));
+
+                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                        foreach (var action in actions.Actions)
+                        {
+                            var key = $"{action.NameWithOwner}@{action.Ref}";
+                            result.Actions[key] = new ActionDownloadInfo
+                            {
+                                NameWithOwner = action.NameWithOwner,
+                                Ref = action.Ref,
+                                ResolvedNameWithOwner = action.NameWithOwner,
+                                ResolvedSha = $"{action.Ref}-sha",
+                                TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                                ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                            };
+                        }
+                        return Task.FromResult(result);
+                    });
+
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "CompositePrestep",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                //Act
+                var result = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                // All resolve calls should happen during the eager BFS loop
+                // (3 calls: one per BFS wavefront).
+                Assert.Equal(3, resolveCallCount);
+
+                // At the time of the LAST resolve call (call 3 for Docker),
+                // the first two wavefronts should already be fully downloaded:
+                Assert.True(allWatermarksAtLastResolve["CompositePrestep"],
+                    "CompositePrestep should be downloaded before last resolve call");
+                Assert.True(allWatermarksAtLastResolve["Node"],
+                    "Node should be downloaded before last resolve call");
+                Assert.True(allWatermarksAtLastResolve["CompositePrestep2"],
+                    "CompositePrestep2 should be downloaded before last resolve call");
+                // Docker is resolved in the last call, so it's NOT yet downloaded
+                // at that point — that's expected.
+                Assert.False(allWatermarksAtLastResolve["Docker"],
+                    "Docker should NOT yet be downloaded during its own resolve call");
+
+                // After PrepareActionsAsync completes, ALL should be downloaded
+                var actionsDir2 = _hc.GetDirectory(WellKnownDirectory.Actions);
+                Assert.True(File.Exists(Path.Combine(actionsDir2, "TingluoHuang/runner_L0", "CompositePrestep.completed")));
+                Assert.True(File.Exists(Path.Combine(actionsDir2, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Node.completed")));
+                Assert.True(File.Exists(Path.Combine(actionsDir2, "TingluoHuang/runner_L0", "CompositePrestep2.completed")));
+                Assert.True(File.Exists(Path.Combine(actionsDir2, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Docker.completed")));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void LoadsContainerRegistryActionDefinition()
         {
             try
