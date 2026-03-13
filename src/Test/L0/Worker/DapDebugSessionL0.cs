@@ -786,9 +786,17 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Single(_sentResponses);
                 Assert.True(_sentResponses[0].Success);
-                // The response body is serialized — we can't easily inspect it from
-                // the mock, but the important thing is it succeeded without exposing
-                // raw secrets (which is tested in DapVariableProviderL0).
+
+                // Verify the response body actually contains redacted values
+                var body = _sentResponses[0].Body;
+                Assert.NotNull(body);
+                var varsBody = Assert.IsType<VariablesResponseBody>(body);
+                Assert.NotEmpty(varsBody.Variables);
+                foreach (var variable in varsBody.Variables)
+                {
+                    Assert.Equal(DapVariableProvider.RedactedValue, variable.Value);
+                    Assert.DoesNotContain("ghp_verysecret", variable.Value);
+                }
 
                 // Resume to unblock
                 var continueJson = JsonConvert.SerializeObject(new Request

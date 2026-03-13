@@ -665,5 +665,108 @@ namespace GitHub.Runner.Common.Tests.Worker
         }
 
         #endregion
+
+        #region Non-string secret type redaction
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetVariables_SecretsScopeRedactsNumberContextData()
+        {
+            using (CreateTestContext())
+            {
+                var exprValues = new DictionaryContextData();
+                exprValues["secrets"] = new DictionaryContextData
+                {
+                    { "NUMERIC_SECRET", new NumberContextData(12345) }
+                };
+
+                var ctx = CreateMockContext(exprValues);
+                var variables = _provider.GetVariables(ctx.Object, 6);
+
+                Assert.Single(variables);
+                Assert.Equal("NUMERIC_SECRET", variables[0].Name);
+                Assert.Equal(DapVariableProvider.RedactedValue, variables[0].Value);
+                Assert.Equal("string", variables[0].Type);
+                Assert.Equal(0, variables[0].VariablesReference);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetVariables_SecretsScopeRedactsBooleanContextData()
+        {
+            using (CreateTestContext())
+            {
+                var exprValues = new DictionaryContextData();
+                exprValues["secrets"] = new DictionaryContextData
+                {
+                    { "BOOL_SECRET", new BooleanContextData(true) }
+                };
+
+                var ctx = CreateMockContext(exprValues);
+                var variables = _provider.GetVariables(ctx.Object, 6);
+
+                Assert.Single(variables);
+                Assert.Equal("BOOL_SECRET", variables[0].Name);
+                Assert.Equal(DapVariableProvider.RedactedValue, variables[0].Value);
+                Assert.Equal("string", variables[0].Type);
+                Assert.Equal(0, variables[0].VariablesReference);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetVariables_SecretsScopeRedactsNestedDictionary()
+        {
+            using (CreateTestContext())
+            {
+                var exprValues = new DictionaryContextData();
+                exprValues["secrets"] = new DictionaryContextData
+                {
+                    { "NESTED_SECRET", new DictionaryContextData
+                        {
+                            { "inner_key", new StringContextData("inner_value") }
+                        }
+                    }
+                };
+
+                var ctx = CreateMockContext(exprValues);
+                var variables = _provider.GetVariables(ctx.Object, 6);
+
+                Assert.Single(variables);
+                Assert.Equal("NESTED_SECRET", variables[0].Name);
+                Assert.Equal(DapVariableProvider.RedactedValue, variables[0].Value);
+                Assert.Equal("string", variables[0].Type);
+                // Nested container should NOT be drillable under secrets
+                Assert.Equal(0, variables[0].VariablesReference);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GetVariables_SecretsScopeRedactsNullValue()
+        {
+            using (CreateTestContext())
+            {
+                var exprValues = new DictionaryContextData();
+                var secrets = new DictionaryContextData();
+                secrets["NULL_SECRET"] = null;
+                exprValues["secrets"] = secrets;
+
+                var ctx = CreateMockContext(exprValues);
+                var variables = _provider.GetVariables(ctx.Object, 6);
+
+                Assert.Single(variables);
+                Assert.Equal("NULL_SECRET", variables[0].Name);
+                Assert.Equal(DapVariableProvider.RedactedValue, variables[0].Value);
+                Assert.Equal(0, variables[0].VariablesReference);
+            }
+        }
+
+        #endregion
     }
 }

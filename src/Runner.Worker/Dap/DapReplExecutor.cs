@@ -207,7 +207,7 @@ namespace GitHub.Runner.Worker.Dap
         /// replaced with its masked string result, mirroring the semantics of
         /// expression interpolation in a workflow <c>run:</c> step body.
         /// </summary>
-        private string ExpandExpressions(string input, IExecutionContext context)
+        internal string ExpandExpressions(string input, IExecutionContext context)
         {
             if (string.IsNullOrEmpty(input) || !input.Contains("${{"))
             {
@@ -269,7 +269,7 @@ namespace GitHub.Runner.Worker.Dap
         /// Resolves the default shell the same way <see cref="ScriptHandler"/>
         /// does: check job defaults, then fall back to platform default.
         /// </summary>
-        private string ResolveDefaultShell(IExecutionContext context)
+        internal string ResolveDefaultShell(IExecutionContext context)
         {
             // Check job defaults
             if (context.Global?.JobDefaults != null &&
@@ -295,7 +295,7 @@ namespace GitHub.Runner.Worker.Dap
         /// <summary>
         /// Merges the job context environment with any REPL-specific overrides.
         /// </summary>
-        private Dictionary<string, string> BuildEnvironment(
+        internal Dictionary<string, string> BuildEnvironment(
             IExecutionContext context,
             Dictionary<string, string> replEnv)
         {
