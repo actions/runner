@@ -161,8 +161,7 @@ namespace GitHub.Runner.Listener
 
         private static int GetRunnerVersionDeprecatedExitCode()
         {
-            var envValue = Environment.GetEnvironmentVariable(Constants.Variables.Actions.ReturnVersionDeprecatedExitCode);
-            if (envValue == "1")
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.ReturnVersionDeprecatedExitCode)))
             {
                 return Constants.Runner.ReturnCode.RunnerVersionDeprecated;
             }
