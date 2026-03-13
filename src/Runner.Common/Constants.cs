@@ -159,6 +159,7 @@ namespace GitHub.Runner.Common
                 // and the runner should be restarted. This is a temporary code and will be removed in the future after
                 // the runner is migrated to runner admin.
                 public const int RunnerConfigurationRefreshed = 6;
+                public const int RunnerVersionDeprecated = 7;
             }
 
             public static class Features
@@ -277,6 +278,7 @@ namespace GitHub.Runner.Common
                 public static readonly string AllowUnsupportedCommands = "ACTIONS_ALLOW_UNSECURE_COMMANDS";
                 public static readonly string AllowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
                 public static readonly string RequireJobContainer = "ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER";
+                public static readonly string ReturnVersionDeprecatedExitCode = "ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }
