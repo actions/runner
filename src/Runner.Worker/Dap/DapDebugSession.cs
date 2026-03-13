@@ -268,8 +268,14 @@ namespace GitHub.Runner.Worker.Dap
 
         private Response HandleThreads(Request request)
         {
-            var threadName = _jobContext != null
-                ? MaskUserVisibleText($"Job: {_jobContext.GetGitHubContext("job") ?? "workflow job"}")
+            IExecutionContext jobContext;
+            lock (_stateLock)
+            {
+                jobContext = _jobContext;
+            }
+
+            var threadName = jobContext != null
+                ? MaskUserVisibleText($"Job: {jobContext.GetGitHubContext("job") ?? "workflow job"}")
                 : "Job Thread";
 
             var body = new ThreadsResponseBody
@@ -289,20 +295,30 @@ namespace GitHub.Runner.Worker.Dap
 
         private Response HandleStackTrace(Request request)
         {
+            IStep currentStep;
+            int currentStepIndex;
+            CompletedStepInfo[] completedSteps;
+            lock (_stateLock)
+            {
+                currentStep = _currentStep;
+                currentStepIndex = _currentStepIndex;
+                completedSteps = _completedSteps.ToArray();
+            }
+
             var frames = new List<StackFrame>();
 
             // Add current step as the top frame
-            if (_currentStep != null)
+            if (currentStep != null)
             {
-                var resultIndicator = _currentStep.ExecutionContext?.Result != null
-                    ? $" [{_currentStep.ExecutionContext.Result}]"
+                var resultIndicator = currentStep.ExecutionContext?.Result != null
+                    ? $" [{currentStep.ExecutionContext.Result}]"
                     : " [running]";
 
                 frames.Add(new StackFrame
                 {
                     Id = CurrentFrameId,
-                    Name = MaskUserVisibleText($"{_currentStep.DisplayName ?? "Current Step"}{resultIndicator}"),
-                    Line = _currentStepIndex + 1,
+                    Name = MaskUserVisibleText($"{currentStep.DisplayName ?? "Current Step"}{resultIndicator}"),
+                    Line = currentStepIndex + 1,
                     Column = 1,
                     PresentationHint = "normal"
                 });
@@ -320,9 +336,9 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             // Add completed steps as additional frames (most recent first)
-            for (int i = _completedSteps.Count - 1; i >= 0; i--)
+            for (int i = completedSteps.Length - 1; i >= 0; i--)
             {
-                var completedStep = _completedSteps[i];
+                var completedStep = completedSteps[i];
                 var resultStr = completedStep.Result.HasValue ? $" [{completedStep.Result}]" : "";
                 frames.Add(new StackFrame
                 {
@@ -369,7 +385,7 @@ namespace GitHub.Runner.Worker.Dap
             var args = request.Arguments?.ToObject<VariablesArguments>();
             var variablesRef = args?.VariablesReference ?? 0;
 
-            var context = _currentStep?.ExecutionContext ?? _jobContext;
+            var context = GetCurrentExecutionContext();
             if (context == null)
             {
                 return CreateResponse(request, true, body: new VariablesResponseBody
@@ -577,21 +593,28 @@ namespace GitHub.Runner.Worker.Dap
 
         public async Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, bool isFirstStep, CancellationToken cancellationToken)
         {
-            if (!IsActive)
+            bool pauseOnNextStep;
+            lock (_stateLock)
             {
-                return;
-            }
+                if (_state != DapSessionState.Ready &&
+                    _state != DapSessionState.Paused &&
+                    _state != DapSessionState.Running)
+                {
+                    return;
+                }
 
-            _currentStep = step;
-            _jobContext = jobContext;
-            _currentStepIndex = _completedSteps.Count;
+                _currentStep = step;
+                _jobContext = jobContext;
+                _currentStepIndex = _completedSteps.Count;
+                pauseOnNextStep = _pauseOnNextStep;
+            }
 
             // Reset variable references so stale nested refs from the
             // previous step are not served to the client.
             _variableProvider?.Reset();
 
             // Determine if we should pause
-            bool shouldPause = isFirstStep || _pauseOnNextStep;
+            bool shouldPause = isFirstStep || pauseOnNextStep;
 
             if (!shouldPause)
             {
@@ -615,27 +638,33 @@ namespace GitHub.Runner.Worker.Dap
 
         public void OnStepCompleted(IStep step)
         {
-            if (!IsActive)
-            {
-                return;
-            }
-
             var result = step.ExecutionContext?.Result;
             Trace.Info($"Step completed: {step.DisplayName}, result: {result}");
 
             // Add to completed steps list for stack trace
-            _completedSteps.Add(new CompletedStepInfo
+            lock (_stateLock)
             {
-                DisplayName = step.DisplayName,
-                Result = result,
-                FrameId = _nextCompletedFrameId++
-            });
+                if (_state != DapSessionState.Ready &&
+                    _state != DapSessionState.Paused &&
+                    _state != DapSessionState.Running)
+                {
+                    return;
+                }
+
+                _completedSteps.Add(new CompletedStepInfo
+                {
+                    DisplayName = step.DisplayName,
+                    Result = result,
+                    FrameId = _nextCompletedFrameId++
+                });
+            }
         }
 
         public void OnJobCompleted()
         {
             Trace.Info("Job completed, sending terminated event");
 
+            int exitCode;
             lock (_stateLock)
             {
                 if (_state == DapSessionState.Terminated)
@@ -644,6 +673,7 @@ namespace GitHub.Runner.Worker.Dap
                     return;
                 }
                 _state = DapSessionState.Terminated;
+                exitCode = _jobContext?.Result == TaskResult.Succeeded ? 0 : 1;
             }
 
             _server?.SendEvent(new Event
@@ -652,7 +682,6 @@ namespace GitHub.Runner.Worker.Dap
                 Body = new TerminatedEventBody()
             });
 
-            var exitCode = _jobContext?.Result == TaskResult.Succeeded ? 0 : 1;
             _server?.SendEvent(new Event
             {
                 EventType = "exited",
@@ -711,14 +740,19 @@ namespace GitHub.Runner.Worker.Dap
 
             // If we're paused, re-send the stopped event so the new client
             // knows the current state (important for reconnection)
+            string description = null;
             lock (_stateLock)
             {
                 if (_state == DapSessionState.Paused && _currentStep != null)
                 {
-                    Trace.Info("Re-sending stopped event to reconnected client");
-                    var description = $"Stopped before step: {_currentStep.DisplayName}";
-                    SendStoppedEvent("step", description);
+                    description = $"Stopped before step: {_currentStep.DisplayName}";
                 }
+            }
+
+            if (description != null)
+            {
+                Trace.Info("Re-sending stopped event to reconnected client");
+                SendStoppedEvent("step", description);
             }
         }
 
@@ -800,11 +834,19 @@ namespace GitHub.Runner.Worker.Dap
         {
             if (frameId == CurrentFrameId)
             {
-                return _currentStep?.ExecutionContext ?? _jobContext;
+                return GetCurrentExecutionContext();
             }
 
             // Completed-step frames don't carry a live execution context.
             return null;
+        }
+
+        private IExecutionContext GetCurrentExecutionContext()
+        {
+            lock (_stateLock)
+            {
+                return _currentStep?.ExecutionContext ?? _jobContext;
+            }
         }
 
         /// <summary>
