@@ -16,10 +16,14 @@ namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class DapDebugSessionL0
     {
+        private static readonly TimeSpan DefaultAsyncTimeout = TimeSpan.FromSeconds(5);
+
         private DapDebugSession _session;
         private Mock<IDapServer> _mockServer;
         private List<Event> _sentEvents;
         private List<Response> _sentResponses;
+        private readonly object _eventWaitersLock = new object();
+        private List<(Predicate<Event> Predicate, TaskCompletionSource<Event> Completion)> _eventWaiters;
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
@@ -30,10 +34,40 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _sentEvents = new List<Event>();
             _sentResponses = new List<Response>();
+            _eventWaiters = new List<(Predicate<Event>, TaskCompletionSource<Event>)>();
 
             _mockServer = new Mock<IDapServer>();
             _mockServer.Setup(x => x.SendEvent(It.IsAny<Event>()))
-                .Callback<Event>(e => _sentEvents.Add(e));
+                .Callback<Event>(e =>
+                {
+                    List<TaskCompletionSource<Event>> matchedWaiters = null;
+                    lock (_eventWaitersLock)
+                    {
+                        _sentEvents.Add(e);
+                        for (int i = _eventWaiters.Count - 1; i >= 0; i--)
+                        {
+                            var waiter = _eventWaiters[i];
+                            if (!waiter.Predicate(e))
+                            {
+                                continue;
+                            }
+
+                            matchedWaiters ??= new List<TaskCompletionSource<Event>>();
+                            matchedWaiters.Add(waiter.Completion);
+                            _eventWaiters.RemoveAt(i);
+                        }
+                    }
+
+                    if (matchedWaiters == null)
+                    {
+                        return;
+                    }
+
+                    foreach (var waiter in matchedWaiters)
+                    {
+                        waiter.TrySetResult(e);
+                    }
+                });
             _mockServer.Setup(x => x.SendResponse(It.IsAny<Response>()))
                 .Callback<Response>(r => _sentResponses.Add(r));
 
@@ -55,15 +89,17 @@ namespace GitHub.Runner.Common.Tests.Worker
             return mockStep;
         }
 
-        private Mock<IExecutionContext> CreateMockJobContext()
+        private Mock<IExecutionContext> CreateMockJobContext(string jobName = "test-job")
         {
             var mockJobContext = new Mock<IExecutionContext>();
-            mockJobContext.Setup(x => x.GetGitHubContext("job")).Returns("test-job");
+            mockJobContext.Setup(x => x.GetGitHubContext("job")).Returns(jobName);
             return mockJobContext;
         }
 
         private async Task InitializeSessionAsync()
         {
+            var initializedEventTask = WaitForEventAsync(e => e.EventType == "initialized");
+
             var initJson = JsonConvert.SerializeObject(new Request
             {
                 Seq = 1,
@@ -87,6 +123,48 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Command = "configurationDone"
             });
             await _session.HandleMessageAsync(configJson, CancellationToken.None);
+            await WaitForTaskAsync(initializedEventTask);
+        }
+
+        private Task<Event> WaitForEventAsync(Predicate<Event> predicate)
+        {
+            lock (_eventWaitersLock)
+            {
+                foreach (var sentEvent in _sentEvents)
+                {
+                    if (predicate(sentEvent))
+                    {
+                        return Task.FromResult(sentEvent);
+                    }
+                }
+
+                var completion = new TaskCompletionSource<Event>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _eventWaiters.Add((predicate, completion));
+                return completion.Task;
+            }
+        }
+
+        private Task<Event> WaitForEventAsync(string eventType)
+        {
+            return WaitForEventAsync(e => string.Equals(e.EventType, eventType, StringComparison.Ordinal));
+        }
+
+        private static async Task WaitForTaskAsync(Task task)
+        {
+            await task.WaitAsync(DefaultAsyncTimeout);
+        }
+
+        private static async Task<T> WaitForTaskAsync<T>(Task<T> task)
+        {
+            return await task.WaitAsync(DefaultAsyncTimeout);
+        }
+
+        private async Task<Event> WaitForStepPauseAsync(Task stepTask)
+        {
+            var stoppedEvent = await WaitForTaskAsync(WaitForEventAsync("stopped"));
+            Assert.False(stepTask.IsCompleted);
+            Assert.Equal(DapSessionState.Paused, _session.State);
+            return stoppedEvent;
         }
 
         [Fact]
@@ -146,9 +224,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 await InitializeSessionAsync();
                 _session.HandleClientConnected();
-
-                // Wait for the async initialized event to arrive, then clear
-                await Task.Delay(200);
                 _sentEvents.Clear();
 
                 var step = CreateMockStep("Checkout code");
@@ -157,9 +232,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var cts = new CancellationTokenSource();
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, cts.Token);
 
-                await Task.Delay(100);
-                Assert.False(stepTask.IsCompleted);
-                Assert.Equal(DapSessionState.Paused, _session.State);
+                await WaitForStepPauseAsync(stepTask);
 
                 var stoppedEvents = _sentEvents.FindAll(e => e.EventType == "stopped");
                 Assert.Single(stoppedEvents);
@@ -172,8 +245,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
 
-                await Task.WhenAny(stepTask, Task.Delay(5000));
-                Assert.True(stepTask.IsCompleted);
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -192,6 +264,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var step1Task = _session.OnStepStartingAsync(step1.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await WaitForStepPauseAsync(step1Task);
 
                 var nextJson = JsonConvert.SerializeObject(new Request
                 {
@@ -200,8 +273,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "next"
                 });
                 await _session.HandleMessageAsync(nextJson, CancellationToken.None);
-                await Task.WhenAny(step1Task, Task.Delay(5000));
-                Assert.True(step1Task.IsCompleted);
+                await WaitForTaskAsync(step1Task);
 
                 _session.OnStepCompleted(step1.Object);
                 _sentEvents.Clear();
@@ -209,9 +281,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var step2 = CreateMockStep("Step 2");
                 var step2Task = _session.OnStepStartingAsync(step2.Object, jobContext.Object, isFirstStep: false, CancellationToken.None);
 
-                await Task.Delay(100);
-                Assert.False(step2Task.IsCompleted);
-                Assert.Equal(DapSessionState.Paused, _session.State);
+                await WaitForStepPauseAsync(step2Task);
 
                 var stoppedEvents = _sentEvents.FindAll(e => e.EventType == "stopped");
                 Assert.Single(stoppedEvents);
@@ -223,8 +293,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(step2Task, Task.Delay(5000));
-                Assert.True(step2Task.IsCompleted);
+                await WaitForTaskAsync(step2Task);
             }
         }
 
@@ -243,6 +312,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var step1Task = _session.OnStepStartingAsync(step1.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await WaitForStepPauseAsync(step1Task);
 
                 var continueJson = JsonConvert.SerializeObject(new Request
                 {
@@ -251,8 +321,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(step1Task, Task.Delay(5000));
-                Assert.True(step1Task.IsCompleted);
+                await WaitForTaskAsync(step1Task);
 
                 _session.OnStepCompleted(step1.Object);
                 _sentEvents.Clear();
@@ -260,8 +329,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var step2 = CreateMockStep("Step 2");
                 var step2Task = _session.OnStepStartingAsync(step2.Object, jobContext.Object, isFirstStep: false, CancellationToken.None);
 
-                await Task.WhenAny(step2Task, Task.Delay(5000));
-                Assert.True(step2Task.IsCompleted);
+                await WaitForTaskAsync(step2Task);
             }
         }
 
@@ -282,14 +350,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var cts = new CancellationTokenSource();
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, cts.Token);
 
-                await Task.Delay(100);
-                Assert.False(stepTask.IsCompleted);
-                Assert.Equal(DapSessionState.Paused, _session.State);
+                await WaitForStepPauseAsync(stepTask);
 
                 cts.Cancel();
 
-                await Task.WhenAny(stepTask, Task.Delay(5000));
-                Assert.True(stepTask.IsCompleted);
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -330,14 +395,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-
-                await Task.Delay(100);
-                Assert.False(stepTask.IsCompleted);
+                await WaitForStepPauseAsync(stepTask);
 
                 _session.CancelSession();
 
-                await Task.WhenAny(stepTask, Task.Delay(5000));
-                Assert.True(stepTask.IsCompleted);
+                await WaitForTaskAsync(stepTask);
                 Assert.Equal(DapSessionState.Terminated, _session.State);
             }
         }
@@ -351,18 +413,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 await InitializeSessionAsync();
                 _session.HandleClientConnected();
-
-                // Wait for the async initialized event to arrive, then clear
-                await Task.Delay(200);
                 _sentEvents.Clear();
 
                 var step = CreateMockStep("Step 1");
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-
-                await Task.Delay(100);
-                Assert.Equal(DapSessionState.Paused, _session.State);
+                await WaitForStepPauseAsync(stepTask);
                 var stoppedEvents = _sentEvents.FindAll(e => e.EventType == "stopped");
                 Assert.Single(stoppedEvents);
 
@@ -382,8 +439,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
-                Assert.True(stepTask.IsCompleted);
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -424,6 +480,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var step1Task = _session.OnStepStartingAsync(step1.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await WaitForStepPauseAsync(step1Task);
 
                 var continueJson = JsonConvert.SerializeObject(new Request
                 {
@@ -432,7 +489,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(step1Task, Task.Delay(5000));
+                await WaitForTaskAsync(step1Task);
 
                 _session.OnStepCompleted(step1.Object);
 
@@ -447,6 +504,56 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Single(_sentResponses);
                 Assert.True(_sentResponses[0].Success);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task StoppedEventAndStackTraceMaskSecretStepDisplayName()
+        {
+            using (var hc = CreateTestContext())
+            {
+                hc.SecretMasker.AddValue("ghs_step_secret");
+
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+                _sentEvents.Clear();
+
+                var step = CreateMockStep("Deploy ghs_step_secret");
+                var jobContext = CreateMockJobContext();
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                var stoppedEvent = await WaitForStepPauseAsync(stepTask);
+
+                var stoppedBody = Assert.IsType<StoppedEventBody>(stoppedEvent.Body);
+                Assert.Contains(DapVariableProvider.RedactedValue, stoppedBody.Description);
+                Assert.DoesNotContain("ghs_step_secret", stoppedBody.Description);
+
+                var stackTraceJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 10,
+                    Type = "request",
+                    Command = "stackTrace"
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(stackTraceJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+                var stackTraceBody = Assert.IsType<StackTraceResponseBody>(_sentResponses[0].Body);
+                Assert.Single(stackTraceBody.StackFrames);
+                Assert.Contains(DapVariableProvider.RedactedValue, stackTraceBody.StackFrames[0].Name);
+                Assert.DoesNotContain("ghs_step_secret", stackTraceBody.StackFrames[0].Name);
+
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 11,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -483,8 +590,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var task = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
 
-                await Task.WhenAny(task, Task.Delay(5000));
-                Assert.True(task.IsCompleted);
+                await WaitForTaskAsync(task);
 
                 _mockServer.Verify(x => x.SendEvent(It.IsAny<Event>()), Times.Never);
             }
@@ -510,6 +616,51 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Single(_sentResponses);
                 Assert.True(_sentResponses[0].Success);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ThreadsCommandMasksSecretJobName()
+        {
+            using (var hc = CreateTestContext())
+            {
+                hc.SecretMasker.AddValue("very-secret-job");
+
+                await InitializeSessionAsync();
+                _session.HandleClientConnected();
+
+                var step = CreateMockStep("Step 1");
+                var jobContext = CreateMockJobContext("very-secret-job");
+
+                var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
+                await WaitForStepPauseAsync(stepTask);
+
+                var threadsJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 10,
+                    Type = "request",
+                    Command = "threads"
+                });
+                _sentResponses.Clear();
+                await _session.HandleMessageAsync(threadsJson, CancellationToken.None);
+
+                Assert.Single(_sentResponses);
+                Assert.True(_sentResponses[0].Success);
+                var threadsBody = Assert.IsType<ThreadsResponseBody>(_sentResponses[0].Body);
+                Assert.Single(threadsBody.Threads);
+                Assert.Contains(DapVariableProvider.RedactedValue, threadsBody.Threads[0].Name);
+                Assert.DoesNotContain("very-secret-job", threadsBody.Threads[0].Name);
+
+                var continueJson = JsonConvert.SerializeObject(new Request
+                {
+                    Seq = 11,
+                    Type = "request",
+                    Command = "continue"
+                });
+                await _session.HandleMessageAsync(continueJson, CancellationToken.None);
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -554,9 +705,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-
-                await Task.Delay(100);
-                Assert.Equal(DapSessionState.Paused, _session.State);
+                await WaitForStepPauseAsync(stepTask);
 
                 var stoppedEvents = _sentEvents.FindAll(e => e.EventType == "stopped");
                 Assert.Single(stoppedEvents);
@@ -568,8 +717,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
-                Assert.True(stepTask.IsCompleted);
+                await WaitForTaskAsync(stepTask);
 
                 var continuedEvents = _sentEvents.FindAll(e => e.EventType == "continued");
                 Assert.Single(continuedEvents);
@@ -651,7 +799,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-                await Task.Delay(100);
+                await WaitForStepPauseAsync(stepTask);
 
                 var scopesJson = JsonConvert.SerializeObject(new Request
                 {
@@ -674,7 +822,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -699,7 +847,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-                await Task.Delay(100);
+                await WaitForStepPauseAsync(stepTask);
 
                 // "env" is at ScopeNames index 1 → variablesReference = 2
                 var variablesJson = JsonConvert.SerializeObject(new Request
@@ -723,7 +871,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -771,7 +919,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-                await Task.Delay(100);
+                await WaitForStepPauseAsync(stepTask);
 
                 // "secrets" is at ScopeNames index 5 → variablesReference = 6
                 var variablesJson = JsonConvert.SerializeObject(new Request
@@ -806,7 +954,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -860,7 +1008,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-                await Task.Delay(100);
+                await WaitForStepPauseAsync(stepTask);
 
                 var evaluateJson = JsonConvert.SerializeObject(new Request
                 {
@@ -888,7 +1036,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -943,7 +1091,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-                await Task.Delay(100);
+                await WaitForStepPauseAsync(stepTask);
 
                 var evaluateJson = JsonConvert.SerializeObject(new Request
                 {
@@ -971,7 +1119,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -1027,7 +1175,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-                await Task.Delay(100);
+                await WaitForStepPauseAsync(stepTask);
 
                 // In REPL context, a non-DSL expression should still evaluate
                 var evaluateJson = JsonConvert.SerializeObject(new Request
@@ -1054,7 +1202,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
+                await WaitForTaskAsync(stepTask);
             }
         }
 
@@ -1109,7 +1257,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateMockJobContext();
 
                 var stepTask = _session.OnStepStartingAsync(step.Object, jobContext.Object, isFirstStep: true, CancellationToken.None);
-                await Task.Delay(100);
+                await WaitForStepPauseAsync(stepTask);
 
                 // watch context should NOT route through REPL even if input
                 // looks like a DSL command — it should evaluate as expression
@@ -1137,7 +1285,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Command = "continue"
                 });
                 await _session.HandleMessageAsync(continueJson, CancellationToken.None);
-                await Task.WhenAny(stepTask, Task.Delay(5000));
+                await WaitForTaskAsync(stepTask);
             }
         }
 
