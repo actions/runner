@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -1074,6 +1074,13 @@ namespace GitHub.Runner.Listener
                             {
                                 await _runnerServer.UpdateAgentUpdateStateAsync(runnerSettings.PoolId, runnerSettings.AgentId, "RefreshConfig", telemetry, tokenSource.Token);
                             }
+                        }
+                        catch (InvalidOperationException ex) when (ex.Message.StartsWith("SetConnection"))
+                        {
+                            // In broker mode (serverUrl == serverUrlV2), _runnerServer is intentionally
+                            // not connected in BrokerMessageListener.CreateSessionAsync. Discard the
+                            // telemetry entry silently rather than re-enqueuing it into an infinite loop.
+                            Trace.Verbose($"Runner server not connected in broker mode, discarding auth migration telemetry: {ex.Message}");
                         }
                         catch (Exception ex)
                         {
