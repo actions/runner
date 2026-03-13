@@ -391,10 +391,13 @@ namespace GitHub.Runner.Worker.Dap
         /// Serializes and writes a DAP message with Content-Length framing.
         /// Must be called within the _sendLock.
         ///
-        /// This is the single egress point for all DAP output. The serialized
-        /// JSON is run through the runner's <see cref="GitHub.DistributedTask.Logging.ISecretMasker"/>
-        /// so that callers do not need to mask individually — any secret that
-        /// appears anywhere in a response or event body is caught here.
+        /// Secret masking is intentionally NOT applied here at the serialization
+        /// layer. Masking the raw JSON would corrupt protocol envelope fields
+        /// (type, event, command, seq) if a secret collides with those strings.
+        /// Instead, each DAP producer masks user-visible text at the point of
+        /// construction via <see cref="DapVariableProvider.MaskSecrets"/> or the
+        /// runner's SecretMasker directly. See DapVariableProvider, DapReplExecutor,
+        /// and DapDebugSession for the call sites.
         /// </summary>
         private void SendMessageInternal(ProtocolMessage message)
         {
@@ -402,10 +405,6 @@ namespace GitHub.Runner.Worker.Dap
             {
                 NullValueHandling = NullValueHandling.Ignore
             });
-
-            // Centralized masking: every outbound DAP payload is sanitized
-            // before hitting the wire, regardless of what callers did.
-            json = HostContext?.SecretMasker?.MaskSecrets(json) ?? json;
 
             var bodyBytes = Encoding.UTF8.GetBytes(json);
             var header = $"Content-Length: {bodyBytes.Length}\r\n\r\n";

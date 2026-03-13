@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
@@ -179,14 +180,14 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (var hc = CreateTestContext())
             {
-                var receivedMessages = new List<string>();
+                var messageReceived = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var mockSession = new Mock<IDapDebugSession>();
                 mockSession.Setup(x => x.HandleMessageAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                    .Callback<string, CancellationToken>((json, ct) => receivedMessages.Add(json))
+                    .Callback<string, CancellationToken>((json, ct) => messageReceived.TrySetResult(json))
                     .Returns(Task.CompletedTask);
                 _server.SetSession(mockSession.Object);
 
-                var cts = new CancellationTokenSource();
+                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 await _server.StartAsync(0, cts.Token);
 
                 var listenerField = typeof(DapServer).GetField("_listener", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -196,9 +197,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 using var client = new TcpClient();
                 await client.ConnectAsync(IPAddress.Loopback, port);
                 var stream = client.GetStream();
-
-                // Wait for server to accept connection
-                await Task.Delay(100);
 
                 // Send a valid DAP request with Content-Length framing
                 var requestJson = "{\"seq\":1,\"type\":\"request\",\"command\":\"initialize\"}";
@@ -210,11 +208,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await stream.WriteAsync(body, 0, body.Length);
                 await stream.FlushAsync();
 
-                // Wait for processing
-                await Task.Delay(500);
-
-                Assert.Single(receivedMessages);
-                Assert.Contains("initialize", receivedMessages[0]);
+                // Wait for session to receive the message (deterministic, bounded)
+                var completed = await Task.WhenAny(messageReceived.Task, Task.Delay(5000));
+                Assert.Equal(messageReceived.Task, completed);
+                Assert.Contains("initialize", await messageReceived.Task);
 
                 cts.Cancel();
                 await _server.StopAsync();
@@ -224,14 +221,16 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task CentralizedMasking_SecretsInResponseAreMasked()
+        public async Task ProtocolMetadata_PreservedWhenSecretCollidesWithKeywords()
         {
             using (var hc = CreateTestContext())
             {
-                // Register a secret
-                hc.SecretMasker.AddValue("super-secret-token");
+                // Register secrets that match DAP protocol keywords
+                hc.SecretMasker.AddValue("response");
+                hc.SecretMasker.AddValue("output");
+                hc.SecretMasker.AddValue("evaluate");
 
-                var cts = new CancellationTokenSource();
+                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 await _server.StartAsync(0, cts.Token);
 
                 var listenerField = typeof(DapServer).GetField("_listener", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -242,9 +241,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await client.ConnectAsync(IPAddress.Loopback, port);
                 var stream = client.GetStream();
 
-                await Task.Delay(100);
-
-                // Send a response that contains the secret (through the server API)
+                // Send a response whose protocol fields collide with secrets
                 var response = new Response
                 {
                     Type = "response",
@@ -253,7 +250,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Success = true,
                     Body = new EvaluateResponseBody
                     {
-                        Result = "The value is super-secret-token here",
+                        Result = "some result",
                         Type = "string",
                         VariablesReference = 0
                     }
@@ -261,16 +258,13 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _server.SendResponse(response);
 
-                // Read what the client received
-                await Task.Delay(200);
-                var buffer = new byte[4096];
-                var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                var received = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                // Read a full framed DAP message with timeout
+                var received = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
 
-                // The response should NOT contain the raw secret
-                Assert.DoesNotContain("super-secret-token", received);
-                // It should contain the masked version
-                Assert.Contains("***", received);
+                // Protocol metadata MUST be preserved even when secrets collide
+                Assert.Contains("\"type\":\"response\"", received);
+                Assert.Contains("\"command\":\"evaluate\"", received);
+                Assert.Contains("\"success\":true", received);
 
                 cts.Cancel();
                 await _server.StopAsync();
@@ -280,13 +274,14 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task CentralizedMasking_SecretsInEventsAreMasked()
+        public async Task ProtocolMetadata_EventFieldsPreservedWhenSecretCollidesWithKeywords()
         {
             using (var hc = CreateTestContext())
             {
-                hc.SecretMasker.AddValue("event-secret-value");
+                hc.SecretMasker.AddValue("output");
+                hc.SecretMasker.AddValue("stdout");
 
-                var cts = new CancellationTokenSource();
+                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 await _server.StartAsync(0, cts.Token);
 
                 var listenerField = typeof(DapServer).GetField("_listener", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -297,25 +292,23 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await client.ConnectAsync(IPAddress.Loopback, port);
                 var stream = client.GetStream();
 
-                await Task.Delay(100);
-
                 _server.SendEvent(new Event
                 {
                     EventType = "output",
                     Body = new OutputEventBody
                     {
                         Category = "stdout",
-                        Output = "Output contains event-secret-value here"
+                        Output = "hello world"
                     }
                 });
 
-                await Task.Delay(200);
-                var buffer = new byte[4096];
-                var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                var received = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                // Read a full framed DAP message with timeout
+                var received = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
 
-                Assert.DoesNotContain("event-secret-value", received);
-                Assert.Contains("***", received);
+                // Protocol fields MUST be preserved
+                Assert.Contains("\"type\":\"event\"", received);
+                Assert.Contains("\"event\":\"output\"", received);
+                Assert.Contains("\"category\":\"stdout\"", received);
 
                 cts.Cancel();
                 await _server.StopAsync();
@@ -337,6 +330,67 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var completed = await Task.WhenAny(stopTask, Task.Delay(10000));
                 Assert.Equal(stopTask, completed);
             }
+        }
+
+        /// <summary>
+        /// Reads a single DAP-framed message from a stream with a timeout.
+        /// Parses the Content-Length header, reads exactly that many bytes,
+        /// and returns the JSON body. Fails with a clear error on timeout.
+        /// </summary>
+        private static async Task<string> ReadDapMessageAsync(NetworkStream stream, TimeSpan timeout)
+        {
+            using var cts = new CancellationTokenSource(timeout);
+            var token = cts.Token;
+
+            // Read headers byte-by-byte until we see \r\n\r\n
+            var headerBuilder = new StringBuilder();
+            var buffer = new byte[1];
+            var contentLength = -1;
+
+            while (true)
+            {
+                var readTask = stream.ReadAsync(buffer, 0, 1, token);
+                var bytesRead = await readTask;
+                if (bytesRead == 0)
+                {
+                    throw new EndOfStreamException("Connection closed while reading DAP headers");
+                }
+
+                headerBuilder.Append((char)buffer[0]);
+                var headers = headerBuilder.ToString();
+                if (headers.EndsWith("\r\n\r\n"))
+                {
+                    // Parse Content-Length
+                    foreach (var line in headers.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (line.StartsWith("Content-Length: ", StringComparison.OrdinalIgnoreCase))
+                        {
+                            contentLength = int.Parse(line.Substring("Content-Length: ".Length).Trim());
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if (contentLength < 0)
+            {
+                throw new InvalidOperationException("No Content-Length header found in DAP message");
+            }
+
+            // Read exactly contentLength bytes
+            var body = new byte[contentLength];
+            var totalRead = 0;
+            while (totalRead < contentLength)
+            {
+                var bytesRead = await stream.ReadAsync(body, totalRead, contentLength - totalRead, token);
+                if (bytesRead == 0)
+                {
+                    throw new EndOfStreamException("Connection closed while reading DAP body");
+                }
+                totalRead += bytesRead;
+            }
+
+            return Encoding.UTF8.GetString(body);
         }
     }
 }
