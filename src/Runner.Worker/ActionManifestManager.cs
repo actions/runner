@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker
             ActionDefinitionDataNew actionDefinition = new();
 
             // Clean up file name real quick
-            // Instead of using Regex which can be computationally expensive, 
+            // Instead of using Regex which can be computationally expensive,
             // we can just remove the # of characters from the fileName according to the length of the basePath
             string basePath = HostContext.GetDirectory(WellKnownDirectory.Actions);
             string fileRelativePath = manifestFile;
@@ -546,6 +546,14 @@ namespace GitHub.Runner.Worker
                         }
                         var message = metadata.Value.AssertString("input deprecationMessage");
                         actionDefinition.Deprecated.Add(inputName.Value, message.Value);
+                    }
+                    else if (string.Equals(metadataName, "required", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (actionDefinition.Required == null)
+                        {
+                            actionDefinition.Required = new Dictionary<String, bool>();
+                        }
+                        actionDefinition.Required.Add(inputName.Value, string.Equals(metadata.Value, "true", StringComparison.OrdinalIgnoreCase));
                     }
                 }
 
