@@ -39,7 +39,7 @@ namespace GitHub.Runner.Worker.Dap
         private const int CompletedFrameIdBase = 1000;
 
         private IDapServer _server;
-        private DapSessionState _state = DapSessionState.WaitingForConnection;
+        private volatile DapSessionState _state = DapSessionState.WaitingForConnection;
 
         // Synchronization for step execution
         private TaskCompletionSource<DapCommand> _commandTcs;
