@@ -100,7 +100,7 @@ namespace GitHub.Runner.Worker.Dap
                 _hostContext.GetDirectory(WellKnownDirectory.Temp),
                 $"dap_repl_{Guid.NewGuid()}{extension}");
 
-            var encoding = new UTF8Encoding(false);
+            Encoding encoding = new UTF8Encoding(false);
 #if OS_WINDOWS
             contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
             encoding = Console.InputEncoding.CodePage != 65001
