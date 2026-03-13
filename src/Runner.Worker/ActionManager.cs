@@ -115,6 +115,14 @@ namespace GitHub.Runner.Worker
                 executionContext.Result = TaskResult.Failed;
                 throw;
             }
+            catch (FailedToDownloadActionException ex)
+            {
+                // Log the error and fail the PrepareActionsAsync Initialization.
+                Trace.Error($"Caught exception from PrepareActionsAsync Initialization: {ex}");
+                executionContext.InfrastructureError(ex.InnerException?.Message ?? ex.Message, category: "error_download_action");
+                executionContext.Result = TaskResult.Failed;
+                throw;
+            }
             catch (InvalidActionArchiveException ex)
             {
                 // Log the error and fail the PrepareActionsAsync Initialization.
@@ -1157,92 +1165,101 @@ namespace GitHub.Runner.Worker
 
             // Allow up to 20 * 60s for any action to be downloaded from github graph.
             int timeoutSeconds = 20 * 60;
-            while (retryCount < 3)
+            try
             {
-                string requestId = string.Empty;
-                using (var actionDownloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
-                using (var actionDownloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(actionDownloadTimeout.Token, executionContext.CancellationToken))
+                while (retryCount < 3)
                 {
-                    try
+                    string requestId = string.Empty;
+                    using (var actionDownloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
+                    using (var actionDownloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(actionDownloadTimeout.Token, executionContext.CancellationToken))
                     {
-                        //open zip stream in async mode
-                        using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
-                        using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-                        using (var httpClient = new HttpClient(httpClientHandler))
+                        try
                         {
-                            httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(downloadAuthToken);
-
-                            httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                            using (var response = await httpClient.GetAsync(downloadUrl))
+                            //open zip stream in async mode
+                            using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
+                            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                            using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                requestId = UrlUtil.GetGitHubRequestId(response.Headers);
-                                if (!string.IsNullOrEmpty(requestId))
-                                {
-                                    Trace.Info($"Request URL: {downloadUrl} X-GitHub-Request-Id: {requestId} Http Status: {response.StatusCode}");
-                                }
+                                httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(downloadAuthToken);
 
-                                if (response.IsSuccessStatusCode)
+                                httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                                using (var response = await httpClient.GetAsync(downloadUrl))
                                 {
-                                    using (var result = await response.Content.ReadAsStreamAsync())
+                                    requestId = UrlUtil.GetGitHubRequestId(response.Headers);
+                                    if (!string.IsNullOrEmpty(requestId))
                                     {
-                                        await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);
-                                        await fs.FlushAsync(actionDownloadCancellation.Token);
-
-                                        // download succeed, break out the retry loop.
-                                        break;
+                                        Trace.Info($"Request URL: {downloadUrl} X-GitHub-Request-Id: {requestId} Http Status: {response.StatusCode}");
                                     }
-                                }
-                                else if (response.StatusCode == HttpStatusCode.NotFound)
-                                {
-                                    // It doesn't make sense to retry in this case, so just stop
-                                    throw new ActionNotFoundException(new Uri(downloadUrl), requestId);
-                                }
-                                else
-                                {
-                                    // Something else bad happened, let's go to our retry logic
-                                    response.EnsureSuccessStatusCode();
+
+                                    if (response.IsSuccessStatusCode)
+                                    {
+                                        using (var result = await response.Content.ReadAsStreamAsync())
+                                        {
+                                            await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);
+                                            await fs.FlushAsync(actionDownloadCancellation.Token);
+
+                                            // download succeed, break out the retry loop.
+                                            break;
+                                        }
+                                    }
+                                    else if (response.StatusCode == HttpStatusCode.NotFound)
+                                    {
+                                        // It doesn't make sense to retry in this case, so just stop
+                                        throw new ActionNotFoundException(new Uri(downloadUrl), requestId);
+                                    }
+                                    else
+                                    {
+                                        // Something else bad happened, let's go to our retry logic
+                                        response.EnsureSuccessStatusCode();
+                                    }
                                 }
                             }
                         }
-                    }
-                    catch (OperationCanceledException) when (executionContext.CancellationToken.IsCancellationRequested)
-                    {
-                        Trace.Info("Action download has been cancelled.");
-                        throw;
-                    }
-                    catch (OperationCanceledException ex) when (!executionContext.CancellationToken.IsCancellationRequested && retryCount >= 2)
-                    {
-                        Trace.Info($"Action download final retry timeout after {timeoutSeconds} seconds.");
-                        throw new TimeoutException($"Action '{downloadUrl}' download has timed out. Error: {ex.Message} {requestId}");
-                    }
-                    catch (ActionNotFoundException)
-                    {
-                        Trace.Info($"The action at '{downloadUrl}' does not exist");
-                        throw;
-                    }
-                    catch (Exception ex) when (retryCount < 2)
-                    {
-                        retryCount++;
-                        Trace.Error($"Fail to download archive '{downloadUrl}' -- Attempt: {retryCount}");
-                        Trace.Error(ex);
-                        if (actionDownloadTimeout.Token.IsCancellationRequested)
+                        catch (OperationCanceledException) when (executionContext.CancellationToken.IsCancellationRequested)
                         {
-                            // action download didn't finish within timeout
-                            executionContext.Warning($"Action '{downloadUrl}' didn't finish download within {timeoutSeconds} seconds. {requestId}");
+                            Trace.Info("Action download has been cancelled.");
+                            throw;
                         }
-                        else
+                        catch (OperationCanceledException ex) when (!executionContext.CancellationToken.IsCancellationRequested && retryCount >= 2)
                         {
-                            executionContext.Warning($"Failed to download action '{downloadUrl}'. Error: {ex.Message} {requestId}");
+                            Trace.Info($"Action download final retry timeout after {timeoutSeconds} seconds.");
+                            throw new TimeoutException($"Action '{downloadUrl}' download has timed out. Error: {ex.Message} {requestId}");
+                        }
+                        catch (ActionNotFoundException)
+                        {
+                            Trace.Info($"The action at '{downloadUrl}' does not exist");
+                            throw;
+                        }
+                        catch (Exception ex) when (retryCount < 2)
+                        {
+                            retryCount++;
+                            Trace.Error($"Fail to download archive '{downloadUrl}' -- Attempt: {retryCount}");
+                            Trace.Error(ex);
+                            if (actionDownloadTimeout.Token.IsCancellationRequested)
+                            {
+                                // action download didn't finish within timeout
+                                executionContext.Warning($"Action '{downloadUrl}' didn't finish download within {timeoutSeconds} seconds. {requestId}");
+                            }
+                            else
+                            {
+                                executionContext.Warning($"Failed to download action '{downloadUrl}'. Error: {ex.Message} {requestId}");
+                            }
                         }
                     }
-                }
 
-                if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF")))
-                {
-                    var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
-                    executionContext.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
-                    await Task.Delay(backOff);
+                    if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF")))
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
+                        executionContext.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
                 }
+            }
+            catch (Exception ex) when (!(ex is OperationCanceledException) && !executionContext.CancellationToken.IsCancellationRequested)
+            {
+                Trace.Error($"Failed to download archive '{downloadUrl}' after {retryCount + 1} attempts.");
+                Trace.Error(ex);
+                throw new FailedToDownloadActionException($"Failed to download archive '{downloadUrl}' after {retryCount + 1} attempts.", ex);
             }
 
             ArgUtil.NotNullOrEmpty(archiveFile, nameof(archiveFile));
