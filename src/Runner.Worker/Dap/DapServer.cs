@@ -11,7 +11,7 @@ using Newtonsoft.Json;
 namespace GitHub.Runner.Worker.Dap
 {
     /// <summary>
-    /// Production TCP server for the Debug Adapter Protocol.
+    /// TCP server for the Debug Adapter Protocol.
     /// Handles Content-Length message framing, JSON serialization,
     /// client reconnection, and graceful shutdown.
     /// </summary>
@@ -116,7 +116,7 @@ namespace GitHub.Runner.Worker.Dap
                 }
                 catch (Exception ex)
                 {
-                    Trace.Warning($"Connection error: {ex.Message}");
+                    Trace.Warning($"Connection error ({ex.GetType().Name})");
                     CleanupConnection();
 
                     if (!_acceptConnections || cancellationToken.IsCancellationRequested)
@@ -219,11 +219,11 @@ namespace GitHub.Runner.Worker.Dap
             }
             catch (IOException ex)
             {
-                Trace.Info($"Connection closed: {ex.Message}");
+                Trace.Info($"Connection closed ({ex.GetType().Name})");
             }
             catch (Exception ex)
             {
-                Trace.Error($"Error in message loop: {ex}");
+                Trace.Error($"Error in message loop ({ex.GetType().Name})");
             }
 
             Trace.Info("DAP message processing loop ended");
@@ -237,11 +237,11 @@ namespace GitHub.Runner.Worker.Dap
                 request = JsonConvert.DeserializeObject<Request>(json);
                 if (request == null || request.Type != "request")
                 {
-                    Trace.Warning($"Received non-request message: {json}");
+                    Trace.Warning("Received DAP message that was not a request");
                     return;
                 }
 
-                Trace.Info($"Received request: seq={request.Seq}, command={request.Command}");
+                Trace.Info("Received DAP request");
 
                 if (_session == null)
                 {
@@ -256,11 +256,11 @@ namespace GitHub.Runner.Worker.Dap
             }
             catch (JsonException ex)
             {
-                Trace.Error($"Failed to parse request: {ex.Message}");
+                Trace.Error($"Failed to parse request ({ex.GetType().Name})");
             }
             catch (Exception ex)
             {
-                Trace.Error($"Error processing request: {ex}");
+                Trace.Error($"Error processing request ({ex.GetType().Name})");
                 if (request != null)
                 {
                     SendErrorResponse(request, ex.Message);
@@ -345,7 +345,7 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             var json = Encoding.UTF8.GetString(buffer);
-            Trace.Verbose($"Received: {json}");
+            Trace.Verbose("Received DAP message body");
             return json;
         }
 
@@ -414,7 +414,7 @@ namespace GitHub.Runner.Worker.Dap
             _stream.Write(bodyBytes, 0, bodyBytes.Length);
             _stream.Flush();
 
-            Trace.Verbose($"Sent: {json}");
+            Trace.Verbose("Sent DAP message");
         }
 
         public void SendMessage(ProtocolMessage message)
@@ -438,7 +438,7 @@ namespace GitHub.Runner.Worker.Dap
             }
             catch (Exception ex)
             {
-                Trace.Warning($"Failed to send message: {ex.Message}");
+                Trace.Warning($"Failed to send message ({ex.GetType().Name})");
             }
         }
 
@@ -451,7 +451,7 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     if (_stream == null)
                     {
-                        Trace.Warning($"Cannot send event '{evt.EventType}': no client connected");
+                        Trace.Warning("Cannot send event: no client connected");
                         return;
                     }
                     evt.Seq = _nextSeq++;
@@ -461,11 +461,11 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     _sendLock.Release();
                 }
-                Trace.Info($"Sent event: {evt.EventType}");
+                Trace.Info("Sent event");
             }
             catch (Exception ex)
             {
-                Trace.Warning($"Failed to send event '{evt.EventType}': {ex.Message}");
+                Trace.Warning($"Failed to send event ({ex.GetType().Name})");
             }
         }
 
@@ -478,7 +478,7 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     if (_stream == null)
                     {
-                        Trace.Warning($"Cannot send response for '{response.Command}': no client connected");
+                        Trace.Warning("Cannot send response: no client connected");
                         return;
                     }
                     response.Seq = _nextSeq++;
@@ -488,11 +488,11 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     _sendLock.Release();
                 }
-                Trace.Info($"Sent response: seq={response.Seq}, command={response.Command}, success={response.Success}");
+                Trace.Info("Sent response");
             }
             catch (Exception ex)
             {
-                Trace.Warning($"Failed to send response for '{response.Command}': {ex.Message}");
+                Trace.Warning($"Failed to send response ({ex.GetType().Name})");
             }
         }
     }

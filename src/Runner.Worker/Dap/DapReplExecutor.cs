@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker.Dap
             }
             catch (Exception ex)
             {
-                _trace.Error($"REPL run command failed: {ex}");
+                _trace.Error($"REPL run command failed ({ex.GetType().Name})");
                 var maskedError = _hostContext.SecretMasker.MaskSecrets(ex.Message);
                 return ErrorResult($"Command failed: {maskedError}");
             }
@@ -87,7 +87,7 @@ namespace GitHub.Runner.Worker.Dap
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
 
-            _trace.Info($"REPL shell: {shellCommand}, argFormat: {argFormat}");
+            _trace.Info("Resolved REPL shell");
 
             // 2. Expand ${{ }} expressions in the script body, just like
             //    ActionRunner evaluates step inputs before ScriptHandler sees them
@@ -142,7 +142,7 @@ namespace GitHub.Runner.Worker.Dap
                     workingDirectory = workspace ?? _hostContext.GetDirectory(WellKnownDirectory.Work);
                 }
 
-                _trace.Info($"REPL executing: {commandPath} {arguments} (cwd: {workingDirectory})");
+                _trace.Info("Executing REPL command");
 
                 // Stream execution info to debugger
                 SendOutput("console", $"$ {shellCommand} {command.Script.Substring(0, Math.Min(command.Script.Length, 80))}{(command.Script.Length > 80 ? "..." : "")}\n");
@@ -254,7 +254,7 @@ namespace GitHub.Runner.Worker.Dap
                 }
                 catch (Exception ex)
                 {
-                    _trace.Warning($"Expression expansion failed for '{expr}': {ex.Message}");
+                    _trace.Warning($"Expression expansion failed ({ex.GetType().Name})");
                     // Keep the original expression literal on failure
                     result.Append(input, start, end - start);
                 }
@@ -277,7 +277,7 @@ namespace GitHub.Runner.Worker.Dap
                 runDefaults.TryGetValue("shell", out var defaultShell) &&
                 !string.IsNullOrEmpty(defaultShell))
             {
-                _trace.Info($"Using job default shell: {defaultShell}");
+                _trace.Info("Using job default shell");
                 return defaultShell;
             }
 

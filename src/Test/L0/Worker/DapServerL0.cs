@@ -164,9 +164,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var cts1 = new CancellationTokenSource();
                 await _server.StartAsync(0, cts1.Token);
                 await _server.StopAsync();
+            }
 
-                _server = new DapServer();
-                _server.Initialize(CreateTestContext());
+            using (CreateTestContext($"{nameof(StartAndStopMultipleTimesDoesNotThrow)}_SecondStart"))
+            {
                 var cts2 = new CancellationTokenSource();
                 await _server.StartAsync(0, cts2.Token);
                 await _server.StopAsync();
@@ -194,8 +195,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var listener = (TcpListener)listenerField.GetValue(_server);
                 var port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
+                var connectionTask = _server.WaitForConnectionAsync(cts.Token);
                 using var client = new TcpClient();
                 await client.ConnectAsync(IPAddress.Loopback, port);
+                await connectionTask;
                 var stream = client.GetStream();
 
                 // Send a valid DAP request with Content-Length framing
@@ -237,8 +240,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var listener = (TcpListener)listenerField.GetValue(_server);
                 var port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
+                var connectionTask = _server.WaitForConnectionAsync(cts.Token);
                 using var client = new TcpClient();
                 await client.ConnectAsync(IPAddress.Loopback, port);
+                await connectionTask;
                 var stream = client.GetStream();
 
                 // Send a response whose protocol fields collide with secrets
@@ -288,8 +293,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var listener = (TcpListener)listenerField.GetValue(_server);
                 var port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
+                var connectionTask = _server.WaitForConnectionAsync(cts.Token);
                 using var client = new TcpClient();
                 await client.ConnectAsync(IPAddress.Loopback, port);
+                await connectionTask;
                 var stream = client.GetStream();
 
                 _server.SendEvent(new Event

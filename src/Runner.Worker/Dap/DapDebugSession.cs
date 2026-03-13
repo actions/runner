@@ -19,7 +19,6 @@ namespace GitHub.Runner.Worker.Dap
     }
 
     /// <summary>
-    /// Production DAP debug session.
     /// Handles step-level breakpoints with next/continue flow control,
     /// scope/variable inspection, client reconnection, and cancellation
     /// signal propagation.
@@ -116,7 +115,7 @@ namespace GitHub.Runner.Worker.Dap
                     return;
                 }
 
-                Trace.Info($"Handling DAP request: {request.Command}");
+                Trace.Info("Handling DAP request");
 
                 Response response;
                 if (request.Command == "evaluate")
@@ -156,7 +155,7 @@ namespace GitHub.Runner.Worker.Dap
             }
             catch (Exception ex)
             {
-                Trace.Error($"Error handling request '{request?.Command}': {ex}");
+                Trace.Error($"Error handling DAP request ({ex.GetType().Name})");
                 if (request != null)
                 {
                     var maskedMessage = HostContext?.SecretMasker?.MaskSecrets(ex.Message) ?? ex.Message;
@@ -178,12 +177,12 @@ namespace GitHub.Runner.Worker.Dap
             {
                 try
                 {
-                    var clientCaps = request.Arguments.ToObject<InitializeRequestArguments>();
-                    Trace.Info($"Client: {clientCaps?.ClientName ?? clientCaps?.ClientId ?? "unknown"}");
+                    request.Arguments.ToObject<InitializeRequestArguments>();
+                    Trace.Info("Initialize arguments received");
                 }
                 catch (Exception ex)
                 {
-                    Trace.Warning($"Failed to parse initialize arguments: {ex.Message}");
+                    Trace.Warning($"Failed to parse initialize arguments ({ex.GetType().Name})");
                 }
             }
 
@@ -408,7 +407,7 @@ namespace GitHub.Runner.Worker.Dap
             var frameId = args?.FrameId ?? CurrentFrameId;
             var evalContext = args?.Context ?? "hover";
 
-            Trace.Info($"Evaluate request: '{expression}' (frame: {frameId}, context: {evalContext})");
+            Trace.Info("Evaluate request received");
 
             // REPL context → route through the DSL dispatcher
             if (string.Equals(evalContext, "repl", StringComparison.OrdinalIgnoreCase))
@@ -618,7 +617,7 @@ namespace GitHub.Runner.Worker.Dap
 
             if (!shouldPause)
             {
-                Trace.Info($"Step starting (not pausing): {step.DisplayName}");
+                Trace.Info("Step starting without debugger pause");
                 return;
             }
 
@@ -627,7 +626,7 @@ namespace GitHub.Runner.Worker.Dap
                 ? $"Stopped at job entry: {step.DisplayName}"
                 : $"Stopped before step: {step.DisplayName}";
 
-            Trace.Info($"Step starting: {step.DisplayName} (reason: {reason})");
+            Trace.Info("Step starting with debugger pause");
 
             // Send stopped event to debugger (only if client is connected)
             SendStoppedEvent(reason, description);
@@ -639,7 +638,7 @@ namespace GitHub.Runner.Worker.Dap
         public void OnStepCompleted(IStep step)
         {
             var result = step.ExecutionContext?.Result;
-            Trace.Info($"Step completed: {step.DisplayName}, result: {result}");
+            Trace.Info("Step completed");
 
             // Add to completed steps list for stack trace
             lock (_stateLock)
@@ -797,7 +796,7 @@ namespace GitHub.Runner.Worker.Dap
             {
                 var command = await _commandTcs.Task;
 
-                Trace.Info($"Received command: {command}");
+                Trace.Info("Received debugger command");
 
                 lock (_stateLock)
                 {
@@ -857,7 +856,7 @@ namespace GitHub.Runner.Worker.Dap
         {
             if (!_isClientConnected)
             {
-                Trace.Info($"No client connected, deferring stopped event: {description}");
+                Trace.Info("No client connected, deferring stopped event");
                 return;
             }
 

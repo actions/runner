@@ -124,14 +124,18 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void ResolveDefaultShell_NoJobDefaults_ReturnsSh()
+        public void ResolveDefaultShell_NoJobDefaults_ReturnsPlatformDefault()
         {
             using (CreateTestContext())
             {
                 var context = CreateMockContext();
                 var result = _executor.ResolveDefaultShell(context.Object);
 
+#if OS_WINDOWS
+                Assert.True(result == "pwsh" || result == "powershell");
+#else
                 Assert.Equal("sh", result);
+#endif
             }
         }
 
