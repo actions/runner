@@ -138,7 +138,6 @@ function layout ()
         chmod +x "${LAYOUT_DIR}/bin/Runner.Worker"
         chmod +x "${LAYOUT_DIR}/bin/Runner.PluginHost"
         chmod +x "${LAYOUT_DIR}/bin/installdependencies.sh"
-        chmod +x "${LAYOUT_DIR}/safe_sleep.sh"
     fi
 
     heading "Setup externals folder for $RUNTIME_ID runner's layout"
