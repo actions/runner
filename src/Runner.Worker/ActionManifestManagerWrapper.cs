@@ -118,7 +118,8 @@ namespace GitHub.Runner.Worker
                 Description = newData.Description,
                 Inputs = ConvertToLegacyToken<MappingToken>(newData.Inputs),
                 Deprecated = newData.Deprecated,
-                Execution = ConvertToLegacyExecution(newData.Execution)
+                Execution = ConvertToLegacyExecution(newData.Execution),
+                RequiredInputs = newData.RequiredInputs
             };
         }
 

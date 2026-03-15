@@ -517,6 +517,118 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Verify(x => x.SetGitHubContext("action_ref", null), Times.Once);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void RequiredInputProvidedDoesNotError()
+        {
+            // Arrange
+            Setup();
+
+            // Enable the feature flag
+            _ec.Object.Global.Variables.Set(Constants.Runner.Features.ValidateRequiredActionInputs, "true");
+
+            // Set up action definition with a required input
+            var actionInputs = new MappingToken(null, null, null);
+            actionInputs.Add(new StringToken(null, null, null, "input1"), new StringToken(null, null, null, "input1"));
+            actionInputs.Add(new StringToken(null, null, null, "input2"), new StringToken(null, null, null, ""));
+            actionInputs.Add(new StringToken(null, null, null, "input3"), new StringToken(null, null, null, "github"));
+            var actionDefinition = new Definition()
+            {
+                Directory = _hc.GetDirectory(WellKnownDirectory.Work),
+                Data = new ActionDefinitionData()
+                {
+                    Name = "TestAction",
+                    Description = "TestAction",
+                    Inputs = actionInputs,
+                    Execution = new ScriptActionExecutionData(),
+                    RequiredInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "input1" }
+                }
+            };
+            _actionManager.Setup(x => x.LoadAction(It.IsAny<IExecutionContext>(), It.IsAny<ActionStep>())).Returns(actionDefinition);
+
+            var actionId = Guid.NewGuid();
+            var stepInputs = new MappingToken(null, null, null);
+            stepInputs.Add(new StringToken(null, null, null, "input1"), new StringToken(null, null, null, "provided-value"));
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                Reference = new Pipelines.RepositoryPathReference()
+                {
+                    Name = "actions/test",
+                    Ref = "v1"
+                },
+                Inputs = stepInputs
+            };
+            _actionRunner.Action = action;
+
+            _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
+                           .Returns(new Mock<IHandler>().Object);
+
+            // Act
+            await _actionRunner.RunAsync();
+
+            // Assert: no error should be raised for a required input that was provided
+            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Type == IssueType.Error && s.Message.Contains("input1")), It.IsAny<ExecutionContextLogOptions>()), Times.Never);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void RequiredInputMissingRaisesError()
+        {
+            // Arrange
+            Setup();
+
+            // Enable the feature flag
+            _ec.Object.Global.Variables.Set(Constants.Runner.Features.ValidateRequiredActionInputs, "true");
+
+            // Set up action definition with a required input
+            var actionInputs = new MappingToken(null, null, null);
+            actionInputs.Add(new StringToken(null, null, null, "input1"), new StringToken(null, null, null, "input1"));
+            actionInputs.Add(new StringToken(null, null, null, "input2"), new StringToken(null, null, null, ""));
+            actionInputs.Add(new StringToken(null, null, null, "input3"), new StringToken(null, null, null, "github"));
+            var actionDefinition = new Definition()
+            {
+                Directory = _hc.GetDirectory(WellKnownDirectory.Work),
+                Data = new ActionDefinitionData()
+                {
+                    Name = "TestAction",
+                    Description = "TestAction",
+                    Inputs = actionInputs,
+                    Execution = new ScriptActionExecutionData(),
+                    RequiredInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "required-but-missing" }
+                }
+            };
+            _actionManager.Setup(x => x.LoadAction(It.IsAny<IExecutionContext>(), It.IsAny<ActionStep>())).Returns(actionDefinition);
+
+            var actionId = Guid.NewGuid();
+            var stepInputs = new MappingToken(null, null, null);
+            stepInputs.Add(new StringToken(null, null, null, "input1"), new StringToken(null, null, null, "provided-value"));
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                Reference = new Pipelines.RepositoryPathReference()
+                {
+                    Name = "actions/test",
+                    Ref = "v1"
+                },
+                Inputs = stepInputs
+            };
+            _actionRunner.Action = action;
+
+            _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>(), It.IsAny<List<JobExtensionRunner>>()))
+                           .Returns(new Mock<IHandler>().Object);
+
+            // Act
+            await _actionRunner.RunAsync();
+
+            // Assert: an error should be raised for the missing required input
+            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Type == IssueType.Error && s.Message.Contains("required-but-missing")), It.IsAny<ExecutionContextLogOptions>()), Times.Once);
+        }
+
         private void Setup([CallerMemberName] string name = "")
         {
             _ecTokenSource?.Dispose();

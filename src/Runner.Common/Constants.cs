@@ -177,6 +177,7 @@ namespace GitHub.Runner.Common
                 public static readonly string SetOrchestrationIdEnvForActions = "actions_set_orchestration_id_env_for_actions";
                 public static readonly string SendJobLevelAnnotations = "actions_send_job_level_annotations";
                 public static readonly string EmitCompositeMarkers = "actions_runner_emit_composite_markers";
+                public static readonly string ValidateRequiredActionInputs = "actions_runner_validate_required_action_inputs";
             }
 
             // Node version migration related constants
