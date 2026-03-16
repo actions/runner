@@ -51,14 +51,14 @@ namespace GitHub.Runner.Worker
             jobContext.JobContext.Status = (jobContext.Result ?? TaskResult.Succeeded).ToActionResult();
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             bool checkPostJobActions = false;
-            IDapDebugSession debugSession = null;
+            IDapDebugger dapDebugger = null;
             try
             {
-                debugSession = HostContext.GetService<IDapDebugSession>();
+                dapDebugger = HostContext.GetService<IDapDebugger>();
             }
             catch
             {
-                // Debug session not available — continue without debugging
+                // Debugger not available — continue without debugging
             }
             bool isFirstStep = true;
             while (jobContext.JobSteps.Count > 0 || !checkPostJobActions)
@@ -238,16 +238,9 @@ namespace GitHub.Runner.Worker
                         else
                         {
                             // Pause for DAP debugger before step execution
-                            if (debugSession?.IsActive == true)
+                            if (dapDebugger != null)
                             {
-                                try
-                                {
-                                    await debugSession.OnStepStartingAsync(step, jobContext, isFirstStep, jobContext.CancellationToken);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Trace.Warning($"DAP OnStepStarting error: {ex.Message}");
-                                }
+                                await dapDebugger.OnStepStartingAsync(step, jobContext, isFirstStep, jobContext.CancellationToken);
                                 isFirstStep = false;
                             }
 
@@ -255,16 +248,9 @@ namespace GitHub.Runner.Worker
                             await RunStepAsync(step, jobContext.CancellationToken);
                             CompleteStep(step);
 
-                            if (debugSession?.IsActive == true)
+                            if (dapDebugger != null)
                             {
-                                try
-                                {
-                                    debugSession.OnStepCompleted(step);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Trace.Warning($"DAP OnStepCompleted error: {ex.Message}");
-                                }
+                                dapDebugger.OnStepCompleted(step);
                             }
                         }
                     }
@@ -293,16 +279,9 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
             }
 
-            if (debugSession?.IsActive == true)
+            if (dapDebugger != null)
             {
-                try
-                {
-                    debugSession.OnJobCompleted();
-                }
-                catch (Exception ex)
-                {
-                    Trace.Warning($"DAP OnJobCompleted error: {ex.Message}");
-                }
+                dapDebugger.OnJobCompleted();
             }
         }
 

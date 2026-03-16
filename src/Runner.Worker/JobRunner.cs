@@ -113,9 +113,7 @@ namespace GitHub.Runner.Worker
 
             IExecutionContext jobContext = null;
             CancellationTokenRegistration? runnerShutdownRegistration = null;
-            IDapServer dapServer = null;
-            IDapDebugSession debugSession = null;
-            CancellationTokenRegistration? dapCancellationRegistration = null;
+            IDapDebugger dapDebugger = null;
             try
             {
                 // Create the job execution context.
@@ -124,36 +122,6 @@ namespace GitHub.Runner.Worker
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
                 jobContext.Debug($"Starting: {message.JobDisplayName}");
-
-                if (jobContext.Global.EnableDebugger)
-                {
-                    Trace.Info("Debugger enabled for this job run");
-
-                    try
-                    {
-                        var port = 4711;
-                        var portEnv = Environment.GetEnvironmentVariable("ACTIONS_DAP_PORT");
-                        if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort))
-                        {
-                            port = customPort;
-                        }
-
-                        dapServer = HostContext.GetService<IDapServer>();
-                        debugSession = HostContext.GetService<IDapDebugSession>();
-
-                        dapServer.SetSession(debugSession);
-                        debugSession.SetDapServer(dapServer);
-
-                        await dapServer.StartAsync(port, jobRequestCancellationToken);
-                        Trace.Info($"DAP server started on port {port}, listening for debugger client");
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Warning($"Failed to start DAP server: {ex.Message}. Job will continue without debugging.");
-                        dapServer = null;
-                        debugSession = null;
-                    }
-                }
 
                 runnerShutdownRegistration = HostContext.RunnerShutdownToken.Register(() =>
                 {
@@ -212,6 +180,27 @@ namespace GitHub.Runner.Worker
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);
 
+                // Setup the debugger
+                if (jobContext.Global.EnableDebugger)
+                {
+                    Trace.Info("Debugger enabled for this job run");
+
+                    try
+                    {
+                        dapDebugger = HostContext.GetService<IDapDebugger>();
+                        await dapDebugger.StartAsync(jobRequestCancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning($"Failed to start DAP debugger: {ex.Message}. Job will continue without debugging.");
+
+                        // cleanup if debugger failed to start
+                        try { await dapDebugger?.StopAsync(); } catch { }
+                        dapDebugger = null;
+                    }
+                }
+
+
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
                 IJobExtension jobExtension = HostContext.CreateService<IJobExtension>();
@@ -255,36 +244,23 @@ namespace GitHub.Runner.Worker
 
                 // Wait for DAP debugger client connection and handshake after "Set up job"
                 // so the job page shows the setup step before we block on the debugger
-                if (dapServer != null && debugSession != null)
+                if (dapDebugger != null)
                 {
                     try
                     {
-                        Trace.Info("Waiting for debugger client connection...");
-                        await dapServer.WaitForConnectionAsync(jobRequestCancellationToken);
-                        Trace.Info("Debugger client connected.");
-
-                        await debugSession.WaitForHandshakeAsync(jobRequestCancellationToken);
-                        Trace.Info("DAP handshake complete.");
-
-                        dapCancellationRegistration = jobRequestCancellationToken.Register(() =>
-                        {
-                            Trace.Info("Job cancellation requested, cancelling debug session.");
-                            debugSession.CancelSession();
-                        });
+                        await dapDebugger.WaitUntilReadyAsync(jobRequestCancellationToken);
                     }
                     catch (OperationCanceledException) when (jobRequestCancellationToken.IsCancellationRequested)
                     {
                         Trace.Info("Job was cancelled before debugger client connected. Continuing without debugger.");
-                        try { await dapServer.StopAsync(); } catch { }
-                        dapServer = null;
-                        debugSession = null;
+                        try { await dapDebugger.StopAsync(); } catch { }
+                        dapDebugger = null;
                     }
                     catch (Exception ex)
                     {
                         Trace.Warning($"Failed to complete DAP handshake: {ex.Message}. Job will continue without debugging.");
-                        try { await dapServer.StopAsync(); } catch { }
-                        dapServer = null;
-                        debugSession = null;
+                        try { await dapDebugger.StopAsync(); } catch { }
+                        dapDebugger = null;
                     }
                 }
 
@@ -328,24 +304,9 @@ namespace GitHub.Runner.Worker
                     runnerShutdownRegistration = null;
                 }
 
-                if (dapCancellationRegistration.HasValue)
+                if (dapDebugger != null)
                 {
-                    dapCancellationRegistration.Value.Dispose();
-                    dapCancellationRegistration = null;
-                }
-
-                if (dapServer != null)
-                {
-                    try
-                    {
-                        Trace.Info("Stopping DAP server");
-                        await dapServer.StopAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Error($"Error stopping DAP server");
-                        Trace.Error(ex);
-                    }
+                    await dapDebugger.StopAsync();
                 }
 
                 await ShutdownQueue(throwOnFailure: false);
