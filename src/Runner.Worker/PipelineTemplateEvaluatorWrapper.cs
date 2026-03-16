@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using GitHub.Actions.WorkflowParser;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -226,8 +227,12 @@ namespace GitHub.Runner.Worker
             Func<TNew> newEvaluator,
             Func<TLegacy, TNew, bool> resultComparer)
         {
-            // Capture cancellation state before evaluation
-            var cancellationRequestedBefore = _context.CancellationToken.IsCancellationRequested;
+            // Use the root (job-level) cancellation token to detect cancellation race conditions.
+            // The step-level token only fires on step timeout, not on job cancellation.
+            // Job cancellation mutates JobContext.Status which expression functions read,
+            // so we need the root token to properly detect cancellation between evaluator runs.
+            var rootCancellationToken = _context.Root?.CancellationToken ?? CancellationToken.None;
+            var cancellationRequestedBefore = rootCancellationToken.IsCancellationRequested;
 
             // Legacy evaluator
             var legacyException = default(Exception);
@@ -261,7 +266,7 @@ namespace GitHub.Runner.Worker
                 }
 
                 // Capture cancellation state after evaluation
-                var cancellationRequestedAfter = _context.CancellationToken.IsCancellationRequested;
+                var cancellationRequestedAfter = rootCancellationToken.IsCancellationRequested;
 
                 // Compare results or exceptions
                 bool hasMismatch = false;
