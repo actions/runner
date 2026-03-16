@@ -370,5 +370,124 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Contains("./.github/actions/my-action", deprecatedActions);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Node20Action_TrackedAsUpgradedWhenUseNode24ByDefaultEnabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                var variables = new Dictionary<string, VariableValue>
+                {
+                    { Constants.Runner.NodeMigration.WarnOnNode20Flag, new VariableValue("true") },
+                    { Constants.Runner.NodeMigration.UseNode24ByDefaultFlag, new VariableValue("true") }
+                };
+                Variables serverVariables = new(hc, variables);
+                var deprecatedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var upgradedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = new Dictionary<string, string>(),
+                    DeprecatedNode20Actions = deprecatedActions,
+                    UpgradedToNode24Actions = upgradedActions
+                });
+
+                var actionRef = new RepositoryPathReference
+                {
+                    Name = "actions/checkout",
+                    Ref = "v4"
+                };
+
+                // Act.
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = "node20";
+                var handler = hf.Create(
+                    _ec.Object,
+                    actionRef,
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
+                    new List<JobExtensionRunner>()
+                ) as INodeScriptActionHandler;
+
+                // On non-ARM32 platforms, action should be upgraded to node24
+                // and tracked in UpgradedToNode24Actions, NOT in DeprecatedNode20Actions
+                bool isArm32Linux = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm &&
+                                   System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux);
+
+                if (!isArm32Linux)
+                {
+                    Assert.Equal("node24", handler.Data.NodeVersion);
+                    Assert.Contains("actions/checkout@v4", upgradedActions);
+                    Assert.DoesNotContain("actions/checkout@v4", deprecatedActions);
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Node20Action_NotUpgradedWhenPhase1Only()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var hf = new HandlerFactory();
+                hf.Initialize(hc);
+
+                var variables = new Dictionary<string, VariableValue>
+                {
+                    { Constants.Runner.NodeMigration.WarnOnNode20Flag, new VariableValue("true") }
+                };
+                Variables serverVariables = new(hc, variables);
+                var deprecatedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var upgradedActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                _ec.Setup(x => x.Global).Returns(new GlobalContext()
+                {
+                    Variables = serverVariables,
+                    EnvironmentVariables = new Dictionary<string, string>(),
+                    DeprecatedNode20Actions = deprecatedActions,
+                    UpgradedToNode24Actions = upgradedActions
+                });
+
+                var actionRef = new RepositoryPathReference
+                {
+                    Name = "actions/checkout",
+                    Ref = "v4"
+                };
+
+                // Act.
+                var data = new NodeJSActionExecutionData();
+                data.NodeVersion = "node20";
+                var handler = hf.Create(
+                    _ec.Object,
+                    actionRef,
+                    new Mock<IStepHost>().Object,
+                    data,
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string>(),
+                    new Variables(hc, new Dictionary<string, VariableValue>()),
+                    "",
+                    new List<JobExtensionRunner>()
+                ) as INodeScriptActionHandler;
+
+                // In Phase 1 (no UseNode24ByDefault), action stays on node20
+                // and should be in DeprecatedNode20Actions
+                Assert.Equal("node20", handler.Data.NodeVersion);
+                Assert.Contains("actions/checkout@v4", deprecatedActions);
+                Assert.Empty(upgradedActions);
+            }
+        }
     }
 }

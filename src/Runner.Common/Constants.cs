@@ -195,8 +195,16 @@ namespace GitHub.Runner.Common
                 public static readonly string RequireNode24Flag = "actions.runner.requirenode24";
                 public static readonly string WarnOnNode20Flag = "actions.runner.warnonnode20";
 
+                // Feature flags for Linux ARM32 deprecation
+                public static readonly string DeprecateLinuxArm32Flag = "actions_runner_deprecate_linux_arm32";
+                public static readonly string KillLinuxArm32Flag = "actions_runner_kill_linux_arm32";
+
                 // Blog post URL for Node 20 deprecation
                 public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/";
+
+                // Linux ARM32 deprecation date (TBD - placeholder for October 2026)
+                public static readonly string LinuxArm32DeprecationDate = "October 2026";
+                public static readonly string LinuxArm32DeprecationMessage = "Linux ARM32 runners are deprecated and will no longer be supported after {0}. Please migrate to a supported platform.";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
