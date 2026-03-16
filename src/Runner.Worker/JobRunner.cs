@@ -343,7 +343,8 @@ namespace GitHub.Runner.Worker
                     }
                     catch (Exception ex)
                     {
-                        Trace.Warning($"Error stopping DAP server: {ex.Message}");
+                        Trace.Error($"Error stopping DAP server");
+                        Trace.Error(ex);
                     }
                 }
 
