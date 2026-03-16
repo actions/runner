@@ -10,7 +10,7 @@ namespace GitHub.Runner.Worker.Dap
     /// Maps runner execution context data to DAP scopes and variables.
     ///
     /// This is the single point where runner context values are materialized
-    /// for the debugger. All string values pass through the runner's existing
+    /// for the debugger. All values pass through the runner's existing
     /// <see cref="GitHub.DistributedTask.Logging.ISecretMasker"/> so the DAP
     /// surface never exposes anything beyond what a normal CI log would show.
     ///
@@ -332,13 +332,13 @@ namespace GitHub.Runner.Worker.Dap
                     break;
 
                 case NumberContextData num:
-                    variable.Value = num.Value.ToString("G15", System.Globalization.CultureInfo.InvariantCulture);
+                    variable.Value = MaskSecrets(num.Value.ToString("G15", System.Globalization.CultureInfo.InvariantCulture));
                     variable.Type = "number";
                     variable.VariablesReference = 0;
                     break;
 
                 case BooleanContextData boolVal:
-                    variable.Value = boolVal.Value ? "true" : "false";
+                    variable.Value = MaskSecrets(boolVal.Value ? "true" : "false");
                     variable.Type = "boolean";
                     variable.VariablesReference = 0;
                     break;

@@ -84,42 +84,44 @@ namespace GitHub.Runner.Worker.Dap
 
         internal static string GetGeneralHelp()
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("Actions Debug Console");
-            sb.AppendLine();
-            sb.AppendLine("Commands:");
-            sb.AppendLine("  help                  Show this help");
-            sb.AppendLine("  help(\"run\")           Show help for the run command");
-            sb.AppendLine("  run(\"script\")         Execute a script (like a workflow run step)");
-            sb.AppendLine();
-            sb.AppendLine("Anything else is evaluated as a GitHub Actions expression.");
-            sb.AppendLine("  Example: github.repository");
-            sb.AppendLine("  Example: ${{ github.event_name }}");
-            return sb.ToString();
+            return """
+                Actions Debug Console
+
+                Commands:
+                  help                  Show this help
+                  help("run")           Show help for the run command
+                  run("script")         Execute a script (like a workflow run step)
+
+                Anything else is evaluated as a GitHub Actions expression.
+                  Example: github.repository
+                  Example: ${{ github.event_name }}
+
+                """;
         }
 
         internal static string GetRunHelp()
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("run command — execute a script in the job context");
-            sb.AppendLine();
-            sb.AppendLine("Usage:");
-            sb.AppendLine("  run(\"echo hello\")");
-            sb.AppendLine("  run(\"echo $FOO\", shell: \"bash\")");
-            sb.AppendLine("  run(\"echo $FOO\", env: { FOO: \"bar\" })");
-            sb.AppendLine("  run(\"ls\", working_directory: \"/tmp\")");
-            sb.AppendLine("  run(\"echo $X\", shell: \"bash\", env: { X: \"1\" }, working_directory: \"/tmp\")");
-            sb.AppendLine();
-            sb.AppendLine("Options:");
-            sb.AppendLine("  shell:             Shell to use (default: job default, e.g. bash)");
-            sb.AppendLine("  env:               Extra environment variables as { KEY: \"value\" }");
-            sb.AppendLine("  working_directory:  Working directory for the command");
-            sb.AppendLine();
-            sb.AppendLine("Behavior:");
-            sb.AppendLine("  - Equivalent to a workflow `run:` step");
-            sb.AppendLine("  - Expressions in the script body are expanded (${{ ... }})");
-            sb.AppendLine("  - Output is streamed in real time and secrets are masked");
-            return sb.ToString();
+            return """
+                run command — execute a script in the job context
+
+                Usage:
+                  run("echo hello")
+                  run("echo $FOO", shell: "bash")
+                  run("echo $FOO", env: { FOO: "bar" })
+                  run("ls", working_directory: "/tmp")
+                  run("echo $X", shell: "bash", env: { X: "1" }, working_directory: "/tmp")
+
+                Options:
+                  shell:             Shell to use (default: job default, e.g. bash)
+                  env:               Extra environment variables as { KEY: "value" }
+                  working_directory:  Working directory for the command
+
+                Behavior:
+                  - Equivalent to a workflow `run:` step
+                  - Expressions in the script body are expanded (${{ ... }})
+                  - Output is streamed in real time and secrets are masked
+
+                """;
         }
 
         #region Parsers
