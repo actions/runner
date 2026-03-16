@@ -195,7 +195,13 @@ namespace GitHub.Runner.Worker
                         Trace.Warning($"Failed to start DAP debugger: {ex.Message}. Job will continue without debugging.");
 
                         // cleanup if debugger failed to start
-                        try { await dapDebugger?.StopAsync(); } catch { }
+                        try {
+                            await dapDebugger.StopAsync();
+                        }
+                        catch {
+                            Trace.Error("Failed to stop debugger server")
+                            Trace.Error(ex);
+                        }
                         dapDebugger = null;
                     }
                 }
@@ -250,16 +256,15 @@ namespace GitHub.Runner.Worker
                     {
                         await dapDebugger.WaitUntilReadyAsync(jobRequestCancellationToken);
                     }
-                    catch (OperationCanceledException) when (jobRequestCancellationToken.IsCancellationRequested)
-                    {
-                        Trace.Info("Job was cancelled before debugger client connected. Continuing without debugger.");
-                        try { await dapDebugger.StopAsync(); } catch { }
-                        dapDebugger = null;
-                    }
                     catch (Exception ex)
                     {
-                        Trace.Warning($"Failed to complete DAP handshake: {ex.Message}. Job will continue without debugging.");
-                        try { await dapDebugger.StopAsync(); } catch { }
+                        try {
+                            await dapDebugger.StopAsync();
+                        }
+                        catch {
+                            Trace.Error("Failed to stop debugger server")
+                            Trace.Error(ex);
+                        }
                         dapDebugger = null;
                     }
                 }
@@ -306,7 +311,13 @@ namespace GitHub.Runner.Worker
 
                 if (dapDebugger != null)
                 {
-                    await dapDebugger.StopAsync();
+                    try {
+                        await dapDebugger.StopAsync();
+                    }
+                    catch {
+                        Trace.Error("Failed to stop debugger server")
+                        Trace.Error(ex);
+                    }
                 }
 
                 await ShutdownQueue(throwOnFailure: false);

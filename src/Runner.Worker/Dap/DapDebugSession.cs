@@ -192,10 +192,11 @@ namespace GitHub.Runner.Worker.Dap
             var capabilities = new Capabilities
             {
                 SupportsConfigurationDoneRequest = true,
+                SupportsEvaluateForHovers = true,
+
                 // All other capabilities are false for MVP
                 SupportsFunctionBreakpoints = false,
                 SupportsConditionalBreakpoints = false,
-                SupportsEvaluateForHovers = true,
                 SupportsStepBack = false,
                 SupportsSetVariable = false,
                 SupportsRestartFrame = false,
@@ -880,9 +881,7 @@ namespace GitHub.Runner.Worker.Dap
                 return value ?? string.Empty;
             }
 
-            return _variableProvider?.MaskSecrets(value)
-                ?? HostContext?.SecretMasker?.MaskSecrets(value)
-                ?? value;
+            return HostContext?.SecretMasker?.MaskSecrets(value);
         }
 
         /// <summary>
