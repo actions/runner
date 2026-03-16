@@ -141,9 +141,9 @@ namespace GitHub.Runner.Listener
             }
             catch (AccessDeniedException e) when (e.ErrorCode == 1)
             {
-                terminal.WriteError($"An error occured: {e.Message}");
+                terminal.WriteError($"An error occurred: {e.Message}");
                 trace.Error(e);
-                return Constants.Runner.ReturnCode.TerminatedError;
+                return GetRunnerVersionDeprecatedExitCode();
             }
             catch (RunnerNotFoundException e)
             {
@@ -157,6 +157,16 @@ namespace GitHub.Runner.Listener
                 trace.Error(e);
                 return Constants.Runner.ReturnCode.RetryableError;
             }
+        }
+
+        private static int GetRunnerVersionDeprecatedExitCode()
+        {
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.ReturnVersionDeprecatedExitCode)))
+            {
+                return Constants.Runner.ReturnCode.RunnerVersionDeprecated;
+            }
+
+            return Constants.Runner.ReturnCode.TerminatedError;
         }
 
         private static void LoadAndSetEnv()
