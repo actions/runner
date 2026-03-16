@@ -663,6 +663,92 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
+        public async Task TestReportAuthMigrationTelemetry_BrokerMode_DiscardsEntryOnSetConnectionError()
+        {
+            // In broker mode (serverUrl == serverUrlV2), _runnerServer is never connected, so
+            // UpdateAgentUpdateStateAsync throws InvalidOperationException("SetConnection Generic").
+            // The runner should discard the telemetry entry silently (not re-enqueue, not log error).
+            using (var hc = new TestHostContext(this))
+            {
+                //Arrange
+                var runner = new Runner.Listener.Runner();
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+
+                runner.Initialize(hc);
+                var settings = new RunnerSettings
+                {
+                    PoolId = 43242,
+                    AgentId = 5678,
+                    Ephemeral = true
+                };
+
+                var message1 = new TaskAgentMessage()
+                {
+                    MessageId = 4234,
+                    MessageType = "unknown"
+                };
+
+                var messages = new Queue<TaskAgentMessage>();
+                messages.Enqueue(message1);
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(settings);
+                _configurationManager.Setup(x => x.IsConfigured())
+                    .Returns(true);
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
+                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
+                    .Returns(async (CancellationToken token) =>
+                        {
+                            hc.EnableAuthMigration("L0BrokerTest");
+                            hc.DeferAuthMigration(TimeSpan.FromSeconds(1), "L0BrokerTest");
+
+                            await Task.Delay(1000, token);
+
+                            hc.ShutdownRunner(ShutdownReason.UserCancelled);
+
+                            return messages.Dequeue();
+                        });
+                _messageListener.Setup(x => x.DeleteSessionAsync())
+                    .Returns(Task.CompletedTask);
+                _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
+                    .Returns(Task.CompletedTask);
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                    .Callback(() => { });
+                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+
+                // Simulate broker mode: _runnerServer not connected, throws SetConnection error
+                _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new InvalidOperationException("SetConnection Generic"));
+
+                //Act
+                var command = new CommandSettings(hc, new string[] { "run" });
+                var returnCode = await runner.ExecuteCommand(command);
+
+                //Assert — runner should exit cleanly (no crash, no infinite loop)
+                Assert.Equal(Constants.Runner.ReturnCode.Success, returnCode);
+
+                // Each of EnableAuthMigration + DeferAuthMigration enqueues one entry = 2 total.
+                // Neither should be re-enqueued after the SetConnection error.
+                _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("L0BrokerTest")), It.IsAny<CancellationToken>()), Times.Exactly(2));
+
+                // No error should have been logged for this specific scenario
+                var traceFile = Path.GetTempFileName();
+                File.Copy(hc.TraceFileName, traceFile, true);
+                Assert.DoesNotContain("Failed to report auth migration telemetry", File.ReadAllText(traceFile));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
         public async Task TestRunnerJobRequestMessageFromPipeline()
         {
             using (var hc = new TestHostContext(this))
