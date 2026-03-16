@@ -13,7 +13,9 @@ namespace GitHub.Runner.Worker.Dap
     public sealed class DapDebugger : RunnerService, IDapDebugger
     {
         private const int DefaultPort = 4711;
+        private const int DefaultTimeoutMinutes = 15;
         private const string PortEnvironmentVariable = "ACTIONS_RUNNER_DAP_PORT";
+        private const string TimeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
 
         private IDapServer _server;
         private IDapDebugSession _session;
@@ -51,12 +53,23 @@ namespace GitHub.Runner.Worker.Dap
                 return;
             }
 
-            Trace.Info("Waiting for debugger client connection...");
-            await _server.WaitForConnectionAsync(cancellationToken);
-            Trace.Info("Debugger client connected.");
+            var timeoutMinutes = ResolveTimeout();
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(timeoutMinutes));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
-            await _session.WaitForHandshakeAsync(cancellationToken);
-            Trace.Info("DAP handshake complete.");
+            try
+            {
+                Trace.Info($"Waiting for debugger client connection (timeout: {timeoutMinutes} minutes)...");
+                await _server.WaitForConnectionAsync(linkedCts.Token);
+                Trace.Info("Debugger client connected.");
+
+                await _session.WaitForHandshakeAsync(linkedCts.Token);
+                Trace.Info("DAP handshake complete.");
+            }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"No debugger client connected within {timeoutMinutes} minutes.");
+            }
 
             _cancellationRegistration = cancellationToken.Register(() =>
             {
@@ -149,13 +162,25 @@ namespace GitHub.Runner.Worker.Dap
         private int ResolvePort()
         {
             var portEnv = Environment.GetEnvironmentVariable(PortEnvironmentVariable);
-            if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort) && customPort > 1024 && customPort <= 65535)
+            if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort) && customPort > 0 && customPort <= 65535)
             {
                 Trace.Info($"Using custom DAP port {customPort} from {PortEnvironmentVariable}");
                 return customPort;
             }
 
             return DefaultPort;
+        }
+
+        private int ResolveTimeout()
+        {
+            var timeoutEnv = Environment.GetEnvironmentVariable(TimeoutEnvironmentVariable);
+            if (!string.IsNullOrEmpty(timeoutEnv) && int.TryParse(timeoutEnv, out var customTimeout) && customTimeout > 0)
+            {
+                Trace.Info($"Using custom DAP timeout {customTimeout} minutes from {TimeoutEnvironmentVariable}");
+                return customTimeout;
+            }
+
+            return DefaultTimeoutMinutes;
         }
     }
 }
