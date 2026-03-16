@@ -58,7 +58,7 @@ namespace GitHub.Runner.Common.Util
             {
                 return (Constants.Runner.NodeMigration.Node24, null);
             }
-
+            
             // Get environment variable details with source information
             var forceNode24Details = GetEnvironmentVariableDetails(
                 Constants.Runner.NodeMigration.ForceNode24Variable, workflowEnvironment);

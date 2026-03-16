@@ -753,6 +753,15 @@ namespace GitHub.Runner.Worker
                         var upgradeMessage = $"Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: {actionsList}. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
                         context.Warning(upgradeMessage);
                     }
+
+                    // Add annotation for ARM32 actions stuck on Node.js 20 (ARM32 can't run node24)
+                    if (context.Global.Arm32Node20Actions?.Count > 0)
+                    {
+                        var sortedActions = context.Global.Arm32Node20Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
+                        var actionsList = string.Join(", ", sortedActions);
+                        var arm32Message = $"The following actions are running on Node.js 20 because Node.js 24 is not available on Linux ARM32: {actionsList}. Linux ARM32 runners are deprecated and will no longer be supported after {Constants.Runner.NodeMigration.LinuxArm32DeprecationDate}. Please migrate to a supported platform. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        context.Warning(arm32Message);
+                    }
                 }
                 catch (Exception ex)
                 {

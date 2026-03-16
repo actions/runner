@@ -65,9 +65,7 @@ namespace GitHub.Runner.Worker.Handlers
                     nodeData.NodeVersion = Common.Constants.Runner.NodeMigration.Node20;
                 }
 
-                // Track Node.js 20 actions for deprecation annotation
-                // Note: tracking happens before potential upgrade to node24
-                // Actions that get upgraded will be moved to UpgradedToNode24Actions below
+                // Read flags early; actionName is also resolved up front for tracking after version is determined
                 bool warnOnNode20 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.WarnOnNode20Flag) ?? false;
                 string actionName = GetActionName(action);
 
@@ -110,9 +108,14 @@ namespace GitHub.Runner.Worker.Handlers
                             // Action was upgraded from node20 to node24
                             executionContext.Global.UpgradedToNode24Actions?.Add(actionName);
                         }
+                        else if (deprecateArm32 && string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Action is on node20 because ARM32 can't run node24
+                            executionContext.Global.Arm32Node20Actions?.Add(actionName);
+                        }
                         else if (warnOnNode20)
                         {
-                            // Action is still running on node20 (e.g., ARM32 fallback)
+                            // Action is still running on node20 (general case)
                             executionContext.Global.DeprecatedNode20Actions?.Add(actionName);
                         }
                     }

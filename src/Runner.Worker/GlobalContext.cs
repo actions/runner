@@ -35,5 +35,6 @@ namespace GitHub.Runner.Worker
         public bool HasDeprecatedSaveState { get; set; }
         public HashSet<string> DeprecatedNode20Actions { get; set; }
         public HashSet<string> UpgradedToNode24Actions { get; set; }
+        public HashSet<string> Arm32Node20Actions { get; set; }
     }
 }
