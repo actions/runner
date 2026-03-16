@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Source generators must not be included in consuming projects as a regular reference -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <!-- RS2008: release tracking not needed for internal build tools
+         RS1035: file/process IO is intentional (reading runnerversion file, running git) -->
+    <NoWarn>RS2008;RS1035</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Roslyn analyzer packages: PrivateAssets=all keeps them from flowing to consumers -->
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>
