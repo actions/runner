@@ -137,9 +137,10 @@ namespace GitHub.Runner.Common.Util
             // ARM32 deprecation warning: continue using node20 but warn about upcoming end of support
             if (deprecateArm32)
             {
+                string effectiveDate = string.IsNullOrEmpty(node20RemovalDate) ? Constants.Runner.NodeMigration.Node20RemovalDate : node20RemovalDate;
                 string deprecationWarning = string.Format(
                     Constants.Runner.NodeMigration.LinuxArm32DeprecationMessage,
-                    node20RemovalDate ?? Constants.Runner.NodeMigration.Node20RemovalDate);
+                    effectiveDate);
 
                 if (string.Equals(preferredVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
                 {

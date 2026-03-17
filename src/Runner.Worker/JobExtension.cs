@@ -737,8 +737,10 @@ namespace GitHub.Runner.Worker
                     }
 
                     // Read dates from server variables with hardcoded fallbacks
-                    var node24DefaultDate = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node24DefaultDateVariable) ?? Constants.Runner.NodeMigration.Node24DefaultDate;
-                    var node20RemovalDate = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable) ?? Constants.Runner.NodeMigration.Node20RemovalDate;
+                    var node24DefaultDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node24DefaultDateVariable);
+                    var node24DefaultDate = string.IsNullOrEmpty(node24DefaultDateRaw) ? Constants.Runner.NodeMigration.Node24DefaultDate : node24DefaultDateRaw;
+                    var node20RemovalDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
+                    var node20RemovalDate = string.IsNullOrEmpty(node20RemovalDateRaw) ? Constants.Runner.NodeMigration.Node20RemovalDate : node20RemovalDateRaw;
 
                     // Add deprecation warning annotation for Node.js 20 actions (Phase 1 - actions still running on node20)
                     if (context.Global.DeprecatedNode20Actions?.Count > 0)
