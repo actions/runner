@@ -29,6 +29,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class JobRunner : RunnerService, IJobRunner
     {
+        private const string DebuggerConnectionTelemetryPrefix = "DebuggerConnectionResult";
         private IJobServerQueue _jobServerQueue;
         private RunnerSettings _runnerSettings;
         private ITempDirectoryManager _tempDirectoryManager;
@@ -193,6 +194,7 @@ namespace GitHub.Runner.Worker
                     catch (Exception ex)
                     {
                         Trace.Error($"Failed to start DAP debugger: {ex.Message}");
+                        AddDebuggerConnectionTelemetry(jobContext, "Failed");
                         jobContext.Error("Failed to start debugger.");
                         return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
                     }
@@ -247,16 +249,19 @@ namespace GitHub.Runner.Worker
                     try
                     {
                         await dapDebugger.WaitUntilReadyAsync(jobRequestCancellationToken);
+                        AddDebuggerConnectionTelemetry(jobContext, "Connected");
                     }
                     catch (OperationCanceledException) when (jobRequestCancellationToken.IsCancellationRequested)
                     {
                         Trace.Info("Job was cancelled before debugger client connected.");
+                        AddDebuggerConnectionTelemetry(jobContext, "Canceled");
                         jobContext.Error("Job was cancelled before debugger client connected.");
                         return await CompleteJobAsync(server, jobContext, message, TaskResult.Canceled);
                     }
                     catch (Exception ex)
                     {
                         Trace.Error($"DAP debugger failed to become ready: {ex.Message}");
+                        AddDebuggerConnectionTelemetry(jobContext, "Failed");
 
                         // If debugging was requested but the debugger is not available, fail the job
                         var errorMessage = "The debugger failed to start or no debugger client connected in time.";
@@ -489,6 +494,15 @@ namespace GitHub.Runner.Worker
 
             // rethrow exceptions from all attempts.
             throw new AggregateException(exceptions);
+        }
+
+        private static void AddDebuggerConnectionTelemetry(IExecutionContext jobContext, string result)
+        {
+            jobContext.Global.JobTelemetry.Add(new JobTelemetry
+            {
+                Type = JobTelemetryType.General,
+                Message = $"{DebuggerConnectionTelemetryPrefix}: {result}"
+            });
         }
 
         private void MaskTelemetrySecrets(List<JobTelemetry> jobTelemetry)
