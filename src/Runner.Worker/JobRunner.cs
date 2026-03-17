@@ -305,7 +305,10 @@ namespace GitHub.Runner.Worker
                     runnerShutdownRegistration = null;
                 }
 
-                await dapDebugger?.OnJobCompletedAsync();
+                if (dapDebugger != null)
+                {
+                    await dapDebugger.OnJobCompletedAsync();
+                }
 
                 await ShutdownQueue(throwOnFailure: false);
             }

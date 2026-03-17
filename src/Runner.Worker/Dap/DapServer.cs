@@ -24,7 +24,7 @@ namespace GitHub.Runner.Worker.Dap
         private TcpListener _listener;
         private TcpClient _client;
         private NetworkStream _stream;
-        private IDapDebugSession _session;
+        private IDapDebuggerCallbacks _debugger;
         private CancellationTokenSource _cts;
         private TaskCompletionSource<bool> _connectionTcs;
         private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
@@ -38,10 +38,15 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info("DapServer initialized");
         }
 
-        public void SetSession(IDapDebugSession session)
+        void IDapServer.SetDebugger(IDapDebuggerCallbacks debugger)
         {
-            _session = session;
-            Trace.Info("Debug session set");
+            SetDebugger(debugger);
+        }
+
+        internal void SetDebugger(IDapDebuggerCallbacks debugger)
+        {
+            _debugger = debugger;
+            Trace.Info("Debugger callbacks set");
         }
 
         public Task StartAsync(int port, CancellationToken cancellationToken)
@@ -95,15 +100,15 @@ namespace GitHub.Runner.Worker.Dap
                     // Signal first connection (no-op on subsequent connections)
                     _connectionTcs.TrySetResult(true);
 
-                    // Notify session of new client
-                    _session?.HandleClientConnected();
+                    // Notify debugger of new client
+                    _debugger?.HandleClientConnected();
 
                     // Process messages until client disconnects
                     await ProcessMessagesAsync(cancellationToken);
 
-                    // Client disconnected — notify session and clean up
+                    // Client disconnected — notify debugger and clean up
                     Trace.Info("Client disconnected, waiting for reconnection...");
-                    _session?.HandleClientDisconnected();
+                    _debugger?.HandleClientDisconnected();
                     CleanupConnection();
                 }
                 catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
@@ -243,16 +248,16 @@ namespace GitHub.Runner.Worker.Dap
 
                 Trace.Info("Received DAP request");
 
-                if (_session == null)
+                if (_debugger == null)
                 {
-                    Trace.Error("No debug session configured");
-                    SendErrorResponse(request, "No debug session configured");
+                    Trace.Error("No debugger configured");
+                    SendErrorResponse(request, "No debugger configured");
                     return;
                 }
 
-                // Pass raw JSON to session — session handles deserialization, dispatch,
+                // Pass raw JSON to the debugger — it handles deserialization, dispatch,
                 // and calls back to SendResponse when done.
-                await _session.HandleMessageAsync(json, cancellationToken);
+                await _debugger.HandleMessageAsync(json, cancellationToken);
             }
             catch (JsonException ex)
             {
@@ -397,7 +402,7 @@ namespace GitHub.Runner.Worker.Dap
         /// Instead, each DAP producer masks user-visible text at the point of
         /// construction via <see cref="DapVariableProvider.MaskSecrets"/> or the
         /// runner's SecretMasker directly. See DapVariableProvider, DapReplExecutor,
-        /// and DapDebugSession for the call sites.
+        /// and DapDebugger for the call sites.
         /// </summary>
         private void SendMessageInternal(ProtocolMessage message)
         {

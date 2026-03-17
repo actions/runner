@@ -44,8 +44,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (CreateTestContext())
             {
-                var mockSession = new Mock<IDapDebugSession>();
-                _server.SetSession(mockSession.Object);
+                var mockSession = new Mock<IDapDebuggerCallbacks>();
+                _server.SetDebugger(mockSession.Object);
             }
         }
 
@@ -182,11 +182,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (var hc = CreateTestContext())
             {
                 var messageReceived = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-                var mockSession = new Mock<IDapDebugSession>();
+                var mockSession = new Mock<IDapDebuggerCallbacks>();
                 mockSession.Setup(x => x.HandleMessageAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                     .Callback<string, CancellationToken>((json, ct) => messageReceived.TrySetResult(json))
                     .Returns(Task.CompletedTask);
-                _server.SetSession(mockSession.Object);
+                _server.SetDebugger(mockSession.Object);
 
                 var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 await _server.StartAsync(0, cts.Token);

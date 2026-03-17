@@ -1,13 +1,20 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Dap
 {
-    [ServiceLocator(Default = typeof(DapServer))]
-    public interface IDapServer : IRunnerService
+    internal interface IDapDebuggerCallbacks
     {
-        void SetSession(IDapDebugSession session);
+        Task HandleMessageAsync(string messageJson, CancellationToken cancellationToken);
+        void HandleClientConnected();
+        void HandleClientDisconnected();
+    }
+
+    [ServiceLocator(Default = typeof(DapServer))]
+    internal interface IDapServer : IRunnerService
+    {
+        void SetDebugger(IDapDebuggerCallbacks debugger);
         Task StartAsync(int port, CancellationToken cancellationToken);
         Task WaitForConnectionAsync(CancellationToken cancellationToken);
         Task StopAsync();

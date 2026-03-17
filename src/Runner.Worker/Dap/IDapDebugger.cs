@@ -4,6 +4,16 @@ using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Dap
 {
+    public enum DapSessionState
+    {
+        WaitingForConnection,
+        Initializing,
+        Ready,
+        Paused,
+        Running,
+        Terminated
+    }
+
     [ServiceLocator(Default = typeof(DapDebugger))]
     public interface IDapDebugger : IRunnerService
     {
