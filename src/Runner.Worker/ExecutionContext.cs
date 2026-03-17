@@ -854,6 +854,12 @@ namespace GitHub.Runner.Worker
             // Track Node.js 20 actions for deprecation warning
             Global.DeprecatedNode20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // Track actions upgraded from Node.js 20 to Node.js 24
+            Global.UpgradedToNode24Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Track actions stuck on Node.js 20 due to ARM32 (separate from general deprecation)
+            Global.Arm32Node20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
