@@ -58,7 +58,7 @@ namespace GitHub.Runner.Common.Util
             {
                 return (Constants.Runner.NodeMigration.Node24, null);
             }
-            
+
             // Get environment variable details with source information
             var forceNode24Details = GetEnvironmentVariableDetails(
                 Constants.Runner.NodeMigration.ForceNode24Variable, workflowEnvironment);
@@ -138,7 +138,7 @@ namespace GitHub.Runner.Common.Util
             {
                 string deprecationWarning = string.Format(
                     Constants.Runner.NodeMigration.LinuxArm32DeprecationMessage,
-                    Constants.Runner.NodeMigration.LinuxArm32DeprecationDate);
+                    Constants.Runner.NodeMigration.Node20RemovalDate);
 
                 if (string.Equals(preferredVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
                 {
