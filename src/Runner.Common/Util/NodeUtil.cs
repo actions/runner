@@ -58,7 +58,7 @@ namespace GitHub.Runner.Common.Util
             {
                 return (Constants.Runner.NodeMigration.Node24, null);
             }
-            
+
             // Get environment variable details with source information
             var forceNode24Details = GetEnvironmentVariableDetails(
                 Constants.Runner.NodeMigration.ForceNode24Variable, workflowEnvironment);
@@ -108,14 +108,50 @@ namespace GitHub.Runner.Common.Util
 
         /// <summary>
         /// Checks if Node24 is requested but running on ARM32 Linux, and determines if fallback is needed.
+        /// Also handles ARM32 deprecation and kill switch phases.
         /// </summary>
         /// <param name="preferredVersion">The preferred Node version</param>
+        /// <param name="deprecateArm32">Feature flag indicating ARM32 Linux is deprecated</param>
+        /// <param name="killArm32">Feature flag indicating ARM32 Linux should no longer work</param>
         /// <returns>A tuple containing the adjusted node version and an optional warning message</returns>
-        public static (string nodeVersion, string warningMessage) CheckNodeVersionForLinuxArm32(string preferredVersion)
+        public static (string nodeVersion, string warningMessage) CheckNodeVersionForLinuxArm32(
+            string preferredVersion,
+            bool deprecateArm32 = false,
+            bool killArm32 = false,
+            string node20RemovalDate = null)
         {
-            if (string.Equals(preferredVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase) &&
-                Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm) &&
-                Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            bool isArm32Linux = Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm) &&
+                                Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux);
+
+            if (!isArm32Linux)
+            {
+                return (preferredVersion, null);
+            }
+
+            // ARM32 kill switch: runner should no longer work on this platform
+            if (killArm32)
+            {
+                return (null, "Linux ARM32 runners are no longer supported. Please migrate to a supported platform.");
+            }
+
+            // ARM32 deprecation warning: continue using node20 but warn about upcoming end of support
+            if (deprecateArm32)
+            {
+                string effectiveDate = string.IsNullOrEmpty(node20RemovalDate) ? Constants.Runner.NodeMigration.Node20RemovalDate : node20RemovalDate;
+                string deprecationWarning = string.Format(
+                    Constants.Runner.NodeMigration.LinuxArm32DeprecationMessage,
+                    effectiveDate);
+
+                if (string.Equals(preferredVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
+                {
+                    return (Constants.Runner.NodeMigration.Node20, deprecationWarning);
+                }
+
+                return (preferredVersion, deprecationWarning);
+            }
+
+            // Legacy behavior: fall back to node20 if node24 was requested on ARM32
+            if (string.Equals(preferredVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
             {
                 return (Constants.Runner.NodeMigration.Node20, "Node 24 is not supported on Linux ARM32 platforms. Falling back to Node 20.");
             }
