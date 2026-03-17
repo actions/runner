@@ -273,7 +273,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var mockStep = new Mock<IStep>();
                 var mockJobContext = new Mock<IExecutionContext>();
 
-                await _debugger.OnStepStartingAsync(mockStep.Object, mockJobContext.Object, true, CancellationToken.None);
+                await _debugger.OnStepStartingAsync(mockStep.Object, mockJobContext.Object, CancellationToken.None);
 
                 mockSession.Verify(x => x.OnStepStartingAsync(mockStep.Object, mockJobContext.Object, true, CancellationToken.None), Times.Once);
 
@@ -306,7 +306,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var mockStep = new Mock<IStep>();
                 var mockJobContext = new Mock<IExecutionContext>();
 
-                await _debugger.OnStepStartingAsync(mockStep.Object, mockJobContext.Object, true, CancellationToken.None);
+                await _debugger.OnStepStartingAsync(mockStep.Object, mockJobContext.Object, CancellationToken.None);
 
                 mockSession.Verify(x => x.OnStepStartingAsync(It.IsAny<IStep>(), It.IsAny<IExecutionContext>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
 
@@ -367,11 +367,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var cts = new CancellationTokenSource();
                 await _debugger.StartAsync(cts.Token);
 
-                _debugger.OnJobCompleted();
+                await _debugger.OnJobCompletedAsync();
 
                 mockSession.Verify(x => x.OnJobCompleted(), Times.Once);
-
-                await _debugger.StopAsync();
+                mockServer.Verify(x => x.StopAsync(), Times.Once);
             }
         }
 
@@ -403,7 +402,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var mockJobContext = new Mock<IExecutionContext>();
 
                 // Should not throw
-                await _debugger.OnStepStartingAsync(mockStep.Object, mockJobContext.Object, true, CancellationToken.None);
+                await _debugger.OnStepStartingAsync(mockStep.Object, mockJobContext.Object, CancellationToken.None);
 
                 await _debugger.StopAsync();
             }

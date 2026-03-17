@@ -51,16 +51,7 @@ namespace GitHub.Runner.Worker
             jobContext.JobContext.Status = (jobContext.Result ?? TaskResult.Succeeded).ToActionResult();
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             bool checkPostJobActions = false;
-            IDapDebugger dapDebugger = null;
-            try
-            {
-                dapDebugger = HostContext.GetService<IDapDebugger>();
-            }
-            catch
-            {
-                // Debugger not available — continue without debugging
-            }
-            bool isFirstStep = true;
+            var dapDebugger = HostContext.GetService<IDapDebugger>();
             while (jobContext.JobSteps.Count > 0 || !checkPostJobActions)
             {
                 if (jobContext.JobSteps.Count == 0 && !checkPostJobActions)
@@ -238,20 +229,13 @@ namespace GitHub.Runner.Worker
                         else
                         {
                             // Pause for DAP debugger before step execution
-                            if (dapDebugger != null)
-                            {
-                                await dapDebugger.OnStepStartingAsync(step, jobContext, isFirstStep, jobContext.CancellationToken);
-                                isFirstStep = false;
-                            }
+                            await dapDebugger?.OnStepStartingAsync(step, jobContext, jobContext.CancellationToken);
 
                             // Run the step
                             await RunStepAsync(step, jobContext.CancellationToken);
                             CompleteStep(step);
 
-                            if (dapDebugger != null)
-                            {
-                                dapDebugger.OnStepCompleted(step);
-                            }
+                            dapDebugger?.OnStepCompleted(step);
                         }
                     }
                     finally
@@ -279,10 +263,6 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
             }
 
-            if (dapDebugger != null)
-            {
-                dapDebugger.OnJobCompleted();
-            }
         }
 
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)

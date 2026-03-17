@@ -21,6 +21,7 @@ namespace GitHub.Runner.Worker.Dap
         private IDapDebugSession _session;
         private CancellationTokenRegistration? _cancellationRegistration;
         private volatile bool _started;
+        private bool _isFirstStep = true;
 
         public bool IsActive => _session?.IsActive == true;
 
@@ -78,6 +79,23 @@ namespace GitHub.Runner.Worker.Dap
             });
         }
 
+        public async Task OnJobCompletedAsync()
+        {
+            if (_session != null && _started)
+            {
+                try
+                {
+                    _session.OnJobCompleted();
+                }
+                catch (Exception ex)
+                {
+                    Trace.Warning($"DAP OnJobCompleted error: {ex.Message}");
+                }
+            }
+
+            await StopAsync();
+        }
+
         public async Task StopAsync()
         {
             if (_cancellationRegistration.HasValue)
@@ -108,7 +126,7 @@ namespace GitHub.Runner.Worker.Dap
             _session?.CancelSession();
         }
 
-        public async Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, bool isFirstStep, CancellationToken cancellationToken)
+        public async Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, CancellationToken cancellationToken)
         {
             if (!IsActive)
             {
@@ -117,7 +135,9 @@ namespace GitHub.Runner.Worker.Dap
 
             try
             {
-                await _session.OnStepStartingAsync(step, jobContext, isFirstStep, cancellationToken);
+                bool isFirst = _isFirstStep;
+                _isFirstStep = false;
+                await _session.OnStepStartingAsync(step, jobContext, isFirst, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -139,23 +159,6 @@ namespace GitHub.Runner.Worker.Dap
             catch (Exception ex)
             {
                 Trace.Warning($"DAP OnStepCompleted error: {ex.Message}");
-            }
-        }
-
-        public void OnJobCompleted()
-        {
-            if (!IsActive)
-            {
-                return;
-            }
-
-            try
-            {
-                _session.OnJobCompleted();
-            }
-            catch (Exception ex)
-            {
-                Trace.Warning($"DAP OnJobCompleted error: {ex.Message}");
             }
         }
 

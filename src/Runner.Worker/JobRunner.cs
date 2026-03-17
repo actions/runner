@@ -193,11 +193,8 @@ namespace GitHub.Runner.Worker
                     catch (Exception ex)
                     {
                         Trace.Error($"Failed to start DAP debugger: {ex.Message}");
-                        if (dapDebugger != null)
-                        {
-                            try { await dapDebugger.StopAsync(); } catch { }
-                        }
-                        dapDebugger = null;
+                        jobContext.Error("Failed to start debugger.");
+                        return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
                     }
                 }
 
@@ -254,24 +251,18 @@ namespace GitHub.Runner.Worker
                     catch (OperationCanceledException) when (jobRequestCancellationToken.IsCancellationRequested)
                     {
                         Trace.Info("Job was cancelled before debugger client connected.");
-                        try { await dapDebugger.StopAsync(); } catch { }
-                        dapDebugger = null;
+                        jobContext.Error("Job was cancelled before debugger client connected.");
                         return await CompleteJobAsync(server, jobContext, message, TaskResult.Canceled);
                     }
                     catch (Exception ex)
                     {
                         Trace.Error($"DAP debugger failed to become ready: {ex.Message}");
-                        try { await dapDebugger.StopAsync(); } catch { }
-                        dapDebugger = null;
-                    }
-                }
 
-                // If debugging was requested but the debugger is not available, fail the job
-                if (jobContext.Global.EnableDebugger && dapDebugger == null)
-                {
-                    var errorMessage = "The debugger failed to start or no debugger client connected in time.";
-                    jobContext.Error(errorMessage);
-                    return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
+                        // If debugging was requested but the debugger is not available, fail the job
+                        var errorMessage = "The debugger failed to start or no debugger client connected in time.";
+                        jobContext.Error(errorMessage);
+                        return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
+                    }
                 }
 
                 // Run all job steps
@@ -314,10 +305,7 @@ namespace GitHub.Runner.Worker
                     runnerShutdownRegistration = null;
                 }
 
-                if (dapDebugger != null)
-                {
-                    await dapDebugger.StopAsync();
-                }
+                await dapDebugger?.OnJobCompletedAsync();
 
                 await ShutdownQueue(throwOnFailure: false);
             }

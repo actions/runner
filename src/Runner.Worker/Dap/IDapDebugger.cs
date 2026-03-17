@@ -12,8 +12,8 @@ namespace GitHub.Runner.Worker.Dap
         Task WaitUntilReadyAsync(CancellationToken cancellationToken);
         Task StopAsync();
         void CancelSession();
-        Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, bool isFirstStep, CancellationToken cancellationToken);
+        Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, CancellationToken cancellationToken);
         void OnStepCompleted(IStep step);
-        void OnJobCompleted();
+        Task OnJobCompletedAsync();
     }
 }
