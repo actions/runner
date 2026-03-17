@@ -77,9 +77,10 @@ namespace GitHub.Runner.Worker.Handlers
                     bool requireNode24 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.RequireNode24Flag) ?? false;
                     bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
                     bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
+                    string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
 
                     var (nodeVersion, configWarningMessage) = NodeUtil.DetermineActionsNodeVersion(environment, useNode24ByDefault, requireNode24);
-                    var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeVersion, deprecateArm32, killArm32);
+                    var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeVersion, deprecateArm32, killArm32, node20RemovalDate);
 
                     // ARM32 kill switch: fail the step
                     if (finalNodeVersion == null)

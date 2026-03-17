@@ -60,8 +60,9 @@ namespace GitHub.Runner.Worker.Handlers
         {
             bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
             bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
+            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
 
-            var (nodeVersion, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32);
+            var (nodeVersion, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
 
             if (nodeVersion == null)
             {
@@ -73,7 +74,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 executionContext.Warning(warningMessage);
             }
-            
+
             return Task.FromResult(nodeVersion);
         }
 
@@ -153,8 +154,9 @@ namespace GitHub.Runner.Worker.Handlers
         {
             bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
             bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
+            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
 
-            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32);
+            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
 
             if (nodeExternal == null)
             {
@@ -293,8 +295,9 @@ namespace GitHub.Runner.Worker.Handlers
         {
             bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
             bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
+            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
 
-            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32);
+            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
 
             if (nodeExternal == null)
             {

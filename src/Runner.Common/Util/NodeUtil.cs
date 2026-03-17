@@ -117,7 +117,8 @@ namespace GitHub.Runner.Common.Util
         public static (string nodeVersion, string warningMessage) CheckNodeVersionForLinuxArm32(
             string preferredVersion,
             bool deprecateArm32 = false,
-            bool killArm32 = false)
+            bool killArm32 = false,
+            string node20RemovalDate = null)
         {
             bool isArm32Linux = Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.Arm) &&
                                 Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux);
@@ -138,7 +139,7 @@ namespace GitHub.Runner.Common.Util
             {
                 string deprecationWarning = string.Format(
                     Constants.Runner.NodeMigration.LinuxArm32DeprecationMessage,
-                    Constants.Runner.NodeMigration.Node20RemovalDate);
+                    node20RemovalDate ?? Constants.Runner.NodeMigration.Node20RemovalDate);
 
                 if (string.Equals(preferredVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
                 {

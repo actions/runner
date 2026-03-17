@@ -202,9 +202,13 @@ namespace GitHub.Runner.Common
                 // Blog post URL for Node 20 deprecation
                 public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/";
 
-                // Node 20 migration dates
+                // Node 20 migration dates (hardcoded fallbacks, can be overridden via job variables)
                 public static readonly string Node24DefaultDate = "June 2nd, 2026";
                 public static readonly string Node20RemovalDate = "September 16th, 2026";
+
+                // Variable keys for server-overridable dates
+                public static readonly string Node24DefaultDateVariable = "actions_runner_node24_default_date";
+                public static readonly string Node20RemovalDateVariable = "actions_runner_node20_removal_date";
 
                 public static readonly string LinuxArm32DeprecationMessage = "Linux ARM32 runners are deprecated and will no longer be supported after {0}. Please migrate to a supported platform.";
             }
