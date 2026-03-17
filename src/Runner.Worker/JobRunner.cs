@@ -194,7 +194,7 @@ namespace GitHub.Runner.Worker
                     catch (Exception ex)
                     {
                         Trace.Error($"Failed to start DAP debugger: {ex.Message}");
-                        AddDebuggerConnectionTelemetry(jobContext, "Failed");
+                        AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.Message}");
                         jobContext.Error("Failed to start debugger.");
                         return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
                     }
@@ -261,11 +261,10 @@ namespace GitHub.Runner.Worker
                     catch (Exception ex)
                     {
                         Trace.Error($"DAP debugger failed to become ready: {ex.Message}");
-                        AddDebuggerConnectionTelemetry(jobContext, "Failed");
+                        AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.Message}");
 
                         // If debugging was requested but the debugger is not available, fail the job
-                        var errorMessage = "The debugger failed to start or no debugger client connected in time.";
-                        jobContext.Error(errorMessage);
+                        jobContext.Error("The debugger failed to start or no debugger client connected in time.");
                         return await CompleteJobAsync(server, jobContext, message, TaskResult.Failed);
                     }
                 }
