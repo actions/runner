@@ -105,7 +105,6 @@ namespace GitHub.Runner.Worker.Dap
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            ResetSessionState();
             var port = ResolvePort();
 
             Trace.Info($"Starting DAP debugger on port {port}");
@@ -426,20 +425,18 @@ namespace GitHub.Runner.Worker.Dap
 
         private async Task ConnectionLoopAsync(CancellationToken cancellationToken)
         {
+            using var listenerCancellationRegistration = cancellationToken.Register(() =>
+            {
+                try { _listener?.Stop(); }
+                catch { /* listener already stopped */ }
+            });
+
             while (_acceptConnections && !cancellationToken.IsCancellationRequested)
             {
                 try
                 {
                     Trace.Info("Waiting for debug client connection...");
-
-                    using (cancellationToken.Register(() =>
-                    {
-                        try { _listener?.Stop(); }
-                        catch { /* listener already stopped */ }
-                    }))
-                    {
-                        _client = await _listener.AcceptTcpClientAsync();
-                    }
+                    _client = await _listener.AcceptTcpClientAsync();
 
                     if (cancellationToken.IsCancellationRequested)
                     {
@@ -836,26 +833,6 @@ namespace GitHub.Runner.Worker.Dap
         private static TaskCompletionSource<bool> CreateHandshakeCompletionSource()
         {
             return new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        }
-
-        private void ResetSessionState()
-        {
-            lock (_stateLock)
-            {
-                _state = DapSessionState.WaitingForConnection;
-                _commandTcs = null;
-                _handshakeTcs = CreateHandshakeCompletionSource();
-                _pauseOnNextStep = true;
-                _isFirstStep = true;
-                _currentStep = null;
-                _jobContext = null;
-                _currentStepIndex = 0;
-                _completedSteps.Clear();
-                _nextCompletedFrameId = CompletedFrameIdBase;
-                _isClientConnected = false;
-                _acceptConnections = true;
-                _nextSeq = 1;
-            }
         }
 
         private Response HandleInitialize(Request request)
@@ -1409,7 +1386,7 @@ namespace GitHub.Runner.Worker.Dap
         internal int ResolvePort()
         {
             var portEnv = Environment.GetEnvironmentVariable(PortEnvironmentVariable);
-            if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort) && customPort > 0 && customPort <= 65535)
+            if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort) && customPort > 1024 && customPort <= 65535)
             {
                 Trace.Info($"Using custom DAP port {customPort} from {PortEnvironmentVariable}");
                 return customPort;
