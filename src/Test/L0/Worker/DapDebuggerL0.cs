@@ -1,10 +1,13 @@
 ﻿using System;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Dap;
-using Moq;
 using Newtonsoft.Json;
 using Xunit;
 
@@ -12,6 +15,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class DapDebuggerL0
     {
+        private const string PortEnvironmentVariable = "ACTIONS_RUNNER_DAP_PORT";
+        private const string TimeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
         private DapDebugger _debugger;
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
@@ -22,29 +27,116 @@ namespace GitHub.Runner.Common.Tests.Worker
             return hc;
         }
 
-        private static Mock<IDapServer> CreateServerMock()
+        private static async Task WithEnvironmentVariableAsync(string name, string value, Func<Task> action)
         {
-            var mockServer = new Mock<IDapServer>();
-            mockServer.Setup(x => x.StartAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-            mockServer.Setup(x => x.WaitForConnectionAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-            mockServer.Setup(x => x.StopAsync())
-                .Returns(Task.CompletedTask);
-            mockServer.Setup(x => x.SendEvent(It.IsAny<Event>()));
-            mockServer.Setup(x => x.SendResponse(It.IsAny<Response>()));
-            return mockServer;
+            var originalValue = Environment.GetEnvironmentVariable(name);
+            Environment.SetEnvironmentVariable(name, value);
+            try
+            {
+                await action();
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(name, originalValue);
+            }
         }
 
-        private Task CompleteHandshakeAsync()
+        private static void WithEnvironmentVariable(string name, string value, Action action)
         {
-            var configJson = JsonConvert.SerializeObject(new Request
+            var originalValue = Environment.GetEnvironmentVariable(name);
+            Environment.SetEnvironmentVariable(name, value);
+            try
             {
-                Seq = 1,
-                Type = "request",
-                Command = "configurationDone"
-            });
-            return _debugger.HandleMessageAsync(configJson, CancellationToken.None);
+                action();
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(name, originalValue);
+            }
+        }
+
+        private static int GetFreePort()
+        {
+            using var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
+
+        private static async Task<TcpClient> ConnectClientAsync(int port)
+        {
+            var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, port);
+            return client;
+        }
+
+        private static async Task SendRequestAsync(NetworkStream stream, Request request)
+        {
+            var json = JsonConvert.SerializeObject(request);
+            var body = Encoding.UTF8.GetBytes(json);
+            var header = $"Content-Length: {body.Length}\r\n\r\n";
+            var headerBytes = Encoding.ASCII.GetBytes(header);
+
+            await stream.WriteAsync(headerBytes, 0, headerBytes.Length);
+            await stream.WriteAsync(body, 0, body.Length);
+            await stream.FlushAsync();
+        }
+
+        /// <summary>
+        /// Reads a single DAP-framed message from a stream with a timeout.
+        /// Parses the Content-Length header, reads exactly that many bytes,
+        /// and returns the JSON body. Fails with a clear error on timeout.
+        /// </summary>
+        private static async Task<string> ReadDapMessageAsync(NetworkStream stream, TimeSpan timeout)
+        {
+            using var cts = new CancellationTokenSource(timeout);
+            var token = cts.Token;
+
+            var headerBuilder = new StringBuilder();
+            var buffer = new byte[1];
+            var contentLength = -1;
+
+            while (true)
+            {
+                var readTask = stream.ReadAsync(buffer, 0, 1, token);
+                var bytesRead = await readTask;
+                if (bytesRead == 0)
+                {
+                    throw new EndOfStreamException("Connection closed while reading DAP headers");
+                }
+
+                headerBuilder.Append((char)buffer[0]);
+                var headers = headerBuilder.ToString();
+                if (headers.EndsWith("\r\n\r\n", StringComparison.Ordinal))
+                {
+                    foreach (var line in headers.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (line.StartsWith("Content-Length: ", StringComparison.OrdinalIgnoreCase))
+                        {
+                            contentLength = int.Parse(line.Substring("Content-Length: ".Length).Trim());
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if (contentLength < 0)
+            {
+                throw new InvalidOperationException("No Content-Length header found in DAP message");
+            }
+
+            var body = new byte[contentLength];
+            var totalRead = 0;
+            while (totalRead < contentLength)
+            {
+                var bytesRead = await stream.ReadAsync(body, totalRead, contentLength - totalRead, token);
+                if (bytesRead == 0)
+                {
+                    throw new EndOfStreamException("Connection closed while reading DAP body");
+                }
+                totalRead += bytesRead;
+            }
+
+            return Encoding.UTF8.GetString(body);
         }
 
         [Fact]
@@ -62,124 +154,151 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void ResolvePortUsesCustomPortFromEnvironment()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(PortEnvironmentVariable, "9999", () =>
+                {
+                    Assert.Equal(9999, _debugger.ResolvePort());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolvePortIgnoresInvalidPortFromEnvironment()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(PortEnvironmentVariable, "not-a-number", () =>
+                {
+                    Assert.Equal(4711, _debugger.ResolvePort());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolvePortIgnoresOutOfRangePortFromEnvironment()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(PortEnvironmentVariable, "99999", () =>
+                {
+                    Assert.Equal(4711, _debugger.ResolvePort());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTimeoutUsesCustomTimeoutFromEnvironment()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TimeoutEnvironmentVariable, "30", () =>
+                {
+                    Assert.Equal(30, _debugger.ResolveTimeout());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTimeoutIgnoresInvalidTimeoutFromEnvironment()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TimeoutEnvironmentVariable, "not-a-number", () =>
+                {
+                    Assert.Equal(15, _debugger.ResolveTimeout());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTimeoutIgnoresZeroTimeoutFromEnvironment()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TimeoutEnvironmentVariable, "0", () =>
+                {
+                    Assert.Equal(15, _debugger.ResolveTimeout());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async Task StartAndStopLifecycle()
         {
-            using (var hc = CreateTestContext())
+            using (CreateTestContext())
             {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
-
-                var cts = new CancellationTokenSource();
-                await _debugger.StartAsync(cts.Token);
-
-                mockServer.Verify(x => x.SetDebugger(It.IsAny<IDapDebuggerCallbacks>()), Times.Once);
-                mockServer.Verify(x => x.StartAsync(4711, cts.Token), Times.Once);
-
-                await _debugger.StopAsync();
-                mockServer.Verify(x => x.StopAsync(), Times.Once);
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await _debugger.StartAsync(cts.Token);
+                    using var client = await ConnectClientAsync(port);
+                    Assert.True(client.Connected);
+                    await _debugger.StopAsync();
+                });
             }
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task StartUsesCustomPortFromEnvironment()
+        public async Task StartAndStopMultipleTimesDoesNotThrow()
         {
-            using (var hc = CreateTestContext())
+            using (CreateTestContext())
             {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
-
-                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_PORT", "9999");
-                try
+                foreach (var port in new[] { GetFreePort(), GetFreePort() })
                 {
-                    var cts = new CancellationTokenSource();
+                    await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                    {
+                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                        await _debugger.StartAsync(cts.Token);
+                        await _debugger.StopAsync();
+                    });
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WaitUntilReadyCompletesAfterClientConnectionAndConfigurationDone()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                     await _debugger.StartAsync(cts.Token);
 
-                    mockServer.Verify(x => x.StartAsync(9999, cts.Token), Times.Once);
+                    var waitTask = _debugger.WaitUntilReadyAsync(cts.Token);
+                    using var client = await ConnectClientAsync(port);
+                    await SendRequestAsync(client.GetStream(), new Request
+                    {
+                        Seq = 1,
+                        Type = "request",
+                        Command = "configurationDone"
+                    });
 
+                    await waitTask;
+                    Assert.Equal(DapSessionState.Ready, _debugger.State);
                     await _debugger.StopAsync();
-                }
-                finally
-                {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_PORT", null);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task StartIgnoresInvalidPortFromEnvironment()
-        {
-            using (var hc = CreateTestContext())
-            {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
-
-                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_PORT", "not-a-number");
-                try
-                {
-                    var cts = new CancellationTokenSource();
-                    await _debugger.StartAsync(cts.Token);
-
-                    mockServer.Verify(x => x.StartAsync(4711, cts.Token), Times.Once);
-
-                    await _debugger.StopAsync();
-                }
-                finally
-                {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_PORT", null);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task StartIgnoresOutOfRangePortFromEnvironment()
-        {
-            using (var hc = CreateTestContext())
-            {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
-
-                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_PORT", "99999");
-                try
-                {
-                    var cts = new CancellationTokenSource();
-                    await _debugger.StartAsync(cts.Token);
-
-                    mockServer.Verify(x => x.StartAsync(4711, cts.Token), Times.Once);
-
-                    await _debugger.StopAsync();
-                }
-                finally
-                {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_PORT", null);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task WaitUntilReadyCallsServerAndCompletesHandshake()
-        {
-            using (var hc = CreateTestContext())
-            {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
-
-                var cts = new CancellationTokenSource();
-                await _debugger.StartAsync(cts.Token);
-                await CompleteHandshakeAsync();
-                await _debugger.WaitUntilReadyAsync(cts.Token);
-
-                mockServer.Verify(x => x.WaitForConnectionAsync(It.IsAny<CancellationToken>()), Times.Once);
-                Assert.Equal(DapSessionState.Ready, _debugger.State);
-
-                await _debugger.StopAsync();
+                });
             }
         }
 
@@ -188,20 +307,29 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task WaitUntilReadyRegistersCancellation()
         {
-            using (var hc = CreateTestContext())
+            using (CreateTestContext())
             {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await _debugger.StartAsync(cts.Token);
 
-                var cts = new CancellationTokenSource();
-                await _debugger.StartAsync(cts.Token);
-                await CompleteHandshakeAsync();
-                await _debugger.WaitUntilReadyAsync(cts.Token);
+                    var waitTask = _debugger.WaitUntilReadyAsync(cts.Token);
+                    using var client = await ConnectClientAsync(port);
+                    await SendRequestAsync(client.GetStream(), new Request
+                    {
+                        Seq = 1,
+                        Type = "request",
+                        Command = "configurationDone"
+                    });
 
-                cts.Cancel();
+                    await waitTask;
+                    cts.Cancel();
 
-                Assert.Equal(DapSessionState.Terminated, _debugger.State);
-                await _debugger.StopAsync();
+                    Assert.True(SpinWait.SpinUntil(() => _debugger.State == DapSessionState.Terminated, TimeSpan.FromSeconds(5)));
+                    await _debugger.StopAsync();
+                });
             }
         }
 
@@ -219,21 +347,29 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task OnJobCompletedStopsServer()
+        public async Task OnJobCompletedTerminatesSession()
         {
-            using (var hc = CreateTestContext())
+            using (CreateTestContext())
             {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await _debugger.StartAsync(cts.Token);
 
-                var cts = new CancellationTokenSource();
-                await _debugger.StartAsync(cts.Token);
-                await CompleteHandshakeAsync();
-                await _debugger.WaitUntilReadyAsync(cts.Token);
+                    var waitTask = _debugger.WaitUntilReadyAsync(cts.Token);
+                    using var client = await ConnectClientAsync(port);
+                    await SendRequestAsync(client.GetStream(), new Request
+                    {
+                        Seq = 1,
+                        Type = "request",
+                        Command = "configurationDone"
+                    });
 
-                await _debugger.OnJobCompletedAsync();
-
-                mockServer.Verify(x => x.StopAsync(), Times.Once);
+                    await waitTask;
+                    await _debugger.OnJobCompletedAsync();
+                    Assert.Equal(DapSessionState.Terminated, _debugger.State);
+                });
             }
         }
 
@@ -251,183 +387,65 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task WaitUntilReadyPassesLinkedTokenNotOriginal()
-        {
-            using (var hc = CreateTestContext())
-            {
-                CancellationToken capturedToken = default;
-
-                var mockServer = new Mock<IDapServer>();
-                mockServer.Setup(x => x.StartAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                    .Returns(Task.CompletedTask);
-                mockServer.Setup(x => x.WaitForConnectionAsync(It.IsAny<CancellationToken>()))
-                    .Callback<CancellationToken>(ct => capturedToken = ct)
-                    .Returns(Task.CompletedTask);
-                mockServer.Setup(x => x.StopAsync())
-                    .Returns(Task.CompletedTask);
-                mockServer.Setup(x => x.SendResponse(It.IsAny<Response>()));
-
-                hc.SetSingleton(mockServer.Object);
-
-                var cts = new CancellationTokenSource();
-                await _debugger.StartAsync(cts.Token);
-                await CompleteHandshakeAsync();
-                await _debugger.WaitUntilReadyAsync(cts.Token);
-
-                Assert.NotEqual(cts.Token, capturedToken);
-
-                await _debugger.StopAsync();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task WaitUntilReadyTimeoutSurfacesAsTimeoutException()
-        {
-            using (var hc = CreateTestContext())
-            {
-                var mockServer = new Mock<IDapServer>();
-                mockServer.Setup(x => x.StartAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                    .Returns(Task.CompletedTask);
-                mockServer.Setup(x => x.WaitForConnectionAsync(It.IsAny<CancellationToken>()))
-                    .Returns<CancellationToken>(async ct =>
-                    {
-                        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                        ct.Register(() => tcs.TrySetCanceled(ct));
-                        await tcs.Task;
-                    });
-                mockServer.Setup(x => x.StopAsync())
-                    .Returns(Task.CompletedTask);
-
-                hc.SetSingleton(mockServer.Object);
-
-                var jobCts = new CancellationTokenSource();
-                await _debugger.StartAsync(jobCts.Token);
-
-                var waitTask = _debugger.WaitUntilReadyAsync(jobCts.Token);
-                await Task.Delay(50);
-                Assert.False(waitTask.IsCompleted);
-
-                jobCts.Cancel();
-                var ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask);
-                Assert.IsNotType<TimeoutException>(ex);
-
-                await _debugger.StopAsync();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task WaitUntilReadyUsesCustomTimeoutFromEnvironment()
-        {
-            using (var hc = CreateTestContext())
-            {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
-
-                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT", "30");
-                try
-                {
-                    var cts = new CancellationTokenSource();
-                    await _debugger.StartAsync(cts.Token);
-                    await CompleteHandshakeAsync();
-                    await _debugger.WaitUntilReadyAsync(cts.Token);
-                    await _debugger.StopAsync();
-                }
-                finally
-                {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT", null);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task WaitUntilReadyIgnoresInvalidTimeoutFromEnvironment()
-        {
-            using (var hc = CreateTestContext())
-            {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
-
-                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT", "not-a-number");
-                try
-                {
-                    var cts = new CancellationTokenSource();
-                    await _debugger.StartAsync(cts.Token);
-                    await CompleteHandshakeAsync();
-                    await _debugger.WaitUntilReadyAsync(cts.Token);
-                    await _debugger.StopAsync();
-                }
-                finally
-                {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT", null);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async Task WaitUntilReadyIgnoresZeroTimeoutFromEnvironment()
-        {
-            using (var hc = CreateTestContext())
-            {
-                var mockServer = CreateServerMock();
-                hc.SetSingleton(mockServer.Object);
-
-                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT", "0");
-                try
-                {
-                    var cts = new CancellationTokenSource();
-                    await _debugger.StartAsync(cts.Token);
-                    await CompleteHandshakeAsync();
-                    await _debugger.WaitUntilReadyAsync(cts.Token);
-                    await _debugger.StopAsync();
-                }
-                finally
-                {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT", null);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public async Task WaitUntilReadyJobCancellationPropagatesAsOperationCancelledException()
         {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await _debugger.StartAsync(cts.Token);
+
+                    var waitTask = _debugger.WaitUntilReadyAsync(cts.Token);
+                    await Task.Delay(50);
+                    cts.Cancel();
+
+                    var ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask);
+                    Assert.IsNotType<TimeoutException>(ex);
+                    await _debugger.StopAsync();
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task InitializeRequestOverSocketPreservesProtocolMetadataWhenSecretsCollide()
+        {
             using (var hc = CreateTestContext())
             {
-                var mockServer = new Mock<IDapServer>();
-                mockServer.Setup(x => x.StartAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                    .Returns(Task.CompletedTask);
-                mockServer.Setup(x => x.WaitForConnectionAsync(It.IsAny<CancellationToken>()))
-                    .Returns<CancellationToken>(ct =>
+                hc.SecretMasker.AddValue("response");
+                hc.SecretMasker.AddValue("initialize");
+                hc.SecretMasker.AddValue("event");
+                hc.SecretMasker.AddValue("initialized");
+
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await _debugger.StartAsync(cts.Token);
+                    using var client = await ConnectClientAsync(port);
+                    var stream = client.GetStream();
+
+                    await SendRequestAsync(stream, new Request
                     {
-                        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                        ct.Register(() => tcs.TrySetCanceled(ct));
-                        return tcs.Task;
+                        Seq = 1,
+                        Type = "request",
+                        Command = "initialize"
                     });
-                mockServer.Setup(x => x.StopAsync())
-                    .Returns(Task.CompletedTask);
 
-                hc.SetSingleton(mockServer.Object);
+                    var response = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                    Assert.Contains("\"type\":\"response\"", response);
+                    Assert.Contains("\"command\":\"initialize\"", response);
+                    Assert.Contains("\"success\":true", response);
 
-                var cts = new CancellationTokenSource();
-                await _debugger.StartAsync(cts.Token);
+                    var initializedEvent = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                    Assert.Contains("\"type\":\"event\"", initializedEvent);
+                    Assert.Contains("\"event\":\"initialized\"", initializedEvent);
 
-                var waitTask = _debugger.WaitUntilReadyAsync(cts.Token);
-                await Task.Delay(50);
-
-                cts.Cancel();
-                var ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask);
-                Assert.IsNotType<TimeoutException>(ex);
-
-                await _debugger.StopAsync();
+                    await _debugger.StopAsync();
+                });
             }
         }
     }

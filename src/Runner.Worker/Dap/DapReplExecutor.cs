@@ -26,13 +26,13 @@ namespace GitHub.Runner.Worker.Dap
     internal sealed class DapReplExecutor
     {
         private readonly IHostContext _hostContext;
-        private readonly IDapServer _server;
+        private readonly Action<string, string> _sendOutput;
         private readonly Tracing _trace;
 
-        public DapReplExecutor(IHostContext hostContext, IDapServer server)
+        public DapReplExecutor(IHostContext hostContext, Action<string, string> sendOutput)
         {
             _hostContext = hostContext ?? throw new ArgumentNullException(nameof(hostContext));
-            _server = server;
+            _sendOutput = sendOutput ?? throw new ArgumentNullException(nameof(sendOutput));
             _trace = hostContext.GetTrace(nameof(DapReplExecutor));
         }
 
@@ -353,15 +353,7 @@ namespace GitHub.Runner.Worker.Dap
 
         private void SendOutput(string category, string text)
         {
-            _server?.SendEvent(new Event
-            {
-                EventType = "output",
-                Body = new OutputEventBody
-                {
-                    Category = category,
-                    Output = text
-                }
-            });
+            _sendOutput(category, text);
         }
 
         private static EvaluateResponseBody ErrorResult(string message)

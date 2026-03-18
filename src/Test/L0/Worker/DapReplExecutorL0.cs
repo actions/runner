@@ -17,17 +17,24 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private TestHostContext _hc;
         private DapReplExecutor _executor;
-        private Mock<IDapServer> _mockServer;
         private List<Event> _sentEvents;
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
             _hc = new TestHostContext(this, testName);
             _sentEvents = new List<Event>();
-            _mockServer = new Mock<IDapServer>();
-            _mockServer.Setup(x => x.SendEvent(It.IsAny<Event>()))
-                .Callback<Event>(e => _sentEvents.Add(e));
-            _executor = new DapReplExecutor(_hc, _mockServer.Object);
+            _executor = new DapReplExecutor(_hc, (category, text) =>
+            {
+                _sentEvents.Add(new Event
+                {
+                    EventType = "output",
+                    Body = new OutputEventBody
+                    {
+                        Category = category,
+                        Output = text
+                    }
+                });
+            });
             return _hc;
         }
 

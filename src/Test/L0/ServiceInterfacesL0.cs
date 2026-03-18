@@ -72,7 +72,6 @@ namespace GitHub.Runner.Common.Tests
                 typeof(IDiagnosticLogManager),
                 typeof(IEnvironmentContextData),
                 typeof(IHookArgs),
-                typeof(IDapDebuggerCallbacks),
             };
             Validate(
                 assembly: typeof(IStepsRunner).GetTypeInfo().Assembly,

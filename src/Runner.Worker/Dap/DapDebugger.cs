@@ -1,5 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -20,15 +24,18 @@ namespace GitHub.Runner.Worker.Dap
 
     /// <summary>
     /// Single public facade for the Debug Adapter Protocol subsystem.
-    /// Owns the DapServer internally and handles handshake, step-level
-    /// pauses, variable inspection, reconnection, and cancellation.
+    /// Owns the full transport, handshake, step-level pauses, variable
+    /// inspection, reconnection, and cancellation flow.
     /// </summary>
-    public sealed class DapDebugger : RunnerService, IDapDebugger, IDapDebuggerCallbacks
+    public sealed class DapDebugger : RunnerService, IDapDebugger
     {
         private const int DefaultPort = 4711;
         private const int DefaultTimeoutMinutes = 15;
         private const string PortEnvironmentVariable = "ACTIONS_RUNNER_DAP_PORT";
         private const string TimeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
+        private const string ContentLengthHeader = "Content-Length: ";
+        private const int MaxMessageSize = 10 * 1024 * 1024; // 10 MB
+        private const int MaxHeaderLineLength = 8192; // 8 KB
 
         // Thread ID for the single job execution thread
         private const int JobThreadId = 1;
@@ -39,7 +46,15 @@ namespace GitHub.Runner.Worker.Dap
         // Frame IDs for completed steps start at 1000
         private const int CompletedFrameIdBase = 1000;
 
-        private IDapServer _server;
+        private TcpListener _listener;
+        private TcpClient _client;
+        private NetworkStream _stream;
+        private CancellationTokenSource _cts;
+        private TaskCompletionSource<bool> _connectionTcs;
+        private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+        private int _nextSeq = 1;
+        private Task _connectionLoopTask;
+        private volatile bool _acceptConnections = true;
         private volatile DapSessionState _state = DapSessionState.WaitingForConnection;
         private CancellationTokenRegistration? _cancellationRegistration;
         private volatile bool _started;
@@ -84,26 +99,34 @@ namespace GitHub.Runner.Worker.Dap
         {
             base.Initialize(hostContext);
             _variableProvider = new DapVariableProvider(hostContext);
+            _replExecutor = new DapReplExecutor(hostContext, SendOutput);
             Trace.Info("DapDebugger initialized");
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             ResetSessionState();
             var port = ResolvePort();
 
-            SetDapServer(HostContext.GetService<IDapServer>());
-            _server.SetDebugger(this);
+            Trace.Info($"Starting DAP debugger on port {port}");
 
-            await _server.StartAsync(port, cancellationToken);
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _connectionTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _listener = new TcpListener(IPAddress.Loopback, port);
+            _listener.Start();
+            Trace.Info($"DAP debugger listening on {_listener.LocalEndpoint}");
+
+            _connectionLoopTask = ConnectionLoopAsync(_cts.Token);
             _started = true;
 
             Trace.Info($"DAP debugger started on port {port}");
+            return Task.CompletedTask;
         }
 
         public async Task WaitUntilReadyAsync(CancellationToken cancellationToken)
         {
-            if (!_started || _server == null)
+            if (!_started || _listener == null)
             {
                 return;
             }
@@ -115,7 +138,7 @@ namespace GitHub.Runner.Worker.Dap
             try
             {
                 Trace.Info($"Waiting for debugger client connection (timeout: {timeoutMinutes} minutes)...");
-                await _server.WaitForConnectionAsync(linkedCts.Token);
+                await WaitForConnectionAsync(linkedCts.Token);
                 Trace.Info("Debugger client connected.");
 
                 await WaitForHandshakeAsync(linkedCts.Token);
@@ -158,12 +181,27 @@ namespace GitHub.Runner.Worker.Dap
                 _cancellationRegistration = null;
             }
 
-            if (_server != null && _started)
+            if (_started)
             {
                 try
                 {
                     Trace.Info("Stopping DAP debugger");
-                    await _server.StopAsync();
+                    _acceptConnections = false;
+                    _cts?.Cancel();
+
+                    CleanupConnection();
+
+                    try { _listener?.Stop(); }
+                    catch { /* best effort */ }
+
+                    if (_connectionLoopTask != null)
+                    {
+                        try
+                        {
+                            await Task.WhenAny(_connectionLoopTask, Task.Delay(5000));
+                        }
+                        catch { /* best effort */ }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -181,8 +219,12 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             _isClientConnected = false;
-            _server = null;
-            _replExecutor = null;
+            _listener = null;
+            _client = null;
+            _stream = null;
+            _cts = null;
+            _connectionTcs = null;
+            _connectionLoopTask = null;
             _started = false;
         }
 
@@ -201,14 +243,14 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             // Send terminated event to debugger so it updates its UI
-            _server?.SendEvent(new Event
+            SendEvent(new Event
             {
                 EventType = "terminated",
                 Body = new TerminatedEventBody()
             });
 
             // Send exited event with cancellation exit code (130 = SIGINT convention)
-            _server?.SendEvent(new Event
+            SendEvent(new Event
             {
                 EventType = "exited",
                 Body = new ExitedEventBody { ExitCode = 130 }
@@ -278,21 +320,6 @@ namespace GitHub.Runner.Worker.Dap
             }
         }
 
-        Task IDapDebuggerCallbacks.HandleMessageAsync(string messageJson, CancellationToken cancellationToken)
-        {
-            return HandleMessageAsync(messageJson, cancellationToken);
-        }
-
-        void IDapDebuggerCallbacks.HandleClientConnected()
-        {
-            HandleClientConnected();
-        }
-
-        void IDapDebuggerCallbacks.HandleClientDisconnected()
-        {
-            HandleClientDisconnected();
-        }
-
         internal async Task HandleMessageAsync(string messageJson, CancellationToken cancellationToken)
         {
             Request request = null;
@@ -302,6 +329,12 @@ namespace GitHub.Runner.Worker.Dap
                 if (request == null)
                 {
                     Trace.Warning("Failed to deserialize DAP request");
+                    return;
+                }
+
+                if (!string.Equals(request.Type, "request", StringComparison.OrdinalIgnoreCase))
+                {
+                    Trace.Warning("Received DAP message that was not a request");
                     return;
                 }
 
@@ -341,7 +374,7 @@ namespace GitHub.Runner.Worker.Dap
                 response.RequestSeq = request.Seq;
                 response.Command = request.Command;
 
-                _server?.SendResponse(response);
+                SendResponse(response);
             }
             catch (Exception ex)
             {
@@ -352,7 +385,7 @@ namespace GitHub.Runner.Worker.Dap
                     var errorResponse = CreateResponse(request, false, maskedMessage, body: null);
                     errorResponse.RequestSeq = request.Seq;
                     errorResponse.Command = request.Command;
-                    _server?.SendResponse(errorResponse);
+                    SendResponse(errorResponse);
                 }
             }
         }
@@ -387,15 +420,328 @@ namespace GitHub.Runner.Worker.Dap
 
             // Intentionally do NOT release the command TCS here.
             // The session stays paused, waiting for a client to reconnect.
-            // The server's connection loop will accept a new client and
+            // The debugger's connection loop will accept a new client and
             // call HandleClientConnected, which re-sends the stopped event.
         }
 
-        internal void SetDapServer(IDapServer server)
+        private async Task ConnectionLoopAsync(CancellationToken cancellationToken)
         {
-            _server = server;
-            _replExecutor = new DapReplExecutor(HostContext, server);
-            Trace.Info("DAP server reference set");
+            while (_acceptConnections && !cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    Trace.Info("Waiting for debug client connection...");
+
+                    using (cancellationToken.Register(() =>
+                    {
+                        try { _listener?.Stop(); }
+                        catch { /* listener already stopped */ }
+                    }))
+                    {
+                        _client = await _listener.AcceptTcpClientAsync();
+                    }
+
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    _stream = _client.GetStream();
+                    var remoteEndPoint = _client.Client.RemoteEndPoint;
+                    Trace.Info($"Debug client connected from {remoteEndPoint}");
+
+                    _connectionTcs.TrySetResult(true);
+                    HandleClientConnected();
+
+                    await ProcessMessagesAsync(cancellationToken);
+
+                    Trace.Info("Client disconnected, waiting for reconnection...");
+                    HandleClientDisconnected();
+                    CleanupConnection();
+                }
+                catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (SocketException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Warning($"Connection error ({ex.GetType().Name})");
+                    CleanupConnection();
+
+                    if (!_acceptConnections || cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    try
+                    {
+                        await Task.Delay(100, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            _connectionTcs?.TrySetCanceled();
+            Trace.Info("Connection loop ended");
+        }
+
+        private void CleanupConnection()
+        {
+            _sendLock.Wait();
+            try
+            {
+                try { _stream?.Close(); } catch { /* best effort */ }
+                try { _client?.Close(); } catch { /* best effort */ }
+                _stream = null;
+                _client = null;
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
+        }
+
+        private async Task WaitForConnectionAsync(CancellationToken cancellationToken)
+        {
+            Trace.Info("Waiting for debug client to connect...");
+
+            using (cancellationToken.Register(() => _connectionTcs?.TrySetCanceled()))
+            {
+                await _connectionTcs.Task;
+            }
+
+            Trace.Info("Debug client connected");
+        }
+
+        private async Task ProcessMessagesAsync(CancellationToken cancellationToken)
+        {
+            Trace.Info("Starting DAP message processing loop");
+
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested && _client?.Connected == true)
+                {
+                    var json = await ReadMessageAsync(cancellationToken);
+                    if (json == null)
+                    {
+                        Trace.Info("Client disconnected (end of stream)");
+                        break;
+                    }
+
+                    await HandleMessageAsync(json, cancellationToken);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                Trace.Info("Message processing cancelled");
+            }
+            catch (IOException ex)
+            {
+                Trace.Info($"Connection closed ({ex.GetType().Name})");
+            }
+            catch (Exception ex)
+            {
+                Trace.Error($"Error in message loop ({ex.GetType().Name})");
+            }
+
+            Trace.Info("DAP message processing loop ended");
+        }
+
+        private async Task<string> ReadMessageAsync(CancellationToken cancellationToken)
+        {
+            int contentLength = -1;
+
+            while (true)
+            {
+                var line = await ReadLineAsync(cancellationToken);
+                if (line == null)
+                {
+                    return null;
+                }
+
+                if (line.Length == 0)
+                {
+                    break;
+                }
+
+                if (line.StartsWith(ContentLengthHeader, StringComparison.OrdinalIgnoreCase))
+                {
+                    var lengthStr = line.Substring(ContentLengthHeader.Length).Trim();
+                    if (!int.TryParse(lengthStr, out contentLength))
+                    {
+                        throw new InvalidDataException($"Invalid Content-Length: {lengthStr}");
+                    }
+                }
+            }
+
+            if (contentLength < 0)
+            {
+                throw new InvalidDataException("Missing Content-Length header");
+            }
+
+            if (contentLength > MaxMessageSize)
+            {
+                throw new InvalidDataException($"Message size {contentLength} exceeds maximum allowed size of {MaxMessageSize}");
+            }
+
+            var buffer = new byte[contentLength];
+            var totalRead = 0;
+            while (totalRead < contentLength)
+            {
+                var bytesRead = await _stream.ReadAsync(buffer, totalRead, contentLength - totalRead, cancellationToken);
+                if (bytesRead == 0)
+                {
+                    throw new EndOfStreamException("Connection closed while reading message body");
+                }
+                totalRead += bytesRead;
+            }
+
+            var json = Encoding.UTF8.GetString(buffer);
+            Trace.Verbose("Received DAP message body");
+            return json;
+        }
+
+        private async Task<string> ReadLineAsync(CancellationToken cancellationToken)
+        {
+            var lineBuilder = new StringBuilder();
+            var buffer = new byte[1];
+            var previousWasCr = false;
+
+            while (true)
+            {
+                var bytesRead = await _stream.ReadAsync(buffer, 0, 1, cancellationToken);
+                if (bytesRead == 0)
+                {
+                    return lineBuilder.Length > 0 ? lineBuilder.ToString() : null;
+                }
+
+                var c = (char)buffer[0];
+
+                if (c == '\n' && previousWasCr)
+                {
+                    if (lineBuilder.Length > 0 && lineBuilder[lineBuilder.Length - 1] == '\r')
+                    {
+                        lineBuilder.Length--;
+                    }
+                    return lineBuilder.ToString();
+                }
+
+                previousWasCr = c == '\r';
+                lineBuilder.Append(c);
+
+                if (lineBuilder.Length > MaxHeaderLineLength)
+                {
+                    throw new InvalidDataException($"Header line exceeds maximum length of {MaxHeaderLineLength}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Serializes and writes a DAP message with Content-Length framing.
+        /// Must be called within the _sendLock.
+        ///
+        /// Secret masking is intentionally NOT applied here at the serialization
+        /// layer. Masking the raw JSON would corrupt protocol envelope fields
+        /// (type, event, command, seq) if a secret collides with those strings.
+        /// Instead, each DAP producer masks user-visible text at the point of
+        /// construction via <see cref="DapVariableProvider.MaskSecrets"/> or the
+        /// runner's SecretMasker directly. See DapVariableProvider, DapReplExecutor,
+        /// and DapDebugger for the call sites.
+        /// </summary>
+        private void SendMessageInternal(ProtocolMessage message)
+        {
+            var json = JsonConvert.SerializeObject(message, new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+
+            var bodyBytes = Encoding.UTF8.GetBytes(json);
+            var header = $"Content-Length: {bodyBytes.Length}\r\n\r\n";
+            var headerBytes = Encoding.ASCII.GetBytes(header);
+
+            _stream.Write(headerBytes, 0, headerBytes.Length);
+            _stream.Write(bodyBytes, 0, bodyBytes.Length);
+            _stream.Flush();
+
+            Trace.Verbose("Sent DAP message");
+        }
+
+        private void SendEvent(Event evt)
+        {
+            try
+            {
+                _sendLock.Wait();
+                try
+                {
+                    if (_stream == null)
+                    {
+                        Trace.Warning("Cannot send event: no client connected");
+                        return;
+                    }
+
+                    evt.Seq = _nextSeq++;
+                    SendMessageInternal(evt);
+                }
+                finally
+                {
+                    _sendLock.Release();
+                }
+
+                Trace.Info("Sent event");
+            }
+            catch (Exception ex)
+            {
+                Trace.Warning($"Failed to send event ({ex.GetType().Name})");
+            }
+        }
+
+        private void SendResponse(Response response)
+        {
+            try
+            {
+                _sendLock.Wait();
+                try
+                {
+                    if (_stream == null)
+                    {
+                        Trace.Warning("Cannot send response: no client connected");
+                        return;
+                    }
+
+                    response.Seq = _nextSeq++;
+                    SendMessageInternal(response);
+                }
+                finally
+                {
+                    _sendLock.Release();
+                }
+
+                Trace.Info("Sent response");
+            }
+            catch (Exception ex)
+            {
+                Trace.Warning($"Failed to send response ({ex.GetType().Name})");
+            }
+        }
+
+        private void SendOutput(string category, string text)
+        {
+            SendEvent(new Event
+            {
+                EventType = "output",
+                Body = new OutputEventBody
+                {
+                    Category = category,
+                    Output = text
+                }
+            });
         }
 
         internal async Task WaitForHandshakeAsync(CancellationToken cancellationToken)
@@ -471,13 +817,13 @@ namespace GitHub.Runner.Worker.Dap
                 exitCode = _jobContext?.Result == TaskResult.Succeeded ? 0 : 1;
             }
 
-            _server?.SendEvent(new Event
+            SendEvent(new Event
             {
                 EventType = "terminated",
                 Body = new TerminatedEventBody()
             });
 
-            _server?.SendEvent(new Event
+            SendEvent(new Event
             {
                 EventType = "exited",
                 Body = new ExitedEventBody
@@ -507,6 +853,8 @@ namespace GitHub.Runner.Worker.Dap
                 _completedSteps.Clear();
                 _nextCompletedFrameId = CompletedFrameIdBase;
                 _isClientConnected = false;
+                _acceptConnections = true;
+                _nextSeq = 1;
             }
         }
 
@@ -563,7 +911,7 @@ namespace GitHub.Runner.Worker.Dap
             _ = Task.Run(async () =>
             {
                 await Task.Delay(50);
-                _server?.SendEvent(new Event
+                SendEvent(new Event
                 {
                     EventType = "initialized"
                 });
@@ -969,7 +1317,7 @@ namespace GitHub.Runner.Worker.Dap
                 if (!cancellationToken.IsCancellationRequested &&
                     (command == DapCommand.Continue || command == DapCommand.Next))
                 {
-                    _server?.SendEvent(new Event
+                    SendEvent(new Event
                     {
                         EventType = "continued",
                         Body = new ContinuedEventBody
@@ -1019,7 +1367,7 @@ namespace GitHub.Runner.Worker.Dap
                 return;
             }
 
-            _server?.SendEvent(new Event
+            SendEvent(new Event
             {
                 EventType = "stopped",
                 Body = new StoppedEventBody
@@ -1058,7 +1406,7 @@ namespace GitHub.Runner.Worker.Dap
             };
         }
 
-        private int ResolvePort()
+        internal int ResolvePort()
         {
             var portEnv = Environment.GetEnvironmentVariable(PortEnvironmentVariable);
             if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort) && customPort > 0 && customPort <= 65535)
@@ -1070,7 +1418,7 @@ namespace GitHub.Runner.Worker.Dap
             return DefaultPort;
         }
 
-        private int ResolveTimeout()
+        internal int ResolveTimeout()
         {
             var timeoutEnv = Environment.GetEnvironmentVariable(TimeoutEnvironmentVariable);
             if (!string.IsNullOrEmpty(timeoutEnv) && int.TryParse(timeoutEnv, out var customTimeout) && customTimeout > 0)
