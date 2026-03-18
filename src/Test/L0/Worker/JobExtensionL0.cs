@@ -550,7 +550,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _stepsRunner.Initialize(hc);
 
                 var mockDapDebugger = new Mock<IDapDebugger>();
-                mockDapDebugger.Setup(x => x.IsActive).Returns(false);
                 hc.SetSingleton(mockDapDebugger.Object);
 
                 await _stepsRunner.RunAsync(_jobEc);

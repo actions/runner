@@ -17,11 +17,8 @@ namespace GitHub.Runner.Worker.Dap
     [ServiceLocator(Default = typeof(DapDebugger))]
     public interface IDapDebugger : IRunnerService
     {
-        bool IsActive { get; }
         Task StartAsync(CancellationToken cancellationToken);
         Task WaitUntilReadyAsync(CancellationToken cancellationToken);
-        Task StopAsync();
-        void CancelSession();
         Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, CancellationToken cancellationToken);
         void OnStepCompleted(IStep step);
         Task OnJobCompletedAsync();
