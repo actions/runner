@@ -198,7 +198,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Func<Task> action = async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                await Assert.ThrowsAsync<ActionNotFoundException>(action);
+                var ex = await Assert.ThrowsAsync<FailedToDownloadActionException>(action);
+                Assert.IsType<ActionNotFoundException>(ex.InnerException);
 
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main.completed");
                 Assert.False(File.Exists(watermarkFile));

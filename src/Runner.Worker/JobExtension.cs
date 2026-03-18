@@ -736,13 +736,37 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // Add deprecation warning annotation for Node.js 20 actions
+                    // Read dates from server variables with hardcoded fallbacks
+                    var node24DefaultDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node24DefaultDateVariable);
+                    var node24DefaultDate = string.IsNullOrEmpty(node24DefaultDateRaw) ? Constants.Runner.NodeMigration.Node24DefaultDate : node24DefaultDateRaw;
+                    var node20RemovalDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
+                    var node20RemovalDate = string.IsNullOrEmpty(node20RemovalDateRaw) ? Constants.Runner.NodeMigration.Node20RemovalDate : node20RemovalDateRaw;
+
+                    // Add deprecation warning annotation for Node.js 20 actions (Phase 1 - actions still running on node20)
                     if (context.Global.DeprecatedNode20Actions?.Count > 0)
                     {
                         var sortedActions = context.Global.DeprecatedNode20Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
                         var actionsList = string.Join(", ", sortedActions);
-                        var deprecationMessage = $"Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: {actionsList}. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        var deprecationMessage = $"Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: {actionsList}. Actions will be forced to run with Node.js 24 by default starting {node24DefaultDate}. Node.js 20 will be removed from the runner on {node20RemovalDate}. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
                         context.Warning(deprecationMessage);
+                    }
+
+                    // Add annotation for actions upgraded from Node.js 20 to Node.js 24 (Phase 2/3)
+                    if (context.Global.UpgradedToNode24Actions?.Count > 0)
+                    {
+                        var sortedActions = context.Global.UpgradedToNode24Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
+                        var actionsList = string.Join(", ", sortedActions);
+                        var upgradeMessage = $"Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: {actionsList}. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        context.Warning(upgradeMessage);
+                    }
+
+                    // Add annotation for ARM32 actions stuck on Node.js 20 (ARM32 can't run node24)
+                    if (context.Global.Arm32Node20Actions?.Count > 0)
+                    {
+                        var sortedActions = context.Global.Arm32Node20Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
+                        var actionsList = string.Join(", ", sortedActions);
+                        var arm32Message = $"The following actions are running on Node.js 20 because Node.js 24 is not available on Linux ARM32: {actionsList}. Linux ARM32 runners are deprecated and will no longer be supported after {node20RemovalDate}. Please migrate to a supported platform. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        context.Warning(arm32Message);
                     }
                 }
                 catch (Exception ex)
