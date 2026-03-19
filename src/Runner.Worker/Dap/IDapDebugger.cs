@@ -1,5 +1,4 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Dap
@@ -17,9 +16,9 @@ namespace GitHub.Runner.Worker.Dap
     [ServiceLocator(Default = typeof(DapDebugger))]
     public interface IDapDebugger : IRunnerService
     {
-        Task StartAsync(CancellationToken cancellationToken);
-        Task WaitUntilReadyAsync(CancellationToken cancellationToken);
-        Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, CancellationToken cancellationToken);
+        Task StartAsync(IExecutionContext jobContext);
+        Task WaitUntilReadyAsync();
+        Task OnStepStartingAsync(IStep step);
         void OnStepCompleted(IStep step);
         Task OnJobCompletedAsync();
     }

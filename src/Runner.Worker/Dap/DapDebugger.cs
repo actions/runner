@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker.Dap
@@ -36,6 +37,7 @@ namespace GitHub.Runner.Worker.Dap
         private const string ContentLengthHeader = "Content-Length: ";
         private const int MaxMessageSize = 10 * 1024 * 1024; // 10 MB
         private const int MaxHeaderLineLength = 8192; // 8 KB
+        private const int ConnectionRetryDelayMilliseconds = 500;
 
         // Thread ID for the single job execution thread
         private const int JobThreadId = 1;
@@ -54,7 +56,6 @@ namespace GitHub.Runner.Worker.Dap
         private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
         private int _nextSeq = 1;
         private Task _connectionLoopTask;
-        private volatile bool _acceptConnections = true;
         private volatile DapSessionState _state = DapSessionState.WaitingForConnection;
         private CancellationTokenRegistration? _cancellationRegistration;
         private volatile bool _started;
@@ -65,7 +66,7 @@ namespace GitHub.Runner.Worker.Dap
         private readonly object _stateLock = new object();
 
         // Handshake completion — signaled when configurationDone is received
-        private TaskCompletionSource<bool> _handshakeTcs = CreateHandshakeCompletionSource();
+        private TaskCompletionSource<bool> _handshakeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         // Whether to pause before the next step (set by 'next' command)
         private bool _pauseOnNextStep = true;
@@ -103,13 +104,15 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info("DapDebugger initialized");
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public Task StartAsync(IExecutionContext jobContext)
         {
+            ArgUtil.NotNull(jobContext, nameof(jobContext));
             var port = ResolvePort();
 
             Trace.Info($"Starting DAP debugger on port {port}");
 
-            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _jobContext = jobContext;
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(jobContext.CancellationToken);
             _connectionTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             _listener = new TcpListener(IPAddress.Loopback, port);
@@ -123,13 +126,14 @@ namespace GitHub.Runner.Worker.Dap
             return Task.CompletedTask;
         }
 
-        public async Task WaitUntilReadyAsync(CancellationToken cancellationToken)
+        public async Task WaitUntilReadyAsync()
         {
-            if (!_started || _listener == null)
+            if (!_started || _listener == null || _jobContext == null)
             {
                 return;
             }
 
+            var cancellationToken = _jobContext.CancellationToken;
             var timeoutMinutes = ResolveTimeout();
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(timeoutMinutes));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
@@ -185,7 +189,6 @@ namespace GitHub.Runner.Worker.Dap
                 try
                 {
                     Trace.Info("Stopping DAP debugger");
-                    _acceptConnections = false;
                     _cts?.Cancel();
 
                     CleanupConnection();
@@ -264,7 +267,7 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info("Debug session cancelled");
         }
 
-        public async Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, CancellationToken cancellationToken)
+        public async Task OnStepStartingAsync(IStep step)
         {
             if (!IsActive)
             {
@@ -275,7 +278,7 @@ namespace GitHub.Runner.Worker.Dap
             {
                 bool isFirst = _isFirstStep;
                 _isFirstStep = false;
-                await OnStepStartingAsync(step, jobContext, isFirst, cancellationToken);
+                await OnStepStartingAsync(step, isFirst);
             }
             catch (Exception ex)
             {
@@ -374,6 +377,15 @@ namespace GitHub.Runner.Worker.Dap
                 response.Command = request.Command;
 
                 SendResponse(response);
+
+                if (request.Command == "initialize")
+                {
+                    SendEvent(new Event
+                    {
+                        EventType = "initialized"
+                    });
+                    Trace.Info("Sent initialized event");
+                }
             }
             catch (Exception ex)
             {
@@ -431,7 +443,7 @@ namespace GitHub.Runner.Worker.Dap
                 catch { /* listener already stopped */ }
             });
 
-            while (_acceptConnections && !cancellationToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
@@ -456,27 +468,21 @@ namespace GitHub.Runner.Worker.Dap
                     HandleClientDisconnected();
                     CleanupConnection();
                 }
-                catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (SocketException) when (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
                 catch (Exception ex)
                 {
-                    Trace.Warning($"Connection error ({ex.GetType().Name})");
                     CleanupConnection();
 
-                    if (!_acceptConnections || cancellationToken.IsCancellationRequested)
+                    if (cancellationToken.IsCancellationRequested)
                     {
                         break;
                     }
 
+                    Trace.Error("Debugger connection error");
+                    Trace.Error(ex);
+
                     try
                     {
-                        await Task.Delay(100, cancellationToken);
+                        await Task.Delay(ConnectionRetryDelayMilliseconds, cancellationToken);
                     }
                     catch (OperationCanceledException)
                     {
@@ -753,9 +759,10 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info("DAP handshake complete, session is ready");
         }
 
-        internal async Task OnStepStartingAsync(IStep step, IExecutionContext jobContext, bool isFirstStep, CancellationToken cancellationToken)
+        internal async Task OnStepStartingAsync(IStep step, bool isFirstStep)
         {
             bool pauseOnNextStep;
+            CancellationToken cancellationToken;
             lock (_stateLock)
             {
                 if (_state != DapSessionState.Ready &&
@@ -766,9 +773,9 @@ namespace GitHub.Runner.Worker.Dap
                 }
 
                 _currentStep = step;
-                _jobContext = jobContext;
                 _currentStepIndex = _completedSteps.Count;
                 pauseOnNextStep = _pauseOnNextStep;
+                cancellationToken = _jobContext?.CancellationToken ?? CancellationToken.None;
             }
 
             // Reset variable references so stale nested refs from the
@@ -830,11 +837,6 @@ namespace GitHub.Runner.Worker.Dap
             });
         }
 
-        private static TaskCompletionSource<bool> CreateHandshakeCompletionSource()
-        {
-            return new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        }
-
         private Response HandleInitialize(Request request)
         {
             if (request.Arguments != null)
@@ -882,18 +884,6 @@ namespace GitHub.Runner.Worker.Dap
                 SupportsValueFormattingOptions = false,
                 SupportsExceptionInfoRequest = false,
             };
-
-            // Send initialized event after a brief delay to ensure the
-            // response is delivered first (DAP spec requirement)
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(50);
-                SendEvent(new Event
-                {
-                    EventType = "initialized"
-                });
-                Trace.Info("Sent initialized event");
-            });
 
             Trace.Info("Initialize request handled, capabilities sent");
             return CreateResponse(request, true, body: capabilities);

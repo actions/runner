@@ -189,7 +189,7 @@ namespace GitHub.Runner.Worker
                     try
                     {
                         dapDebugger = HostContext.GetService<IDapDebugger>();
-                        await dapDebugger.StartAsync(jobRequestCancellationToken);
+                        await dapDebugger.StartAsync(jobContext);
                     }
                     catch (Exception ex)
                     {
@@ -248,7 +248,7 @@ namespace GitHub.Runner.Worker
                 {
                     try
                     {
-                        await dapDebugger.WaitUntilReadyAsync(jobRequestCancellationToken);
+                        await dapDebugger.WaitUntilReadyAsync();
                         AddDebuggerConnectionTelemetry(jobContext, "Connected");
                     }
                     catch (OperationCanceledException) when (jobRequestCancellationToken.IsCancellationRequested)

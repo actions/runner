@@ -229,7 +229,7 @@ namespace GitHub.Runner.Worker
                         else
                         {
                             // Pause for DAP debugger before step execution
-                            await dapDebugger?.OnStepStartingAsync(step, jobContext, jobContext.CancellationToken);
+                            await dapDebugger?.OnStepStartingAsync(step);
 
                             // Run the step
                             await RunStepAsync(step, jobContext.CancellationToken);
