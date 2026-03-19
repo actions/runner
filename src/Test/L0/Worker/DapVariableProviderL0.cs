@@ -19,7 +19,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
             _hc = new TestHostContext(this, testName);
-            _provider = new DapVariableProvider(_hc);
+            _provider = new DapVariableProvider(_hc.SecretMasker);
             return _hc;
         }
 
@@ -420,22 +420,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.NotNull(leakedVar);
                 Assert.DoesNotContain("super-secret-token", leakedVar.Value);
                 Assert.Contains("***", leakedVar.Value);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void MaskSecrets_DelegatesToHostContextSecretMasker()
-        {
-            using (var hc = CreateTestContext())
-            {
-                hc.SecretMasker.AddValue("my-secret");
-
-                Assert.Equal("before-***-after", _provider.MaskSecrets("before-my-secret-after"));
-                Assert.Equal("no secrets here", _provider.MaskSecrets("no secrets here"));
-                Assert.Equal(string.Empty, _provider.MaskSecrets(null));
-                Assert.Equal(string.Empty, _provider.MaskSecrets(string.Empty));
             }
         }
 

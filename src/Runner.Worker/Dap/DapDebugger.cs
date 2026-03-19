@@ -99,7 +99,7 @@ namespace GitHub.Runner.Worker.Dap
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            _variableProvider = new DapVariableProvider(hostContext);
+            _variableProvider = new DapVariableProvider(hostContext.SecretMasker);
             _replExecutor = new DapReplExecutor(hostContext, SendOutput);
             Trace.Info("DapDebugger initialized");
         }
@@ -654,9 +654,8 @@ namespace GitHub.Runner.Worker.Dap
         /// layer. Masking the raw JSON would corrupt protocol envelope fields
         /// (type, event, command, seq) if a secret collides with those strings.
         /// Instead, each DAP producer masks user-visible text at the point of
-        /// construction via <see cref="DapVariableProvider.MaskSecrets"/> or the
-        /// runner's SecretMasker directly. See DapVariableProvider, DapReplExecutor,
-        /// and DapDebugger for the call sites.
+        /// construction via the runner's SecretMasker. See DapVariableProvider,
+        /// DapReplExecutor, and DapDebugger for the call sites.
         /// </summary>
         private void SendMessageInternal(ProtocolMessage message)
         {

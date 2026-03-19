@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using GitHub.DistributedTask.Logging;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
@@ -39,16 +40,16 @@ namespace GitHub.Runner.Worker.Dap
 
         internal const string RedactedValue = "***";
 
-        private readonly IHostContext _hostContext;
+        private readonly ISecretMasker _secretMasker;
 
         // Maps dynamic variable reference IDs to the backing data and its
         // dot-separated path (e.g. "github.event.pull_request").
         private readonly Dictionary<int, (PipelineContextData Data, string Path)> _variableReferences = new();
         private int _nextVariableReference = DynamicReferenceBase;
 
-        public DapVariableProvider(IHostContext hostContext)
+        public DapVariableProvider(ISecretMasker secretMasker)
         {
-            _hostContext = hostContext ?? throw new ArgumentNullException(nameof(hostContext));
+            _secretMasker = secretMasker ?? throw new ArgumentNullException(nameof(secretMasker));
         }
 
         /// <summary>
@@ -156,22 +157,6 @@ namespace GitHub.Runner.Worker.Dap
         }
 
         /// <summary>
-        /// Applies the runner's secret masker to the given value.
-        /// This is the single masking entry-point for all DAP-visible strings
-        /// and is intentionally public so future DAP features (evaluate, REPL)
-        /// can reuse it without duplicating policy.
-        /// </summary>
-        public string MaskSecrets(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return value ?? string.Empty;
-            }
-
-            return _hostContext.SecretMasker.MaskSecrets(value);
-        }
-
-        /// <summary>
         /// Evaluates a GitHub Actions expression (e.g. "github.repository",
         /// "${{ github.event_name }}") in the context of the current step and
         /// returns a masked result suitable for the DAP evaluate response.
@@ -219,7 +204,7 @@ namespace GitHub.Runner.Worker.Dap
                     context.ExpressionValues,
                     context.ExpressionFunctions);
 
-                result = MaskSecrets(result ?? "null");
+                result = _secretMasker.MaskSecrets(result ?? "null");
 
                 return new EvaluateResponseBody
                 {
@@ -230,7 +215,7 @@ namespace GitHub.Runner.Worker.Dap
             }
             catch (Exception ex)
             {
-                var errorMessage = MaskSecrets($"Evaluation error: {ex.Message}");
+                var errorMessage = _secretMasker.MaskSecrets($"Evaluation error: {ex.Message}");
                 return new EvaluateResponseBody
                 {
                     Result = errorMessage,
@@ -326,19 +311,19 @@ namespace GitHub.Runner.Worker.Dap
             switch (value)
             {
                 case StringContextData str:
-                    variable.Value = MaskSecrets(str.Value);
+                    variable.Value = _secretMasker.MaskSecrets(str.Value);
                     variable.Type = "string";
                     variable.VariablesReference = 0;
                     break;
 
                 case NumberContextData num:
-                    variable.Value = MaskSecrets(num.Value.ToString("G15", System.Globalization.CultureInfo.InvariantCulture));
+                    variable.Value = _secretMasker.MaskSecrets(num.Value.ToString("G15", System.Globalization.CultureInfo.InvariantCulture));
                     variable.Type = "number";
                     variable.VariablesReference = 0;
                     break;
 
                 case BooleanContextData boolVal:
-                    variable.Value = MaskSecrets(boolVal.Value ? "true" : "false");
+                    variable.Value = _secretMasker.MaskSecrets(boolVal.Value ? "true" : "false");
                     variable.Type = "boolean";
                     variable.VariablesReference = 0;
                     break;
@@ -366,7 +351,7 @@ namespace GitHub.Runner.Worker.Dap
 
                 default:
                     var rawValue = value.ToJToken()?.ToString() ?? "unknown";
-                    variable.Value = MaskSecrets(rawValue);
+                    variable.Value = _secretMasker.MaskSecrets(rawValue);
                     variable.Type = value.GetType().Name;
                     variable.VariablesReference = 0;
                     break;
