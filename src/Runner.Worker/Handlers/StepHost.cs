@@ -58,13 +58,23 @@ namespace GitHub.Runner.Worker.Handlers
 
         public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            // Use NodeUtil to check if Node24 is requested but we're on ARM32 Linux
-            var (nodeVersion, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
+            bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
+            bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
+            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
+
+            var (nodeVersion, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
+
+            if (nodeVersion == null)
+            {
+                executionContext.Error(warningMessage);
+                throw new InvalidOperationException(warningMessage);
+            }
+
             if (!string.IsNullOrEmpty(warningMessage))
             {
                 executionContext.Warning(warningMessage);
             }
-            
+
             return Task.FromResult(nodeVersion);
         }
 
@@ -142,8 +152,18 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            // Use NodeUtil to check if Node24 is requested but we're on ARM32 Linux
-            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
+            bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
+            bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
+            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
+
+            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
+
+            if (nodeExternal == null)
+            {
+                executionContext.Error(warningMessage);
+                throw new InvalidOperationException(warningMessage);
+            }
+
             if (!string.IsNullOrEmpty(warningMessage))
             {
                 executionContext.Warning(warningMessage);
@@ -273,8 +293,18 @@ namespace GitHub.Runner.Worker.Handlers
 
         private string CheckPlatformForAlpineContainer(IExecutionContext executionContext, string preferredVersion)
         {
-            // Use NodeUtil to check if Node24 is requested but we're on ARM32 Linux
-            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion);
+            bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
+            bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
+            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
+
+            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
+
+            if (nodeExternal == null)
+            {
+                executionContext.Error(warningMessage);
+                throw new InvalidOperationException(warningMessage);
+            }
+
             if (!string.IsNullOrEmpty(warningMessage))
             {
                 executionContext.Warning(warningMessage);

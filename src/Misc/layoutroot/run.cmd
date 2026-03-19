@@ -25,7 +25,14 @@ call "%~dp0run-helper.cmd" %*
 if %ERRORLEVEL% EQU 1 (
   echo "Restarting runner..."
   goto :launch_helper
-) else (  
-  echo "Exiting runner..."
-  exit /b 0
 )
+
+if "%ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE%"=="1" (
+  if %ERRORLEVEL% EQU 7 (
+    echo "Exiting runner with deprecated version error code: %ERRORLEVEL%"
+    exit /b %ERRORLEVEL%
+  )
+)
+
+echo "Exiting runner..."
+exit /b 0
