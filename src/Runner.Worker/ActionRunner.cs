@@ -235,7 +235,18 @@ namespace GitHub.Runner.Worker
                     ExecutionContext.Warning($"Unexpected input(s) '{string.Join("', '", unexpectedInputs)}', valid inputs are ['{string.Join("', '", validInputs)}']");
                 }
             }
-
+            // Validate required inputs when feature flag is enabled
+            if ((ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.ValidateRequiredActionInputs) ?? false)
+                && definition.Data?.RequiredInputs != null)
+            {
+                foreach (var requiredKey in definition.Data.RequiredInputs)
+                {
+                    if (!inputs.TryGetValue(requiredKey, out var requiredValue) || string.IsNullOrEmpty(requiredValue))
+                    {
+                        ExecutionContext.Error($"Input '{requiredKey}' is required for action '{definition.Data.Name}' but was not provided.");
+                    }
+                }
+            }
             // Load the action environment.
             ExecutionContext.Debug("Loading env");
             var environment = new Dictionary<String, String>(VarUtil.EnvironmentVariableKeyComparer);
