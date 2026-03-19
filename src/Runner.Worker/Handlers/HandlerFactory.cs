@@ -25,6 +25,14 @@ namespace GitHub.Runner.Worker.Handlers
 
     public sealed class HandlerFactory : RunnerService, IHandlerFactory
     {
+        internal static bool ShouldTrackAsArm32Node20(bool deprecateArm32, string preferredNodeVersion, string finalNodeVersion, string platformWarningMessage)
+        {
+            return deprecateArm32 &&
+                !string.IsNullOrEmpty(platformWarningMessage) &&
+                string.Equals(preferredNodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.OrdinalIgnoreCase);
+        }
+
         public IHandler Create(
             IExecutionContext executionContext,
             Pipelines.ActionStepDefinitionReference action,
@@ -65,19 +73,12 @@ namespace GitHub.Runner.Worker.Handlers
                     nodeData.NodeVersion = Common.Constants.Runner.NodeMigration.Node20;
                 }
 
-                // Track Node.js 20 actions for deprecation annotation
-                if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node20, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    bool warnOnNode20 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.WarnOnNode20Flag) ?? false;
-                    if (warnOnNode20)
-                    {
-                        string actionName = GetActionName(action);
-                        if (!string.IsNullOrEmpty(actionName))
-                        {
-                            executionContext.Global.DeprecatedNode20Actions?.Add(actionName);
-                        }
-                    }
-                }
+                // Read flags early; actionName is also resolved up front for tracking after version is determined
+                bool warnOnNode20 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.WarnOnNode20Flag) ?? false;
+                bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
+                bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
+                string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
+                string actionName = GetActionName(action);
 
                 // Check if node20 was explicitly specified in the action
                 // We don't modify if node24 was explicitly specified
@@ -87,7 +88,15 @@ namespace GitHub.Runner.Worker.Handlers
                     bool requireNode24 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.RequireNode24Flag) ?? false;
 
                     var (nodeVersion, configWarningMessage) = NodeUtil.DetermineActionsNodeVersion(environment, useNode24ByDefault, requireNode24);
-                    var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeVersion);
+                    var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeVersion, deprecateArm32, killArm32, node20RemovalDate);
+
+                    // ARM32 kill switch: fail the step
+                    if (finalNodeVersion == null)
+                    {
+                        executionContext.Error(platformWarningMessage);
+                        throw new InvalidOperationException(platformWarningMessage);
+                    }
+
                     nodeData.NodeVersion = finalNodeVersion;
 
                     if (!string.IsNullOrEmpty(configWarningMessage))
@@ -100,6 +109,26 @@ namespace GitHub.Runner.Worker.Handlers
                         executionContext.Warning(platformWarningMessage);
                     }
 
+                    // Track actions based on their final node version
+                    if (!string.IsNullOrEmpty(actionName))
+                    {
+                        if (string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Action was upgraded from node20 to node24
+                            executionContext.Global.UpgradedToNode24Actions?.Add(actionName);
+                        }
+                        else if (ShouldTrackAsArm32Node20(deprecateArm32, nodeVersion, finalNodeVersion, platformWarningMessage))
+                        {
+                            // Action is on node20 because ARM32 can't run node24
+                            executionContext.Global.Arm32Node20Actions?.Add(actionName);
+                        }
+                        else if (warnOnNode20)
+                        {
+                            // Action is still running on node20 (general case)
+                            executionContext.Global.DeprecatedNode20Actions?.Add(actionName);
+                        }
+                    }
+
                     // Show information about Node 24 migration in Phase 2
                     if (useNode24ByDefault && !requireNode24 && string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
                     {
@@ -107,6 +136,30 @@ namespace GitHub.Runner.Worker.Handlers
                                              "If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. " +
                                              $"For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
                         executionContext.Output(infoMessage);
+                    }
+                }
+                else if (string.Equals(nodeData.NodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    var (finalNodeVersion, platformWarningMessage) = NodeUtil.CheckNodeVersionForLinuxArm32(nodeData.NodeVersion, deprecateArm32, killArm32, node20RemovalDate);
+
+                    // ARM32 kill switch: fail the step
+                    if (finalNodeVersion == null)
+                    {
+                        executionContext.Error(platformWarningMessage);
+                        throw new InvalidOperationException(platformWarningMessage);
+                    }
+
+                    var preferredVersion = nodeData.NodeVersion;
+                    nodeData.NodeVersion = finalNodeVersion;
+
+                    if (!string.IsNullOrEmpty(platformWarningMessage))
+                    {
+                        executionContext.Warning(platformWarningMessage);
+                    }
+
+                    if (!string.IsNullOrEmpty(actionName) && ShouldTrackAsArm32Node20(deprecateArm32, preferredVersion, finalNodeVersion, platformWarningMessage))
+                    {
+                        executionContext.Global.Arm32Node20Actions?.Add(actionName);
                     }
                 }
 

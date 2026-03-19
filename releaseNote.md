@@ -1,35 +1,33 @@
 ## What's Changed
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4200
-* Update dotnet sdk to latest version @8.0.417 by @github-actions[bot] in https://github.com/actions/runner/pull/4201
-* Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4202
-* Allow empty container options by @ericsciple in https://github.com/actions/runner/pull/4208
-* Update Docker to v29.1.5 and Buildx to v0.31.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4212
-* Report job level annotations by @TingluoHuang in https://github.com/actions/runner/pull/4216
-* Fix local action display name showing `Run /./` instead of `Run ./` by @ericsciple in https://github.com/actions/runner/pull/4218
-* Update Docker to v29.2.0 and Buildx to v0.31.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4219
-* Add support for libssl3 and libssl3t64 for newer Debian/Ubuntu versions by @nekketsuuu in https://github.com/actions/runner/pull/4213
-* Validate work dir during runner start up. by @TingluoHuang in https://github.com/actions/runner/pull/4227
-* Bump hook to 0.8.1 by @nikola-jokic in https://github.com/actions/runner/pull/4222
-* Support return job result as exitcode in hosted runner. by @TingluoHuang in https://github.com/actions/runner/pull/4233
-* Add telemetry tracking for deprecated set-output and save-state commands by @ericsciple in https://github.com/actions/runner/pull/4221
-* Fix parser comparison mismatches by @ericsciple in https://github.com/actions/runner/pull/4220
-* Remove unnecessary connection test during some registration flows by @zarenner in https://github.com/actions/runner/pull/4244
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4249
-* Update dotnet sdk to latest version @8.0.418 by @github-actions[bot] in https://github.com/actions/runner/pull/4250
-* Fix link to SECURITY.md in README by @TingluoHuang in https://github.com/actions/runner/pull/4253
-* Try to infer runner is on hosted/ghes when githuburl is empty. by @TingluoHuang in https://github.com/actions/runner/pull/4254
-* Add Node.js 20 deprecation warning annotation (Phase 1) by @salmanmkc in https://github.com/actions/runner/pull/4242
-* Update Node.js 20 deprecation date to June 2nd, 2026 by @salmanmkc in https://github.com/actions/runner/pull/4258
-* Composite Action Step Markers by @ericsciple in https://github.com/actions/runner/pull/4243
-* Symlink actions cache by @paveliak in https://github.com/actions/runner/pull/4260
-* Bump minimatch in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4261
-* Bump @stylistic/eslint-plugin from 3.1.0 to 5.9.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4257
+* Log inner exception message. by @TingluoHuang in https://github.com/actions/runner/pull/4265
+* Fix composite post-step marker display names by @ericsciple in https://github.com/actions/runner/pull/4267
+* Bump actions/download-artifact from 7 to 8 by @dependabot[bot] in https://github.com/actions/runner/pull/4269
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4272
+* Avoid throw in SelfUpdaters. by @TingluoHuang in https://github.com/actions/runner/pull/4274
+* Fix parser comparison mismatches by @ericsciple in https://github.com/actions/runner/pull/4273
+* Devcontainer: bump base image Ubuntu version by @MaxHorstmann in https://github.com/actions/runner/pull/4277
+* Support `entrypoint` and `command` for service containers by @ericsciple in https://github.com/actions/runner/pull/4276
+* Bump actions/upload-artifact from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4270
+* Bump docker/login-action from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4278
+* Fix positional arg bug in ExpressionParser.CreateTree by @ericsciple in https://github.com/actions/runner/pull/4279
+* Bump docker/build-push-action from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4283
+* Bump docker/setup-buildx-action from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4282
+* Bump actions/attest-build-provenance from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4266
+* Bump @stylistic/eslint-plugin from 5.9.0 to 5.10.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4281
+* Update Docker to v29.3.0 and Buildx to v0.32.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4286
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4287
+* Fix cancellation token race during parser comparison by @ericsciple in https://github.com/actions/runner/pull/4280
+* Bump @typescript-eslint/eslint-plugin from 8.47.0 to 8.54.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4230
+* Exit with specified exit code when runner is outdated by @nikola-jokic in https://github.com/actions/runner/pull/4285
+* Report infra_error for action download failures. by @TingluoHuang in https://github.com/actions/runner/pull/4294
+* Update dotnet sdk to latest version @8.0.419 by @github-actions[bot] in https://github.com/actions/runner/pull/4301
+* Node 24 enforcement + Linux ARM32 deprecation support by @salmanmkc in https://github.com/actions/runner/pull/4303
+* Bump @typescript-eslint/eslint-plugin from 8.54.0 to 8.57.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4304
 
 ## New Contributors
-* @nekketsuuu made their first contribution in https://github.com/actions/runner/pull/4213
-* @zarenner made their first contribution in https://github.com/actions/runner/pull/4244
+* @MaxHorstmann made their first contribution in https://github.com/actions/runner/pull/4277
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.331.0...v2.332.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.332.0...v2.333.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
